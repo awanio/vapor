@@ -18,6 +18,48 @@ A RESTful API service for Linux system management, providing functionality simil
 - Root privileges for system operations
 - systemd for log management
 
+### Required Linux Packages
+
+The application requires the following system utilities to be installed on Linux:
+
+- **Core utilities** (usually pre-installed):
+  - `mount`, `umount` - For filesystem mounting operations
+  - `lsblk` - For listing block devices
+  - `useradd`, `usermod`, `userdel` - For user management
+
+- **Filesystem tools** (install based on your needs):
+  - `e2fsprogs` - For ext2/ext3/ext4 filesystem support (provides mkfs.ext2, mkfs.ext3, mkfs.ext4)
+  - `xfsprogs` - For XFS filesystem support (provides mkfs.xfs)
+  - `btrfs-progs` - For Btrfs filesystem support (provides mkfs.btrfs)
+
+- **System logging**:
+  - `systemd` - For journalctl log management
+
+#### Installing Required Packages
+
+**Ubuntu/Debian:**
+```bash
+sudo apt-get update
+sudo apt-get install -y util-linux e2fsprogs xfsprogs btrfs-progs systemd
+```
+
+**RHEL/CentOS/Fedora:**
+```bash
+sudo yum install -y util-linux e2fsprogs xfsprogs btrfs-progs systemd
+# or for newer versions:
+sudo dnf install -y util-linux e2fsprogs xfsprogs btrfs-progs systemd
+```
+
+**Arch Linux:**
+```bash
+sudo pacman -S util-linux e2fsprogs xfsprogs btrfs-progs systemd
+```
+
+**Alpine Linux:**
+```bash
+sudo apk add util-linux e2fsprogs xfsprogs btrfs-progs
+```
+
 ## Platform Compatibility
 
 ### Primary Target

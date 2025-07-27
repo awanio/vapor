@@ -1,4 +1,4 @@
-.PHONY: build test clean run docker-build docker-run install-deps lint
+.PHONY: build test clean run docker-build docker-run install-deps lint install-system-deps check-system-deps
 
 # Variables
 BINARY_NAME=system-api
@@ -71,3 +71,59 @@ docs:
 dev:
 	@echo "Starting in development mode..."
 	go run $(MAIN_PATH)
+
+# Install system dependencies (requires root/sudo)
+install-system-deps:
+	@echo "Installing system dependencies..."
+	@if [ -f /etc/debian_version ]; then \
+		echo "Detected Debian/Ubuntu system"; \
+		sudo apt-get update && sudo apt-get install -y util-linux e2fsprogs xfsprogs btrfs-progs systemd; \
+	elif [ -f /etc/redhat-release ]; then \
+		echo "Detected RHEL/CentOS/Fedora system"; \
+		if command -v dnf >/dev/null 2>&1; then \
+			sudo dnf install -y util-linux e2fsprogs xfsprogs btrfs-progs systemd; \
+		else \
+			sudo yum install -y util-linux e2fsprogs xfsprogs btrfs-progs systemd; \
+		fi; \
+	elif [ -f /etc/arch-release ]; then \
+		echo "Detected Arch Linux system"; \
+		sudo pacman -S --noconfirm util-linux e2fsprogs xfsprogs btrfs-progs systemd; \
+	elif [ -f /etc/alpine-release ]; then \
+		echo "Detected Alpine Linux system"; \
+		sudo apk add util-linux e2fsprogs xfsprogs btrfs-progs; \
+	else \
+		echo "Unknown Linux distribution. Please install packages manually:"; \
+		echo "- util-linux (for mount, umount, lsblk)"; \
+		echo "- e2fsprogs (for ext2/3/4 support)"; \
+		echo "- xfsprogs (for XFS support)"; \
+		echo "- btrfs-progs (for Btrfs support)"; \
+		echo "- systemd (for journalctl)"; \
+		exit 1; \
+	fi
+
+# Check if system dependencies are installed
+check-system-deps:
+	@echo "Checking system dependencies..."
+	@missing=""; \
+	for cmd in mount umount lsblk useradd usermod userdel journalctl; do \
+		if ! command -v $$cmd >/dev/null 2>&1; then \
+			missing="$$missing $$cmd"; \
+		fi; \
+	done; \
+	if [ -n "$$missing" ]; then \
+		echo "ERROR: Missing required commands:$$missing"; \
+		echo "Run 'make install-system-deps' to install them"; \
+		exit 1; \
+	fi; \
+	echo "Checking filesystem tools..."; \
+	fs_tools=""; \
+	for cmd in mkfs.ext4 mkfs.xfs mkfs.btrfs; do \
+		if ! command -v $$cmd >/dev/null 2>&1; then \
+			fs_tools="$$fs_tools $$cmd"; \
+		fi; \
+	done; \
+	if [ -n "$$fs_tools" ]; then \
+		echo "WARNING: Missing filesystem tools:$$fs_tools"; \
+		echo "Some filesystem formatting features may not work"; \
+	fi; \
+	echo "All required system dependencies are installed!"
