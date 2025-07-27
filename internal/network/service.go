@@ -1,0 +1,349 @@
+package network
+
+import (
+	"fmt"
+	"net"
+	"net/http"
+	"strings"
+
+	"github.com/gin-gonic/gin"
+	"github.com/vapor/system-api/internal/common"
+	"github.com/vishvananda/netlink"
+)
+
+// Service handles network operations
+type Service struct{}
+
+// NewService creates a new network service
+func NewService() *Service {
+	return &Service{}
+}
+
+// Interface represents a network interface
+type Interface struct {
+	Name        string   `json:"name"`
+	MAC         string   `json:"mac"`
+	MTU         int      `json:"mtu"`
+	State       string   `json:"state"`
+	Type        string   `json:"type"`
+	Addresses   []string `json:"addresses"`
+	Statistics  *Stats   `json:"statistics"`
+}
+
+// Stats represents network interface statistics
+type Stats struct {
+	RxBytes   uint64 `json:"rx_bytes"`
+	TxBytes   uint64 `json:"tx_bytes"`
+	RxPackets uint64 `json:"rx_packets"`
+	TxPackets uint64 `json:"tx_packets"`
+	RxErrors  uint64 `json:"rx_errors"`
+	TxErrors  uint64 `json:"tx_errors"`
+}
+
+// AddressRequest represents IP address configuration
+type AddressRequest struct {
+	Address string `json:"address" binding:"required"`
+	Netmask int    `json:"netmask" binding:"required,min=0,max=32"`
+	Gateway string `json:"gateway"`
+}
+
+// BridgeRequest represents bridge creation request
+type BridgeRequest struct {
+	Name       string   `json:"name" binding:"required"`
+	Interfaces []string `json:"interfaces"`
+}
+
+// BondRequest represents bond creation request
+type BondRequest struct {
+	Name       string   `json:"name" binding:"required"`
+	Mode       string   `json:"mode" binding:"required"`
+	Interfaces []string `json:"interfaces" binding:"required"`
+}
+
+// VLANRequest represents VLAN creation request
+type VLANRequest struct {
+	Interface string `json:"interface" binding:"required"`
+	VLANID    int    `json:"vlan_id" binding:"required,min=1,max=4094"`
+	Name      string `json:"name"`
+}
+
+// GetInterfaces returns all network interfaces
+func (s *Service) GetInterfaces(c *gin.Context) {
+	links, err := netlink.LinkList()
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to list interfaces", err.Error())
+		return
+	}
+
+	interfaces := make([]Interface, 0, len(links))
+	for _, link := range links {
+		iface := s.linkToInterface(link)
+		interfaces = append(interfaces, iface)
+	}
+
+	common.SendSuccess(c, gin.H{"interfaces": interfaces})
+}
+
+// InterfaceUp brings an interface up
+func (s *Service) InterfaceUp(c *gin.Context) {
+	name := c.Param("name")
+	
+	link, err := netlink.LinkByName(name)
+	if err != nil {
+		common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "Interface not found", err.Error())
+		return
+	}
+
+	if err := netlink.LinkSetUp(link); err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to bring interface up", err.Error())
+		return
+	}
+
+	common.SendSuccess(c, gin.H{"message": fmt.Sprintf("Interface %s is now up", name)})
+}
+
+// InterfaceDown brings an interface down
+func (s *Service) InterfaceDown(c *gin.Context) {
+	name := c.Param("name")
+	
+	link, err := netlink.LinkByName(name)
+	if err != nil {
+		common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "Interface not found", err.Error())
+		return
+	}
+
+	if err := netlink.LinkSetDown(link); err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to bring interface down", err.Error())
+		return
+	}
+
+	common.SendSuccess(c, gin.H{"message": fmt.Sprintf("Interface %s is now down", name)})
+}
+
+// SetInterfaceAddress configures IP address on interface
+func (s *Service) SetInterfaceAddress(c *gin.Context) {
+	name := c.Param("name")
+	
+	var req AddressRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Invalid request", err.Error())
+		return
+	}
+
+	link, err := netlink.LinkByName(name)
+	if err != nil {
+		common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "Interface not found", err.Error())
+		return
+	}
+
+	// Parse IP address
+	ip := net.ParseIP(req.Address)
+	if ip == nil {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Invalid IP address")
+		return
+	}
+
+	// Create address
+	addr := &netlink.Addr{
+		IPNet: &net.IPNet{
+			IP:   ip,
+			Mask: net.CIDRMask(req.Netmask, 32),
+		},
+	}
+
+	// Add address to interface
+	if err := netlink.AddrAdd(link, addr); err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to add address", err.Error())
+		return
+	}
+
+	// Set gateway if provided
+	if req.Gateway != "" {
+		gw := net.ParseIP(req.Gateway)
+		if gw == nil {
+			common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Invalid gateway address")
+			return
+		}
+
+		route := &netlink.Route{
+			LinkIndex: link.Attrs().Index,
+			Gw:        gw,
+		}
+
+		if err := netlink.RouteAdd(route); err != nil {
+			common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to add route", err.Error())
+			return
+		}
+	}
+
+	common.SendSuccess(c, gin.H{"message": fmt.Sprintf("Address %s/%d configured on %s", req.Address, req.Netmask, name)})
+}
+
+// CreateBridge creates a network bridge
+func (s *Service) CreateBridge(c *gin.Context) {
+	var req BridgeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Invalid request", err.Error())
+		return
+	}
+
+	// Create bridge
+	bridge := &netlink.Bridge{
+		LinkAttrs: netlink.LinkAttrs{
+			Name: req.Name,
+		},
+	}
+
+	if err := netlink.LinkAdd(bridge); err != nil {
+		if strings.Contains(err.Error(), "exists") {
+			common.SendError(c, http.StatusConflict, common.ErrCodeConflict, "Bridge already exists")
+		} else {
+			common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to create bridge", err.Error())
+		}
+		return
+	}
+
+	// Add interfaces to bridge
+	for _, ifaceName := range req.Interfaces {
+		iface, err := netlink.LinkByName(ifaceName)
+		if err != nil {
+			continue
+		}
+		netlink.LinkSetMaster(iface, bridge)
+	}
+
+	// Bring bridge up
+	netlink.LinkSetUp(bridge)
+
+	common.SendSuccess(c, gin.H{"message": fmt.Sprintf("Bridge %s created", req.Name)})
+}
+
+// CreateBond creates a network bond
+func (s *Service) CreateBond(c *gin.Context) {
+	var req BondRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Invalid request", err.Error())
+		return
+	}
+
+	// Create bond
+	bond := &netlink.Bond{
+		LinkAttrs: netlink.LinkAttrs{
+			Name: req.Name,
+		},
+		Mode: netlink.StringToBondMode(req.Mode),
+	}
+
+	if err := netlink.LinkAdd(bond); err != nil {
+		if strings.Contains(err.Error(), "exists") {
+			common.SendError(c, http.StatusConflict, common.ErrCodeConflict, "Bond already exists")
+		} else {
+			common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to create bond", err.Error())
+		}
+		return
+	}
+
+	// Get bond link for adding interfaces
+	bondLink, _ := netlink.LinkByName(req.Name)
+	
+	// Add interfaces to bond
+	for _, ifaceName := range req.Interfaces {
+		iface, err := netlink.LinkByName(ifaceName)
+		if err != nil {
+			continue
+		}
+		netlink.LinkSetMasterByIndex(iface, bondLink.Attrs().Index)
+	}
+
+	// Bring bond up
+	netlink.LinkSetUp(bond)
+
+	common.SendSuccess(c, gin.H{"message": fmt.Sprintf("Bond %s created", req.Name)})
+}
+
+// CreateVLAN creates a VLAN interface
+func (s *Service) CreateVLAN(c *gin.Context) {
+	var req VLANRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Invalid request", err.Error())
+		return
+	}
+
+	// Get parent interface
+	parent, err := netlink.LinkByName(req.Interface)
+	if err != nil {
+		common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "Parent interface not found", err.Error())
+		return
+	}
+
+	// Generate VLAN name if not provided
+	vlanName := req.Name
+	if vlanName == "" {
+		vlanName = fmt.Sprintf("%s.%d", req.Interface, req.VLANID)
+	}
+
+	// Create VLAN
+	vlan := &netlink.Vlan{
+		LinkAttrs: netlink.LinkAttrs{
+			Name:        vlanName,
+			ParentIndex: parent.Attrs().Index,
+		},
+		VlanId: req.VLANID,
+	}
+
+	if err := netlink.LinkAdd(vlan); err != nil {
+		if strings.Contains(err.Error(), "exists") {
+			common.SendError(c, http.StatusConflict, common.ErrCodeConflict, "VLAN already exists")
+		} else {
+			common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to create VLAN", err.Error())
+		}
+		return
+	}
+
+	// Bring VLAN up
+	netlink.LinkSetUp(vlan)
+
+	common.SendSuccess(c, gin.H{"message": fmt.Sprintf("VLAN %s created", vlanName)})
+}
+
+// linkToInterface converts netlink.Link to Interface
+func (s *Service) linkToInterface(link netlink.Link) Interface {
+	attrs := link.Attrs()
+	
+	iface := Interface{
+		Name:  attrs.Name,
+		MAC:   attrs.HardwareAddr.String(),
+		MTU:   attrs.MTU,
+		State: s.getLinkState(attrs),
+		Type:  link.Type(),
+	}
+
+	// Get addresses
+	addrs, _ := netlink.AddrList(link, 0)
+	iface.Addresses = make([]string, 0, len(addrs))
+	for _, addr := range addrs {
+		iface.Addresses = append(iface.Addresses, addr.IPNet.String())
+	}
+
+	// Get statistics
+	if attrs.Statistics != nil {
+		iface.Statistics = &Stats{
+			RxBytes:   attrs.Statistics.RxBytes,
+			TxBytes:   attrs.Statistics.TxBytes,
+			RxPackets: attrs.Statistics.RxPackets,
+			TxPackets: attrs.Statistics.TxPackets,
+			RxErrors:  attrs.Statistics.RxErrors,
+			TxErrors:  attrs.Statistics.TxErrors,
+		}
+	}
+
+	return iface
+}
+
+// getLinkState returns the state of a network link
+func (s *Service) getLinkState(attrs *netlink.LinkAttrs) string {
+	if attrs.Flags&net.FlagUp != 0 {
+		return "up"
+	}
+	return "down"
+}

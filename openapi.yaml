@@ -1,0 +1,952 @@
+openapi: 3.1.0
+info:
+  title: Go System API
+  version: 1.0.0
+  description: RESTful API for Linux system management
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+paths:
+  /auth/login:
+    post:
+      summary: Authenticate user
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Successful authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
+  /network/interfaces:
+    get:
+      summary: List network interfaces
+      tags:
+        - Network
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of interfaces
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InterfacesResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /network/interfaces/{name}/up:
+    put:
+      summary: Bring interface up
+      tags:
+        - Network
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Interface brought up
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: Interface not found
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /network/interfaces/{name}/down:
+    put:
+      summary: Bring interface down
+      tags:
+        - Network
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Interface brought down
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: Interface not found
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /network/interfaces/{name}/address:
+    post:
+      summary: Configure IP address
+      tags:
+        - Network
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressRequest'
+      responses:
+        '200':
+          description: Address configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: Interface not found
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /network/bridge:
+    post:
+      summary: Create network bridge
+      tags:
+        - Network
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BridgeRequest'
+      responses:
+        '200':
+          description: Bridge created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '409':
+          description: Bridge already exists
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /network/bond:
+    post:
+      summary: Create network bond
+      tags:
+        - Network
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BondRequest'
+      responses:
+        '200':
+          description: Bond created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '409':
+          description: Bond already exists
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /network/vlan:
+    post:
+      summary: Create VLAN interface
+      tags:
+        - Network
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VLANRequest'
+      responses:
+        '200':
+          description: VLAN created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '409':
+          description: VLAN already exists
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /storage/disks:
+    get:
+      summary: List storage disks
+      tags:
+        - Storage
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of disks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DisksResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /storage/mount:
+    post:
+      summary: Mount filesystem
+      tags:
+        - Storage
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MountRequest'
+      responses:
+        '200':
+          description: Filesystem mounted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: Device not found
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /storage/unmount:
+    post:
+      summary: Unmount filesystem
+      tags:
+        - Storage
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UnmountRequest'
+      responses:
+        '200':
+          description: Filesystem unmounted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /storage/format:
+    post:
+      summary: Format disk
+      tags:
+        - Storage
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FormatRequest'
+      responses:
+        '200':
+          description: Disk formatted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: Device not found
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /users:
+    get:
+      summary: List users
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsersResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    
+    post:
+      summary: Create user
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+      responses:
+        '200':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /users/{username}:
+    put:
+      summary: Update user
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+      responses:
+        '200':
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    
+    delete:
+      summary: Delete user
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /logs:
+    get:
+      summary: Query system logs
+      tags:
+        - Logs
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: service
+          in: query
+          schema:
+            type: string
+          description: Filter by service name
+        - name: priority
+          in: query
+          schema:
+            type: string
+            enum: [emergency, alert, critical, error, warning, notice, info, debug]
+          description: Filter by priority
+        - name: since
+          in: query
+          schema:
+            type: string
+          description: Show logs since timestamp
+        - name: until
+          in: query
+          schema:
+            type: string
+          description: Show logs until timestamp
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 100
+            maximum: 1000
+      responses:
+        '200':
+          description: Log entries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /system/summary:
+    get:
+      summary: Get system summary
+      tags:
+        - System
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: System summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemSummaryResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /system/hardware:
+    get:
+      summary: Get hardware information
+      tags:
+        - System
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Hardware information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HardwareResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /system/memory:
+    get:
+      summary: Get memory information
+      tags:
+        - System
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Memory information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /system/cpu:
+    get:
+      summary: Get CPU information
+      tags:
+        - System
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: CPU information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CPUResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  
+  responses:
+    UnauthorizedError:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  
+  schemas:
+    APIResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [success, error]
+        data:
+          type: object
+          nullable: true
+        error:
+          $ref: '#/components/schemas/APIError'
+          nullable: true
+    
+    APIError:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: string
+    
+    ErrorResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            status:
+              enum: [error]
+    
+    LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+    
+    LoginResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                token:
+                  type: string
+                expires_at:
+                  type: integer
+    
+    MessageResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                message:
+                  type: string
+    
+    Interface:
+      type: object
+      properties:
+        name:
+          type: string
+        mac:
+          type: string
+        mtu:
+          type: integer
+        state:
+          type: string
+          enum: [up, down]
+        type:
+          type: string
+        addresses:
+          type: array
+          items:
+            type: string
+        statistics:
+          type: object
+          properties:
+            rx_bytes:
+              type: integer
+            tx_bytes:
+              type: integer
+            rx_packets:
+              type: integer
+            tx_packets:
+              type: integer
+            rx_errors:
+              type: integer
+            tx_errors:
+              type: integer
+    
+    InterfacesResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                interfaces:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Interface'
+    
+    AddressRequest:
+      type: object
+      required:
+        - address
+        - netmask
+      properties:
+        address:
+          type: string
+          format: ipv4
+        netmask:
+          type: integer
+          minimum: 0
+          maximum: 32
+        gateway:
+          type: string
+          format: ipv4
+    
+    BridgeRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        interfaces:
+          type: array
+          items:
+            type: string
+    
+    BondRequest:
+      type: object
+      required:
+        - name
+        - mode
+        - interfaces
+      properties:
+        name:
+          type: string
+        mode:
+          type: string
+        interfaces:
+          type: array
+          items:
+            type: string
+    
+    VLANRequest:
+      type: object
+      required:
+        - interface
+        - vlan_id
+      properties:
+        interface:
+          type: string
+        vlan_id:
+          type: integer
+          minimum: 1
+          maximum: 4094
+        name:
+          type: string
+    
+    Disk:
+      type: object
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+        size:
+          type: integer
+        model:
+          type: string
+        serial:
+          type: string
+        type:
+          type: string
+        removable:
+          type: boolean
+        partitions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Partition'
+    
+    Partition:
+      type: object
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+        size:
+          type: integer
+        type:
+          type: string
+        filesystem:
+          type: string
+        mount_point:
+          type: string
+        used:
+          type: integer
+        available:
+          type: integer
+        use_percent:
+          type: number
+    
+    DisksResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                disks:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Disk'
+    
+    MountRequest:
+      type: object
+      required:
+        - device
+        - mount_point
+      properties:
+        device:
+          type: string
+        mount_point:
+          type: string
+        filesystem:
+          type: string
+        options:
+          type: string
+    
+    UnmountRequest:
+      type: object
+      required:
+        - mount_point
+      properties:
+        mount_point:
+          type: string
+        force:
+          type: boolean
+          default: false
+    
+    FormatRequest:
+      type: object
+      required:
+        - device
+        - filesystem
+      properties:
+        device:
+          type: string
+        filesystem:
+          type: string
+          enum: [ext4, ext3, ext2, xfs, btrfs]
+        label:
+          type: string
+    
+    User:
+      type: object
+      properties:
+        username:
+          type: string
+        uid:
+          type: string
+        gid:
+          type: string
+        home:
+          type: string
+        shell:
+          type: string
+    
+    UsersResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                users:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/User'
+    
+    UserRequest:
+      type: object
+      required:
+        - username
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+        groups:
+          type: string
+    
+    LogEntry:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        priority:
+          type: string
+        unit:
+          type: string
+        message:
+          type: string
+        hostname:
+          type: string
+        pid:
+          type: integer
+    
+    LogsResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                logs:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/LogEntry'
+                total_count:
+                  type: integer
+                page:
+                  type: integer
+                page_size:
+                  type: integer
+    
+    SystemSummaryResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                hostname:
+                  type: string
+                os:
+                  type: string
+                platform:
+                  type: string
+                platform_family:
+                  type: string
+                platform_version:
+                  type: string
+                kernel_version:
+                  type: string
+                uptime:
+                  type: integer
+                boot_time:
+                  type: integer
+                cpu_count:
+                  type: integer
+    
+    HardwareResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                hostname:
+                  type: string
+                architecture:
+                  type: string
+                virtualization:
+                  type: string
+                role:
+                  type: string
+                kernel_version:
+                  type: string
+    
+    MemoryResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                total:
+                  type: integer
+                free:
+                  type: integer
+                used:
+                  type: integer
+                used_percent:
+                  type: number
+    
+    CPUResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                model_name:
+                  type: string
+                cores:
+                  type: integer
+                load1:
+                  type: number
+                load5:
+                  type: number
+                load15:
+                  type: number
