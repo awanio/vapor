@@ -1,0 +1,64 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  PATH_NAME: "awanio/vapor-api"
+  DOCKER_HOST: tcp://docker:2376
+  DOCKER_TLS_CERTDIR: "/certs"
+  DOCKER_TLS_VERIFY: 1
+  DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
+  GIT_DEPTH: 1
+
+build:
+  stage: build
+  image:
+    name: docker:19.03.12
+  services:
+    - name: docker:20.10-dind
+  before_script:
+    - |-
+        timeout=60
+        passed=0
+        echo "Waiting for docker daemon to be fully started"
+        until [ -f "${DOCKER_CERT_PATH}/ca.pem" ] || [ ${timeout} -lt ${passed} ]; do
+          echo -n "."
+          passed=`expr $passed + 1`
+          sleep 1
+        done
+  script:
+    - echo "$ACR_PASSWORD" | docker login $ACR_HOST --username $ACR_USERNAME --password-stdin
+    - >
+      docker build 
+      -t $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA 
+      -f $CI_PROJECT_DIR/Dockerfile 
+      $CI_PROJECT_DIR
+    - docker tag $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-latest
+    - docker push $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA 
+    - docker push $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-latest
+  only:
+    - dev
+    - main
+  tags:
+    - idch-bg-awid1
+    
+# deploy:
+#   image: cimg/base:edge-22.04
+#   stage: deploy
+#   dependencies: []
+#   only:
+#     - main
+#   tags:
+#     # - awid3
+#     - idch-bg-awid1
+#   script:
+#     - base64 -d -i ${AWANIO_SSH_PRIVATE_KEY} > pem.key
+#     - chmod 600 pem.key
+#     - >
+#       ssh 
+#       -o "StrictHostKeyChecking no" 
+#       -p 3775
+#       -i pem.key 
+#       awanio@103.179.254.248 
+#       ssh ubuntu@192.168.1.172
+#       kubectl -n awanio set image deployment/ai1 web=$ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA
