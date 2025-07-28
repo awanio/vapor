@@ -230,6 +230,299 @@ curl -H "Authorization: Bearer $TOKEN" \
   "http://localhost:8080/api/v1/logs?service=nginx&priority=warning&since=2024-01-01"
 ```
 
+## Container Management
+
+### List Containers
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8080/api/v1/containers
+```
+
+### Get Container Details
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8080/api/v1/containers/nginx-container
+```
+
+### Create Container
+
+```bash
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "nginx-container",
+    "image": "nginx:latest",
+    "command": ["/usr/sbin/nginx", "-g", "daemon off;"],
+    "env": {
+      "NGINX_HOST": "example.com",
+      "NGINX_PORT": "80"
+    },
+    "ports": [
+      {
+        "container_port": 80,
+        "host_port": 8080,
+        "protocol": "tcp"
+      }
+    ],
+    "volumes": [
+      {
+        "host_path": "/data/nginx/html",
+        "container_path": "/usr/share/nginx/html",
+        "read_only": false
+      }
+    ],
+    "labels": {
+      "app": "web",
+      "env": "production"
+    }
+  }' \
+  http://localhost:8080/api/v1/containers
+```
+
+### Start Container
+
+```bash
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8080/api/v1/containers/nginx-container/start
+```
+
+### Stop Container
+
+```bash
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8080/api/v1/containers/nginx-container/stop
+
+# With timeout (in seconds)
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"timeout": 30}' \
+  http://localhost:8080/api/v1/containers/nginx-container/stop
+```
+
+### Restart Container
+
+```bash
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8080/api/v1/containers/nginx-container/restart
+```
+
+### Remove Container
+
+```bash
+curl -X DELETE -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8080/api/v1/containers/nginx-container
+
+# Force remove (even if running)
+curl -X DELETE -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:8080/api/v1/containers/nginx-container?force=true"
+```
+
+### Get Container Logs
+
+```bash
+# Get last 100 lines
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:8080/api/v1/containers/nginx-container/logs?tail=100"
+
+# Follow logs (streaming)
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:8080/api/v1/containers/nginx-container/logs?follow=true"
+
+# With timestamps
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:8080/api/v1/containers/nginx-container/logs?timestamps=true"
+```
+
+### List Container Images
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8080/api/v1/images
+```
+
+### Get Image Details
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8080/api/v1/images/nginx:latest
+```
+
+### Pull Image
+
+```bash
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"image": "nginx:latest"}' \
+  http://localhost:8080/api/v1/images/pull
+```
+
+### Remove Image
+
+```bash
+curl -X DELETE -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8080/api/v1/images/nginx:latest
+
+# Force remove
+curl -X DELETE -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:8080/api/v1/images/nginx:latest?force=true"
+```
+
+## WebSocket Connections
+
+### Real-time System Metrics
+
+Connect to the WebSocket endpoint for real-time system metrics:
+
+```bash
+# Using websocat (install with: brew install websocat)
+websocat -H "Authorization: Bearer $TOKEN" \
+  ws://localhost:8080/api/v1/metrics/stream
+
+# Using wscat (install with: npm install -g wscat)
+wscat -H "Authorization: Bearer $TOKEN" \
+  -c ws://localhost:8080/api/v1/metrics/stream
+
+# Using curl (requires curl 7.77.0+)
+curl --include \
+  --no-buffer \
+  --header "Connection: Upgrade" \
+  --header "Upgrade: websocket" \
+  --header "Sec-WebSocket-Key: SGVsbG8sIHdvcmxkIQ==" \
+  --header "Sec-WebSocket-Version: 13" \
+  --header "Authorization: Bearer $TOKEN" \
+  http://localhost:8080/api/v1/metrics/stream
+```
+
+### Container Logs Streaming
+
+Stream container logs via WebSocket:
+
+```bash
+# Using websocat
+websocat -H "Authorization: Bearer $TOKEN" \
+  ws://localhost:8080/api/v1/containers/nginx-container/logs/stream
+
+# Using wscat
+wscat -H "Authorization: Bearer $TOKEN" \
+  -c ws://localhost:8080/api/v1/containers/nginx-container/logs/stream
+```
+
+### Interactive Container Terminal
+
+Connect to a container's terminal via WebSocket:
+
+```bash
+# Using websocat with stdin/stdout
+websocat -H "Authorization: Bearer $TOKEN" \
+  --binary \
+  ws://localhost:8080/api/v1/containers/nginx-container/exec
+
+# Send commands after connection
+# Type your commands and press Enter
+# Use Ctrl+D or type 'exit' to close the connection
+```
+
+### WebSocket Message Format
+
+The WebSocket endpoints use JSON messages:
+
+```javascript
+// Incoming metrics data
+{
+  "type": "metrics",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "data": {
+    "cpu": {
+      "usage": 45.2,
+      "cores": [12.3, 23.4, 34.5, 45.6]
+    },
+    "memory": {
+      "used": 4294967296,
+      "total": 8589934592,
+      "percent": 50.0
+    },
+    "disk": {
+      "read_bytes": 1024000,
+      "write_bytes": 512000
+    },
+    "network": {
+      "rx_bytes": 2048000,
+      "tx_bytes": 1024000
+    }
+  }
+}
+
+// Container log message
+{
+  "type": "log",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "stream": "stdout",
+  "message": "127.0.0.1 - - [15/Jan/2024:10:30:00 +0000] \"GET / HTTP/1.1\" 200 612"
+}
+
+// Terminal I/O
+{
+  "type": "terminal",
+  "data": "root@container:/# "
+}
+```
+
+### Python WebSocket Client Example
+
+```python
+import asyncio
+import websockets
+import json
+
+TOKEN = "your-jwt-token"
+
+async def connect_metrics():
+    uri = "ws://localhost:8080/api/v1/metrics/stream"
+    headers = {"Authorization": f"Bearer {TOKEN}"}
+    
+    async with websockets.connect(uri, extra_headers=headers) as websocket:
+        while True:
+            message = await websocket.recv()
+            data = json.loads(message)
+            print(f"CPU Usage: {data['data']['cpu']['usage']}%")
+            print(f"Memory Usage: {data['data']['memory']['percent']}%")
+
+asyncio.run(connect_metrics())
+```
+
+### Node.js WebSocket Client Example
+
+```javascript
+const WebSocket = require('ws');
+
+const TOKEN = 'your-jwt-token';
+const ws = new WebSocket('ws://localhost:8080/api/v1/metrics/stream', {
+  headers: {
+    'Authorization': `Bearer ${TOKEN}`
+  }
+});
+
+ws.on('open', () => {
+  console.log('Connected to metrics stream');
+});
+
+ws.on('message', (data) => {
+  const message = JSON.parse(data);
+  console.log(`CPU: ${message.data.cpu.usage}%`);
+  console.log(`Memory: ${message.data.memory.percent}%`);
+});
+
+ws.on('error', (error) => {
+  console.error('WebSocket error:', error);
+});
+
+ws.on('close', () => {
+  console.log('Disconnected from metrics stream');
+});
+```
+
 ## Health Check
 
 The health check endpoint doesn't require authentication:

@@ -412,7 +412,7 @@ type lsblkDevice struct {
 	Path       string        `json:"path"`
 	Size       string        `json:"size"`
 	Type       string        `json:"type"`
-	Removable  string        `json:"rm"`
+	Removable  bool          `json:"rm"`
 	Model      string        `json:"model"`
 	Serial     string        `json:"serial"`
 	FSType     string        `json:"fstype"`
@@ -429,7 +429,7 @@ func (s *Service) lsblkToDisk(device lsblkDevice) Disk {
 		Model:     strings.TrimSpace(device.Model),
 		Serial:    strings.TrimSpace(device.Serial),
 		Type:      device.Type,
-		Removable: device.Removable == "1",
+		Removable: device.Removable,
 	}
 
 	// Add partitions

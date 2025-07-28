@@ -82,7 +82,7 @@ func TestLsblkToDisk(t *testing.T) {
 		Path:      "/dev/sda",
 		Size:      "500G",
 		Type:      "disk",
-		Removable: "0",
+		Removable: false,
 		Model:     "Samsung SSD 850",
 		Serial:    "S1234567890",
 		Children: []lsblkDevice{
@@ -138,7 +138,7 @@ func TestLsblkToDiskRemovable(t *testing.T) {
 		Path:      "/dev/sdb",
 		Size:      "32G",
 		Type:      "disk",
-		Removable: "1",
+		Removable: true,
 		Model:     "USB Flash Drive",
 		Serial:    "USB123456",
 	}
