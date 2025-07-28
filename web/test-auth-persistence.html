@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Auth Persistence</title>
+</head>
+<body>
+    <h1>Authentication Persistence Test</h1>
+    
+    <div id="status"></div>
+    
+    <button onclick="setTestToken()">Set Test Token</button>
+    <button onclick="checkAuth()">Check Auth Status</button>
+    <button onclick="clearToken()">Clear Token</button>
+    <button onclick="location.reload()">Reload Page</button>
+    
+    <script type="module">
+        // Import the auth module
+        import { auth } from '/src/auth.ts';
+        
+        window.checkAuth = function() {
+            const status = document.getElementById('status');
+            const isAuth = auth.isAuthenticated();
+            const token = auth.getToken();
+            const headers = auth.getAuthHeaders();
+            
+            status.innerHTML = `
+                <h2>Auth Status:</h2>
+                <p>Is Authenticated: ${isAuth}</p>
+                <p>Token Present: ${token ? 'Yes' : 'No'}</p>
+                <p>Auth Headers: ${JSON.stringify(headers)}</p>
+                <p>LocalStorage jwt_token: ${localStorage.getItem('jwt_token') || 'null'}</p>
+                <p>LocalStorage jwt_expires_at: ${localStorage.getItem('jwt_expires_at') || 'null'}</p>
+            `;
+        }
+        
+        window.setTestToken = function() {
+            const expiresAt = Date.now() + 3600000; // 1 hour from now
+            localStorage.setItem('jwt_token', 'test-token-123');
+            localStorage.setItem('jwt_expires_at', expiresAt.toString());
+            checkAuth();
+        }
+        
+        window.clearToken = function() {
+            localStorage.removeItem('jwt_token');
+            localStorage.removeItem('jwt_expires_at');
+            checkAuth();
+        }
+        
+        // Check auth on load
+        checkAuth();
+    </script>
+</body>
+</html>

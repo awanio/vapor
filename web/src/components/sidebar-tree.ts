@@ -1,11 +1,12 @@
-import { LitElement, html, css, property } from 'lit';
+import { LitElement, html, css } from 'lit';
+import { property } from 'lit/decorators.js';
 import { t } from '../i18n';
 import type { NavItem } from '../types/system';
 
 export class SidebarTree extends LitElement {
   @property({ type: Boolean }) collapsed = false;
   @property({ type: String }) activeItemId = 'dashboard';
-  @property({ type: Object }) expandedItems: Set<string> = new Set(['system', 'network', 'storage', 'containers']);
+  @property({ type: Object }) expandedItems: Set<string> = new Set(['network']);
 
   static styles = css`
     :host {
@@ -19,7 +20,7 @@ export class SidebarTree extends LitElement {
     }
 
     .tree {
-      padding: 0;
+      padding: 20px 0 0 0;
       margin: 0;
       list-style: none;
     }
@@ -120,43 +121,42 @@ export class SidebarTree extends LitElement {
 
   private navigationItems: NavItem[] = [
     {
-      id: 'system',
-      label: 'nav.system',
-      icon: 'system',
-      children: [
-        { id: 'dashboard', label: 'nav.dashboard', icon: 'dashboard', route: 'dashboard' },
-        { id: 'logs', label: 'nav.logs', icon: 'logs', route: 'logs' },
-        { id: 'terminal', label: 'nav.terminal', icon: 'terminal', route: 'terminal' }
-      ]
+      id: 'dashboard',
+      label: 'nav.dashboard',
+      icon: 'dashboard',
+      route: 'dashboard'
     },
     {
       id: 'network',
       label: 'nav.network',
       icon: 'network',
       children: [
-        { id: 'interfaces', label: 'nav.interfaces', icon: 'interfaces', route: 'network/interfaces' },
-        { id: 'bonding', label: 'nav.bonding', icon: 'bonding', route: 'network/bonding' },
-        { id: 'vlans', label: 'nav.vlans', icon: 'vlans', route: 'network/vlans' }
+        { id: 'interfaces', label: 'nav.interfaces', icon: 'interfaces', route: 'network' }
       ]
     },
     {
       id: 'storage',
       label: 'nav.storage',
       icon: 'storage',
-      children: [
-        { id: 'disks', label: 'nav.disks', icon: 'disks', route: 'storage/disks' },
-        { id: 'lvm', label: 'nav.lvm', icon: 'lvm', route: 'storage/lvm' },
-        { id: 'raid', label: 'nav.raid', icon: 'raid', route: 'storage/raid' }
-      ]
+      route: 'storage'
     },
     {
       id: 'containers',
       label: 'nav.containers',
       icon: 'containers',
-      children: [
-        { id: 'containers-list', label: 'nav.containers', icon: 'containers', route: 'containers' },
-        { id: 'images', label: 'nav.images', icon: 'images', route: 'containers/images' }
-      ]
+      route: 'containers'
+    },
+    {
+      id: 'logs',
+      label: 'nav.logs',
+      icon: 'logs',
+      route: 'logs'
+    },
+    {
+      id: 'terminal',
+      label: 'nav.terminal',
+      icon: 'terminal',
+      route: 'terminal'
     },
     {
       id: 'users',

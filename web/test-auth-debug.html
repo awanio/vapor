@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auth Debug Test</title>
+  <style>
+    body {
+      font-family: monospace;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .section {
+      margin: 20px 0;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    button {
+      padding: 8px 16px;
+      margin: 5px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .log {
+      background: #f5f5f5;
+      padding: 10px;
+      margin: 10px 0;
+      border-left: 3px solid #666;
+      white-space: pre-wrap;
+      font-size: 12px;
+    }
+    .error {
+      border-left-color: #d32f2f;
+      background: #ffebee;
+    }
+    .success {
+      border-left-color: #388e3c;
+      background: #e8f5e9;
+    }
+    .info {
+      border-left-color: #1976d2;
+      background: #e3f2fd;
+    }
+    input {
+      padding: 5px;
+      margin: 5px;
+      width: 200px;
+    }
+    #logs {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Authentication Debug Test</h1>
+
+  <div class="section">
+    <h2>1. Check Current State</h2>
+    <button onclick="checkLocalStorage()">Check localStorage</button>
+    <button onclick="checkAuthState()">Check Auth State</button>
+    <button onclick="clearLogs()">Clear Logs</button>
+  </div>
+
+  <div class="section">
+    <h2>2. Manual Token Test</h2>
+    <input type="text" id="manualToken" placeholder="Enter test token" value="test-jwt-token-12345">
+    <input type="number" id="manualExpiry" placeholder="Expiry (minutes from now)" value="60">
+    <button onclick="setManualToken()">Set Manual Token</button>
+  </div>
+
+  <div class="section">
+    <h2>3. Login Test</h2>
+    <input type="text" id="username" placeholder="Username" value="admin">
+    <input type="password" id="password" placeholder="Password" value="">
+    <button onclick="testLogin()">Test Login</button>
+  </div>
+
+  <div class="section">
+    <h2>4. API Request Test</h2>
+    <button onclick="testApiRequest()">Test GET /network/interfaces</button>
+    <button onclick="testSystemSummary()">Test GET /system/summary</button>
+  </div>
+
+  <div class="section">
+    <h2>5. Clear Authentication</h2>
+    <button onclick="clearAuth()">Clear All Auth Data</button>
+    <button onclick="testLogout()">Test Logout</button>
+  </div>
+
+  <div class="section">
+    <h2>Logs</h2>
+    <div id="logs"></div>
+  </div>
+
+  <script type="module">
+    import { auth } from './src/auth.ts';
+    import { api } from './src/api.ts';
+
+    window.auth = auth;
+    window.api = api;
+
+    function addLog(message, type = 'info') {
+      const logs = document.getElementById('logs');
+      const log = document.createElement('div');
+      log.className = `log ${type}`;
+      log.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logs.appendChild(log);
+      logs.scrollTop = logs.scrollHeight;
+    }
+
+    const clearLogs = function() {
+      document.getElementById('logs').innerHTML = '';
+      addLog('Logs cleared', 'info');
+    };
+
+    const checkLocalStorage = function() {
+      addLog('=== Checking localStorage ===', 'info');
+      const token = localStorage.getItem('jwt_token');
+      const expiresAt = localStorage.getItem('jwt_expires_at');
+      
+      addLog(`jwt_token: ${token ? token.substring(0, 30) + '...' : 'null'}`, token ? 'success' : 'error');
+      addLog(`jwt_expires_at: ${expiresAt || 'null'}`, expiresAt ? 'success' : 'error');
+      
+      if (expiresAt) {
+        const expiry = parseInt(expiresAt, 10);
+        const now = Date.now();
+        const expiryDate = new Date(expiry);
+        const isExpired = expiry <= now;
+        
+        addLog(`Expiry timestamp: ${expiry}`, 'info');
+        addLog(`Expiry date: ${expiryDate.toISOString()}`, 'info');
+        addLog(`Current time: ${now} (${new Date(now).toISOString()})`, 'info');
+        addLog(`Is expired: ${isExpired}`, isExpired ? 'error' : 'success');
+        addLog(`Time until expiry: ${((expiry - now) / 1000 / 60).toFixed(2)} minutes`, isExpired ? 'error' : 'info');
+      }
+      
+      // Check all localStorage keys
+      addLog(`\nAll localStorage keys: ${Object.keys(localStorage).join(', ') || 'none'}`, 'info');
+    };
+
+    const checkAuthState = function() {
+      addLog('=== Checking Auth State ===', 'info');
+      
+      // Force a fresh check
+      const isAuth = auth.isAuthenticated();
+      const token = auth.getToken();
+      const headers = auth.getAuthHeaders();
+      
+      addLog(`isAuthenticated(): ${isAuth}`, isAuth ? 'success' : 'error');
+      addLog(`getToken(): ${token ? token.substring(0, 30) + '...' : 'null'}`, token ? 'success' : 'error');
+      addLog(`getAuthHeaders(): ${JSON.stringify(headers, null, 2)}`, headers.Authorization ? 'success' : 'error');
+      
+      // Try to access internal state (for debugging)
+      try {
+        addLog(`\nInternal auth state:`, 'info');
+        addLog(`auth object: ${JSON.stringify(auth, null, 2)}`, 'info');
+      } catch (e) {
+        addLog(`Cannot stringify auth object: ${e.message}`, 'info');
+      }
+    };
+
+    const setManualToken = function() {
+      const token = document.getElementById('manualToken').value;
+      const expiryMinutes = parseInt(document.getElementById('manualExpiry').value, 10);
+      
+      if (!token || !expiryMinutes) {
+        addLog('Please enter both token and expiry time', 'error');
+        return;
+      }
+      
+      const expiresAt = Date.now() + (expiryMinutes * 60 * 1000);
+      
+      addLog(`=== Setting Manual Token ===`, 'info');
+      addLog(`Token: ${token}`, 'info');
+      addLog(`Expires at: ${new Date(expiresAt).toISOString()}`, 'info');
+      
+      localStorage.setItem('jwt_token', token);
+      localStorage.setItem('jwt_expires_at', expiresAt.toString());
+      
+      addLog('Token set in localStorage', 'success');
+      addLog('Reload the page to test if AuthManager picks it up', 'info');
+      
+      // Check if it was saved
+      setTimeout(() => {
+        checkLocalStorage();
+      }, 100);
+    };
+
+    const testLogin = async function() {
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      
+      if (!username || !password) {
+        addLog('Please enter both username and password', 'error');
+        return;
+      }
+      
+      addLog(`=== Testing Login ===`, 'info');
+      addLog(`Username: ${username}`, 'info');
+      
+      try {
+        const success = await auth.login(username, password);
+        
+        if (success) {
+          addLog('Login successful!', 'success');
+          
+          // Check what was saved
+          setTimeout(() => {
+            checkLocalStorage();
+            checkAuthState();
+          }, 100);
+        } else {
+          addLog('Login failed', 'error');
+        }
+      } catch (error) {
+        addLog(`Login error: ${error.message}`, 'error');
+        console.error('Login error:', error);
+      }
+    };
+
+    const testApiRequest = async function() {
+      addLog(`=== Testing API Request ===`, 'info');
+      
+      try {
+        const headers = auth.getAuthHeaders();
+        addLog(`Auth headers: ${JSON.stringify(headers)}`, headers.Authorization ? 'success' : 'info');
+        
+        const response = await api.network.getInterfaces();
+        addLog('API request successful!', 'success');
+        addLog(`Response: ${JSON.stringify(response, null, 2).substring(0, 200)}...`, 'info');
+      } catch (error) {
+        addLog(`API request failed: ${error.message}`, 'error');
+        console.error('API error:', error);
+      }
+    };
+
+    const testSystemSummary = async function() {
+      addLog(`=== Testing System Summary API ===`, 'info');
+      
+      try {
+        const headers = auth.getAuthHeaders();
+        addLog(`Auth headers: ${JSON.stringify(headers)}`, headers.Authorization ? 'success' : 'info');
+        
+        const response = await api.system.getSummary();
+        addLog('System summary request successful!', 'success');
+        addLog(`Response: ${JSON.stringify(response, null, 2)}`, 'info');
+      } catch (error) {
+        addLog(`System summary request failed: ${error.message}`, 'error');
+        console.error('API error:', error);
+      }
+    };
+
+    const clearAuth = function() {
+      addLog(`=== Clearing Auth Data ===`, 'info');
+      
+      localStorage.removeItem('jwt_token');
+      localStorage.removeItem('jwt_expires_at');
+      
+      addLog('localStorage cleared', 'success');
+      
+      // Check state after clear
+      setTimeout(() => {
+        checkLocalStorage();
+        checkAuthState();
+      }, 100);
+    };
+
+    const testLogout = function() {
+      addLog(`=== Testing Logout ===`, 'info');
+      
+      try {
+        auth.logout();
+        addLog('Logout called (page should redirect)', 'success');
+      } catch (error) {
+        addLog(`Logout error: ${error.message}`, 'error');
+      }
+    };
+
+    // Expose all functions to window
+    window.addLog = addLog;
+    window.clearLogs = clearLogs;
+    window.checkLocalStorage = checkLocalStorage;
+    window.checkAuthState = checkAuthState;
+    window.setManualToken = setManualToken;
+    window.testLogin = testLogin;
+    window.testApiRequest = testApiRequest;
+    window.testSystemSummary = testSystemSummary;
+    window.clearAuth = clearAuth;
+    window.testLogout = testLogout;
+
+    // Initial check on page load
+    addLog('=== Page Loaded ===', 'info');
+    checkLocalStorage();
+    checkAuthState();
+    
+    // Listen for auth events
+    window.addEventListener('auth:login', () => {
+      addLog('AUTH EVENT: auth:login received', 'success');
+    });
+    
+    window.addEventListener('auth:logout', () => {
+      addLog('AUTH EVENT: auth:logout received', 'info');
+    });
+  </script>
+</body>
+</html>

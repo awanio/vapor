@@ -1,4 +1,5 @@
-import { LitElement, html, css, property } from 'lit';
+import { LitElement, html, css } from 'lit';
+import { property } from 'lit/decorators.js';
 import type { Tab } from '../types/system';
 
 export class TabBar extends LitElement {

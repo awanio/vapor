@@ -1,6 +1,13 @@
-import './app-root';
 import './styles/tailwind.css';
 import { i18n } from './i18n';
+import { auth } from './auth';
+
+// Initialize auth first to ensure it loads tokens from localStorage
+// Force auth initialization by accessing it
+auth.isAuthenticated();
+
+// Then import app-root which will check auth status
+import('./app-root');
 
 // Initialize i18n
 i18n.init().then(() => {

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test API Authorization Headers</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #ccc;
+        }
+        button {
+            margin: 5px;
+            padding: 10px;
+            background: #007acc;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .log {
+            margin-top: 20px;
+            padding: 10px;
+            background: #252526;
+            border: 1px solid #464647;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>API Authorization Header Test</h1>
+    
+    <div>
+        <button onclick="setToken()">1. Set Test Token</button>
+        <button onclick="checkAuthStatus()">2. Check Auth Status</button>
+        <button onclick="testApiCall()">3. Test API Call</button>
+        <button onclick="clearToken()">4. Clear Token</button>
+    </div>
+    
+    <div id="log" class="log"></div>
+    
+    <script type="module">
+        import { auth } from '/src/auth.ts';
+        import { api } from '/src/api.ts';
+        
+        const log = document.getElementById('log');
+        
+        function addLog(message) {
+            log.textContent += message + '\n\n';
+            console.log(message);
+        }
+        
+        window.setToken = function() {
+            const token = 'test-bearer-token-12345';
+            const expiresAt = Date.now() + 3600000; // 1 hour
+            localStorage.setItem('jwt_token', token);
+            localStorage.setItem('jwt_expires_at', expiresAt.toString());
+            
+            // Force reload auth
+            location.reload();
+        }
+        
+        window.checkAuthStatus = function() {
+            const isAuth = auth.isAuthenticated();
+            const token = auth.getToken();
+            const headers = auth.getAuthHeaders();
+            
+            addLog(`Auth Status:
+- Is Authenticated: ${isAuth}
+- Token: ${token || 'null'}
+- Headers: ${JSON.stringify(headers, null, 2)}
+- LocalStorage Token: ${localStorage.getItem('jwt_token') || 'null'}
+- LocalStorage Expiry: ${localStorage.getItem('jwt_expires_at') || 'null'}`);
+        }
+        
+        window.testApiCall = async function() {
+            addLog('Making API call to /network/interfaces...');
+            
+            try {
+                // This should include Authorization header
+                const result = await api.get('/network/interfaces');
+                addLog('API call successful: ' + JSON.stringify(result));
+            } catch (error) {
+                addLog('API call failed: ' + error.message);
+            }
+            
+            addLog('Check the Network tab in DevTools to see the request headers!');
+        }
+        
+        window.clearToken = function() {
+            localStorage.removeItem('jwt_token');
+            localStorage.removeItem('jwt_expires_at');
+            location.reload();
+        }
+        
+        // Initial status check
+        checkAuthStatus();
+    </script>
+</body>
+</html>

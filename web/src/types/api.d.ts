@@ -212,6 +212,65 @@ export interface DestroyRAIDRequest {
   device: string;
 }
 
+// iSCSI Types
+export interface ISCSITarget {
+  portal: string;
+  iqn: string;
+  name: string;
+  connected: boolean;
+}
+
+export interface ISCSISession {
+  target: string;
+  portal: string;
+  session_id: string;
+  state: string;
+}
+
+export interface ISCSIDiscoverRequest {
+  portal: string;
+}
+
+export interface ISCSILoginRequest {
+  target: string;
+  portal: string;
+  username?: string;
+  password?: string;
+}
+
+export interface ISCSILogoutRequest {
+  target: string;
+}
+
+// Multipath Types
+export interface MultipathDevice {
+  name: string;
+  wwid: string;
+  vendor: string;
+  product: string;
+  size: string;
+  state: string;
+  paths: MultipathPath[];
+}
+
+export interface MultipathPath {
+  device: string;
+  host: string;
+  state: string;
+  priority: number;
+  checker: string;
+}
+
+// BTRFS Types
+export interface BTRFSSubvolumeRequest {
+  path: string;
+}
+
+export interface BTRFSSnapshotRequest {
+  source: string;
+  destination: string;
+}
+
 // Container Types
 export interface Container {
   id: string;

@@ -1,4 +1,5 @@
-import { LitElement, html, css, property } from 'lit';
+import { LitElement, html, css } from 'lit';
+import { property } from 'lit/decorators.js';
 import { t } from '../i18n';
 import { api } from '../api';
 

@@ -49,11 +49,19 @@ export class Api {
     }
 
     // Build headers
+    // Don't include auth headers for login endpoint
+    const authHeaders = endpoint === '/auth/login' ? {} : auth.getAuthHeaders();
     const requestHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...auth.getAuthHeaders(),
+      ...authHeaders,
       ...headers,
     };
+
+    // Debug log to verify headers
+    console.log('[API Request]', method, url, {
+      headers: requestHeaders,
+      hasAuth: !!authHeaders.Authorization
+    });
 
     // Make request
     try {
