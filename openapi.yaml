@@ -190,6 +190,33 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedError'
   
+  /network/bridges:
+    get:
+      summary: List network bridges
+      tags:
+        - Network
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of bridges
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      bridges:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Interface'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
   /network/bridge:
     post:
       summary: Create network bridge
@@ -271,6 +298,33 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedError'
   
+  /network/bonds:
+    get:
+      summary: List network bonds
+      tags:
+        - Network
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of bonds
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      bonds:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Interface'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
   /network/bond:
     post:
       summary: Create network bond
@@ -349,6 +403,33 @@ paths:
                 $ref: '#/components/schemas/MessageResponse'
         '404':
           description: Bond not found
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /network/vlans:
+    get:
+      summary: List VLAN interfaces
+      tags:
+        - Network
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of VLANs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      vlans:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Interface'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
   

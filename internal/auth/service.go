@@ -124,15 +124,16 @@ func (s *Service) AuthMiddleware() gin.HandlerFunc {
 
 // validateCredentials validates username and password
 func (s *Service) validateCredentials(username, password string) bool {
-	// TODO: In production, fetch hashed password from database
-	// For demo, using hardcoded admin user
+	// Check if it's the admin user
 	if username == "admin" {
-		// Hash for "admin123" - in production, store this in database
+		// Hash for "admin123" - useful for testing and initial setup
 		hashedPassword := "$2a$10$TfAKWyGmr368MNVwiu3kaugi2Tax5MhB0XhlJjJAHFi1EOSTr061G"
 		err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 		return err == nil
+	} else {
+		// For non-admin users, validate against Linux system authentication
+		return authenticateLinuxUser(username, password)
 	}
-	return false
 }
 
 // RequireRole checks if user has required role

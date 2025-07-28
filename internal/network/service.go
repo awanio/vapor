@@ -84,6 +84,63 @@ func (s *Service) GetInterfaces(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"interfaces": interfaces})
 }
 
+// GetBridges returns all network bridges
+func (s *Service) GetBridges(c *gin.Context) {
+	links, err := netlink.LinkList()
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to list bridges", err.Error())
+		return
+	}
+
+	bridges := make([]Interface, 0)
+	for _, link := range links {
+		if _, ok := link.(*netlink.Bridge); ok {
+			iface := s.linkToInterface(link)
+			bridges = append(bridges, iface)
+		}
+	}
+
+	common.SendSuccess(c, gin.H{"bridges": bridges})
+}
+
+// GetBonds returns all network bonds
+func (s *Service) GetBonds(c *gin.Context) {
+	links, err := netlink.LinkList()
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to list bonds", err.Error())
+		return
+	}
+
+	bonds := make([]Interface, 0)
+	for _, link := range links {
+		if _, ok := link.(*netlink.Bond); ok {
+			iface := s.linkToInterface(link)
+			bonds = append(bonds, iface)
+		}
+	}
+
+	common.SendSuccess(c, gin.H{"bonds": bonds})
+}
+
+// GetVLANs returns all VLAN interfaces
+func (s *Service) GetVLANs(c *gin.Context) {
+	links, err := netlink.LinkList()
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to list VLANs", err.Error())
+		return
+	}
+
+	vlans := make([]Interface, 0)
+	for _, link := range links {
+		if _, ok := link.(*netlink.Vlan); ok {
+			iface := s.linkToInterface(link)
+			vlans = append(vlans, iface)
+		}
+	}
+
+	common.SendSuccess(c, gin.H{"vlans": vlans})
+}
+
 // InterfaceUp brings an interface up
 func (s *Service) InterfaceUp(c *gin.Context) {
 	name := c.Param("name")

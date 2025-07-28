@@ -61,6 +61,13 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
   http://103.179.254.248:8080/api/v1/network/interfaces/eth0/address
 ```
 
+### List Bridges
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  http://103.179.254.248:8080/api/v1/network/bridges
+```
+
 ### Create Bridge
 
 ```bash
@@ -71,6 +78,33 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
     "interfaces": ["eth0", "eth1"]
   }' \
   http://103.179.254.248:8080/api/v1/network/bridge
+```
+
+### List Bonds
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  http://103.179.254.248:8080/api/v1/network/bonds
+```
+
+### Create Bond
+
+```bash
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "bond0",
+    "mode": "active-backup",
+    "interfaces": ["eth0", "eth1"]
+  }' \
+  http://103.179.254.248:8080/api/v1/network/bond
+```
+
+### List VLANs
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  http://103.179.254.248:8080/api/v1/network/vlans
 ```
 
 ### Create VLAN
