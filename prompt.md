@@ -261,14 +261,17 @@ I prefer a modern dashboard-style admin UI. Use Visual Studio Code as the main i
 2. UI Framework / CSS
 
 Would you like to use a specific CSS framework?
-yes, use Tailwind CSS
+yes, use Tailwind CSS version 4
 
 Should we use a component system like:
 None — use HTML + raw CSS
 
-3. JavaScript Framework
+3. JavaScript Stack
 
-Vanilla JS + HTMX/Alpine.js Optional, use Vite if posible as build tools
+Language: TypeScript
+Component Framework: LitElement for building lightweight, reactive Web Components
+JavaScript Base: Vanilla JavaScript (no frontend SPA frameworks like React/Vue)
+Build Tool: Vite (with TypeScript + Lit support)
 
 4. Interaction with Backend
 
@@ -307,7 +310,9 @@ Use Login screen with JWT/session
 
 ### 🎯 GOAL
 
-Create new folder web in this working directory, then build a modern, responsive, VS Code-inspired web UI for a Go-based Linux system management application. This frontend must interact with a backend that exposes RESTful APIs (JSON-based) and WebSocket streams for real-time system data and shell access.
+I have Go-based RESTful API service web app in this working directory. The app goal is to manage a Linux server, providing features equivalent to Cockpit Project — but built in Go and designed around JSON-based REST APIs. The API spec attached in openapi.yaml file.
+
+Build a modern, responsive, VS Code-inspired web UI for a Go-based Linux system management application. This frontend web app must interact with a backend that exposes RESTful APIs (JSON-based) and WebSocket streams for real-time system data and shell access. Create new folder "web" in this working directory then store all the frontend files in it.
 
 ---
 
@@ -342,20 +347,20 @@ State Management: Simple reactive properties within Lit components — no global
 * Sidebar tree menu must reflect real structure:
 
   * System
-
     * Dashboard
     * Logs
     * Terminal
   * Network
-
     * Interfaces
     * Bonding
     * VLANs
   * Storage
-
     * Disks
     * LVM
     * RAID
+  * Containers
+    * Containers
+    * Images
   * Users
 
 ---
@@ -405,6 +410,10 @@ Each module in the UI corresponds to a RESTful API endpoint served by the backen
 * Support input/output over WebSocket
 * Resize-aware terminal backend
 * Secure WebSocket shell access (authenticated via JWT)
+
+#### 💾 Container Management (tab: "Container")
+
+list, detail view, start, stop, restart, view logs, create and delete containers. It also to list, detail view and delete container images
 
 Also evaluate the attached openapi.yaml spec to add unstated features
 ---
@@ -521,6 +530,8 @@ Dashboard: Uptime, CPU/RAM usage, system details.
 Network: Interface/bond/VLAN editor, live traffic graphs.
 
 Storage: Mount/unmount, LVM & RAID CRUD.
+
+Containers: list, detail view, start, stop, restart, view logs, create and delete containers. It also to list, detail view and delete container images
 
 Users: User management UI.
 
