@@ -8,7 +8,7 @@ First, you need to authenticate to get a JWT token:
 
 ```bash
 # Login
-curl -X POST http://localhost:8080/api/v1/auth/login \
+curl -X POST http://103.179.254.248:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "username": "admin",
@@ -38,14 +38,14 @@ export TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8080/api/v1/network/interfaces
+  http://103.179.254.248:8080/api/v1/network/interfaces
 ```
 
 ### Bring Interface Up
 
 ```bash
 curl -X PUT -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8080/api/v1/network/interfaces/eth0/up
+  http://103.179.254.248:8080/api/v1/network/interfaces/eth0/up
 ```
 
 ### Configure IP Address
@@ -58,7 +58,7 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
     "netmask": 24,
     "gateway": "192.168.1.1"
   }' \
-  http://localhost:8080/api/v1/network/interfaces/eth0/address
+  http://103.179.254.248:8080/api/v1/network/interfaces/eth0/address
 ```
 
 ### Create Bridge
@@ -70,7 +70,7 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
     "name": "br0",
     "interfaces": ["eth0", "eth1"]
   }' \
-  http://localhost:8080/api/v1/network/bridge
+  http://103.179.254.248:8080/api/v1/network/bridge
 ```
 
 ### Create VLAN
@@ -83,7 +83,7 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
     "vlan_id": 100,
     "name": "eth0.100"
   }' \
-  http://localhost:8080/api/v1/network/vlan
+  http://103.179.254.248:8080/api/v1/network/vlan
 ```
 
 ## Storage Management
@@ -92,7 +92,7 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8080/api/v1/storage/disks
+  http://103.179.254.248:8080/api/v1/storage/disks
 ```
 
 ### Mount Filesystem
@@ -105,7 +105,7 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
     "mount_point": "/mnt/data",
     "filesystem": "ext4"
   }' \
-  http://localhost:8080/api/v1/storage/mount
+  http://103.179.254.248:8080/api/v1/storage/mount
 ```
 
 ### Unmount Filesystem
@@ -117,7 +117,7 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
     "mount_point": "/mnt/data",
     "force": false
   }' \
-  http://localhost:8080/api/v1/storage/unmount
+  http://103.179.254.248:8080/api/v1/storage/unmount
 ```
 
 ### Format Disk
@@ -130,7 +130,7 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
     "filesystem": "ext4",
     "label": "DATA"
   }' \
-  http://localhost:8080/api/v1/storage/format
+  http://103.179.254.248:8080/api/v1/storage/format
 ```
 
 ## User Management
@@ -139,7 +139,7 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8080/api/v1/users
+  http://103.179.254.248:8080/api/v1/users
 ```
 
 ### Create User
@@ -152,7 +152,7 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
     "password": "secure123",
     "groups": "sudo,docker"
   }' \
-  http://localhost:8080/api/v1/users
+  http://103.179.254.248:8080/api/v1/users
 ```
 
 ### Update User
@@ -164,14 +164,14 @@ curl -X PUT -H "Authorization: Bearer $TOKEN" \
     "password": "newsecure456",
     "groups": "sudo,docker,admin"
   }' \
-  http://localhost:8080/api/v1/users/john
+  http://103.179.254.248:8080/api/v1/users/john
 ```
 
 ### Delete User
 
 ```bash
 curl -X DELETE -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8080/api/v1/users/john
+  http://103.179.254.248:8080/api/v1/users/john
 ```
 
 ## System Information
@@ -180,28 +180,28 @@ curl -X DELETE -H "Authorization: Bearer $TOKEN" \
 
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8080/api/v1/system/summary
+  http://103.179.254.248:8080/api/v1/system/summary
 ```
 
 ### Get CPU Information
 
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8080/api/v1/system/cpu
+  http://103.179.254.248:8080/api/v1/system/cpu
 ```
 
 ### Get Memory Information
 
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8080/api/v1/system/memory
+  http://103.179.254.248:8080/api/v1/system/memory
 ```
 
 ### Get Hardware Information
 
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8080/api/v1/system/hardware
+  http://103.179.254.248:8080/api/v1/system/hardware
 ```
 
 ## Logs
@@ -211,23 +211,23 @@ curl -H "Authorization: Bearer $TOKEN" \
 ```bash
 # Get all logs
 curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8080/api/v1/logs
+  http://103.179.254.248:8080/api/v1/logs
 
 # Filter by service
 curl -H "Authorization: Bearer $TOKEN" \
-  "http://localhost:8080/api/v1/logs?service=sshd"
+  "http://103.179.254.248:8080/api/v1/logs?service=sshd"
 
 # Filter by priority
 curl -H "Authorization: Bearer $TOKEN" \
-  "http://localhost:8080/api/v1/logs?priority=error"
+  "http://103.179.254.248:8080/api/v1/logs?priority=error"
 
 # Paginate results
 curl -H "Authorization: Bearer $TOKEN" \
-  "http://localhost:8080/api/v1/logs?page=2&page_size=50"
+  "http://103.179.254.248:8080/api/v1/logs?page=2&page_size=50"
 
 # Combine filters
 curl -H "Authorization: Bearer $TOKEN" \
-  "http://localhost:8080/api/v1/logs?service=nginx&priority=warning&since=2024-01-01"
+  "http://103.179.254.248:8080/api/v1/logs?service=nginx&priority=warning&since=2024-01-01"
 ```
 
 ## Container Management
@@ -528,7 +528,7 @@ ws.on('close', () => {
 The health check endpoint doesn't require authentication:
 
 ```bash
-curl http://localhost:8080/health
+curl http://103.179.254.248:8080/health
 ```
 
 ## Error Handling
