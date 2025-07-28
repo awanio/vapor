@@ -192,7 +192,7 @@ export class TerminalTab extends LitElement {
     this.requestUpdate();
 
     try {
-      this.wsManager = new WebSocketManager('/api/v1/ws/terminal');
+      this.wsManager = new WebSocketManager('/ws/terminal');
       
       // Handle output messages
       this.wsManager.on('output', (message: WSTerminalOutputMessage) => {

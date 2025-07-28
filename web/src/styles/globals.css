@@ -45,20 +45,54 @@
   --vscode-accent-hover: var(--primary-hover);
   --vscode-error: var(--error);
   --vscode-font: var(--font-family);
+  
+  /* Success/Error background colors for dark theme */
+  --success-bg: rgba(115, 201, 145, 0.15);
+  --error-bg: rgba(241, 76, 76, 0.15);
 }
 
-/* Light theme (if needed in future) */
+/* Light theme */
 :root.light {
+  /* Surface colors */
   --surface-0: #ffffff;
   --surface-1: #f3f3f3;
   --surface-2: #ededed;
   --surface-3: #e8e8e8;
   
+  /* Text colors */
   --text-primary: #1e1e1e;
   --text-secondary: #6e6e6e;
   --text-disabled: #a8a8a8;
   
+  /* Border colors */
   --border-color: #e5e5e5;
+  
+  /* Primary colors */
+  --primary: #0066cc;
+  --primary-hover: #0052a3;
+  
+  /* Error/Success/Warning colors */
+  --error: #d73a49;
+  --success: #28a745;
+  --warning: #ffc107;
+  
+  /* VSCode compatibility mappings */
+  --vscode-bg: var(--surface-0);
+  --vscode-bg-light: var(--surface-1);
+  --vscode-bg-lighter: var(--surface-2);
+  --vscode-sidebar: var(--surface-1);
+  --vscode-titlebar: var(--surface-1);
+  --vscode-text: var(--text-primary);
+  --vscode-text-dim: var(--text-secondary);
+  --vscode-border: var(--border-color);
+  --vscode-accent: var(--primary);
+  --vscode-accent-hover: var(--primary-hover);
+  --vscode-error: var(--error);
+  --vscode-font: var(--font-family);
+  
+  /* Success/Error background colors for light theme */
+  --success-bg: #d4edda;
+  --error-bg: #f8d7da;
 }
 
 /* Reset and base styles */

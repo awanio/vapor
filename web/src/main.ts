@@ -1,8 +1,12 @@
 import './styles/tailwind.css';
 import { i18n } from './i18n';
 import { auth } from './auth';
+import { theme } from './theme';
 
-// Initialize auth first to ensure it loads tokens from localStorage
+// Initialize theme first to apply saved preference
+theme.getTheme();
+
+// Initialize auth to ensure it loads tokens from localStorage
 // Force auth initialization by accessing it
 auth.isAuthenticated();
 

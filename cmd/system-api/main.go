@@ -19,6 +19,7 @@ import (
 	"github.com/vapor/system-api/internal/storage"
 	"github.com/vapor/system-api/internal/system"
 	"github.com/vapor/system-api/internal/users"
+	"github.com/vapor/system-api/internal/websocket"
 )
 
 func main() {
@@ -153,6 +154,20 @@ func main() {
 
 	// Serve OpenAPI documentation
 	router.Static("/docs", "./docs")
+
+// Setup WebSocket hub
+	metricsHub := websocket.NewHub()
+	logsHub := websocket.NewHub()
+	terminalHub := websocket.NewHub()
+
+	go metricsHub.Run()
+	go logsHub.Run()
+	go terminalHub.Run()
+
+	// WebSocket routes
+	router.GET("/ws/metrics", websocket.ServeMetricsWebSocket(metricsHub, getJWTSecret()))
+	router.GET("/ws/logs", websocket.ServeLogsWebSocket(logsHub, getJWTSecret()))
+	router.GET("/ws/terminal", websocket.ServeTerminalWebSocket(terminalHub, getJWTSecret()))
 
 	// Create HTTP server
 	srv := &http.Server{

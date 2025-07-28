@@ -202,7 +202,7 @@ export class DashboardTab extends LitElement {
 
   private async initWebSocket() {
     try {
-      this.wsManager = new WebSocketManager('/api/v1/ws/metrics');
+      this.wsManager = new WebSocketManager('/ws/metrics');
       
       this.wsManager.on('metric', (message) => {
         switch (message.metric) {
