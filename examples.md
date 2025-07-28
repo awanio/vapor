@@ -287,7 +287,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8080/api/v1/containers
+  http://103.179.254.248:8080/api/v1/containers
 ```
 
 ### Get Container Details
@@ -390,7 +390,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8080/api/v1/images
+  http://103.179.254.248:8080/api/v1/images
 ```
 
 ### Get Image Details
@@ -443,7 +443,7 @@ curl --include \
   --header "Sec-WebSocket-Key: SGVsbG8sIHdvcmxkIQ==" \
   --header "Sec-WebSocket-Version: 13" \
   --header "Authorization: Bearer $TOKEN" \
-  http://localhost:8080/api/v1/metrics/stream
+  http://103.179.254.248:8080/api/v1/metrics/stream
 ```
 
 ### Container Logs Streaming
