@@ -35,5 +35,5 @@ export function getApiUrl(endpoint: string): string {
 export function getWsUrl(path: string): string {
   // Remove leading slash if present
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  return `${config.WS_BASE_URL}${config.API_VERSION}${cleanPath}`;
+  return `${config.WS_BASE_URL}${cleanPath}`;
 }

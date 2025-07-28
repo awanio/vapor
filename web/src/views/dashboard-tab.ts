@@ -204,6 +204,15 @@ export class DashboardTab extends LitElement {
     try {
       this.wsManager = new WebSocketManager('/ws/metrics');
       
+      // Listen for authentication success before subscribing
+      this.wsManager.on('auth_success', () => {
+        // Subscribe to metrics after successful authentication
+        this.wsManager.send({
+          type: 'subscribe',
+          metrics: ['cpu', 'memory', 'disk', 'network']
+        });
+      });
+      
       this.wsManager.on('metric', (message) => {
         switch (message.metric) {
           case 'cpu':
@@ -225,12 +234,6 @@ export class DashboardTab extends LitElement {
       });
 
       await this.wsManager.connect();
-      
-      // Subscribe to metrics
-      this.wsManager.send({
-        type: 'subscribe',
-        metrics: ['cpu', 'memory', 'disk', 'network']
-      });
     } catch (error) {
       console.error('Failed to connect to metrics WebSocket:', error);
     }

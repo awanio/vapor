@@ -61,7 +61,9 @@
     "search": "Search",
     "filter": "Filter",
     "export": "Export",
-    "import": "Import"
+    "import": "Import",
+    "connected": "Connected",
+    "disconnected": "Disconnected"
   },
   "dashboard": {
     "title": "System Dashboard",
@@ -278,6 +280,9 @@
     "pid": "PID",
     "follow": "Follow",
     "export": "Export Logs",
+    "filterServices": "Filter by services (comma separated)",
+    "clear": "Clear Logs",
+    "noLogs": "No logs to display",
     "priorities": {
       "emergency": "Emergency",
       "alert": "Alert",
