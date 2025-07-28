@@ -251,6 +251,158 @@ func (s *Service) listDisks() ([]Disk, error) {
 	return disks, nil
 }
 
+// Handler for LVM Volume Groups
+func (s *Service) GetVolumeGroups(c *gin.Context) {
+    // This is a stub. Implement LVM volume group retrieval logic here
+    common.SendSuccess(c, gin.H{"volume_groups": []string{"vg1", "vg2"}})
+}
+
+// Handler for LVM Logical Volumes
+func (s *Service) GetLogicalVolumes(c *gin.Context) {
+    // This is a stub. Implement LVM logical volume retrieval logic here
+    common.SendSuccess(c, gin.H{"logical_volumes": []string{"lv1", "lv2"}})
+}
+
+// Handler for LVM Physical Volumes
+func (s *Service) GetPhysicalVolumes(c *gin.Context) {
+    // This is a stub. Implement LVM physical volume retrieval logic here
+    common.SendSuccess(c, gin.H{"physical_volumes": []string{"pv1", "pv2"}})
+}
+
+// Handler for creating LVM Volume Group
+func (s *Service) CreateVolumeGroup(c *gin.Context) {
+    // This is a stub. Implement volume group creation logic here
+    common.SendSuccess(c, gin.H{"message": "Volume group created successfully"})
+}
+
+// Handler for creating LVM Logical Volume
+func (s *Service) CreateLogicalVolume(c *gin.Context) {
+    // This is a stub. Implement logical volume creation logic here
+    common.SendSuccess(c, gin.H{"message": "Logical volume created successfully"})
+}
+
+// Handler for discovering iSCSI targets
+func (s *Service) DiscoverISCSITargets(c *gin.Context) {
+    // This is a stub. Implement discovery logic here
+    common.SendSuccess(c, gin.H{"targets": []string{"iqn.2020-01.com.example:target1"}})
+}
+
+// Handler for retrieving iSCSI sessions
+func (s *Service) GetISCSISessions(c *gin.Context) {
+    // This is a stub. Implement session retrieval logic here
+    common.SendSuccess(c, gin.H{"sessions": []string{"session1", "session2"}})
+}
+
+// Handler for logging into iSCSI target
+func (s *Service) LoginISCSI(c *gin.Context) {
+    // This is a stub. Implement login logic here
+    common.SendSuccess(c, gin.H{"message": "Logged into iSCSI target successfully"})
+}
+
+// Handler for logging out from iSCSI target
+func (s *Service) LogoutISCSI(c *gin.Context) {
+    // This is a stub. Implement logout logic here
+    common.SendSuccess(c, gin.H{"message": "Logged out from iSCSI target successfully"})
+}
+
+// Handler for retrieving Multipath devices
+func (s *Service) GetMultipathDevices(c *gin.Context) {
+    // This is a stub. Implement multipath device retrieval logic here
+    common.SendSuccess(c, gin.H{"devices": []string{"device1", "device2"}})
+}
+
+// Handler for retrieving Multipath paths
+func (s *Service) GetMultipathPaths(c *gin.Context) {
+    // This is a stub. Implement multipath paths retrieval logic here
+    common.SendSuccess(c, gin.H{"paths": []string{"path1", "path2"}})
+}
+
+// Handler for retrieving BTRFS subvolumes
+func (s *Service) GetBTRFSSubvolumes(c *gin.Context) {
+    // This is a stub. Implement BTRFS subvolumes retrieval logic here
+    common.SendSuccess(c, gin.H{"subvolumes": []string{"subvol1", "subvol2"}})
+}
+
+// Handler for creating BTRFS subvolume
+func (s *Service) CreateBTRFSSubvolume(c *gin.Context) {
+    // This is a stub. Implement BTRFS subvolume creation logic here
+    common.SendSuccess(c, gin.H{"message": "BTRFS subvolume created successfully"})
+}
+
+// Handler for deleting BTRFS subvolume
+func (s *Service) DeleteBTRFSSubvolume(c *gin.Context) {
+    // This is a stub. Implement BTRFS subvolume deletion logic here
+    common.SendSuccess(c, gin.H{"message": "BTRFS subvolume deleted successfully"})
+}
+
+// Handler for creating BTRFS snapshot
+func (s *Service) CreateBTRFSSnapshot(c *gin.Context) {
+    // This is a stub. Implement BTRFS snapshot creation logic here
+    common.SendSuccess(c, gin.H{"message": "BTRFS snapshot created successfully"})
+}
+
+// Handler for listing RAID devices
+func (s *Service) GetRAIDDevices(c *gin.Context) {
+    // This is a stub. Implement RAID device listing logic here
+    common.SendSuccess(c, gin.H{"devices": []RAIDDevice{}})
+}
+
+// Handler for getting available disks for RAID
+func (s *Service) GetRAIDAvailableDisks(c *gin.Context) {
+    // This is a stub. Implement available disks logic here
+    availableDisks := []RAIDDisk{
+        {Path: "/dev/sda3", Size: 250 * 1024 * 1024 * 1024, Partition: true, Device: "sda3"},
+        {Path: "/dev/sdb1", Size: 15 * 1024 * 1024 * 1024, Partition: true, Device: "sdb1"},
+        {Path: "/dev/sdb", Size: 500 * 1024 * 1024 * 1024, Partition: false, Device: "sdb"},
+    }
+    common.SendSuccess(c, gin.H{"disks": availableDisks})
+}
+
+// Handler for creating RAID device
+func (s *Service) CreateRAIDDevice(c *gin.Context) {
+    var req CreateRAIDRequest
+    if err := c.ShouldBindJSON(&req); err != nil {
+        common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Invalid request", err.Error())
+        return
+    }
+
+    // Validate minimum disk requirements based on RAID level
+    minDisks := map[string]int{
+        "0": 2,
+        "1": 2,
+        "5": 3,
+        "6": 4,
+        "10": 4,
+    }
+
+    if min, ok := minDisks[req.Level]; ok && len(req.Disks) < min {
+        common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, 
+            fmt.Sprintf("RAID %s requires at least %d disks", req.Level, min))
+        return
+    }
+
+    // Set default chunk size if not specified
+    chunkSize := req.ChunkSize
+    if chunkSize == "" {
+        chunkSize = "512K"
+    }
+
+    // This is a stub. In production, you would use the RAIDService here
+    common.SendSuccess(c, gin.H{"message": fmt.Sprintf("RAID device %s created successfully", req.Name)})
+}
+
+// Handler for destroying RAID device
+func (s *Service) DestroyRAIDDevice(c *gin.Context) {
+    var req DestroyRAIDRequest
+    if err := c.ShouldBindJSON(&req); err != nil {
+        common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Invalid request", err.Error())
+        return
+    }
+
+    // This is a stub. Implement RAID device destruction logic here
+    common.SendSuccess(c, gin.H{"message": fmt.Sprintf("RAID device %s destroyed successfully", req.Device)})
+}
+
 // lsblkDevice represents lsblk JSON output
 type lsblkDevice struct {
 	Name       string        `json:"name"`

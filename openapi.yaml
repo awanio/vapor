@@ -295,6 +295,395 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedError'
   
+  /storage/lvm/vgs:
+    get:
+      summary: List LVM volume groups
+      tags:
+        - Storage
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Volume groups listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VolumeGroupsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /storage/lvm/lvs:
+    get:
+      summary: List LVM logical volumes
+      tags:
+        - Storage
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logical volumes listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogicalVolumesResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /storage/lvm/pvs:
+    get:
+      summary: List LVM physical volumes
+      tags:
+        - Storage
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Physical volumes listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhysicalVolumesResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /storage/lvm/vg:
+    post:
+      summary: Create LVM volume group
+      tags:
+        - Storage
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVGRequest'
+      responses:
+        '200':
+          description: Volume group created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /storage/lvm/lv:
+    post:
+      summary: Create LVM logical volume
+      tags:
+        - Storage
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLVRequest'
+      responses:
+        '200':
+          description: Logical volume created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /storage/iscsi/discover:
+    post:
+      summary: Discover iSCSI targets
+      tags:
+        - Storage
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ISCSIDiscoverRequest'
+      responses:
+        '200':
+          description: Targets discovered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ISCSITargetsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /storage/iscsi/sessions:
+    get:
+      summary: List iSCSI sessions
+      tags:
+        - Storage
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Sessions listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ISCSISessionsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /storage/iscsi/login:
+    post:
+      summary: Login to iSCSI target
+      tags:
+        - Storage
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ISCSILoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /storage/iscsi/logout:
+    post:
+      summary: Logout from iSCSI target
+      tags:
+        - Storage
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ISCSILogoutRequest'
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /storage/multipath/devices:
+    get:
+      summary: List multipath devices
+      tags:
+        - Storage
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Multipath devices listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MultipathDevicesResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /storage/multipath/paths:
+    get:
+      summary: List multipath paths
+      tags:
+        - Storage
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Multipath paths listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MultipathPathsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /storage/btrfs/subvolumes:
+    get:
+      summary: List BTRFS subvolumes
+      tags:
+        - Storage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: mount_point
+          in: query
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: Subvolumes listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BTRFSSubvolumesResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /storage/btrfs/subvolume:
+    post:
+      summary: Create BTRFS subvolume
+      tags:
+        - Storage
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BTRFSSubvolumeRequest'
+      responses:
+        '200':
+          description: Subvolume created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    delete:
+      summary: Delete BTRFS subvolume
+      tags:
+        - Storage
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BTRFSSubvolumeRequest'
+      responses:
+        '200':
+          description: Subvolume deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /storage/btrfs/snapshot:
+    post:
+      summary: Create BTRFS snapshot
+      tags:
+        - Storage
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BTRFSSnapshotRequest'
+      responses:
+        '200':
+          description: Snapshot created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /storage/raid/devices:
+    get:
+      summary: List RAID devices
+      tags:
+        - Storage
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: RAID devices listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RAIDDevicesResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /storage/raid/available-disks:
+    get:
+      summary: Get available disks for RAID
+      tags:
+        - Storage
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Available disks listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RAIDAvailableDisksResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /storage/raid/create:
+    post:
+      summary: Create RAID device
+      tags:
+        - Storage
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRAIDRequest'
+      responses:
+        '200':
+          description: RAID device created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Invalid request or validation error
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /storage/raid/destroy:
+    post:
+      summary: Destroy RAID device
+      tags:
+        - Storage
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DestroyRAIDRequest'
+      responses:
+        '200':
+          description: RAID device destroyed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
   /users:
     get:
       summary: List users
@@ -500,6 +889,167 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CPUResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /ws/metrics:
+    get:
+      summary: WebSocket endpoint for live system metrics
+      description: |
+        Establish a WebSocket connection to receive real-time system metrics.
+        
+        **WebSocket URL**: `ws://localhost:8080/api/v1/ws/metrics`
+        
+        **Authentication**: Send JWT token in the first message after connection:
+        ```json
+        {
+          "type": "auth",
+          "token": "your-jwt-token"
+        }
+        ```
+        
+        **Subscribe to metrics**:
+        ```json
+        {
+          "type": "subscribe",
+          "metrics": ["cpu", "memory", "disk", "network", "load"]
+        }
+        ```
+        
+        **Unsubscribe from metrics**:
+        ```json
+        {
+          "type": "unsubscribe",
+          "metrics": ["cpu"]
+        }
+        ```
+        
+        **Server messages** will be in the format:
+        ```json
+        {
+          "type": "metric",
+          "metric": "cpu",
+          "timestamp": "2024-01-01T00:00:00Z",
+          "data": { ... }
+        }
+        ```
+      tags:
+        - WebSocket
+      security:
+        - bearerAuth: []
+      responses:
+        '101':
+          description: Switching Protocols - WebSocket connection established
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /ws/logs:
+    get:
+      summary: WebSocket endpoint for live system logs
+      description: |
+        Establish a WebSocket connection to receive real-time system logs.
+        
+        **WebSocket URL**: `ws://localhost:8080/api/v1/ws/logs`
+        
+        **Authentication**: Send JWT token in the first message after connection:
+        ```json
+        {
+          "type": "auth",
+          "token": "your-jwt-token"
+        }
+        ```
+        
+        **Subscribe to logs**:
+        ```json
+        {
+          "type": "subscribe",
+          "filters": {
+            "services": ["nginx", "systemd"],
+            "priority": "error",
+            "follow": true
+          }
+        }
+        ```
+        
+        **Server messages** will be in the format:
+        ```json
+        {
+          "type": "log",
+          "timestamp": "2024-01-01T00:00:00Z",
+          "service": "nginx",
+          "priority": "error",
+          "message": "...",
+          "hostname": "server1",
+          "pid": 1234
+        }
+        ```
+      tags:
+        - WebSocket
+      security:
+        - bearerAuth: []
+      responses:
+        '101':
+          description: Switching Protocols - WebSocket connection established
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /ws/terminal:
+    get:
+      summary: WebSocket endpoint for terminal session
+      description: |
+        Establish a WebSocket connection for an interactive terminal session.
+        
+        **WebSocket URL**: `ws://localhost:8080/api/v1/ws/terminal`
+        
+        **Authentication**: Send JWT token in the first message after connection:
+        ```json
+        {
+          "type": "auth",
+          "token": "your-jwt-token"
+        }
+        ```
+        
+        **Start terminal session**:
+        ```json
+        {
+          "type": "start",
+          "cols": 80,
+          "rows": 24,
+          "shell": "/bin/bash"
+        }
+        ```
+        
+        **Send input**:
+        ```json
+        {
+          "type": "input",
+          "data": "ls -la\n"
+        }
+        ```
+        
+        **Resize terminal**:
+        ```json
+        {
+          "type": "resize",
+          "cols": 120,
+          "rows": 40
+        }
+        ```
+        
+        **Server messages** will be in the format:
+        ```json
+        {
+          "type": "output",
+          "data": "terminal output..."
+        }
+        ```
+      tags:
+        - WebSocket
+      security:
+        - bearerAuth: []
+      responses:
+        '101':
+          description: Switching Protocols - WebSocket connection established
         '401':
           $ref: '#/components/responses/UnauthorizedError'
 
@@ -950,3 +1500,732 @@ components:
                   type: number
                 load15:
                   type: number
+    
+    VolumeGroup:
+      type: object
+      properties:
+        name:
+          type: string
+        size:
+          type: integer
+        free:
+          type: integer
+        pv_count:
+          type: integer
+        lv_count:
+          type: integer
+        uuid:
+          type: string
+    
+    LogicalVolume:
+      type: object
+      properties:
+        name:
+          type: string
+        vg_name:
+          type: string
+        size:
+          type: integer
+        path:
+          type: string
+        uuid:
+          type: string
+        attr:
+          type: string
+    
+    PhysicalVolume:
+      type: object
+      properties:
+        name:
+          type: string
+        vg_name:
+          type: string
+        size:
+          type: integer
+        free:
+          type: integer
+        uuid:
+          type: string
+    
+    VolumeGroupsResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                volume_groups:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/VolumeGroup'
+    
+    LogicalVolumesResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                logical_volumes:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/LogicalVolume'
+    
+    PhysicalVolumesResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                physical_volumes:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/PhysicalVolume'
+    
+    CreateVGRequest:
+      type: object
+      required:
+        - name
+        - devices
+      properties:
+        name:
+          type: string
+        devices:
+          type: array
+          items:
+            type: string
+    
+    CreateLVRequest:
+      type: object
+      required:
+        - name
+        - vg_name
+        - size
+      properties:
+        name:
+          type: string
+        vg_name:
+          type: string
+        size:
+          type: string
+        filesystem:
+          type: string
+          enum: [ext4, ext3, ext2, xfs, btrfs]
+    
+    ISCSITarget:
+      type: object
+      properties:
+        portal:
+          type: string
+        iqn:
+          type: string
+        name:
+          type: string
+        connected:
+          type: boolean
+    
+    ISCSISession:
+      type: object
+      properties:
+        target:
+          type: string
+        portal:
+          type: string
+        session_id:
+          type: string
+        state:
+          type: string
+    
+    ISCSIDiscoverRequest:
+      type: object
+      required:
+        - portal
+      properties:
+        portal:
+          type: string
+    
+    ISCSITargetsResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                targets:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ISCSITarget'
+    
+    ISCSISessionsResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                sessions:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ISCSISession'
+    
+    ISCSILoginRequest:
+      type: object
+      required:
+        - target
+        - portal
+      properties:
+        target:
+          type: string
+        portal:
+          type: string
+        username:
+          type: string
+        password:
+          type: string
+    
+    ISCSILogoutRequest:
+      type: object
+      required:
+        - target
+      properties:
+        target:
+          type: string
+    
+    MultipathDevice:
+      type: object
+      properties:
+        name:
+          type: string
+        wwid:
+          type: string
+        vendor:
+          type: string
+        product:
+          type: string
+        size:
+          type: string
+        state:
+          type: string
+        paths:
+          type: array
+          items:
+            $ref: '#/components/schemas/MultipathPath'
+    
+    MultipathPath:
+      type: object
+      properties:
+        device:
+          type: string
+        host:
+          type: string
+        state:
+          type: string
+        priority:
+          type: integer
+        checker:
+          type: string
+    
+    MultipathDevicesResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                devices:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/MultipathDevice'
+    
+    MultipathPathsResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                paths:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/MultipathPath'
+    
+    BTRFSSubvolumesResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                subvolumes:
+                  type: array
+                  items:
+                    type: string
+    
+    BTRFSSubvolumeRequest:
+      type: object
+      required:
+        - path
+      properties:
+        path:
+          type: string
+    
+    BTRFSSnapshotRequest:
+      type: object
+      required:
+        - source
+        - destination
+      properties:
+        source:
+          type: string
+        destination:
+          type: string
+    
+    RAIDDevice:
+      type: object
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+        level:
+          type: string
+        state:
+          type: string
+        size:
+          type: integer
+        devices:
+          type: array
+          items:
+            type: string
+        active_disks:
+          type: integer
+        total_disks:
+          type: integer
+        chunk_size:
+          type: string
+        uuid:
+          type: string
+    
+    RAIDDisk:
+      type: object
+      properties:
+        path:
+          type: string
+        size:
+          type: integer
+        partition:
+          type: boolean
+        device:
+          type: string
+    
+    RAIDDevicesResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                devices:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/RAIDDevice'
+    
+    RAIDAvailableDisksResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                disks:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/RAIDDisk'
+    
+    CreateRAIDRequest:
+      type: object
+      required:
+        - name
+        - level
+        - disks
+      properties:
+        name:
+          type: string
+          description: Name of the RAID device (e.g., raid0)
+        level:
+          type: string
+          enum: ['0', '1', '5', '6', '10']
+          description: RAID level
+        disks:
+          type: array
+          items:
+            type: string
+          minItems: 2
+          description: List of disk paths to use for RAID
+        chunk_size:
+          type: string
+          description: Chunk size (e.g., 512K, 1M)
+          default: '512K'
+    
+    DestroyRAIDRequest:
+      type: object
+      required:
+        - device
+      properties:
+        device:
+          type: string
+          description: RAID device path to destroy
+    
+    # WebSocket Message Schemas
+    WSAuthMessage:
+      type: object
+      required:
+        - type
+        - token
+      properties:
+        type:
+          type: string
+          enum: [auth]
+        token:
+          type: string
+          description: JWT authentication token
+    
+    WSMetricsSubscribeMessage:
+      type: object
+      required:
+        - type
+        - metrics
+      properties:
+        type:
+          type: string
+          enum: [subscribe]
+        metrics:
+          type: array
+          items:
+            type: string
+            enum: [cpu, memory, disk, network, load]
+          description: List of metrics to subscribe to
+    
+    WSMetricsUnsubscribeMessage:
+      type: object
+      required:
+        - type
+        - metrics
+      properties:
+        type:
+          type: string
+          enum: [unsubscribe]
+        metrics:
+          type: array
+          items:
+            type: string
+            enum: [cpu, memory, disk, network, load]
+          description: List of metrics to unsubscribe from
+    
+    WSMetricMessage:
+      type: object
+      required:
+        - type
+        - metric
+        - timestamp
+        - data
+      properties:
+        type:
+          type: string
+          enum: [metric]
+        metric:
+          type: string
+          enum: [cpu, memory, disk, network, load]
+        timestamp:
+          type: string
+          format: date-time
+        data:
+          type: object
+          description: Metric-specific data
+    
+    WSLogsSubscribeMessage:
+      type: object
+      required:
+        - type
+        - filters
+      properties:
+        type:
+          type: string
+          enum: [subscribe]
+        filters:
+          type: object
+          properties:
+            services:
+              type: array
+              items:
+                type: string
+              description: Filter by service names
+            priority:
+              type: string
+              enum: [emergency, alert, critical, error, warning, notice, info, debug]
+              description: Minimum priority level
+            follow:
+              type: boolean
+              default: true
+              description: Whether to follow new logs
+    
+    WSLogMessage:
+      type: object
+      required:
+        - type
+        - timestamp
+        - message
+      properties:
+        type:
+          type: string
+          enum: [log]
+        timestamp:
+          type: string
+          format: date-time
+        service:
+          type: string
+        priority:
+          type: string
+          enum: [emergency, alert, critical, error, warning, notice, info, debug]
+        message:
+          type: string
+        hostname:
+          type: string
+        pid:
+          type: integer
+    
+    WSTerminalStartMessage:
+      type: object
+      required:
+        - type
+        - cols
+        - rows
+      properties:
+        type:
+          type: string
+          enum: [start]
+        cols:
+          type: integer
+          minimum: 1
+          description: Terminal width in columns
+        rows:
+          type: integer
+          minimum: 1
+          description: Terminal height in rows
+        shell:
+          type: string
+          default: /bin/bash
+          description: Shell to execute
+    
+    WSTerminalInputMessage:
+      type: object
+      required:
+        - type
+        - data
+      properties:
+        type:
+          type: string
+          enum: [input]
+        data:
+          type: string
+          description: Input data to send to terminal
+    
+    WSTerminalResizeMessage:
+      type: object
+      required:
+        - type
+        - cols
+        - rows
+      properties:
+        type:
+          type: string
+          enum: [resize]
+        cols:
+          type: integer
+          minimum: 1
+          description: New terminal width in columns
+        rows:
+          type: integer
+          minimum: 1
+          description: New terminal height in rows
+    
+    WSTerminalOutputMessage:
+      type: object
+      required:
+        - type
+        - data
+      properties:
+        type:
+          type: string
+          enum: [output]
+        data:
+          type: string
+          description: Output data from terminal
+    
+    WSErrorMessage:
+      type: object
+      required:
+        - type
+        - error
+      properties:
+        type:
+          type: string
+          enum: [error]
+        error:
+          type: string
+          description: Error message
+        code:
+          type: string
+          description: Error code
+    
+    # Metric Data Schemas
+    CPUMetricData:
+      type: object
+      properties:
+        usage_percent:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+        load1:
+          type: number
+          format: float
+        load5:
+          type: number
+          format: float
+        load15:
+          type: number
+          format: float
+        cores:
+          type: array
+          items:
+            type: object
+            properties:
+              core:
+                type: integer
+              usage_percent:
+                type: number
+                format: float
+                minimum: 0
+                maximum: 100
+    
+    MemoryMetricData:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Total memory in bytes
+        used:
+          type: integer
+          description: Used memory in bytes
+        free:
+          type: integer
+          description: Free memory in bytes
+        available:
+          type: integer
+          description: Available memory in bytes
+        used_percent:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+        swap_total:
+          type: integer
+          description: Total swap in bytes
+        swap_used:
+          type: integer
+          description: Used swap in bytes
+        swap_free:
+          type: integer
+          description: Free swap in bytes
+        swap_used_percent:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+    
+    DiskMetricData:
+      type: object
+      properties:
+        disks:
+          type: array
+          items:
+            type: object
+            properties:
+              device:
+                type: string
+              mount_point:
+                type: string
+              filesystem:
+                type: string
+              total:
+                type: integer
+                description: Total space in bytes
+              used:
+                type: integer
+                description: Used space in bytes
+              free:
+                type: integer
+                description: Free space in bytes
+              used_percent:
+                type: number
+                format: float
+                minimum: 0
+                maximum: 100
+              io_stats:
+                type: object
+                properties:
+                  read_bytes_per_sec:
+                    type: number
+                    format: float
+                  write_bytes_per_sec:
+                    type: number
+                    format: float
+                  read_ops_per_sec:
+                    type: number
+                    format: float
+                  write_ops_per_sec:
+                    type: number
+                    format: float
+    
+    NetworkMetricData:
+      type: object
+      properties:
+        interfaces:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              rx_bytes_per_sec:
+                type: number
+                format: float
+              tx_bytes_per_sec:
+                type: number
+                format: float
+              rx_packets_per_sec:
+                type: number
+                format: float
+              tx_packets_per_sec:
+                type: number
+                format: float
+              rx_errors:
+                type: integer
+              tx_errors:
+                type: integer
+              rx_dropped:
+                type: integer
+              tx_dropped:
+                type: integer

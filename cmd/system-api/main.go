@@ -65,6 +65,35 @@ func main() {
 		api.POST("/storage/mount", storageService.Mount)
 		api.POST("/storage/unmount", storageService.Unmount)
 		api.POST("/storage/format", storageService.Format)
+		
+		// LVM endpoints
+		api.GET("/storage/lvm/vgs", storageService.GetVolumeGroups)
+		api.GET("/storage/lvm/lvs", storageService.GetLogicalVolumes)
+		api.GET("/storage/lvm/pvs", storageService.GetPhysicalVolumes)
+		api.POST("/storage/lvm/vg", storageService.CreateVolumeGroup)
+		api.POST("/storage/lvm/lv", storageService.CreateLogicalVolume)
+		
+		// iSCSI endpoints
+		api.POST("/storage/iscsi/discover", storageService.DiscoverISCSITargets)
+		api.GET("/storage/iscsi/sessions", storageService.GetISCSISessions)
+		api.POST("/storage/iscsi/login", storageService.LoginISCSI)
+		api.POST("/storage/iscsi/logout", storageService.LogoutISCSI)
+		
+		// Multipath endpoints
+		api.GET("/storage/multipath/devices", storageService.GetMultipathDevices)
+		api.GET("/storage/multipath/paths", storageService.GetMultipathPaths)
+		
+		// BTRFS endpoints
+		api.GET("/storage/btrfs/subvolumes", storageService.GetBTRFSSubvolumes)
+		api.POST("/storage/btrfs/subvolume", storageService.CreateBTRFSSubvolume)
+		api.DELETE("/storage/btrfs/subvolume", storageService.DeleteBTRFSSubvolume)
+		api.POST("/storage/btrfs/snapshot", storageService.CreateBTRFSSnapshot)
+		
+		// RAID endpoints
+		api.GET("/storage/raid/devices", storageService.GetRAIDDevices)
+		api.GET("/storage/raid/available-disks", storageService.GetRAIDAvailableDisks)
+		api.POST("/storage/raid/create", storageService.CreateRAIDDevice)
+		api.POST("/storage/raid/destroy", storageService.DestroyRAIDDevice)
 
 		// User management endpoints
 		userService := users.NewService()

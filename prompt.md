@@ -252,3 +252,320 @@ openapi.yaml
 
 Optional: systemd unit file to run the app as a privileged service
 
+## Frontend
+
+1. Theme & Design Aesthetics
+
+I prefer a modern dashboard-style admin UI. Use Visual Studio Code as the main inspiration of the theme, layout and design
+
+2. UI Framework / CSS
+
+Would you like to use a specific CSS framework?
+yes, use Tailwind CSS
+
+Should we use a component system like:
+None — use HTML + raw CSS
+
+3. JavaScript Framework
+
+Vanilla JS + HTMX/Alpine.js Optional, use Vite if posible as build tools
+
+4. Interaction with Backend
+
+Call the Go backend REST API directly via Fetch API
+it should support WebSocket for live metrics
+
+5. Layout Preferences
+Should it be:
+* Tabbed views per module (Network, Storage, etc.) similar tabbed view in VS Code UI
+* collapsible sidebar navigation
+* Use tree menu in sidebar navigation. similar like VS Code present the file tree in the sidebar
+* Use modal and drawer component if needed
+
+6. Features to Include
+All following features should be included in the UI
+
+System dashboard summary (CPU, RAM, Disk, Uptime)
+Real-time network and traffic monitor
+Network interface editor (bond/bridge/VLAN config)
+Storage mount/unmount and disk usage
+Storage LVM CRUD management
+Storage RAID CRUD management
+User management (add/edit/delete users)
+Journald log viewer with filters
+Dark mode toggle
+Responsive/mobile-friendly design
+Localization/i18n support
+Full terminal emulation over WebSocket
+Support for input/output and terminal resizing
+Secure shell access via WebSocket
+
+7. Auth & Access
+Use Login screen with JWT/session
+
+## Vibe Frontend Code Prompt
+
+### 🎯 GOAL
+
+Create new folder web in this working directory, then build a modern, responsive, VS Code-inspired web UI for a Go-based Linux system management application. This frontend must interact with a backend that exposes RESTful APIs (JSON-based) and WebSocket streams for real-time system data and shell access.
+
+---
+
+STACK & TOOLS
+Language: TypeScript
+Component Framework: LitElement for building lightweight, reactive Web Components
+JavaScript Base: Vanilla JavaScript (no frontend SPA frameworks like React/Vue)
+Build Tool: Vite (with TypeScript + Lit support)
+CSS Framework: Tailwind CSS for styling
+
+API Communication:
+Use the Fetch API to communicate with the Go backend REST endpoints
+Use WebSocket (with JWT in query params or headers) for:
+Real-time system metrics (CPU, RAM, network)
+Live logs from journald
+Full terminal emulation (I/O, resizing)
+Authentication: JWT stored in localStorage, included in request headers and WebSocket connection
+Routing/Structure: Custom tab navigation and sidebar handled using LitElement components
+State Management: Simple reactive properties within Lit components — no global state library
+
+---
+
+### 🧱 UI DESIGN & THEME
+
+* Inspired by Visual Studio Code:
+
+  * Dark-themed UI by default with light-mode toggle
+  * Left collapsible sidebar with tree-view navigation (like VS Code Explorer)
+  * Central tabbed view area: each tab is a management module (Network, Storage, etc.)
+  * Status bar at bottom (optional) showing system status or login info
+* Use modals, drawers, and panels as needed for editing and dialogs
+* Sidebar tree menu must reflect real structure:
+
+  * System
+
+    * Dashboard
+    * Logs
+    * Terminal
+  * Network
+
+    * Interfaces
+    * Bonding
+    * VLANs
+  * Storage
+
+    * Disks
+    * LVM
+    * RAID
+  * Users
+
+---
+
+### 🧰 FEATURES TO INCLUDE
+
+Each module in the UI corresponds to a RESTful API endpoint served by the backend.
+
+#### 📊 System Dashboard (tab: "System > Dashboard")
+
+* Fetch and display CPU, RAM, disk, uptime, kernel version
+* Use WebSocket to stream real-time CPU and memory usage
+* Display metric graphs with canvas or lightweight JS charting (Chart.js optional)
+
+#### 🌐 Network Management (tab: "Network")
+
+* Interfaces list: up/down status, IPs, traffic counters
+* Interface config modals (edit static IP, DHCP, etc.)
+* Bond/bridge/VLAN creation with form modals
+* Real-time traffic updates via WebSocket
+
+#### 💾 Storage Management (tab: "Storage")
+
+* List all physical disks and partitions
+* Show mount points and disk usage
+* CRUD UI for:
+
+  * LVM volumes
+  * RAID arrays
+* Mount/unmount buttons, format disk option with safety confirmation
+
+#### 👤 User Management (tab: "Users")
+
+* List of all system users
+* Add/edit/delete users (modal forms)
+* Toggle lock, password reset
+
+#### 📜 Log Viewer (tab: "System > Logs")
+
+* Query journald logs from backend
+* Filter by service, priority, date
+* Tail logs live with WebSocket updates
+
+#### 🖥️ Terminal (tab: "System > Terminal")
+
+* Full terminal emulation (Xterm.js or minimal canvas/text-based)
+* Support input/output over WebSocket
+* Resize-aware terminal backend
+* Secure WebSocket shell access (authenticated via JWT)
+
+Also evaluate the attached openapi.yaml spec to add unstated features
+---
+
+### 🌐 API Integration
+
+* Use Fetch API for all REST calls
+* Use WebSocket for:
+
+  * Live CPU/RAM/Network metrics
+  * Log streaming
+  * Terminal shell access
+* Store and manage JWT in `localStorage`
+* Include JWT in all request headers
+
+---
+
+### 📱 Responsive & Internationalization
+
+* Responsive layout using Tailwind breakpoints
+* Tree sidebar collapses on mobile
+* Modal dialogs scale to viewport
+* Add simple i18n support using JSON translation files
+
+  * English default, language switcher in top bar
+
+---
+
+### 🔐 Authentication Flow
+
+* Login page:
+
+  * Username/password form
+  * Submit to `/api/v1/auth/login` (expects JWT)
+  * Store token in `localStorage`
+* Logout clears token
+* Auth-guard routes: redirect to login if no valid JWT
+* Protect WebSocket with JWT during handshake (`wss://host?token=...`)
+
+---
+
+### 🗂️ File Structure Suggestion
+
+```
+/web/
+├── index.html                    # App entry point
+├── vite.config.ts               # Vite configuration
+├── tailwind.config.js           # Tailwind config
+├── postcss.config.js            # Tailwind/PostCSS integration
+├── tsconfig.json                # TypeScript config
+├── /public/                     # Static assets (favicon, logo, etc.)
+│
+├── /src/
+│   ├── main.ts                  # Main app bootstrapping
+│   ├── app-root.ts              # <app-root> entry Lit component
+│   ├── auth.ts                  # Login, JWT storage, auth helpers
+│   ├── api.ts                   # REST and WebSocket fetch utilities
+│   ├── i18n.ts                  # Simple language switcher logic
+│   ├── styles/
+│   │   └── tailwind.css         # Tailwind base style
+│   │
+│   ├── /components/             # Shared UI elements
+│   │   ├── sidebar-tree.ts       # <sidebar-tree> — collapsible tree sidebar
+│   │   ├── tab-bar.ts            # <tab-bar> — manages open tabs
+│   │   ├── modal-dialog.ts       # <modal-dialog> — reusable modal
+│   │   ├── drawer-panel.ts       # <drawer-panel> — sliding drawer UI
+│   │   └── status-bar.ts         # <status-bar> — bottom status area
+│   │
+│   ├── /views/                  # Tabs/views for each management module
+│   │   ├── dashboard-tab.ts      # <dashboard-tab> — system summary view
+│   │   ├── network-tab.ts        # <network-tab> — network management
+│   │   ├── storage-tab.ts        # <storage-tab> — LVM, RAID, disks
+│   │   ├── users-tab.ts          # <users-tab> — user CRUD
+│   │   ├── logs-tab.ts           # <logs-tab> — journald log viewer
+│   │   └── terminal-tab.ts       # <terminal-tab> — WebSocket terminal
+│   │
+│   ├── /locales/                # i18n translation files
+│   │   ├── en.json
+│   │   └── id.json
+│   │
+│   └── /types/                  # Shared TypeScript interfaces/types
+│       ├── api.d.ts             # Response and request type definitions
+│       └── system.d.ts          # CPU, memory, disk type models
+│
+└── /tests/
+    ├── network-tab.test.ts
+    ├── users-tab.test.ts
+    ├── auth.test.ts
+    └── terminal.test.ts
+
+```
+---
+
+### ✅ DELIVERABLES
+
+Modern Admin Web UI
+
+VS Code–style layout with collapsible tree sidebar, tabbed views, and modal/drawer usage.
+
+Fully modular structure using LitElement and TypeScript.
+
+Integrated REST API + WebSocket Client
+
+Fetch-based communication with the Go backend.
+
+Real-time metrics (CPU, RAM, disk, network) via WebSocket.
+
+Secure WebSocket terminal emulation with support for resize and I/O.
+
+System Modules (Full Feature Parity with Cockpit)
+
+Dashboard: Uptime, CPU/RAM usage, system details.
+
+Network: Interface/bond/VLAN editor, live traffic graphs.
+
+Storage: Mount/unmount, LVM & RAID CRUD.
+
+Users: User management UI.
+
+Logs: Journald viewer with filters, pagination.
+
+Terminal: WebSocket-based shell terminal in the browser.
+
+Authentication & Session Management
+
+Login screen with JWT-based session storage.
+
+Logout, session timeout, and auto-refresh on token expiration.
+
+UI Features
+
+Dark/light mode toggle.
+
+Responsive layout for tablet/mobile support.
+
+i18n with English and optional languages.
+
+Tooling & Build Setup
+
+Vite + Tailwind CSS integration.
+
+Tailwind custom theme configuration.
+
+Code-splitting and optimized production builds.
+
+Live HMR during development.
+
+Testing
+
+Unit tests for core components and logic using Vitest.
+
+Functional tests per module (Network, Logs, etc.).
+
+WebSocket integration test stubs.
+
+Documentation
+
+README with local dev and build instructions.
+
+Component and module directory documentation.
+
+REST/WebSocket integration details.
+
+OpenAPI 3.1.0 Spec available from backend.

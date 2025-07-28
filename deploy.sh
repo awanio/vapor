@@ -48,7 +48,9 @@ fi
 # Check for required commands
 echo "Checking system requirements..."
 REQUIRED_COMMANDS="lsblk mount umount journalctl useradd usermod userdel"
+OPTIONAL_COMMANDS="vgs lvs pvs iscsiadm multipath btrfs"
 MISSING_COMMANDS=""
+MISSING_OPTIONAL=""
 
 for cmd in $REQUIRED_COMMANDS; do
     if ! command -v $cmd &> /dev/null; then
@@ -56,9 +58,21 @@ for cmd in $REQUIRED_COMMANDS; do
     fi
 done
 
+for cmd in $OPTIONAL_COMMANDS; do
+    if ! command -v $cmd &> /dev/null; then
+        MISSING_OPTIONAL="$MISSING_OPTIONAL $cmd"
+    fi
+done
+
 if [ -n "$MISSING_COMMANDS" ]; then
-    echo -e "${YELLOW}Warning: The following commands are missing:$MISSING_COMMANDS${NC}"
-    echo "Some features may not work properly."
+    echo -e "${RED}Error: The following required commands are missing:$MISSING_COMMANDS${NC}"
+    echo "Please install the required packages first."
+    exit 1
+fi
+
+if [ -n "$MISSING_OPTIONAL" ]; then
+    echo -e "${YELLOW}Warning: The following optional commands are missing:$MISSING_OPTIONAL${NC}"
+    echo "Some advanced storage features (LVM, iSCSI, multipath, BTRFS) may not work."
 fi
 
 # Create directories

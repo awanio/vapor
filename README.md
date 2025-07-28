@@ -5,7 +5,12 @@ A RESTful API service for Linux system management, providing functionality simil
 ## Features
 
 - **Network Management**: Configure network interfaces, create bridges, bonds, and VLANs
-- **Storage Management**: List disks, mount/unmount filesystems, format disks
+- **Storage Management**: 
+  - List disks, mount/unmount filesystems, format disks
+  - LVM support: manage volume groups, logical volumes, and physical volumes
+  - iSCSI support: discover targets, manage sessions, login/logout
+  - Multipath support: list devices and paths
+  - BTRFS support: manage subvolumes and snapshots
 - **User Management**: Create, update, delete system users
 - **Log Viewer**: Query and filter systemd logs
 - **System Information**: View CPU, memory, hardware, and system details
@@ -35,29 +40,34 @@ The application requires the following system utilities to be installed on Linux
 - **System logging**:
   - `systemd` - For journalctl log management
 
+- **Advanced storage management** (optional):
+  - `lvm2` - For LVM (Logical Volume Manager) support
+  - `open-iscsi` or `iscsi-initiator-utils` - For iSCSI support
+  - `multipath-tools` or `device-mapper-multipath` - For multipath support
+
 #### Installing Required Packages
 
 **Ubuntu/Debian:**
 ```bash
 sudo apt-get update
-sudo apt-get install -y util-linux e2fsprogs xfsprogs btrfs-progs systemd
+sudo apt-get install -y util-linux e2fsprogs xfsprogs btrfs-progs systemd lvm2 open-iscsi multipath-tools
 ```
 
 **RHEL/CentOS/Fedora:**
 ```bash
-sudo yum install -y util-linux e2fsprogs xfsprogs btrfs-progs systemd
+sudo yum install -y util-linux e2fsprogs xfsprogs btrfs-progs systemd lvm2 iscsi-initiator-utils device-mapper-multipath
 # or for newer versions:
-sudo dnf install -y util-linux e2fsprogs xfsprogs btrfs-progs systemd
+sudo dnf install -y util-linux e2fsprogs xfsprogs btrfs-progs systemd lvm2 iscsi-initiator-utils device-mapper-multipath
 ```
 
 **Arch Linux:**
 ```bash
-sudo pacman -S util-linux e2fsprogs xfsprogs btrfs-progs systemd
+sudo pacman -S util-linux e2fsprogs xfsprogs btrfs-progs systemd lvm2 open-iscsi multipath-tools
 ```
 
 **Alpine Linux:**
 ```bash
-sudo apk add util-linux e2fsprogs xfsprogs btrfs-progs
+sudo apk add util-linux e2fsprogs xfsprogs btrfs-progs lvm2 open-iscsi multipath-tools
 ```
 
 ## Platform Compatibility
@@ -180,6 +190,29 @@ curl -H "Authorization: Bearer <token>" http://localhost:8080/api/v1/system/summ
 - `POST /api/v1/storage/mount` - Mount filesystem
 - `POST /api/v1/storage/unmount` - Unmount filesystem
 - `POST /api/v1/storage/format` - Format disk
+
+##### LVM Operations
+- `GET /api/v1/storage/lvm/vgs` - List volume groups
+- `GET /api/v1/storage/lvm/lvs` - List logical volumes  
+- `GET /api/v1/storage/lvm/pvs` - List physical volumes
+- `POST /api/v1/storage/lvm/vg` - Create volume group
+- `POST /api/v1/storage/lvm/lv` - Create logical volume
+
+##### iSCSI Operations
+- `POST /api/v1/storage/iscsi/discover` - Discover iSCSI targets
+- `GET /api/v1/storage/iscsi/sessions` - List active sessions
+- `POST /api/v1/storage/iscsi/login` - Login to target
+- `POST /api/v1/storage/iscsi/logout` - Logout from target
+
+##### Multipath Operations
+- `GET /api/v1/storage/multipath/devices` - List multipath devices
+- `GET /api/v1/storage/multipath/paths` - List multipath paths
+
+##### BTRFS Operations  
+- `GET /api/v1/storage/btrfs/subvolumes` - List subvolumes
+- `POST /api/v1/storage/btrfs/subvolume` - Create subvolume
+- `DELETE /api/v1/storage/btrfs/subvolume` - Delete subvolume
+- `POST /api/v1/storage/btrfs/snapshot` - Create snapshot
 
 #### User Management
 - `GET /api/v1/users` - List all users
