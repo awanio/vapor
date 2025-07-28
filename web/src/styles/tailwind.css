@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Custom scrollbar styles */
+  ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-vscode-bg;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-vscode-border rounded-md;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-vscode-text-dim;
+  }
+
+  /* Firefox scrollbar */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.vscode.border') theme('colors.vscode.bg');
+  }
+
+  /* Selection colors */
+  ::selection {
+    @apply bg-vscode-accent text-white;
+  }
+
+  /* Focus styles */
+  *:focus {
+    @apply outline-none;
+  }
+
+  *:focus-visible {
+    @apply ring-2 ring-vscode-accent ring-offset-2 ring-offset-vscode-bg;
+  }
+}
+
+@layer components {
+  /* Custom button styles */
+  .btn {
+    @apply px-4 py-2 rounded-md font-medium transition-colors duration-150;
+  }
+
+  .btn-primary {
+    @apply bg-vscode-accent text-white hover:bg-vscode-accent-hover;
+  }
+
+  .btn-secondary {
+    @apply bg-vscode-bg-lighter text-vscode-text hover:bg-vscode-border;
+  }
+
+  .btn-danger {
+    @apply bg-vscode-error text-white hover:opacity-90;
+  }
+
+  /* Input styles */
+  .input {
+    @apply w-full px-3 py-2 bg-vscode-bg-light border border-vscode-border rounded-md 
+           text-vscode-text placeholder-vscode-text-dim
+           focus:border-vscode-accent focus:ring-1 focus:ring-vscode-accent;
+  }
+
+  /* Card styles */
+  .card {
+    @apply bg-vscode-bg-light border border-vscode-border rounded-lg p-4;
+  }
+
+  /* Modal overlay */
+  .modal-overlay {
+    @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50;
+  }
+
+  /* Tree item styles */
+  .tree-item {
+    @apply flex items-center px-2 py-1 hover:bg-vscode-sidebar-hover cursor-pointer;
+  }
+
+  .tree-item.active {
+    @apply bg-vscode-sidebar-active;
+  }
+
+  /* Tab styles */
+  .tab {
+    @apply px-4 py-2 bg-vscode-tab text-vscode-text-dim hover:text-vscode-text
+           border-r border-vscode-border cursor-pointer;
+  }
+
+  .tab.active {
+    @apply bg-vscode-tab-active text-vscode-text;
+  }
+}
