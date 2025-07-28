@@ -23,18 +23,10 @@ export default defineConfig({
     }
   },
   server: {
-    proxy: {
-      '/api': {
-        target: 'http://103.179.254.248:8080',
-        changeOrigin: true,
-        secure: false
-      },
-      '/ws': {
-        target: 'ws://103.179.254.248:8080',
-        ws: true,
-        changeOrigin: true,
-        secure: false
-      }
-    }
+    // CORS is handled by the API server directly
+    // No proxy needed - the app connects directly to the API
+    cors: true,
+    port: 5173,
+    host: true
   }
 });

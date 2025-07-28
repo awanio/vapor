@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vapor API Configuration Example</title>
+</head>
+<body>
+    <h1>Vapor API Configuration Example</h1>
+    <p>To override the default API endpoints, add the following script to your index.html file before loading the app:</p>
+    
+    <pre><code>&lt;script&gt;
+    // Configure API endpoints before the app loads
+    window.VAPOR_CONFIG = {
+        API_BASE_URL: 'http://your-api-host:8080',
+        WS_BASE_URL: 'ws://your-api-host:8080',
+        API_VERSION: '/api/v1'  // Optional, defaults to '/api/v1'
+    };
+&lt;/script&gt;</code></pre>
+
+    <h2>Default Configuration</h2>
+    <p>By default, the app uses:</p>
+    <ul>
+        <li>API URL: http://103.179.254.248:8080</li>
+        <li>WebSocket URL: ws://103.179.254.248:8080</li>
+        <li>API Version: /api/v1</li>
+    </ul>
+
+    <h2>Example for Different Environments</h2>
+    
+    <h3>Production</h3>
+    <pre><code>window.VAPOR_CONFIG = {
+    API_BASE_URL: 'https://api.example.com',
+    WS_BASE_URL: 'wss://api.example.com'
+};</code></pre>
+
+    <h3>Local Development</h3>
+    <pre><code>window.VAPOR_CONFIG = {
+    API_BASE_URL: 'http://localhost:8080',
+    WS_BASE_URL: 'ws://localhost:8080'
+};</code></pre>
+
+    <h3>Custom Port</h3>
+    <pre><code>window.VAPOR_CONFIG = {
+    API_BASE_URL: 'http://192.168.1.100:3000',
+    WS_BASE_URL: 'ws://192.168.1.100:3000'
+};</code></pre>
+</body>
+</html>

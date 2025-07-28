@@ -1,8 +1,6 @@
 import { auth } from './auth';
+import { getApiUrl } from './config';
 import type { APIResponse, WSMessage } from './types/api';
-
-// Base API URL
-const API_BASE_URL = '/api/v1';
 
 // HTTP Methods
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -38,7 +36,7 @@ export class Api {
     const { method = 'GET', body, headers = {}, params } = options;
 
     // Build URL with query params
-    let url = `${API_BASE_URL}${endpoint}`;
+    let url = getApiUrl(endpoint);
     if (params) {
       const queryString = new URLSearchParams(
         Object.entries(params).map(([key, value]) => [key, String(value)])

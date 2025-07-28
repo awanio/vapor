@@ -130,9 +130,7 @@ export class SidebarTree extends LitElement {
       id: 'network',
       label: 'nav.network',
       icon: 'network',
-      children: [
-        { id: 'interfaces', label: 'nav.interfaces', icon: 'interfaces', route: 'network' }
-      ]
+      route: 'network'
     },
     {
       id: 'storage',

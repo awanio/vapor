@@ -1,4 +1,5 @@
 import type { LoginRequest, LoginResponse, APIResponse } from './types/api';
+import { getApiUrl, getWsUrl } from './config';
 
 export class AuthManager {
   private static instance: AuthManager;
@@ -90,7 +91,7 @@ export class AuthManager {
 
   async login(username: string, password: string): Promise<boolean> {
     try {
-      const response = await fetch('/api/v1/auth/login', {
+      const response = await fetch(getApiUrl('/auth/login'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -166,11 +167,9 @@ export class AuthManager {
   // For WebSocket authentication
   getWebSocketUrl(path: string): string {
     const token = this.getToken();
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
     
     if (token) {
-      return `${protocol}//${host}${path}?token=${encodeURIComponent(token)}`;
+      return `${getWsUrl(path)}?token=${encodeURIComponent(token)}`;
     }
     
     throw new Error('Not authenticated');
