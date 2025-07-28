@@ -181,9 +181,17 @@ curl -H "Authorization: Bearer <token>" http://localhost:8080/api/v1/system/summ
 - `PUT /api/v1/network/interfaces/{name}/up` - Bring interface up
 - `PUT /api/v1/network/interfaces/{name}/down` - Bring interface down
 - `POST /api/v1/network/interfaces/{name}/address` - Configure IP address
+- `PUT /api/v1/network/interfaces/{name}/address` - Update IP address
+- `DELETE /api/v1/network/interfaces/{name}/address?address=x.x.x.x` - Delete IP address
 - `POST /api/v1/network/bridge` - Create network bridge
+- `PUT /api/v1/network/bridge/{name}` - Update network bridge
+- `DELETE /api/v1/network/bridge/{name}` - Delete network bridge
 - `POST /api/v1/network/bond` - Create network bond
+- `PUT /api/v1/network/bond/{name}` - Update network bond
+- `DELETE /api/v1/network/bond/{name}` - Delete network bond
 - `POST /api/v1/network/vlan` - Create VLAN
+- `PUT /api/v1/network/vlan/{name}` - Update VLAN
+- `DELETE /api/v1/network/vlan/{name}` - Delete VLAN
 
 #### Storage Management
 - `GET /api/v1/storage/disks` - List all disks

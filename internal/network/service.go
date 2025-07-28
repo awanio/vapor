@@ -218,6 +218,148 @@ func (s *Service) CreateBridge(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"message": fmt.Sprintf("Bridge %s created", req.Name)})
 }
 
+// UpdateBridge updates a network bridge
+func (s *Service) UpdateBridge(c *gin.Context) {
+	name := c.Param("name")
+	var req BridgeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Invalid request", err.Error())
+		return
+	}
+
+	link, err := netlink.LinkByName(name)
+	if err != nil {
+		common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "Bridge not found", err.Error())
+		return
+	}
+
+	bridge, ok := link.(*netlink.Bridge)
+	if !ok {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Not a bridge interface")
+		return
+	}
+
+	// Update bridge interfaces
+	netlink.LinkSetDown(bridge)
+	for _, ifaceName := range req.Interfaces {
+		iface, err := netlink.LinkByName(ifaceName)
+		if err == nil {
+			netlink.LinkSetMaster(iface, bridge)
+		}
+	}
+	netlink.LinkSetUp(bridge)
+	common.SendSuccess(c, gin.H{"message": fmt.Sprintf("Bridge %s updated", req.Name)})
+}
+
+// DeleteBridge deletes a network bridge
+func (s *Service) DeleteBridge(c *gin.Context) {
+	name := c.Param("name")
+	link, err := netlink.LinkByName(name)
+	if err != nil {
+		common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "Bridge not found", err.Error())
+		return
+	}
+	
+	if err := netlink.LinkDel(link); err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to delete bridge", err.Error())
+		return
+	}
+	common.SendSuccess(c, gin.H{"message": fmt.Sprintf("Bridge %s deleted", name)})
+}
+
+// UpdateBond updates a network bond
+func (s *Service) UpdateBond(c *gin.Context) {
+	name := c.Param("name")
+	var req BondRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Invalid request", err.Error())
+		return
+	}
+
+	link, err := netlink.LinkByName(name)
+	if err != nil {
+		common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "Bond not found", err.Error())
+		return
+	}
+
+	bond, ok := link.(*netlink.Bond)
+	if !ok {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Not a bond interface")
+		return
+	}
+
+	// Update bond mode and interfaces
+	bond.Mode = netlink.StringToBondMode(req.Mode)
+	netlink.LinkSetDown(bond)
+	for _, ifaceName := range req.Interfaces {
+		iface, err := netlink.LinkByName(ifaceName)
+		if err == nil {
+			netlink.LinkSetMasterByIndex(iface, bond.Index)
+		}
+	}
+	netlink.LinkSetUp(bond)
+	common.SendSuccess(c, gin.H{"message": fmt.Sprintf("Bond %s updated", req.Name)})
+}
+
+// DeleteBond deletes a network bond
+func (s *Service) DeleteBond(c *gin.Context) {
+	name := c.Param("name")
+	link, err := netlink.LinkByName(name)
+	if err != nil {
+		common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "Bond not found", err.Error())
+		return
+	}
+	
+	if err := netlink.LinkDel(link); err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to delete bond", err.Error())
+		return
+	}
+	common.SendSuccess(c, gin.H{"message": fmt.Sprintf("Bond %s deleted", name)})
+}
+
+// UpdateVLAN updates a VLAN interface
+func (s *Service) UpdateVLAN(c *gin.Context) {
+	name := c.Param("name")
+	var req VLANRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Invalid request", err.Error())
+		return
+	}
+
+	link, err := netlink.LinkByName(name)
+	if err != nil {
+		common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "VLAN not found", err.Error())
+		return
+	}
+
+	vlan, ok := link.(*netlink.Vlan)
+	if !ok {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Not a VLAN interface")
+		return
+	}
+
+	// Update VLAN ID
+	vlan.VlanId = req.VLANID
+	common.SendSuccess(c, gin.H{"message": fmt.Sprintf("VLAN %s updated", req.Name)})
+}
+
+// DeleteVLAN deletes a VLAN interface
+func (s *Service) DeleteVLAN(c *gin.Context) {
+	name := c.Param("name")
+	link, err := netlink.LinkByName(name)
+	if err != nil {
+		common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "VLAN not found", err.Error())
+		return
+	}
+	
+	if err := netlink.LinkDel(link); err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to delete VLAN", err.Error())
+		return
+	}
+	common.SendSuccess(c, gin.H{"message": fmt.Sprintf("VLAN %s deleted", name)})
+}
+
+
 // CreateBond creates a network bond
 func (s *Service) CreateBond(c *gin.Context) {
 	var req BondRequest
@@ -260,6 +402,85 @@ func (s *Service) CreateBond(c *gin.Context) {
 
 	common.SendSuccess(c, gin.H{"message": fmt.Sprintf("Bond %s created", req.Name)})
 }
+
+// UpdateInterfaceAddress updates the IP address of an interface
+func (s *Service) UpdateInterfaceAddress(c *gin.Context) {
+	name := c.Param("name")
+	
+	var req AddressRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Invalid request", err.Error())
+		return
+	}
+
+	link, err := netlink.LinkByName(name)
+	if err != nil {
+		common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "Interface not found", err.Error())
+		return
+	}
+
+	// Parse IP address
+	ip := net.ParseIP(req.Address)
+	if ip == nil {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Invalid IP address")
+		return
+	}
+
+	// Create address
+	addr := &netlink.Addr{
+		IPNet: &net.IPNet{
+			IP:   ip,
+			Mask: net.CIDRMask(req.Netmask, 32),
+		},
+	}
+
+	// Replace address on interface
+	if err := netlink.AddrReplace(link, addr); err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to replace address", err.Error())
+		return
+	}
+
+	common.SendSuccess(c, gin.H{"message": fmt.Sprintf("Address %s/%d updated on %s", req.Address, req.Netmask, name)})
+}
+
+// DeleteInterfaceAddress deletes the IP address of an interface
+func (s *Service) DeleteInterfaceAddress(c *gin.Context) {
+	name := c.Param("name")
+
+	link, err := netlink.LinkByName(name)
+	if err != nil {
+		common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "Interface not found", err.Error())
+		return
+	}
+
+	address := c.Query("address")
+	ip := net.ParseIP(address)
+	if ip == nil {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Invalid IP address")
+		return
+	}
+
+	// Find address to delete
+	addrs, err := netlink.AddrList(link, 0)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to list addresses", err.Error())
+		return
+	}
+
+	for _, addr := range addrs {
+		if addr.IP.Equal(ip) {
+			if err := netlink.AddrDel(link, &addr); err != nil {
+				common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to delete address", err.Error())
+				return
+			}
+			common.SendSuccess(c, gin.H{"message": fmt.Sprintf("Address %s deleted from %s", address, name)})
+			return
+		}
+	}
+
+	common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "Address not found")
+}
+
 
 // CreateVLAN creates a VLAN interface
 func (s *Service) CreateVLAN(c *gin.Context) {

@@ -130,6 +130,66 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedError'
   
+    put:
+      summary: Update IP address
+      tags:
+        - Network
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressRequest'
+      responses:
+        '200':
+          description: Address updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: Interface not found
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+    delete:
+      summary: Delete IP address
+      tags:
+        - Network
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: address
+          in: query
+          required: true
+          schema:
+            type: string
+            format: ipv4
+      responses:
+        '200':
+          description: Address deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: Interface or address not found
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
   /network/bridge:
     post:
       summary: Create network bridge
@@ -152,6 +212,62 @@ paths:
                 $ref: '#/components/schemas/MessageResponse'
         '409':
           description: Bridge already exists
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /network/bridge/{name}:
+    put:
+      summary: Update network bridge
+      tags:
+        - Network
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BridgeRequest'
+      responses:
+        '200':
+          description: Bridge updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: Bridge not found
+        '400':
+          description: Not a bridge interface
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    delete:
+      summary: Delete network bridge
+      tags:
+        - Network
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Bridge deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: Bridge not found
         '401':
           $ref: '#/components/responses/UnauthorizedError'
   
@@ -180,6 +296,62 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedError'
   
+  /network/bond/{name}:
+    put:
+      summary: Update network bond
+      tags:
+        - Network
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BondRequest'
+      responses:
+        '200':
+          description: Bond updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: Bond not found
+        '400':
+          description: Not a bond interface
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    delete:
+      summary: Delete network bond
+      tags:
+        - Network
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Bond deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: Bond not found
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
   /network/vlan:
     post:
       summary: Create VLAN interface
@@ -202,6 +374,62 @@ paths:
                 $ref: '#/components/schemas/MessageResponse'
         '409':
           description: VLAN already exists
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  
+  /network/vlan/{name}:
+    put:
+      summary: Update VLAN interface
+      tags:
+        - Network
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VLANRequest'
+      responses:
+        '200':
+          description: VLAN updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: VLAN not found
+        '400':
+          description: Not a VLAN interface
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    delete:
+      summary: Delete VLAN interface
+      tags:
+        - Network
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: VLAN deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: VLAN not found
         '401':
           $ref: '#/components/responses/UnauthorizedError'
   

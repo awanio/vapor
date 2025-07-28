@@ -56,9 +56,17 @@ func main() {
 		api.PUT("/network/interfaces/:name/up", networkService.InterfaceUp)
 		api.PUT("/network/interfaces/:name/down", networkService.InterfaceDown)
 		api.POST("/network/interfaces/:name/address", networkService.SetInterfaceAddress)
+		api.PUT("/network/interfaces/:name/address", networkService.UpdateInterfaceAddress)
+		api.DELETE("/network/interfaces/:name/address", networkService.DeleteInterfaceAddress)
 		api.POST("/network/bridge", networkService.CreateBridge)
+		api.PUT("/network/bridge/:name", networkService.UpdateBridge)
+		api.DELETE("/network/bridge/:name", networkService.DeleteBridge)
 		api.POST("/network/bond", networkService.CreateBond)
+		api.PUT("/network/bond/:name", networkService.UpdateBond)
+		api.DELETE("/network/bond/:name", networkService.DeleteBond)
 		api.POST("/network/vlan", networkService.CreateVLAN)
+		api.PUT("/network/vlan/:name", networkService.UpdateVLAN)
+		api.DELETE("/network/vlan/:name", networkService.DeleteVLAN)
 
 		// Storage endpoints
 		storageService := storage.NewService()
