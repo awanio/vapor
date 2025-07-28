@@ -189,6 +189,12 @@ export class NetworkTab extends LitElement {
       margin-top: 1.5rem;
     }
 
+    h1 {
+      margin: 0 0 24px 0;
+      font-size: 24px;
+      font-weight: 300;
+    }
+
     h2 {
       font-size: 1.5rem;
       margin-bottom: 1rem;

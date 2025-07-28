@@ -4,10 +4,12 @@ This document provides examples of how to use the System Management API.
 
 ## Authentication
 
-First, you need to authenticate to get a JWT token:
+The API supports two authentication methods:
+
+### 1. Built-in Admin Account (for testing)
 
 ```bash
-# Login
+# Login with admin account
 curl -X POST http://103.179.254.248:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
@@ -24,6 +26,21 @@ curl -X POST http://103.179.254.248:8080/api/v1/auth/login \
 #   },
 #   "error": null
 # }
+```
+
+### 2. Linux System Users (for production)
+
+```bash
+# Login with Linux system user
+curl -X POST http://103.179.254.248:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "john",
+    "password": "johns_linux_password"
+  }'
+
+# The API will authenticate against the Linux system
+# using the same credentials you use for SSH or console login
 ```
 
 Store the token and use it in subsequent requests:

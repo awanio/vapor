@@ -160,12 +160,29 @@ The complete OpenAPI 3.1.0 specification is available in `openapi.yaml`.
 
 ### Authentication
 
-First, obtain a JWT token:
+The API supports two authentication methods:
+
+1. **Built-in admin account** (for testing and initial setup):
+   - Username: `admin`
+   - Password: `admin123`
+
+2. **Linux system users** (for production use):
+   - Any valid Linux user can authenticate with their system credentials
+   - The API uses the system's authentication mechanism (via `su` command)
+   - User must exist in `/etc/passwd`
+
+Obtain a JWT token:
 
 ```bash
+# Using built-in admin account
 curl -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username": "admin", "password": "admin123"}'
+
+# Using Linux system user
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "john", "password": "johns_system_password"}'
 ```
 
 Use the token in subsequent requests:

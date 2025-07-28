@@ -151,16 +151,16 @@ export class SidebarTree extends LitElement {
       route: 'logs'
     },
     {
-      id: 'terminal',
-      label: 'nav.terminal',
-      icon: 'terminal',
-      route: 'terminal'
-    },
-    {
       id: 'users',
       label: 'nav.users',
       icon: 'users',
       route: 'users'
+    },
+    {
+      id: 'terminal',
+      label: 'nav.terminal',
+      icon: 'terminal',
+      route: 'terminal'
     }
   ];
 

@@ -22,7 +22,9 @@ export class UsersTab extends LitElement {
     }
 
     h1 {
-      margin: 0;
+      margin: 0 0 24px 0;
+      font-size: 24px;
+      font-weight: 300;
     }
 
     .users-grid {
