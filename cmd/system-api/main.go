@@ -94,6 +94,22 @@ func main() {
 		api.GET("/storage/raid/available-disks", storageService.GetRAIDAvailableDisks)
 		api.POST("/storage/raid/create", storageService.CreateRAIDDevice)
 		api.POST("/storage/raid/destroy", storageService.DestroyRAIDDevice)
+		
+		// Container management endpoints
+		api.GET("/containers", storageService.ListContainers)
+		api.GET("/containers/:id", storageService.GetContainerDetails)
+		api.POST("/containers", storageService.CreateContainer)
+		api.POST("/containers/:id/start", storageService.StartContainer)
+		api.POST("/containers/:id/stop", storageService.StopContainer)
+		api.POST("/containers/:id/restart", storageService.RestartContainer)
+		api.DELETE("/containers/:id", storageService.RemoveContainer)
+		api.GET("/containers/:id/logs", storageService.GetContainerLogs)
+		
+		// Container image endpoints
+		api.GET("/images", storageService.ListImages)
+		api.GET("/images/:id", storageService.GetImageDetails)
+		api.POST("/images/pull", storageService.PullImage)
+		api.DELETE("/images/:id", storageService.RemoveImage)
 
 		// User management endpoints
 		userService := users.NewService()

@@ -181,3 +181,114 @@ type RAIDDisk struct {
 	Partition bool   `json:"partition"`
 	Device    string `json:"device"`
 }
+
+// Container represents a container instance
+type Container struct {
+	ID           string            `json:"id"`
+	Name         string            `json:"name"`
+	Image        string            `json:"image"`
+	ImageID      string            `json:"image_id"`
+	Command      []string          `json:"command"`
+	CreatedAt    string            `json:"created_at"`
+	State        string            `json:"state"` // running, exited, paused, created, dead
+	Status       string            `json:"status"` // more detailed status string
+	PID          int               `json:"pid"`
+	ExitCode     int               `json:"exit_code"`
+	Ports        []ContainerPort   `json:"ports"`
+	Labels       map[string]string `json:"labels"`
+	Annotations  map[string]string `json:"annotations"`
+	Mounts       []ContainerMount  `json:"mounts"`
+	Runtime      string            `json:"runtime"` // containerd, cri-o, etc.
+}
+
+// ContainerPort represents a port mapping for a container
+type ContainerPort struct {
+	ContainerPort int    `json:"container_port"`
+	HostPort      int    `json:"host_port"`
+	Protocol      string `json:"protocol"` // tcp, udp
+	HostIP        string `json:"host_ip"`
+}
+
+// ContainerMount represents a mount point in a container
+type ContainerMount struct {
+	Source      string `json:"source"`
+	Destination string `json:"destination"`
+	Type        string `json:"type"` // bind, volume, tmpfs
+	ReadOnly    bool   `json:"readonly"`
+}
+
+// ContainerImage represents a container image
+type ContainerImage struct {
+	ID          string            `json:"id"`
+	RepoTags    []string          `json:"repo_tags"`
+	RepoDigests []string          `json:"repo_digests"`
+	Size        int64             `json:"size"`
+	CreatedAt   string            `json:"created_at"`
+	Labels      map[string]string `json:"labels"`
+	Architecture string           `json:"architecture"`
+	OS          string            `json:"os"`
+}
+
+// ContainerDetails represents detailed information about a container
+type ContainerDetails struct {
+	Container
+	Env          []string          `json:"env"`
+	Hostname     string            `json:"hostname"`
+	User         string            `json:"user"`
+	WorkingDir   string            `json:"working_dir"`
+	Networks     []ContainerNetwork `json:"networks"`
+	ResourceLimits ContainerResources `json:"resource_limits"`
+}
+
+// ContainerNetwork represents network configuration for a container
+type ContainerNetwork struct {
+	Name       string   `json:"name"`
+	ID         string   `json:"id"`
+	IPAddress  string   `json:"ip_address"`
+	MACAddress string   `json:"mac_address"`
+	Gateway    string   `json:"gateway"`
+	DNSServers []string `json:"dns_servers"`
+}
+
+// ContainerResources represents resource limits for a container
+type ContainerResources struct {
+	CPUShares   int64  `json:"cpu_shares"`
+	CPUQuota    int64  `json:"cpu_quota"`
+	CPUPeriod   int64  `json:"cpu_period"`
+	MemoryLimit int64  `json:"memory_limit"`
+	PidsLimit   int64  `json:"pids_limit"`
+}
+
+// ContainerCreateRequest represents a request to create a container
+type ContainerCreateRequest struct {
+	Name        string            `json:"name" binding:"required"`
+	Image       string            `json:"image" binding:"required"`
+	Command     []string          `json:"command"`
+	Env         []string          `json:"env"`
+	Ports       []ContainerPort   `json:"ports"`
+	Mounts      []ContainerMount  `json:"mounts"`
+	Labels      map[string]string `json:"labels"`
+	Annotations map[string]string `json:"annotations"`
+	Hostname    string            `json:"hostname"`
+	User        string            `json:"user"`
+	WorkingDir  string            `json:"working_dir"`
+	Privileged  bool              `json:"privileged"`
+	NetworkMode string            `json:"network_mode"` // bridge, host, none
+	Resources   ContainerResources `json:"resources"`
+}
+
+// ContainerActionRequest represents a request to perform an action on a container
+type ContainerActionRequest struct {
+	ContainerID string `json:"container_id" binding:"required"`
+	Timeout     int    `json:"timeout"` // timeout in seconds for stop action
+}
+
+// ContainerLogsRequest represents a request to fetch container logs
+type ContainerLogsRequest struct {
+	ContainerID string `json:"container_id" binding:"required"`
+	Follow      bool   `json:"follow"`
+	Tail        int    `json:"tail"`
+	Since       string `json:"since"` // RFC3339 timestamp
+	Until       string `json:"until"` // RFC3339 timestamp
+	Timestamps  bool   `json:"timestamps"`
+}
