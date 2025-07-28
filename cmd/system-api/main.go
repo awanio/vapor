@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/vapor/system-api/internal/auth"
 	"github.com/vapor/system-api/internal/common"
+	"github.com/vapor/system-api/internal/container"
 	"github.com/vapor/system-api/internal/logs"
 	"github.com/vapor/system-api/internal/network"
 	"github.com/vapor/system-api/internal/storage"
@@ -96,20 +97,21 @@ func main() {
 		api.POST("/storage/raid/destroy", storageService.DestroyRAIDDevice)
 		
 		// Container management endpoints
-		api.GET("/containers", storageService.ListContainers)
-		api.GET("/containers/:id", storageService.GetContainerDetails)
-		api.POST("/containers", storageService.CreateContainer)
-		api.POST("/containers/:id/start", storageService.StartContainer)
-		api.POST("/containers/:id/stop", storageService.StopContainer)
-		api.POST("/containers/:id/restart", storageService.RestartContainer)
-		api.DELETE("/containers/:id", storageService.RemoveContainer)
-		api.GET("/containers/:id/logs", storageService.GetContainerLogs)
+		containerService := container.NewService(container.NewExecutor())
+		api.GET("/containers", containerService.ListContainers)
+		api.GET("/containers/:id", containerService.GetContainerDetails)
+		api.POST("/containers", containerService.CreateContainer)
+		api.POST("/containers/:id/start", containerService.StartContainer)
+		api.POST("/containers/:id/stop", containerService.StopContainer)
+		api.POST("/containers/:id/restart", containerService.RestartContainer)
+		api.DELETE("/containers/:id", containerService.RemoveContainer)
+		api.GET("/containers/:id/logs", containerService.GetContainerLogs)
 		
 		// Container image endpoints
-		api.GET("/images", storageService.ListImages)
-		api.GET("/images/:id", storageService.GetImageDetails)
-		api.POST("/images/pull", storageService.PullImage)
-		api.DELETE("/images/:id", storageService.RemoveImage)
+		api.GET("/images", containerService.ListImages)
+		api.GET("/images/:id", containerService.GetImageDetails)
+		api.POST("/images/pull", containerService.PullImage)
+		api.DELETE("/images/:id", containerService.RemoveImage)
 
 		// User management endpoints
 		userService := users.NewService()

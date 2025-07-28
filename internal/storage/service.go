@@ -17,29 +17,11 @@ import (
 )
 
 // Service handles storage operations
-type Service struct{
-	containerSvc ContainerService
-}
+type Service struct{}
 
 // NewService creates a new storage service
 func NewService() *Service {
-	// Determine which container service to use based on available tools
-	var containerSvc ContainerService
-	
-	// Check if nerdctl is available
-	if _, err := exec.LookPath("nerdctl"); err == nil {
-		containerSvc = NewNerdctlContainerService(&RealCommandExecutor{})
-	} else if _, err := exec.LookPath("crictl"); err == nil {
-		// Fall back to crictl
-		containerSvc = NewContainerService(&RealCommandExecutor{})
-	} else {
-		// If neither is available, use a mock for development
-		containerSvc = NewContainerService(&MockCommandExecutor{})
-	}
-	
-	return &Service{
-		containerSvc: containerSvc,
-	}
+	return &Service{}
 }
 
 // Disk represents a storage disk
@@ -376,153 +358,6 @@ func (s *Service) GetRAIDAvailableDisks(c *gin.Context) {
     common.SendSuccess(c, gin.H{"disks": availableDisks})
 }
 
-// ListContainers handles listing of all containers
-func (s *Service) ListContainers(c *gin.Context) {
-	containers, err := s.containerSvc.ListContainers()
-	if err != nil {
-		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to list containers", err.Error())
-		return
-	}
-	common.SendSuccess(c, gin.H{"containers": containers})
-}
-
-// GetContainerDetails handles fetching details of a specific container
-func (s *Service) GetContainerDetails(c *gin.Context) {
-	containerID := c.Param("id")
-	container, err := s.containerSvc.GetContainerDetails(containerID)
-	if err != nil {
-		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get container details", err.Error())
-		return
-	}
-	common.SendSuccess(c, gin.H{"container": container})
-}
-
-// CreateContainer handles creation of a new container
-func (s *Service) CreateContainer(c *gin.Context) {
-	var req ContainerCreateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Invalid request", err.Error())
-		return
-	}
-
-	container, err := s.containerSvc.CreateContainer(req)
-	if err != nil {
-		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to create container", err.Error())
-		return
-	}
-	common.SendSuccess(c, gin.H{"container": container})
-}
-
-// StartContainer handles starting a container
-func (s *Service) StartContainer(c *gin.Context) {
-	containerID := c.Param("id")
-	if err := s.containerSvc.StartContainer(containerID); err != nil {
-		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to start container", err.Error())
-		return
-	}
-	common.SendSuccess(c, gin.H{"message": "Container started successfully"})
-}
-
-// StopContainer handles stopping a container
-func (s *Service) StopContainer(c *gin.Context) {
-	containerID := c.Param("id")
-	var req ContainerActionRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Invalid request", err.Error())
-		return
-	}
-
-	if err := s.containerSvc.StopContainer(containerID, req.Timeout); err != nil {
-		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to stop container", err.Error())
-		return
-	}
-	common.SendSuccess(c, gin.H{"message": "Container stopped successfully"})
-}
-
-// RestartContainer handles restarting a container
-func (s *Service) RestartContainer(c *gin.Context) {
-	containerID := c.Param("id")
-	if err := s.containerSvc.RestartContainer(containerID); err != nil {
-		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to restart container", err.Error())
-		return
-	}
-	common.SendSuccess(c, gin.H{"message": "Container restarted successfully"})
-}
-
-// RemoveContainer handles removing a container
-func (s *Service) RemoveContainer(c *gin.Context) {
-	containerID := c.Param("id")
-	if err := s.containerSvc.RemoveContainer(containerID); err != nil {
-		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to remove container", err.Error())
-		return
-	}
-	common.SendSuccess(c, gin.H{"message": "Container removed successfully"})
-}
-
-// GetContainerLogs handles fetching logs of a container
-func (s *Service) GetContainerLogs(c *gin.Context) {
-	containerID := c.Param("id")
-	var req ContainerLogsRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Invalid request", err.Error())
-		return
-	}
-
-	logs, err := s.containerSvc.GetContainerLogs(containerID, req)
-	if err != nil {
-		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get container logs", err.Error())
-		return
-	}
-	common.SendSuccess(c, gin.H{"logs": logs})
-}
-
-// ListImages handles listing of container images
-func (s *Service) ListImages(c *gin.Context) {
-	images, err := s.containerSvc.ListImages()
-	if err != nil {
-		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to list images", err.Error())
-		return
-	}
-	common.SendSuccess(c, gin.H{"images": images})
-}
-
-// GetImageDetails handles fetching details of a specific image
-func (s *Service) GetImageDetails(c *gin.Context) {
-	imageID := c.Param("id")
-	image, err := s.containerSvc.GetImageDetails(imageID)
-	if err != nil {
-		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get image details", err.Error())
-		return
-	}
-	common.SendSuccess(c, gin.H{"image": image})
-}
-
-// PullImage handles pulling a container image
-func (s *Service) PullImage(c *gin.Context) {
-	var req struct {
-		ImageName string `json:"image_name" binding:"required"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Invalid request", err.Error())
-		return
-	}
-
-	if err := s.containerSvc.PullImage(req.ImageName); err != nil {
-		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to pull image", err.Error())
-		return
-	}
-	common.SendSuccess(c, gin.H{"message": "Image pulled successfully"})
-}
-
-// RemoveImage handles removing a container image
-func (s *Service) RemoveImage(c *gin.Context) {
-	imageID := c.Param("id")
-	if err := s.containerSvc.RemoveImage(imageID); err != nil {
-		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to remove image", err.Error())
-		return
-	}
-	common.SendSuccess(c, gin.H{"message": "Image removed successfully"})
-}
 
 
 

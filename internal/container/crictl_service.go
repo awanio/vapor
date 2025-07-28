@@ -1,4 +1,4 @@
-package storage
+package container
 
 import (
 	"encoding/json"
@@ -6,37 +6,20 @@ import (
 	"fmt"
 )
 
-// ContainerService interface defines the methods for container management
-// It can be extended with specific backend implementations if needed
-type ContainerService interface {
-	ListContainers() ([]Container, error)
-	GetContainerDetails(containerID string) (*ContainerDetails, error)
-	CreateContainer(req ContainerCreateRequest) (*Container, error)
-	StartContainer(containerID string) error
-	StopContainer(containerID string, timeout int) error
-	RestartContainer(containerID string) error
-	RemoveContainer(containerID string) error
-	GetContainerLogs(containerID string, options ContainerLogsRequest) (string, error)
-	ListImages() ([]ContainerImage, error)
-	GetImageDetails(imageID string) (*ContainerImage, error)
-	RemoveImage(imageID string) error
-	PullImage(imageName string) error
-}
-
-// DefaultContainerService implements ContainerService using crictl commands
-type DefaultContainerService struct {
+// DefaultService implements Service using crictl commands
+type DefaultService struct {
 	executor CommandExecutor
 }
 
 // NewContainerService creates a new container service
-func NewContainerService(executor CommandExecutor) *DefaultContainerService {
-	return &DefaultContainerService{
+func NewContainerService(executor CommandExecutor) *DefaultService {
+	return &DefaultService{
 		executor: executor,
 	}
 }
 
 // ListContainers lists all containers
-func (d *DefaultContainerService) ListContainers() ([]Container, error) {
+func (d *DefaultService) ListContainers() ([]Container, error) {
 	output, err := d.executor.Execute("crictl", "ps", "-a", "-o", "json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to list containers: %w", err)
@@ -60,7 +43,7 @@ func (d *DefaultContainerService) ListContainers() ([]Container, error) {
 		} `json:"containers"`
 	}
 
-	err = json.Unmarshal([]byte(output), &result)
+	err = json.Unmarshal(output, &result)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse container list: %w", err)
 	}
@@ -83,7 +66,7 @@ func (d *DefaultContainerService) ListContainers() ([]Container, error) {
 }
 
 // GetContainerDetails gets detailed information about a container
-func (d *DefaultContainerService) GetContainerDetails(containerID string) (*ContainerDetails, error) {
+func (d *DefaultService) GetContainerDetails(containerID string) (*ContainerDetails, error) {
 	output, err := d.executor.Execute("crictl", "inspect", containerID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to inspect container: %w", err)
@@ -115,7 +98,7 @@ func (d *DefaultContainerService) GetContainerDetails(containerID string) (*Cont
 		} `json:"info"`
 	}
 
-	err = json.Unmarshal([]byte(output), &result)
+	err = json.Unmarshal(output, &result)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse container details: %w", err)
 	}
@@ -155,7 +138,7 @@ func (d *DefaultContainerService) GetContainerDetails(containerID string) (*Cont
 }
 
 // CreateContainer creates a new container
-func (d *DefaultContainerService) CreateContainer(req ContainerCreateRequest) (*Container, error) {
+func (d *DefaultService) CreateContainer(req ContainerCreateRequest) (*Container, error) {
 	// Note: crictl doesn't support direct container creation like docker
 	// Containers in CRI are created as part of pods
 	// This is a simplified implementation that would need to be enhanced
@@ -164,7 +147,7 @@ func (d *DefaultContainerService) CreateContainer(req ContainerCreateRequest) (*
 }
 
 // StartContainer starts a container
-func (d *DefaultContainerService) StartContainer(containerID string) error {
+func (d *DefaultService) StartContainer(containerID string) error {
 	_, err := d.executor.Execute("crictl", "start", containerID)
 	if err != nil {
 		return fmt.Errorf("failed to start container: %w", err)
@@ -173,13 +156,13 @@ func (d *DefaultContainerService) StartContainer(containerID string) error {
 }
 
 // StopContainer stops a container
-func (d *DefaultContainerService) StopContainer(containerID string, timeout int) error {
+func (d *DefaultService) StopContainer(containerID string, timeout int) error {
 	args := []string{"stop"}
 	if timeout > 0 {
 		args = append(args, "--timeout", fmt.Sprintf("%d", timeout))
 	}
 	args = append(args, containerID)
-	
+
 	_, err := d.executor.Execute("crictl", args...)
 	if err != nil {
 		return fmt.Errorf("failed to stop container: %w", err)
@@ -188,7 +171,7 @@ func (d *DefaultContainerService) StopContainer(containerID string, timeout int)
 }
 
 // RestartContainer restarts a container
-func (d *DefaultContainerService) RestartContainer(containerID string) error {
+func (d *DefaultService) RestartContainer(containerID string) error {
 	if err := d.StopContainer(containerID, 10); err != nil {
 		return err
 	}
@@ -199,7 +182,7 @@ func (d *DefaultContainerService) RestartContainer(containerID string) error {
 }
 
 // RemoveContainer removes a container
-func (d *DefaultContainerService) RemoveContainer(containerID string) error {
+func (d *DefaultService) RemoveContainer(containerID string) error {
 	_, err := d.executor.Execute("crictl", "rm", containerID)
 	if err != nil {
 		return fmt.Errorf("failed to remove container: %w", err)
@@ -208,7 +191,7 @@ func (d *DefaultContainerService) RemoveContainer(containerID string) error {
 }
 
 // GetContainerLogs fetches logs for a container
-func (d *DefaultContainerService) GetContainerLogs(containerID string, options ContainerLogsRequest) (string, error) {
+func (d *DefaultService) GetContainerLogs(containerID string, options ContainerLogsRequest) (string, error) {
 	args := []string{"logs"}
 	if options.Follow {
 		args = append(args, "--follow")
@@ -236,7 +219,7 @@ func (d *DefaultContainerService) GetContainerLogs(containerID string, options C
 }
 
 // ListImages lists all container images
-func (d *DefaultContainerService) ListImages() ([]ContainerImage, error) {
+func (d *DefaultService) ListImages() ([]ContainerImage, error) {
 	output, err := d.executor.Execute("crictl", "images", "-o", "json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to list images: %w", err)
@@ -254,7 +237,7 @@ func (d *DefaultContainerService) ListImages() ([]ContainerImage, error) {
 		} `json:"images"`
 	}
 
-	err = json.Unmarshal([]byte(output), &result)
+	err = json.Unmarshal(output, &result)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse image list: %w", err)
 	}
@@ -267,7 +250,7 @@ func (d *DefaultContainerService) ListImages() ([]ContainerImage, error) {
 			// Simple parsing, can be enhanced
 			fmt.Sscanf(img.Size, "%d", &size)
 		}
-		
+
 		images[i] = ContainerImage{
 			ID:          img.ID,
 			RepoTags:    img.RepoTags,
@@ -280,7 +263,7 @@ func (d *DefaultContainerService) ListImages() ([]ContainerImage, error) {
 }
 
 // GetImageDetails gets detailed information about an image
-func (d *DefaultContainerService) GetImageDetails(imageID string) (*ContainerImage, error) {
+func (d *DefaultService) GetImageDetails(imageID string) (*ContainerImage, error) {
 	output, err := d.executor.Execute("crictl", "inspecti", imageID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to inspect image: %w", err)
@@ -296,7 +279,7 @@ func (d *DefaultContainerService) GetImageDetails(imageID string) (*ContainerIma
 		} `json:"info"`
 	}
 
-	err = json.Unmarshal([]byte(output), &result)
+	err = json.Unmarshal(output, &result)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse image details: %w", err)
 	}
@@ -317,7 +300,7 @@ func (d *DefaultContainerService) GetImageDetails(imageID string) (*ContainerIma
 }
 
 // RemoveImage removes a container image
-func (d *DefaultContainerService) RemoveImage(imageID string) error {
+func (d *DefaultService) RemoveImage(imageID string) error {
 	_, err := d.executor.Execute("crictl", "rmi", imageID)
 	if err != nil {
 		return fmt.Errorf("failed to remove image: %w", err)
@@ -326,11 +309,10 @@ func (d *DefaultContainerService) RemoveImage(imageID string) error {
 }
 
 // PullImage pulls a container image
-func (d *DefaultContainerService) PullImage(imageName string) error {
+func (d *DefaultService) PullImage(imageName string) error {
 	_, err := d.executor.Execute("crictl", "pull", imageName)
 	if err != nil {
 		return fmt.Errorf("failed to pull image: %w", err)
 	}
 	return nil
 }
-

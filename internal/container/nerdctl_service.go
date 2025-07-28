@@ -1,4 +1,4 @@
-package storage
+package container
 
 import (
 	"encoding/json"
@@ -8,20 +8,20 @@ import (
 	"time"
 )
 
-// NerdctlContainerService implements ContainerService using nerdctl commands
-type NerdctlContainerService struct {
+// NerdctlService implements Service using nerdctl commands
+type NerdctlService struct {
 	executor CommandExecutor
 }
 
-// NewNerdctlContainerService creates a new nerdctl-based container service
-func NewNerdctlContainerService(executor CommandExecutor) *NerdctlContainerService {
-	return &NerdctlContainerService{
+// NewNerdctlService creates a new nerdctl-based container service
+func NewNerdctlService(executor CommandExecutor) *NerdctlService {
+	return &NerdctlService{
 		executor: executor,
 	}
 }
 
 // ListContainers lists all containers using nerdctl
-func (n *NerdctlContainerService) ListContainers() ([]Container, error) {
+func (n *NerdctlService) ListContainers() ([]Container, error) {
 	output, err := n.executor.Execute("nerdctl", "ps", "-a", "--format", "json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to list containers: %w", err)
@@ -98,7 +98,7 @@ func (n *NerdctlContainerService) ListContainers() ([]Container, error) {
 }
 
 // GetContainerDetails gets detailed information about a container
-func (n *NerdctlContainerService) GetContainerDetails(containerID string) (*ContainerDetails, error) {
+func (n *NerdctlService) GetContainerDetails(containerID string) (*ContainerDetails, error) {
 	output, err := n.executor.Execute("nerdctl", "inspect", containerID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to inspect container: %w", err)
@@ -207,20 +207,20 @@ func (n *NerdctlContainerService) GetContainerDetails(containerID string) (*Cont
 			ExitCode:  result.State.ExitCode,
 			Labels:    result.Config.Labels,
 			Mounts:    mounts,
+			Networks:  networks,
 			Runtime:   "containerd",
 		},
 		Env:        result.Config.Env,
 		Hostname:   result.Config.Hostname,
 		User:       result.Config.User,
 		WorkingDir: result.Config.WorkingDir,
-		Networks:   networks,
 	}
 
 	return details, nil
 }
 
 // CreateContainer creates a new container using nerdctl
-func (n *NerdctlContainerService) CreateContainer(req ContainerCreateRequest) (*Container, error) {
+func (n *NerdctlService) CreateContainer(req ContainerCreateRequest) (*Container, error) {
 	args := []string{"run", "-d", "--name", req.Name}
 
 	// Add environment variables
@@ -313,7 +313,7 @@ func (n *NerdctlContainerService) CreateContainer(req ContainerCreateRequest) (*
 }
 
 // StartContainer starts a container
-func (n *NerdctlContainerService) StartContainer(containerID string) error {
+func (n *NerdctlService) StartContainer(containerID string) error {
 	_, err := n.executor.Execute("nerdctl", "start", containerID)
 	if err != nil {
 		return fmt.Errorf("failed to start container: %w", err)
@@ -322,7 +322,7 @@ func (n *NerdctlContainerService) StartContainer(containerID string) error {
 }
 
 // StopContainer stops a container
-func (n *NerdctlContainerService) StopContainer(containerID string, timeout int) error {
+func (n *NerdctlService) StopContainer(containerID string, timeout int) error {
 	args := []string{"stop"}
 	if timeout > 0 {
 		args = append(args, "-t", fmt.Sprintf("%d", timeout))
@@ -337,7 +337,7 @@ func (n *NerdctlContainerService) StopContainer(containerID string, timeout int)
 }
 
 // RestartContainer restarts a container
-func (n *NerdctlContainerService) RestartContainer(containerID string) error {
+func (n *NerdctlService) RestartContainer(containerID string) error {
 	_, err := n.executor.Execute("nerdctl", "restart", containerID)
 	if err != nil {
 		return fmt.Errorf("failed to restart container: %w", err)
@@ -346,7 +346,7 @@ func (n *NerdctlContainerService) RestartContainer(containerID string) error {
 }
 
 // RemoveContainer removes a container
-func (n *NerdctlContainerService) RemoveContainer(containerID string) error {
+func (n *NerdctlService) RemoveContainer(containerID string) error {
 	_, err := n.executor.Execute("nerdctl", "rm", "-f", containerID)
 	if err != nil {
 		return fmt.Errorf("failed to remove container: %w", err)
@@ -355,7 +355,7 @@ func (n *NerdctlContainerService) RemoveContainer(containerID string) error {
 }
 
 // GetContainerLogs fetches logs for a container
-func (n *NerdctlContainerService) GetContainerLogs(containerID string, options ContainerLogsRequest) (string, error) {
+func (n *NerdctlService) GetContainerLogs(containerID string, options ContainerLogsRequest) (string, error) {
 	args := []string{"logs"}
 	if options.Follow {
 		args = append(args, "-f")
@@ -383,7 +383,7 @@ func (n *NerdctlContainerService) GetContainerLogs(containerID string, options C
 }
 
 // ListImages lists all container images
-func (n *NerdctlContainerService) ListImages() ([]ContainerImage, error) {
+func (n *NerdctlService) ListImages() ([]ContainerImage, error) {
 	output, err := n.executor.Execute("nerdctl", "images", "--format", "json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to list images: %w", err)
@@ -440,7 +440,7 @@ func (n *NerdctlContainerService) ListImages() ([]ContainerImage, error) {
 }
 
 // GetImageDetails gets detailed information about an image
-func (n *NerdctlContainerService) GetImageDetails(imageID string) (*ContainerImage, error) {
+func (n *NerdctlService) GetImageDetails(imageID string) (*ContainerImage, error) {
 	output, err := n.executor.Execute("nerdctl", "inspect", "--type", "image", imageID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to inspect image: %w", err)
@@ -484,7 +484,7 @@ func (n *NerdctlContainerService) GetImageDetails(imageID string) (*ContainerIma
 }
 
 // RemoveImage removes a container image
-func (n *NerdctlContainerService) RemoveImage(imageID string) error {
+func (n *NerdctlService) RemoveImage(imageID string) error {
 	_, err := n.executor.Execute("nerdctl", "rmi", imageID)
 	if err != nil {
 		return fmt.Errorf("failed to remove image: %w", err)
@@ -493,7 +493,7 @@ func (n *NerdctlContainerService) RemoveImage(imageID string) error {
 }
 
 // PullImage pulls a container image
-func (n *NerdctlContainerService) PullImage(imageName string) error {
+func (n *NerdctlService) PullImage(imageName string) error {
 	_, err := n.executor.Execute("nerdctl", "pull", imageName)
 	if err != nil {
 		return fmt.Errorf("failed to pull image: %w", err)
