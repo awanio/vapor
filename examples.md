@@ -294,7 +294,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8080/api/v1/containers/nginx-container
+  http://103.179.254.248:8080/api/v1/containers/nginx-container
 ```
 
 ### Create Container
@@ -329,45 +329,45 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
       "env": "production"
     }
   }' \
-  http://localhost:8080/api/v1/containers
+  http://103.179.254.248:8080/api/v1/containers
 ```
 
 ### Start Container
 
 ```bash
 curl -X POST -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8080/api/v1/containers/nginx-container/start
+  http://103.179.254.248:8080/api/v1/containers/nginx-container/start
 ```
 
 ### Stop Container
 
 ```bash
 curl -X POST -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8080/api/v1/containers/nginx-container/stop
+  http://103.179.254.248:8080/api/v1/containers/nginx-container/stop
 
 # With timeout (in seconds)
 curl -X POST -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"timeout": 30}' \
-  http://localhost:8080/api/v1/containers/nginx-container/stop
+  http://103.179.254.248:8080/api/v1/containers/nginx-container/stop
 ```
 
 ### Restart Container
 
 ```bash
 curl -X POST -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8080/api/v1/containers/nginx-container/restart
+  http://103.179.254.248:8080/api/v1/containers/nginx-container/restart
 ```
 
 ### Remove Container
 
 ```bash
 curl -X DELETE -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8080/api/v1/containers/nginx-container
+  http://103.179.254.248:8080/api/v1/containers/nginx-container
 
 # Force remove (even if running)
 curl -X DELETE -H "Authorization: Bearer $TOKEN" \
-  "http://localhost:8080/api/v1/containers/nginx-container?force=true"
+  "http://103.179.254.248:8080/api/v1/containers/nginx-container?force=true"
 ```
 
 ### Get Container Logs
@@ -375,15 +375,15 @@ curl -X DELETE -H "Authorization: Bearer $TOKEN" \
 ```bash
 # Get last 100 lines
 curl -H "Authorization: Bearer $TOKEN" \
-  "http://localhost:8080/api/v1/containers/nginx-container/logs?tail=100"
+  "http://103.179.254.248:8080/api/v1/containers/nginx-container/logs?tail=100"
 
 # Follow logs (streaming)
 curl -H "Authorization: Bearer $TOKEN" \
-  "http://localhost:8080/api/v1/containers/nginx-container/logs?follow=true"
+  "http://103.179.254.248:8080/api/v1/containers/nginx-container/logs?follow=true"
 
 # With timestamps
 curl -H "Authorization: Bearer $TOKEN" \
-  "http://localhost:8080/api/v1/containers/nginx-container/logs?timestamps=true"
+  "http://103.179.254.248:8080/api/v1/containers/nginx-container/logs?timestamps=true"
 ```
 
 ### List Container Images
@@ -397,7 +397,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8080/api/v1/images/nginx:latest
+  http://103.179.254.248:8080/api/v1/images/nginx:latest
 ```
 
 ### Pull Image
@@ -406,18 +406,18 @@ curl -H "Authorization: Bearer $TOKEN" \
 curl -X POST -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"image": "nginx:latest"}' \
-  http://localhost:8080/api/v1/images/pull
+  http://103.179.254.248:8080/api/v1/images/pull
 ```
 
 ### Remove Image
 
 ```bash
 curl -X DELETE -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8080/api/v1/images/nginx:latest
+  http://103.179.254.248:8080/api/v1/images/nginx:latest
 
 # Force remove
 curl -X DELETE -H "Authorization: Bearer $TOKEN" \
-  "http://localhost:8080/api/v1/images/nginx:latest?force=true"
+  "http://103.179.254.248:8080/api/v1/images/nginx:latest?force=true"
 ```
 
 ## WebSocket Connections
@@ -429,11 +429,11 @@ Connect to the WebSocket endpoint for real-time system metrics:
 ```bash
 # Using websocat (install with: brew install websocat)
 websocat -H "Authorization: Bearer $TOKEN" \
-  ws://localhost:8080/api/v1/metrics/stream
+  ws://103.179.254.248:8080/ws/metrics/stream
 
 # Using wscat (install with: npm install -g wscat)
 wscat -H "Authorization: Bearer $TOKEN" \
-  -c ws://localhost:8080/api/v1/metrics/stream
+  -c ws://103.179.254.248:8080/api/v1/metrics/stream
 
 # Using curl (requires curl 7.77.0+)
 curl --include \
@@ -453,11 +453,11 @@ Stream container logs via WebSocket:
 ```bash
 # Using websocat
 websocat -H "Authorization: Bearer $TOKEN" \
-  ws://localhost:8080/api/v1/containers/nginx-container/logs/stream
+  ws://103.179.254.248:8080/api/v1/containers/nginx-container/logs/stream
 
 # Using wscat
 wscat -H "Authorization: Bearer $TOKEN" \
-  -c ws://localhost:8080/api/v1/containers/nginx-container/logs/stream
+  -c ws://103.179.254.248:8080/api/v1/containers/nginx-container/logs/stream
 ```
 
 ### Interactive Container Terminal
@@ -468,7 +468,7 @@ Connect to a container's terminal via WebSocket:
 # Using websocat with stdin/stdout
 websocat -H "Authorization: Bearer $TOKEN" \
   --binary \
-  ws://localhost:8080/api/v1/containers/nginx-container/exec
+  ws://103.179.254.248:8080/api/v1/containers/nginx-container/exec
 
 # Send commands after connection
 # Type your commands and press Enter
@@ -530,7 +530,7 @@ import json
 TOKEN = "your-jwt-token"
 
 async def connect_metrics():
-    uri = "ws://localhost:8080/api/v1/metrics/stream"
+    uri = "ws://103.179.254.248:8080/api/v1/metrics/stream"
     headers = {"Authorization": f"Bearer {TOKEN}"}
     
     async with websockets.connect(uri, extra_headers=headers) as websocket:
@@ -549,7 +549,7 @@ asyncio.run(connect_metrics())
 const WebSocket = require('ws');
 
 const TOKEN = 'your-jwt-token';
-const ws = new WebSocket('ws://localhost:8080/api/v1/metrics/stream', {
+const ws = new WebSocket('ws://103.179.254.248:8080/api/v1/metrics/stream', {
   headers: {
     'Authorization': `Bearer ${TOKEN}`
   }
