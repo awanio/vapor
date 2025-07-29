@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/vapor/system-api/internal/logs"
 )
 
 // Client represents a WebSocket client
@@ -15,10 +16,14 @@ type Client struct {
 	conn         *websocket.Conn
 	send         chan []byte
 	id           string
-	authenticated bool
-	username     string
+	authenticated  bool
+	username      string
 	subscriptions map[string]bool
-	mu           sync.RWMutex
+	mu            sync.RWMutex
+	jwtSecret     string
+	handlerType   string
+	logService    *logs.Service
+	pseudoTerminal *PseudoTerminal
 }
 
 // Hub maintains the set of active clients and broadcasts messages to the clients
@@ -171,21 +176,31 @@ func (c *Client) processMessage(data []byte) {
 		c.sendMessage(Message{Type: MessageTypePong})
 
 	case MessageTypeAuth:
-		// Authentication will be handled by the specific handler
-		// This is a placeholder
+		// All handlers use the same authentication
+		handleAuth(c, msg, c.jwtSecret)
 
 	case MessageTypeSubscribe:
 		if !c.authenticated {
 			c.sendError("Not authenticated")
 			return
 		}
-		var payload SubscribePayload
-		if data, err := json.Marshal(msg.Payload); err == nil {
-			if err := json.Unmarshal(data, &payload); err == nil {
-				c.mu.Lock()
-				c.subscriptions[payload.Channel] = true
-				c.mu.Unlock()
-				log.Printf("Client %s subscribed to %s", c.id, payload.Channel)
+
+		c.mu.RLock()
+		handlerType := c.handlerType
+		c.mu.RUnlock()
+
+		// Start the appropriate service based on handler type
+		switch handlerType {
+		case "metrics":
+			// Start sending metrics immediately
+			go sendMetrics(c)
+		case "logs":
+			// Start tailing logs with filters from the message
+			go tailLogs(c, c.logService, msg)
+		case "terminal":
+			// Start terminal session
+			if c.pseudoTerminal == nil {
+				c.pseudoTerminal = startTerminal(c)
 			}
 		}
 
@@ -201,6 +216,24 @@ func (c *Client) processMessage(data []byte) {
 				delete(c.subscriptions, payload.Channel)
 				c.mu.Unlock()
 				log.Printf("Client %s unsubscribed from %s", c.id, payload.Channel)
+			}
+		}
+
+	case MessageTypeData:
+		if !c.authenticated {
+			c.sendError("Not authenticated")
+			return
+		}
+		c.mu.RLock()
+		handlerType := c.handlerType
+		c.mu.RUnlock()
+
+		// Handle terminal input data
+		if handlerType == "terminal" && c.pseudoTerminal != nil {
+			if inputData, ok := msg.Payload.(map[string]interface{}); ok {
+				if data, ok := inputData["data"].(string); ok {
+					c.pseudoTerminal.Write([]byte(data))
+				}
 			}
 		}
 	}

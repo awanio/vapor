@@ -1,7 +1,6 @@
 package websocket
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -45,37 +44,13 @@ func ServeMetricsWebSocket(hub *Hub, jwtSecret string) gin.HandlerFunc {
 
 		client.hub.register <- client
 
+		// Store handler context
+		client.jwtSecret = jwtSecret
+		client.handlerType = "metrics"
+
 		// Start goroutines for reading and writing
 		go client.readPump()
 		go client.writePump()
-
-		// Override processMessage for metrics-specific handling
-		go func() {
-			for {
-				_, message, err := conn.ReadMessage()
-				if err != nil {
-					break
-				}
-
-				var msg Message
-				if err := json.Unmarshal(message, &msg); err != nil {
-					client.sendError("Invalid message format")
-					continue
-				}
-
-				switch msg.Type {
-				case MessageTypeAuth:
-					handleAuth(client, msg, jwtSecret)
-				case MessageTypeSubscribe:
-					if !client.authenticated {
-						client.sendError("Not authenticated")
-						continue
-					}
-					// Start sending metrics
-					go sendMetrics(client)
-				}
-			}
-		}()
 	}
 }
 
@@ -98,38 +73,14 @@ func ServeLogsWebSocket(hub *Hub, jwtSecret string) gin.HandlerFunc {
 
 		client.hub.register <- client
 
+		// Store handler context
+		client.jwtSecret = jwtSecret
+		client.handlerType = "logs"
+		client.logService = logs.NewService()
+
 		// Start goroutines for reading and writing
 		go client.readPump()
 		go client.writePump()
-
-		// Override processMessage for logs-specific handling
-		go func() {
-			logService := logs.NewService()
-			for {
-				_, message, err := conn.ReadMessage()
-				if err != nil {
-					break
-				}
-
-				var msg Message
-				if err := json.Unmarshal(message, &msg); err != nil {
-					client.sendError("Invalid message format")
-					continue
-				}
-
-				switch msg.Type {
-				case MessageTypeAuth:
-					handleAuth(client, msg, jwtSecret)
-				case MessageTypeSubscribe:
-					if !client.authenticated {
-						client.sendError("Not authenticated")
-						continue
-					}
-					// Start tailing logs
-					go tailLogs(client, logService, msg)
-				}
-			}
-		}()
 	}
 }
 
@@ -152,54 +103,13 @@ func ServeTerminalWebSocket(hub *Hub, jwtSecret string) gin.HandlerFunc {
 
 		client.hub.register <- client
 
+		// Store handler context
+		client.jwtSecret = jwtSecret
+		client.handlerType = "terminal"
+
 		// Start goroutines for reading and writing
 		go client.readPump()
 		go client.writePump()
-
-		// Override processMessage for terminal-specific handling
-		go func() {
-			var pty *PseudoTerminal
-			for {
-				_, message, err := conn.ReadMessage()
-				if err != nil {
-					if pty != nil {
-						pty.Close()
-					}
-					break
-				}
-
-				var msg Message
-				if err := json.Unmarshal(message, &msg); err != nil {
-					client.sendError("Invalid message format")
-					continue
-				}
-
-				switch msg.Type {
-				case MessageTypeAuth:
-					handleAuth(client, msg, jwtSecret)
-				case MessageTypeData:
-					if !client.authenticated {
-						client.sendError("Not authenticated")
-						continue
-					}
-					// Handle terminal input/output
-					if pty == nil {
-						pty = startTerminal(client)
-						if pty == nil {
-							client.sendError("Failed to start terminal")
-							continue
-						}
-					}
-					
-					// Forward input to PTY
-					if inputData, ok := msg.Payload.(map[string]interface{}); ok {
-						if data, ok := inputData["data"].(string); ok {
-							pty.Write([]byte(data))
-						}
-					}
-				}
-			}
-		}()
 	}
 }
 
