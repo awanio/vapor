@@ -21,15 +21,22 @@ type PseudoTerminal struct {
 
 // startTerminal starts a new terminal session for the client
 func startTerminal(client *Client) *PseudoTerminal {
+	// Check if we're on a supported platform
+	if runtime.GOOS == "windows" {
+		log.Printf("Terminal sessions are not supported on Windows")
+		return nil
+	}
+
 	// Get the shell to use
 	shell := os.Getenv("SHELL")
 	if shell == "" {
-		if runtime.GOOS == "windows" {
-			shell = "cmd.exe"
+		if runtime.GOOS == "darwin" {
+			shell = "/bin/zsh" // macOS default shell
 		} else {
 			shell = "/bin/bash"
 		}
 	}
+	log.Printf("Using shell: %s", shell)
 
 	// Create command
 	cmd := exec.Command(shell)
@@ -42,6 +49,7 @@ func startTerminal(client *Client) *PseudoTerminal {
 		return nil
 	}
 
+	log.Println("Starting terminal session...")
 	pt := &PseudoTerminal{
 		cmd:    cmd,
 		pty:    ptmx,
@@ -95,19 +103,20 @@ func (pt *PseudoTerminal) readLoop() {
 				log.Printf("Error reading from pty: %v", err)
 			}
 			pt.client.sendMessage(Message{
-				Type: MessageTypeData,
-				Payload: TerminalOutput{
-					Data: "\r\nTerminal session ended.\r\n",
+				Type: MessageTypeOutput,
+				Payload: map[string]interface{}{
+					"data": "\r\nTerminal session ended.\r\n",
 				},
 			})
 			break
 		}
 
 		if n > 0 {
+			log.Printf("Sending terminal output: %d bytes", n)
 			pt.client.sendMessage(Message{
-				Type: MessageTypeData,
-				Payload: TerminalOutput{
-					Data: string(buf[:n]),
+				Type: MessageTypeOutput,
+				Payload: map[string]interface{}{
+					"data": string(buf[:n]),
 				},
 			})
 		}

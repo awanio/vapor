@@ -530,17 +530,90 @@ import json
 TOKEN = "your-jwt-token"
 
 async def connect_metrics():
-    uri = "ws://103.179.254.248:8080/api/v1/metrics/stream"
-    headers = {"Authorization": f"Bearer {TOKEN}"}
+    uri = "ws://localhost:8080/ws/metrics"
     
-    async with websockets.connect(uri, extra_headers=headers) as websocket:
+    async with websockets.connect(uri) as websocket:
+        # Authenticate
+        auth_msg = {
+            "type": "auth",
+            "payload": {
+                "token": TOKEN
+            }
+        }
+        await websocket.send(json.dumps(auth_msg))
+        
+        # Wait for auth response
+        response = await websocket.recv()
+        auth_resp = json.loads(response)
+        if auth_resp.get("type") == "error":
+            print(f"Authentication failed: {auth_resp.get('error')}")
+            return
+        
+        # Subscribe to metrics
+        subscribe_msg = {
+            "type": "subscribe"
+        }
+        await websocket.send(json.dumps(subscribe_msg))
+        
+        # Receive metrics
         while True:
             message = await websocket.recv()
             data = json.loads(message)
-            print(f"CPU Usage: {data['data']['cpu']['usage']}%")
-            print(f"Memory Usage: {data['data']['memory']['percent']}%")
+            if data.get("type") == "metric":
+                print(f"Metric: {data['metric']}")
+                print(f"Data: {data['data']}")
+                print("---")
 
-asyncio.run(connect_metrics())
+async def connect_terminal():
+    uri = "ws://localhost:8080/ws/terminal"
+    
+    async with websockets.connect(uri) as websocket:
+        # Authenticate
+        auth_msg = {
+            "type": "auth",
+            "payload": {
+                "token": TOKEN
+            }
+        }
+        await websocket.send(json.dumps(auth_msg))
+        
+        # Wait for auth response
+        response = await websocket.recv()
+        auth_resp = json.loads(response)
+        if auth_resp.get("type") == "error":
+            print(f"Authentication failed: {auth_resp.get('error')}")
+            return
+        
+        # Start terminal session
+        start_msg = {
+            "type": "subscribe",
+            "payload": {
+                "cols": 80,
+                "rows": 24,
+                "shell": "/bin/bash"
+            }
+        }
+        await websocket.send(json.dumps(start_msg))
+        
+        # Send a command
+        input_msg = {
+            "type": "input",
+            "data": "ls -la\n"
+        }
+        await websocket.send(json.dumps(input_msg))
+        
+        # Receive output
+        while True:
+            message = await websocket.recv()
+            data = json.loads(message)
+            if data.get("type") == "output":
+                print(data.get("data"), end='')
+
+# Run the metrics example
+# asyncio.run(connect_metrics())
+
+# Run the terminal example
+# asyncio.run(connect_terminal())
 ```
 
 ### Node.js WebSocket Client Example
@@ -549,20 +622,39 @@ asyncio.run(connect_metrics())
 const WebSocket = require('ws');
 
 const TOKEN = 'your-jwt-token';
-const ws = new WebSocket('ws://103.179.254.248:8080/api/v1/metrics/stream', {
-  headers: {
-    'Authorization': `Bearer ${TOKEN}`
-  }
-});
+const ws = new WebSocket('ws://localhost:8080/ws/metrics');
 
 ws.on('open', () => {
   console.log('Connected to metrics stream');
+  
+  // Authenticate
+  ws.send(JSON.stringify({
+    type: 'auth',
+    payload: {
+      token: TOKEN
+    }
+  }));
 });
 
 ws.on('message', (data) => {
   const message = JSON.parse(data);
-  console.log(`CPU: ${message.data.cpu.usage}%`);
-  console.log(`Memory: ${message.data.memory.percent}%`);
+  
+  if (message.type === 'auth') {
+    if (message.status === 'authenticated') {
+      console.log('Authenticated successfully');
+      
+      // Subscribe to metrics
+      ws.send(JSON.stringify({
+        type: 'subscribe'
+      }));
+    } else {
+      console.error('Authentication failed');
+    }
+  } else if (message.type === 'metric') {
+    console.log(`${message.metric}: ${JSON.stringify(message.data)}`);
+  } else if (message.type === 'error') {
+    console.error('Error:', message.error);
+  }
 });
 
 ws.on('error', (error) => {

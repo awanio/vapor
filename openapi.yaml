@@ -1498,29 +1498,29 @@ paths:
       description: |
         Establish a WebSocket connection to receive real-time system metrics.
         
-        **WebSocket URL**: `ws://localhost:8080/api/v1/ws/metrics`
+        **WebSocket URL**: `ws://localhost:8080/ws/metrics`
         
         **Authentication**: Send JWT token in the first message after connection:
         ```json
         {
           "type": "auth",
-          "token": "your-jwt-token"
+          "payload": {
+            "token": "your-jwt-token"
+          }
         }
         ```
         
         **Subscribe to metrics**:
         ```json
         {
-          "type": "subscribe",
-          "metrics": ["cpu", "memory", "disk", "network", "load"]
+          "type": "subscribe"
         }
         ```
         
         **Unsubscribe from metrics**:
         ```json
         {
-          "type": "unsubscribe",
-          "metrics": ["cpu"]
+          "type": "unsubscribe"
         }
         ```
         
@@ -1549,13 +1549,15 @@ paths:
       description: |
         Establish a WebSocket connection to receive real-time system logs.
         
-        **WebSocket URL**: `ws://localhost:8080/api/v1/ws/logs`
+        **WebSocket URL**: `ws://localhost:8080/ws/logs`
         
         **Authentication**: Send JWT token in the first message after connection:
         ```json
         {
           "type": "auth",
-          "token": "your-jwt-token"
+          "payload": {
+            "token": "your-jwt-token"
+          }
         }
         ```
         
@@ -1563,10 +1565,12 @@ paths:
         ```json
         {
           "type": "subscribe",
-          "filters": {
-            "services": ["nginx", "systemd"],
-            "priority": "error",
-            "follow": true
+          "payload": {
+            "filters": {
+              "unit": "sshd",
+              "priority": "error",
+              "follow": true
+            }
           }
         }
         ```
@@ -1599,23 +1603,27 @@ paths:
       description: |
         Establish a WebSocket connection for an interactive terminal session.
         
-        **WebSocket URL**: `ws://localhost:8080/api/v1/ws/terminal`
+        **WebSocket URL**: `ws://localhost:8080/ws/terminal`
         
         **Authentication**: Send JWT token in the first message after connection:
         ```json
         {
           "type": "auth",
-          "token": "your-jwt-token"
+          "payload": {
+            "token": "your-jwt-token"
+          }
         }
         ```
         
         **Start terminal session**:
         ```json
         {
-          "type": "start",
-          "cols": 80,
-          "rows": 24,
-          "shell": "/bin/bash"
+          "type": "subscribe",
+          "payload": {
+            "cols": 80,
+            "rows": 24,
+            "shell": "/bin/bash"
+          }
         }
         ```
         

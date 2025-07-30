@@ -200,7 +200,28 @@ func (c *Client) processMessage(data []byte) {
 		case "terminal":
 			// Start terminal session
 			if c.pseudoTerminal == nil {
+				log.Println("Initializing terminal...")
+				// Get terminal size from payload if available
+				var rows, cols float64 = 24, 80 // defaults
+				if payloadData, ok := msg.Payload.(map[string]interface{}); ok {
+					if r, ok := payloadData["rows"].(float64); ok {
+						rows = r
+					}
+					if c, ok := payloadData["cols"].(float64); ok {
+						cols = c
+					}
+					log.Printf("Terminal size from payload: rows=%v, cols=%v", rows, cols)
+				}
 				c.pseudoTerminal = startTerminal(c)
+				if c.pseudoTerminal == nil {
+					c.sendError("Failed to initialize terminal")
+					return
+				}
+				log.Println("Terminal initialized successfully")
+				// Set initial size
+				if err := c.pseudoTerminal.SetSize(int(rows), int(cols)); err != nil {
+					log.Printf("Failed to set terminal size: %v", err)
+				}
 			}
 		}
 
@@ -219,7 +240,7 @@ func (c *Client) processMessage(data []byte) {
 			}
 		}
 
-	case MessageTypeData:
+	case MessageTypeInput:
 		if !c.authenticated {
 			c.sendError("Not authenticated")
 			return
@@ -232,7 +253,38 @@ func (c *Client) processMessage(data []byte) {
 		if handlerType == "terminal" && c.pseudoTerminal != nil {
 			if inputData, ok := msg.Payload.(map[string]interface{}); ok {
 				if data, ok := inputData["data"].(string); ok {
-					c.pseudoTerminal.Write([]byte(data))
+					log.Printf("Received terminal input: %q", data)
+					if err := c.pseudoTerminal.Write([]byte(data)); err != nil {
+						log.Printf("Error writing to terminal: %v", err)
+					}
+				}
+			} else if data, ok := msg.Payload.(string); ok {
+				// Handle direct string payload
+				log.Printf("Received terminal input (string): %q", data)
+				if err := c.pseudoTerminal.Write([]byte(data)); err != nil {
+					log.Printf("Error writing to terminal: %v", err)
+				}
+			}
+		}
+
+	case MessageTypeResize:
+		if !c.authenticated {
+			c.sendError("Not authenticated")
+			return
+		}
+		c.mu.RLock()
+		handlerType := c.handlerType
+		c.mu.RUnlock()
+
+		// Handle terminal resize
+		if handlerType == "terminal" && c.pseudoTerminal != nil {
+			if resizeData, ok := msg.Payload.(map[string]interface{}); ok {
+				rows, rowsOk := resizeData["rows"].(float64)
+				cols, colsOk := resizeData["cols"].(float64)
+				if rowsOk && colsOk {
+					if err := c.pseudoTerminal.SetSize(int(rows), int(cols)); err != nil {
+						log.Printf("Error resizing terminal: %v", err)
+					}
 				}
 			}
 		}
