@@ -165,11 +165,14 @@ func (c *Client) writePump() {
 
 // processMessage handles incoming WebSocket messages
 func (c *Client) processMessage(data []byte) {
+	log.Printf("Client %s received message: %s", c.id, string(data))
 	var msg Message
 	if err := json.Unmarshal(data, &msg); err != nil {
+		log.Printf("Failed to unmarshal message: %v", err)
 		c.sendError("Invalid message format")
 		return
 	}
+	log.Printf("Parsed message type: %s, payload: %+v", msg.Type, msg.Payload)
 
 	switch msg.Type {
 	case MessageTypePing:
@@ -203,7 +206,9 @@ func (c *Client) processMessage(data []byte) {
 				log.Println("Initializing terminal...")
 				// Get terminal size from payload if available
 				var rows, cols float64 = 24, 80 // defaults
+				log.Printf("Raw payload: %+v", msg.Payload)
 				if payloadData, ok := msg.Payload.(map[string]interface{}); ok {
+					log.Printf("Payload is a map: %+v", payloadData)
 					if r, ok := payloadData["rows"].(float64); ok {
 						rows = r
 					}
@@ -251,19 +256,18 @@ func (c *Client) processMessage(data []byte) {
 
 		// Handle terminal input data
 		if handlerType == "terminal" && c.pseudoTerminal != nil {
-			if inputData, ok := msg.Payload.(map[string]interface{}); ok {
-				if data, ok := inputData["data"].(string); ok {
-					log.Printf("Received terminal input: %q", data)
-					if err := c.pseudoTerminal.Write([]byte(data)); err != nil {
-						log.Printf("Error writing to terminal: %v", err)
-					}
-				}
-			} else if data, ok := msg.Payload.(string); ok {
-				// Handle direct string payload
-				log.Printf("Received terminal input (string): %q", data)
-				if err := c.pseudoTerminal.Write([]byte(data)); err != nil {
+			// Parse the raw message again to get the data field
+			var inputMsg struct {
+				Type string `json:"type"`
+				Data string `json:"data"`
+			}
+			if err := json.Unmarshal(data, &inputMsg); err == nil && inputMsg.Data != "" {
+				log.Printf("Received terminal input: %q", inputMsg.Data)
+				if err := c.pseudoTerminal.Write([]byte(inputMsg.Data)); err != nil {
 					log.Printf("Error writing to terminal: %v", err)
 				}
+			} else {
+				log.Printf("Failed to parse input data from message")
 			}
 		}
 

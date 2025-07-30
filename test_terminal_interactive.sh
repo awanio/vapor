@@ -13,7 +13,7 @@ echo "===================================="
 
 # Get JWT token
 echo -e "\n${YELLOW}Getting JWT token...${NC}"
-TOKEN=$(curl -s -X POST http://localhost:8080/api/v1/auth/login \
+TOKEN=$(curl -s -X POST http://103.179.254.248:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"admin123"}' | jq -r '.data.token')
 
@@ -43,4 +43,4 @@ echo "Press Ctrl+C to exit"
 echo ""
 
 # Connect to WebSocket
-websocat -t ws://localhost:8080/ws/terminal
+websocat -t ws://103.179.254.248:8080/ws/terminal
