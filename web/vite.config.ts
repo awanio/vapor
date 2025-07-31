@@ -27,6 +27,8 @@ export default defineConfig({
     // No proxy needed - the app connects directly to the API
     cors: true,
     port: 5173,
-    host: true
+    host: true,
+    // Enable SPA fallback for client-side routing
+    historyApiFallback: true
   }
 });

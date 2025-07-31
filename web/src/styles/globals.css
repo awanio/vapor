@@ -37,6 +37,9 @@
   --vscode-bg-light: var(--surface-1);
   --vscode-bg-lighter: var(--surface-2);
   --vscode-sidebar: var(--surface-1);
+  --vscode-sidebar-hover: rgba(255, 255, 255, 0.04);
+  --vscode-sidebar-active: rgba(255, 255, 255, 0.08);
+  --vscode-sidebar-active-border: var(--primary);
   --vscode-titlebar: var(--surface-1);
   --vscode-text: var(--text-primary);
   --vscode-text-dim: var(--text-secondary);
@@ -81,6 +84,9 @@
   --vscode-bg-light: var(--surface-1);
   --vscode-bg-lighter: var(--surface-2);
   --vscode-sidebar: var(--surface-1);
+  --vscode-sidebar-hover: rgba(0, 0, 0, 0.04);
+  --vscode-sidebar-active: rgba(0, 0, 0, 0.08);
+  --vscode-sidebar-active-border: var(--primary);
   --vscode-titlebar: var(--surface-1);
   --vscode-text: var(--text-primary);
   --vscode-text-dim: var(--text-secondary);

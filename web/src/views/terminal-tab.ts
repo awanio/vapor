@@ -1,20 +1,24 @@
-import { LitElement, html, css } from 'lit';
+import { LitElement, html, css, unsafeCSS } from 'lit';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import { WebLinksAddon } from 'xterm-addon-web-links';
 import { SearchAddon } from 'xterm-addon-search';
-import 'xterm/css/xterm.css';
+import xtermStyles from 'xterm/css/xterm.css?inline';
 import { WebSocketManager } from '../api';
 import { t } from '../i18n';
 import type { WSTerminalInputMessage, WSTerminalResizeMessage, WSTerminalOutputMessage, WSMessage } from '../types/api';
 
 export class TerminalTab extends LitElement {
-  static styles = css`
+  static styles = [
+    unsafeCSS(xtermStyles),
+    css`
     :host {
       display: flex;
       flex-direction: column;
       height: 100%;
       background-color: var(--vscode-bg);
+      border: 1px solid var(--vscode-border);
+      box-sizing: border-box;
     }
 
     .terminal-header {
@@ -73,8 +77,9 @@ export class TerminalTab extends LitElement {
       display: flex;
       align-items: center;
       padding: 4px 16px;
-      background-color: var(--vscode-statusbar);
-      color: white;
+      background-color: var(--vscode-bg-lighter);
+      border-top: 1px solid var(--vscode-border);
+      color: var(--vscode-text);
       font-size: 12px;
     }
 
@@ -94,7 +99,82 @@ export class TerminalTab extends LitElement {
     .terminal-container {
       position: relative;
     }
-  `;
+
+    /* Fullscreen styles */
+    :host(:fullscreen),
+    :host(:-webkit-full-screen),
+    :host(:-moz-full-screen),
+    :host(:-ms-fullscreen) {
+      width: 100vw !important;
+      height: 100vh !important;
+      background-color: var(--vscode-bg);
+      display: flex !important;
+      flex-direction: column !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      z-index: 9999 !important;
+    }
+
+    :host(:fullscreen) .terminal-header,
+    :host(:-webkit-full-screen) .terminal-header,
+    :host(:-moz-full-screen) .terminal-header,
+    :host(:-ms-fullscreen) .terminal-header {
+      background-color: rgba(37, 37, 38, 0.95);
+      z-index: 10000 !important;
+    }
+
+    :host(:fullscreen) .terminal-container,
+    :host(:-webkit-full-screen) .terminal-container,
+    :host(:-moz-full-screen) .terminal-container,
+    :host(:-ms-fullscreen) .terminal-container {
+      flex: 1 !important;
+      height: auto !important;
+      padding: 16px;
+      background-color: #1e1e1e !important;
+      display: flex !important;
+      flex-direction: column !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      z-index: 10001 !important;
+    }
+
+    :host(:fullscreen) .terminal-wrapper,
+    :host(:-webkit-full-screen) .terminal-wrapper,
+    :host(:-moz-full-screen) .terminal-wrapper,
+    :host(:-ms-fullscreen) .terminal-wrapper {
+      flex: 1 !important;
+      background-color: #1e1e1e !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      position: relative !important;
+      overflow: hidden !important;
+      z-index: 10002 !important;
+    }
+
+    /* Force xterm to be visible in fullscreen */
+    :host(:fullscreen) .terminal-wrapper .xterm,
+    :host(:-webkit-full-screen) .terminal-wrapper .xterm,
+    :host(:-moz-full-screen) .terminal-wrapper .xterm,
+    :host(:-ms-fullscreen) .terminal-wrapper .xterm {
+      opacity: 1 !important;
+      visibility: visible !important;
+      display: block !important;
+      width: 100% !important;
+      height: 100% !important;
+      z-index: 10003 !important;
+    }
+
+    :host(:fullscreen) .status-bar,
+    :host(:-webkit-full-screen) .status-bar,
+    :host(:-moz-full-screen) .status-bar,
+    :host(:-ms-fullscreen) .status-bar {
+      z-index: 10004 !important;
+    }
+  `
+  ];
 
   private terminal: Terminal | null = null;
   private fitAddon: FitAddon | null = null;
@@ -193,10 +273,12 @@ export class TerminalTab extends LitElement {
     // Handle resize
     this.terminal.onResize((size) => {
       if (this.wsManager && this.terminalConnected) {
-        const message: WSTerminalResizeMessage = {
+        const message = {
           type: 'resize',
-          cols: size.cols,
-          rows: size.rows
+          payload: {
+            cols: size.cols,
+            rows: size.rows
+          }
         };
         this.wsManager.send(message);
       }
@@ -204,6 +286,12 @@ export class TerminalTab extends LitElement {
 
     // Handle window resize
     window.addEventListener('resize', this.handleWindowResize);
+    
+    // Handle fullscreen changes
+    document.addEventListener('fullscreenchange', this.handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', this.handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', this.handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', this.handleFullscreenChange);
 
     // Connect to WebSocket
     this.connect();
@@ -213,6 +301,82 @@ export class TerminalTab extends LitElement {
     if (this.fitAddon) {
       this.fitAddon.fit();
     }
+  };
+  
+  private handleFullscreenChange = () => {
+    const isFullscreen = !!(document.fullscreenElement || 
+                           (document as any).webkitFullscreenElement ||
+                           (document as any).mozFullScreenElement ||
+                           (document as any).msFullscreenElement);
+    
+    console.log('Fullscreen change detected:', isFullscreen);
+    
+    // Force re-render when fullscreen changes
+    this.requestUpdate();
+    
+    // Give the DOM time to update
+    this.updateComplete.then(() => {
+      // Wait for browser to complete fullscreen transition
+      setTimeout(() => {
+        if (!this.terminal || !this.fitAddon) return;
+        
+        const wrapper = this.shadowRoot?.querySelector('.terminal-wrapper') as HTMLElement;
+        if (!wrapper) return;
+        
+        // Save terminal content before any operations
+        const buffer = this.terminal.buffer.active;
+        const savedContent: string[] = [];
+        for (let i = 0; i < buffer.length; i++) {
+          const line = buffer.getLine(i);
+          if (line) {
+            savedContent.push(line.translateToString());
+          }
+        }
+        const cursorY = buffer.cursorY;
+        const cursorX = buffer.cursorX;
+        
+        if (isFullscreen) {
+          // Re-create the terminal in fullscreen mode
+          // First, clear the wrapper
+          wrapper.innerHTML = '';
+          
+          // Force wrapper styles
+          wrapper.style.width = '100%';
+          wrapper.style.height = '100%';
+          wrapper.style.display = 'block';
+          wrapper.style.backgroundColor = '#1e1e1e';
+          
+          // Re-open the terminal
+          this.terminal.open(wrapper);
+          
+          // Restore content
+          for (const line of savedContent) {
+            if (line.trim()) {
+              this.terminal.writeln(line);
+            }
+          }
+          
+          // Restore cursor position
+          this.terminal.write(`\x1b[${cursorY + 1};${cursorX + 1}H`);
+        }
+        
+        // Fit the terminal to the new size
+        this.fitAddon.fit();
+        this.terminal.focus();
+        
+        // Force refresh
+        this.terminal.refresh(0, this.terminal.rows - 1);
+
+
+        // Force focus on wrapper and terminal
+        wrapper.focus();
+        this.terminal.focus();
+        
+        // Force redraw of terminal by resizing
+        this.terminal.resize(this.terminal.cols, this.terminal.rows);
+        this.terminal.refresh(0, this.terminal.rows - 1);
+      }, 500);
+    });
   };
 
   private setupResizeObserver(element: HTMLElement) {
@@ -354,6 +518,26 @@ export class TerminalTab extends LitElement {
           position: relative;
           height: 100%;
         }
+        
+        /* Ensure terminal is visible in fullscreen */
+        :host(:fullscreen) .xterm,
+        :host(:-webkit-full-screen) .xterm,
+        :host(:-moz-full-screen) .xterm,
+        :host(:-ms-fullscreen) .xterm {
+          z-index: 1000;
+          opacity: 1 !important;
+          visibility: visible !important;
+        }
+        
+        :host(:fullscreen) .terminal-wrapper,
+        :host(:-webkit-full-screen) .terminal-wrapper,
+        :host(:-moz-full-screen) .terminal-wrapper,
+        :host(:-ms-fullscreen) .terminal-wrapper {
+          z-index: 999;
+          opacity: 1 !important;
+          visibility: visible !important;
+          background-color: #1e1e1e;
+        }
       `;
       container.appendChild(styleElement);
     }
@@ -464,14 +648,56 @@ export class TerminalTab extends LitElement {
 
   private toggleFullscreen() {
     if (!document.fullscreenElement) {
-      this.requestFullscreen();
+      // Request fullscreen on the host element (the custom element itself)
+      const hostElement = this as unknown as HTMLElement;
+      
+      // Try different fullscreen methods for cross-browser compatibility
+      const requestFullscreen = hostElement.requestFullscreen || 
+                              (hostElement as any).webkitRequestFullscreen || 
+                              (hostElement as any).mozRequestFullScreen || 
+                              (hostElement as any).msRequestFullscreen;
+      
+      if (requestFullscreen) {
+        requestFullscreen.call(hostElement).then(() => {
+          // Force update to ensure render
+          this.requestUpdate();
+          
+          // Give the browser time to complete the fullscreen transition
+          setTimeout(() => {
+            this.fitAddon?.fit();
+            // Force terminal to refocus
+            this.terminal?.focus();
+            
+            // Ensure terminal is visible
+            const wrapper = this.shadowRoot?.querySelector('.terminal-wrapper') as HTMLElement;
+            if (wrapper) {
+              wrapper.style.opacity = '1';
+              wrapper.style.visibility = 'visible';
+            }
+          }, 300);
+        }).catch((err) => {
+          console.error('Failed to enter fullscreen:', err);
+        });
+      }
     } else {
-      document.exitFullscreen();
+      document.exitFullscreen().then(() => {
+        this.requestUpdate();
+        setTimeout(() => {
+          this.fitAddon?.fit();
+          this.terminal?.focus();
+        }, 300);
+      }).catch((err) => {
+        console.error('Failed to exit fullscreen:', err);
+      });
     }
   }
 
   private cleanup() {
     window.removeEventListener('resize', this.handleWindowResize);
+    document.removeEventListener('fullscreenchange', this.handleFullscreenChange);
+    document.removeEventListener('webkitfullscreenchange', this.handleFullscreenChange);
+    document.removeEventListener('mozfullscreenchange', this.handleFullscreenChange);
+    document.removeEventListener('MSFullscreenChange', this.handleFullscreenChange);
     
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();

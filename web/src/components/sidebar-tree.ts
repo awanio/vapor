@@ -32,14 +32,23 @@ export class SidebarTree extends LitElement {
       cursor: pointer;
       position: relative;
       font-size: 13px;
+      transition: all 0.15s ease;
+      border-left: 3px solid transparent;
     }
 
     .tree-item:hover {
       background-color: var(--vscode-sidebar-hover);
+      border-left-color: var(--vscode-text-dim);
     }
 
     .tree-item.active {
       background-color: var(--vscode-sidebar-active);
+      border-left-color: var(--vscode-sidebar-active-border);
+      color: var(--vscode-accent);
+    }
+
+    .tree-item.active .tree-item-icon {
+      color: var(--vscode-accent);
     }
 
     .tree-item-icon {
@@ -117,6 +126,28 @@ export class SidebarTree extends LitElement {
     :host([collapsed]) .tree-item-icon {
       margin-right: 0;
     }
+
+    /* Focus styles for keyboard navigation */
+    .tree-item:focus-visible {
+      outline: 2px solid var(--vscode-accent);
+      outline-offset: -2px;
+    }
+
+    /* Subtle animation on icon when hovering */
+    .tree-item:hover .tree-item-icon {
+      transform: translateX(2px);
+      transition: transform 0.15s ease;
+    }
+
+    /* Child items styling */
+    .tree-children .tree-item {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+
+    .tree-children .tree-item.active {
+      opacity: 1;
+    }
   `;
 
   private navigationItems: NavItem[] = [
@@ -178,11 +209,35 @@ export class SidebarTree extends LitElement {
     } else if (item.route) {
       // Navigate to route
       this.activeItemId = item.id;
+
+      // Update the URL without reloading the page
+      window.history.pushState({ route: item.route }, '', `/${item.route}`);
+
+      // Dispatch a navigation event
       this.dispatchEvent(new CustomEvent('navigate', {
         detail: { route: item.route, item },
         bubbles: true,
         composed: true
       }));
+    }
+  }
+
+  private handleKeyDown(item: NavItem, event: KeyboardEvent) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      this.handleItemClick(item, event);
+    } else if (event.key === 'ArrowRight' && item.children) {
+      event.preventDefault();
+      if (!this.expandedItems.has(item.id)) {
+        this.expandedItems.add(item.id);
+        this.requestUpdate();
+      }
+    } else if (event.key === 'ArrowLeft' && item.children) {
+      event.preventDefault();
+      if (this.expandedItems.has(item.id)) {
+        this.expandedItems.delete(item.id);
+        this.requestUpdate();
+      }
     }
   }
 
@@ -196,7 +251,12 @@ export class SidebarTree extends LitElement {
         <div
           class="tree-item ${isActive ? 'active' : ''}"
           @click=${(e: Event) => this.handleItemClick(item, e)}
+          @keydown=${(e: KeyboardEvent) => this.handleKeyDown(item, e)}
           title=${this.collapsed ? t(item.label) : ''}
+          tabindex="0"
+          role="treeitem"
+          aria-expanded=${hasChildren ? isExpanded : undefined}
+          aria-selected=${isActive}
         >
           ${hasChildren ? html`
             <span class="tree-item-arrow ${isExpanded ? 'expanded' : ''}">
@@ -217,9 +277,41 @@ export class SidebarTree extends LitElement {
     `;
   }
 
+  connectedCallback() {
+    super.connectedCallback();
+    
+    // Set activeItemId from URL on component mount
+    const path = window.location.pathname.slice(1);
+    if (path) {
+      const item = this.navigationItems.find(navItem => navItem.route === path);
+      if (item) {
+        this.activeItemId = item.id;
+      }
+    }
+    
+    // Listen for popstate to update active item
+    window.addEventListener('popstate', this.handlePopState);
+  }
+  
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    window.removeEventListener('popstate', this.handlePopState);
+  }
+  
+  private handlePopState = (event: PopStateEvent) => {
+    const path = window.location.pathname.slice(1);
+    if (path) {
+      const item = this.navigationItems.find(navItem => navItem.route === path);
+      if (item) {
+        this.activeItemId = item.id;
+        this.requestUpdate();
+      }
+    }
+  };
+
   render() {
     return html`
-      <ul class="tree">
+      <ul class="tree" role="tree">
         ${this.navigationItems.map(item => this.renderNavItem(item))}
       </ul>
     `;

@@ -164,6 +164,29 @@ export class AppRoot extends LitElement {
     
     // Check initial authentication state
     this.isAuthenticated = auth.isAuthenticated();
+
+    // Set active view from URL
+    const path = window.location.pathname.slice(1);
+    if (path && this.isValidRoute(path)) {
+      this.activeView = path;
+    } else if (!path || path === '') {
+      // Default to dashboard on root URL
+      this.activeView = 'dashboard';
+      window.history.replaceState({ route: 'dashboard' }, '', '/dashboard');
+    }
+
+    // Listen for popstate events to handle navigation
+    window.addEventListener('popstate', (event) => {
+      if (event.state && event.state.route) {
+        this.activeView = event.state.route;
+      } else {
+        // Handle direct URL navigation
+        const path = window.location.pathname.slice(1);
+        if (path && this.isValidRoute(path)) {
+          this.activeView = path;
+        }
+      }
+    });
     
     // Listen for auth events
     window.addEventListener('auth:login', this.handleAuthLogin);
@@ -241,6 +264,7 @@ export class AppRoot extends LitElement {
         <!-- Sidebar -->
         <sidebar-tree 
           ?collapsed="${this.sidebarCollapsed}"
+          activeItemId="${this.activeView}"
           @navigate="${this.handleNavigation}"
         ></sidebar-tree>
         
@@ -271,6 +295,11 @@ export class AppRoot extends LitElement {
 
   private handleNavigation(e: CustomEvent) {
     this.activeView = e.detail.route;
+  }
+  
+  private isValidRoute(route: string): boolean {
+    const validRoutes = ['dashboard', 'network', 'storage', 'containers', 'logs', 'terminal', 'users'];
+    return validRoutes.includes(route);
   }
 }
 
