@@ -2,6 +2,7 @@ package websocket
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -286,10 +287,27 @@ func (c *Client) processMessage(data []byte) {
 				rows, rowsOk := resizeData["rows"].(float64)
 				cols, colsOk := resizeData["cols"].(float64)
 				if rowsOk && colsOk {
+					log.Printf("Resizing terminal to %dx%d", int(rows), int(cols))
 					if err := c.pseudoTerminal.SetSize(int(rows), int(cols)); err != nil {
 						log.Printf("Error resizing terminal: %v", err)
+						c.sendError(fmt.Sprintf("Failed to resize terminal: %v", err))
+					} else {
+						// Send confirmation
+						c.sendMessage(Message{
+							Type: "resize",
+							Payload: map[string]interface{}{
+								"success": true,
+								"rows":    int(rows),
+								"cols":    int(cols),
+							},
+						})
 					}
+				} else {
+					log.Printf("Invalid resize parameters: missing rows or cols")
+					c.sendError("Missing rows or cols in resize payload")
 				}
+			} else {
+				c.sendError("Invalid resize message format - payload must be an object")
 			}
 		}
 	}

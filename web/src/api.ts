@@ -192,11 +192,12 @@ export class WebSocketManager {
       }, 5000);
 
       const authHandler = (message: WSMessage) => {
-        if (message.type === 'auth_success') {
+        if (message.type === 'auth' && message.payload?.authenticated === true) {
           clearTimeout(authTimeout);
           this.authenticated = true;
-          this.off('auth_success', authHandler);
+          this.off('auth', authHandler);
           this.off('error', errorHandler);
+          console.log(`WebSocket authenticated as ${message.payload.username}`);
           resolve();
         }
       };
@@ -210,12 +211,14 @@ export class WebSocketManager {
         }
       };
 
-      this.on('auth_success', authHandler);
+      this.on('auth', authHandler);
       this.on('error', errorHandler);
 
       this.send({
         type: 'auth',
-        token,
+        payload: {
+          token,
+        },
       });
     });
   }

@@ -595,6 +595,16 @@ async def connect_terminal():
         }
         await websocket.send(json.dumps(start_msg))
         
+        # Resize terminal
+        resize_msg = {
+            "type": "resize",
+            "payload": {
+                "cols": 120,
+                "rows": 40
+            }
+        }
+        await websocket.send(json.dumps(resize_msg))
+
         # Send a command
         input_msg = {
             "type": "input",

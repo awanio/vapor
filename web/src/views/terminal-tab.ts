@@ -3,9 +3,10 @@ import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import { WebLinksAddon } from 'xterm-addon-web-links';
 import { SearchAddon } from 'xterm-addon-search';
+import 'xterm/css/xterm.css';
 import { WebSocketManager } from '../api';
 import { t } from '../i18n';
-import type { WSTerminalStartMessage, WSTerminalInputMessage, WSTerminalResizeMessage, WSTerminalOutputMessage } from '../types/api';
+import type { WSTerminalInputMessage, WSTerminalResizeMessage, WSTerminalOutputMessage, WSMessage } from '../types/api';
 
 export class TerminalTab extends LitElement {
   static styles = css`
@@ -57,6 +58,15 @@ export class TerminalTab extends LitElement {
       flex: 1;
       overflow: hidden;
       padding: 8px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Ensure xterm terminal fills the container */
+    .terminal-wrapper {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
     }
 
     .status-bar {
@@ -79,6 +89,11 @@ export class TerminalTab extends LitElement {
     .status-connecting {
       background-color: var(--vscode-warning);
     }
+
+    /* Terminal container should position elements correctly */
+    .terminal-container {
+      position: relative;
+    }
   `;
 
   private terminal: Terminal | null = null;
@@ -86,8 +101,9 @@ export class TerminalTab extends LitElement {
   private searchAddon: SearchAddon | null = null;
   private webLinksAddon: WebLinksAddon | null = null;
   private wsManager: WebSocketManager | null = null;
-  private isConnected = false;
+  private terminalConnected = false;
   private connectionStatus: 'connecting' | 'connected' | 'disconnected' = 'disconnected';
+  private resizeObserver: ResizeObserver | null = null;
 
   connectedCallback() {
     super.connectedCallback();
@@ -103,14 +119,17 @@ export class TerminalTab extends LitElement {
   }
 
   private initializeTerminal() {
-    const container = this.shadowRoot?.querySelector('.terminal-container') as HTMLElement;
-    if (!container) return;
+    const wrapper = this.shadowRoot?.querySelector('.terminal-wrapper') as HTMLElement;
+    if (!wrapper) return;
 
     // Create terminal instance
     this.terminal = new Terminal({
       cursorBlink: true,
       fontSize: 14,
       fontFamily: 'Consolas, "Courier New", monospace',
+      scrollback: 10000,  // Allow 10000 lines of scrollback
+      convertEol: true,
+      screenReaderMode: false,
       theme: {
         background: '#1e1e1e',
         foreground: '#cccccc',
@@ -143,13 +162,23 @@ export class TerminalTab extends LitElement {
     this.terminal.loadAddon(this.searchAddon);
     this.terminal.loadAddon(this.webLinksAddon);
 
-    // Open terminal in container
-    this.terminal.open(container);
-    this.fitAddon.fit();
+    // Open terminal in wrapper
+    this.terminal.open(wrapper);
+    
+    // Set up resize observer
+    this.setupResizeObserver(wrapper);
+    
+    // Initial fit
+    setTimeout(() => {
+      this.fitAddon.fit();
+    }, 100);
+
+    // Hide the char measure element
+    this.hideCharMeasureElement();
 
     // Handle terminal input
     this.terminal.onData((data) => {
-      if (this.wsManager && this.isConnected) {
+      if (this.wsManager && this.terminalConnected) {
         const message: WSTerminalInputMessage = {
           type: 'input',
           data: data
@@ -158,9 +187,12 @@ export class TerminalTab extends LitElement {
       }
     });
 
+    // Add keyboard shortcuts for scrolling
+    this.setupScrollingShortcuts();
+
     // Handle resize
     this.terminal.onResize((size) => {
-      if (this.wsManager && this.isConnected) {
+      if (this.wsManager && this.terminalConnected) {
         const message: WSTerminalResizeMessage = {
           type: 'resize',
           cols: size.cols,
@@ -183,6 +215,150 @@ export class TerminalTab extends LitElement {
     }
   };
 
+  private setupResizeObserver(element: HTMLElement) {
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+    }
+    
+    this.resizeObserver = new ResizeObserver(() => {
+      if (this.fitAddon && this.terminal) {
+        // Use requestAnimationFrame to debounce resize events
+        requestAnimationFrame(() => {
+          this.fitAddon?.fit();
+        });
+      }
+    });
+    
+    this.resizeObserver.observe(element);
+  }
+
+  private setupScrollingShortcuts() {
+    if (!this.terminal) return;
+
+    // Add keyboard event listener to the terminal element
+    const terminalElement = this.shadowRoot?.querySelector('.terminal-wrapper');
+    if (terminalElement) {
+      terminalElement.addEventListener('keydown', (event: KeyboardEvent) => {
+        if (!this.terminal) return;
+
+        // Page Up - scroll up one page
+        if (event.key === 'PageUp') {
+          event.preventDefault();
+          this.terminal.scrollPages(-1);
+        }
+        // Page Down - scroll down one page
+        else if (event.key === 'PageDown') {
+          event.preventDefault();
+          this.terminal.scrollPages(1);
+        }
+        // Ctrl+Home - scroll to top
+        else if (event.ctrlKey && event.key === 'Home') {
+          event.preventDefault();
+          this.terminal.scrollToTop();
+        }
+        // Ctrl+End - scroll to bottom
+        else if (event.ctrlKey && event.key === 'End') {
+          event.preventDefault();
+          this.terminal.scrollToBottom();
+        }
+        // Shift+PageUp - scroll up half page
+        else if (event.shiftKey && event.key === 'PageUp') {
+          event.preventDefault();
+          const pageSize = this.terminal.rows;
+          this.terminal.scrollLines(-Math.floor(pageSize / 2));
+        }
+        // Shift+PageDown - scroll down half page
+        else if (event.shiftKey && event.key === 'PageDown') {
+          event.preventDefault();
+          const pageSize = this.terminal.rows;
+          this.terminal.scrollLines(Math.floor(pageSize / 2));
+        }
+      });
+    }
+
+    // Also handle mouse wheel scrolling (xterm handles this by default, but we can customize)
+    this.terminal.onScroll((position) => {
+      // You can add custom scroll handling here if needed
+      // For example, showing a scroll indicator
+    });
+  }
+
+  private hideCharMeasureElement() {
+    // Add styles to hide xterm helper elements
+    const container = this.shadowRoot?.querySelector('.terminal-container') as HTMLElement;
+    if (container) {
+      // Use setTimeout to ensure elements are created
+      setTimeout(() => {
+        // Find and hide the char measure element
+        const charMeasureElement = container.querySelector('.xterm-char-measure-element') as HTMLElement;
+        if (charMeasureElement) {
+          charMeasureElement.style.position = 'absolute';
+          charMeasureElement.style.top = '0';
+          charMeasureElement.style.left = '0';
+          charMeasureElement.style.visibility = 'hidden';
+        }
+        
+        // Find and hide the helper textarea
+        const helperTextarea = container.querySelector('.xterm-helper-textarea') as HTMLElement;
+        if (helperTextarea) {
+          helperTextarea.style.position = 'absolute';
+          helperTextarea.style.left = '-9999px';
+          helperTextarea.style.top = '0';
+          helperTextarea.style.width = '0';
+          helperTextarea.style.height = '0';
+          helperTextarea.style.opacity = '0';
+        }
+      }, 100);
+      
+      // Inject a style tag to ensure both elements stay hidden and fix scroll area
+      const styleElement = document.createElement('style');
+      styleElement.textContent = `
+        .xterm-char-measure-element {
+          position: absolute !important;
+          top: 0 !important;
+          left: 0 !important;
+          visibility: hidden !important;
+        }
+        
+        .xterm-helper-textarea {
+          position: absolute !important;
+          left: -9999px !important;
+          top: 0 !important;
+          width: 0 !important;
+          height: 0 !important;
+          z-index: -10 !important;
+          opacity: 0 !important;
+          overflow: hidden !important;
+          resize: none !important;
+          pointer-events: none !important;
+        }
+        
+        /* Fix xterm terminal height and scrolling */
+        .xterm {
+          height: 100%;
+          width: 100%;
+        }
+        
+        .xterm-viewport {
+          height: 100% !important;
+          width: 100% !important;
+          overflow-y: scroll !important;
+        }
+        
+        .xterm-scroll-area {
+          height: auto !important;
+          min-height: 100% !important;
+        }
+        
+        .xterm-screen {
+          position: relative;
+          height: 100%;
+        }
+      `;
+      container.appendChild(styleElement);
+    }
+  }
+
   private async connect() {
     if (this.wsManager) {
       this.wsManager.disconnect();
@@ -195,32 +371,34 @@ export class TerminalTab extends LitElement {
       this.wsManager = new WebSocketManager('/ws/terminal');
       
       // Handle output messages
-      this.wsManager.on('output', (message: WSTerminalOutputMessage) => {
-        if (this.terminal) {
-          this.terminal.write(message.data);
+      this.wsManager.on('output', (message: WSMessage) => {
+        if (this.terminal && message.payload?.data) {
+          this.terminal.write(message.payload.data);
         }
       });
 
       // Handle error messages
       this.wsManager.on('error', (message) => {
         console.error('Terminal error:', message.error);
-        this.isConnected = false;
+        this.terminalConnected = false;
         this.connectionStatus = 'disconnected';
         this.requestUpdate();
       });
 
       await this.wsManager.connect();
 
-      // Start terminal session
-      const startMessage: WSTerminalStartMessage = {
-        type: 'start',
-        cols: this.terminal?.cols || 80,
-        rows: this.terminal?.rows || 24,
-        shell: '/bin/bash'
+      // Send terminal spec to subscribe
+      const subscribeMessage: WSMessage = {
+        type: 'subscribe',
+        payload: {
+          cols: this.terminal?.cols || 80,
+          rows: this.terminal?.rows || 24,
+          shell: '/bin/bash'
+        }
       };
-      this.wsManager.send(startMessage);
+      this.wsManager.send(subscribeMessage);
 
-      this.isConnected = true;
+      this.terminalConnected = true;
       this.connectionStatus = 'connected';
       this.requestUpdate();
     } catch (error) {
@@ -235,7 +413,7 @@ export class TerminalTab extends LitElement {
       this.wsManager.disconnect();
       this.wsManager = null;
     }
-    this.isConnected = false;
+    this.terminalConnected = false;
     this.connectionStatus = 'disconnected';
     this.requestUpdate();
   }
@@ -243,6 +421,18 @@ export class TerminalTab extends LitElement {
   private clearTerminal() {
     if (this.terminal) {
       this.terminal.clear();
+    }
+  }
+
+  private scrollToTop() {
+    if (this.terminal) {
+      this.terminal.scrollToTop();
+    }
+  }
+
+  private scrollToBottom() {
+    if (this.terminal) {
+      this.terminal.scrollToBottom();
     }
   }
 
@@ -260,7 +450,7 @@ export class TerminalTab extends LitElement {
   private async pasteFromClipboard() {
     try {
       const text = await navigator.clipboard.readText();
-      if (text && this.wsManager && this.isConnected) {
+      if (text && this.wsManager && this.terminalConnected) {
         const message: WSTerminalInputMessage = {
           type: 'input',
           data: text
@@ -282,6 +472,11 @@ export class TerminalTab extends LitElement {
 
   private cleanup() {
     window.removeEventListener('resize', this.handleWindowResize);
+    
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
     
     if (this.wsManager) {
       this.wsManager.disconnect();
@@ -333,6 +528,12 @@ export class TerminalTab extends LitElement {
           <button class="terminal-action" @click=${this.toggleFullscreen} title="${t('terminal.fullscreen')}">
             ${t('terminal.fullscreen')}
           </button>
+          <button class="terminal-action" @click=${this.scrollToTop} title="Scroll to Top">
+            ↑ Top
+          </button>
+          <button class="terminal-action" @click=${this.scrollToBottom} title="Scroll to Bottom">
+            ↓ Bottom
+          </button>
           ${this.connectionStatus === 'disconnected' 
             ? html`<button class="terminal-action" @click=${this.connect}>Connect</button>`
             : this.connectionStatus === 'connected'
@@ -340,7 +541,9 @@ export class TerminalTab extends LitElement {
             : ''}
         </div>
       </div>
-      <div class="terminal-container"></div>
+      <div class="terminal-container">
+        <div class="terminal-wrapper"></div>
+      </div>
       <div class="${statusClass}">${statusText}</div>
     `;
   }

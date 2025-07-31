@@ -1639,8 +1639,10 @@ paths:
         ```json
         {
           "type": "resize",
-          "cols": 120,
-          "rows": 40
+          "payload": {
+            "cols": 120,
+            "rows": 40
+          }
         }
         ```
         

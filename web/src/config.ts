@@ -9,8 +9,8 @@ interface Config {
 
 // Default configuration
 const defaultConfig: Config = {
-  API_BASE_URL: 'http://103.179.254.248:8080',
-  WS_BASE_URL: 'ws://103.179.254.248:8080',
+  API_BASE_URL: 'https://vapor-dev.awan.app',
+  WS_BASE_URL: 'wss://vapor-dev.awan.app',
   API_VERSION: '/api/v1'
 };
 
