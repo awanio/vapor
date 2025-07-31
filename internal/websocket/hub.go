@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -25,6 +26,9 @@ type Client struct {
 	handlerType   string
 	logService    *logs.Service
 	pseudoTerminal *PseudoTerminal
+	ctx           context.Context
+	cancel        context.CancelFunc
+	closed        bool
 }
 
 // Hub maintains the set of active clients and broadcasts messages to the clients
@@ -69,7 +73,15 @@ func (h *Hub) Run() {
 			h.mu.Lock()
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
-				close(client.send)
+				client.mu.Lock()
+				if !client.closed {
+					client.closed = true
+					close(client.send)
+					if client.cancel != nil {
+						client.cancel()
+					}
+				}
+				client.mu.Unlock()
 				h.mu.Unlock()
 				log.Printf("Client %s disconnected", client.id)
 			} else {
@@ -114,6 +126,9 @@ func (c *Client) readPump() {
 	defer func() {
 		c.hub.unregister <- c
 		c.conn.Close()
+		if c.pseudoTerminal != nil {
+			c.pseudoTerminal.Close()
+		}
 	}()
 
 	c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
@@ -315,14 +330,31 @@ func (c *Client) processMessage(data []byte) {
 
 // sendMessage sends a message to the client
 func (c *Client) sendMessage(msg Message) {
+	c.mu.RLock()
+	closed := c.closed
+	c.mu.RUnlock()
+	
+	if closed {
+		return
+	}
+	
 	data, err := json.Marshal(msg)
 	if err != nil {
 		return
 	}
+	
+	// Use a non-blocking send with recovery for closed channel panic
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Recovered from panic while sending to client %s: %v", c.id, r)
+		}
+	}()
+	
 	select {
 	case c.send <- data:
 	default:
 		// Channel is full, skip
+		log.Printf("Client %s send channel is full, dropping message", c.id)
 	}
 }
 

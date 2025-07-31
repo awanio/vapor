@@ -11,6 +11,8 @@ export class DashboardTab extends LitElement {
   @property({ type: Object }) memoryInfo: MemoryInfo | null = null;
   @property({ type: Object }) currentCpuData: CPUMetricData | null = null;
   @property({ type: Object }) currentMemoryData: MemoryMetricData | null = null;
+  @property({ type: Boolean }) wsConnected: boolean = false;
+  @property({ type: String }) wsError: string | null = null;
 
   static styles = css`
     :host {
@@ -200,42 +202,72 @@ export class DashboardTab extends LitElement {
     }
   }
 
-  private async initWebSocket() {
+private async initWebSocket() {
     try {
       this.wsManager = new WebSocketManager('/ws/metrics');
-      
-      // Listen for authentication success before subscribing
-      this.wsManager.on('auth_success', () => {
-        // Subscribe to metrics after successful authentication
-        this.wsManager.send({
-          type: 'subscribe',
-          metrics: ['cpu', 'memory', 'disk', 'network']
-        });
-      });
-      
-      this.wsManager.on('metric', (message) => {
-        switch (message.metric) {
-          case 'cpu':
-            this.currentCpuData = message.data;
-            this.updateCpuChart(message.data);
-            break;
-          case 'memory':
-            this.currentMemoryData = message.data;
-            this.updateMemoryChart(message.data);
-            break;
-          case 'disk':
-            this.updateDiskChart(message.data);
-            break;
-          case 'network':
-            this.updateNetworkChart(message.data);
-            break;
+      this.wsError = null;
+
+      // Handle successful connection
+      this.wsManager.on('auth', (message) => {
+        if (message.payload?.authenticated) {
+          console.log(`Authenticated as ${message.payload.username}`);
+          this.wsConnected = true;
+          this.wsError = null;
+          // Subscribe after authentication
+          this.wsManager.send({
+            type: 'subscribe'
+          });
         }
-        this.requestUpdate();
+      });
+
+      // Handle incoming metric data
+      this.wsManager.on('data', (message) => {
+        if (message.payload) {
+          const data = message.payload;
+          
+          // Update CPU data
+          if (data.cpu) {
+            this.currentCpuData = {
+              usage_percent: data.cpu.usage,
+              load1: data.cpu.load_average?.[0] || 0,
+              load5: data.cpu.load_average?.[1] || 0,
+              load15: data.cpu.load_average?.[2] || 0
+            } as CPUMetricData;
+            this.updateCpuChart(this.currentCpuData);
+          }
+          
+          // Update Memory data
+          if (data.memory) {
+            this.currentMemoryData = data.memory;
+            this.updateMemoryChart(data.memory);
+          }
+          
+          // Update Disk data
+          if (data.disk) {
+            this.updateDiskChart(data.disk);
+          }
+          
+          // Update Network data if available
+          if (data.network) {
+            this.updateNetworkChart(data.network);
+          }
+          
+          this.requestUpdate();
+        }
+      });
+
+      // Handle errors
+      this.wsManager.on('error', (message) => {
+        console.error('WebSocket error:', message);
+        this.wsError = message.error || 'WebSocket connection error';
+        this.wsConnected = false;
       });
 
       await this.wsManager.connect();
     } catch (error) {
       console.error('Failed to connect to metrics WebSocket:', error);
+      this.wsError = error instanceof Error ? error.message : 'Failed to connect to metrics';
+      this.wsConnected = false;
     }
   }
 
