@@ -4,7 +4,7 @@
 
 # First, get a JWT token
 echo "Getting JWT token..."
-TOKEN=$(curl -s -X POST http://103.179.254.248:8080/api/v1/auth/login \
+TOKEN=$(curl -s -X POST https://vapor-dev.awan.app/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"admin123"}' | jq -r '.data.token')
 

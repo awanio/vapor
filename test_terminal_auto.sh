@@ -19,7 +19,7 @@ echo "Token obtained: ${TOKEN:0:20}..."
 TMPFILE=$(mktemp)
 
 # Start websocat in background with input from temp file
-tail -f "$TMPFILE" | websocat -t ws://localhost:8080/ws/terminal 2>&1 | while read line; do
+tail -f "$TMPFILE" | websocat -t ws://103.179.254.248:8080/ws/terminal 2>&1 | while read line; do
     echo "SERVER: $line"
 done &
 WEBSOCAT_PID=$!
