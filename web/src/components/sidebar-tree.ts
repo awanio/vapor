@@ -211,7 +211,8 @@ export class SidebarTree extends LitElement {
       this.activeItemId = item.id;
 
       // Update the URL without reloading the page
-      window.history.pushState({ route: item.route }, '', `/${item.route}`);
+      const url = item.route === 'dashboard' ? '/' : `/${item.route}`;
+      window.history.pushState({ route: item.route }, '', url);
 
       // Dispatch a navigation event
       this.dispatchEvent(new CustomEvent('navigate', {
@@ -282,10 +283,15 @@ export class SidebarTree extends LitElement {
     
     // Set activeItemId from URL on component mount
     const path = window.location.pathname.slice(1);
-    if (path) {
+    if (!path || path === '') {
+      this.activeItemId = 'dashboard';
+    } else {
       const item = this.navigationItems.find(navItem => navItem.route === path);
       if (item) {
         this.activeItemId = item.id;
+      } else {
+        // Invalid route - no active item in sidebar
+        this.activeItemId = '';
       }
     }
     

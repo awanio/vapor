@@ -167,12 +167,15 @@ export class AppRoot extends LitElement {
 
     // Set active view from URL
     const path = window.location.pathname.slice(1);
-    if (path && this.isValidRoute(path)) {
-      this.activeView = path;
-    } else if (!path || path === '') {
+    if (!path || path === '') {
       // Default to dashboard on root URL
       this.activeView = 'dashboard';
-      window.history.replaceState({ route: 'dashboard' }, '', '/dashboard');
+      window.history.replaceState({ route: 'dashboard' }, '', '/');
+    } else if (this.isValidRoute(path)) {
+      this.activeView = path;
+    } else {
+      // Invalid route - show 404
+      this.activeView = path;
     }
 
     // Listen for popstate events to handle navigation
@@ -182,7 +185,11 @@ export class AppRoot extends LitElement {
       } else {
         // Handle direct URL navigation
         const path = window.location.pathname.slice(1);
-        if (path && this.isValidRoute(path)) {
+        if (!path || path === '') {
+          this.activeView = 'dashboard';
+        } else {
+          // Set activeView to the path regardless of validity
+          // The render method will handle showing 404 for invalid routes
           this.activeView = path;
         }
       }
@@ -282,6 +289,7 @@ export class AppRoot extends LitElement {
             ${this.activeView === 'logs' ? html`<logs-tab></logs-tab>` : ''}
             ${this.activeView === 'terminal' ? html`<terminal-tab></terminal-tab>` : ''}
             ${this.activeView === 'users' ? html`<users-tab></users-tab>` : ''}
+            ${!this.isValidRoute(this.activeView) ? html`<div>404 - Page Not Found</div>` : ''}
           </div>
         </main>
       </div>
