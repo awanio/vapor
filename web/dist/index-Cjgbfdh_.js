@@ -39,7 +39,7 @@ class g {
   async loadTranslations(e) {
     if (!this.translations.has(e))
       try {
-        const o = await (await fetch(`/src/locales/${e}.json`)).json();
+        const o = await (await fetch(`/locales/${e}.json`)).json();
         this.translations.set(e, o);
       } catch (s) {
         console.error(`Failed to load translations for locale ${e}:`, s);
@@ -229,7 +229,7 @@ class l {
 const T = l.getInstance();
 T.getTheme();
 w.isAuthenticated();
-import("./app-root-DXJ17Ukp.js");
+import("./app-root-Bun3D2yn.js");
 u.init().then(() => {
   console.log("Vapor Web UI initialized");
 }).catch((r) => {

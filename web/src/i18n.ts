@@ -33,7 +33,7 @@ class I18n {
     }
 
     try {
-      const response = await fetch(`/src/locales/${locale}.json`);
+      const response = await fetch(`/locales/${locale}.json`);
       const translations = await response.json();
       this.translations.set(locale, translations);
     } catch (error) {
