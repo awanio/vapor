@@ -1,5 +1,5 @@
 import { LitElement, html, css } from 'lit';
-import { property, state } from 'lit/decorators.js';
+import { state } from 'lit/decorators.js';
 import { t } from '../i18n';
 import { api } from '../api';
 
@@ -13,7 +13,7 @@ export class ContainersTab extends LitElement {
   @state()
   private images: any[] = [];
 
-  static styles = css`
+  static override styles = css`
     :host {
       display: block;
       padding: 16px;
@@ -166,7 +166,7 @@ export class ContainersTab extends LitElement {
     }
   `;
 
-  connectedCallback() {
+  override connectedCallback() {
     super.connectedCallback();
     this.fetchData();
   }
@@ -197,7 +197,7 @@ export class ContainersTab extends LitElement {
     }
   }
 
-  async startContainer(id) {
+  async startContainer(id: string) {
     try {
       await api.post(`/containers/${id}/start`);
       this.fetchContainers();
@@ -206,7 +206,7 @@ export class ContainersTab extends LitElement {
     }
   }
 
-  async stopContainer(id) {
+  async stopContainer(id: string) {
     try {
       await api.post(`/containers/${id}/stop`);
       this.fetchContainers();
@@ -215,7 +215,7 @@ export class ContainersTab extends LitElement {
     }
   }
 
-  async removeContainer(id) {
+  async removeContainer(id: string) {
     if (confirm(t('containers.removeConfirm'))) {
       try {
         await api.delete(`/containers/${id}`);
@@ -226,7 +226,7 @@ export class ContainersTab extends LitElement {
     }
   }
 
-  async removeImage(id) {
+  async removeImage(id: string) {
     if (confirm(t('containers.removeImageConfirm'))) {
       try {
         await api.delete(`/images/${id}`);
@@ -237,7 +237,7 @@ export class ContainersTab extends LitElement {
     }
   }
 
-  renderContainer(container) {
+  renderContainer(container: any) {
     return html`
       <div class="container">
         <div class="container-header">
@@ -258,7 +258,7 @@ export class ContainersTab extends LitElement {
     `;
   }
 
-  renderImage(image) {
+  renderImage(image: any) {
     return html`
       <div class="image">
         <div class="image-header">
@@ -276,7 +276,7 @@ export class ContainersTab extends LitElement {
     `;
   }
 
-  formatSize(bytes) {
+  formatSize(bytes: number) {
     if (!bytes) return 'Unknown';
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
@@ -302,7 +302,7 @@ export class ContainersTab extends LitElement {
     `;
   }
 
-  render() {
+  override render() {
     return html`
       <div class="tab-container">
         <h1>${t('containers.title')}</h1>

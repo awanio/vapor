@@ -11,14 +11,7 @@ import type {
   RAIDDisk,
   ISCSITarget,
   ISCSISession,
-  MultipathDevice,
-  CreateVGRequest,
-  CreateLVRequest,
-  CreateRAIDRequest,
-  ISCSIDiscoverRequest,
-  ISCSILoginRequest,
-  BTRFSSubvolumeRequest,
-  BTRFSSnapshotRequest
+  MultipathDevice
 } from '../types/api';
 
 export class StorageTab extends LitElement {
@@ -36,7 +29,7 @@ export class StorageTab extends LitElement {
   @property({ type: Boolean }) loading = false;
   @property({ type: String }) error = '';
 
-  static styles = css`
+  static override styles = css`
     :host {
       display: block;
       height: 100%;
@@ -321,7 +314,7 @@ export class StorageTab extends LitElement {
     }
   `;
 
-  connectedCallback() {
+  override connectedCallback() {
     super.connectedCallback();
     this.loadData();
   }
@@ -924,7 +917,7 @@ export class StorageTab extends LitElement {
     }
   }
 
-  render() {
+  override render() {
     return html`
       <div class="storage-container">
         <h1>${t('storage.title')}</h1>

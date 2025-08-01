@@ -124,4 +124,5 @@ type LogQuery struct {
 	Priority string `json:"priority,omitempty"`
 	Since    string `json:"since,omitempty"`
 	Until    string `json:"until,omitempty"`
+	Follow   bool   `json:"follow,omitempty"`
 }

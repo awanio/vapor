@@ -1,10 +1,14 @@
 package websocket
 
 import (
+	"bufio"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"os/exec"
 	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -257,38 +261,161 @@ func tailLogs(client *Client, logService *logs.Service, msg Message) {
 			if since, ok := f["since"].(string); ok {
 				filters.Since = since
 			}
+			if follow, ok := f["follow"].(bool); ok {
+				filters.Follow = follow
+			}
 		}
 	}
 
-	// TODO: Implement actual log tailing
-	// For now, send sample log entries
-	ticker := time.NewTicker(3 * time.Second)
-	defer ticker.Stop()
+	// For non-Linux systems or when journalctl is not available, send sample logs
+	if runtime.GOOS != "linux" || !isJournalctlAvailable() {
+		ticker := time.NewTicker(3 * time.Second)
+		defer ticker.Stop()
 
-	for {
-		select {
-		case <-ticker.C:
-			client.mu.RLock()
-			authenticated := client.authenticated
-			client.mu.RUnlock()
-
-			if !authenticated {
+		for {
+			select {
+			case <-client.ctx.Done():
 				return
-			}
+			case <-ticker.C:
+				client.mu.RLock()
+				authenticated := client.authenticated
+				client.mu.RUnlock()
 
-			// Send sample log entry
-			logEntry := LogEntry{
-				Timestamp: time.Now(),
-				Level:     "info",
-				Unit:      filters.Unit,
-				Message:   fmt.Sprintf("Sample log message at %s", time.Now().Format(time.RFC3339)),
-			}
+				if !authenticated {
+					return
+				}
 
-			client.sendMessage(Message{
-				Type:    MessageTypeData,
-				Payload: logEntry,
-			})
+				// Send sample log entry for non-Linux systems
+				logEntry := LogEntry{
+					Timestamp: time.Now(),
+					Level:     "info",
+					Unit:      filters.Unit,
+					Message:   fmt.Sprintf("Sample log message at %s (journalctl not available)", time.Now().Format(time.RFC3339)),
+				}
+
+				client.sendMessage(Message{
+					Type:    MessageTypeData,
+					Payload: logEntry,
+				})
+			}
 		}
+		return
+	}
+
+	// Build journalctl command for following logs
+	args := []string{"-f", "-o", "json", "--no-pager"}
+	
+	if filters.Unit != "" {
+		args = append(args, "-u", filters.Unit)
+	}
+	
+	if filters.Priority != "" {
+		args = append(args, "-p", filters.Priority)
+	}
+
+	if filters.Since != "" {
+		args = append(args, "--since", filters.Since)
+	}
+
+	cmd := exec.Command("journalctl", args...)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		client.sendMessage(Message{
+			Type:    MessageTypeError,
+			Payload: map[string]string{"error": "Failed to start log stream: " + err.Error()},
+		})
+		return
+	}
+
+	if err := cmd.Start(); err != nil {
+		client.sendMessage(Message{
+			Type:    MessageTypeError,
+			Payload: map[string]string{"error": "Failed to start journalctl: " + err.Error()},
+		})
+		return
+	}
+
+	// Ensure command is killed when client disconnects
+	go func() {
+		<-client.ctx.Done()
+		cmd.Process.Kill()
+	}()
+
+	// Stream logs
+	scanner := bufio.NewScanner(stdout)
+	for scanner.Scan() {
+		select {
+		case <-client.ctx.Done():
+			return
+		default:
+			line := scanner.Text()
+			if line == "" {
+				continue
+			}
+
+			var entry map[string]interface{}
+			if err := json.Unmarshal([]byte(line), &entry); err == nil {
+				logEntry := parseJournalEntry(entry)
+				client.sendMessage(Message{
+					Type:    MessageTypeData,
+					Payload: logEntry,
+				})
+			}
+		}
+	}
+
+	cmd.Wait()
+}
+
+// isJournalctlAvailable checks if journalctl is available on the system
+func isJournalctlAvailable() bool {
+	_, err := exec.LookPath("journalctl")
+	return err == nil
+}
+
+// parseJournalEntry converts a journalctl JSON entry to LogEntry
+func parseJournalEntry(entry map[string]interface{}) LogEntry {
+	// Parse timestamp (microseconds since epoch)
+	var timestamp time.Time
+	if ts, ok := entry["__REALTIME_TIMESTAMP"].(string); ok {
+		if tsInt, err := strconv.ParseInt(ts, 10, 64); err == nil {
+			timestamp = time.Unix(0, tsInt*1000)
+		}
+	}
+
+	// Get message
+	message := getString(entry, "MESSAGE")
+
+	// Get unit
+	unit := getString(entry, "_SYSTEMD_UNIT")
+	if unit == "" {
+		unit = getString(entry, "SYSLOG_IDENTIFIER")
+	}
+
+	// Map priority to level
+	level := "info"
+	if priority, ok := entry["PRIORITY"].(string); ok {
+		switch priority {
+		case "0", "1", "2":
+			level = "critical"
+		case "3":
+			level = "error"
+		case "4":
+			level = "warning"
+		case "5":
+			level = "notice"
+		case "6":
+			level = "info"
+		case "7":
+			level = "debug"
+		}
+	}
+
+	return LogEntry{
+		Timestamp: timestamp,
+		Level:     level,
+		Unit:      unit,
+		Message:   message,
 	}
 }
 

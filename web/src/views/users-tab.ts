@@ -3,12 +3,27 @@ import { property } from 'lit/decorators.js';
 import { t } from '../i18n';
 import { api } from '../api';
 
-export class UsersTab extends LitElement {
-  @property({ type: Array }) users = [];
-  @property({ type: Boolean }) showCreateForm = false;
-  @property({ type: Object }) newUser = { username: '', password: '', groups: '' };
+interface User {
+  username: string;
+  uid: number;
+  gid: number;
+  groups: string[];
+  home: string;
+  shell: string;
+}
 
-  static styles = css`
+interface NewUser {
+  username: string;
+  password: string;
+  groups: string;
+}
+
+export class UsersTab extends LitElement {
+  @property({ type: Array }) users: User[] = [];
+  @property({ type: Boolean }) showCreateForm = false;
+  @property({ type: Object }) newUser: NewUser = { username: '', password: '', groups: '' };
+
+  static override styles = css`
     :host {
       display: block;
       padding: 16px;
@@ -147,7 +162,7 @@ export class UsersTab extends LitElement {
     }
   `;
 
-  connectedCallback() {
+  override connectedCallback() {
     super.connectedCallback();
     this.fetchUsers();
   }
@@ -172,7 +187,7 @@ export class UsersTab extends LitElement {
     }
   }
 
-  async deleteUser(username) {
+  async deleteUser(username: string) {
     if (confirm(t('users.deleteConfirm', { username }))) {
       try {
         await api.delete(`/users/${username}`);
@@ -183,7 +198,7 @@ export class UsersTab extends LitElement {
     }
   }
 
-  updateNewUser(field, value) {
+  updateNewUser(field: keyof NewUser, value: string) {
     this.newUser = { ...this.newUser, [field]: value };
   }
 
@@ -199,7 +214,7 @@ export class UsersTab extends LitElement {
             id="username"
             type="text"
             .value=${this.newUser.username}
-            @input=${(e) => this.updateNewUser('username', e.target.value)}
+            @input=${(e: Event) => this.updateNewUser('username', (e.target as HTMLInputElement).value)}
             placeholder="${t('users.username')}"
           />
         </div>
@@ -209,7 +224,7 @@ export class UsersTab extends LitElement {
             id="password"
             type="password"
             .value=${this.newUser.password}
-            @input=${(e) => this.updateNewUser('password', e.target.value)}
+            @input=${(e: Event) => this.updateNewUser('password', (e.target as HTMLInputElement).value)}
             placeholder="${t('users.password')}"
           />
         </div>
@@ -219,7 +234,7 @@ export class UsersTab extends LitElement {
             id="groups"
             type="text"
             .value=${this.newUser.groups}
-            @input=${(e) => this.updateNewUser('groups', e.target.value)}
+            @input=${(e: Event) => this.updateNewUser('groups', (e.target as HTMLInputElement).value)}
             placeholder="wheel,users"
           />
         </div>
@@ -235,7 +250,7 @@ export class UsersTab extends LitElement {
     `;
   }
 
-  renderUser(user) {
+  renderUser(user: User) {
     return html`
       <div class="user-card">
         <div class="user-info">
@@ -265,7 +280,7 @@ export class UsersTab extends LitElement {
     `;
   }
 
-  render() {
+  override render() {
     return html`
       <div class="header">
         <h1>${t('users.title')}</h1>

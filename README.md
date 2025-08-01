@@ -12,7 +12,7 @@ A RESTful API service for Linux system management, providing functionality simil
   - Multipath support: list devices and paths
   - BTRFS support: manage subvolumes and snapshots
 - **User Management**: Create, update, delete system users
-- **Log Viewer**: Query and filter systemd logs
+- **Log Viewer**: Query and filter systemd logs (Linux only; sample data on non-Linux systems)
 - **System Information**: View CPU, memory, hardware, and system details
 - **JWT Authentication**: Secure API endpoints with token-based authentication
 

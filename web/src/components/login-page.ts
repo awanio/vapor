@@ -4,7 +4,7 @@ import { auth } from '../auth';
 
 @customElement('login-page')
 export class LoginPage extends LitElement {
-  static styles = css`
+  static override styles = css`
     :host {
       display: flex;
       justify-content: center;
@@ -108,7 +108,7 @@ export class LoginPage extends LitElement {
   @state()
   private error = '';
 
-  render() {
+  override render() {
     return html`
       <div class="login-container">
         <div class="logo">

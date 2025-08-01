@@ -4,11 +4,11 @@ import { t } from '../i18n';
 
 export class ModalDialog extends LitElement {
   @property({ type: Boolean, reflect: true }) open = false;
-  @property({ type: String }) title = '';
+  @property({ type: String }) override title = '';
   @property({ type: String }) size: 'small' | 'medium' | 'large' = 'medium';
   @property({ type: Boolean }) showFooter = true;
 
-  static styles = css`
+  static override styles = css`
     :host {
       display: none;
       position: fixed;
@@ -142,12 +142,12 @@ export class ModalDialog extends LitElement {
     }
   `;
 
-  connectedCallback() {
+  override connectedCallback() {
     super.connectedCallback();
     this.addEventListener('keydown', this.handleKeydown);
   }
 
-  disconnectedCallback() {
+  override disconnectedCallback() {
     super.disconnectedCallback();
     this.removeEventListener('keydown', this.handleKeydown);
   }
@@ -172,7 +172,7 @@ export class ModalDialog extends LitElement {
     }));
   }
 
-  render() {
+  override render() {
     if (!this.open) {
       return html``;
     }

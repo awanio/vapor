@@ -1,6 +1,5 @@
 import { LitElement, html, css } from 'lit';
 import { property, state } from 'lit/decorators.js';
-import { t } from './i18n';
 import { auth } from './auth';
 import { theme } from './theme';
 import './components/login-page';
@@ -25,7 +24,7 @@ export class AppRoot extends LitElement {
   @state()
   private currentTheme = theme.getTheme();
 
-  static styles = css`
+  static override styles = css`
     :host {
       display: block;
       height: 100vh;
@@ -159,7 +158,7 @@ export class AppRoot extends LitElement {
     }
   `;
 
-  connectedCallback() {
+  override connectedCallback() {
     super.connectedCallback();
     
     // Check initial authentication state
@@ -201,14 +200,14 @@ export class AppRoot extends LitElement {
     this.addEventListener('login-success', this.handleLoginSuccess);
     
     // Listen for theme changes
-    window.addEventListener('theme-changed', this.handleThemeChange);
+    window.addEventListener('theme-changed', this.handleThemeChange as EventListener);
   }
   
-  disconnectedCallback() {
+  override disconnectedCallback() {
     super.disconnectedCallback();
     window.removeEventListener('auth:login', this.handleAuthLogin);
     window.removeEventListener('auth:logout', this.handleAuthLogout);
-    window.removeEventListener('theme-changed', this.handleThemeChange);
+    window.removeEventListener('theme-changed', this.handleThemeChange as EventListener);
   }
   
   private handleAuthLogin = () => {
@@ -227,9 +226,6 @@ export class AppRoot extends LitElement {
     auth.logout();
   }
   
-  private handleTabChange(e: CustomEvent) {
-    this.activeView = e.detail.tab;
-  }
   
   private handleThemeChange = (e: CustomEvent) => {
     this.currentTheme = e.detail.theme;
@@ -239,7 +235,7 @@ export class AppRoot extends LitElement {
     theme.toggleTheme();
   }
 
-  render() {
+  override render() {
     // Show login page if not authenticated
     if (!this.isAuthenticated) {
       return html`<login-page></login-page>`;

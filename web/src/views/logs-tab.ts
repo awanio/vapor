@@ -1,7 +1,7 @@
 import { LitElement, html, css } from 'lit';
-import { property, state } from 'lit/decorators.js';
+import { state } from 'lit/decorators.js';
 import { t } from '../i18n';
-import { api, WebSocketManager } from '../api';
+import { WebSocketManager } from '../api';
 import type { WSLogMessage } from '../types/api';
 
 export class LogsTab extends LitElement {
@@ -24,7 +24,7 @@ export class LogsTab extends LitElement {
   private logsContainer: HTMLElement | null = null;
   private maxLogs = 1000; // Maximum number of logs to keep in memory
   
-  static styles = css`
+  static override styles = css`
     :host {
       display: block;
       padding: 16px;
@@ -201,17 +201,17 @@ export class LogsTab extends LitElement {
     }
   `;
 
-  connectedCallback() {
+  override connectedCallback() {
     super.connectedCallback();
     this.initWebSocket();
   }
 
-  disconnectedCallback() {
+  override disconnectedCallback() {
     super.disconnectedCallback();
     this.cleanup();
   }
 
-  firstUpdated() {
+  override firstUpdated() {
     this.logsContainer = this.shadowRoot?.querySelector('.logs-container') as HTMLElement;
   }
 
@@ -226,7 +226,7 @@ export class LogsTab extends LitElement {
         this.subscribeToLogs();
       });
       
-      this.wsManager.on('log', (message: WSLogMessage) => {
+      this.wsManager.on('log', (message: any) => {
         this.addLog(message);
       });
       
@@ -324,13 +324,13 @@ export class LogsTab extends LitElement {
       <div class="log-entry">
         <span class="log-timestamp">${this.formatTimestamp(log.timestamp)}</span>
         <span class="log-service" title="${log.service || 'system'}">${log.service || 'system'}</span>
-        <span class="log-priority priority-${log.priority}">${log.priority.toUpperCase()}</span>
+        <span class="log-priority priority-${log.priority || 'info'}">${(log.priority || 'info').toUpperCase()}</span>
         <span class="log-message">${log.message}</span>
       </div>
     `;
   }
 
-  render() {
+  override render() {
     return html`
       <h1>${t('logs.title')}</h1>
       

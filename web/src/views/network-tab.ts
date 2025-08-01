@@ -1,11 +1,10 @@
 import { LitElement, html, css } from 'lit';
-import { property, state } from 'lit/decorators.js';
-import { t } from '../i18n';
+import { state } from 'lit/decorators.js';
 import { api } from '../api';
 import type { AddressRequest, BridgeRequest, BondRequest, VLANRequest, NetworkInterface } from '../types/api';
 
 export class NetworkTab extends LitElement {
-  static styles = css`
+  static override styles = css`
     :host {
       display: block;
       padding: 16px;
@@ -227,7 +226,7 @@ export class NetworkTab extends LitElement {
     super();
   }
 
-  firstUpdated() {
+  override firstUpdated() {
     this.fetchNetworkData();
   }
 
@@ -275,7 +274,7 @@ export class NetworkTab extends LitElement {
     }
   }
 
-  toggleInterfaceState(iface) {
+  toggleInterfaceState(iface: NetworkInterface) {
     const url = `/network/interfaces/${iface.name}/${iface.state === 'up' ? 'down' : 'up'}`;
     api.put(url).then(() => this.fetchInterfaces()).catch(console.error);
   }
@@ -313,7 +312,7 @@ export class NetworkTab extends LitElement {
     }
   }
 
-  handleConfigureAddress(iface) {
+  handleConfigureAddress(iface: NetworkInterface) {
     // Logic to handle IP address configuration
     const request: AddressRequest = {
       address: '192.168.1.20', // Example address
@@ -369,7 +368,7 @@ export class NetworkTab extends LitElement {
        .catch(console.error);
   }
 
-  renderInterface(iface) {
+  renderInterface(iface: NetworkInterface) {
     return html`
       <div class="network-interface">
         <div class="interface-header">
@@ -421,7 +420,7 @@ export class NetworkTab extends LitElement {
     `;
   }
 
-  render() {
+  override render() {
     return html`
       <div class="tab-container">
         <h1>Network Management</h1>

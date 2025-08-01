@@ -3,7 +3,8 @@ import { property } from 'lit/decorators.js';
 import { t } from '../i18n';
 import { api, WebSocketManager } from '../api';
 import Chart from 'chart.js/auto';
-import type { SystemSummary, CPUInfo, MemoryInfo, CPUMetricData, MemoryMetricData } from '../types/api';
+import type { SystemSummary, CPUInfo, MemoryInfo } from '../types/api';
+import type { CPUMetricData, MemoryMetricData } from '../types/system';
 
 export class DashboardTab extends LitElement {
   @property({ type: Object }) systemSummary: SystemSummary | null = null;
@@ -14,7 +15,7 @@ export class DashboardTab extends LitElement {
   @property({ type: Boolean }) wsConnected: boolean = false;
   @property({ type: String }) wsError: string | null = null;
 
-  static styles = css`
+  static override styles = css`
     :host {
       display: block;
       height: 100%;
@@ -171,17 +172,17 @@ export class DashboardTab extends LitElement {
   private networkChart: Chart | null = null;
   private wsManager: WebSocketManager | null = null;
 
-  connectedCallback() {
+  override connectedCallback() {
     super.connectedCallback();
     this.fetchInitialData();
   }
 
-  disconnectedCallback() {
+  override disconnectedCallback() {
     super.disconnectedCallback();
     this.cleanup();
   }
 
-  firstUpdated() {
+  override firstUpdated() {
     this.initCharts();
     this.initWebSocket();
   }
@@ -214,7 +215,7 @@ private async initWebSocket() {
           this.wsConnected = true;
           this.wsError = null;
           // Subscribe after authentication
-          this.wsManager.send({
+          this.wsManager!.send({
             type: 'subscribe'
           });
         }
@@ -302,12 +303,12 @@ private async initWebSocket() {
     if (this.cpuChart) {
       const timestamp = new Date().toLocaleTimeString();
       this.cpuChart.data.labels?.push(timestamp);
-      this.cpuChart.data.datasets[0].data.push(data.usage_percent);
+      this.cpuChart.data.datasets[0]!.data.push(data.usage_percent);
       
       // Keep only last 30 data points
       if (this.cpuChart.data.labels!.length > 30) {
         this.cpuChart.data.labels?.shift();
-        this.cpuChart.data.datasets[0].data.shift();
+        this.cpuChart.data.datasets[0]!.data.shift();
       }
       
       this.cpuChart.update('none');
@@ -318,23 +319,23 @@ private async initWebSocket() {
     if (this.memoryChart) {
       const timestamp = new Date().toLocaleTimeString();
       this.memoryChart.data.labels?.push(timestamp);
-      this.memoryChart.data.datasets[0].data.push(data.used_percent);
+      this.memoryChart.data.datasets[0]!.data.push(data.used_percent);
       
       // Keep only last 30 data points
       if (this.memoryChart.data.labels!.length > 30) {
         this.memoryChart.data.labels?.shift();
-        this.memoryChart.data.datasets[0].data.shift();
+        this.memoryChart.data.datasets[0]!.data.shift();
       }
       
       this.memoryChart.update('none');
     }
   }
 
-  private updateDiskChart(data: any) {
+  private updateDiskChart(_data: any) {
     // Implementation for disk chart updates
   }
 
-  private updateNetworkChart(data: any) {
+  private updateNetworkChart(_data: any) {
     // Implementation for network chart updates
   }
 
@@ -408,7 +409,7 @@ private async initWebSocket() {
     });
   }
 
-  render() {
+  override render() {
     return html`
       <div class="dashboard">
         <h1>${t('dashboard.title')}</h1>

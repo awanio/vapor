@@ -8,7 +8,7 @@ export class SidebarTree extends LitElement {
   @property({ type: String }) activeItemId = 'dashboard';
   @property({ type: Object }) expandedItems: Set<string> = new Set(['network']);
 
-  static styles = css`
+  static override styles = css`
     :host {
       display: block;
       height: 100%;
@@ -278,7 +278,7 @@ export class SidebarTree extends LitElement {
     `;
   }
 
-  connectedCallback() {
+  override connectedCallback() {
     super.connectedCallback();
     
     // Set activeItemId from URL on component mount
@@ -299,12 +299,12 @@ export class SidebarTree extends LitElement {
     window.addEventListener('popstate', this.handlePopState);
   }
   
-  disconnectedCallback() {
+  override disconnectedCallback() {
     super.disconnectedCallback();
     window.removeEventListener('popstate', this.handlePopState);
   }
   
-  private handlePopState = (event: PopStateEvent) => {
+  private handlePopState = () => {
     const path = window.location.pathname.slice(1);
     if (path) {
       const item = this.navigationItems.find(navItem => navItem.route === path);
@@ -315,7 +315,7 @@ export class SidebarTree extends LitElement {
     }
   };
 
-  render() {
+  override render() {
     return html`
       <ul class="tree" role="tree">
         ${this.navigationItems.map(item => this.renderNavItem(item))}

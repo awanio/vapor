@@ -9,7 +9,7 @@ export class StatusBar extends LitElement {
   @property({ type: Boolean }) connected = true;
   @property({ type: Object }) systemInfo: any = {};
 
-  static styles = css`
+  static override styles = css`
     :host {
       display: block;
       background-color: var(--vscode-statusbar);
@@ -94,7 +94,7 @@ export class StatusBar extends LitElement {
     }
   `;
 
-  connectedCallback() {
+  override connectedCallback() {
     super.connectedCallback();
     this.currentUser = auth.isAuthenticated() ? localStorage.getItem('username') || 'user' : '';
     
@@ -106,7 +106,7 @@ export class StatusBar extends LitElement {
     i18n.onChange(() => this.requestUpdate());
   }
 
-  disconnectedCallback() {
+  override disconnectedCallback() {
     super.disconnectedCallback();
     window.removeEventListener('auth:login', this.handleAuthChange);
     window.removeEventListener('auth:logout', this.handleAuthChange);
@@ -139,7 +139,7 @@ export class StatusBar extends LitElement {
     auth.logout();
   }
 
-  render() {
+  override render() {
     const isDark = document.documentElement.classList.contains('dark');
     const currentLocale = i18n.getLocale();
 

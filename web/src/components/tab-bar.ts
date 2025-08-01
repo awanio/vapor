@@ -6,7 +6,7 @@ export class TabBar extends LitElement {
   @property({ type: Array }) tabs: Tab[] = [];
   @property({ type: String }) activeTabId = '';
 
-  static styles = css`
+  static override styles = css`
     :host {
       display: block;
       background-color: var(--vscode-bg-lighter);
@@ -152,7 +152,7 @@ export class TabBar extends LitElement {
     }));
   }
 
-  render() {
+  override render() {
     return html`
       <div class="tab-container">
         ${this.tabs.map(tab => html`

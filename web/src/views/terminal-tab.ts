@@ -6,10 +6,10 @@ import { SearchAddon } from 'xterm-addon-search';
 import xtermStyles from 'xterm/css/xterm.css?inline';
 import { WebSocketManager } from '../api';
 import { t } from '../i18n';
-import type { WSTerminalInputMessage, WSTerminalResizeMessage, WSTerminalOutputMessage, WSMessage } from '../types/api';
+import type { WSTerminalInputMessage, WSMessage } from '../types/api';
 
 export class TerminalTab extends LitElement {
-  static styles = [
+  static override styles = [
     unsafeCSS(xtermStyles),
     css`
     :host {
@@ -185,7 +185,7 @@ export class TerminalTab extends LitElement {
   private connectionStatus: 'connecting' | 'connected' | 'disconnected' = 'disconnected';
   private resizeObserver: ResizeObserver | null = null;
 
-  connectedCallback() {
+  override connectedCallback() {
     super.connectedCallback();
     // Initialize terminal after component is connected
     this.updateComplete.then(() => {
@@ -193,7 +193,7 @@ export class TerminalTab extends LitElement {
     });
   }
 
-  disconnectedCallback() {
+  override disconnectedCallback() {
     super.disconnectedCallback();
     this.cleanup();
   }
@@ -250,7 +250,7 @@ export class TerminalTab extends LitElement {
     
     // Initial fit
     setTimeout(() => {
-      this.fitAddon.fit();
+      this.fitAddon?.fit();
     }, 100);
 
     // Hide the char measure element
@@ -402,38 +402,39 @@ export class TerminalTab extends LitElement {
     // Add keyboard event listener to the terminal element
     const terminalElement = this.shadowRoot?.querySelector('.terminal-wrapper');
     if (terminalElement) {
-      terminalElement.addEventListener('keydown', (event: KeyboardEvent) => {
+      terminalElement.addEventListener('keydown', (event) => {
         if (!this.terminal) return;
+        const keyboardEvent = event as KeyboardEvent;
 
         // Page Up - scroll up one page
-        if (event.key === 'PageUp') {
-          event.preventDefault();
+        if (keyboardEvent.key === 'PageUp') {
+          keyboardEvent.preventDefault();
           this.terminal.scrollPages(-1);
         }
         // Page Down - scroll down one page
-        else if (event.key === 'PageDown') {
-          event.preventDefault();
+        else if (keyboardEvent.key === 'PageDown') {
+          keyboardEvent.preventDefault();
           this.terminal.scrollPages(1);
         }
         // Ctrl+Home - scroll to top
-        else if (event.ctrlKey && event.key === 'Home') {
-          event.preventDefault();
+        else if (keyboardEvent.ctrlKey && keyboardEvent.key === 'Home') {
+          keyboardEvent.preventDefault();
           this.terminal.scrollToTop();
         }
         // Ctrl+End - scroll to bottom
-        else if (event.ctrlKey && event.key === 'End') {
-          event.preventDefault();
+        else if (keyboardEvent.ctrlKey && keyboardEvent.key === 'End') {
+          keyboardEvent.preventDefault();
           this.terminal.scrollToBottom();
         }
         // Shift+PageUp - scroll up half page
-        else if (event.shiftKey && event.key === 'PageUp') {
-          event.preventDefault();
+        else if (keyboardEvent.shiftKey && keyboardEvent.key === 'PageUp') {
+          keyboardEvent.preventDefault();
           const pageSize = this.terminal.rows;
           this.terminal.scrollLines(-Math.floor(pageSize / 2));
         }
         // Shift+PageDown - scroll down half page
-        else if (event.shiftKey && event.key === 'PageDown') {
-          event.preventDefault();
+        else if (keyboardEvent.shiftKey && keyboardEvent.key === 'PageDown') {
+          keyboardEvent.preventDefault();
           const pageSize = this.terminal.rows;
           this.terminal.scrollLines(Math.floor(pageSize / 2));
         }
@@ -441,7 +442,7 @@ export class TerminalTab extends LitElement {
     }
 
     // Also handle mouse wheel scrolling (xterm handles this by default, but we can customize)
-    this.terminal.onScroll((position) => {
+    this.terminal.onScroll((_position) => {
       // You can add custom scroll handling here if needed
       // For example, showing a scroll indicator
     });
@@ -719,7 +720,7 @@ export class TerminalTab extends LitElement {
     this.webLinksAddon = null;
   }
 
-  render() {
+  override render() {
     let statusClass = 'status-bar';
     let statusText = '';
 

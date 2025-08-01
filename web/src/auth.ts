@@ -166,13 +166,8 @@ export class AuthManager {
 
   // For WebSocket authentication
   getWebSocketUrl(path: string): string {
-    const token = this.getToken();
-    
-    if (token) {
-      return `${getWsUrl(path)}?token=${encodeURIComponent(token)}`;
-    }
-    
-    throw new Error('Not authenticated');
+    // Token is now sent via WebSocket message payload, not query string
+    return getWsUrl(path);
   }
 }
 
