@@ -109,8 +109,12 @@ func main() {
 		api.POST("/storage/raid/create", storageService.CreateRAIDDevice)
 		api.POST("/storage/raid/destroy", storageService.DestroyRAIDDevice)
 
-		// Container management endpoints
-		containerService := container.NewService(container.NewExecutor())
+// Container management endpoints
+		containerService, err := container.NewService()
+		if err != nil {
+			log.Fatalf("Failed to initialize container service: %v", err)
+		}
+
 		api.GET("/containers", containerService.ListContainers)
 		api.GET("/containers/:id", containerService.GetContainerDetails)
 		api.POST("/containers", containerService.CreateContainer)
