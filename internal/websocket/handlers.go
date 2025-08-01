@@ -2,6 +2,7 @@ package websocket
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -38,12 +39,15 @@ func ServeMetricsWebSocket(hub *Hub, jwtSecret string) gin.HandlerFunc {
 			return
 		}
 
+		ctx, cancel := context.WithCancel(context.Background())
 		client := &Client{
 			hub:           hub,
 			conn:          conn,
 			send:          make(chan []byte, 256),
 			id:            fmt.Sprintf("metrics-%d", time.Now().UnixNano()),
 			subscriptions: make(map[string]bool),
+			ctx:           ctx,
+			cancel:        cancel,
 		}
 
 		client.hub.register <- client
@@ -67,12 +71,15 @@ func ServeLogsWebSocket(hub *Hub, jwtSecret string) gin.HandlerFunc {
 			return
 		}
 
+		ctx, cancel := context.WithCancel(context.Background())
 		client := &Client{
 			hub:           hub,
 			conn:          conn,
 			send:          make(chan []byte, 256),
 			id:            fmt.Sprintf("logs-%d", time.Now().UnixNano()),
 			subscriptions: make(map[string]bool),
+			ctx:           ctx,
+			cancel:        cancel,
 		}
 
 		client.hub.register <- client
@@ -97,12 +104,15 @@ func ServeTerminalWebSocket(hub *Hub, jwtSecret string) gin.HandlerFunc {
 			return
 		}
 
+		ctx, cancel := context.WithCancel(context.Background())
 		client := &Client{
 			hub:           hub,
 			conn:          conn,
 			send:          make(chan []byte, 256),
 			id:            fmt.Sprintf("terminal-%d", time.Now().UnixNano()),
 			subscriptions: make(map[string]bool),
+			ctx:           ctx,
+			cancel:        cancel,
 		}
 
 		client.hub.register <- client
@@ -179,6 +189,8 @@ func sendMetrics(client *Client) {
 
 	for {
 		select {
+		case <-client.ctx.Done():
+			return
 		case <-ticker.C:
 			client.mu.RLock()
 			authenticated := client.authenticated
@@ -338,7 +350,9 @@ func tailLogs(client *Client, logService *logs.Service, msg Message) {
 	// Ensure command is killed when client disconnects
 	go func() {
 		<-client.ctx.Done()
-		cmd.Process.Kill()
+		if cmd.Process != nil {
+			cmd.Process.Kill()
+		}
 	}()
 
 	// Stream logs
