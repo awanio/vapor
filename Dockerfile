@@ -13,6 +13,14 @@ RUN go mod download
 # Copy source code
 COPY . .
 
+# Create embed directory and copy web assets if they exist
+RUN mkdir -p internal/web/dist && \
+    if [ -d "web/dist" ] && [ "$(ls -A web/dist 2>/dev/null | grep -v '^\.')" ]; then \
+        cp -R web/dist/* internal/web/dist/; \
+    else \
+        touch internal/web/dist/.keep; \
+    fi
+
 # Build the binary specifically for Linux x86_64
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o system-api ./cmd/system-api
 

@@ -19,6 +19,7 @@ import (
 	"github.com/vapor/system-api/internal/storage"
 	"github.com/vapor/system-api/internal/system"
 	"github.com/vapor/system-api/internal/users"
+	"github.com/vapor/system-api/internal/web"
 	"github.com/vapor/system-api/internal/websocket"
 )
 
@@ -168,6 +169,63 @@ func main() {
 	router.GET("/ws/metrics", websocket.ServeMetricsWebSocket(metricsHub, getJWTSecret()))
 	router.GET("/ws/logs", websocket.ServeLogsWebSocket(logsHub, getJWTSecret()))
 	router.GET("/ws/terminal", websocket.ServeTerminalWebSocket(terminalHub, getJWTSecret()))
+
+	// Serve embedded web UI
+	if web.HasWebUI() {
+		webFS, err := web.GetFileSystem()
+		if err != nil {
+			log.Printf("Warning: Failed to get web filesystem: %v", err)
+		} else {
+			// Serve static files from embedded filesystem
+			router.GET("/", func(c *gin.Context) {
+				c.FileFromFS("/index.html", webFS)
+			})
+			
+			// Catch-all route for SPA routing
+			router.NoRoute(func(c *gin.Context) {
+				// Skip API routes
+				if len(c.Request.URL.Path) > 4 && c.Request.URL.Path[:4] == "/api" {
+					c.JSON(http.StatusNotFound, gin.H{"error": "API endpoint not found"})
+					return
+				}
+				// Skip WebSocket routes
+				if len(c.Request.URL.Path) > 3 && c.Request.URL.Path[:3] == "/ws" {
+					c.JSON(http.StatusNotFound, gin.H{"error": "WebSocket endpoint not found"})
+					return
+				}
+				
+				// Try to serve the file
+				path := c.Request.URL.Path
+				// Remove leading slash for http.FS
+				if len(path) > 0 && path[0] == '/' {
+					path = path[1:]
+				}
+				
+				// Check if file exists
+				if file, err := webFS.Open(path); err == nil {
+					file.Close()
+					c.FileFromFS(path, webFS)
+				} else {
+					// For SPA, return index.html for client-side routing
+					c.FileFromFS("/index.html", webFS)
+				}
+			})
+			
+			log.Println("Web UI enabled and serving at /")
+		}
+	} else {
+		log.Println("Web UI not available (no files found in embedded filesystem)")
+		
+		// Serve a simple message when no web UI is available
+		router.GET("/", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"message": "System Management API",
+				"version": "1.0.0",
+				"docs":    "/docs",
+				"health":  "/health",
+			})
+		})
+	}
 
 	// Create HTTP server
 	srv := &http.Server{

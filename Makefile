@@ -6,12 +6,28 @@ MAIN_PATH=cmd/system-api/main.go
 DOCKER_IMAGE=system-api:latest
 
 # Build the binary
-build:
+build: embed-web
 	@echo "Building..."
 	go build -o bin/$(BINARY_NAME) $(MAIN_PATH)
 
+# Embed web UI assets
+DIST_DIR=web/dist
+EMBED_DIR=internal/web/dist
+
+.PHONY: embed-web
+embed-web:
+	@if [ -d "$(DIST_DIR)" ] && [ "$(shell ls -A $(DIST_DIR) 2>/dev/null | grep -v '^\.')" ]; then \
+		echo "Embedding web UI assets..."; \
+		mkdir -p $(EMBED_DIR); \
+		cp -R $(DIST_DIR)/* $(EMBED_DIR) 2>/dev/null || true; \
+	else \
+		echo "Warning: $(DIST_DIR) not found or empty, creating placeholder for build."; \
+		mkdir -p $(EMBED_DIR); \
+		touch $(EMBED_DIR)/.keep; \
+	fi
+
 # Build for Linux x86_64
-build-linux:
+build-linux: embed-web
 	@echo "Building for Linux x86_64..."
 	GOOS=linux GOARCH=amd64 go build -o bin/$(BINARY_NAME)-linux-amd64 $(MAIN_PATH)
 
@@ -31,6 +47,9 @@ clean:
 	@echo "Cleaning..."
 	rm -rf bin/
 	rm -f coverage.out coverage.html
+	rm -rf $(EMBED_DIR)
+	mkdir -p $(EMBED_DIR)
+	touch $(EMBED_DIR)/.keep
 
 # Run the application
 run: build

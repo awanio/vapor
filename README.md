@@ -15,6 +15,7 @@ A RESTful API service for Linux system management, providing functionality simil
 - **Log Viewer**: Query and filter systemd logs (Linux only; sample data on non-Linux systems)
 - **System Information**: View CPU, memory, hardware, and system details
 - **JWT Authentication**: Secure API endpoints with token-based authentication
+- **Embedded Web UI**: Single binary includes both API and web frontend (when available)
 
 ## Prerequisites
 
@@ -253,6 +254,31 @@ curl -H "Authorization: Bearer <token>" http://localhost:8080/api/v1/system/summ
 
 #### Logs
 - `GET /api/v1/logs` - Query system logs with filtering
+
+## Web UI
+
+The application includes an embedded web UI that is served from the root path (`/`). When you build the binary, any files in the `web/dist` directory are automatically embedded into the executable, creating a single self-contained binary.
+
+### Building with Web UI
+
+1. Place your web UI build artifacts in the `web/dist` directory
+2. Run `make build` - this will automatically embed the web assets
+3. The resulting binary will serve both the API and web UI
+
+### Web UI Features
+
+- Single Page Application (SPA) support with client-side routing
+- Automatically serves `index.html` for unknown routes (SPA fallback)
+- Static assets are served from the embedded filesystem
+- No external web server required
+
+### Accessing the Web UI
+
+Once the server is running, you can access:
+- Web UI: `http://localhost:8080/`
+- API endpoints: `http://localhost:8080/api/v1/*`
+- WebSocket endpoints: `ws://localhost:8080/ws/*`
+- OpenAPI docs: `http://localhost:8080/docs`
 
 ## Development
 

@@ -48,6 +48,3 @@ temp/
 /build/
 node_modules/
 system-api
-web/dist/*.html
-web/dist/*.css
-web/dist/*.js
