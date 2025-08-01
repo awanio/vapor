@@ -1561,32 +1561,80 @@ paths:
         }
         ```
         
-        **Subscribe to logs**:
+        **Subscribe Examples**:
+        
+        1. All logs from all services (most verbose):
         ```json
         {
           "type": "subscribe",
           "payload": {
             "filters": {
-              "unit": "sshd",
-              "priority": "error",
               "follow": true
             }
           }
         }
         ```
         
-        **Server messages** will be in the format:
+        2. Specific service logs:
         ```json
         {
-          "type": "log",
-          "timestamp": "2024-01-01T00:00:00Z",
-          "service": "nginx",
-          "priority": "error",
-          "message": "...",
-          "hostname": "server1",
-          "pid": 1234
+          "type": "subscribe",
+          "payload": {
+            "filters": {
+              "unit": "sshd",
+              "priority": "info",
+              "follow": true
+            }
+          }
         }
         ```
+        
+        3. Kernel messages:
+        ```json
+        {
+          "type": "subscribe",
+          "payload": {
+            "filters": {
+              "unit": "kernel",
+              "follow": true
+            }
+          }
+        }
+        ```
+        
+        4. Recent logs (last 10 minutes):
+        ```json
+        {
+          "type": "subscribe",
+          "payload": {
+            "filters": {
+              "since": "10 minutes ago",
+              "follow": true
+            }
+          }
+        }
+        ```
+        
+        **Server Response Format**:
+        ```json
+        {
+          "type": "data",
+          "payload": {
+            "timestamp": "2024-01-15T10:30:00Z",
+            "level": "info",
+            "unit": "sshd.service",
+            "message": "Accepted publickey for john from 192.168.1.100 port 52341 ssh2"
+          }
+        }
+        ```
+        
+        **Priority Levels** (from least to most severe):
+        - `debug` - Debugging messages
+        - `info` - Informational messages  
+        - `notice` - Normal but significant messages
+        - `warning` - Warning messages
+        - `error` - Error messages
+        - `critical` - Critical messages
       tags:
         - WebSocket
       security:

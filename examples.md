@@ -460,6 +460,169 @@ wscat -H "Authorization: Bearer $TOKEN" \
   -c ws://103.179.254.248:8080/api/v1/containers/nginx-container/logs/stream
 ```
 
+### WebSocket Logs Subscription Examples
+
+Here are some examples for subscribing to logs via WebSocket:
+
+1. **All logs from all services (most verbose):**
+
+    ```json
+    {
+      "type": "subscribe",
+      "payload": {
+        "filters": {
+          "follow": true
+        }
+      }
+    }
+    ```
+
+2. **All priority levels from a specific service (e.g., systemd):**
+
+    ```json
+    {
+      "type": "subscribe",
+      "payload": {
+        "filters": {
+          "unit": "systemd",
+          "follow": true
+        }
+      }
+    }
+    ```
+
+3. **Info level and above (shows info, warning, error, critical):**
+
+    ```json
+    {
+      "type": "subscribe",
+      "payload": {
+        "filters": {
+          "priority": "info",
+          "follow": true
+        }
+      }
+    }
+    ```
+
+4. **Kernel messages (usually active):**
+
+    ```json
+    {
+      "type": "subscribe",
+      "payload": {
+        "filters": {
+          "unit": "kernel",
+          "follow": true
+        }
+      }
+    }
+    ```
+
+5. **SSH daemon logs at info level (shows connections, disconnections):**
+
+    ```json
+    {
+      "type": "subscribe",
+      "payload": {
+        "filters": {
+          "unit": "sshd",
+          "priority": "info",
+          "follow": true
+        }
+      }
+    }
+    ```
+
+6. **NetworkManager logs (if using NetworkManager):**
+
+    ```json
+    {
+      "type": "subscribe",
+      "payload": {
+        "filters": {
+          "unit": "NetworkManager",
+          "follow": true
+        }
+      }
+    }
+    ```
+
+7. **Recent logs (last 10 minutes):**
+
+    ```json
+    {
+      "type": "subscribe",
+      "payload": {
+        "filters": {
+          "since": "10 minutes ago",
+          "follow": true
+        }
+      }
+    }
+    ```
+
+#### Example Response
+
+When logs are found, the WebSocket will send messages like:
+
+```json
+{
+  "type": "data",
+  "payload": {
+    "timestamp": "2024-01-15T10:30:00Z",
+    "level": "info",
+    "unit": "sshd.service",
+    "message": "Accepted publickey for john from 192.168.1.100 port 52341 ssh2: RSA SHA256:xxx"
+  }
+}
+```
+
+Other example log entries:
+
+```json
+// Kernel message
+{
+  "type": "data",
+  "payload": {
+    "timestamp": "2024-01-15T10:31:15Z",
+    "level": "info",
+    "unit": "kernel",
+    "message": "[UFW BLOCK] IN=eth0 OUT= MAC=xx:xx:xx:xx:xx:xx SRC=192.168.1.50 DST=192.168.1.10 LEN=40 TOS=0x00 PREC=0x00 TTL=255 ID=0 PROTO=TCP SPT=54321 DPT=22 WINDOW=1024 RES=0x00 SYN URGP=0"
+  }
+}
+
+// SystemD service message
+{
+  "type": "data",
+  "payload": {
+    "timestamp": "2024-01-15T10:32:00Z",
+    "level": "notice",
+    "unit": "systemd",
+    "message": "Started OpenBSD Secure Shell server."
+  }
+}
+
+// Error message
+{
+  "type": "data",
+  "payload": {
+    "timestamp": "2024-01-15T10:33:45Z",
+    "level": "error",
+    "unit": "nginx.service",
+    "message": "2024/01/15 10:33:45 [error] 1234#1234: *5678 connect() failed (111: Connection refused) while connecting to upstream"
+  }
+}
+```
+
+**Priority Levels:**
+- `debug` - Debugging messages (most verbose)
+- `info` - Informational messages
+- `notice` - Normal but significant messages
+- `warning` - Warning messages
+- `error` - Error messages
+- `critical` - Critical messages (most severe)
+
 ### Interactive Container Terminal
 
 Connect to a container's terminal via WebSocket:
