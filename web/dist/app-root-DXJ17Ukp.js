@@ -1,7 +1,7 @@
 var Ma = Object.defineProperty;
 var La = (i, e, t) => e in i ? Ma(i, e, { enumerable: !0, configurable: !0, writable: !0, value: t }) : i[e] = t;
 var V = (i, e, t) => La(i, typeof e != "symbol" ? e + "" : e, t);
-import { a as vt, g as Ra, t as B, b as Fr } from "./index-Br1S4567.js";
+import { a as vt, g as Ra, t as B, b as Fr } from "./index-DqCY8MxN.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -732,6 +732,7 @@ wt.styles = We`
       color: var(--text-primary);
       font-size: 1rem;
       transition: border-color 0.2s;
+      box-sizing: border-box;
     }
 
     input:focus {
