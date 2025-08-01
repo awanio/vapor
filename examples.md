@@ -281,145 +281,6 @@ curl -H "Authorization: Bearer $TOKEN" \
   "http://103.179.254.248:8080/api/v1/logs?service=nginx&priority=warning&since=2024-01-01"
 ```
 
-## Container Management
-
-### List Containers
-
-```bash
-curl -H "Authorization: Bearer $TOKEN" \
-  http://103.179.254.248:8080/api/v1/containers
-```
-
-### Get Container Details
-
-```bash
-curl -H "Authorization: Bearer $TOKEN" \
-  http://103.179.254.248:8080/api/v1/containers/nginx-container
-```
-
-### Create Container
-
-```bash
-curl -X POST -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "nginx-container",
-    "image": "nginx:latest",
-    "command": ["/usr/sbin/nginx", "-g", "daemon off;"],
-    "env": {
-      "NGINX_HOST": "example.com",
-      "NGINX_PORT": "80"
-    },
-    "ports": [
-      {
-        "container_port": 80,
-        "host_port": 8080,
-        "protocol": "tcp"
-      }
-    ],
-    "volumes": [
-      {
-        "host_path": "/data/nginx/html",
-        "container_path": "/usr/share/nginx/html",
-        "read_only": false
-      }
-    ],
-    "labels": {
-      "app": "web",
-      "env": "production"
-    }
-  }' \
-  http://103.179.254.248:8080/api/v1/containers
-```
-
-### Start Container
-
-```bash
-curl -X POST -H "Authorization: Bearer $TOKEN" \
-  http://103.179.254.248:8080/api/v1/containers/nginx-container/start
-```
-
-### Stop Container
-
-```bash
-curl -X POST -H "Authorization: Bearer $TOKEN" \
-  http://103.179.254.248:8080/api/v1/containers/nginx-container/stop
-
-# With timeout (in seconds)
-curl -X POST -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"timeout": 30}' \
-  http://103.179.254.248:8080/api/v1/containers/nginx-container/stop
-```
-
-### Restart Container
-
-```bash
-curl -X POST -H "Authorization: Bearer $TOKEN" \
-  http://103.179.254.248:8080/api/v1/containers/nginx-container/restart
-```
-
-### Remove Container
-
-```bash
-curl -X DELETE -H "Authorization: Bearer $TOKEN" \
-  http://103.179.254.248:8080/api/v1/containers/nginx-container
-
-# Force remove (even if running)
-curl -X DELETE -H "Authorization: Bearer $TOKEN" \
-  "http://103.179.254.248:8080/api/v1/containers/nginx-container?force=true"
-```
-
-### Get Container Logs
-
-```bash
-# Get last 100 lines
-curl -H "Authorization: Bearer $TOKEN" \
-  "http://103.179.254.248:8080/api/v1/containers/nginx-container/logs?tail=100"
-
-# Follow logs (streaming)
-curl -H "Authorization: Bearer $TOKEN" \
-  "http://103.179.254.248:8080/api/v1/containers/nginx-container/logs?follow=true"
-
-# With timestamps
-curl -H "Authorization: Bearer $TOKEN" \
-  "http://103.179.254.248:8080/api/v1/containers/nginx-container/logs?timestamps=true"
-```
-
-### List Container Images
-
-```bash
-curl -H "Authorization: Bearer $TOKEN" \
-  http://103.179.254.248:8080/api/v1/images
-```
-
-### Get Image Details
-
-```bash
-curl -H "Authorization: Bearer $TOKEN" \
-  http://103.179.254.248:8080/api/v1/images/nginx:latest
-```
-
-### Pull Image
-
-```bash
-curl -X POST -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"image": "nginx:latest"}' \
-  http://103.179.254.248:8080/api/v1/images/pull
-```
-
-### Remove Image
-
-```bash
-curl -X DELETE -H "Authorization: Bearer $TOKEN" \
-  http://103.179.254.248:8080/api/v1/images/nginx:latest
-
-# Force remove
-curl -X DELETE -H "Authorization: Bearer $TOKEN" \
-  "http://103.179.254.248:8080/api/v1/images/nginx:latest?force=true"
-```
-
 ## WebSocket Connections
 
 ### Real-time System Metrics
@@ -446,19 +307,6 @@ curl --include \
   http://103.179.254.248:8080/api/v1/metrics/stream
 ```
 
-### Container Logs Streaming
-
-Stream container logs via WebSocket:
-
-```bash
-# Using websocat
-websocat -H "Authorization: Bearer $TOKEN" \
-  ws://103.179.254.248:8080/api/v1/containers/nginx-container/logs/stream
-
-# Using wscat
-wscat -H "Authorization: Bearer $TOKEN" \
-  -c ws://103.179.254.248:8080/api/v1/containers/nginx-container/logs/stream
-```
 
 ### WebSocket Logs Subscription Examples
 
@@ -623,21 +471,6 @@ Other example log entries:
 - `error` - Error messages
 - `critical` - Critical messages (most severe)
 
-### Interactive Container Terminal
-
-Connect to a container's terminal via WebSocket:
-
-```bash
-# Using websocat with stdin/stdout
-websocat -H "Authorization: Bearer $TOKEN" \
-  --binary \
-  ws://103.179.254.248:8080/api/v1/containers/nginx-container/exec
-
-# Send commands after connection
-# Type your commands and press Enter
-# Use Ctrl+D or type 'exit' to close the connection
-```
-
 ### WebSocket Message Format
 
 The WebSocket endpoints use JSON messages:
@@ -666,20 +499,6 @@ The WebSocket endpoints use JSON messages:
       "tx_bytes": 1024000
     }
   }
-}
-
-// Container log message
-{
-  "type": "log",
-  "timestamp": "2024-01-15T10:30:00Z",
-  "stream": "stdout",
-  "message": "127.0.0.1 - - [15/Jan/2024:10:30:00 +0000] \"GET / HTTP/1.1\" 200 612"
-}
-
-// Terminal I/O
-{
-  "type": "terminal",
-  "data": "root@container:/# "
 }
 ```
 

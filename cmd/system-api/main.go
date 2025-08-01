@@ -13,7 +13,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/vapor/system-api/internal/auth"
 	"github.com/vapor/system-api/internal/common"
-	"github.com/vapor/system-api/internal/container"
 	"github.com/vapor/system-api/internal/logs"
 	"github.com/vapor/system-api/internal/network"
 	"github.com/vapor/system-api/internal/storage"
@@ -107,28 +106,7 @@ func main() {
 		api.GET("/storage/raid/devices", storageService.GetRAIDDevices)
 		api.GET("/storage/raid/available-disks", storageService.GetRAIDAvailableDisks)
 		api.POST("/storage/raid/create", storageService.CreateRAIDDevice)
-		api.POST("/storage/raid/destroy", storageService.DestroyRAIDDevice)
-
-// Container management endpoints
-		containerService, err := container.NewService()
-		if err != nil {
-			log.Fatalf("Failed to initialize container service: %v", err)
-		}
-
-		api.GET("/containers", containerService.ListContainers)
-		api.GET("/containers/:id", containerService.GetContainerDetails)
-		api.POST("/containers", containerService.CreateContainer)
-		api.POST("/containers/:id/start", containerService.StartContainer)
-		api.POST("/containers/:id/stop", containerService.StopContainer)
-		api.POST("/containers/:id/restart", containerService.RestartContainer)
-		api.DELETE("/containers/:id", containerService.RemoveContainer)
-		api.GET("/containers/:id/logs", containerService.GetContainerLogs)
-
-		// Container image endpoints
-		api.GET("/images", containerService.ListImages)
-		api.GET("/images/:id", containerService.GetImageDetails)
-		api.POST("/images/pull", containerService.PullImage)
-		api.DELETE("/images/:id", containerService.RemoveImage)
+		api.DELETE("/storage/raid/destroy", storageService.DestroyRAIDDevice)
 
 		// User management endpoints
 		userService := users.NewService()

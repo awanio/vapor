@@ -123,16 +123,6 @@ scp bin/system-api-linux-amd64 deploy.sh user@server:/tmp/
 sudo bash /tmp/deploy.sh
 ```
 
-### Using Docker
-
-```bash
-# Build Docker image
-make docker-build
-
-# Run container
-make docker-run
-```
-
 ### Using systemd
 
 ```bash
@@ -332,7 +322,6 @@ make lint
 │   ├── system/           # System information service
 │   └── users/            # User management service
 ├── openapi.yaml          # OpenAPI specification
-├── Dockerfile            # Docker build file
 ├── system-api.service    # systemd unit file
 └── Makefile             # Build automation
 ```
