@@ -49,6 +49,7 @@ export class LoginPage extends LitElement {
       color: var(--text-primary);
       font-size: 1rem;
       transition: border-color 0.2s;
+      box-sizing: border-box;
     }
 
     input:focus {
