@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/vapor/system-api/internal/auth"
 	"github.com/vapor/system-api/internal/common"
+	"github.com/vapor/system-api/internal/container"
 	"github.com/vapor/system-api/internal/logs"
 	"github.com/vapor/system-api/internal/network"
 	"github.com/vapor/system-api/internal/storage"
@@ -107,6 +108,16 @@ func main() {
 		api.GET("/storage/raid/available-disks", storageService.GetRAIDAvailableDisks)
 		api.POST("/storage/raid/create", storageService.CreateRAIDDevice)
 		api.DELETE("/storage/raid/destroy", storageService.DestroyRAIDDevice)
+
+		// Container management endpoints
+		containerService, err := container.NewService()
+		if err != nil {
+			log.Printf("Warning: Failed to initialize container service: %v", err)
+			// Continue without container service
+		} else {
+			api.GET("/containers", containerService.ListContainers)
+			api.GET("/images", containerService.ListImages)
+		}
 
 		// User management endpoints
 		userService := users.NewService()
