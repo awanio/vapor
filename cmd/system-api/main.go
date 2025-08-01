@@ -178,7 +178,7 @@ func main() {
 		} else {
 			// Serve static files from embedded filesystem
 			router.GET("/", func(c *gin.Context) {
-				c.FileFromFS("/index.html", webFS)
+				c.FileFromFS("index.html", webFS)
 			})
 			
 			// Catch-all route for SPA routing
@@ -207,7 +207,7 @@ func main() {
 					c.FileFromFS(path, webFS)
 				} else {
 					// For SPA, return index.html for client-side routing
-					c.FileFromFS("/index.html", webFS)
+					c.FileFromFS("index.html", webFS)
 				}
 			})
 			
