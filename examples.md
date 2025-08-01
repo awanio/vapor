@@ -225,6 +225,126 @@ curl -X DELETE -H "Authorization: Bearer $TOKEN" \
   http://103.179.254.248:8080/api/v1/users/john
 ```
 
+## Container Management
+
+### List Containers
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  http://103.179.254.248:8080/api/v1/containers
+```
+
+**Success Response (200):**
+```json
+{
+  "status": "success",
+  "data": {
+    "containers": [
+      {
+        "id": "2309b08a1303d054769d3adba93ac148c6cc31748a6dbecda5b12156028b034c",
+        "name": "reloader",
+        "image": "sha256:5ea6cbf6dee9b4b67edbd108986d75c5958273e6f6faaf0c18e734572b6b8821",
+        "state": "CONTAINER_RUNNING",
+        "status": "CONTAINER_RUNNING",
+        "created_at": "2025-07-25T09:38:51.086238448Z",
+        "labels": {
+          "io.kubernetes.container.name": "reloader"
+        },
+        "runtime": "containerd"
+      }
+    ],
+    "count": 1,
+    "runtime": "containerd"
+  }
+}
+```
+
+**Error Response (503) - No Container Runtime Available:**
+```json
+{
+  "status": "error",
+  "data": null,
+  "error": {
+    "code": "NO_RUNTIME_AVAILABLE",
+    "message": "No container runtime found. Tried CRI sockets ([/run/containerd/containerd.sock /var/run/crio/crio.sock]) and Docker. Last error: Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?"
+  }
+}
+```
+
+### List Images
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  http://103.179.254.248:8080/api/v1/images
+```
+
+**Success Response (200):**
+```json
+{
+  "status": "success",
+  "data": {
+    "images": [
+      {
+        "id": "sha256:d12fc38c77e50eab23af17f302d5b94514173d9f84150b7662aecbfeb21f8717",
+        "repo_tags": ["r.awan.app/library/remote-console-ipmi:2.0"],
+        "repo_digests": ["quay.io/operatorhubio/catalog@sha256:096fa413e1b8dba2071020e5809597e7d86da5a2833ffdf97a20457af714e678"],
+        "size": 109999465,
+        "created_at": "2025-08-01T12:40:55.236465486Z",
+        "runtime": "containerd"
+      }
+    ],
+    "count": 1,
+    "runtime": "containerd"
+  }
+}
+```
+
+**Error Response (503) - No Container Runtime Available:**
+```json
+{
+  "status": "error",
+  "data": null,
+  "error": {
+    "code": "NO_RUNTIME_AVAILABLE",
+    "message": "No container runtime found. Tried CRI sockets ([/run/containerd/containerd.sock /var/run/crio/crio.sock]) and Docker. Last error: Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?"
+  }
+}
+```
+
+### Frontend Error Handling
+
+When implementing frontend code to handle container endpoints, you should check for the 503 error response:
+
+```javascript
+// Example JavaScript error handling
+fetch('/api/v1/containers', {
+  headers: {
+    'Authorization': `Bearer ${token}`
+  }
+})
+.then(response => {
+  if (!response.ok) {
+    return response.json().then(data => {
+      if (response.status === 503 && data.error?.code === 'NO_RUNTIME_AVAILABLE') {
+        // Show user-friendly message
+        showMessage('Container management features are not available. Please install Docker or a CRI-compatible container runtime.');
+        // Optionally hide or disable container-related UI elements
+        disableContainerFeatures();
+      } else {
+        // Handle other errors
+        showError(data.error?.message || 'An error occurred');
+      }
+    });
+  }
+  return response.json();
+})
+.then(data => {
+  // Handle successful response
+  displayContainers(data.data.containers);
+});
+```
+
+
 ## System Information
 
 ### Get System Summary

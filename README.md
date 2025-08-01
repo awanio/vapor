@@ -12,6 +12,8 @@ A RESTful API service for Linux system management, providing functionality simil
   - Multipath support: list devices and paths
   - BTRFS support: manage subvolumes and snapshots
 - **User Management**: Create, update, delete system users
+- **Container Management**: List containers and images
+  - Requires Docker or CRI-compatible runtime to be installed and running
 - **Log Viewer**: Query and filter systemd logs (Linux only; sample data on non-Linux systems)
 - **System Information**: View CPU, memory, hardware, and system details
 - **JWT Authentication**: Secure API endpoints with token-based authentication
@@ -242,6 +244,10 @@ curl -H "Authorization: Bearer <token>" http://localhost:8080/api/v1/system/summ
 - `GET /api/v1/system/memory` - Get memory information
 - `GET /api/v1/system/cpu` - Get CPU information
 
+#### Container Management
+- `GET /api/v1/containers` - List containers (requires Docker or CRI runtime)
+- `GET /api/v1/images` - List container images (requires Docker or CRI runtime)
+
 #### Logs
 - `GET /api/v1/logs` - Query system logs with filtering
 
@@ -316,6 +322,7 @@ make lint
 ├── internal/              # Internal packages
 │   ├── auth/             # Authentication service
 │   ├── common/           # Common utilities and types
+│   ├── container/        # Container management service
 │   ├── logs/             # Log management service
 │   ├── network/          # Network management service
 │   ├── storage/          # Storage management service

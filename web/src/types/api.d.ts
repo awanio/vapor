@@ -278,9 +278,30 @@ export interface Container {
   image: string;
   state: string;
   status: string;
-  createdAt: string;
+  created_at: string;
   labels: Record<string, string>;
-  ports: ContainerPort[];
+  runtime: string;
+}
+
+export interface Image {
+  id: string;
+  repo_tags: string[];
+  repo_digests: string[];
+  size: number;
+  created_at: string;
+  runtime: string;
+}
+
+export interface ContainersResponse {
+  containers: Container[];
+  count: number;
+  runtime: string;
+}
+
+export interface ImagesResponse {
+  images: Image[];
+  count: number;
+  runtime: string;
 }
 
 export interface ContainerPort {
@@ -308,14 +329,6 @@ export interface ContainerMount {
 
 export interface ContainerActionRequest {
   timeout?: number;
-}
-
-export interface Image {
-  id: string;
-  repoTags: string[];
-  repoDigests: string[];
-  size: number;
-  createdAt: string;
 }
 
 export interface ImagePullRequest {

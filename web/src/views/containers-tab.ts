@@ -2,16 +2,23 @@ import { LitElement, html, css } from 'lit';
 import { state } from 'lit/decorators.js';
 import { t } from '../i18n';
 import { api } from '../api';
+import type { Container, Image, ContainersResponse, ImagesResponse } from '../types/api';
 
 export class ContainersTab extends LitElement {
   @state()
   private activeTab = 'containers';
 
   @state()
-  private containers: any[] = [];
+  private containers: Container[] = [];
 
   @state()
-  private images: any[] = [];
+  private images: Image[] = [];
+
+  @state()
+  private error: string | null = null;
+
+  @state()
+  private runtime: string | null = null;
 
   static override styles = css`
     :host {
@@ -164,6 +171,24 @@ export class ContainersTab extends LitElement {
       padding: 3rem;
       color: var(--text-secondary);
     }
+
+    .error-state {
+      text-align: center;
+      padding: 3rem;
+      color: var(--vscode-error);
+      background: var(--vscode-bg-light);
+      border-radius: 6px;
+      margin: 2rem 0;
+    }
+
+    .runtime-info {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
   `;
 
   override connectedCallback() {
@@ -179,21 +204,47 @@ export class ContainersTab extends LitElement {
     }
   }
 
-  async fetchContainers() {
+async fetchContainers() {
     try {
-      const data = await api.get('/containers');
-      this.containers = data.containers || [];
+      const response = await api.get('/containers');
+      if (response.status === 'success' && response.data) {
+        const data = response.data as ContainersResponse;
+        this.containers = data.containers || [];
+        this.runtime = data.runtime || null;
+        this.error = null;
+      } else if (response.status === 'error' && response.error?.code === 'NO_RUNTIME_AVAILABLE') {
+        this.error = response.error.message || 'No container runtime found';
+        this.containers = [];
+        this.runtime = null;
+      } else {
+        console.error('Failed to fetch containers:', response);
+        this.error = 'Failed to fetch containers';
+      }
     } catch (error) {
       console.error('Error fetching containers:', error);
+      this.error = 'Error connecting to server';
     }
   }
 
-  async fetchImages() {
+async fetchImages() {
     try {
-      const data = await api.get('/images');
-      this.images = data.images || [];
+      const response = await api.get('/images');
+      if (response.status === 'success' && response.data) {
+        const data = response.data as ImagesResponse;
+        this.images = data.images || [];
+        this.runtime = data.runtime || null;
+        this.error = null;
+      } else if (response.status === 'error' && response.error?.code === 'NO_RUNTIME_AVAILABLE') {
+        this.error = response.error.message || 'No container runtime found';
+        this.images = [];
+        this.runtime = null;
+      } else {
+        console.error('Failed to fetch images:', response);
+        this.error = 'Failed to fetch images';
+      }
     } catch (error) {
       console.error('Error fetching images:', error);
+      this.error = 'Error connecting to server';
     }
   }
 
@@ -237,19 +288,25 @@ export class ContainersTab extends LitElement {
     }
   }
 
-  renderContainer(container: any) {
+  renderContainer(container: Container) {
+    const isRunning = container.state === 'CONTAINER_RUNNING';
+    const shortId = container.id?.substring(0, 12) || 'Unknown';
+    const createdDate = container.created_at ? new Date(container.created_at).toLocaleString() : 'Unknown';
+    
     return html`
       <div class="container">
         <div class="container-header">
-          <div>${container.name} - ${container.image}</div>
-          <div>${container.state}</div>
+          <div>${container.name || 'Unnamed'}</div>
+          <div>${container.state || 'Unknown'}</div>
         </div>
         <div class="container-info">
-          <div>ID: ${container.id}</div>
-          <div>Status: ${container.status}</div>
+          <div>ID: ${shortId}</div>
+          <div>Image: ${container.image || 'Unknown'}</div>
+          <div>Runtime: ${container.runtime || 'Unknown'}</div>
+          <div>Created: ${createdDate}</div>
         </div>
         <div class="container-actions">
-          ${container.state === 'running'
+          ${isRunning
             ? html`<button class="btn-danger" @click=${() => this.stopContainer(container.id)}>${t('containers.stop')}</button>`
             : html`<button class="btn-primary" @click=${() => this.startContainer(container.id)}>${t('containers.start')}</button>`}
           <button class="btn-danger" @click=${() => this.removeContainer(container.id)}>${t('common.delete')}</button>
@@ -258,16 +315,26 @@ export class ContainersTab extends LitElement {
     `;
   }
 
-  renderImage(image: any) {
+  renderImage(image: Image) {
+    const shortId = image.id?.substring(0, 12) || 'Unknown';
+    const tags = image.repo_tags && image.repo_tags.length > 0 
+      ? image.repo_tags.join(', ') 
+      : 'No tags';
+    const createdDate = image.created_at ? new Date(image.created_at).toLocaleString() : 'Unknown';
+    
     return html`
       <div class="image">
         <div class="image-header">
-          <div>${image.repository}:${image.tag || 'latest'}</div>
+          <div>${tags}</div>
           <div class="size-info">${this.formatSize(image.size)}</div>
         </div>
         <div class="image-info">
-          <div>ID: ${image.id}</div>
-          <div>Created: ${new Date(image.created).toLocaleDateString()}</div>
+          <div>ID: ${shortId}</div>
+          <div>Runtime: ${image.runtime || 'Unknown'}</div>
+          <div>Created: ${createdDate}</div>
+          ${image.repo_digests && image.repo_digests.length > 0 
+            ? html`<div>Digests: ${image.repo_digests.length}</div>` 
+            : ''}
         </div>
         <div class="image-actions">
           <button class="btn-danger" @click=${() => this.removeImage(image.id)}>${t('common.delete')}</button>
@@ -308,7 +375,22 @@ export class ContainersTab extends LitElement {
         <h1>${t('containers.title')}</h1>
         ${this.renderTabs()}
         <div class="tab-content">
-          ${this.activeTab === 'containers' ? html`
+          ${this.error ? html`
+            <div class="error-state">
+              <h3>${this.error.includes('No container runtime found') ? 'Container Runtime Not Available' : 'Error'}</h3>
+              <p>${this.error.includes('No container runtime found') 
+                ? 'Container management features are not available. Please install Docker or a CRI-compatible container runtime (containerd, CRI-O) to use this feature.'
+                : this.error}</p>
+            </div>
+          ` : ''}
+
+          ${!this.error && this.runtime ? html`
+            <div class="runtime-info">
+              Runtime: ${this.runtime}
+            </div>
+          ` : ''}
+
+          ${this.activeTab === 'containers' && !this.error ? html`
             <h2>Containers</h2>
             ${this.containers.length > 0 
               ? this.containers.map(container => this.renderContainer(container))
@@ -316,7 +398,7 @@ export class ContainersTab extends LitElement {
             }
           ` : ''}
 
-          ${this.activeTab === 'images' ? html`
+          ${this.activeTab === 'images' && !this.error ? html`
             <h2>Images</h2>
             ${this.images.length > 0 
               ? this.images.map(image => this.renderImage(image))
