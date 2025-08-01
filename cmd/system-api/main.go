@@ -176,25 +176,8 @@ func main() {
 		if err != nil {
 			log.Printf("Warning: Failed to get web filesystem: %v", err)
 		} else {
-			// Serve static files at root level to match relative paths in index.html
-			// Handle each static file individually to avoid conflicts with other routes
-			router.GET("/index-Br1S4567.js", func(c *gin.Context) {
-				c.FileFromFS("index-Br1S4567.js", webFS)
-			})
-			router.GET("/style.css", func(c *gin.Context) {
-				c.FileFromFS("style.css", webFS)
-			})
-			router.GET("/vapor-icon.svg", func(c *gin.Context) {
-				if file, err := webFS.Open("vapor-icon.svg"); err == nil {
-					file.Close()
-					c.FileFromFS("vapor-icon.svg", webFS)
-				} else {
-					c.Status(http.StatusNotFound)
-				}
-			})
-			router.GET("/app-root-CsfKy47a.js", func(c *gin.Context) {
-				c.FileFromFS("app-root-CsfKy47a.js", webFS)
-			})
+			// Serve all static files using StaticFS
+			router.StaticFS("/static", webFS)
 			
 			// Serve index.html for root
 			router.GET("/", func(c *gin.Context) {
@@ -228,9 +211,9 @@ func main() {
 					c.JSON(http.StatusNotFound, gin.H{"error": "WebSocket endpoint not found"})
 					return
 				}
-				// Skip assets
-				if len(c.Request.URL.Path) > 7 && c.Request.URL.Path[:7] == "/assets" {
-					c.JSON(http.StatusNotFound, gin.H{"error": "Asset not found"})
+				// Skip static files
+				if len(c.Request.URL.Path) > 7 && c.Request.URL.Path[:7] == "/static" {
+					c.JSON(http.StatusNotFound, gin.H{"error": "Static file not found"})
 					return
 				}
 				
