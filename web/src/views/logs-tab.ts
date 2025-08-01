@@ -7,22 +7,38 @@ import type { WSLogMessage } from '../types/api';
 export class LogsTab extends LitElement {
   @state()
   private logs: WSLogMessage[] = [];
-  
+
   @state()
   private serviceFilter = '';
-  
+
   @state()
   private priorityFilter = 'info';
-  
+
+  @state()
+  private sinceFilter = '';
+
   @state()
   private follow = true;
-  
+
   @state()
   private connected = false;
-  
+
+  @state()
+  private autoScroll = true;
+
   private wsManager: WebSocketManager | null = null;
   private logsContainer: HTMLElement | null = null;
   private maxLogs = 1000; // Maximum number of logs to keep in memory
+
+  // Ensure update triggers on state change
+  override update(changedProperties: Map<string | number | symbol, unknown>) {
+    super.update(changedProperties);
+    // Debugging
+    console.log('Component updated', {
+      logs: this.logs.length,
+      connected: this.connected
+    });
+  }
   
   static override styles = css`
     :host {
@@ -31,12 +47,14 @@ export class LogsTab extends LitElement {
       height: 100%;
       display: flex;
       flex-direction: column;
+      box-sizing: border-box;
     }
 
     h1 {
       margin: 0 0 24px 0;
       font-size: 24px;
       font-weight: 300;
+      flex-shrink: 0;
     }
 
     .controls {
@@ -45,6 +63,7 @@ export class LogsTab extends LitElement {
       margin-bottom: 16px;
       align-items: center;
       flex-wrap: wrap;
+      flex-shrink: 0;
     }
 
     .filter-group {
@@ -105,12 +124,15 @@ export class LogsTab extends LitElement {
     .logs-container {
       flex: 1;
       overflow-y: auto;
+      overflow-x: hidden;
       background: var(--vscode-bg);
       border: 1px solid var(--vscode-border);
       border-radius: 4px;
       padding: 8px;
       font-family: var(--vscode-font-family-mono);
       font-size: 12px;
+      min-height: 0; /* Important for flexbox overflow */
+      position: relative;
     }
 
     .log-entry {
@@ -144,26 +166,47 @@ export class LogsTab extends LitElement {
       white-space: nowrap;
     }
 
+    .priority-emerg,
     .priority-emergency,
+    .priority-0 {
+      color: var(--vscode-error);
+      background: rgba(255, 0, 0, 0.1);
+    }
+
     .priority-alert,
-    .priority-critical {
+    .priority-1 {
       color: var(--vscode-error);
     }
 
-    .priority-error {
+    .priority-crit,
+    .priority-critical,
+    .priority-2 {
+      color: var(--vscode-error);
+    }
+
+    .priority-err,
+    .priority-error,
+    .priority-3 {
       color: var(--error);
     }
 
-    .priority-warning {
+    .priority-warning,
+    .priority-4 {
       color: var(--warning);
     }
 
     .priority-notice,
-    .priority-info {
+    .priority-5 {
       color: var(--vscode-text);
     }
 
-    .priority-debug {
+    .priority-info,
+    .priority-6 {
+      color: var(--vscode-text);
+    }
+
+    .priority-debug,
+    .priority-7 {
       color: var(--vscode-text-dim);
     }
 
@@ -220,14 +263,54 @@ export class LogsTab extends LitElement {
       this.wsManager = new WebSocketManager('/ws/logs');
       
       // Listen for authentication success before subscribing
-      this.wsManager.on('auth_success', () => {
-        this.connected = true;
-        // Subscribe to logs after successful authentication
-        this.subscribeToLogs();
+      this.wsManager.on('auth', (message: any) => {
+        if (message.payload?.authenticated === true) {
+          this.connected = true;
+          // Subscribe to logs after successful authentication
+          this.subscribeToLogs();
+        }
       });
       
-      this.wsManager.on('log', (message: any) => {
-        this.addLog(message);
+      // Listen for data messages (server sends type: "data" for log entries)
+      this.wsManager.on('data', (message: any) => {
+        console.log('Received data message:', message); // Debug
+        
+        // Extract log data from the WebSocket message payload
+        const logData = message.payload || message;
+        
+        if (logData.message) {
+          const logEntry: WSLogMessage = {
+            type: 'log',
+            timestamp: logData.timestamp || new Date().toISOString(),
+            service: logData.service || logData.unit || 'system',
+            priority: logData.priority || logData.level || 'info',
+            message: logData.message || '',
+            hostname: logData.hostname,
+            pid: logData.pid
+          };
+          this.addLog(logEntry);
+        }
+      });
+      
+      // Also listen for 'logs' event in case the server sends batch logs
+      this.wsManager.on('logs', (message: any) => {
+        console.log('Received logs message:', message); // Debug
+        
+        if (message.payload && Array.isArray(message.payload)) {
+          // Handle batch of logs
+          message.payload.forEach((logData: any) => {
+            const logEntry: WSLogMessage = {
+              type: 'log',
+              timestamp: logData.timestamp || new Date().toISOString(),
+              service: logData.service || logData.unit || 'system',
+              priority: logData.priority || logData.level || 'info',
+              message: logData.message || '',
+              hostname: logData.hostname,
+              pid: logData.pid
+            };
+            this.addLog(logEntry);
+          });
+        }
       });
       
       this.wsManager.on('error', (message) => {
@@ -249,30 +332,57 @@ export class LogsTab extends LitElement {
       follow: this.follow
     };
     
+    // Handle service filter - can be unit name for systemd services
     if (this.serviceFilter) {
-      filters.services = this.serviceFilter.split(',').map(s => s.trim()).filter(Boolean);
+      const serviceName = this.serviceFilter.trim();
+      if (serviceName) {
+        filters.unit = serviceName;
+      }
     }
     
-    if (this.priorityFilter) {
+    // Handle priority filter - journalctl priority levels
+    if (this.priorityFilter && this.priorityFilter !== 'all') {
       filters.priority = this.priorityFilter;
     }
     
-    this.wsManager.send({
+    // Handle since filter for time-based filtering
+    if (this.sinceFilter) {
+      filters.since = this.sinceFilter;
+    }
+    
+    const subscribeMessage = {
       type: 'subscribe',
-      filters
-    });
+      payload: {
+        filters
+      }
+    };
+    
+    console.log('Sending subscribe message:', subscribeMessage); // Debug
+    this.wsManager.send(subscribeMessage);
   }
 
   private addLog(log: WSLogMessage) {
-    this.logs = [...this.logs, log];
+    console.log('Adding log entry:', log); // Debug logging
+    console.log('Current logs count before:', this.logs.length);
+    
+    // Create a new array to ensure reactive update
+    const newLogs = [...this.logs, log];
     
     // Keep only the last maxLogs entries
-    if (this.logs.length > this.maxLogs) {
-      this.logs = this.logs.slice(-this.maxLogs);
+    if (newLogs.length > this.maxLogs) {
+      this.logs = newLogs.slice(-this.maxLogs);
+    } else {
+      this.logs = newLogs;
     }
     
-    // Auto-scroll if following
-    if (this.follow && this.logsContainer) {
+    console.log('Current logs count after:', this.logs.length);
+    console.log('First log:', this.logs[0]);
+    
+    // Force update
+    this.requestUpdate();
+    
+    // Auto-scroll if enabled
+    if (this.autoScroll && this.logsContainer) {
       this.updateComplete.then(() => {
         if (this.logsContainer) {
           this.logsContainer.scrollTop = this.logsContainer.scrollHeight;
@@ -284,6 +394,7 @@ export class LogsTab extends LitElement {
   private handleServiceFilterChange(event: Event) {
     this.serviceFilter = (event.target as HTMLInputElement).value;
     if (this.connected) {
+      this.logs = []; // Clear logs when filter changes
       this.subscribeToLogs();
     }
   }
@@ -291,6 +402,15 @@ export class LogsTab extends LitElement {
   private handlePriorityChange(event: Event) {
     this.priorityFilter = (event.target as HTMLSelectElement).value;
     if (this.connected) {
+      this.logs = []; // Clear logs when filter changes
+      this.subscribeToLogs();
+    }
+  }
+
+  private handleSinceFilterChange(event: Event) {
+    this.sinceFilter = (event.target as HTMLInputElement).value;
+    if (this.connected) {
+      this.logs = []; // Clear logs when filter changes
       this.subscribeToLogs();
     }
   }
@@ -299,6 +419,14 @@ export class LogsTab extends LitElement {
     this.follow = (event.target as HTMLInputElement).checked;
     if (this.connected) {
       this.subscribeToLogs();
+    }
+  }
+
+  private handleAutoScrollChange(event: Event) {
+    this.autoScroll = (event.target as HTMLInputElement).checked;
+    // If turning on auto-scroll, immediately scroll to bottom
+    if (this.autoScroll && this.logsContainer) {
+      this.logsContainer.scrollTop = this.logsContainer.scrollHeight;
     }
   }
 
@@ -339,7 +467,7 @@ export class LogsTab extends LitElement {
           <input 
             class="filter-input" 
             type="text" 
-            placeholder="${t('logs.filterServices')}" 
+            placeholder="${t('logs.filterServices')} (e.g., 'systemd', 'nginx')" 
             .value="${this.serviceFilter}"
             @input="${this.handleServiceFilterChange}"
           />
@@ -353,15 +481,26 @@ export class LogsTab extends LitElement {
             .value="${this.priorityFilter}"
             @change="${this.handlePriorityChange}"
           >
-            <option value="debug">Debug</option>
-            <option value="info">Info</option>
-            <option value="notice">Notice</option>
-            <option value="warning">Warning</option>
-            <option value="error">Error</option>
-            <option value="critical">Critical</option>
-            <option value="alert">Alert</option>
-            <option value="emergency">Emergency</option>
+            <option value="all">All</option>
+            <option value="debug">Debug (7)</option>
+            <option value="info">Info (6) and above</option>
+            <option value="notice">Notice (5) and above</option>
+            <option value="warning">Warning (4) and above</option>
+            <option value="err">Error (3) and above</option>
+            <option value="crit">Critical (2) and above</option>
+            <option value="alert">Alert (1) and above</option>
+            <option value="emerg">Emergency (0) only</option>
           </select>
+        </div>
+        
+        <div class="filter-group">
+          <input 
+            class="filter-input" 
+            type="text" 
+            placeholder="${t('logs.since')} (e.g., '10 minutes ago', '1 hour ago')" 
+            .value="${this.sinceFilter}"
+            @input="${this.handleSinceFilterChange}"
+          />
         </div>
         
         <div class="toggle-follow">
@@ -372,6 +511,16 @@ export class LogsTab extends LitElement {
             @change="${this.handleFollowChange}"
           />
           <label for="follow">${t('logs.follow')}</label>
+        </div>
+        
+        <div class="toggle-follow">
+          <input 
+            type="checkbox" 
+            id="autoscroll" 
+            .checked="${this.autoScroll}"
+            @change="${this.handleAutoScrollChange}"
+          />
+          <label for="autoscroll">Auto-scroll</label>
         </div>
         
         <button @click="${this.clearLogs}" ?disabled="${this.logs.length === 0}">

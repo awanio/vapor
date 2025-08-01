@@ -144,17 +144,21 @@ export class AppRoot extends LitElement {
     .sidebar-toggle.collapsed {
       left: 60px;
     }
-
+    
     .main {
       flex: 1;
       overflow: auto;
       background-color: var(--surface-0);
       color: var(--text-primary);
       padding: 2rem;
+      display: flex;
+      flex-direction: column;
     }
     
     .tab-content {
       margin-top: 1rem;
+      flex: 1;
+      overflow: auto;
     }
   `;
 
