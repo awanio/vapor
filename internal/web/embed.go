@@ -26,3 +26,8 @@ func HasWebUI() bool {
 	_, err := embeddedFiles.ReadFile("dist/index.html")
 	return err == nil
 }
+
+// GetIndexHTML returns the content of index.html
+func GetIndexHTML() ([]byte, error) {
+	return embeddedFiles.ReadFile("dist/index.html")
+}

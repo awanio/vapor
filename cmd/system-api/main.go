@@ -176,9 +176,44 @@ func main() {
 		if err != nil {
 			log.Printf("Warning: Failed to get web filesystem: %v", err)
 		} else {
-			// Serve static files from embedded filesystem
+			// Serve static files at root level to match relative paths in index.html
+			// Handle each static file individually to avoid conflicts with other routes
+			router.GET("/index-Br1S4567.js", func(c *gin.Context) {
+				c.FileFromFS("index-Br1S4567.js", webFS)
+			})
+			router.GET("/style.css", func(c *gin.Context) {
+				c.FileFromFS("style.css", webFS)
+			})
+			router.GET("/vapor-icon.svg", func(c *gin.Context) {
+				if file, err := webFS.Open("vapor-icon.svg"); err == nil {
+					file.Close()
+					c.FileFromFS("vapor-icon.svg", webFS)
+				} else {
+					c.Status(http.StatusNotFound)
+				}
+			})
+			router.GET("/app-root-CsfKy47a.js", func(c *gin.Context) {
+				c.FileFromFS("app-root-CsfKy47a.js", webFS)
+			})
+			
+			// Serve index.html for root
 			router.GET("/", func(c *gin.Context) {
-				c.FileFromFS("index.html", webFS)
+				data, err := web.GetIndexHTML()
+				if err != nil {
+					c.String(http.StatusInternalServerError, "Failed to load index.html")
+					return
+				}
+				c.Data(http.StatusOK, "text/html; charset=utf-8", data)
+			})
+			
+			// Serve index.html explicitly
+			router.GET("/index.html", func(c *gin.Context) {
+				data, err := web.GetIndexHTML()
+				if err != nil {
+					c.String(http.StatusInternalServerError, "Failed to load index.html")
+					return
+				}
+				c.Data(http.StatusOK, "text/html; charset=utf-8", data)
 			})
 			
 			// Catch-all route for SPA routing
@@ -193,8 +228,13 @@ func main() {
 					c.JSON(http.StatusNotFound, gin.H{"error": "WebSocket endpoint not found"})
 					return
 				}
+				// Skip assets
+				if len(c.Request.URL.Path) > 7 && c.Request.URL.Path[:7] == "/assets" {
+					c.JSON(http.StatusNotFound, gin.H{"error": "Asset not found"})
+					return
+				}
 				
-				// Try to serve the file
+				// Try to serve the file directly first
 				path := c.Request.URL.Path
 				// Remove leading slash for http.FS
 				if len(path) > 0 && path[0] == '/' {
@@ -204,10 +244,16 @@ func main() {
 				// Check if file exists
 				if file, err := webFS.Open(path); err == nil {
 					file.Close()
+					// Serve the actual file
 					c.FileFromFS(path, webFS)
 				} else {
 					// For SPA, return index.html for client-side routing
-					c.FileFromFS("index.html", webFS)
+					data, err := web.GetIndexHTML()
+					if err != nil {
+						c.String(http.StatusInternalServerError, "Failed to load index.html")
+						return
+					}
+					c.Data(http.StatusOK, "text/html; charset=utf-8", data)
 				}
 			})
 			
