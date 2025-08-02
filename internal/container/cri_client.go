@@ -3,6 +3,7 @@ package container
 import (
 	"context"
 	"fmt"
+	"os/exec"
 	"time"
 
 	"google.golang.org/grpc"
@@ -246,13 +247,13 @@ func (c *CRIClient) GetContainer(id string) (*ContainerDetail, error) {
 
 // GetContainerLogs gets logs of a specific container
 func (c *CRIClient) GetContainerLogs(id string) (string, error) {
-	// CRI API doesn't provide a direct logs endpoint
-	// For CRI-based runtimes, logs are typically managed by the container runtime
-	// and accessed through log files or other mechanisms
-	// This is a limitation of the CRI API v1
-	
-	// For now, return a message indicating this functionality is not available
-	return "", fmt.Errorf("container logs retrieval is not supported via CRI API. Please use 'crictl logs' or 'kubectl logs' command-line tools")
+	// Use crictl logs command to retrieve container logs
+	cmd := exec.Command("crictl", "logs", "--tail", "1000", id)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to get container logs: %v, output: %s", err, string(output))
+	}
+	return string(output), nil
 }
 
 // GetImage gets detailed information about a specific image
