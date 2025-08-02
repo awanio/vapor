@@ -422,6 +422,61 @@ curl -H "Authorization: Bearer $TOKEN" \
 }
 ```
 
+### Get Container Logs
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8080/api/v1/containers/2309b08a1303/logs
+```
+
+**Success Response (200):**
+```json
+{
+  "status": "success",
+  "data": {
+    "container_id": "2309b08a1303",
+    "logs": "2025-08-02T09:00:00.123456789Z [notice] 1#1: using the \"epoll\" event method\n2025-08-02T09:00:00.123556789Z [notice] 1#1: nginx/1.25.3\n2025-08-02T09:00:00.123656789Z [notice] 1#1: built by gcc 12.2.0 (Debian 12.2.0-14)\n2025-08-02T09:00:00.123756789Z [notice] 1#1: OS: Linux 5.15.0-91-generic\n2025-08-02T09:00:00.123856789Z [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1048576:1048576\n2025-08-02T09:00:00.123956789Z [notice] 1#1: start worker processes\n2025-08-02T09:00:00.124056789Z [notice] 1#1: start worker process 29\n2025-08-02T09:00:00.124156789Z [notice] 1#1: start worker process 30\n2025-08-02T09:00:15.432156789Z 192.168.1.100 - - [02/Aug/2025:09:00:15 +0000] \"GET / HTTP/1.1\" 200 615 \"-\" \"curl/7.81.0\"\n",
+    "runtime": "docker"
+  }
+}
+```
+
+**Error Response (400) - Invalid Container ID:**
+```json
+{
+  "status": "error",
+  "data": null,
+  "error": {
+    "code": "INVALID_ID",
+    "message": "Container ID is required"
+  }
+}
+```
+
+**Error Response (500) - Failed to Get Logs:**
+```json
+{
+  "status": "error",
+  "data": null,
+  "error": {
+    "code": "CONTAINER_LOGS_ERROR",
+    "message": "failed to get container logs: Error response from daemon: No such container: invalid_id"
+  }
+}
+```
+
+**Error Response (503) - No Container Runtime:**
+```json
+{
+  "status": "error",
+  "data": null,
+  "error": {
+    "code": "NO_RUNTIME_AVAILABLE",
+    "message": "No container runtime found. Tried CRI sockets ([/run/containerd/containerd.sock /var/run/crio/crio.sock]) and Docker. Last error: Cannot connect to the Docker daemon"
+  }
+}
+```
+
 ### Get Image Details
 
 ```bash

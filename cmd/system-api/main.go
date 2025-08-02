@@ -117,6 +117,7 @@ if err != nil {
 } else {
 	api.GET("/containers", containerService.ListContainers)
 	api.GET("/containers/:id", containerService.GetContainer)
+	api.GET("/containers/:id/logs", containerService.GetContainerLogs)
 	api.GET("/images", containerService.ListImages)
 	api.GET("/images/:id", containerService.GetImage)
 }

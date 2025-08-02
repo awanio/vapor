@@ -900,6 +900,81 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /containers/{id}/logs:
+    get:
+      summary: Get container logs
+      tags:
+        - Container
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Container ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Container logs retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      container_id:
+                        type: string
+                        example: abc123def456
+                      logs:
+                        type: string
+                        description: Container logs output
+                        example: "2025-08-02T09:00:00.000Z Started application\n2025-08-02T09:00:01.000Z Listening on port 8080\n"
+                      runtime:
+                        type: string
+                        example: docker
+                  error:
+                    type: object
+                    nullable: true
+        '400':
+          description: Invalid container ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                error:
+                  code: INVALID_ID
+                  message: Container ID is required
+        '500':
+          description: Failed to get container logs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                error:
+                  code: CONTAINER_LOGS_ERROR
+                  message: failed to get container logs
+        '503':
+          description: No container runtime available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                error:
+                  code: NO_RUNTIME_AVAILABLE
+                  message: No container runtime found
+
   /images:
     get:
       summary: List images

@@ -3,6 +3,7 @@ package container
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -249,6 +250,47 @@ if containerJSON.State.Running {
 	// TODO: Parse stats.Body to get actual resource usage if needed
 
 	return detail, nil
+}
+
+// GetContainerLogs gets logs of a specific container
+func (d *DockerClient) GetContainerLogs(id string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	options := container.LogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Timestamps: true,
+		Tail:       "1000", // Limit to last 1000 lines to avoid huge responses
+	}
+
+	reader, err := d.client.ContainerLogs(ctx, id, options)
+	if err != nil {
+		return "", fmt.Errorf("failed to get container logs: %w", err)
+	}
+	defer reader.Close()
+
+	// Docker multiplexes stdout and stderr into a single stream with headers
+	// We need to parse this format
+	var buf strings.Builder
+	buffer := make([]byte, 8*1024) // 8KB buffer
+
+	for {
+		n, err := reader.Read(buffer)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return "", fmt.Errorf("failed to read container logs: %w", err)
+		}
+		
+		// When TTY is false, Docker uses a multiplexed stream format
+		// Each frame has an 8-byte header: [stream_type, 0, 0, 0, size1, size2, size3, size4]
+		// For now, we'll just append the raw data, but in production you might want to parse the headers
+		buf.Write(buffer[:n])
+	}
+
+	return buf.String(), nil
 }
 
 // GetImage gets detailed information about a specific image

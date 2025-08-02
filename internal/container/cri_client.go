@@ -244,6 +244,17 @@ func (c *CRIClient) GetContainer(id string) (*ContainerDetail, error) {
 	return detail, nil
 }
 
+// GetContainerLogs gets logs of a specific container
+func (c *CRIClient) GetContainerLogs(id string) (string, error) {
+	// CRI API doesn't provide a direct logs endpoint
+	// For CRI-based runtimes, logs are typically managed by the container runtime
+	// and accessed through log files or other mechanisms
+	// This is a limitation of the CRI API v1
+	
+	// For now, return a message indicating this functionality is not available
+	return "", fmt.Errorf("container logs retrieval is not supported via CRI API. Please use 'crictl logs' or 'kubectl logs' command-line tools")
+}
+
 // GetImage gets detailed information about a specific image
 func (c *CRIClient) GetImage(id string) (*ImageDetail, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

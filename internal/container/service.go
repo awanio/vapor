@@ -153,6 +153,33 @@ func (s *Service) GetImage(c *gin.Context) {
 	})
 }
 
+// GetContainerLogs handles the GET /containers/:id/logs endpoint
+func (s *Service) GetContainerLogs(c *gin.Context) {
+	// Check if we have a runtime client
+	if s.client == nil {
+		common.SendError(c, 503, "NO_RUNTIME_AVAILABLE", s.errorMessage)
+		return
+	}
+
+	id := c.Param("id")
+	if id == "" {
+		common.SendError(c, 400, "INVALID_ID", "Container ID is required")
+		return
+	}
+
+	logs, err := s.client.GetContainerLogs(id)
+	if err != nil {
+		common.SendError(c, 500, "CONTAINER_LOGS_ERROR", err.Error())
+		return
+	}
+
+	common.SendSuccess(c, gin.H{
+		"container_id": id,
+		"logs":         logs,
+		"runtime":      s.client.GetRuntimeName(),
+	})
+}
+
 // Close closes the runtime client connection
 func (s *Service) Close() error {
 	if s.client != nil {

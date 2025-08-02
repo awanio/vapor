@@ -40,6 +40,9 @@ export class ContainersTab extends LitElement {
   private showDrawer: boolean = false;
 
   @state()
+  private detailError: string | null = null;
+
+  @state()
   private confirmTitle = '';
 
   @state()
@@ -655,6 +658,24 @@ export class ContainersTab extends LitElement {
       outline: 1px solid var(--vscode-focusBorder, #007acc);
       outline-offset: 2px;
     }
+
+    .error-container {
+      padding: 40px 20px;
+      text-align: center;
+    }
+
+    .error-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.7;
+    }
+
+    .error-message {
+      color: var(--vscode-errorForeground, #f48771);
+      font-size: 14px;
+      line-height: 1.5;
+      margin: 0;
+    }
   `;
 
   override connectedCallback() {
@@ -686,6 +707,7 @@ export class ContainersTab extends LitElement {
 
   async fetchContainerDetails(id: string) {
     try {
+      this.detailError = null;
       const response = await api.get<any>(`/containers/${id}`);
       console.log('Full container details response:', response);
       
@@ -706,11 +728,16 @@ export class ContainersTab extends LitElement {
       this.showDrawer = true;
     } catch (error) {
       console.error('Error fetching container details:', error);
+      this.detailError = error instanceof ApiError ? error.message : 'Failed to fetch container details';
+      this.selectedContainer = null;
+      this.selectedImage = null;
+      this.showDrawer = true;
     }
   }
 
 async fetchImageDetails(id: string) {
     try {
+      this.detailError = null;
       const response = await api.get<any>(`/images/${id}`);
       console.log('Full image details response:', response);
       
@@ -731,6 +758,10 @@ async fetchImageDetails(id: string) {
       this.showDrawer = true;
     } catch (error) {
       console.error('Error fetching image details:', error);
+      this.detailError = error instanceof ApiError ? error.message : 'Failed to fetch image details';
+      this.selectedImage = null;
+      this.selectedContainer = null;
+      this.showDrawer = true;
     }
   }
 
@@ -1068,6 +1099,15 @@ renderImagesTable() {
     `;
 }
 
+  renderError() {
+    return html`
+      <div class="error-container">
+        <div class="error-icon">⚠️</div>
+        <p class="error-message">${this.detailError}</p>
+      </div>
+    `;
+  }
+
   renderContainerDetails() {
     if (!this.selectedContainer) return;
     const container = this.selectedContainer;
@@ -1229,10 +1269,11 @@ renderImagesTable() {
 
       ${this.showDrawer ? html`
         <div class="drawer">
-          <button class="close-btn" @click=${() => this.showDrawer = false}>✕</button>
+          <button class="close-btn" @click=${() => { this.showDrawer = false; this.detailError = null; }}>✕</button>
           
-          ${this.selectedContainer ? this.renderContainerDetails() : ''}
-          ${this.selectedImage ? this.renderImageDetails() : ''}
+          ${this.detailError ? this.renderError() : 
+            (this.selectedContainer ? this.renderContainerDetails() : 
+             this.selectedImage ? this.renderImageDetails() : '')}
         </div>
       ` : ''}
     `;

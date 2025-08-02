@@ -144,6 +144,7 @@ type RuntimeClient interface {
 	GetContainer(id string) (*ContainerDetail, error)
 	ListImages() ([]Image, error)
 	GetImage(id string) (*ImageDetail, error)
+	GetContainerLogs(id string) (string, error)
 	GetRuntimeName() string
 	Close() error
 }
