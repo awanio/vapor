@@ -37,6 +37,11 @@ type UserRequest struct {
 	Groups   string `json:"groups"`
 }
 
+// PasswordResetRequest represents password reset request
+type PasswordResetRequest struct {
+	Password string `json:"password" binding:"required,min=6"`
+}
+
 // GetUsers lists all users
 func (s *Service) GetUsers(c *gin.Context) {
 	users, err := s.listUsers()
@@ -127,6 +132,65 @@ func (s *Service) DeleteUser(c *gin.Context) {
 	}
 
 	common.SendSuccess(c, gin.H{"message": fmt.Sprintf("User %s deleted", username)})
+}
+
+// ResetPassword resets the password for an existing user
+func (s *Service) ResetPassword(c *gin.Context) {
+	// Check if user commands are available
+	if !isUserCommandsAvailable() {
+		common.SendError(c, http.StatusNotImplemented, common.ErrCodeNotImplemented, 
+			"User management commands are only available on Linux systems")
+		return
+	}
+
+	username := c.Param("username")
+	var req PasswordResetRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Invalid request", err.Error())
+		return
+	}
+
+	// Check if user exists first
+	users, err := s.listUsers()
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to list users", err.Error())
+		return
+	}
+
+	userExists := false
+	for _, user := range users {
+		if user.Username == username {
+			userExists = true
+			break
+		}
+	}
+
+	if !userExists {
+		common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, fmt.Sprintf("User %s not found", username))
+		return
+	}
+
+	// Use chpasswd command which is more reliable for password changes
+	// Format: username:password
+	cmd := exec.Command("chpasswd")
+	cmd.Stdin = strings.NewReader(fmt.Sprintf("%s:%s\n", username, req.Password))
+	if output, err := cmd.CombinedOutput(); err != nil {
+		// If chpasswd fails, try usermod with encrypted password
+		hash, hashErr := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+		if hashErr != nil {
+			common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to hash password", hashErr.Error())
+			return
+		}
+
+		cmd := exec.Command("usermod", "-p", string(hash), username)
+		if output2, err2 := cmd.CombinedOutput(); err2 != nil {
+			common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, 
+				fmt.Sprintf("Failed to reset password. chpasswd error: %s, usermod error: %s", string(output), string(output2)))
+			return
+		}
+	}
+
+	common.SendSuccess(c, gin.H{"message": fmt.Sprintf("Password reset successfully for user %s", username)})
 }
 
 // listUsers retrieves all users from /etc/passwd

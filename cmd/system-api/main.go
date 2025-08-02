@@ -128,6 +128,7 @@ if err != nil {
 		api.POST("/users", userService.CreateUser)
 		api.PUT("/users/:username", userService.UpdateUser)
 		api.DELETE("/users/:username", userService.DeleteUser)
+		api.POST("/users/:username/reset-password", userService.ResetPassword)
 
 		// Log viewer endpoints
 		logService := logs.NewService()
