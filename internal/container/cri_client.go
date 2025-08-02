@@ -119,6 +119,203 @@ func (c *CRIClient) ListImages() ([]Image, error) {
 	return images, nil
 }
 
+// GetContainer gets detailed information about a specific container
+func (c *CRIClient) GetContainer(id string) (*ContainerDetail, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Get container status
+	statusReq := &criapi.ContainerStatusRequest{
+		ContainerId: id,
+		Verbose:     true,
+	}
+	statusResp, err := c.runtimeClient.ContainerStatus(ctx, statusReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get container status: %w", err)
+	}
+
+	status := statusResp.Status
+	if status == nil {
+		return nil, fmt.Errorf("container status is nil")
+	}
+
+	// Get container stats
+	statsReq := &criapi.ContainerStatsRequest{
+		ContainerId: id,
+	}
+	statsResp, err := c.runtimeClient.ContainerStats(ctx, statsReq)
+	if err != nil {
+		// Stats might not be available for stopped containers
+		statsResp = nil
+	}
+
+	// Build detailed container info
+	detail := &ContainerDetail{
+		Container: Container{
+			ID:        status.Id,
+			Name:      status.Metadata.Name,
+			Image:     status.Image.Image,
+			State:     criapi.ContainerState_name[int32(status.State)],
+			Status:    status.State.String(),
+			CreatedAt: time.Unix(0, status.CreatedAt),
+			Labels:    status.Labels,
+			Runtime:   c.runtimeName,
+		},
+		ImageID:      status.ImageRef,
+		RestartCount: int32(status.Metadata.Attempt),
+	}
+
+	// Set timestamps
+	if status.StartedAt > 0 {
+		startedAt := time.Unix(0, status.StartedAt)
+		detail.StartedAt = &startedAt
+	}
+	if status.FinishedAt > 0 {
+		finishedAt := time.Unix(0, status.FinishedAt)
+		detail.FinishedAt = &finishedAt
+	}
+	if status.ExitCode != 0 {
+		detail.ExitCode = &status.ExitCode
+	}
+
+	// Extract annotations
+	if status.Annotations != nil {
+		detail.Annotations = status.Annotations
+	}
+
+	// Extract detailed info from verbose output if available
+	if statusResp.Info != nil {
+		// Convert map[string]string to map[string]interface{}
+		config := make(map[string]interface{})
+		for k, v := range statusResp.Info {
+			config[k] = v
+		}
+		detail.Config = config
+	}
+
+	// Convert mounts
+	for _, mount := range status.Mounts {
+		detail.Mounts = append(detail.Mounts, Mount{
+			Source:      mount.HostPath,
+			Destination: mount.ContainerPath,
+			ReadOnly:    mount.Readonly,
+		})
+	}
+
+	// Set resource limits and usage
+	detail.Resources = Resources{}
+	
+	// Get resource usage from stats if available
+	if statsResp != nil && statsResp.Stats != nil {
+		stats := statsResp.Stats
+		
+		// CPU usage
+		if stats.Cpu != nil {
+			if stats.Cpu.UsageCoreNanoSeconds != nil {
+				// Calculate CPU usage percentage
+				// This is a simplified calculation
+				detail.Resources.CPUUsagePercent = float64(stats.Cpu.UsageCoreNanoSeconds.Value) / 1e9
+			}
+		}
+		
+		// Memory usage
+		if stats.Memory != nil {
+			if stats.Memory.WorkingSetBytes != nil {
+				detail.Resources.MemoryUsage = int64(stats.Memory.WorkingSetBytes.Value)
+			}
+			if stats.Memory.UsageBytes != nil {
+				detail.Resources.MemoryMaxUsage = int64(stats.Memory.UsageBytes.Value)
+			}
+		}
+		
+		// Note: CRI v1 stats don't include network stats in the standard API
+		// Network monitoring would need to be implemented separately
+		
+		// Disk I/O stats
+		if stats.WritableLayer != nil {
+			if stats.WritableLayer.UsedBytes != nil {
+				detail.Resources.IOWriteBytes = stats.WritableLayer.UsedBytes.Value
+			}
+		}
+	}
+
+	return detail, nil
+}
+
+// GetImage gets detailed information about a specific image
+func (c *CRIClient) GetImage(id string) (*ImageDetail, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Get image status
+	statusReq := &criapi.ImageStatusRequest{
+		Image: &criapi.ImageSpec{
+			Image: id,
+		},
+		Verbose: true,
+	}
+	statusResp, err := c.imageClient.ImageStatus(ctx, statusReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get image status: %w", err)
+	}
+
+	if statusResp.Image == nil {
+		return nil, fmt.Errorf("image not found")
+	}
+
+	image := statusResp.Image
+
+	// Build detailed image info
+	detail := &ImageDetail{
+		Image: Image{
+			ID:          image.Id,
+			RepoTags:    image.RepoTags,
+			RepoDigests: image.RepoDigests,
+			Size:        int64(image.Size_),
+			Runtime:     c.runtimeName,
+		},
+	}
+	
+	// CRI doesn't provide creation time in ImageStatus, use current time as placeholder
+	detail.CreatedAt = time.Now()
+	
+	// Extract additional info from verbose output if available
+	if statusResp.Info != nil {
+		// The info map contains runtime-specific information
+		// Extract what we can
+		if val, ok := statusResp.Info["imageSpec"]; ok {
+			// Store the full image spec
+			detail.Manifest = map[string]interface{}{
+				"imageSpec": val,
+			}
+		}
+		
+		// CRI's Info field is map[string]string, so we can't extract structured config
+		// Just store the raw config string if available
+		if _, ok := statusResp.Info["config"]; ok {
+			detail.Config = ImageConfig{}
+			// For CRI, we'll have limited config information
+		}
+		
+		// Try to extract architecture and OS info
+		if arch, ok := statusResp.Info["architecture"]; ok {
+			detail.Architecture = arch
+		}
+		if os, ok := statusResp.Info["os"]; ok {
+			detail.OS = os
+		}
+		if variant, ok := statusResp.Info["variant"]; ok {
+			detail.Variant = variant
+		}
+	}
+	
+	// CRI doesn't provide layer information directly
+	// We would need to implement runtime-specific logic to get this
+	detail.Layers = []Layer{}
+
+	return detail, nil
+}
+
 // GetRuntimeName returns the runtime name
 func (c *CRIClient) GetRuntimeName() string {
 	return c.runtimeName

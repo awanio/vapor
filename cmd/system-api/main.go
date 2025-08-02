@@ -109,17 +109,19 @@ func main() {
 		api.POST("/storage/raid/create", storageService.CreateRAIDDevice)
 		api.DELETE("/storage/raid/destroy", storageService.DestroyRAIDDevice)
 
-		// Container management endpoints
-		containerService, err := container.NewService()
-		if err != nil {
-			log.Printf("Warning: Failed to initialize container service: %v", err)
-			// Continue without container service
-		} else {
-			api.GET("/containers", containerService.ListContainers)
-			api.GET("/images", containerService.ListImages)
-		}
+// Container management endpoints
+containerService, err := container.NewService()
+if err != nil {
+	log.Printf("Warning: Failed to initialize container service: %v", err)
+	// Continue without container service
+} else {
+	api.GET("/containers", containerService.ListContainers)
+	api.GET("/containers/:id", containerService.GetContainer)
+	api.GET("/images", containerService.ListImages)
+	api.GET("/images/:id", containerService.GetImage)
+}
 
-		// User management endpoints
+// User management endpoints
 		userService := users.NewService()
 		api.GET("/users", userService.GetUsers)
 		api.POST("/users", userService.CreateUser)

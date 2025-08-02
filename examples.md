@@ -246,15 +246,15 @@ curl -H "Authorization: Bearer $TOKEN" \
         "image": "sha256:5ea6cbf6dee9b4b67edbd108986d75c5958273e6f6faaf0c18e734572b6b8821",
         "state": "CONTAINER_RUNNING",
         "status": "CONTAINER_RUNNING",
-        "created_at": "2025-07-25T09:38:51.086238448Z",
+        "created_at": "2025-08-01T12:40:55.236465486Z",
         "labels": {
           "io.kubernetes.container.name": "reloader"
         },
-        "runtime": "containerd"
+        "runtime": "docker"
       }
     ],
     "count": 1,
-    "runtime": "containerd"
+    "runtime": "docker"
   }
 }
 ```
@@ -307,6 +307,180 @@ curl -H "Authorization: Bearer $TOKEN" \
   "error": {
     "code": "NO_RUNTIME_AVAILABLE",
     "message": "No container runtime found. Tried CRI sockets ([/run/containerd/containerd.sock /var/run/crio/crio.sock]) and Docker. Last error: Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?"
+  }
+}
+```
+
+### Get Container Details
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  http://103.179.254.248:8080/api/v1/containers/2309b08a1303
+```
+
+**Success Response (200):**
+```json
+{
+  "status": "success",
+  "data": {
+    "container": {
+      "id": "2309b08a1303",
+      "name": "nginx-web",
+      "image": "nginx:latest",
+      "state": "running",
+      "status": "Up 2 hours",
+      "created_at": "2025-08-01T10:00:00Z",
+      "started_at": "2025-08-01T10:00:05Z",
+      "image_id": "sha256:3f8a00f137a0",
+      "command": ["nginx", "-g", "daemon off;"],
+      "env": [
+        "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "NGINX_VERSION=1.25.3"
+      ],
+      "pid": 12345,
+      "user": "root",
+      "working_dir": "/",
+      "hostname": "2309b08a1303",
+      "labels": {
+        "maintainer": "NGINX Docker Maintainers <docker-maint@nginx.com>"
+      },
+      "runtime": "docker",
+      "mounts": [
+        {
+          "source": "/var/lib/docker/volumes/nginx-data/_data",
+          "destination": "/usr/share/nginx/html",
+          "mode": "rw",
+          "type": "volume",
+          "read_only": false
+        }
+      ],
+      "ports": [
+        {
+          "container_port": 80,
+          "host_port": 8080,
+          "protocol": "tcp",
+          "host_ip": "0.0.0.0"
+        }
+      ],
+      "networks": [
+        {
+          "name": "bridge",
+          "id": "7b369a8b4f3a",
+          "ip_address": "172.17.0.2",
+          "ip_prefix_len": 16,
+          "gateway": "172.17.0.1",
+          "mac_address": "02:42:ac:11:00:02"
+        }
+      ],
+      "resources": {
+        "cpu_shares": 1024,
+        "memory_limit": 536870912,
+        "memory_usage": 12345678,
+        "cpu_usage_percent": 0.5
+      }
+    },
+    "runtime": "docker",
+    "execution_context": {
+      "directory_state": {
+        "pwd": "/Users/kandar/Workspaces/vapor/api",
+        "home": "/Users/kandar"
+      },
+      "operating_system": {
+        "platform": "MacOS"
+      },
+      "current_time": "2025-08-02T06:33:19Z",
+      "shell": {
+        "name": "zsh",
+        "version": "5.9"
+      }
+    }
+  }
+}
+```
+
+**Error Response (400) - Invalid Container ID:**
+```json
+{
+  "status": "error",
+  "data": null,
+  "error": {
+    "code": "INVALID_CONTAINER_ID",
+    "message": "Container ID cannot be empty"
+  }
+}
+```
+
+**Error Response (500) - Container Not Found:**
+```json
+{
+  "status": "error",
+  "data": null,
+  "error": {
+    "code": "INTERNAL_ERROR",
+    "message": "Failed to get container details: Error response from daemon: No such container: 2309b08a1303"
+  }
+}
+```
+
+### Get Image Details
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  http://103.179.254.248:8080/api/v1/images/d12fc38c77e5
+```
+
+**Success Response (200):**
+```json
+{
+  "status": "success",
+  "data": {
+    "image": {
+      "id": "d12fc38c77e5",
+      "repo_tags": ["nginx:latest", "nginx:1.25.3"],
+      "repo_digests": ["nginx@sha256:4c0fdaa8b6341bfdeca5f18f7837462c80cff90527ee35ef185571e1c327beac"],
+      "size": 187697974,
+      "created_at": "2023-10-24T22:44:45Z",
+      "parent": "",
+      "author": "",
+      "architecture": "amd64",
+      "os": "linux",
+      "labels": {
+        "maintainer": "NGINX Docker Maintainers <docker-maint@nginx.com>"
+      },
+      "runtime": "docker",
+      "config": {
+        "user": "",
+        "exposed_ports": ["80/tcp"],
+        "env": [
+          "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+          "NGINX_VERSION=1.25.3",
+          "PKG_RELEASE=1"
+        ],
+        "cmd": ["nginx", "-g", "daemon off;"],
+        "entrypoint": ["/docker-entrypoint.sh"],
+        "volumes": ["/var/cache/nginx"],
+        "working_dir": "",
+        "stop_signal": "SIGQUIT",
+        "labels": {
+          "maintainer": "NGINX Docker Maintainers <docker-maint@nginx.com>"
+        }
+      },
+      "layers": [
+        {
+          "id": "96526aa774ef",
+          "size": 29150479,
+          "created_at": "2023-10-24T20:12:31Z",
+          "created_by": "/bin/sh -c #(nop) ADD file:7..."
+        },
+        {
+          "id": "<missing>",
+          "size": 0,
+          "created_at": "2023-10-24T22:44:43Z",
+          "created_by": "/bin/sh -c #(nop)  CMD [\"nginx\" \"-g\" \"daemon off;\"]"
+        }
+      ]
+    },
+    "runtime": "docker"
   }
 }
 ```

@@ -11,6 +11,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// Version is injected at build time using -ldflags
+// Empty value means development mode, non-empty means production
+var Version string
+
 // Service handles authentication
 type Service struct {
 	jwtSecret []byte
@@ -126,7 +130,12 @@ func (s *Service) AuthMiddleware() gin.HandlerFunc {
 func (s *Service) validateCredentials(username, password string) bool {
 	// Check if it's the admin user
 	if username == "admin" {
-		// Hash for "admin123" - useful for testing and initial setup
+		// Only allow hardcoded admin credentials in development mode (when Version is empty)
+		if Version != "" {
+			// Production mode - do not allow hardcoded admin
+			return false
+		}
+		// Hash for "admin123" - only available in development/testing mode
 		hashedPassword := "$2a$10$TfAKWyGmr368MNVwiu3kaugi2Tax5MhB0XhlJjJAHFi1EOSTr061G"
 		err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 		return err == nil

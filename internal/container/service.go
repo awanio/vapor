@@ -101,6 +101,58 @@ func (s *Service) ListImages(c *gin.Context) {
 	})
 }
 
+// GetContainer handles the GET /containers/:id endpoint
+func (s *Service) GetContainer(c *gin.Context) {
+	// Check if we have a runtime client
+	if s.client == nil {
+		common.SendError(c, 503, "NO_RUNTIME_AVAILABLE", s.errorMessage)
+		return
+	}
+
+	id := c.Param("id")
+	if id == "" {
+		common.SendError(c, 400, "INVALID_ID", "Container ID is required")
+		return
+	}
+
+	container, err := s.client.GetContainer(id)
+	if err != nil {
+		common.SendError(c, 500, "CONTAINER_GET_ERROR", err.Error())
+		return
+	}
+
+	common.SendSuccess(c, gin.H{
+		"container": container,
+		"runtime":   s.client.GetRuntimeName(),
+	})
+}
+
+// GetImage handles the GET /images/:id endpoint
+func (s *Service) GetImage(c *gin.Context) {
+	// Check if we have a runtime client
+	if s.client == nil {
+		common.SendError(c, 503, "NO_RUNTIME_AVAILABLE", s.errorMessage)
+		return
+	}
+
+	id := c.Param("id")
+	if id == "" {
+		common.SendError(c, 400, "INVALID_ID", "Image ID is required")
+		return
+	}
+
+	image, err := s.client.GetImage(id)
+	if err != nil {
+		common.SendError(c, 500, "IMAGE_GET_ERROR", err.Error())
+		return
+	}
+
+	common.SendSuccess(c, gin.H{
+		"image":   image,
+		"runtime": s.client.GetRuntimeName(),
+	})
+}
+
 // Close closes the runtime client connection
 func (s *Service) Close() error {
 	if s.client != nil {

@@ -10,6 +10,18 @@ paths:
   /auth/login:
     post:
       summary: Authenticate user
+      description: |
+        Authenticate a user and receive a JWT token.
+        
+        **Authentication Methods:**
+        1. Built-in admin account (development builds only):
+           - Username: admin
+           - Password: admin123
+           - Note: Disabled in production builds for security
+        
+        2. Linux system users (recommended for production):
+           - Any valid Linux user with their system credentials
+           - Uses system authentication via 'su' command
       tags:
         - Auth
       requestBody:
@@ -805,6 +817,89 @@ paths:
                       type: string
                       example: "No container runtime found. Tried CRI sockets ([/run/containerd/containerd.sock /var/run/crio/crio.sock]) and Docker. Last error: Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?"
 
+  /containers/{id}:
+    get:
+      summary: Get detailed container information
+      tags:
+        - Container
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Container ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Container details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      container:
+                        $ref: '#/components/schemas/ContainerDetail'
+                      runtime:
+                        type: string
+                        example: docker
+                      execution_context:
+                        type: object
+                        properties:
+                          directory_state:
+                            type: object
+                            properties:
+                              pwd:
+                                type: string
+                                example: /Users/kandar/Workspaces/vapor/api
+                              home:
+                                type: string
+                                example: /Users/kandar
+                          operating_system:
+                            type: object
+                            properties:
+                              platform:
+                                type: string
+                                example: MacOS
+                          current_time:
+                            type: string
+                            format: date-time
+                            example: '2025-08-02T06:33:19Z'
+                          shell:
+                            type: object
+                            properties:
+                              name:
+                                type: string
+                                example: zsh
+                              version:
+                                type: string
+                                example: '5.9'
+        '400':
+          description: Invalid container ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Failed to get container details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: No container runtime available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /images:
     get:
       summary: List images
@@ -882,6 +977,57 @@ paths:
                       type: string
                       example: "No container runtime found. Tried CRI sockets ([/run/containerd/containerd.sock /var/run/crio/crio.sock]) and Docker. Last error: Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?"
 
+  /images/{id}:
+    get:
+      summary: Get detailed image information
+      tags:
+        - Container
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Image ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Image details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      image:
+                        $ref: '#/components/schemas/ImageDetail'
+                      runtime:
+                        type: string
+                        example: docker
+        '400':
+          description: Invalid image ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Failed to get image details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: No container runtime available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /storage/iscsi/sessions:
     get:
@@ -1639,8 +1785,13 @@ components:
       properties:
         username:
           type: string
+          description: |
+            Username for authentication.
+            - For development builds: 'admin' with password 'admin123' is available
+            - For production builds: Only Linux system users are allowed
         password:
           type: string
+          description: User password
     
     LoginResponse:
       allOf:
@@ -2404,7 +2555,7 @@ components:
           description: Chunk size (e.g., 512K, 1M)
           default: '512K'
     
-    DestroyRAIDRequest:
+DestroyRAIDRequest:
       type: object
       required:
         - device
@@ -2412,7 +2563,266 @@ components:
         device:
           type: string
           description: RAID device path to destroy
-    
+
+    ContainerDetail:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            image:
+              type: string
+            image_id:
+              type: string
+            state:
+              type: string
+            status:
+              type: string
+            created_at:
+              type: string
+              format: date-time
+            started_at:
+              type: string
+              format: date-time
+              nullable: true
+            finished_at:
+              type: string
+              format: date-time
+              nullable: true
+            exit_code:
+              type: integer
+              nullable: true
+            pid:
+              type: integer
+            restart_count:
+              type: integer
+            command:
+              type: array
+              items:
+                type: string
+            args:
+              type: array
+              items:
+                type: string
+            env:
+              type: array
+              items:
+                type: string
+            mounts:
+              type: array
+              items:
+                type: object
+                properties:
+                  source:
+                    type: string
+                  destination:
+                    type: string
+                  mode:
+                    type: string
+                  type:
+                    type: string
+                  read_only:
+                    type: boolean
+            ports:
+              type: array
+              items:
+                type: object
+                properties:
+                  container_port:
+                    type: integer
+                  host_port:
+                    type: integer
+                  protocol:
+                    type: string
+                  host_ip:
+                    type: string
+            networks:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  id:
+                    type: string
+                  ip_address:
+                    type: string
+                  ip_prefix_len:
+                    type: integer
+                  gateway:
+                    type: string
+                  mac_address:
+                    type: string
+                  ipv6_address:
+                    type: string
+                  ipv6_gateway:
+                    type: string
+                  aliases:
+                    type: array
+                    items:
+                      type: string
+                  driver_opts:
+                    type: object
+                    additionalProperties:
+                      type: string
+            resources:
+              type: object
+              properties:
+                cpu_shares:
+                  type: integer
+                cpu_quota:
+                  type: integer
+                cpu_period:
+                  type: integer
+                cpuset_cpus:
+                  type: string
+                cpuset_mems:
+                  type: string
+                memory_limit:
+                  type: integer
+                memory_reservation:
+                  type: integer
+                memory_swap:
+                  type: integer
+                memory_usage:
+                  type: integer
+                memory_max_usage:
+                  type: integer
+                cpu_usage_percent:
+                  type: number
+                  format: float
+                pids_limit:
+                  type: integer
+                pids_current:
+                  type: integer
+                blkio_weight:
+                  type: integer
+                io_read_bytes:
+                  type: integer
+                io_write_bytes:
+                  type: integer
+                network_rx_bytes:
+                  type: integer
+                network_tx_bytes:
+                  type: integer
+            user:
+              type: string
+            working_dir:
+              type: string
+            hostname:
+              type: string
+            domain_name:
+              type: string
+            labels:
+              type: object
+              additionalProperties:
+                type: string
+            annotations:
+              type: object
+              additionalProperties:
+                type: string
+            config:
+              type: object
+              additionalProperties:
+                type: object
+
+    ImageDetail:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            id:
+              type: string
+            repo_tags:
+              type: array
+              items:
+                type: string
+            repo_digests:
+              type: array
+              items:
+                type: string
+            parent:
+              type: string
+            author:
+              type: string
+            architecture:
+              type: string
+            os:
+              type: string
+            variant:
+              type: string
+            created_at:
+              type: string
+              format: date-time
+            size:
+              type: integer
+            labels:
+              type: object
+              additionalProperties:
+                type: string
+            annotations:
+              type: object
+              additionalProperties:
+                type: string
+            layers:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  size:
+                    type: integer
+                  created_at:
+                    type: string
+                    format: date-time
+                  created_by:
+                    type: string
+                  comment:
+                    type: string
+            config:
+              type: object
+              properties:
+                user:
+                  type: string
+                exposed_ports:
+                  type: array
+                  items:
+                    type: string
+                env:
+                  type: array
+                  items:
+                    type: string
+                cmd:
+                  type: array
+                  items:
+                    type: string
+                entrypoint:
+                  type: array
+                  items:
+                    type: string
+                volumes:
+                  type: array
+                  items:
+                    type: string
+                working_dir:
+                  type: string
+                stop_signal:
+                  type: string
+                labels:
+                  type: object
+                  additionalProperties:
+                    type: string
+            manifest:
+              type: object
+              additionalProperties:
+                type: string
+
     # WebSocket Message Schemas
     WSAuthMessage:
       type: object

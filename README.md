@@ -102,8 +102,11 @@ cd system-api
 # Install dependencies
 make install-deps
 
-# Build the binary for current platform
+# Build production binary (disables hardcoded admin credentials)
 make build
+
+# Build development binary (enables hardcoded admin credentials for testing)
+make build-dev
 
 # Build specifically for Linux x86_64 (cross-compilation)
 make build-linux
@@ -155,11 +158,12 @@ The complete OpenAPI 3.1.0 specification is available in `openapi.yaml`.
 
 The API supports two authentication methods:
 
-1. **Built-in admin account** (for testing and initial setup):
+1. **Built-in admin account** (development mode only):
    - Username: `admin`
    - Password: `admin123`
+   - **Security Note**: This account is only available in development builds. Production builds (using `make build` or Docker) automatically disable this account for security.
 
-2. **Linux system users** (for production use):
+2. **Linux system users** (recommended for production):
    - Any valid Linux user can authenticate with their system credentials
    - The API uses the system's authentication mechanism (via `su` command)
    - User must exist in `/etc/passwd`

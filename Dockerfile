@@ -1,7 +1,7 @@
 # Build stage
 FROM --platform=linux/amd64 golang:1.21-alpine AS builder
 
-# Install build dependencies
+# Install build dependencies (git is needed for version injection)
 RUN apk add --no-cache git
 
 WORKDIR /app
@@ -21,8 +21,10 @@ RUN mkdir -p internal/web/dist && \
         touch internal/web/dist/.keep; \
     fi
 
-# Build the binary specifically for Linux x86_64
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o system-api ./cmd/system-api
+# Build the binary specifically for Linux x86_64 with version injection
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags "-X github.com/vapor/system-api/internal/auth.Version=$(git rev-parse --short HEAD 2>/dev/null || echo 'no-git')" \
+    -a -installsuffix cgo -o system-api ./cmd/system-api
 
 # Final stage
 FROM --platform=linux/amd64 alpine:latest
