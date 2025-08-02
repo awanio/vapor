@@ -2688,7 +2688,7 @@ components:
           description: Chunk size (e.g., 512K, 1M)
           default: '512K'
     
-DestroyRAIDRequest:
+    DestroyRAIDRequest:
       type: object
       required:
         - device
