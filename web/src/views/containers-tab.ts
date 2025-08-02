@@ -238,7 +238,8 @@ export class ContainersTab extends LitElement {
       left: 12px;
       color: var(--vscode-input-placeholderForeground, #999);
       pointer-events: none;
-      font-size: 16px;
+      width: 16px;
+      height: 16px;
     }
 
     .search-input {
@@ -1032,18 +1033,21 @@ renderContainersTable() {
     );
 
     return html`
-      <div class="search-container">
-        <div class="search-wrapper">
-          <span class="search-icon">🔍</span>
-          <input 
-            class="search-input"
-            type="text" 
-            placeholder="Search containers" 
-            .value=${this.searchTerm}
-            @input=${(e: any) => this.searchTerm = e.target.value}
-          />
-        </div>
+    <div class="search-container">
+      <div class="search-wrapper">
+        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.35-4.35"></path>
+        </svg>
+        <input 
+          class="search-input"
+          type="text" 
+          placeholder="Search containers" 
+          .value=${this.searchTerm}
+          @input=${(e: any) => this.searchTerm = e.target.value}
+        />
       </div>
+    </div>
       <table class="table">
         <thead>
           <tr>
@@ -1105,18 +1109,21 @@ renderImagesTable() {
     );
 
     return html`
-      <div class="search-container">
-        <div class="search-wrapper">
-          <span class="search-icon">🔍</span>
-          <input 
-            class="search-input"
-            type="text" 
-            placeholder="Search images" 
-            .value=${this.searchTerm}
-            @input=${(e: any) => this.searchTerm = e.target.value}
-          />
-        </div>
+    <div class="search-container">
+      <div class="search-wrapper">
+        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.35-4.35"></path>
+        </svg>
+        <input 
+          class="search-input"
+          type="text" 
+          placeholder="Search images" 
+          .value=${this.searchTerm}
+          @input=${(e: any) => this.searchTerm = e.target.value}
+        />
       </div>
+    </div>
       <table class="table">
         <thead>
           <tr>
@@ -1424,7 +1431,10 @@ renderImagesTable() {
             <div class="logs-header">
               <h2 class="logs-title">Container Logs</h2>
               <div class="search-wrapper">
-                <span class="search-icon">🔍</span>
+                <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="m21 21-4.35-4.35"></path>
+                </svg>
                 <input
                   class="search-input"
                   type="text"

@@ -52,7 +52,7 @@ export class UsersTab extends LitElement {
     .search-box {
       position: relative;
       flex: 1;
-      max-width: 400px;
+      max-width: 250px;
     }
 
     .search-box input {
@@ -82,6 +82,8 @@ export class UsersTab extends LitElement {
       transform: translateY(-50%);
       color: var(--vscode-text-dim);
       pointer-events: none;
+      width: 16px;
+      height: 16px;
     }
 
     .clear-search {
@@ -598,7 +600,10 @@ export class UsersTab extends LitElement {
         <h1>${t('users.title')}</h1>
         <div class="actions">
           <div class="search-box">
-            <span class="search-icon">🔍</span>
+            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
             <input 
               type="text" 
               placeholder="${t('common.search', { default: 'Search users...' })}"
