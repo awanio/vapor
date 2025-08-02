@@ -144,12 +144,12 @@ export class ModalDialog extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback();
-    this.addEventListener('keydown', this.handleKeydown);
+    document.addEventListener('keydown', this.handleKeydown);
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback();
-    this.removeEventListener('keydown', this.handleKeydown);
+    document.removeEventListener('keydown', this.handleKeydown);
   }
 
   private handleKeydown = (event: KeyboardEvent) => {

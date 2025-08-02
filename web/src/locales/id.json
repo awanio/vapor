@@ -227,13 +227,17 @@
     "editUser": "Sunting Pengguna",
     "deleteUser": "Hapus Pengguna",
     "password": "Kata Sandi",
+    "newPassword": "Kata Sandi Baru",
     "confirmPassword": "Konfirmasi Kata Sandi",
     "passwordMismatch": "Kata sandi tidak cocok",
     "deleteConfirm": "Apakah Anda yakin ingin menghapus pengguna {{username}}?",
+    "confirmDelete": "Hapus Pengguna",
+    "confirmDeleteMessage": "Apakah Anda yakin ingin menghapus pengguna \"{{username}}\"? Tindakan ini tidak dapat dibatalkan.",
     "locked": "Terkunci",
     "unlocked": "Tidak Terkunci",
     "toggleLock": "Kunci/Buka Kunci",
-    "resetPassword": "Atur Ulang Kata Sandi"
+    "resetPassword": "Atur Ulang Kata Sandi",
+    "resetPasswordSuccess": "Kata sandi berhasil diatur ulang untuk {{username}}"
   },
   "logs": {
     "title": "Log Sistem",

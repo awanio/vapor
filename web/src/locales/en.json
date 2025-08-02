@@ -260,13 +260,17 @@
     "editUser": "Edit User",
     "deleteUser": "Delete User",
     "password": "Password",
+    "newPassword": "New Password",
     "confirmPassword": "Confirm Password",
     "passwordMismatch": "Passwords do not match",
     "deleteConfirm": "Are you sure you want to delete user {{username}}?",
+    "confirmDelete": "Delete User",
+    "confirmDeleteMessage": "Are you sure you want to delete user \"{{username}}\"? This action cannot be undone.",
     "locked": "Locked",
     "unlocked": "Unlocked",
     "toggleLock": "Toggle Lock",
-    "resetPassword": "Reset Password"
+    "resetPassword": "Reset Password",
+    "resetPasswordSuccess": "Password reset successfully for {{username}}"
   },
   "logs": {
     "title": "System Logs",

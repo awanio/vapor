@@ -1,5 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { state } from 'lit/decorators.js';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { t } from '../i18n';
 import { api, ApiError } from '../api';
 import type { Container, Image, ContainersResponse, ImagesResponse } from '../types/api';
@@ -47,6 +48,20 @@ export class ContainersTab extends LitElement {
 
   @state()
   private confirmMessage = '';
+
+  @state()
+  private showLogsDrawer: boolean = false;
+
+  @state()
+  private containerLogs: string = '';
+
+  @state()
+  private logsError: string | null = null;
+
+  @state()
+
+  @state()
+  private logsSearchTerm: string = '';
 
   static override styles = css`
     :host {
@@ -196,7 +211,6 @@ export class ContainersTab extends LitElement {
 
     .search-container {
       display: flex;
-      justify-content: space-between;
       align-items: center;
       margin-bottom: 1.5rem;
       gap: 1rem;
@@ -216,6 +230,7 @@ export class ContainersTab extends LitElement {
       position: relative;
       display: flex;
       align-items: center;
+      max-width: 400px;
     }
 
     .search-icon {
@@ -268,24 +283,20 @@ export class ContainersTab extends LitElement {
       margin: 2rem 0;
     }
 
-    .runtime-info {
-      font-size: 0.875rem;
-      color: var(--text-secondary);
-      margin-bottom: 1rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
 
     .table {
       width: 100%;
       border-collapse: separate;
       border-spacing: 0;
       background: var(--vscode-bg-light);
-      border-radius: 6px;
+      border-radius: 1px;
       overflow: hidden;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
       border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+    }
+
+    .table thead {
+      background: var(--vscode-bg-lighter);
     }
 
     .table th {
@@ -304,6 +315,10 @@ export class ContainersTab extends LitElement {
       font-size: 0.875rem;
       border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
       position: relative;
+    }
+
+    .table td:last-child {
+      text-align: right;
     }
 
     .table tr:last-child td {
@@ -491,7 +506,7 @@ export class ContainersTab extends LitElement {
       position: fixed;
       top: 0;
       right: 0;
-      width: 400px;
+      width: 50%;
       height: 100%;
       background: var(--vscode-bg-light);
       border-left: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
@@ -500,6 +515,19 @@ export class ContainersTab extends LitElement {
       overflow-y: auto;
       padding: 24px;
       animation: slideIn 0.3s ease-out;
+    }
+
+    /* Make drawer full width on smaller screens */
+    @media (max-width: 1024px) {
+      .drawer {
+        width: 80%;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .drawer {
+        width: 100%;
+      }
     }
 
     @keyframes slideIn {
@@ -699,6 +727,36 @@ export class ContainersTab extends LitElement {
       line-height: 1.5;
       margin: 0;
     }
+
+    .logs-container {
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      font-size: 0.875rem;
+      line-height: 1.5;
+      background: var(--vscode-editor-background, #1e1e1e);
+      color: var(--vscode-editor-foreground, #d4d4d4);
+      padding: 16px;
+      border-radius: 4px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: calc(100vh - 200px);
+      overflow-y: auto;
+    }
+
+    .logs-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+    }
+
+    .logs-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--vscode-foreground);
+    }
   `;
 
   override connectedCallback() {
@@ -706,17 +764,43 @@ export class ContainersTab extends LitElement {
     this.fetchData();
     // Add click handler to close menus when clicking outside
     this.addEventListener('click', this.handleOutsideClick.bind(this));
+    // Add keyboard event listener for escape key
+    this.handleKeyDown = this.handleKeyDown.bind(this);
+    document.addEventListener('keydown', this.handleKeyDown);
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback();
     this.removeEventListener('click', this.handleOutsideClick.bind(this));
+    document.removeEventListener('keydown', this.handleKeyDown);
   }
 
   handleOutsideClick(event: Event) {
     const target = event.target as HTMLElement;
     if (!target.closest('.action-menu')) {
       this.closeAllMenus();
+    }
+  }
+
+  handleKeyDown(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+      // Close action dropdowns first
+      this.closeAllMenus();
+      
+      // Then close drawer if it's open
+      if (this.showDrawer) {
+        this.showDrawer = false;
+        this.detailError = null;
+        this.selectedContainer = null;
+        this.selectedImage = null;
+      }
+      
+      // Close logs drawer if it's open
+      if (this.showLogsDrawer) {
+        this.showLogsDrawer = false;
+        this.logsError = null;
+        this.containerLogs = '';
+      }
     }
   }
 
@@ -833,6 +917,15 @@ async fetchImageDetails(id: string) {
     this.confirmMessage = message;
     this.confirmAction = action;
     this.showConfirmModal = true;
+    
+    // Focus on the modal after it opens
+    this.updateComplete.then(() => {
+      // Find the cancel button in the slot content
+      const cancelButton = this.shadowRoot?.querySelector('modal-dialog button.btn-secondary') as HTMLButtonElement;
+      if (cancelButton) {
+        setTimeout(() => cancelButton.focus(), 50);
+      }
+    });
   }
 
   handleConfirm() {
@@ -908,6 +1001,31 @@ async fetchImageDetails(id: string) {
     );
   }
 
+  async fetchContainerLogs(id: string, name?: string) {
+    try {
+      console.log('Fetching logs for container:', id, name);
+      this.logsError = null;
+      this.containerLogs = 'Loading logs...';
+      this.logsSearchTerm = ''; // Clear search term when opening logs
+      this.showLogsDrawer = true;
+      
+      const response = await api.get<any>(`/containers/${id}/logs`);
+      console.log('Logs response:', response);
+      
+      if (response?.data?.logs) {
+        this.containerLogs = response.data.logs;
+      } else if (response?.logs) {
+        this.containerLogs = response.logs;
+      } else {
+        this.containerLogs = 'No logs available';
+      }
+    } catch (error) {
+      console.error('Error fetching container logs:', error);
+      this.logsError = error instanceof ApiError ? error.message : 'Failed to fetch container logs';
+      this.containerLogs = '';
+    }
+  }
+
 renderContainersTable() {
     const filteredContainers = this.containers.filter(container =>
       container.name?.toLowerCase().includes(this.searchTerm.toLowerCase())
@@ -915,9 +1033,6 @@ renderContainersTable() {
 
     return html`
       <div class="search-container">
-        <div class="section-header">
-          <h2>Containers</h2>
-        </div>
         <div class="search-wrapper">
           <span class="search-icon">🔍</span>
           <input 
@@ -968,6 +1083,7 @@ renderContainersTable() {
                   <div class="action-menu">
                     <button class="action-dots" @click=${(e: Event) => this.toggleActionMenu(e, `container-${index}`)}>⋮</button>
                     <div class="action-dropdown" id="container-${index}">
+                      <button @click=${() => { this.closeAllMenus(); this.fetchContainerLogs(container.id, container.name); }}>Logs</button>
                       ${container.state === 'CONTAINER_RUNNING'
                         ? html`<button @click=${() => { this.closeAllMenus(); this.stopContainer(container.id, container.name); }}>${t('containers.stop')}</button>`
                         : html`<button @click=${() => { this.closeAllMenus(); this.startContainer(container.id, container.name); }}>${t('containers.start')}</button>`}
@@ -990,9 +1106,6 @@ renderImagesTable() {
 
     return html`
       <div class="search-container">
-        <div class="section-header">
-          <h2>Images</h2>
-        </div>
         <div class="search-wrapper">
           <span class="search-icon">🔍</span>
           <input 
@@ -1094,6 +1207,11 @@ renderImagesTable() {
       this.closeAllMenus();
       if (!isOpen) {
         menu.classList.add('show');
+        // Focus on the first button in the dropdown for keyboard navigation
+        const firstButton = menu.querySelector('button') as HTMLButtonElement;
+        if (firstButton) {
+          setTimeout(() => firstButton.focus(), 10);
+        }
       }
     }
   }
@@ -1233,7 +1351,7 @@ renderImagesTable() {
   override render() {
     return html`
       <div class="tab-container">
-        <h1>${t('containers.title')}</h1>
+        <h1>${t('containers.title')}${this.runtime ? html` <span style="font-size: 0.875rem; color: var(--text-secondary); font-weight: normal;">(${this.runtime})</span>` : ''}</h1>
         ${this.renderTabs()}
         <div class="tab-content">
           ${this.error ? html`
@@ -1245,17 +1363,11 @@ renderImagesTable() {
             </div>
           ` : ''}
 
-          ${!this.error && this.runtime ? html`
-            <div class="runtime-info">
-              Runtime: ${this.runtime}
-            </div>
-          ` : ''}
 
           ${this.activeTab === 'containers' && !this.error ? html`
             ${this.containers.length > 0 
               ? this.renderContainersTable()
               : html`
-                <h2>Containers</h2>
                 <div class="empty-state">No containers found.</div>
               `
             }
@@ -1265,7 +1377,6 @@ renderImagesTable() {
             ${this.images.length > 0 
               ? this.renderImagesTable()
               : html`
-                <h2>Images</h2>
                 <div class="empty-state">No images found.</div>
               `
             }
@@ -1299,7 +1410,54 @@ renderImagesTable() {
              this.selectedImage ? this.renderImageDetails() : '')}
         </div>
       ` : ''}
+
+      ${this.showLogsDrawer ? html`
+        <div class="drawer">
+          <button class="close-btn" @click=${() => { 
+            this.showLogsDrawer = false; 
+            this.logsError = null;
+            this.containerLogs = '';
+            this.logsSearchTerm = '';
+          }}>✕</button>
+          
+          <div class="drawer-content">
+            <div class="logs-header">
+              <h2 class="logs-title">Container Logs</h2>
+              <div class="search-wrapper">
+                <span class="search-icon">🔍</span>
+                <input
+                  class="search-input"
+                  type="text"
+                  placeholder="Search logs"
+                  .value=${this.logsSearchTerm}
+                  @input=${(e: any) => this.logsSearchTerm = e.target.value}
+                />
+              </div>
+            </div>
+            
+            ${this.logsError ? html`
+              <div class="error-container">
+                <div class="error-icon">⚠️</div>
+                <p class="error-message">${this.logsError}</p>
+              </div>
+            ` : html`
+              <div class="logs-container">${unsafeHTML(this.highlightSearchTerm(this.containerLogs, this.logsSearchTerm))}</div>
+            `}
+          </div>
+        </div>
+      ` : ''}
     `;
+  }
+
+  highlightSearchTerm(text: string, searchTerm: string): string {
+    if (!searchTerm || !text) return text;
+
+    // Escape special characters for use in RegExp
+    const escapedSearchTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escapedSearchTerm})`, 'gi');
+
+    // Replace matching term with highlighted HTML
+    return text.replace(regex, '<mark style="background-color: #ffeb3b; color: #000; padding: 0 2px;">$1</mark>');
   }
 }
 
