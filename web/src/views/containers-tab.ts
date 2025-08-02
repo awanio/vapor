@@ -529,6 +529,29 @@ export class ContainersTab extends LitElement {
       position: absolute;
       top: 16px;
       right: 16px;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.1));
+      color: var(--vscode-foreground, var(--vscode-editor-foreground));
+      border: 1px solid var(--vscode-widget-border, rgba(0, 0, 0, 0.1));
+      transition: all 0.2s;
+    }
+
+    .drawer button.close-btn:hover {
+      background: var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.2));
+      border-color: var(--vscode-widget-border, rgba(0, 0, 0, 0.2));
+    }
+
+    .drawer button.close-btn:active {
+      background: var(--vscode-list-activeSelectionBackground, rgba(90, 93, 94, 0.3));
+    }
+
+    .drawer button.close-btn:focus {
+      outline: 1px solid var(--vscode-focusBorder, #007acc);
+      outline-offset: 2px;
     }
 
     .drawer-content {
