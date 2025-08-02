@@ -229,7 +229,7 @@ class l {
 const T = l.getInstance();
 T.getTheme();
 w.isAuthenticated();
-import("./app-root-J9h3D6-J.js");
+import("./app-root-DpHlu5O4.js");
 u.init().then(() => {
   console.log("Vapor Web UI initialized");
 }).catch((r) => {
