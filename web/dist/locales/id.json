@@ -61,7 +61,12 @@
     "search": "Cari",
     "filter": "Filter",
     "export": "Ekspor",
-    "import": "Impor"
+    "import": "Impor",
+    "state": "Status",
+    "image": "Image",
+    "runtime": "Runtime",
+    "created": "Dibuat",
+    "tags": "Tag"
   },
   "dashboard": {
     "title": "Dasbor Sistem",

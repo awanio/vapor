@@ -174,7 +174,9 @@ func (c *CRIClient) GetContainer(id string) (*ContainerDetail, error) {
 		finishedAt := time.Unix(0, status.FinishedAt)
 		detail.FinishedAt = &finishedAt
 	}
-	if status.ExitCode != 0 {
+	// Always include exit code for stopped/exited containers
+	// Check if container is not running (CONTAINER_EXITED state = 1)
+	if status.State == criapi.ContainerState_CONTAINER_EXITED {
 		detail.ExitCode = &status.ExitCode
 	}
 

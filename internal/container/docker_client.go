@@ -134,10 +134,15 @@ func (d *DockerClient) GetContainer(id string) (*ContainerDetail, error) {
 		return nil, fmt.Errorf("failed to inspect container: %w", err)
 	}
 
-	// Get container stats for resource usage
-	stats, err := d.client.ContainerStatsOneShot(ctx, id)
-	if err == nil && stats.Body != nil {
+	// Get container stats for resource usage (only for running containers)
+	// Stats are not available for stopped/exited containers
+if containerJSON.State.Running {
+		stats, err := d.client.ContainerStatsOneShot(ctx, id)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get container stats: %w", err)
+		}
 		defer stats.Body.Close()
+		// Process stats here if needed
 	}
 
 	// Build detailed container info
@@ -174,7 +179,8 @@ func (d *DockerClient) GetContainer(id string) (*ContainerDetail, error) {
 	if !finishedAt.IsZero() {
 		detail.FinishedAt = &finishedAt
 	}
-	if containerJSON.State.ExitCode != 0 {
+	// Always include exit code for stopped/exited containers
+	if containerJSON.State.Status == "exited" || containerJSON.State.Status == "stopped" || containerJSON.State.Status == "dead" {
 		exitCode := int32(containerJSON.State.ExitCode)
 		detail.ExitCode = &exitCode
 	}
