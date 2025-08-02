@@ -1,7 +1,7 @@
 var Pa = Object.defineProperty;
 var Oa = (i, e, t) => e in i ? Pa(i, e, { enumerable: !0, configurable: !0, writable: !0, value: t }) : i[e] = t;
 var V = (i, e, t) => Oa(i, typeof e != "symbol" ? e + "" : e, t);
-import { a as Ct, g as Ba, t as B, b as Wr } from "./index-BgE8ttSX.js";
+import { a as Ct, g as Ba, t as B, b as Wr } from "./index-4NMIe7J8.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -13204,18 +13204,21 @@ const Ir = class Ir extends Ae {
       }
     );
     return $`
-      <div class="search-container">
-        <div class="search-wrapper">
-          <span class="search-icon">🔍</span>
-          <input 
-            class="search-input"
-            type="text" 
-            placeholder="Search containers" 
-            .value=${this.searchTerm}
-            @input=${(t) => this.searchTerm = t.target.value}
-          />
-        </div>
+    <div class="search-container">
+      <div class="search-wrapper">
+        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.35-4.35"></path>
+        </svg>
+        <input 
+          class="search-input"
+          type="text" 
+          placeholder="Search containers" 
+          .value=${this.searchTerm}
+          @input=${(t) => this.searchTerm = t.target.value}
+        />
       </div>
+    </div>
       <table class="table">
         <thead>
           <tr>
@@ -13281,18 +13284,21 @@ const Ir = class Ir extends Ae {
       }
     );
     return $`
-      <div class="search-container">
-        <div class="search-wrapper">
-          <span class="search-icon">🔍</span>
-          <input 
-            class="search-input"
-            type="text" 
-            placeholder="Search images" 
-            .value=${this.searchTerm}
-            @input=${(t) => this.searchTerm = t.target.value}
-          />
-        </div>
+    <div class="search-container">
+      <div class="search-wrapper">
+        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.35-4.35"></path>
+        </svg>
+        <input 
+          class="search-input"
+          type="text" 
+          placeholder="Search images" 
+          .value=${this.searchTerm}
+          @input=${(t) => this.searchTerm = t.target.value}
+        />
       </div>
+    </div>
       <table class="table">
         <thead>
           <tr>
@@ -13576,7 +13582,10 @@ const Ir = class Ir extends Ae {
             <div class="logs-header">
               <h2 class="logs-title">Container Logs</h2>
               <div class="search-wrapper">
-                <span class="search-icon">🔍</span>
+                <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="m21 21-4.35-4.35"></path>
+                </svg>
                 <input
                   class="search-input"
                   type="text"
@@ -13781,7 +13790,8 @@ Ir.styles = Ne`
       left: 12px;
       color: var(--vscode-input-placeholderForeground, #999);
       pointer-events: none;
-      font-size: 16px;
+      width: 16px;
+      height: 16px;
     }
 
     .search-input {
@@ -21851,7 +21861,10 @@ const Hr = class Hr extends Ae {
         <h1>${B("users.title")}</h1>
         <div class="actions">
           <div class="search-box">
-            <span class="search-icon">🔍</span>
+            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
             <input 
               type="text" 
               placeholder="${B("common.search", { default: "Search users..." })}"
@@ -22082,7 +22095,7 @@ Hr.styles = Ne`
     .search-box {
       position: relative;
       flex: 1;
-      max-width: 400px;
+      max-width: 250px;
     }
 
     .search-box input {
@@ -22112,6 +22125,8 @@ Hr.styles = Ne`
       transform: translateY(-50%);
       color: var(--vscode-text-dim);
       pointer-events: none;
+      width: 16px;
+      height: 16px;
     }
 
     .clear-search {
