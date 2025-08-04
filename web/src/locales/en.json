@@ -198,7 +198,7 @@
     }
   },
   "storage": {
-    "title": "Storage Management",
+    "title": "Storage",
     "disks": {
       "title": "Disks",
       "type": "Type",
@@ -214,7 +214,7 @@
       "mount": "Mount"
     },
     "lvm": {
-      "title": "LVM Management",
+      "title": "LVM",
       "volumeGroups": "Volume Groups",
       "createVG": "Create Volume Group",
       "logicalVolumes": "Logical Volumes",
@@ -231,7 +231,7 @@
       "noPhysicalVolumes": "No Physical Volumes Available"
     },
     "raid": {
-      "title": "RAID Management",
+      "title": "RAID",
       "devices": "RAID Devices",
       "device": "Device",
       "partition": "Partition",
@@ -248,7 +248,7 @@
       "noAvailableDisks": "No Available Disks for RAID"
     },
     "iscsi": {
-      "title": "iSCSI Management",
+      "title": "iSCSI",
       "sessions": "iSCSI Sessions",
       "target": "Target",
       "portal": "Portal",
@@ -261,7 +261,7 @@
       "logout": "Logout from iSCSI Target"
     },
     "multipath": {
-      "title": "Multipath Management",
+      "title": "Multipath",
       "devices": "Multipath Devices",
       "wwid": "WWID",
       "vendor": "Vendor",
@@ -273,7 +273,7 @@
       "noDevices": "No Multipath Devices Available"
     },
     "btrfs": {
-      "title": "BTRFS Management",
+      "title": "BTRFS",
       "subvolumes": "BTRFS Subvolumes",
       "createSubvolume": "Create Subvolume",
       "noSubvolumes": "No Subvolumes Available"

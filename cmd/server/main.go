@@ -7,8 +7,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	"gitlab.com/awan.io/vapor/api/internal/kubernetes"
-	"gitlab.com/awan.io/vapor/api/internal/helm"
+	"github.com/vapor/system-api/internal/kubernetes"
+	"github.com/vapor/system-api/internal/helm"
 )
 
 func main() {

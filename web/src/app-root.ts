@@ -14,8 +14,6 @@ import './views/users-tab';
 import './components/sidebar-tree';
 
 export class AppRoot extends LitElement {
-  @property({ type: Boolean }) sidebarCollapsed = false;
-  
   @state()
   private isAuthenticated = false;
   
@@ -30,6 +28,15 @@ export class AppRoot extends LitElement {
   
   @state()
   private languageMenuOpen = false;
+  
+  @state()
+  private sidebarCollapsed = false;
+  
+  @state()
+  private queryParams: URLSearchParams | null = null;
+  
+  @state()
+  private subRoute: string | null = null;
 
   static override styles = css`
     :host {
@@ -256,11 +263,17 @@ export class AppRoot extends LitElement {
       // Default to dashboard on root URL
       this.activeView = 'dashboard';
       window.history.replaceState({ route: 'dashboard' }, '', '/');
-    } else if (this.isValidRoute(path)) {
-      this.activeView = path;
     } else {
-      // Invalid route - show 404
-      this.activeView = path;
+      // Parse main route and sub-route
+      const [mainRoute, ...subParts] = path.split('/');
+      this.subRoute = subParts.length > 0 ? subParts.join('/') : null;
+      
+      if (this.isValidRoute(mainRoute)) {
+        this.activeView = mainRoute;
+      } else {
+        // Invalid route - show 404
+        this.activeView = path;
+      }
     }
 
     // Listen for popstate events to handle navigation
@@ -424,8 +437,8 @@ export class AppRoot extends LitElement {
         <main class="main">
           <div class="tab-content">
             ${this.activeView === 'dashboard' ? html`<dashboard-tab></dashboard-tab>` : ''}
-            ${this.activeView === 'network' ? html`<network-tab></network-tab>` : ''}
-            ${this.activeView === 'storage' ? html`<storage-tab></storage-tab>` : ''}
+            ${this.activeView === 'network' ? html`<network-tab .subRoute=${this.subRoute}></network-tab>` : ''}
+            ${this.activeView === 'storage' ? html`<storage-tab .subRoute=${this.subRoute}></storage-tab>` : ''}
             ${this.activeView === 'containers' ? html`<containers-tab></containers-tab>` : ''}
             ${this.activeView === 'logs' ? html`<logs-tab></logs-tab>` : ''}
             ${this.activeView === 'terminal' ? html`<terminal-tab></terminal-tab>` : ''}
@@ -443,7 +456,12 @@ export class AppRoot extends LitElement {
   }
 
   private handleNavigation(e: CustomEvent) {
-    this.activeView = e.detail.route;
+    const route = e.detail.route;
+    // Parse main route and sub-route
+    const [mainRoute, ...subParts] = route.split('/');
+    this.activeView = mainRoute;
+    this.subRoute = subParts.length > 0 ? subParts.join('/') : null;
+    this.queryParams = e.detail.queryParams;
   }
   
   private isValidRoute(route: string): boolean {

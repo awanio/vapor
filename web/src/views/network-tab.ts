@@ -1,5 +1,5 @@
 import { html, css } from 'lit';
-import { state } from 'lit/decorators.js';
+import { state, property } from 'lit/decorators.js';
 import { t } from '../i18n';
 import { I18nLitElement } from '../i18n-mixin';
 import { api } from '../api';
@@ -7,6 +7,8 @@ import type { AddressRequest, BridgeRequest, BondRequest, VLANRequest, NetworkIn
 import '../components/modal-dialog';
 
 export class NetworkTab extends I18nLitElement {
+  @property({ type: String })
+  subRoute: string | null = null;
   static override styles = css`
     :host {
       display: block;
@@ -530,18 +532,55 @@ export class NetworkTab extends I18nLitElement {
 
   constructor() {
     super();
+    this.handlePopState = this.handlePopState.bind(this);
+  }
+
+  handlePopState() {
+    const pathSegments = window.location.pathname.split('/');
+    const tab = pathSegments[pathSegments.length - 1];
+    if (['interfaces', 'bridges', 'bonds', 'vlans'].includes(tab)) {
+      this.activeTab = tab;
+    }
   }
 
   override firstUpdated() {
     this.fetchNetworkData();
     document.addEventListener('click', this.handleDocumentClick.bind(this));
     document.addEventListener('keydown', this.handleKeyDown.bind(this));
+    window.addEventListener('popstate', this.handlePopState);
+
+    // Initialize tab from URL or subRoute
+    const pathSegments = window.location.pathname.split('/');
+    const tab = pathSegments[pathSegments.length - 1];
+    if (['interfaces', 'bridges', 'bonds', 'vlans'].includes(tab)) {
+      this.activeTab = tab;
+    } else {
+      this.handleSubRoute();
+    }
+  }
+  
+  override updated(changedProperties: Map<string | number | symbol, unknown>) {
+    super.updated(changedProperties);
+    
+    // Handle sub-route changes
+    if (changedProperties.has('subRoute')) {
+      this.handleSubRoute();
+    }
+  }
+  
+  private handleSubRoute() {
+    if (this.subRoute && ['interfaces', 'bridges', 'bonds', 'vlans'].includes(this.subRoute)) {
+      this.activeTab = this.subRoute;
+    } else {
+      this.activeTab = 'interfaces'; // Default to interfaces if subRoute is invalid or not set
+    }
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('click', this.handleDocumentClick.bind(this));
     document.removeEventListener('keydown', this.handleKeyDown.bind(this));
+    window.removeEventListener('popstate', this.handlePopState);
   }
 
   handleDocumentClick(e: MouseEvent) {
@@ -926,20 +965,25 @@ export class NetworkTab extends I18nLitElement {
   renderTabs() {
     return html`
       <div class="tab-header">
-        <button class="tab-button ${this.activeTab === 'interfaces' ? 'active' : ''}" @click="${() => this.activeTab = 'interfaces'}">
+<button class="tab-button ${this.activeTab === 'interfaces' ? 'active' : ''}" @click="${() => this.changeTab('interfaces')}">
           ${t('network.interface')}
         </button>
-        <button class="tab-button ${this.activeTab === 'bridges' ? 'active' : ''}" @click="${() => this.activeTab = 'bridges'}">
+<button class="tab-button ${this.activeTab === 'bridges' ? 'active' : ''}" @click="${() => this.changeTab('bridges')}">
           ${t('network.bridges')}
         </button>
-        <button class="tab-button ${this.activeTab === 'bonds' ? 'active' : ''}" @click="${() => this.activeTab = 'bonds'}">
+<button class="tab-button ${this.activeTab === 'bonds' ? 'active' : ''}" @click="${() => this.changeTab('bonds')}">
           ${t('network.bonds')}
         </button>
-        <button class="tab-button ${this.activeTab === 'vlans' ? 'active' : ''}" @click="${() => this.activeTab = 'vlans'}">
+<button class="tab-button ${this.activeTab === 'vlans' ? 'active' : ''}" @click="${() => this.changeTab('vlans')}">
           ${t('network.vlans')}
         </button>
       </div>
     `;
+  }
+
+changeTab(tab: string) {
+    this.activeTab = tab;
+    window.history.pushState({}, '', `/network/${tab}`);
   }
 
   override render() {

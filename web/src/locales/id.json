@@ -198,7 +198,7 @@
     }
   },
   "storage": {
-    "title": "Manajemen Penyimpanan",
+    "title": "Penyimpanan",
     "disks": {
       "title": "Disk",
       "device": "Perangkat",
@@ -222,7 +222,7 @@
       "selectFilesystem": "Pilih sistem berkas"
     },
     "lvm": {
-      "title": "Manajemen LVM",
+      "title": "LVM",
       "volumeGroups": "Grup Volume",
       "logicalVolumes": "Volume Logis",
       "physicalVolumes": "Volume Fisik",
@@ -242,7 +242,7 @@
       "noPhysicalVolumes": "Tidak Ada Volume Fisik"
     },
     "raid": {
-      "title": "Manajemen RAID",
+      "title": "RAID",
       "devices": "Perangkat RAID",
       "level": "Level RAID",
       "state": "Status",
@@ -264,7 +264,7 @@
       "noAvailableDisks": "Tidak Ada Disk Tersedia untuk RAID"
     },
     "iscsi": {
-      "title": "Manajemen iSCSI",
+      "title": "iSCSI",
       "sessions": "Sesi iSCSI",
       "target": "Target",
       "portal": "Portal",
@@ -277,7 +277,7 @@
       "logout": "Keluar dari Target iSCSI"
     },
     "multipath": {
-      "title": "Manajemen Multipath",
+      "title": "Multipath",
       "devices": "Perangkat Multipath",
       "wwid": "WWID",
       "vendor": "Vendor",
@@ -289,7 +289,7 @@
       "noDevices": "Tidak Ada Perangkat Multipath"
     },
     "btrfs": {
-      "title": "Manajemen BTRFS",
+      "title": "BTRFS",
       "subvolumes": "Subvolume BTRFS",
       "createSubvolume": "Buat Subvolume",
       "noSubvolumes": "Tidak Ada Subvolume"

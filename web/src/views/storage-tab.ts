@@ -27,6 +27,7 @@ export class StorageTab extends I18nLitElement {
   @property({ type: Array }) multipathDevices: MultipathDevice[] = [];
   @property({ type: Array }) btrfsSubvolumes: string[] = [];
   @property({ type: String }) activeSection = 'disks';
+  @property({ type: String }) subRoute: string | null = null;
   @property({ type: Boolean }) loading = false;
   @property({ type: String }) error = '';
 
@@ -49,40 +50,6 @@ export class StorageTab extends I18nLitElement {
       font-weight: 300;
     }
 
-    .tabs {
-      display: flex;
-      gap: 2px;
-      margin-bottom: 20px;
-      border-bottom: 1px solid var(--vscode-border);
-    }
-
-    .tab {
-      padding: 10px 20px;
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: var(--vscode-text-dim);
-      font-size: 14px;
-      transition: all 0.2s;
-      border-bottom: 2px solid transparent;
-    }
-
-    .tab:hover {
-      color: var(--vscode-text);
-    }
-
-    .tab.active {
-      color: var(--vscode-accent);
-      border-bottom-color: var(--vscode-accent);
-    }
-
-    .section {
-      display: none;
-    }
-
-    .section.active {
-      display: block;
-    }
 
     .card {
       background: var(--vscode-bg-light);
@@ -315,9 +282,56 @@ export class StorageTab extends I18nLitElement {
     }
   `;
 
+  static override get properties() {
+    return {
+      subRoute: { type: String, attribute: 'sub-route' }
+    };
+  }
+
   override connectedCallback() {
     super.connectedCallback();
+    this.handlePopState = this.handlePopState.bind(this);
+    window.addEventListener('popstate', this.handlePopState);
+    
+    // Initialize active section from sub-route or URL path
+    this.updateActiveSection();
     this.loadData();
+  }
+
+  override updated(changedProperties: Map<string, any>) {
+    if (changedProperties.has('subRoute')) {
+      this.updateActiveSection();
+      this.loadData();
+    }
+  }
+
+  private updateActiveSection() {
+    // First try to get section from sub-route
+    if (this.subRoute && ['disks', 'lvm', 'raid', 'iscsi', 'multipath', 'btrfs'].includes(this.subRoute)) {
+      this.activeSection = this.subRoute;
+      return;
+    }
+
+    // Otherwise try to get it from URL path
+    const pathSegments = window.location.pathname.split('/');
+    const section = pathSegments[pathSegments.length - 1];
+    if (['disks', 'lvm', 'raid', 'iscsi', 'multipath', 'btrfs'].includes(section)) {
+      this.activeSection = section;
+    }
+  }
+
+  override disconnectedCallback() {
+    super.disconnectedCallback();
+    window.removeEventListener('popstate', this.handlePopState);
+  }
+
+  handlePopState() {
+    const pathSegments = window.location.pathname.split('/');
+    const section = pathSegments[pathSegments.length - 1];
+    if (['disks', 'lvm', 'raid', 'iscsi', 'multipath', 'btrfs'].includes(section)) {
+      this.activeSection = section;
+      this.loadData();
+    }
   }
 
   async loadData() {
@@ -438,34 +452,6 @@ export class StorageTab extends I18nLitElement {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 
-  switchSection(section: string) {
-    this.activeSection = section;
-    this.loadData();
-  }
-
-  renderTabs() {
-    const tabs = [
-      { id: 'disks', label: t('storage.disks.title') },
-      { id: 'lvm', label: t('storage.lvm.title') },
-      { id: 'raid', label: t('storage.raid.title') },
-      { id: 'iscsi', label: t('storage.iscsi.title') },
-      { id: 'multipath', label: t('storage.multipath.title') },
-      { id: 'btrfs', label: t('storage.btrfs.title') }
-    ];
-
-    return html`
-      <div class="tabs">
-        ${tabs.map(tab => html`
-          <button 
-            class="tab ${this.activeSection === tab.id ? 'active' : ''}"
-            @click=${() => this.switchSection(tab.id)}
-          >
-            ${tab.label}
-          </button>
-        `)}
-      </div>
-    `;
-  }
 
   renderDisksSection() {
     if (this.disks.length === 0) {
@@ -921,8 +907,7 @@ export class StorageTab extends I18nLitElement {
   override render() {
     return html`
       <div class="storage-container">
-        <h1>${t('storage.title')}</h1>
-        ${this.renderTabs()}
+        <h1>${t(`storage.${this.activeSection}.title`)}</h1>
         <div class="content">
           ${this.renderContent()}
         </div>

@@ -7,7 +7,7 @@ import type { NavItem } from '../types/system';
 export class SidebarTree extends I18nLitElement {
   @property({ type: Boolean }) collapsed = false;
   @property({ type: String }) activeItemId = 'dashboard';
-  @property({ type: Object }) expandedItems: Set<string> = new Set(['network']);
+  @property({ type: Object }) expandedItems: Set<string> = new Set(['network', 'storage']);
 
   static override styles = css`
     :host {
@@ -162,13 +162,77 @@ export class SidebarTree extends I18nLitElement {
       id: 'network',
       label: 'nav.network',
       icon: 'network',
-      route: 'network'
+      route: 'network',
+      children: [
+        {
+          id: 'network-interfaces',
+          label: 'network.interface',
+          icon: 'interfaces',
+          route: 'network/interfaces'
+        },
+        {
+          id: 'network-bridges',
+          label: 'network.bridges',
+          icon: 'bonding',
+          route: 'network/bridges'
+        },
+        {
+          id: 'network-bonds',
+          label: 'network.bonds',
+          icon: 'bonding',
+          route: 'network/bonds'
+        },
+        {
+          id: 'network-vlans',
+          label: 'network.vlans',
+          icon: 'vlans',
+          route: 'network/vlans'
+        }
+      ]
     },
     {
       id: 'storage',
       label: 'nav.storage',
       icon: 'storage',
-      route: 'storage'
+      route: 'storage',
+      children: [
+        {
+          id: 'storage-disks',
+          label: 'storage.disks.title',
+          icon: 'disks',
+          route: 'storage/disks'
+        },
+        {
+          id: 'storage-lvm',
+          label: 'storage.lvm.title',
+          icon: 'lvm',
+          route: 'storage/lvm'
+        },
+        {
+          id: 'storage-raid',
+          label: 'storage.raid.title',
+          icon: 'raid',
+          route: 'storage/raid'
+        },
+        {
+          id: 'storage-iscsi',
+          label: 'storage.iscsi.title',
+          icon: 'storage',
+          route: 'storage/iscsi'
+        },
+        {
+          id: 'storage-multipath',
+          label: 'storage.multipath.title',
+          icon: 'storage',
+          route: 'storage/multipath'
+        },
+        {
+          id: 'storage-btrfs',
+          label: 'storage.btrfs.title',
+          icon: 'storage',
+          route: 'storage/btrfs'
+        }
+      ]
     },
     {
       id: 'containers',
@@ -211,13 +275,17 @@ export class SidebarTree extends I18nLitElement {
       // Navigate to route
       this.activeItemId = item.id;
 
+      // Parse route and query params
+      const [path, queryString] = item.route.split('?');
+      const queryParams = queryString ? new URLSearchParams(queryString) : null;
+      
       // Update the URL without reloading the page
-      const url = item.route === 'dashboard' ? '/' : `/${item.route}`;
-      window.history.pushState({ route: item.route }, '', url);
+      const url = path === 'dashboard' ? '/' : `/${item.route}`;
+      window.history.pushState({ route: path, queryParams }, '', url);
 
       // Dispatch a navigation event
       this.dispatchEvent(new CustomEvent('navigate', {
-        detail: { route: item.route, item },
+        detail: { route: path, item, queryParams },
         bubbles: true,
         composed: true
       }));

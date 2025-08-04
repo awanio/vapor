@@ -6,9 +6,8 @@ import (
 
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli"
-	"k8s.io/client-go/rest"
 
-	"gitlab.com/awan.io/vapor/api/internal/kubernetes"
+	"github.com/vapor/system-api/internal/kubernetes"
 )
 
 // Service represents the Helm service
@@ -24,12 +23,6 @@ func NewService(kubeClient *kubernetes.Service) (*Service, error) {
 	
 	actionConfig := new(action.Configuration)
 	
-	// Get the RESTConfig from the kubernetes client
-	restConfig, err := kubeClient.GetRESTConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get kubernetes config: %w", err)
-	}
-
 	// Initialize the Helm configuration
 	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), "", func(format string, v ...interface{}) {
 		// TODO: Use proper logger
@@ -66,14 +59,27 @@ type ListReleasesOptions struct {
 	Filter        string
 }
 
+// ListChartsOptions represents options for listing Helm charts
+type ListChartsOptions struct {
+	Repository  string
+	AllVersions bool
+}
+
+// ListCharts lists all Helm charts
+func (s *Service) ListCharts(ctx context.Context, opts ListChartsOptions) ([]string, error) {
+	// Simulate listing charts for demo purposes
+	// TODO: Implement using Helm SDK
+	return []string{"nginx", "redis", "prometheus"}, nil
+}
+
 // ListReleases lists all Helm releases
 func (s *Service) ListReleases(ctx context.Context, opts ListReleasesOptions) ([]Release, error) {
 	client := action.NewList(s.cfg)
 	
 	// Configure listing options
 	client.AllNamespaces = opts.AllNamespaces
-	if !opts.AllNamespaces && opts.Namespace != "" {
-		client.Namespace = opts.Namespace
+if !opts.AllNamespaces {
+		client.Filter = opts.Namespace
 	}
 	if opts.Filter != "" {
 		client.Filter = opts.Filter
