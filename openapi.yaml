@@ -900,6 +900,132 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /docker/ps:
+    get:
+      summary: List Docker containers
+      tags:
+        - Docker
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: all
+          in: query
+          required: false
+          description: Show all containers (default shows just running)
+          schema:
+            type: boolean
+            default: false
+        - name: running
+          in: query
+          required: false
+          description: Show only running containers
+          schema:
+            type: boolean
+            default: false
+        - name: size
+          in: query
+          required: false
+          description: Include container sizes
+          schema:
+            type: boolean
+            default: false
+        - name: limit
+          in: query
+          required: false
+          description: Limit the number of containers
+          schema:
+            type: integer
+        - name: filters
+          in: query
+          required: false
+          description: Filters to process on the container list (e.g., "status=running,label=app=web")
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Containers listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DockerContainersResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          description: Docker daemon unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /docker/images:
+    get:
+      summary: List Docker images
+      tags:
+        - Docker
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Images listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DockerImagesResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          description: Docker daemon unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /docker/networks:
+    get:
+      summary: List Docker networks
+      tags:
+        - Docker
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Networks listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DockerNetworksResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          description: Docker daemon unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /docker/volumes:
+    get:
+      summary: List Docker volumes
+      tags:
+        - Docker
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Volumes listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DockerVolumesResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          description: Docker daemon unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /containers/{id}/logs:
     get:
       summary: Get container logs
@@ -3298,3 +3424,288 @@ components:
                 type: integer
               tx_dropped:
                 type: integer
+    
+    # Docker Schemas
+    DockerContainer:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Container ID
+        names:
+          type: array
+          items:
+            type: string
+          description: Container names
+        image:
+          type: string
+          description: Image name
+        imageId:
+          type: string
+          description: Image ID
+        command:
+          type: string
+          description: Command
+        created:
+          type: string
+          format: date-time
+          description: Creation time
+        state:
+          type: string
+          description: Container state
+        status:
+          type: string
+          description: Container status
+        ports:
+          type: array
+          items:
+            $ref: '#/components/schemas/DockerPort'
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        sizeRw:
+          type: integer
+          description: Size of files changed
+        sizeRootFs:
+          type: integer
+          description: Size of root filesystem
+        hostConfig:
+          $ref: '#/components/schemas/DockerHostConfig'
+        networkSettings:
+          $ref: '#/components/schemas/DockerNetworkSettings'
+        mounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/DockerMount'
+    
+    DockerPort:
+      type: object
+      properties:
+        ip:
+          type: string
+        privatePort:
+          type: integer
+        publicPort:
+          type: integer
+        type:
+          type: string
+    
+    DockerHostConfig:
+      type: object
+      properties:
+        networkMode:
+          type: string
+    
+    DockerNetworkSettings:
+      type: object
+      properties:
+        networks:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/DockerNetworkInfo'
+    
+    DockerNetworkInfo:
+      type: object
+      properties:
+        networkId:
+          type: string
+        endpointId:
+          type: string
+        gateway:
+          type: string
+        ipAddress:
+          type: string
+        ipPrefixLen:
+          type: integer
+        ipv6Gateway:
+          type: string
+        macAddress:
+          type: string
+    
+    DockerMount:
+      type: object
+      properties:
+        type:
+          type: string
+        source:
+          type: string
+        destination:
+          type: string
+        mode:
+          type: string
+        rw:
+          type: boolean
+        propagation:
+          type: string
+    
+    DockerImage:
+      type: object
+      properties:
+        id:
+          type: string
+        parentId:
+          type: string
+        repoTags:
+          type: array
+          items:
+            type: string
+        repoDigests:
+          type: array
+          items:
+            type: string
+        created:
+          type: string
+          format: date-time
+        size:
+          type: integer
+        virtualSize:
+          type: integer
+        sharedSize:
+          type: integer
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        containers:
+          type: integer
+    
+    DockerNetwork:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        driver:
+          type: string
+        created:
+          type: string
+          format: date-time
+        scope:
+          type: string
+        enableIPv6:
+          type: boolean
+        ipam:
+          $ref: '#/components/schemas/DockerIPAM'
+        internal:
+          type: boolean
+        attachable:
+          type: boolean
+        ingress:
+          type: boolean
+        configOnly:
+          type: boolean
+        options:
+          type: object
+          additionalProperties:
+            type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        containers:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/DockerNetworkInfo'
+    
+    DockerIPAM:
+      type: object
+      properties:
+        driver:
+          type: string
+        options:
+          type: object
+          additionalProperties:
+            type: string
+        config:
+          type: array
+          items:
+            $ref: '#/components/schemas/DockerIPAMConfig'
+    
+    DockerIPAMConfig:
+      type: object
+      properties:
+        subnet:
+          type: string
+        ipRange:
+          type: string
+        gateway:
+          type: string
+        auxAddress:
+          type: object
+          additionalProperties:
+            type: string
+    
+    DockerVolume:
+      type: object
+      properties:
+        name:
+          type: string
+        driver:
+          type: string
+        mountpoint:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        scope:
+          type: string
+        options:
+          type: object
+          additionalProperties:
+            type: string
+        usageData:
+          $ref: '#/components/schemas/DockerVolumeUsageData'
+    
+    DockerVolumeUsageData:
+      type: object
+      properties:
+        size:
+          type: integer
+        refCount:
+          type: integer
+    
+    DockerContainersResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/DockerContainer'
+    
+    DockerImagesResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/DockerImage'
+    
+    DockerNetworksResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/DockerNetwork'
+    
+    DockerVolumesResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/DockerVolume'

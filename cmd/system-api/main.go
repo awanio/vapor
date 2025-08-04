@@ -21,6 +21,7 @@ import (
 	"github.com/vapor/system-api/internal/users"
 	"github.com/vapor/system-api/internal/web"
 	"github.com/vapor/system-api/internal/websocket"
+	"github.com/vapor/system-api/internal/docker"
 )
 
 func main() {
@@ -109,18 +110,33 @@ func main() {
 		api.POST("/storage/raid/create", storageService.CreateRAIDDevice)
 		api.DELETE("/storage/raid/destroy", storageService.DestroyRAIDDevice)
 
-// Container management endpoints
-containerService, err := container.NewService()
-if err != nil {
-	log.Printf("Warning: Failed to initialize container service: %v", err)
-	// Continue without container service
-} else {
-	api.GET("/containers", containerService.ListContainers)
-	api.GET("/containers/:id", containerService.GetContainer)
-	api.GET("/containers/:id/logs", containerService.GetContainerLogs)
-	api.GET("/images", containerService.ListImages)
-	api.GET("/images/:id", containerService.GetImage)
-}
+		// Container management endpoints (for containerd and CRI-O)
+		containerService, err := container.NewService()
+		if err != nil {
+			log.Printf("Error initializing container service: %v", err)
+		} else {
+			// Register container routes for containerd and CRI-O
+			api.GET("/containers", containerService.ListContainers)
+			api.GET("/images", containerService.ListImages)
+			api.GET("/containers/:id", containerService.GetContainer)
+			api.GET("/containers/:id/logs", containerService.GetContainerLogs)
+			api.GET("/images/:id", containerService.GetImage)
+		}
+
+		// Docker service (separate from container service)
+		dockerClient, err := docker.NewClient()
+		if err != nil {
+			log.Printf("Warning: Failed to create Docker client: %v", err)
+		} else {
+			dockerService := docker.NewService(dockerClient)
+			defer dockerClient.Close() // Close client when server shuts down
+			
+			// Register Docker routes
+			api.GET("/docker/ps", dockerService.ListContainersGin)
+			api.GET("/docker/images", dockerService.ListImagesGin)
+			api.GET("/docker/networks", dockerService.ListNetworksGin)
+			api.GET("/docker/volumes", dockerService.ListVolumesGin)
+		}
 
 // User management endpoints
 		userService := users.NewService()

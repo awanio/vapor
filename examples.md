@@ -184,6 +184,36 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
   http://103.179.254.248:8080/api/v1/storage/format
 ```
 
+## Docker Management
+
+### List Docker Containers
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  http://103.179.254.248:8080/api/v1/docker/ps
+```
+
+### List Docker Images
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  http://103.179.254.248:8080/api/v1/docker/images
+```
+
+### List Docker Networks
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  http://103.179.254.248:8080/api/v1/docker/networks
+```
+
+### List Docker Volumes
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  http://103.179.254.248:8080/api/v1/docker/volumes
+```
+
 ## User Management
 
 ### List Users

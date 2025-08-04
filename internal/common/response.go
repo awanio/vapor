@@ -1,6 +1,7 @@
 package common
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -66,3 +67,17 @@ const (
 	ErrCodeConflict      = "CONFLICT"
 	ErrCodeNotImplemented = "NOT_IMPLEMENTED"
 )
+
+// RespondSuccess writes a successful response to http.ResponseWriter
+func RespondSuccess(w http.ResponseWriter, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(SuccessResponse(data))
+}
+
+// RespondError writes an error response to http.ResponseWriter
+func RespondError(w http.ResponseWriter, statusCode int, code, message string, details ...string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(ErrorResponse(code, message, details...))
+}
