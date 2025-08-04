@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -22,13 +23,29 @@ type Service struct {
 
 // NewService creates a new Kubernetes service
 func NewService() (*Service, error) {
-	// Try to load from default kubeconfig
+	// First, check if Kubernetes is installed by looking for admin.conf
+	if _, err := os.Stat("/etc/kubernetes/admin.conf"); err == nil {
+		// Try to load from admin.conf first (control plane node)
+		config, err := clientcmd.BuildConfigFromFlags("", "/etc/kubernetes/admin.conf")
+		if err == nil {
+			// Successfully loaded admin config, create clientset and return
+			return createServiceWithConfig(config)
+		}
+		// If admin.conf exists but can't be loaded, log and continue with other methods
+		fmt.Printf("Warning: /etc/kubernetes/admin.conf exists but failed to load: %v\n", err)
+	}
+
+	// Try to load from default kubeconfig location (~/.kube/config)
 	config, err := clientcmd.BuildConfigFromFlags("", clientcmd.RecommendedHomeFile)
 	if err != nil {
-		// If that fails, try in-cluster config
+		// If that fails, try in-cluster config (for pods running inside cluster)
 		config, err = rest.InClusterConfig()
 		if err != nil {
-			return nil, err
+			// Check if kubectl is available as a fallback indicator
+			if !isKubernetesInstalled() {
+				return nil, fmt.Errorf("kubernetes is not installed on this system: %w", err)
+			}
+			return nil, fmt.Errorf("failed to create kubernetes config: %w", err)
 		}
 	}
 
@@ -431,4 +448,81 @@ func countRestarts(pod corev1.Pod) int32 {
 func calculateAge(creationTime time.Time) string {
 	duration := time.Since(creationTime)
 	return fmt.Sprintf("%dd %dh", int(duration.Hours()/24), int(duration.Hours())%24)
+}
+
+// createServiceWithConfig creates a Service instance with the given config
+func createServiceWithConfig(config *rest.Config) (*Service, error) {
+	// Create the clientset
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create kubernetes clientset: %w", err)
+	}
+
+	// Get node name from environment
+	nodeName := os.Getenv("NODE_NAME")
+
+	// Check if this is a control plane node
+	isControlPlane := false
+	if nodeName != "" {
+		nodes, err := clientset.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			// Don't fail if we can't list nodes, just continue without node info
+			fmt.Printf("Warning: failed to list nodes: %v\n", err)
+		} else {
+			for _, node := range nodes.Items {
+				if node.Name == nodeName {
+					for label := range node.Labels {
+						if label == "node-role.kubernetes.io/master" || label == "node-role.kubernetes.io/control-plane" {
+							isControlPlane = true
+							break
+						}
+					}
+					break
+				}
+			}
+		}
+	}
+
+	return &Service{
+		client:         clientset,
+		nodeName:       nodeName,
+		isControlPlane: isControlPlane,
+	}, nil
+}
+
+// isKubernetesInstalled checks if Kubernetes is installed on the system
+func isKubernetesInstalled() bool {
+	// Check for common Kubernetes installation indicators
+	kubernetesIndicators := []string{
+		"/etc/kubernetes/admin.conf",
+		"/etc/kubernetes/kubelet.conf",
+		"/var/lib/kubelet",
+		"/etc/systemd/system/kubelet.service",
+		"/usr/bin/kubelet",
+		"/usr/local/bin/kubelet",
+	}
+
+	// Check if any of the Kubernetes files/directories exist
+	for _, indicator := range kubernetesIndicators {
+		if _, err := os.Stat(indicator); err == nil {
+			return true
+		}
+	}
+
+	// Check if kubectl is available in PATH
+	if _, err := exec.LookPath("kubectl"); err == nil {
+		return true
+	}
+
+	// Check if kubelet is available in PATH
+	if _, err := exec.LookPath("kubelet"); err == nil {
+		return true
+	}
+
+	// Check if kubelet service is running (systemd systems)
+	if err := exec.Command("systemctl", "is-active", "--quiet", "kubelet").Run(); err == nil {
+		return true
+	}
+
+	return false
 }
