@@ -28,7 +28,11 @@
     "disks": "Disks",
     "lvm": "LVM",
     "raid": "RAID",
-    "containers": "Containers",
+    "containers": {
+      "title": "Containers",
+      "cri": "CRI",
+      "docker": "Docker"
+    },
     "images": "Images",
     "users": "Users"
   },
@@ -334,7 +338,7 @@
     "passwordMismatch": "Passwords do not match",
     "deleteConfirm": "Are you sure you want to delete user {{username}}?",
     "confirmDelete": "Delete User",
-    "confirmDeleteMessage": "Are you sure you want to delete user \"{{username}}\"? This action cannot be undone.",
+    "confirmDeleteMessage": "Are you sure you want to delete user \"{username}}\"? This action cannot be undone.",
     "locked": "Locked",
     "unlocked": "Unlocked",
     "toggleLock": "Toggle Lock",

@@ -762,7 +762,8 @@ export class ContainersTab extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback();
-    this.fetchData();
+    this.handleLocationChange();
+    window.addEventListener('popstate', this.handleLocationChange);
     // Add click handler to close menus when clicking outside
     this.addEventListener('click', this.handleOutsideClick.bind(this));
     // Add keyboard event listener for escape key
@@ -772,37 +773,27 @@ export class ContainersTab extends LitElement {
 
   override disconnectedCallback() {
     super.disconnectedCallback();
+    window.removeEventListener('popstate', this.handleLocationChange);
     this.removeEventListener('click', this.handleOutsideClick.bind(this));
     document.removeEventListener('keydown', this.handleKeyDown);
   }
 
-  handleOutsideClick(event: Event) {
-    const target = event.target as HTMLElement;
-    if (!target.closest('.action-menu')) {
-      this.closeAllMenus();
+  handleLocationChange = () => {
+    const path = window.location.pathname;
+    if (path.endsWith('/images')) {
+      this.activeTab = 'images';
+    } else {
+      this.activeTab = 'containers';
     }
+    this.fetchData();
   }
 
-  handleKeyDown(event: KeyboardEvent) {
-    if (event.key === 'Escape') {
-      // Close action dropdowns first
-      this.closeAllMenus();
-      
-      // Then close drawer if it's open
-      if (this.showDrawer) {
-        this.showDrawer = false;
-        this.detailError = null;
-        this.selectedContainer = null;
-        this.selectedImage = null;
-      }
-      
-      // Close logs drawer if it's open
-      if (this.showLogsDrawer) {
-        this.showLogsDrawer = false;
-        this.logsError = null;
-        this.containerLogs = '';
-      }
-    }
+  handleTabClick(event: MouseEvent, tab: string) {
+    event.preventDefault();
+    this.activeTab = tab;
+    const path = tab === 'images' ? '/containers/cri/images' : '/containers/cri';
+    window.history.pushState({}, '', path);
+    this.fetchData();
   }
 
   async fetchData() {
@@ -1231,18 +1222,20 @@ renderImagesTable() {
   renderTabs() {
     return html`
       <div class="tab-header">
-        <button 
+        <a 
+          href="/containers/cri"
           class="tab-button ${this.activeTab === 'containers' ? 'active' : ''}" 
-          @click="${() => { this.activeTab = 'containers'; this.fetchData(); }}"
+          @click="${(e: MouseEvent) => this.handleTabClick(e, 'containers')}"
         >
           Containers
-        </button>
-        <button 
+        </a>
+        <a 
+          href="/containers/cri/images"
           class="tab-button ${this.activeTab === 'images' ? 'active' : ''}" 
-          @click="${() => { this.activeTab = 'images'; this.fetchData(); }}"
+          @click="${(e: MouseEvent) => this.handleTabClick(e, 'images')}"
         >
           Images
-        </button>
+        </a>
       </div>
     `;
 }

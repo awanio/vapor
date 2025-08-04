@@ -28,7 +28,11 @@
     "disks": "Disk",
     "lvm": "LVM",
     "raid": "RAID",
-    "containers": "Kontainer",
+    "containers": {
+      "title": "Kontainer",
+      "cri": "CRI",
+      "docker": "Docker"
+    },
     "images": "Image",
     "users": "Pengguna"
   },
@@ -350,7 +354,7 @@
     "passwordMismatch": "Kata sandi tidak cocok",
     "deleteConfirm": "Apakah Anda yakin ingin menghapus pengguna {{username}}?",
     "confirmDelete": "Hapus Pengguna",
-    "confirmDeleteMessage": "Apakah Anda yakin ingin menghapus pengguna \"{{username}}\"? Tindakan ini tidak dapat dibatalkan.",
+    "confirmDeleteMessage": "Apakah Anda yakin ingin menghapus pengguna \"{username}}\"? Tindakan ini tidak dapat dibatalkan.",
     "locked": "Terkunci",
     "unlocked": "Tidak Terkunci",
     "toggleLock": "Kunci/Buka Kunci",

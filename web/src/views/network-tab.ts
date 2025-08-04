@@ -3,7 +3,7 @@ import { state, property } from 'lit/decorators.js';
 import { t } from '../i18n';
 import { I18nLitElement } from '../i18n-mixin';
 import { api } from '../api';
-import type { AddressRequest, BridgeRequest, BondRequest, VLANRequest, NetworkInterface } from '../types/api';
+import type { AddressRequest, BridgeRequest, BondRequest, VLANRequest, NetworkInterface, BondMode } from '../types/api';
 import '../components/modal-dialog';
 
 export class NetworkTab extends I18nLitElement {
@@ -482,7 +482,7 @@ export class NetworkTab extends I18nLitElement {
   @state()
   private bondFormData = {
     name: '',
-    mode: '',
+    mode: 'balance-rr' as BondMode,
     interfaces: ''
   };
 
@@ -583,8 +583,8 @@ export class NetworkTab extends I18nLitElement {
     window.removeEventListener('popstate', this.handlePopState);
   }
 
-  handleDocumentClick(e: MouseEvent) {
-    const target = e.target as HTMLElement;
+  handleDocumentClick(e: Event) {
+    const target = e.target as Node;
     if (!target.closest('.action-menu')) {
       this.closeAllMenus();
     }
@@ -862,7 +862,7 @@ export class NetworkTab extends I18nLitElement {
     this.showBondDrawer = false;
     this.bondFormData = {
       name: '',
-      mode: '',
+      mode: 'balance-rr' as BondMode,
       interfaces: ''
     };
   }
@@ -1144,7 +1144,7 @@ ${this.interfaces.length > 0 ? html`
                           <span class="status-icon ${bond.state === 'up' ? 'up' : 'down'}" data-tooltip="${bond.state === 'up' ? 'Up' : 'Down'}"></span>
                         </div>
                       </td>
-                      <td>${(bond as any).mode || 'N/A'}</td>
+                      <td>${bond.mode || 'N/A'}</td>
                       <td>
                         <div class="action-menu">
                           <button class="action-dots" @click=${(e: Event) => this.toggleActionMenu(e, `bond-${index}`)}>${'⋮'}</button>

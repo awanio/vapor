@@ -110,6 +110,7 @@ export class SidebarTree extends I18nLitElement {
     .icon-lvm::before { content: '📦'; }
     .icon-raid::before { content: '🗄️'; }
     .icon-containers::before { content: '📦'; }
+    .icon-docker::before { content: '🐳'; }
     .icon-images::before { content: '💿'; }
     .icon-users::before { content: '👥'; }
 
@@ -236,9 +237,23 @@ export class SidebarTree extends I18nLitElement {
     },
     {
       id: 'containers',
-      label: 'nav.containers',
+      label: 'nav.containers.title',
       icon: 'containers',
-      route: 'containers'
+      route: 'containers',
+      children: [
+        {
+          id: 'containers-cri',
+          label: 'nav.containers.cri',
+          icon: 'containers',
+          route: 'containers/cri'
+        },
+        {
+          id: 'containers-docker',
+          label: 'nav.containers.docker',
+          icon: 'docker',
+          route: 'containers/docker'
+        }
+      ]
     },
     {
       id: 'logs',
@@ -349,6 +364,7 @@ export class SidebarTree extends I18nLitElement {
 
   override connectedCallback() {
     super.connectedCallback();
+    this.expandedItems.add('containers');
     
     // Set activeItemId from URL on component mount
     const path = window.location.pathname.slice(1);
