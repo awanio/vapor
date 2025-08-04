@@ -233,7 +233,11 @@ func (c *Client) processMessage(data []byte) {
 					}
 					log.Printf("Terminal size from payload: rows=%v, cols=%v", rows, cols)
 				}
-				c.pseudoTerminal = startTerminal(c)
+				// Get the authenticated username
+				c.mu.RLock()
+				username := c.username
+				c.mu.RUnlock()
+				c.pseudoTerminal = startTerminal(c, username)
 				if c.pseudoTerminal == nil {
 					c.sendError("Failed to initialize terminal")
 					return

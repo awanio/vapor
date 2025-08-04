@@ -277,8 +277,63 @@ The application includes an embedded web UI that is served from the root path (`
 Once the server is running, you can access:
 - Web UI: `http://localhost:8080/`
 - API endpoints: `http://localhost:8080/api/v1/*`
-- WebSocket endpoints: `ws://localhost:8080/ws/*`
+- WebSocket endpoints: `ws://localhost:8080/api/v1/ws/*`
 - OpenAPI docs: `http://localhost:8080/docs`
+
+## WebSocket Features
+
+### Terminal Access
+
+The API provides WebSocket-based terminal access at `/api/v1/ws/terminal`. Key features:
+
+- **User-based sessions**: Terminal sessions run as the authenticated Linux user
+- **Special mapping**: The built-in `admin` user is mapped to `root` for administrative tasks
+- **Security**: Requires valid JWT authentication before establishing terminal session
+- **Audit logging**: All terminal sessions are logged with username and session details
+- **Platform support**: Full user switching on Linux; development mode on macOS/Windows
+
+#### Terminal WebSocket Protocol
+
+1. Connect to `ws://localhost:8080/api/v1/ws/terminal`
+2. Send authentication message:
+   ```json
+   {
+     "type": "auth",
+     "payload": {
+       "token": "your-jwt-token"
+     }
+   }
+   ```
+3. After successful auth, send subscribe message with terminal size:
+   ```json
+   {
+     "type": "subscribe",
+     "payload": {
+       "rows": 24,
+       "cols": 80
+     }
+   }
+   ```
+4. Send input:
+   ```json
+   {
+     "type": "input",
+     "data": "ls -la\n"
+   }
+   ```
+5. Resize terminal:
+   ```json
+   {
+     "type": "resize",
+     "rows": 40,
+     "cols": 120
+   }
+   ```
+
+### Other WebSocket Endpoints
+
+- `/api/v1/ws/metrics` - Real-time system metrics
+- `/api/v1/ws/logs` - Real-time log streaming
 
 ## Development
 
@@ -317,6 +372,11 @@ make lint
 3. **JWT Secret**: Always use a strong, randomly generated secret in production.
 4. **HTTPS**: Use HTTPS in production environments.
 5. **Network**: Bind to localhost only or use proper firewall rules.
+6. **Terminal Access**: The WebSocket terminal feature provides full shell access as the authenticated user. On Linux systems:
+   - Users get their own shell sessions with their permissions
+   - The built-in `admin` user is mapped to `root` for administrative tasks
+   - All terminal sessions are logged for audit purposes
+   - Ensure proper authentication and network security when exposing this feature
 
 ## Project Structure
 

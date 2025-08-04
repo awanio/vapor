@@ -919,9 +919,8 @@ async def connect_terminal():
         start_msg = {
             "type": "subscribe",
             "payload": {
-                "cols": 80,
-                "rows": 24,
-                "shell": "/bin/bash"
+    "cols": 80,
+    "rows": 24
             }
         }
         await websocket.send(json.dumps(start_msg))
