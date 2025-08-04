@@ -962,35 +962,10 @@ export class NetworkTab extends I18nLitElement {
     `;
   }
 
-  renderTabs() {
-    return html`
-      <div class="tab-header">
-<button class="tab-button ${this.activeTab === 'interfaces' ? 'active' : ''}" @click="${() => this.changeTab('interfaces')}">
-          ${t('network.interface')}
-        </button>
-<button class="tab-button ${this.activeTab === 'bridges' ? 'active' : ''}" @click="${() => this.changeTab('bridges')}">
-          ${t('network.bridges')}
-        </button>
-<button class="tab-button ${this.activeTab === 'bonds' ? 'active' : ''}" @click="${() => this.changeTab('bonds')}">
-          ${t('network.bonds')}
-        </button>
-<button class="tab-button ${this.activeTab === 'vlans' ? 'active' : ''}" @click="${() => this.changeTab('vlans')}">
-          ${t('network.vlans')}
-        </button>
-      </div>
-    `;
-  }
-
-changeTab(tab: string) {
-    this.activeTab = tab;
-    window.history.pushState({}, '', `/network/${tab}`);
-  }
-
   override render() {
     return html`
       <div class="tab-container">
         <h1>${t('network.title')}</h1>
-        ${this.renderTabs()}
         <div class="tab-content">
           ${this.activeTab === 'interfaces' ? html`
             <div class="interface-search" style="display: flex; justify-content: flex-start; margin-bottom: 12px;">
