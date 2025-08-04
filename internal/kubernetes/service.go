@@ -308,11 +308,20 @@ type Service struct {
 
 // NewService creates a new Kubernetes service
 func NewService() (*Service, error) {
-	if _, err := os.Stat("/usr/bin/kubectl"); os.IsNotExist(err) {
+	if _, err := os.Stat("/usr/bin/kubelet"); os.IsNotExist(err) {
 		return nil, fmt.Errorf("Kubernetes is not installed")
 	}
 
-	config, err := clientcmd.BuildConfigFromFlags("", clientcmd.RecommendedHomeFile)
+	var kubeConfigPath string
+	if _, err := os.Stat(clientcmd.RecommendedHomeFile); err == nil {
+		kubeConfigPath = clientcmd.RecommendedHomeFile
+	} else if _, err := os.Stat("/etc/kubernetes/kubelet.conf"); err == nil {
+		kubeConfigPath = "/etc/kubernetes/kubelet.conf"
+	} else {
+		return nil, fmt.Errorf("Failed to find a valid kubeconfig: %w", err)
+	}
+
+	config, err := clientcmd.BuildConfigFromFlags("", kubeConfigPath)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to build Kubernetes configuration: %w", err)
 	}
