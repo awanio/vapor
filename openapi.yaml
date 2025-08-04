@@ -1,789 +1,3 @@
-    PodsResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              type: object
-              properties:
-                pods:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/PodInfo'
-
-    PodInfo:
-      type: object
-      properties:
-        name:
-          type: string
-        namespace:
-          type: string
-        status:
-          type: string
-        ready:
-          type: string
-        restarts:
-          type: integer
-        age:
-          type: string
-        ip:
-          type: string
-        node:
-          type: string
-        labels:
-          type: object
-          additionalProperties:
-            type: string
-
-    DeploymentsResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              type: object
-              properties:
-                deployments:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/DeploymentInfo'
-
-    DeploymentInfo:
-      type: object
-      properties:
-        name:
-          type: string
-        namespace:
-          type: string
-        ready:
-          type: string
-        upToDate:
-          type: integer
-        available:
-          type: integer
-        age:
-          type: string
-        labels:
-          type: object
-          additionalProperties:
-            type: string
-
-    ServicesResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              type: object
-              properties:
-                services:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/ServiceInfo'
-
-    ServiceInfo:
-      type: object
-      properties:
-        name:
-          type: string
-        namespace:
-          type: string
-        type:
-          type: string
-        clusterIP:
-          type: string
-        externalIP:
-          type: string
-        ports:
-          type: string
-        age:
-          type: string
-        labels:
-          type: object
-          additionalProperties:
-            type: string
-
-    IngressesResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              type: object
-              properties:
-                ingresses:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/IngressInfo'
-
-    IngressInfo:
-      type: object
-      properties:
-        name:
-          type: string
-        namespace:
-          type: string
-        hosts:
-          type: array
-          items:
-            type: string
-        address:
-          type: string
-        ports:
-          type: string
-        age:
-          type: string
-        labels:
-          type: object
-          additionalProperties:
-            type: string
-
-    PVCsResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              type: object
-              properties:
-                pvcs:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/PVCInfo'
-
-    PVCInfo:
-      type: object
-      properties:
-        name:
-          type: string
-        namespace:
-          type: string
-        status:
-          type: string
-        volume:
-          type: string
-        capacity:
-          type: string
-        accessModes:
-          type: string
-        storageClass:
-          type: string
-        age:
-          type: string
-        labels:
-          type: object
-          additionalProperties:
-            type: string
-
-    PVsResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              type: object
-              properties:
-                pvs:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/PVInfo'
-
-    PVInfo:
-      type: object
-      properties:
-        name:
-          type: string
-        capacity:
-          type: string
-        accessModes:
-          type: string
-        reclaimPolicy:
-          type: string
-        status:
-          type: string
-        claim:
-          type: string
-        storageClass:
-          type: string
-        reason:
-          type: string
-        age:
-          type: string
-        labels:
-          type: object
-          additionalProperties:
-            type: string
-
-    SecretsResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              type: object
-              properties:
-                secrets:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/SecretInfo'
-
-    SecretInfo:
-      type: object
-      properties:
-        name:
-          type: string
-        namespace:
-          type: string
-        type:
-          type: string
-        data:
-          type: integer
-        age:
-          type: string
-        labels:
-          type: object
-          additionalProperties:
-            type: string
-
-    ConfigMapsResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              type: object
-              properties:
-                configmaps:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/ConfigMapInfo'
-
-    ConfigMapInfo:
-      type: object
-      properties:
-        name:
-          type: string
-        namespace:
-          type: string
-        data:
-          type: integer
-        age:
-          type: string
-        labels:
-          type: object
-          additionalProperties:
-            type: string
-
-    NamespacesResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              type: object
-              properties:
-                namespaces:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/NamespaceInfo'
-
-    NamespaceInfo:
-      type: object
-      properties:
-        name:
-          type: string
-        status:
-          type: string
-        age:
-          type: string
-        labels:
-          type: object
-          additionalProperties:
-            type: string
-
-    NodesResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              type: object
-              properties:
-                nodes:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/NodeInfo'
-
-    NodeInfo:
-      type: object
-      properties:
-        name:
-          type: string
-        status:
-          type: string
-        roles:
-          type: string
-        age:
-          type: string
-        version:
-          type: string
-        internalIP:
-          type: string
-        externalIP:
-          type: string
-        os:
-          type: string
-        kernelVersion:
-          type: string
-        containerRuntime:
-          type: string
-        labels:
-          type: object
-          additionalProperties:
-            type: string
-
-    DaemonSetsResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              type: object
-              properties:
-                daemonsets:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/DaemonSetInfo'
-
-    DaemonSetInfo:
-      type: object
-      properties:
-        name:
-          type: string
-        namespace:
-          type: string
-        desired:
-          type: integer
-        current:
-          type: integer
-        ready:
-          type: integer
-        upToDate:
-          type: integer
-        available:
-          type: integer
-        age:
-          type: string
-        labels:
-          type: object
-          additionalProperties:
-            type: string
-
-    StatefulSetsResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              type: object
-              properties:
-                statefulsets:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/StatefulSetInfo'
-
-    StatefulSetInfo:
-      type: object
-      properties:
-        name:
-          type: string
-        namespace:
-          type: string
-        ready:
-          type: string
-        age:
-          type: string
-        labels:
-          type: object
-          additionalProperties:
-            type: string
-
-    JobsResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              type: object
-              properties:
-                jobs:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/JobInfo'
-
-    JobInfo:
-      type: object
-      properties:
-        name:
-          type: string
-        namespace:
-          type: string
-        completions:
-          type: string
-        duration:
-          type: string
-        age:
-          type: string
-        labels:
-          type: object
-          additionalProperties:
-            type: string
-
-    CronJobsResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              type: object
-              properties:
-                cronjobs:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/CronJobInfo'
-
-    CronJobInfo:
-      type: object
-      properties:
-        name:
-          type: string
-        namespace:
-          type: string
-        schedule:
-          type: string
-        suspend:
-          type: boolean
-        active:
-          type: integer
-        lastSchedule:
-          type: string
-        age:
-          type: string
-        labels:
-          type: object
-          additionalProperties:
-            type: string
-
-    ClusterInfoResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              type: object
-              properties:
-                cluster_info:
-                  $ref: '#/components/schemas/ClusterInfo'
-
-    ClusterInfo:
-      type: object
-      properties:
-        version:
-          type: string
-        platform:
-          type: string
-        isControlPlane:
-          type: boolean
-        nodeName:
-          type: string
-        nodeRole:
-          type: string
-
-  /kubernetes/pods:
-    get:
-      summary: List all Kubernetes Pods
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Pods listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PodsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '503':
-          $ref: '#/components/responses/KubernetesNotInstalledError'
-
-  /kubernetes/deployments:
-    get:
-      summary: List all Kubernetes Deployments
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Deployments listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeploymentsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '503':
-          $ref: '#/components/responses/KubernetesNotInstalledError'
-
-  /kubernetes/services:
-    get:
-      summary: List all Kubernetes Services
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Services listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ServicesResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '503':
-          $ref: '#/components/responses/KubernetesNotInstalledError'
-
-  /kubernetes/ingresses:
-    get:
-      summary: List all Kubernetes Ingresses
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Ingresses listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/IngressesResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '503':
-          $ref: '#/components/responses/KubernetesNotInstalledError'
-
-  /kubernetes/pvcs:
-    get:
-      summary: List all Kubernetes Persistent Volume Claims
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: PVCs listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PVCsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '503':
-          $ref: '#/components/responses/KubernetesNotInstalledError'
-
-  /kubernetes/pvs:
-    get:
-      summary: List all Kubernetes Persistent Volumes
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: PVs listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PVsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '503':
-          $ref: '#/components/responses/KubernetesNotInstalledError'
-
-  /kubernetes/secrets:
-    get:
-      summary: List all Kubernetes Secrets
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Secrets listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SecretsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '503':
-          $ref: '#/components/responses/KubernetesNotInstalledError'
-
-  /kubernetes/configmaps:
-    get:
-      summary: List all Kubernetes ConfigMaps
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: ConfigMaps listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ConfigMapsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '503':
-          $ref: '#/components/responses/KubernetesNotInstalledError'
-
-  /kubernetes/namespaces:
-    get:
-      summary: List all Kubernetes Namespaces
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Namespaces listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NamespacesResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '503':
-          $ref: '#/components/responses/KubernetesNotInstalledError'
-
-  /kubernetes/nodes:
-    get:
-      summary: List all Kubernetes Nodes
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Nodes listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NodesResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '503':
-          $ref: '#/components/responses/KubernetesNotInstalledError'
-
-  /kubernetes/daemonsets:
-    get:
-      summary: List all Kubernetes DaemonSets
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: DaemonSets listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DaemonSetsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '503':
-          $ref: '#/components/responses/KubernetesNotInstalledError'
-
-  /kubernetes/statefulsets:
-    get:
-      summary: List all Kubernetes StatefulSets
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: StatefulSets listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StatefulSetsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '503':
-          $ref: '#/components/responses/KubernetesNotInstalledError'
-
-  /kubernetes/jobs:
-    get:
-      summary: List all Kubernetes Jobs
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Jobs listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/JobsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '503':
-          $ref: '#/components/responses/KubernetesNotInstalledError'
-
-  /kubernetes/cronjobs:
-    get:
-      summary: List all Kubernetes CronJobs
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: CronJobs listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CronJobsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '503':
-          $ref: '#/components/responses/KubernetesNotInstalledError'
-
-  /kubernetes/cluster-info:
-    get:
-      summary: Get Kubernetes Cluster Information
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Cluster info retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ClusterInfoResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '503':
-          $ref: '#/components/responses/KubernetesNotInstalledError'
-
 openapi: 3.1.0
 info:
   title: Go System API
@@ -1312,261 +526,6 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedError'
   
-  /kubernetes/pods:
-    get:
-      summary: List all Kubernetes Pods
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Pods listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PodsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /kubernetes/deployments:
-    get:
-      summary: List all Kubernetes Deployments
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Deployments listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeploymentsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /kubernetes/services:
-    get:
-      summary: List all Kubernetes Services
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Services listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ServicesResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /kubernetes/ingresses:
-    get:
-      summary: List all Kubernetes Ingresses
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Ingresses listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/IngressesResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /kubernetes/pvcs:
-    get:
-      summary: List all Kubernetes Persistent Volume Claims
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: PVCs listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PVCsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /kubernetes/pvs:
-    get:
-      summary: List all Kubernetes Persistent Volumes
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: PVs listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PVsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /kubernetes/secrets:
-    get:
-      summary: List all Kubernetes Secrets
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Secrets listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SecretsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /kubernetes/configmaps:
-    get:
-      summary: List all Kubernetes ConfigMaps
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: ConfigMaps listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ConfigMapsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /kubernetes/namespaces:
-    get:
-      summary: List all Kubernetes Namespaces
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Namespaces listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NamespacesResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /kubernetes/nodes:
-    get:
-      summary: List all Kubernetes Nodes
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Nodes listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NodesResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /kubernetes/daemonsets:
-    get:
-      summary: List all Kubernetes DaemonSets
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: DaemonSets listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DaemonSetsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /kubernetes/statefulsets:
-    get:
-      summary: List all Kubernetes StatefulSets
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: StatefulSets listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StatefulSetsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /kubernetes/jobs:
-    get:
-      summary: List all Kubernetes Jobs
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Jobs listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/JobsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /kubernetes/cronjobs:
-    get:
-      summary: List all Kubernetes CronJobs
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: CronJobs listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CronJobsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /kubernetes/cluster-info:
-    get:
-      summary: Get Kubernetes Cluster Information
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Cluster info retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ClusterInfoResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
   /storage/disks:
     get:
       summary: List storage disks
@@ -1754,260 +713,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedError'
   
-  /kubernetes/pods:
-    get:
-      summary: List all Kubernetes Pods
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Pods listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PodsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /kubernetes/deployments:
-    get:
-      summary: List all Kubernetes Deployments
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Deployments listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeploymentsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /kubernetes/services:
-    get:
-      summary: List all Kubernetes Services
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Services listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ServicesResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /kubernetes/ingresses:
-    get:
-      summary: List all Kubernetes Ingresses
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Ingresses listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/IngressesResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /kubernetes/pvcs:
-    get:
-      summary: List all Kubernetes Persistent Volume Claims
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: PVCs listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PVCsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /kubernetes/pvs:
-    get:
-      summary: List all Kubernetes Persistent Volumes
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: PVs listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PVsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /kubernetes/secrets:
-    get:
-      summary: List all Kubernetes Secrets
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Secrets listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SecretsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /kubernetes/configmaps:
-    get:
-      summary: List all Kubernetes ConfigMaps
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: ConfigMaps listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ConfigMapsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /kubernetes/namespaces:
-    get:
-      summary: List all Kubernetes Namespaces
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Namespaces listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NamespacesResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /kubernetes/nodes:
-    get:
-      summary: List all Kubernetes Nodes
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Nodes listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NodesResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /kubernetes/daemonsets:
-    get:
-      summary: List all Kubernetes DaemonSets
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: DaemonSets listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DaemonSetsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /kubernetes/statefulsets:
-    get:
-      summary: List all Kubernetes StatefulSets
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: StatefulSets listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StatefulSetsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /kubernetes/jobs:
-    get:
-      summary: List all Kubernetes Jobs
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Jobs listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/JobsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /kubernetes/cronjobs:
-    get:
-      summary: List all Kubernetes CronJobs
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: CronJobs listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CronJobsResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-
-  /kubernetes/cluster-info:
-    get:
-      summary: Get Kubernetes Cluster Information
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Cluster info retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ClusterInfoResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
+  /storage/iscsi/discover:
     post:
       summary: Discover iSCSI targets
       tags:
@@ -2189,132 +895,6 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '503':
           description: No container runtime available
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /docker/ps:
-    get:
-      summary: List Docker containers
-      tags:
-        - Docker
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: all
-          in: query
-          required: false
-          description: Show all containers (default shows just running)
-          schema:
-            type: boolean
-            default: false
-        - name: running
-          in: query
-          required: false
-          description: Show only running containers
-          schema:
-            type: boolean
-            default: false
-        - name: size
-          in: query
-          required: false
-          description: Include container sizes
-          schema:
-            type: boolean
-            default: false
-        - name: limit
-          in: query
-          required: false
-          description: Limit the number of containers
-          schema:
-            type: integer
-        - name: filters
-          in: query
-          required: false
-          description: Filters to process on the container list (e.g., "status=running,label=app=web")
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Containers listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DockerContainersResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '503':
-          description: Docker daemon unavailable
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /docker/images:
-    get:
-      summary: List Docker images
-      tags:
-        - Docker
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Images listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DockerImagesResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '503':
-          description: Docker daemon unavailable
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /docker/networks:
-    get:
-      summary: List Docker networks
-      tags:
-        - Docker
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Networks listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DockerNetworksResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '503':
-          description: Docker daemon unavailable
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /docker/volumes:
-    get:
-      summary: List Docker volumes
-      tags:
-        - Docker
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Volumes listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DockerVolumesResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '503':
-          description: Docker daemon unavailable
           content:
             application/json:
               schema:
@@ -2792,6 +1372,124 @@ paths:
                 $ref: '#/components/schemas/MessageResponse'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+
+  /docker/ps:
+    get:
+      summary: List Docker containers
+      description: |
+        List Docker containers with optional filtering and pagination.
+        Returns information about container state, image, ports, and resource usage.
+      tags:
+        - Docker
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Containers listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DockerContainersResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          description: Docker service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                error:
+                  code: DOCKER_ERROR
+                  message: "Failed to list containers: Cannot connect to the Docker daemon"
+
+  /docker/images:
+    get:
+      summary: List Docker images
+      description: List all Docker images available on the system
+      tags:
+        - Docker
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Images listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DockerImagesResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          description: Docker service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                error:
+                  code: DOCKER_ERROR
+                  message: "Failed to list images: Cannot connect to the Docker daemon"
+
+  /docker/networks:
+    get:
+      summary: List Docker networks
+      description: List all Docker networks configured on the system
+      tags:
+        - Docker
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Networks listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DockerNetworksResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          description: Docker service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                error:
+                  code: DOCKER_ERROR
+                  message: "Failed to list networks: Cannot connect to the Docker daemon"
+
+  /docker/volumes:
+    get:
+      summary: List Docker volumes
+      description: List all Docker volumes available on the system
+      tags:
+        - Docker
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Volumes listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DockerVolumesResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          description: Docker service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                error:
+                  code: DOCKER_ERROR
+                  message: "Failed to list volumes: Cannot connect to the Docker daemon"
 
   /users:
     get:
@@ -3286,6 +1984,310 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
         '503':
           $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/pods:
+    get:
+      summary: List all pods in the cluster
+      description: List all pods across all namespaces in the Kubernetes cluster
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Pods listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PodsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/deployments:
+    get:
+      summary: List all deployments in the cluster
+      description: List all deployments across all namespaces in the Kubernetes cluster
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Deployments listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeploymentsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/services:
+    get:
+      summary: List all services in the cluster
+      description: List all services across all namespaces in the Kubernetes cluster
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Services listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServicesResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/ingresses:
+    get:
+      summary: List all ingresses in the cluster
+      description: List all ingresses across all namespaces in the Kubernetes cluster
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Ingresses listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngressesResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/pvcs:
+    get:
+      summary: List all persistent volume claims in the cluster
+      description: List all PVCs across all namespaces in the Kubernetes cluster
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: PVCs listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PVCsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/pvs:
+    get:
+      summary: List all persistent volumes in the cluster
+      description: List all PVs in the Kubernetes cluster
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: PVs listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PVsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/secrets:
+    get:
+      summary: List all secrets in the cluster
+      description: List all secrets across all namespaces in the Kubernetes cluster
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Secrets listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecretsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/configmaps:
+    get:
+      summary: List all config maps in the cluster
+      description: List all config maps across all namespaces in the Kubernetes cluster
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Config maps listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigMapsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/namespaces:
+    get:
+      summary: List all namespaces in the cluster
+      description: List all namespaces in the Kubernetes cluster
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Namespaces listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NamespacesResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/nodes:
+    get:
+      summary: List all nodes in the cluster
+      description: List all nodes in the Kubernetes cluster
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Nodes listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodesResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/daemonsets:
+    get:
+      summary: List all daemon sets in the cluster
+      description: List all daemon sets across all namespaces in the Kubernetes cluster
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Daemon sets listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DaemonSetsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/statefulsets:
+    get:
+      summary: List all stateful sets in the cluster
+      description: List all stateful sets across all namespaces in the Kubernetes cluster
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Stateful sets listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatefulSetsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/jobs:
+    get:
+      summary: List all jobs in the cluster
+      description: List all jobs across all namespaces in the Kubernetes cluster
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Jobs listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/cronjobs:
+    get:
+      summary: List all cron jobs in the cluster
+      description: List all cron jobs across all namespaces in the Kubernetes cluster
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Cron jobs listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CronJobsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/cluster-info:
+    get:
+      summary: Get cluster information
+      description: Get basic information about the Kubernetes cluster
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Cluster information retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClusterInfoResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  
+
+  
 
 components:
   securitySchemes:
@@ -4824,288 +3826,961 @@ components:
                 type: integer
               tx_dropped:
                 type: integer
-    
-    # Docker Schemas
-    DockerContainer:
-      type: object
-      properties:
-        id:
-          type: string
-          description: Container ID
-        names:
-          type: array
-          items:
-            type: string
-          description: Container names
-        image:
-          type: string
-          description: Image name
-        imageId:
-          type: string
-          description: Image ID
-        command:
-          type: string
-          description: Command
-        created:
-          type: string
-          format: date-time
-          description: Creation time
-        state:
-          type: string
-          description: Container state
-        status:
-          type: string
-          description: Container status
-        ports:
-          type: array
-          items:
-            $ref: '#/components/schemas/DockerPort'
-        labels:
-          type: object
-          additionalProperties:
-            type: string
-        sizeRw:
-          type: integer
-          description: Size of files changed
-        sizeRootFs:
-          type: integer
-          description: Size of root filesystem
-        hostConfig:
-          $ref: '#/components/schemas/DockerHostConfig'
-        networkSettings:
-          $ref: '#/components/schemas/DockerNetworkSettings'
-        mounts:
-          type: array
-          items:
-            $ref: '#/components/schemas/DockerMount'
-    
-    DockerPort:
-      type: object
-      properties:
-        ip:
-          type: string
-        privatePort:
-          type: integer
-        publicPort:
-          type: integer
-        type:
-          type: string
-    
-    DockerHostConfig:
-      type: object
-      properties:
-        networkMode:
-          type: string
-    
-    DockerNetworkSettings:
-      type: object
-      properties:
-        networks:
-          type: object
-          additionalProperties:
-            $ref: '#/components/schemas/DockerNetworkInfo'
-    
-    DockerNetworkInfo:
-      type: object
-      properties:
-        networkId:
-          type: string
-        endpointId:
-          type: string
-        gateway:
-          type: string
-        ipAddress:
-          type: string
-        ipPrefixLen:
-          type: integer
-        ipv6Gateway:
-          type: string
-        macAddress:
-          type: string
-    
-    DockerMount:
-      type: object
-      properties:
-        type:
-          type: string
-        source:
-          type: string
-        destination:
-          type: string
-        mode:
-          type: string
-        rw:
-          type: boolean
-        propagation:
-          type: string
-    
-    DockerImage:
-      type: object
-      properties:
-        id:
-          type: string
-        parentId:
-          type: string
-        repoTags:
-          type: array
-          items:
-            type: string
-        repoDigests:
-          type: array
-          items:
-            type: string
-        created:
-          type: string
-          format: date-time
-        size:
-          type: integer
-        virtualSize:
-          type: integer
-        sharedSize:
-          type: integer
-        labels:
-          type: object
-          additionalProperties:
-            type: string
-        containers:
-          type: integer
-    
-    DockerNetwork:
-      type: object
-      properties:
-        id:
-          type: string
-        name:
-          type: string
-        driver:
-          type: string
-        created:
-          type: string
-          format: date-time
-        scope:
-          type: string
-        enableIPv6:
-          type: boolean
-        ipam:
-          $ref: '#/components/schemas/DockerIPAM'
-        internal:
-          type: boolean
-        attachable:
-          type: boolean
-        ingress:
-          type: boolean
-        configOnly:
-          type: boolean
-        options:
-          type: object
-          additionalProperties:
-            type: string
-        labels:
-          type: object
-          additionalProperties:
-            type: string
-        containers:
-          type: object
-          additionalProperties:
-            $ref: '#/components/schemas/DockerNetworkInfo'
-    
-    DockerIPAM:
-      type: object
-      properties:
-        driver:
-          type: string
-        options:
-          type: object
-          additionalProperties:
-            type: string
-        config:
-          type: array
-          items:
-            $ref: '#/components/schemas/DockerIPAMConfig'
-    
-    DockerIPAMConfig:
-      type: object
-      properties:
-        subnet:
-          type: string
-        ipRange:
-          type: string
-        gateway:
-          type: string
-        auxAddress:
-          type: object
-          additionalProperties:
-            type: string
-    
-    DockerVolume:
-      type: object
-      properties:
-        name:
-          type: string
-        driver:
-          type: string
-        mountpoint:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-        labels:
-          type: object
-          additionalProperties:
-            type: string
-        scope:
-          type: string
-        options:
-          type: object
-          additionalProperties:
-            type: string
-        usageData:
-          $ref: '#/components/schemas/DockerVolumeUsageData'
-    
-    DockerVolumeUsageData:
-      type: object
-      properties:
-        size:
-          type: integer
-        refCount:
-          type: integer
-    
+
     DockerContainersResponse:
       allOf:
         - $ref: '#/components/schemas/APIResponse'
         - type: object
           properties:
             data:
-              type: array
-              items:
-                $ref: '#/components/schemas/DockerContainer'
-    
+              type: object
+              properties:
+                containers:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Container'
+
     DockerImagesResponse:
       allOf:
         - $ref: '#/components/schemas/APIResponse'
         - type: object
           properties:
             data:
-              type: array
-              items:
-                $ref: '#/components/schemas/DockerImage'
-    
+              type: object
+              properties:
+                images:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Image'
+
     DockerNetworksResponse:
       allOf:
         - $ref: '#/components/schemas/APIResponse'
         - type: object
           properties:
             data:
-              type: array
-              items:
-                $ref: '#/components/schemas/DockerNetwork'
-    
+              type: object
+              properties:
+                networks:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Network'
+
     DockerVolumesResponse:
       allOf:
         - $ref: '#/components/schemas/APIResponse'
         - type: object
           properties:
             data:
-              type: array
-              items:
-                $ref: '#/components/schemas/DockerVolume'
+              type: object
+              properties:
+                volumes:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Volume'
+
+    Container:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Container ID
+          example: "9c7c8a3b0123"
+        names:
+          type: array
+          items:
+            type: string
+          description: Container names
+          example: ["my-container"]
+        image:
+          type: string
+          description: Image name
+          example: "nginx:latest"
+        imageId:
+          type: string
+          description: Image ID
+          example: "sha256:abcd1234"
+        command:
+          type: string
+          description: Command being run
+          example: "nginx -g 'daemon off;'"
+        created:
+          type: string
+          format: date-time
+          description: Container creation time
+        state:
+          type: string
+          description: Container state
+          example: "running"
+        status:
+          type: string
+          description: Container status
+          example: "Up 2 hours"
+        ports:
+          type: array
+          items:
+            $ref: '#/components/schemas/Port'
+          description: Port mappings
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+          description: Container labels
+        sizeRw:
+          type: integer
+          format: int64
+          description: Size of files that have been created or changed
+        sizeRootFs:
+          type: integer
+          format: int64
+          description: Total size of all the files in the container
+        hostConfig:
+          $ref: '#/components/schemas/HostConfig'
+        networkSettings:
+          $ref: '#/components/schemas/NetworkSettings'
+        mounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Mount'
+          description: Container mounts
+
+    Port:
+      type: object
+      properties:
+        ip:
+          type: string
+          description: Host IP address
+          example: "0.0.0.0"
+        privatePort:
+          type: integer
+          description: Container port
+          example: 80
+        publicPort:
+          type: integer
+          description: Host port
+          example: 8080
+        type:
+          type: string
+          description: Port type
+          example: "tcp"
+
+    HostConfig:
+      type: object
+      properties:
+        networkMode:
+          type: string
+          description: Network mode
+          example: "bridge"
+
+    NetworkSettings:
+      type: object
+      properties:
+        networks:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/NetworkInfo'
+          description: Network configurations
+
+    NetworkInfo:
+      type: object
+      properties:
+        networkId:
+          type: string
+          description: Network ID
+        endpointId:
+          type: string
+          description: Endpoint ID
+        gateway:
+          type: string
+          description: Gateway IP
+        ipAddress:
+          type: string
+          description: Container IP address
+        ipPrefixLen:
+          type: integer
+          description: IP prefix length
+        ipv6Gateway:
+          type: string
+          description: IPv6 gateway
+        macAddress:
+          type: string
+          description: MAC address
+
+    Mount:
+      type: object
+      properties:
+        type:
+          type: string
+          description: Mount type
+          example: "bind"
+        source:
+          type: string
+          description: Source path
+          example: "/host/path"
+        destination:
+          type: string
+          description: Destination path in container
+          example: "/container/path"
+        mode:
+          type: string
+          description: Mount mode
+          example: "rw"
+        rw:
+          type: boolean
+          description: Read-write flag
+        propagation:
+          type: string
+          description: Mount propagation
+          example: "rprivate"
+
+    Image:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Image ID
+          example: "sha256:abcd1234"
+        parentId:
+          type: string
+          description: Parent image ID
+        repoTags:
+          type: array
+          items:
+            type: string
+          description: Repository tags
+          example: ["nginx:latest"]
+        repoDigests:
+          type: array
+          items:
+            type: string
+          description: Repository digests
+        created:
+          type: string
+          format: date-time
+          description: Image creation time
+        size:
+          type: integer
+          format: int64
+          description: Image size in bytes
+        virtualSize:
+          type: integer
+          format: int64
+          description: Virtual size in bytes
+        sharedSize:
+          type: integer
+          format: int64
+          description: Shared size in bytes
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+          description: Image labels
+        containers:
+          type: integer
+          format: int64
+          description: Number of containers using this image
+
+    Network:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Network ID
+          example: "bridge"
+        name:
+          type: string
+          description: Network name
+          example: "bridge"
+        driver:
+          type: string
+          description: Network driver
+          example: "bridge"
+        created:
+          type: string
+          format: date-time
+          description: Network creation time
+        scope:
+          type: string
+          description: Network scope
+          example: "local"
+        enableIPv6:
+          type: boolean
+          description: IPv6 enabled flag
+        ipam:
+          $ref: '#/components/schemas/IPAM'
+        internal:
+          type: boolean
+          description: Internal network flag
+        attachable:
+          type: boolean
+          description: Attachable flag
+        ingress:
+          type: boolean
+          description: Ingress flag
+        configOnly:
+          type: boolean
+          description: Config-only flag
+        options:
+          type: object
+          additionalProperties:
+            type: string
+          description: Network options
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+          description: Network labels
+        containers:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/NetworkInfo'
+          description: Connected containers
+
+    IPAM:
+      type: object
+      properties:
+        driver:
+          type: string
+          description: IPAM driver
+          example: "default"
+        options:
+          type: object
+          additionalProperties:
+            type: string
+          description: IPAM options
+        config:
+          type: array
+          items:
+            $ref: '#/components/schemas/IPAMConfig'
+          description: IPAM configuration
+
+    IPAMConfig:
+      type: object
+      properties:
+        subnet:
+          type: string
+          description: Subnet CIDR
+          example: "172.18.0.0/16"
+        ipRange:
+          type: string
+          description: IP range CIDR
+        gateway:
+          type: string
+          description: Gateway IP
+          example: "172.18.0.1"
+        auxAddress:
+          type: object
+          additionalProperties:
+            type: string
+          description: Auxiliary IP addresses
+
+    Volume:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Volume name
+          example: "my-volume"
+        driver:
+          type: string
+          description: Volume driver
+          example: "local"
+        mountpoint:
+          type: string
+          description: Volume mount point
+          example: "/var/lib/docker/volumes/my-volume/_data"
+        createdAt:
+          type: string
+          format: date-time
+          description: Volume creation time
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+          description: Volume labels
+        scope:
+          type: string
+          description: Volume scope
+          example: "local"
+        options:
+          type: object
+          additionalProperties:
+            type: string
+          description: Volume options
+        usageData:
+          $ref: '#/components/schemas/VolumeUsageData'
+
+    VolumeUsageData:
+      type: object
+      properties:
+        size:
+          type: integer
+          format: int64
+          description: Volume size in bytes
+        refCount:
+          type: integer
+          format: int64
+          description: Reference count
+
+    # Kubernetes Resource Response Schemas
+    PodsResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                pods:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/PodInfo'
+
+    DeploymentsResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                deployments:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/DeploymentInfo'
+
+    ServicesResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                services:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ServiceInfo'
+
+    IngressesResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                ingresses:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/IngressInfo'
+
+    PVCsResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                pvcs:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/PVCInfo'
+
+    PVsResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                pvs:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/PVInfo'
+
+    SecretsResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                secrets:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/SecretInfo'
+
+    ConfigMapsResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                configmaps:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ConfigMapInfo'
+
+    NamespacesResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                namespaces:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/NamespaceInfo'
+
+    NodesResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                nodes:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/NodeInfo'
+
+    DaemonSetsResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                daemonsets:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/DaemonSetInfo'
+
+    StatefulSetsResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                statefulsets:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/StatefulSetInfo'
+
+    JobsResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                jobs:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/JobInfo'
+
+    CronJobsResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                cronjobs:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/CronJobInfo'
+
+    ClusterInfoResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                cluster:
+                  $ref: '#/components/schemas/ClusterInfo'
+
+    # Kubernetes Resource Info Schemas
+    PodInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        namespace:
+          type: string
+        status:
+          type: string
+        ready:
+          type: string
+        restarts:
+          type: integer
+        age:
+          type: string
+        ip:
+          type: string
+        node:
+          type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+
+    DeploymentInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        namespace:
+          type: string
+        ready:
+          type: string
+        up_to_date:
+          type: integer
+        available:
+          type: integer
+        age:
+          type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+
+    ServiceInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        namespace:
+          type: string
+        type:
+          type: string
+        cluster_ip:
+          type: string
+        external_ip:
+          type: string
+        ports:
+          type: string
+        age:
+          type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+
+    IngressInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        namespace:
+          type: string
+        class:
+          type: string
+        hosts:
+          type: string
+        address:
+          type: string
+        ports:
+          type: string
+        age:
+          type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+
+    PVCInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        namespace:
+          type: string
+        status:
+          type: string
+        volume:
+          type: string
+        capacity:
+          type: string
+        access_modes:
+          type: string
+        storage_class:
+          type: string
+        age:
+          type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+
+    PVInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        capacity:
+          type: string
+        access_modes:
+          type: string
+        reclaim_policy:
+          type: string
+        status:
+          type: string
+        claim:
+          type: string
+        storage_class:
+          type: string
+        reason:
+          type: string
+        age:
+          type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+
+    SecretInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        namespace:
+          type: string
+        type:
+          type: string
+        data:
+          type: integer
+        age:
+          type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+
+    ConfigMapInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        namespace:
+          type: string
+        data:
+          type: integer
+        age:
+          type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+
+    NamespaceInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+        age:
+          type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+
+    NodeInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+        roles:
+          type: string
+        age:
+          type: string
+        version:
+          type: string
+        internal_ip:
+          type: string
+        external_ip:
+          type: string
+        os_image:
+          type: string
+        kernel_version:
+          type: string
+        container_runtime:
+          type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+
+    DaemonSetInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        namespace:
+          type: string
+        desired:
+          type: integer
+        current:
+          type: integer
+        ready:
+          type: integer
+        up_to_date:
+          type: integer
+        available:
+          type: integer
+        node_selector:
+          type: string
+        age:
+          type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+
+    StatefulSetInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        namespace:
+          type: string
+        ready:
+          type: string
+        age:
+          type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+
+    JobInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        namespace:
+          type: string
+        completions:
+          type: string
+        duration:
+          type: string
+        age:
+          type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+
+    CronJobInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        namespace:
+          type: string
+        schedule:
+          type: string
+        suspend:
+          type: boolean
+        active:
+          type: integer
+        last_schedule:
+          type: string
+        age:
+          type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+
+    ClusterInfo:
+      type: object
+      properties:
+        version:
+          type: string
+        platform:
+          type: string
+        nodes:
+          type: integer
+        namespaces:
+          type: integer
+        pods:
+          type: integer
+        services:
+          type: integer
