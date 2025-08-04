@@ -1,6 +1,10 @@
-import { LitElement } from 'lit';
-import type { Tab } from '../types/system';
-export declare class TabBar extends LitElement {
+import { I18nLitElement } from '../i18n-mixin';
+interface Tab {
+    id: string;
+    label: string;
+    closable?: boolean;
+}
+export declare class TabBar extends I18nLitElement {
     tabs: Tab[];
     activeTabId: string;
     static styles: import("lit").CSSResult;
@@ -9,4 +13,5 @@ export declare class TabBar extends LitElement {
     private handleAddTab;
     render(): import("lit-html").TemplateResult<1>;
 }
+export {};
 //# sourceMappingURL=tab-bar.d.ts.map

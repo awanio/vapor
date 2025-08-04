@@ -4,8 +4,9 @@ import { auth } from './auth';
 import { theme } from './theme';
 theme.getTheme();
 auth.isAuthenticated();
-import('./app-root');
 i18n.init().then(() => {
+    console.log('i18n initialized, loading app...');
+    import('./app-root');
     console.log('Vapor Web UI initialized');
 }).catch((error) => {
     console.error('Failed to initialize i18n:', error);

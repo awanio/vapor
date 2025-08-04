@@ -1,5 +1,5 @@
-import { LitElement } from 'lit';
-export declare class LogsTab extends LitElement {
+import { I18nLitElement } from '../i18n-mixin';
+export declare class LogsTab extends I18nLitElement {
     private logs;
     private serviceFilter;
     private priorityFilter;

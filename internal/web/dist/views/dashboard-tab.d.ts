@@ -1,7 +1,7 @@
-import { LitElement } from 'lit';
+import { I18nLitElement } from '../i18n-mixin';
 import type { SystemSummary, CPUInfo, MemoryInfo } from '../types/api';
 import type { CPUMetricData, MemoryMetricData } from '../types/system';
-export declare class DashboardTab extends LitElement {
+export declare class DashboardTab extends I18nLitElement {
     systemSummary: SystemSummary | null;
     cpuInfo: CPUInfo | null;
     memoryInfo: MemoryInfo | null;

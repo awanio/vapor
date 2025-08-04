@@ -1,5 +1,5 @@
-import { LitElement } from 'lit';
-export declare class ModalDialog extends LitElement {
+import { I18nLitElement } from '../i18n-mixin';
+export declare class ModalDialog extends I18nLitElement {
     open: boolean;
     title: string;
     size: 'small' | 'medium' | 'large';

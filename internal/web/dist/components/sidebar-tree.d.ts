@@ -1,5 +1,5 @@
-import { LitElement } from 'lit';
-export declare class SidebarTree extends LitElement {
+import { I18nLitElement } from '../i18n-mixin';
+export declare class SidebarTree extends I18nLitElement {
     collapsed: boolean;
     activeItemId: string;
     expandedItems: Set<string>;

@@ -644,17 +644,19 @@ export class NetworkTab extends I18nLitElement {
   }
 
   toggleInterfaceState(iface: NetworkInterface) {
-    const actionWord = iface.state === 'up' ? 'Down' : 'Up';
+    const isUp = iface.state === 'up';
+    const title = t(isUp ? 'network.downInterface' : 'network.upInterface');
+    const message = t(isUp ? 'network.confirmBringDown' : 'network.confirmBringUp', { name: iface.name });
     this.showConfirmDialog(
-      `${actionWord} Interface`,
-      `Are you sure you want to bring ${actionWord.toLowerCase()} the interface "${iface.name}"?`,
+      title,
+      message,
       async () => {
         const url = `/network/interfaces/${iface.name}/${iface.state === 'up' ? 'down' : 'up'}`;
         try {
           await api.put(url);
           this.fetchInterfaces();
         } catch (error) {
-          console.error(`Error bringing interface ${actionWord.toLowerCase()}:`, error);
+          console.error(`Error bringing interface ${isUp ? 'down' : 'up'}:`, error);
         }
       }
     );
@@ -662,8 +664,8 @@ export class NetworkTab extends I18nLitElement {
 
   async deleteBridge(name: string) {
     this.showConfirmDialog(
-      'Delete Bridge',
-      `Are you sure you want to delete bridge "${name}"?`,
+      t('network.deleteBridge'),
+      t('network.confirmDeleteBridge', { name }),
       async () => {
         try {
           await api.delete(`/network/bridge/${name}`);
@@ -677,8 +679,8 @@ export class NetworkTab extends I18nLitElement {
 
   async deleteBond(name: string) {
     this.showConfirmDialog(
-      'Delete Bond',
-      `Are you sure you want to delete bond "${name}"?`,
+      t('network.deleteBond'),
+      t('network.confirmDeleteBond', { name }),
       async () => {
         try {
           await api.delete(`/network/bond/${name}`);
@@ -692,8 +694,8 @@ export class NetworkTab extends I18nLitElement {
 
   async deleteVlan(name: string) {
     this.showConfirmDialog(
-      'Delete VLAN',
-      `Are you sure you want to delete VLAN ${name}?`,
+      t('network.deleteVlan'),
+      t('network.confirmDeleteVlan', { name }),
       async () => {
         try {
           await api.delete(`/network/vlan/${name}`);
@@ -901,20 +903,20 @@ export class NetworkTab extends I18nLitElement {
         </div>
         <div class="interface-details">
           <div class="detail-item">
-            <span class="detail-label">RX Bytes</span>
+            <span class="detail-label">${t('network.rxBytes')}</span>
             <span class="detail-value">${iface.statistics.rx_bytes}</span>
           </div>
           <div class="detail-item">
-            <span class="detail-label">TX Bytes</span>
+            <span class="detail-label">${t('network.txBytes')}</span>
             <span class="detail-value">${iface.statistics.tx_bytes}</span>
           </div>
         </div>
         <div class="interface-actions">
           <button class="action-button primary" @click="${() => this.toggleInterfaceState(iface)}">
-            ${iface.state === 'up' ? 'Down' : 'Up'}
+            ${t(iface.state === 'up' ? 'network.bringDown' : 'network.bringUp')}
           </button>
           <button class="action-button" @click="${() => this.handleConfigureAddress(iface)}">
-            Configure
+            ${t('network.configure')}
           </button>
         </div>
       </div>
@@ -1182,10 +1184,10 @@ ${this.interfaces.length > 0 ? html`
         <p>${this.confirmMessage}</p>
         <div slot="footer" style="display: flex; gap: 8px; justify-content: flex-end;">
           <button class="action-button" @click=${this.handleCancel}>
-            Cancel
+            ${t('common.cancel')}
           </button>
           <button class="action-button primary" @click=${this.handleConfirm}>
-            Confirm
+            ${t('common.confirm')}
           </button>
         </div>
       </modal-dialog>
@@ -1194,20 +1196,20 @@ ${this.interfaces.length > 0 ? html`
         <div class="drawer">
           <button class="close-btn" @click="${() => this.closeConfigureDrawer()}">×</button>
           <div class="drawer-content">
-            <h2>Configure Network Interface</h2>
+            <h2>${t('network.configureInterface')}</h2>
             ${this.configureNetworkInterface ? html`
               <form @submit=${(e: Event) => { e.preventDefault(); this.submitConfigureAddress(); }}>
                 <div class="detail-item" style="margin-bottom: 16px;">
-                  <span class="detail-label">Interface Name</span>
+                  <span class="detail-label">${t('network.interfaceName')}</span>
                   <span class="detail-value">${this.configureNetworkInterface.name}</span>
                 </div>
                 <div class="detail-item" style="margin-bottom: 16px;">
-                  <span class="detail-label">Current State</span>
+                  <span class="detail-label">${t('network.currentState')}</span>
                   <span class="detail-value">${this.configureNetworkInterface.state}</span>
                 </div>
                 
                 <div class="form-group">
-                  <label class="form-label" for="address">IP Address *</label>
+                  <label class="form-label" for="address">${t('network.ipAddressRequired')}</label>
                   <input 
                     id="address"
                     class="form-input" 
@@ -1220,7 +1222,7 @@ ${this.interfaces.length > 0 ? html`
                 </div>
                 
                 <div class="form-group">
-                  <label class="form-label" for="netmask">Netmask (CIDR) *</label>
+                  <label class="form-label" for="netmask">${t('network.netmaskCidrRequired')}</label>
                   <input 
                     id="netmask"
                     class="form-input" 
@@ -1235,7 +1237,7 @@ ${this.interfaces.length > 0 ? html`
                 </div>
                 
                 <div class="form-group">
-                  <label class="form-label" for="gateway">Gateway (Optional)</label>
+                  <label class="form-label" for="gateway">${t('network.gatewayOptional')}</label>
                   <input 
                     id="gateway"
                     class="form-input" 
@@ -1248,10 +1250,10 @@ ${this.interfaces.length > 0 ? html`
                 
                 <div class="form-actions">
                   <button type="button" class="action-button" @click="${() => this.closeConfigureDrawer()}">
-                    Cancel
+                    ${t('common.cancel')}
                   </button>
                   <button type="submit" class="action-button primary">
-                    Apply Configuration
+                    ${t('network.applyConfiguration')}
                   </button>
                 </div>
               </form>
@@ -1264,10 +1266,10 @@ ${this.interfaces.length > 0 ? html`
         <div class="drawer">
           <button class="close-btn" @click="${() => this.closeBridgeDrawer()}">×</button>
           <div class="drawer-content">
-            <h2>Create Bridge</h2>
+            <h2>${t('network.createBridgeTitle')}</h2>
             <form @submit=${(e: Event) => { e.preventDefault(); this.handleCreateBridge(); }}>
               <div class="form-group">
-                <label class="form-label" for="bridge-name">Bridge Name *</label>
+                <label class="form-label" for="bridge-name">${t('network.bridgeNameRequired')}</label>
                 <input 
                   id="bridge-name"
                   class="form-input" 
@@ -1280,7 +1282,7 @@ ${this.interfaces.length > 0 ? html`
               </div>
               
               <div class="form-group">
-                <label class="form-label" for="bridge-interfaces">Interfaces *</label>
+                <label class="form-label" for="bridge-interfaces">${t('network.interfacesRequired')}</label>
                 <input 
                   id="bridge-interfaces"
                   class="form-input" 
@@ -1291,16 +1293,16 @@ ${this.interfaces.length > 0 ? html`
                   required
                 />
                 <small style="display: block; margin-top: 0.25rem; color: var(--text-secondary); font-size: 0.75rem;">
-                  Comma-separated list of interfaces
+                  ${t('network.commaSeparatedInterfaces')}
                 </small>
               </div>
               
               <div class="form-actions">
                 <button type="button" class="action-button" @click="${() => this.closeBridgeDrawer()}">
-                  Cancel
+                  ${t('common.cancel')}
                 </button>
                 <button type="submit" class="action-button primary">
-                  Create Bridge
+                  ${t('network.createBridge')}
                 </button>
               </div>
             </form>
@@ -1312,10 +1314,10 @@ ${this.interfaces.length > 0 ? html`
         <div class="drawer">
           <button class="close-btn" @click="${() => this.closeBondDrawer()}">×</button>
           <div class="drawer-content">
-            <h2>Create Bond</h2>
+            <h2>${t('network.createBondTitle')}</h2>
             <form @submit=${(e: Event) => { e.preventDefault(); this.handleCreateBond(); }}>
               <div class="form-group">
-                <label class="form-label" for="bond-name">Bond Name *</label>
+                <label class="form-label" for="bond-name">${t('network.bondNameRequired')}</label>
                 <input 
                   id="bond-name"
                   class="form-input" 
@@ -1328,7 +1330,7 @@ ${this.interfaces.length > 0 ? html`
               </div>
               
               <div class="form-group">
-                <label class="form-label" for="bond-mode">Mode *</label>
+                <label class="form-label" for="bond-mode">${t('network.modeRequired')}</label>
                 <select 
                   id="bond-mode"
                   class="form-select" 
@@ -1347,7 +1349,7 @@ ${this.interfaces.length > 0 ? html`
               </div>
               
               <div class="form-group">
-                <label class="form-label" for="bond-interfaces">Interfaces *</label>
+                <label class="form-label" for="bond-interfaces">${t('network.interfacesRequired')}</label>
                 <input 
                   id="bond-interfaces"
                   class="form-input" 
@@ -1358,16 +1360,16 @@ ${this.interfaces.length > 0 ? html`
                   required
                 />
                 <small style="display: block; margin-top: 0.25rem; color: var(--text-secondary); font-size: 0.75rem;">
-                  Comma-separated list of interfaces
+                  ${t('network.commaSeparatedInterfaces')}
                 </small>
               </div>
               
               <div class="form-actions">
                 <button type="button" class="action-button" @click="${() => this.closeBondDrawer()}">
-                  Cancel
+                  ${t('common.cancel')}
                 </button>
                 <button type="submit" class="action-button primary">
-                  Create Bond
+                  ${t('network.createBond')}
                 </button>
               </div>
             </form>
@@ -1379,10 +1381,10 @@ ${this.interfaces.length > 0 ? html`
         <div class="drawer">
           <button class="close-btn" @click="${() => this.closeVLANDrawer()}">×</button>
           <div class="drawer-content">
-            <h2>Create VLAN</h2>
+            <h2>${t('network.createVlanTitle')}</h2>
             <form @submit=${(e: Event) => { e.preventDefault(); this.handleCreateVLANInterface(); }}>
               <div class="form-group">
-                <label class="form-label" for="vlan-interface">Base Interface *</label>
+                <label class="form-label" for="vlan-interface">${t('network.baseInterfaceRequired')}</label>
                 <input 
                   id="vlan-interface"
                   class="form-input" 
@@ -1395,7 +1397,7 @@ ${this.interfaces.length > 0 ? html`
               </div>
               
               <div class="form-group">
-                <label class="form-label" for="vlan-id">VLAN ID *</label>
+                <label class="form-label" for="vlan-id">${t('network.vlanIdRequired')}</label>
                 <input 
                   id="vlan-id"
                   class="form-input" 
@@ -1410,7 +1412,7 @@ ${this.interfaces.length > 0 ? html`
               </div>
 
               <div class="form-group">
-                <label class="form-label" for="vlan-name">VLAN Name (Optional)</label>
+                <label class="form-label" for="vlan-name">${t('network.vlanNameOptional')}</label>
                 <input 
                   id="vlan-name"
                   class="form-input" 
@@ -1420,16 +1422,16 @@ ${this.interfaces.length > 0 ? html`
                   @input=${(e: Event) => this.vlanFormData.name = (e.target as HTMLInputElement).value}
                 />
                 <small style="display: block; margin-top: 0.25rem; color: var(--text-secondary); font-size: 0.75rem;">
-                  If not specified, defaults to {interface}.{vlan_id}
+                  ${t('network.vlanNameDefault')}
                 </small>
               </div>
 
               <div class="form-actions">
                 <button type="button" class="action-button" @click="${() => this.closeVLANDrawer()}">
-                  Cancel
+                  ${t('common.cancel')}
                 </button>
                 <button type="submit" class="action-button primary">
-                  Create VLAN
+                  ${t('network.createVLAN')}
                 </button>
               </div>
             </form>

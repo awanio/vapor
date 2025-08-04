@@ -13,6 +13,8 @@ export declare class AppRoot extends LitElement {
     private isAuthenticated;
     private activeView;
     private currentTheme;
+    private currentLocale;
+    private languageMenuOpen;
     static styles: import("lit").CSSResult;
     connectedCallback(): void;
     disconnectedCallback(): void;
@@ -22,6 +24,9 @@ export declare class AppRoot extends LitElement {
     private handleLogout;
     private handleThemeChange;
     private toggleTheme;
+    private toggleLanguageMenu;
+    private selectLanguage;
+    private handleDocumentClick;
     render(): import("lit-html").TemplateResult<1>;
     toggleSidebar(): void;
     private handleNavigation;

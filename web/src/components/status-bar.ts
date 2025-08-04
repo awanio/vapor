@@ -1,6 +1,5 @@
 import { html, css } from 'lit';
-import { property, state } from 'lit/decorators.js';
-import { theme } from '../theme';
+import { property } from 'lit/decorators.js';
 import { i18n, t } from '../i18n';
 import { I18nLitElement } from '../i18n-mixin';
 import { auth } from '../auth';

@@ -4,8 +4,10 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-import { LitElement, css } from 'lit';
+import { LitElement, html, css } from 'lit';
 import { state } from 'lit/decorators.js';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
+import { t } from '../i18n';
 import { api, ApiError } from '../api';
 import '../components/modal-dialog';
 export class ContainersTab extends LitElement {
@@ -22,22 +24,46 @@ export class ContainersTab extends LitElement {
         this.selectedContainer = null;
         this.selectedImage = null;
         this.showDrawer = false;
+        this.detailError = null;
         this.confirmTitle = '';
         this.confirmMessage = '';
+        this.showLogsDrawer = false;
+        this.containerLogs = '';
+        this.logsError = null;
+        this.logsSearchTerm = '';
     }
     connectedCallback() {
         super.connectedCallback();
         this.fetchData();
         this.addEventListener('click', this.handleOutsideClick.bind(this));
+        this.handleKeyDown = this.handleKeyDown.bind(this);
+        document.addEventListener('keydown', this.handleKeyDown);
     }
     disconnectedCallback() {
         super.disconnectedCallback();
         this.removeEventListener('click', this.handleOutsideClick.bind(this));
+        document.removeEventListener('keydown', this.handleKeyDown);
     }
     handleOutsideClick(event) {
         const target = event.target;
         if (!target.closest('.action-menu')) {
             this.closeAllMenus();
+        }
+    }
+    handleKeyDown(event) {
+        if (event.key === 'Escape') {
+            this.closeAllMenus();
+            if (this.showDrawer) {
+                this.showDrawer = false;
+                this.detailError = null;
+                this.selectedContainer = null;
+                this.selectedImage = null;
+            }
+            if (this.showLogsDrawer) {
+                this.showLogsDrawer = false;
+                this.logsError = null;
+                this.containerLogs = '';
+            }
         }
     }
     async fetchData() {
@@ -50,23 +76,609 @@ export class ContainersTab extends LitElement {
     }
     async fetchContainerDetails(id) {
         try {
-            const response = await api.get(`/api/v1/containers/${id}`);
-            this.selectedContainer = response.data?.container || null;
+            this.detailError = null;
+            const response = await api.get(`/containers/${id}`);
+            console.log('Full container details response:', response);
+            let container = null;
+            if (response?.data?.container) {
+                container = response.data.container;
+            }
+            else if (response?.container) {
+                container = response.container;
+            }
+            else if (response?.id) {
+                container = response;
+            }
+            console.log('Extracted container:', container);
+            this.selectedContainer = container;
+            this.selectedImage = null;
             this.showDrawer = true;
         }
         catch (error) {
             console.error('Error fetching container details:', error);
+            this.detailError = error instanceof ApiError ? error.message : 'Failed to fetch container details';
+            this.selectedContainer = null;
+            this.selectedImage = null;
+            this.showDrawer = true;
         }
     }
     async fetchImageDetails(id) {
         try {
-            const response = await api.get(`/api/v1/images/${id}`);
-            this.selectedImage = response.data?.image || null;
+            this.detailError = null;
+            const response = await api.get(`/images/${id}`);
+            console.log('Full image details response:', response);
+            let image = null;
+            if (response?.data?.image) {
+                image = response.data.image;
+            }
+            else if (response?.image) {
+                image = response.image;
+            }
+            else if (response?.id) {
+                image = response;
+            }
+            console.log('Extracted image:', image);
+            this.selectedImage = image;
+            this.selectedContainer = null;
             this.showDrawer = true;
         }
         catch (error) {
             console.error('Error fetching image details:', error);
+            this.detailError = error instanceof ApiError ? error.message : 'Failed to fetch image details';
+            this.selectedImage = null;
+            this.selectedContainer = null;
+            this.showDrawer = true;
         }
+    }
+    async fetchContainers() {
+        try {
+            const data = await api.get('/containers');
+            this.containers = data.containers || [];
+            this.runtime = data.runtime || null;
+            this.error = null;
+        }
+        catch (error) {
+            console.error('Error fetching containers:', error);
+            if (error instanceof ApiError && error.code === 'NO_RUNTIME_AVAILABLE') {
+                this.error = error.message || 'No container runtime found';
+                this.containers = [];
+                this.runtime = null;
+            }
+            else if (error instanceof ApiError) {
+                this.error = error.message || 'Failed to fetch containers';
+            }
+            else {
+                this.error = 'Error connecting to server';
+            }
+        }
+    }
+    async fetchImages() {
+        try {
+            const data = await api.get('/images');
+            this.images = data.images || [];
+            this.runtime = data.runtime || null;
+            this.error = null;
+        }
+        catch (error) {
+            console.error('Error fetching images:', error);
+            if (error instanceof ApiError && error.code === 'NO_RUNTIME_AVAILABLE') {
+                this.error = error.message || 'No container runtime found';
+                this.images = [];
+                this.runtime = null;
+            }
+            else if (error instanceof ApiError) {
+                this.error = error.message || 'Failed to fetch images';
+            }
+            else {
+                this.error = 'Error connecting to server';
+            }
+        }
+    }
+    showConfirmDialog(title, message, action) {
+        this.confirmTitle = title;
+        this.confirmMessage = message;
+        this.confirmAction = action;
+        this.showConfirmModal = true;
+        this.updateComplete.then(() => {
+            const cancelButton = this.shadowRoot?.querySelector('modal-dialog button.btn-secondary');
+            if (cancelButton) {
+                setTimeout(() => cancelButton.focus(), 50);
+            }
+        });
+    }
+    handleConfirm() {
+        if (this.confirmAction) {
+            this.confirmAction();
+        }
+        this.showConfirmModal = false;
+        this.confirmAction = null;
+    }
+    handleCancel() {
+        this.showConfirmModal = false;
+        this.confirmAction = null;
+    }
+    async startContainer(id, name) {
+        this.showConfirmDialog('Start Container', `Are you sure you want to start container "${name || id}"?`, async () => {
+            try {
+                await api.post(`/containers/${id}/start`);
+                this.fetchContainers();
+            }
+            catch (error) {
+                console.error('Error starting container:', error);
+            }
+        });
+    }
+    async stopContainer(id, name) {
+        this.showConfirmDialog('Stop Container', `Are you sure you want to stop container "${name || id}"?`, async () => {
+            try {
+                await api.post(`/containers/${id}/stop`);
+                this.fetchContainers();
+            }
+            catch (error) {
+                console.error('Error stopping container:', error);
+            }
+        });
+    }
+    async removeContainer(id, name) {
+        this.showConfirmDialog('Remove Container', `Are you sure you want to remove container "${name || id}"? This action cannot be undone.`, async () => {
+            try {
+                await api.delete(`/containers/${id}`);
+                this.fetchContainers();
+            }
+            catch (error) {
+                console.error('Error removing container:', error);
+            }
+        });
+    }
+    async removeImage(id, tag) {
+        this.showConfirmDialog('Remove Image', `Are you sure you want to remove image "${tag || id}"? This action cannot be undone.`, async () => {
+            try {
+                await api.delete(`/images/${id}`);
+                this.fetchImages();
+            }
+            catch (error) {
+                console.error('Error removing image:', error);
+            }
+        });
+    }
+    async fetchContainerLogs(id, name) {
+        try {
+            console.log('Fetching logs for container:', id, name);
+            this.logsError = null;
+            this.containerLogs = 'Loading logs...';
+            this.logsSearchTerm = '';
+            this.showLogsDrawer = true;
+            const response = await api.get(`/containers/${id}/logs`);
+            console.log('Logs response:', response);
+            if (response?.data?.logs) {
+                this.containerLogs = response.data.logs;
+            }
+            else if (response?.logs) {
+                this.containerLogs = response.logs;
+            }
+            else {
+                this.containerLogs = 'No logs available';
+            }
+        }
+        catch (error) {
+            console.error('Error fetching container logs:', error);
+            this.logsError = error instanceof ApiError ? error.message : 'Failed to fetch container logs';
+            this.containerLogs = '';
+        }
+    }
+    renderContainersTable() {
+        const filteredContainers = this.containers.filter(container => container.name?.toLowerCase().includes(this.searchTerm.toLowerCase()));
+        return html `
+    <div class="search-container">
+      <div class="search-wrapper">
+        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.35-4.35"></path>
+        </svg>
+        <input 
+          class="search-input"
+          type="text" 
+          placeholder="${t('containers.searchContainers')}"
+          .value=${this.searchTerm}
+          @input=${(e) => this.searchTerm = e.target.value}
+        />
+      </div>
+    </div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>${t('common.name')}</th>
+            <th>${t('common.state')}</th>
+            <th>ID</th>
+            <th>${t('common.image')}</th>
+            <th>${t('common.created')}</th>
+            <th>${t('common.actions')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filteredContainers.map((container, index) => {
+            const shortId = container.id?.substring(0, 12) || 'Unknown';
+            const createdDate = container.created_at ? new Date(container.created_at).toLocaleString() : 'Unknown';
+            const imageName = container.image || 'Unknown';
+            const truncatedImage = imageName.length > 20 ? imageName.substring(0, 20) + '...' : imageName;
+            return html `
+              <tr>
+<td>
+<button class="link-button" @click=${() => this.fetchContainerDetails(container.id)}>
+    ${container.name || 'Unnamed'}
+  </button>
+</td>
+                <td>
+                  <div class="status-indicator">
+                    <span class="status-icon ${this.getStatusClass(container.state)}" data-tooltip="${this.getStatusTooltip(container.state)}"></span>
+                  </div>
+                </td>
+                <td>${shortId}</td>
+                <td>
+                  <span class="truncate" title="${imageName}">${truncatedImage}</span>
+                </td>
+                <td>${createdDate}</td>
+                <td>
+                  <div class="action-menu">
+                    <button class="action-dots" @click=${(e) => this.toggleActionMenu(e, `container-${index}`)}>⋮</button>
+                    <div class="action-dropdown" id="container-${index}">
+                      <button @click=${() => { this.closeAllMenus(); this.fetchContainerLogs(container.id, container.name); }}>Logs</button>
+                      ${container.state === 'CONTAINER_RUNNING'
+                ? html `<button @click=${() => { this.closeAllMenus(); this.stopContainer(container.id, container.name); }}>${t('containers.stop')}</button>`
+                : html `<button @click=${() => { this.closeAllMenus(); this.startContainer(container.id, container.name); }}>${t('containers.start')}</button>`}
+                      <button class="danger" @click=${() => { this.closeAllMenus(); this.removeContainer(container.id, container.name); }}>${t('common.delete')}</button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            `;
+        })}
+        </tbody>
+      </table>
+    `;
+    }
+    renderImagesTable() {
+        const filteredImages = this.images.filter(image => image.repo_tags?.some(tag => tag.toLowerCase().includes(this.searchTerm.toLowerCase())));
+        return html `
+    <div class="search-container">
+      <div class="search-wrapper">
+        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.35-4.35"></path>
+        </svg>
+        <input 
+          class="search-input"
+          type="text" 
+          placeholder="${t('containers.searchImages')}"
+          .value=${this.searchTerm}
+          @input=${(e) => this.searchTerm = e.target.value}
+        />
+      </div>
+    </div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>${t('common.tags')}</th>
+            <th>ID</th>
+            <th>${t('common.size')}</th>
+            <th>${t('common.runtime')}</th>
+            <th>${t('common.created')}</th>
+            <th>${t('common.actions')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filteredImages.map((image, index) => {
+            const shortId = image.id?.substring(0, 12) || 'Unknown';
+            const tags = image.repo_tags && image.repo_tags.length > 0
+                ? image.repo_tags.join(', ')
+                : 'No tags';
+            const createdDate = image.created_at ? new Date(image.created_at).toLocaleString() : 'Unknown';
+            return html `
+              <tr>
+<td>
+<button class="link-button" @click=${() => this.fetchImageDetails(image.id)}>
+    ${tags}
+  </button>
+</td>
+                <td>${shortId}</td>
+                <td>${this.formatSize(image.size)}</td>
+                <td>${image.runtime || 'Unknown'}</td>
+                <td>${createdDate}</td>
+                <td>
+                  <div class="action-menu">
+                    <button class="action-dots" @click=${(e) => this.toggleActionMenu(e, `image-${index}`)}>⋮</button>
+                    <div class="action-dropdown" id="image-${index}">
+                      <button class="danger" @click=${() => { this.closeAllMenus(); this.removeImage(image.id, image.repo_tags?.join(', ')); }}>${t('common.delete')}</button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            `;
+        })}
+        </tbody>
+      </table>
+    `;
+    }
+    formatSize(bytes) {
+        if (!bytes)
+            return 'Unknown';
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(1024));
+        return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+    }
+    getStatusClass(state) {
+        switch (state) {
+            case 'CONTAINER_RUNNING':
+                return 'running';
+            case 'CONTAINER_STOPPED':
+                return 'stopped';
+            case 'CONTAINER_PAUSED':
+                return 'paused';
+            case 'CONTAINER_EXITED':
+                return 'exited';
+            default:
+                return 'stopped';
+        }
+    }
+    getStatusTooltip(state) {
+        switch (state) {
+            case 'CONTAINER_RUNNING':
+                return 'Running';
+            case 'CONTAINER_STOPPED':
+                return 'Stopped';
+            case 'CONTAINER_PAUSED':
+                return 'Paused';
+            case 'CONTAINER_EXITED':
+                return 'Exited';
+            default:
+                return state || 'Unknown';
+        }
+    }
+    toggleActionMenu(event, menuId) {
+        event.stopPropagation();
+        const menu = this.shadowRoot?.getElementById(menuId);
+        if (menu) {
+            const isOpen = menu.classList.contains('show');
+            this.closeAllMenus();
+            if (!isOpen) {
+                menu.classList.add('show');
+                const firstButton = menu.querySelector('button');
+                if (firstButton) {
+                    setTimeout(() => firstButton.focus(), 10);
+                }
+            }
+        }
+    }
+    closeAllMenus() {
+        const menus = this.shadowRoot?.querySelectorAll('.action-dropdown');
+        menus?.forEach(menu => menu.classList.remove('show'));
+    }
+    renderTabs() {
+        return html `
+      <div class="tab-header">
+        <button 
+          class="tab-button ${this.activeTab === 'containers' ? 'active' : ''}" 
+          @click="${() => { this.activeTab = 'containers'; this.fetchData(); }}"
+        >
+          Containers
+        </button>
+        <button 
+          class="tab-button ${this.activeTab === 'images' ? 'active' : ''}" 
+          @click="${() => { this.activeTab = 'images'; this.fetchData(); }}"
+        >
+          Images
+        </button>
+      </div>
+    `;
+    }
+    renderError() {
+        return html `
+      <div class="error-container">
+        <div class="error-icon">⚠️</div>
+        <p class="error-message">${this.detailError}</p>
+      </div>
+    `;
+    }
+    renderContainerDetails() {
+        if (!this.selectedContainer)
+            return;
+        const container = this.selectedContainer;
+        return html `
+      <div class="drawer-content">
+        <div class="detail-section">
+          <h3>Container Details</h3>
+          <div class="detail-item">
+            <span class="detail-label">Name</span>
+            <span class="detail-value">${container.name || 'Unnamed'}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">ID</span>
+            <span class="detail-value monospace">${container.id || 'Unknown'}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Image</span>
+            <span class="detail-value">${container.image || 'Unknown'}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">State</span>
+            <span class="detail-value">
+              <span class="status-badge ${this.getStatusClass(container.state)}">${this.getStatusTooltip(container.state)}</span>
+            </span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Status</span>
+            <span class="detail-value">${container.status || 'Unknown'}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Runtime</span>
+            <span class="detail-value">${container.runtime || 'Unknown'}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Created</span>
+            <span class="detail-value">${container.created_at ? new Date(container.created_at).toLocaleString() : 'Unknown'}</span>
+          </div>
+        </div>
+
+        ${container.labels && Object.keys(container.labels).length > 0 ? html `
+          <div class="detail-section">
+            <h3>Labels</h3>
+            <div class="tag-list">
+              ${Object.entries(container.labels).map(([key, value]) => html `<div class="tag">${key}: ${value}</div>`)}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+    }
+    renderImageDetails() {
+        if (!this.selectedImage)
+            return;
+        const image = this.selectedImage;
+        return html `
+      <div class="drawer-content">
+        <div class="detail-section">
+          <h3>Image Details</h3>
+          <div class="detail-item">
+            <span class="detail-label">ID</span>
+            <span class="detail-value monospace">${image.id || 'Unknown'}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Tags</span>
+            ${image.repo_tags && image.repo_tags.length > 0
+            ? html `<div class="tag-list">${image.repo_tags.map((tag) => html `<div class="tag">${tag}</div>`)}</div>`
+            : html `<span class="detail-value">No tags</span>`}
+          </div>
+          ${image.repo_digests && image.repo_digests.length > 0 ? html `
+            <div class="detail-item">
+              <span class="detail-label">Digests</span>
+              <div class="detail-value">
+                ${image.repo_digests.map(digest => html `<div class="monospace">${digest}</div>`)}
+              </div>
+            </div>
+          ` : ''}
+          <div class="detail-item">
+            <span class="detail-label">Size</span>
+            <span class="detail-value">${this.formatSize(image.size)}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Runtime</span>
+            <span class="detail-value">${image.runtime || 'Unknown'}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Created</span>
+            <span class="detail-value">${image.created_at ? new Date(image.created_at).toLocaleString() : 'Unknown'}</span>
+          </div>
+        </div>
+      </div>
+    `;
+    }
+    render() {
+        return html `
+      <div class="tab-container">
+        <h1>${t('containers.title')}${this.runtime ? html ` <span style="font-size: 0.875rem; color: var(--text-secondary); font-weight: normal;">(${this.runtime})</span>` : ''}</h1>
+        ${this.renderTabs()}
+        <div class="tab-content">
+          ${this.error ? html `
+            <div class="error-state">
+              <h3>${this.error.includes('No container runtime found') ? 'Container Runtime Not Available' : 'Error'}</h3>
+              <p>${this.error.includes('No container runtime found')
+            ? 'Container management features are not available. Please install Docker or a CRI-compatible container runtime (containerd, CRI-O) to use this feature.'
+            : this.error}</p>
+            </div>
+          ` : ''}
+
+
+          ${this.activeTab === 'containers' && !this.error ? html `
+            ${this.containers.length > 0
+            ? this.renderContainersTable()
+            : html `
+                <div class="empty-state">No containers found.</div>
+              `}
+          ` : ''}
+
+          ${this.activeTab === 'images' && !this.error ? html `
+            ${this.images.length > 0
+            ? this.renderImagesTable()
+            : html `
+                <div class="empty-state">No images found.</div>
+              `}
+          ` : ''}
+        </div>
+      </div>
+
+      <modal-dialog
+        ?open=${this.showConfirmModal}
+        .title=${this.confirmTitle}
+        size="small"
+        @modal-close=${this.handleCancel}
+      >
+        <p>${this.confirmMessage}</p>
+        <div slot="footer" style="display: flex; gap: 8px; justify-content: flex-end;">
+          <button class="btn btn-secondary" @click=${this.handleCancel}>
+            ${t('common.cancel')}
+          </button>
+          <button class="btn btn-primary" @click=${this.handleConfirm}>
+            ${t('common.confirm')}
+          </button>
+        </div>
+      </modal-dialog>
+
+      ${this.showDrawer ? html `
+        <div class="drawer">
+          <button class="close-btn" @click=${() => { this.showDrawer = false; this.detailError = null; }}>✕</button>
+          
+          ${this.detailError ? this.renderError() :
+            (this.selectedContainer ? this.renderContainerDetails() :
+                this.selectedImage ? this.renderImageDetails() : '')}
+        </div>
+      ` : ''}
+
+      ${this.showLogsDrawer ? html `
+        <div class="drawer">
+          <button class="close-btn" @click=${() => {
+            this.showLogsDrawer = false;
+            this.logsError = null;
+            this.containerLogs = '';
+            this.logsSearchTerm = '';
+        }}>✕</button>
+          
+          <div class="drawer-content">
+            <div class="logs-header">
+              <h2 class="logs-title">Container Logs</h2>
+              <div class="search-wrapper">
+                <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <input
+                  class="search-input"
+                  type="text"
+                  placeholder="${t('containers.searchLogs')}"
+                  .value=${this.logsSearchTerm}
+                  @input=${(e) => this.logsSearchTerm = e.target.value}
+                />
+              </div>
+            </div>
+            
+            ${this.logsError ? html `
+              <div class="error-container">
+                <div class="error-icon">⚠️</div>
+                <p class="error-message">${this.logsError}</p>
+              </div>
+            ` : html `
+              <div class="logs-container">${unsafeHTML(this.highlightSearchTerm(this.containerLogs, this.logsSearchTerm))}</div>
+            `}
+          </div>
+        </div>
+      ` : ''}
+    `;
+    }
+    highlightSearchTerm(text, searchTerm) {
+        if (!searchTerm || !text)
+            return text;
+        const escapedSearchTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`(${escapedSearchTerm})`, 'gi');
+        return text.replace(regex, '<mark style="background-color: #ffeb3b; color: #000; padding: 0 2px;">$1</mark>');
     }
 }
 ContainersTab.styles = css `
@@ -217,7 +829,6 @@ ContainersTab.styles = css `
 
     .search-container {
       display: flex;
-      justify-content: space-between;
       align-items: center;
       margin-bottom: 1.5rem;
       gap: 1rem;
@@ -237,6 +848,7 @@ ContainersTab.styles = css `
       position: relative;
       display: flex;
       align-items: center;
+      max-width: 400px;
     }
 
     .search-icon {
@@ -244,7 +856,8 @@ ContainersTab.styles = css `
       left: 12px;
       color: var(--vscode-input-placeholderForeground, #999);
       pointer-events: none;
-      font-size: 16px;
+      width: 16px;
+      height: 16px;
     }
 
     .search-input {
@@ -289,24 +902,20 @@ ContainersTab.styles = css `
       margin: 2rem 0;
     }
 
-    .runtime-info {
-      font-size: 0.875rem;
-      color: var(--text-secondary);
-      margin-bottom: 1rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
 
     .table {
       width: 100%;
       border-collapse: separate;
       border-spacing: 0;
       background: var(--vscode-bg-light);
-      border-radius: 6px;
+      border-radius: 1px;
       overflow: hidden;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
       border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+    }
+
+    .table thead {
+      background: var(--vscode-bg-lighter);
     }
 
     .table th {
@@ -325,6 +934,10 @@ ContainersTab.styles = css `
       font-size: 0.875rem;
       border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
       position: relative;
+    }
+
+    .table td:last-child {
+      text-align: right;
     }
 
     .table tr:last-child td {
@@ -507,6 +1120,262 @@ ContainersTab.styles = css `
     .btn-secondary:hover {
       background: var(--vscode-button-secondary-hover-bg, #484848);
     }
+
+    .drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 50%;
+      height: 100%;
+      background: var(--vscode-bg-light);
+      border-left: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+      z-index: 1001;
+      overflow-y: auto;
+      padding: 24px;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    /* Make drawer full width on smaller screens */
+    @media (max-width: 1024px) {
+      .drawer {
+        width: 80%;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .drawer {
+        width: 100%;
+      }
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+      }
+      to {
+        transform: translateX(0);
+      }
+    }
+
+    .drawer h2 {
+      margin-top: 0;
+    }
+
+    .drawer pre {
+      background: var(--vscode-bg-dark);
+      border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-radius: 4px;
+      padding: 16px;
+      overflow-x: auto;
+      font-size: 0.875rem;
+      color: var(--vscode-text);
+    }
+
+    .drawer button.close-btn {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.1));
+      color: var(--vscode-foreground, var(--vscode-editor-foreground));
+      border: 1px solid var(--vscode-widget-border, rgba(0, 0, 0, 0.1));
+      transition: all 0.2s;
+    }
+
+    .drawer button.close-btn:hover {
+      background: var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.2));
+      border-color: var(--vscode-widget-border, rgba(0, 0, 0, 0.2));
+    }
+
+    .drawer button.close-btn:active {
+      background: var(--vscode-list-activeSelectionBackground, rgba(90, 93, 94, 0.3));
+    }
+
+    .drawer button.close-btn:focus {
+      outline: 1px solid var(--vscode-focusBorder, #007acc);
+      outline-offset: 2px;
+    }
+
+    .drawer-content {
+      margin-top: 40px;
+    }
+
+    .detail-section {
+      margin-bottom: 24px;
+    }
+
+    .detail-section h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--text-primary);
+      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      padding-bottom: 8px;
+    }
+
+    .detail-item {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 12px;
+    }
+
+    .detail-label {
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+      font-weight: 500;
+    }
+
+    .detail-value {
+      font-size: 0.875rem;
+      color: var(--vscode-text);
+      word-break: break-word;
+    }
+
+    .detail-value.monospace {
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      background: var(--vscode-textCodeBlock-background, rgba(255, 255, 255, 0.04));
+      padding: 4px 8px;
+      border-radius: 3px;
+      font-size: 0.8125rem;
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .tag {
+      background: var(--vscode-badge-background);
+      color: var(--vscode-badge-foreground);
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 16px;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+
+    .status-badge.running {
+      background: rgba(76, 175, 80, 0.1);
+      color: #4caf50;
+      border: 1px solid rgba(76, 175, 80, 0.3);
+    }
+
+    .status-badge.stopped {
+      background: rgba(158, 158, 158, 0.1);
+      color: #9e9e9e;
+      border: 1px solid rgba(158, 158, 158, 0.3);
+    }
+
+    .status-badge.paused {
+      background: rgba(255, 152, 0, 0.1);
+      color: #ff9800;
+      border: 1px solid rgba(255, 152, 0, 0.3);
+    }
+
+    .status-badge.exited {
+      background: rgba(244, 67, 54, 0.1);
+      color: #f44336;
+      border: 1px solid rgba(244, 67, 54, 0.3);
+    }
+
+    a {
+      color: var(--vscode-textLink-foreground, #3794ff);
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    /* Link-style buttons for clickable items */
+    button.link-button,
+    td button {
+      background: none;
+      border: none;
+      color: var(--vscode-textLink-foreground, #3794ff);
+      cursor: pointer;
+      font-size: inherit;
+      font-family: inherit;
+      text-align: left;
+      padding: 0;
+      text-decoration: none;
+      transition: text-decoration 0.2s;
+    }
+
+    button.link-button:hover,
+    td button:hover {
+      text-decoration: underline;
+    }
+
+    td button:focus {
+      outline: 1px solid var(--vscode-focusBorder, #007acc);
+      outline-offset: 2px;
+    }
+
+    .error-container {
+      padding: 40px 20px;
+      text-align: center;
+    }
+
+    .error-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.7;
+    }
+
+    .error-message {
+      color: var(--vscode-errorForeground, #f48771);
+      font-size: 14px;
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    .logs-container {
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      font-size: 0.875rem;
+      line-height: 1.5;
+      background: var(--vscode-editor-background, #1e1e1e);
+      color: var(--vscode-editor-foreground, #d4d4d4);
+      padding: 16px;
+      border-radius: 4px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: calc(100vh - 200px);
+      overflow-y: auto;
+    }
+
+    .logs-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+    }
+
+    .logs-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--vscode-foreground);
+    }
   `;
 __decorate([
     state()
@@ -543,410 +1412,25 @@ __decorate([
 ], ContainersTab.prototype, "showDrawer", void 0);
 __decorate([
     state()
+], ContainersTab.prototype, "detailError", void 0);
+__decorate([
+    state()
 ], ContainersTab.prototype, "confirmTitle", void 0);
 __decorate([
     state()
 ], ContainersTab.prototype, "confirmMessage", void 0);
-try {
-    const data = await api.get('/containers');
-    this.containers = data.containers || [];
-    this.runtime = data.runtime || null;
-    this.error = null;
-}
-catch (error) {
-    console.error('Error fetching containers:', error);
-    if (error instanceof ApiError && error.code === 'NO_RUNTIME_AVAILABLE') {
-        this.error = error.message || 'No container runtime found';
-        this.containers = [];
-        this.runtime = null;
-    }
-    else if (error instanceof ApiError) {
-        this.error = error.message || 'Failed to fetch containers';
-    }
-    else {
-        this.error = 'Error connecting to server';
-    }
-}
-async;
-fetchImages();
-{
-    try {
-        const data = await api.get('/images');
-        this.images = data.images || [];
-        this.runtime = data.runtime || null;
-        this.error = null;
-    }
-    catch (error) {
-        console.error('Error fetching images:', error);
-        if (error instanceof ApiError && error.code === 'NO_RUNTIME_AVAILABLE') {
-            this.error = error.message || 'No container runtime found';
-            this.images = [];
-            this.runtime = null;
-        }
-        else if (error instanceof ApiError) {
-            this.error = error.message || 'Failed to fetch images';
-        }
-        else {
-            this.error = 'Error connecting to server';
-        }
-    }
-}
-showConfirmDialog(title, string, message, string, action, () => void );
-{
-    this.confirmTitle = title;
-    this.confirmMessage = message;
-    this.confirmAction = action;
-    this.showConfirmModal = true;
-}
-handleConfirm();
-{
-    if (this.confirmAction) {
-        this.confirmAction();
-    }
-    this.showConfirmModal = false;
-    this.confirmAction = null;
-}
-handleCancel();
-{
-    this.showConfirmModal = false;
-    this.confirmAction = null;
-}
-async;
-startContainer(id, string, name ?  : string);
-{
-    this.showConfirmDialog('Start Container', `Are you sure you want to start container "${name || id}"?`, async () => {
-        try {
-            await api.post(`/containers/${id}/start`);
-            this.fetchContainers();
-        }
-        catch (error) {
-            console.error('Error starting container:', error);
-        }
-    });
-}
-async;
-stopContainer(id, string, name ?  : string);
-{
-    this.showConfirmDialog('Stop Container', `Are you sure you want to stop container "${name || id}"?`, async () => {
-        try {
-            await api.post(`/containers/${id}/stop`);
-            this.fetchContainers();
-        }
-        catch (error) {
-            console.error('Error stopping container:', error);
-        }
-    });
-}
-async;
-removeContainer(id, string, name ?  : string);
-{
-    this.showConfirmDialog('Remove Container', `Are you sure you want to remove container "${name || id}"? This action cannot be undone.`, async () => {
-        try {
-            await api.delete(`/containers/${id}`);
-            this.fetchContainers();
-        }
-        catch (error) {
-            console.error('Error removing container:', error);
-        }
-    });
-}
-async;
-removeImage(id, string, tag ?  : string);
-{
-    this.showConfirmDialog('Remove Image', `Are you sure you want to remove image "${tag || id}"? This action cannot be undone.`, async () => {
-        try {
-            await api.delete(`/images/${id}`);
-            this.fetchImages();
-        }
-        catch (error) {
-            console.error('Error removing image:', error);
-        }
-    });
-}
-renderContainersTable();
-{
-    const filteredContainers = this.containers.filter(container => container.name?.toLowerCase().includes(this.searchTerm.toLowerCase()));
-    return html `
-      <div class="search-container">
-        <div class="section-header">
-          <h2>Containers</h2>
-        </div>
-        <div class="search-wrapper">
-          <span class="search-icon">🔍</span>
-          <input 
-            class="search-input"
-            type="text" 
-            placeholder="Search containers" 
-            .value=${this.searchTerm}
-            @input=${(e) => this.searchTerm = e.target.value}
-          />
-        </div>
-      </div>
-      <table class="table">
-        <thead>
-          <tr>
-            <th>${t('common.name')}</th>
-            <th>${t('common.state')}</th>
-            <th>ID</th>
-            <th>${t('common.image')}</th>
-            <th>${t('common.created')}</th>
-            <th>${t('common.actions')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${filteredContainers.map((container, index) => {
-        const shortId = container.id?.substring(0, 12) || 'Unknown';
-        const createdDate = container.created_at ? new Date(container.created_at).toLocaleString() : 'Unknown';
-        const imageName = container.image || 'Unknown';
-        const truncatedImage = imageName.length > 20 ? imageName.substring(0, 20) + '...' : imageName;
-        return html `
-              <tr>
-<td>
-  <a @click=${() => this.fetchContainerDetails(container.id)} href="#">
-    ${container.name || 'Unnamed'}
-  </a>
-</td>
-                <td>
-                  <div class="status-indicator">
-                    <span class="status-icon ${this.getStatusClass(container.state)}" data-tooltip="${this.getStatusTooltip(container.state)}"></span>
-                  </div>
-                </td>
-                <td>${shortId}</td>
-                <td>
-                  <span class="truncate" title="${imageName}">${truncatedImage}</span>
-                </td>
-                <td>${createdDate}</td>
-                <td>
-                  <div class="action-menu">
-                    <button class="action-dots" @click=${(e) => this.toggleActionMenu(e, `container-${index}`)}>⋮</button>
-                    <div class="action-dropdown" id="container-${index}">
-                      ${container.state === 'CONTAINER_RUNNING'
-            ? html `<button @click=${() => { this.closeAllMenus(); this.stopContainer(container.id, container.name); }}>${t('containers.stop')}</button>`
-            : html `<button @click=${() => { this.closeAllMenus(); this.startContainer(container.id, container.name); }}>${t('containers.start')}</button>`}
-                      <button class="danger" @click=${() => { this.closeAllMenus(); this.removeContainer(container.id, container.name); }}>${t('common.delete')}</button>
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            `;
-    })}
-        </tbody>
-      </table>
-    `;
-}
-renderImagesTable();
-{
-    const filteredImages = this.images.filter(image => image.repo_tags?.some(tag => tag.toLowerCase().includes(this.searchTerm.toLowerCase())));
-    return html `
-      <div class="search-container">
-        <div class="section-header">
-          <h2>Images</h2>
-        </div>
-        <div class="search-wrapper">
-          <span class="search-icon">🔍</span>
-          <input 
-            class="search-input"
-            type="text" 
-            placeholder="Search images" 
-            .value=${this.searchTerm}
-            @input=${(e) => this.searchTerm = e.target.value}
-          />
-        </div>
-      </div>
-      <table class="table">
-        <thead>
-          <tr>
-            <th>${t('common.tags')}</th>
-            <th>ID</th>
-            <th>${t('common.size')}</th>
-            <th>${t('common.runtime')}</th>
-            <th>${t('common.created')}</th>
-            <th>${t('common.actions')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${filteredImages.map((image, index) => {
-        const shortId = image.id?.substring(0, 12) || 'Unknown';
-        const tags = image.repo_tags && image.repo_tags.length > 0
-            ? image.repo_tags.join(', ')
-            : 'No tags';
-        const createdDate = image.created_at ? new Date(image.created_at).toLocaleString() : 'Unknown';
-        return html `
-              <tr>
-<td>
-  <a @click=${() => this.fetchImageDetails(image.id)} href="#">
-    ${tags}
-  </a>
-</td>
-                <td>${shortId}</td>
-                <td>${this.formatSize(image.size)}</td>
-                <td>${image.runtime || 'Unknown'}</td>
-                <td>${createdDate}</td>
-                <td>
-                  <div class="action-menu">
-                    <button class="action-dots" @click=${(e) => this.toggleActionMenu(e, `image-${index}`)}>⋮</button>
-                    <div class="action-dropdown" id="image-${index}">
-                      <button class="danger" @click=${() => { this.closeAllMenus(); this.removeImage(image.id, image.repo_tags?.join(', ')); }}>${t('common.delete')}</button>
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            `;
-    })}
-        </tbody>
-      </table>
-    `;
-}
-formatSize(bytes, number);
-{
-    if (!bytes)
-        return 'Unknown';
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
-}
-getStatusClass(state, string | undefined);
-string;
-{
-    switch (state) {
-        case 'CONTAINER_RUNNING':
-            return 'running';
-        case 'CONTAINER_STOPPED':
-            return 'stopped';
-        case 'CONTAINER_PAUSED':
-            return 'paused';
-        case 'CONTAINER_EXITED':
-            return 'exited';
-        default:
-            return 'stopped';
-    }
-}
-getStatusTooltip(state, string | undefined);
-string;
-{
-    switch (state) {
-        case 'CONTAINER_RUNNING':
-            return 'Running';
-        case 'CONTAINER_STOPPED':
-            return 'Stopped';
-        case 'CONTAINER_PAUSED':
-            return 'Paused';
-        case 'CONTAINER_EXITED':
-            return 'Exited';
-        default:
-            return state || 'Unknown';
-    }
-}
-toggleActionMenu(event, Event, menuId, string);
-{
-    event.stopPropagation();
-    const menu = this.shadowRoot?.getElementById(menuId);
-    if (menu) {
-        const isOpen = menu.classList.contains('show');
-        this.closeAllMenus();
-        if (!isOpen) {
-            menu.classList.add('show');
-        }
-    }
-}
-closeAllMenus();
-{
-    const menus = this.shadowRoot?.querySelectorAll('.action-dropdown');
-    menus?.forEach(menu => menu.classList.remove('show'));
-}
-renderTabs();
-{
-    return html `
-      <div class="tab-header">
-        <button 
-          class="tab-button ${this.activeTab === 'containers' ? 'active' : ''}" 
-          @click="${() => { this.activeTab = 'containers'; this.fetchData(); }}"
-        >
-          Containers
-        </button>
-        <button 
-          class="tab-button ${this.activeTab === 'images' ? 'active' : ''}" 
-          @click="${() => { this.activeTab = 'images'; this.fetchData(); }}"
-        >
-          Images
-        </button>
-      </div>
-    `;
-}
-override;
-render();
-{
-    return html `
-      <div class="tab-container">
-        <h1>${t('containers.title')}</h1>
-        ${this.renderTabs()}
-        <div class="tab-content">
-          ${this.error ? html `
-            <div class="error-state">
-              <h3>${this.error.includes('No container runtime found') ? 'Container Runtime Not Available' : 'Error'}</h3>
-              <p>${this.error.includes('No container runtime found')
-        ? 'Container management features are not available. Please install Docker or a CRI-compatible container runtime (containerd, CRI-O) to use this feature.'
-        : this.error}</p>
-            </div>
-          ` : ''}
-
-          ${!this.error && this.runtime ? html `
-            <div class="runtime-info">
-              Runtime: ${this.runtime}
-            </div>
-          ` : ''}
-
-          ${this.activeTab === 'containers' && !this.error ? html `
-            ${this.containers.length > 0
-        ? this.renderContainersTable()
-        : html `
-                <h2>Containers</h2>
-                <div class="empty-state">No containers found.</div>
-              `}
-          ` : ''}
-
-          ${this.activeTab === 'images' && !this.error ? html `
-            ${this.images.length > 0
-        ? this.renderImagesTable()
-        : html `
-                <h2>Images</h2>
-                <div class="empty-state">No images found.</div>
-              `}
-          ` : ''}
-        </div>
-      </div>
-
-      <modal-dialog
-        ?open=${this.showConfirmModal}
-        .title=${this.confirmTitle}
-        size="small"
-        @modal-close=${this.handleCancel}
-      >
-        <p>${this.confirmMessage}</p>
-        <div slot="footer" style="display: flex; gap: 8px; justify-content: flex-end;">
-          <button class="btn btn-secondary" @click=${this.handleCancel}>
-            ${t('common.cancel')}
-          </button>
-          <button class="btn btn-primary" @click=${this.handleConfirm}>
-            ${t('common.confirm')}
-          </button>
-        </div>
-      </modal-dialog>
-
-      ${this.showDrawer ? html `
-        <div class="drawer">
-          ${this.selectedContainer ? html `
-            <h2>Container Details</h2>
-            <pre>${JSON.stringify(this.selectedContainer, null, 2)}</pre>
-          ` : ''}
-          ${this.selectedImage ? html `
-            <h2>Image Details</h2>
-            <pre>${JSON.stringify(this.selectedImage, null, 2)}</pre>
-          ` : ''}
-          <button @click=${() => this.showDrawer = false}>Close</button>
-        </div>
-      ` : ''}
-    `;
-}
+__decorate([
+    state()
+], ContainersTab.prototype, "showLogsDrawer", void 0);
+__decorate([
+    state()
+], ContainersTab.prototype, "containerLogs", void 0);
+__decorate([
+    state()
+], ContainersTab.prototype, "logsError", void 0);
+__decorate([
+    state(),
+    state()
+], ContainersTab.prototype, "logsSearchTerm", void 0);
 customElements.define('containers-tab', ContainersTab);
 //# sourceMappingURL=containers-tab.js.map

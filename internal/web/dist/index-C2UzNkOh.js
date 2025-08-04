@@ -229,9 +229,8 @@ class l {
 const T = l.getInstance();
 T.getTheme();
 w.isAuthenticated();
-import("./app-root-D7vo443C.js");
 u.init().then(() => {
-  console.log("Vapor Web UI initialized");
+  console.log("i18n initialized, loading app..."), import("./app-root-0SE0dszn.js"), console.log("Vapor Web UI initialized");
 }).catch((r) => {
   console.error("Failed to initialize i18n:", r);
 });
@@ -239,5 +238,6 @@ export {
   w as a,
   T as b,
   f as g,
+  u as i,
   S as t
 };

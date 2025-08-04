@@ -1,6 +1,5 @@
 import { html, css } from 'lit';
 import { property } from 'lit/decorators.js';
-import { ifDefined } from 'lit/directives/if-defined.js';
 import { t } from '../i18n';
 import { I18nLitElement } from '../i18n-mixin';
 

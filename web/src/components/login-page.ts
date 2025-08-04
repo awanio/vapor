@@ -1,7 +1,6 @@
 import { html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { auth } from '../auth';
-import { t } from '../i18n';
 import { I18nLitElement } from '../i18n-mixin';
 
 @customElement('login-page')

@@ -1,6 +1,6 @@
-import { LitElement } from 'lit';
+import { I18nLitElement } from '../i18n-mixin';
 import type { Disk, VolumeGroup, LogicalVolume, PhysicalVolume, RAIDDevice, RAIDDisk, ISCSITarget, ISCSISession, MultipathDevice } from '../types/api';
-export declare class StorageTab extends LitElement {
+export declare class StorageTab extends I18nLitElement {
     disks: Disk[];
     volumeGroups: VolumeGroup[];
     logicalVolumes: LogicalVolume[];

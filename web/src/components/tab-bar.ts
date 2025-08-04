@@ -1,6 +1,5 @@
 import { html, css } from 'lit';
 import { property } from 'lit/decorators.js';
-import { repeat } from 'lit/directives/repeat.js';
 import { I18nLitElement } from '../i18n-mixin';
 
 interface Tab {

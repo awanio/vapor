@@ -6,7 +6,7 @@ declare class I18n {
     constructor();
     private isValidLocale;
     loadTranslations(locale: Locale): Promise<void>;
-    setLocale(locale: Locale): void;
+    setLocale(locale: Locale): Promise<void>;
     getLocale(): Locale;
     t(key: string, params?: Record<string, any>): string;
     onChange(listener: () => void): () => void;

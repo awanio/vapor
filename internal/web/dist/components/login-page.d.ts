@@ -1,5 +1,5 @@
-import { LitElement } from 'lit';
-export declare class LoginPage extends LitElement {
+import { I18nLitElement } from '../i18n-mixin';
+export declare class LoginPage extends I18nLitElement {
     static styles: import("lit").CSSResult;
     private username;
     private password;

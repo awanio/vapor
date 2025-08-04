@@ -1,5 +1,5 @@
-import { LitElement } from 'lit';
-export declare class StatusBar extends LitElement {
+import { I18nLitElement } from '../i18n-mixin';
+export declare class StatusBar extends I18nLitElement {
     currentUser: string;
     hostname: string;
     connected: boolean;
