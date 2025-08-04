@@ -515,6 +515,8 @@
                 $ref: '#/components/schemas/PodsResponse'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
 
   /kubernetes/deployments:
     get:
@@ -532,6 +534,8 @@
                 $ref: '#/components/schemas/DeploymentsResponse'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
 
   /kubernetes/services:
     get:
@@ -549,6 +553,8 @@
                 $ref: '#/components/schemas/ServicesResponse'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
 
   /kubernetes/ingresses:
     get:
@@ -566,6 +572,8 @@
                 $ref: '#/components/schemas/IngressesResponse'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
 
   /kubernetes/pvcs:
     get:
@@ -583,6 +591,8 @@
                 $ref: '#/components/schemas/PVCsResponse'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
 
   /kubernetes/pvs:
     get:
@@ -600,6 +610,8 @@
                 $ref: '#/components/schemas/PVsResponse'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
 
   /kubernetes/secrets:
     get:
@@ -617,6 +629,8 @@
                 $ref: '#/components/schemas/SecretsResponse'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
 
   /kubernetes/configmaps:
     get:
@@ -634,6 +648,8 @@
                 $ref: '#/components/schemas/ConfigMapsResponse'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
 
   /kubernetes/namespaces:
     get:
@@ -651,6 +667,8 @@
                 $ref: '#/components/schemas/NamespacesResponse'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
 
   /kubernetes/nodes:
     get:
@@ -668,6 +686,8 @@
                 $ref: '#/components/schemas/NodesResponse'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
 
   /kubernetes/daemonsets:
     get:
@@ -685,6 +705,8 @@
                 $ref: '#/components/schemas/DaemonSetsResponse'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
 
   /kubernetes/statefulsets:
     get:
@@ -702,6 +724,8 @@
                 $ref: '#/components/schemas/StatefulSetsResponse'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
 
   /kubernetes/jobs:
     get:
@@ -719,6 +743,8 @@
                 $ref: '#/components/schemas/JobsResponse'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
 
   /kubernetes/cronjobs:
     get:
@@ -736,6 +762,8 @@
                 $ref: '#/components/schemas/CronJobsResponse'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
 
   /kubernetes/cluster-info:
     get:
@@ -753,6 +781,8 @@
                 $ref: '#/components/schemas/ClusterInfoResponse'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
 
 openapi: 3.1.0
 info:
@@ -3238,6 +3268,25 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedError'
 
+  /kubernetes/crds:
+    get:
+      summary: List all Kubernetes Custom Resource Definitions
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: CRDs listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CRDsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -3252,6 +3301,32 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+
+    KubernetesNotInstalledError:
+      description: Kubernetes is not installed on the system
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                enum: [error]
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    enum: [KUBERNETES_NOT_INSTALLED]
+                  message:
+                    type: string
+                    example: "Kubernetes is not installed on this system"
+                  details:
+                    type: string
+                    example: "The kubelet service was not found on this system. Please install Kubernetes to use these features."
+              data:
+                type: object
+                nullable: true
   
   schemas:
     APIResponse:
@@ -3329,6 +3404,67 @@ components:
               properties:
                 message:
                   type: string
+
+    CRDsResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                crds:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/CRDInfo'
+
+    CRDInfo:
+      type: object
+      properties:
+        name:
+          type: string
+          description: The name of the CRD
+        group:
+          type: string
+          description: The API group of the CRD
+        version:
+          type: string
+          description: The version of the CRD
+        scope:
+          type: string
+          description: The scope of the CRD (Namespaced or Cluster)
+          enum: [Namespaced, Cluster]
+        plural:
+          type: string
+          description: The plural name used in URLs
+        singular:
+          type: string
+          description: The singular name
+        kind:
+          type: string
+          description: The kind of the custom resource
+        shortNames:
+          type: array
+          items:
+            type: string
+          description: Short names for the CRD
+        served:
+          type: boolean
+          description: Whether this version is served
+        storage:
+          type: boolean
+          description: Whether this version is used for storage
+        established:
+          type: boolean
+          description: Whether the CRD is established
+        age:
+          type: string
+          description: Age of the CRD
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+          description: Labels attached to the CRD
     
     Interface:
       type: object
