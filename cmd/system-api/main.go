@@ -22,6 +22,7 @@ import (
 	"github.com/vapor/system-api/internal/web"
 	"github.com/vapor/system-api/internal/websocket"
 	"github.com/vapor/system-api/internal/docker"
+	"github.com/vapor/system-api/internal/kubernetes"
 )
 
 func main() {
@@ -136,6 +137,29 @@ func main() {
 			api.GET("/docker/images", dockerService.ListImagesGin)
 			api.GET("/docker/networks", dockerService.ListNetworksGin)
 			api.GET("/docker/volumes", dockerService.ListVolumesGin)
+		}
+
+		// Kubernetes service
+		kubernetesService, err := kubernetes.NewService()
+		if err != nil {
+			log.Printf("Error initializing Kubernetes service: %v", err)
+		} else {
+			// Register Kubernetes routes
+			api.GET("/kubernetes/pods", kubernetesService.ListPods)
+			api.GET("/kubernetes/deployments", kubernetesService.ListDeployments)
+			api.GET("/kubernetes/services", kubernetesService.ListServices)
+			api.GET("/kubernetes/ingresses", kubernetesService.ListIngresses)
+			api.GET("/kubernetes/pvcs", kubernetesService.ListPVCs)
+			api.GET("/kubernetes/pvs", kubernetesService.ListPVs)
+			api.GET("/kubernetes/secrets", kubernetesService.ListSecrets)
+			api.GET("/kubernetes/configmaps", kubernetesService.ListConfigMaps)
+			api.GET("/kubernetes/namespaces", kubernetesService.ListNamespaces)
+			api.GET("/kubernetes/nodes", kubernetesService.ListNodes)
+			api.GET("/kubernetes/daemonsets", kubernetesService.ListDaemonSets)
+			api.GET("/kubernetes/statefulsets", kubernetesService.ListStatefulSets)
+			api.GET("/kubernetes/jobs", kubernetesService.ListJobs)
+			api.GET("/kubernetes/cronjobs", kubernetesService.ListCronJobs)
+			api.GET("/kubernetes/cluster-info", kubernetesService.GetClusterInfo)
 		}
 
 // User management endpoints

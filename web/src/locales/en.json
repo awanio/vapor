@@ -50,6 +50,7 @@
     "actions": "Actions",
     "name": "Name",
     "status": "Status",
+    "state": "State",
     "size": "Size",
     "type": "Type",
     "details": "Details",
@@ -63,7 +64,11 @@
     "export": "Export",
     "import": "Import",
     "connected": "Connected",
-    "disconnected": "Disconnected"
+    "disconnected": "Disconnected",
+    "image": "Image",
+    "created": "Created",
+    "tags": "Tags",
+    "runtime": "Runtime"
   },
   "dashboard": {
     "title": "System Dashboard",
@@ -92,6 +97,26 @@
     "minutes": "minutes"
   },
   "network": {
+    "title": "Network",
+    "interface": "Interfaces",
+    "bridges": "Bridges",
+    "bonds": "Bonds",
+    "vlans": "VLANs",
+    "searchInterfaces": "Search interfaces...",
+    "searchBridges": "Search bridges",
+    "searchBonds": "Search bonds",
+    "searchVLANs": "Search VLANs",
+    "createBridge": "Create Bridge",
+    "createBond": "Create Bond",
+    "createVLAN": "Create VLAN",
+    "noBridges": "No bridges available",
+    "noBonds": "No bonds available",
+    "noVLANs": "No VLANs available",
+    "mode": "Mode",
+    "rxBytes": "RX Bytes",
+    "txBytes": "TX Bytes",
+    "configure": "Configure",
+    "noInterfaces": "No interfaces available",
     "interfaces": {
       "title": "Network Interfaces",
       "name": "Interface Name",
@@ -216,6 +241,9 @@
   },
   "containers": {
     "title": "Containers",
+    "searchContainers": "Search containers",
+    "searchImages": "Search images",
+    "searchLogs": "Search logs",
     "list": "Container List",
     "id": "Container ID",
     "name": "Name",
@@ -250,6 +278,7 @@
   },
   "users": {
     "title": "User Management",
+    "searchUsers": "Search users...",
     "username": "Username",
     "uid": "UID",
     "gid": "GID",

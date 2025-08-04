@@ -1,12 +1,13 @@
-import { LitElement, html, css } from 'lit';
+import { html, css } from 'lit';
 import { property } from 'lit/decorators.js';
 import { t } from '../i18n';
+import { I18nLitElement } from '../i18n-mixin';
 import { api, WebSocketManager } from '../api';
 import Chart from 'chart.js/auto';
 import type { SystemSummary, CPUInfo, MemoryInfo } from '../types/api';
 import type { CPUMetricData, MemoryMetricData } from '../types/system';
 
-export class DashboardTab extends LitElement {
+export class DashboardTab extends I18nLitElement {
   @property({ type: Object }) systemSummary: SystemSummary | null = null;
   @property({ type: Object }) cpuInfo: CPUInfo | null = null;
   @property({ type: Object }) memoryInfo: MemoryInfo | null = null;

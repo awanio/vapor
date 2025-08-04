@@ -50,6 +50,7 @@
     "actions": "Aksi",
     "name": "Nama",
     "status": "Status",
+    "state": "Status",
     "size": "Ukuran",
     "type": "Tipe",
     "details": "Detail",
@@ -61,7 +62,13 @@
     "search": "Cari",
     "filter": "Filter",
     "export": "Ekspor",
-    "import": "Impor"
+    "import": "Impor",
+    "connected": "Terhubung",
+    "disconnected": "Terputus",
+    "image": "Image",
+    "created": "Dibuat",
+    "tags": "Tag",
+    "runtime": "Runtime"
   },
   "dashboard": {
     "title": "Dasbor Sistem",
@@ -90,6 +97,26 @@
     "minutes": "menit"
   },
   "network": {
+    "title": "Jaringan",
+    "interface": "Antarmuka",
+    "bridges": "Bridge",
+    "bonds": "Bond",
+    "vlans": "VLAN",
+    "searchInterfaces": "Cari antarmuka...",
+    "searchBridges": "Cari bridge",
+    "searchBonds": "Cari bond",
+    "searchVLANs": "Cari VLAN",
+    "createBridge": "Buat Bridge",
+    "createBond": "Buat Bond",
+    "createVLAN": "Buat VLAN",
+    "noBridges": "Tidak ada bridge tersedia",
+    "noBonds": "Tidak ada bond tersedia",
+    "noVLANs": "Tidak ada VLAN tersedia",
+    "mode": "Mode",
+    "rxBytes": "Byte Diterima",
+    "txBytes": "Byte Dikirim",
+    "configure": "Konfigurasi",
+    "noInterfaces": "Tidak ada antarmuka tersedia",
     "interfaces": {
       "title": "Antarmuka Jaringan",
       "name": "Nama Antarmuka",
@@ -131,8 +158,9 @@
     }
   },
   "storage": {
+    "title": "Manajemen Penyimpanan",
     "disks": {
-      "title": "Disk Penyimpanan",
+      "title": "Disk",
       "device": "Perangkat",
       "model": "Model",
       "serial": "Nomor Seri",
@@ -140,7 +168,9 @@
       "type": "Tipe",
       "removable": "Dapat Dilepas",
       "partitions": "Partisi",
+      "partition": "Partisi",
       "filesystem": "Sistem Berkas",
+      "mountpoint": "Titik Mount",
       "mountPoint": "Titik Mount",
       "used": "Terpakai",
       "available": "Tersedia",
@@ -158,13 +188,18 @@
       "physicalVolumes": "Volume Fisik",
       "createVG": "Buat Grup Volume",
       "createLV": "Buat Volume Logis",
+      "volumeGroup": "Grup Volume",
       "vgName": "Nama Grup Volume",
       "lvName": "Nama Volume Logis",
       "devices": "Perangkat",
       "size": "Ukuran",
       "free": "Bebas",
       "pvCount": "Jumlah PV",
-      "lvCount": "Jumlah LV"
+      "lvCount": "Jumlah LV",
+      "path": "Path",
+      "noVolumeGroups": "Tidak Ada Grup Volume",
+      "noLogicalVolumes": "Tidak Ada Volume Logis",
+      "noPhysicalVolumes": "Tidak Ada Volume Fisik"
     },
     "raid": {
       "title": "Manajemen RAID",
@@ -178,11 +213,53 @@
       "destroyRaid": "Hancurkan RAID",
       "selectLevel": "Pilih level RAID",
       "selectDisks": "Pilih disk",
-      "availableDisks": "Disk Tersedia"
+      "availableDisks": "Disk Tersedia",
+      "size": "Ukuran",
+      "device": "Perangkat",
+      "partition": "Partisi",
+      "createRAID": "Buat RAID",
+      "destroy": "Hancurkan",
+      "confirmDestroy": "Apakah Anda yakin ingin menghancurkan RAID?",
+      "noDevices": "Tidak Ada Perangkat RAID",
+      "noAvailableDisks": "Tidak Ada Disk Tersedia untuk RAID"
+    },
+    "iscsi": {
+      "title": "Manajemen iSCSI",
+      "sessions": "Sesi iSCSI",
+      "target": "Target",
+      "portal": "Portal",
+      "sessionId": "ID Sesi",
+      "state": "Status",
+      "noSessions": "Tidak Ada Sesi iSCSI",
+      "discoveredTargets": "Target iSCSI Ditemukan",
+      "discover": "Temukan Target iSCSI",
+      "login": "Masuk ke Target iSCSI",
+      "logout": "Keluar dari Target iSCSI"
+    },
+    "multipath": {
+      "title": "Manajemen Multipath",
+      "devices": "Perangkat Multipath",
+      "wwid": "WWID",
+      "vendor": "Vendor",
+      "paths": "Path",
+      "device": "Perangkat",
+      "host": "Host",
+      "state": "Status",
+      "priority": "Prioritas",
+      "noDevices": "Tidak Ada Perangkat Multipath"
+    },
+    "btrfs": {
+      "title": "Manajemen BTRFS",
+      "subvolumes": "Subvolume BTRFS",
+      "createSubvolume": "Buat Subvolume",
+      "noSubvolumes": "Tidak Ada Subvolume"
     }
   },
   "containers": {
     "title": "Kontainer",
+    "searchContainers": "Cari kontainer",
+    "searchImages": "Cari image",
+    "searchLogs": "Cari log",
     "list": "Daftar Kontainer",
     "id": "ID Kontainer",
     "name": "Nama",
@@ -217,6 +294,7 @@
   },
   "users": {
     "title": "Manajemen Pengguna",
+    "searchUsers": "Cari pengguna...",
     "username": "Nama Pengguna",
     "uid": "UID",
     "gid": "GID",
@@ -251,6 +329,9 @@
     "pid": "PID",
     "follow": "Ikuti",
     "export": "Ekspor Log",
+    "filterServices": "Filter berdasarkan layanan (pisahkan dengan koma)",
+    "clear": "Bersihkan Log",
+    "noLogs": "Tidak ada log untuk ditampilkan",
     "priorities": {
       "emergency": "Darurat",
       "alert": "Peringatan",

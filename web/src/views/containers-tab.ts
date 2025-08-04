@@ -1042,7 +1042,7 @@ renderContainersTable() {
         <input 
           class="search-input"
           type="text" 
-          placeholder="Search containers" 
+          placeholder="${t('containers.searchContainers')}"
           .value=${this.searchTerm}
           @input=${(e: any) => this.searchTerm = e.target.value}
         />
@@ -1118,7 +1118,7 @@ renderImagesTable() {
         <input 
           class="search-input"
           type="text" 
-          placeholder="Search images" 
+          placeholder="${t('containers.searchImages')}"
           .value=${this.searchTerm}
           @input=${(e: any) => this.searchTerm = e.target.value}
         />
@@ -1438,7 +1438,7 @@ renderImagesTable() {
                 <input
                   class="search-input"
                   type="text"
-                  placeholder="Search logs"
+                  placeholder="${t('containers.searchLogs')}"
                   .value=${this.logsSearchTerm}
                   @input=${(e: any) => this.logsSearchTerm = e.target.value}
                 />

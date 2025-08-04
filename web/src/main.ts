@@ -10,11 +10,11 @@ theme.getTheme();
 // Force auth initialization by accessing it
 auth.isAuthenticated();
 
-// Then import app-root which will check auth status
-import('./app-root');
-
-// Initialize i18n
+// Initialize i18n before loading the app
 i18n.init().then(() => {
+  console.log('i18n initialized, loading app...');
+  // Then import app-root which will check auth status
+  import('./app-root');
   console.log('Vapor Web UI initialized');
 }).catch((error) => {
   console.error('Failed to initialize i18n:', error);

@@ -1,9 +1,10 @@
-import { LitElement, html, css } from 'lit';
+import { html, css } from 'lit';
 import { property } from 'lit/decorators.js';
 import { t } from '../i18n';
+import { I18nLitElement } from '../i18n-mixin';
 import type { NavItem } from '../types/system';
 
-export class SidebarTree extends LitElement {
+export class SidebarTree extends I18nLitElement {
   @property({ type: Boolean }) collapsed = false;
   @property({ type: String }) activeItemId = 'dashboard';
   @property({ type: Object }) expandedItems: Set<string> = new Set(['network']);

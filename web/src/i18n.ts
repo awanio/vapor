@@ -33,16 +33,41 @@ class I18n {
     }
 
     try {
-      const response = await fetch(`/locales/${locale}.json`);
+      // In development, Vite serves files from src directory
+      // In production, files should be in public/locales
+      const isDev = import.meta.env.DEV;
+      const basePath = isDev ? '/src/locales' : '/locales';
+      const response = await fetch(`${basePath}/${locale}.json`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const translations = await response.json();
       this.translations.set(locale, translations);
+      console.log(`Loaded translations for locale ${locale}`);
     } catch (error) {
       console.error(`Failed to load translations for locale ${locale}:`, error);
+      // Try fallback path if primary fails
+      try {
+        const fallbackPath = `/locales/${locale}.json`;
+        const fallbackResponse = await fetch(fallbackPath);
+        if (fallbackResponse.ok) {
+          const translations = await fallbackResponse.json();
+          this.translations.set(locale, translations);
+          console.log(`Loaded translations for locale ${locale} from fallback path`);
+        }
+      } catch (fallbackError) {
+        console.error(`Fallback also failed for locale ${locale}:`, fallbackError);
+      }
     }
   }
 
-  setLocale(locale: Locale): void {
+  async setLocale(locale: Locale): Promise<void> {
     if (this.locale !== locale) {
+      // Load the translation file for the new locale
+      await this.loadTranslations(locale);
+      
       this.locale = locale;
       localStorage.setItem('locale', locale);
       this.notifyListeners();

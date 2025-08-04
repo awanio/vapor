@@ -2,6 +2,7 @@ import { LitElement, html, css } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { auth } from './auth';
 import { theme } from './theme';
+import { i18n, t, Locale } from './i18n';
 import './components/login-page';
 import './views/dashboard-tab';
 import './views/network-tab';
@@ -23,6 +24,12 @@ export class AppRoot extends LitElement {
   
   @state()
   private currentTheme = theme.getTheme();
+  
+  @state()
+  private currentLocale = i18n.getLocale();
+  
+  @state()
+  private languageMenuOpen = false;
 
   static override styles = css`
     :host {
@@ -100,6 +107,72 @@ export class AppRoot extends LitElement {
       height: 20px;
     }
 
+    .language-selector {
+      position: relative;
+    }
+
+    .language-button {
+      padding: 0.5rem 1rem;
+      background: transparent;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .language-button:hover {
+      background: var(--surface-2);
+      border-color: var(--primary);
+    }
+
+    .language-icon {
+      width: 16px;
+      height: 16px;
+    }
+
+    .language-dropdown {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      margin-top: 0.25rem;
+      background: var(--surface-1);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      min-width: 120px;
+      z-index: 1000;
+    }
+
+    .language-option {
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .language-option:hover {
+      background: var(--surface-2);
+    }
+
+    .language-option.active {
+      background: var(--surface-3);
+      color: var(--primary);
+    }
+
+    .check-icon {
+      width: 14px;
+      height: 14px;
+      margin-left: auto;
+    }
+
     .app-content {
       display: flex;
       height: calc(100vh - 56px);
@@ -167,6 +240,15 @@ export class AppRoot extends LitElement {
     
     // Check initial authentication state
     this.isAuthenticated = auth.isAuthenticated();
+    
+    // Subscribe to locale changes
+    const unsubscribe = i18n.onChange(() => {
+      this.currentLocale = i18n.getLocale();
+      this.requestUpdate();
+    });
+    
+    // Store unsubscribe function for cleanup
+    (this as any)._unsubscribeI18n = unsubscribe;
 
     // Set active view from URL
     const path = window.location.pathname.slice(1);
@@ -205,13 +287,24 @@ export class AppRoot extends LitElement {
     
     // Listen for theme changes
     window.addEventListener('theme-changed', this.handleThemeChange as EventListener);
+    
+    // Handle clicks outside language dropdown
+    document.addEventListener('click', this.handleDocumentClick);
   }
   
   override disconnectedCallback() {
     super.disconnectedCallback();
+    
+    // Cleanup i18n subscription
+    if ((this as any)._unsubscribeI18n) {
+      (this as any)._unsubscribeI18n();
+    }
+    
+    // Remove event listeners
+    document.removeEventListener('click', this.handleDocumentClick);
+    window.removeEventListener('theme-changed', this.handleThemeChange as EventListener);
     window.removeEventListener('auth:login', this.handleAuthLogin);
     window.removeEventListener('auth:logout', this.handleAuthLogout);
-    window.removeEventListener('theme-changed', this.handleThemeChange as EventListener);
   }
   
   private handleAuthLogin = () => {
@@ -238,6 +331,23 @@ export class AppRoot extends LitElement {
   private toggleTheme() {
     theme.toggleTheme();
   }
+  
+  private toggleLanguageMenu(e: Event) {
+    e.stopPropagation();
+    this.languageMenuOpen = !this.languageMenuOpen;
+  }
+  
+  private async selectLanguage(locale: Locale) {
+    await i18n.setLocale(locale);
+    this.languageMenuOpen = false;
+  }
+  
+  private handleDocumentClick = (e: Event) => {
+    const target = e.target as HTMLElement;
+    if (!target.closest('.language-selector')) {
+      this.languageMenuOpen = false;
+    }
+  };
 
   override render() {
     // Show login page if not authenticated
@@ -251,7 +361,7 @@ export class AppRoot extends LitElement {
       <header class="app-header">
         <div class="header-title">Vapor</div>
         <div class="header-actions">
-          <button class="theme-toggle" @click="${this.toggleTheme}" title="Toggle theme">
+          <button class="theme-toggle" @click="${this.toggleTheme}" title="${t('app.theme')}">
             ${this.currentTheme === 'dark' ? html`
               <svg class="theme-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
@@ -262,8 +372,39 @@ export class AppRoot extends LitElement {
               </svg>
             `}
           </button>
+          
+          <div class="language-selector">
+            <button class="language-button" @click="${this.toggleLanguageMenu}" title="${t('app.language')}">
+              <svg class="language-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+              </svg>
+              ${this.currentLocale.toUpperCase()}
+            </button>
+            
+            ${this.languageMenuOpen ? html`
+              <div class="language-dropdown">
+                <div class="language-option ${this.currentLocale === 'en' ? 'active' : ''}" @click="${() => this.selectLanguage('en')}">
+                  English
+                  ${this.currentLocale === 'en' ? html`
+                    <svg class="check-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                  ` : ''}
+                </div>
+                <div class="language-option ${this.currentLocale === 'id' ? 'active' : ''}" @click="${() => this.selectLanguage('id')}">
+                  Bahasa Indonesia
+                  ${this.currentLocale === 'id' ? html`
+                    <svg class="check-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                  ` : ''}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+          
           <span class="user-info">Logged in</span>
-          <button class="logout-button" @click="${this.handleLogout}">Logout</button>
+          <button class="logout-button" @click="${this.handleLogout}">${t('app.logout')}</button>
         </div>
       </header>
       <!-- App Content -->

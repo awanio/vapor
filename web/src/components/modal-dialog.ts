@@ -1,8 +1,10 @@
-import { LitElement, html, css } from 'lit';
+import { html, css } from 'lit';
 import { property } from 'lit/decorators.js';
+import { ifDefined } from 'lit/directives/if-defined.js';
 import { t } from '../i18n';
+import { I18nLitElement } from '../i18n-mixin';
 
-export class ModalDialog extends LitElement {
+export class ModalDialog extends I18nLitElement {
   @property({ type: Boolean, reflect: true }) open = false;
   @property({ type: String }) override title = '';
   @property({ type: String }) size: 'small' | 'medium' | 'large' = 'medium';

@@ -1,8 +1,15 @@
-import { LitElement, html, css } from 'lit';
+import { html, css } from 'lit';
 import { property } from 'lit/decorators.js';
-import type { Tab } from '../types/system';
+import { repeat } from 'lit/directives/repeat.js';
+import { I18nLitElement } from '../i18n-mixin';
 
-export class TabBar extends LitElement {
+interface Tab {
+  id: string;
+  label: string;
+  closable?: boolean;
+}
+
+export class TabBar extends I18nLitElement {
   @property({ type: Array }) tabs: Tab[] = [];
   @property({ type: String }) activeTabId = '';
 

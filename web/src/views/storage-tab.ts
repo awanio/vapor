@@ -1,6 +1,7 @@
-import { LitElement, html, css } from 'lit';
+import { html, css } from 'lit';
 import { property } from 'lit/decorators.js';
 import { t } from '../i18n';
+import { I18nLitElement } from '../i18n-mixin';
 import { api } from '../api';
 import type { 
   Disk, 
@@ -14,7 +15,7 @@ import type {
   MultipathDevice
 } from '../types/api';
 
-export class StorageTab extends LitElement {
+export class StorageTab extends I18nLitElement {
   @property({ type: Array }) disks: Disk[] = [];
   @property({ type: Array }) volumeGroups: VolumeGroup[] = [];
   @property({ type: Array }) logicalVolumes: LogicalVolume[] = [];

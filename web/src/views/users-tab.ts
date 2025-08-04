@@ -606,7 +606,7 @@ export class UsersTab extends LitElement {
             </svg>
             <input 
               type="text" 
-              placeholder="${t('common.search', { default: 'Search users...' })}"
+              placeholder="${t('users.searchUsers')}"
               .value=${this.searchQuery}
               @input=${this.handleSearch}
             />

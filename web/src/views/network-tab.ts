@@ -1,10 +1,12 @@
-import { LitElement, html, css } from 'lit';
+import { html, css } from 'lit';
 import { state } from 'lit/decorators.js';
+import { t } from '../i18n';
+import { I18nLitElement } from '../i18n-mixin';
 import { api } from '../api';
 import type { AddressRequest, BridgeRequest, BondRequest, VLANRequest, NetworkInterface } from '../types/api';
 import '../components/modal-dialog';
 
-export class NetworkTab extends LitElement {
+export class NetworkTab extends I18nLitElement {
   static override styles = css`
     :host {
       display: block;
@@ -923,16 +925,16 @@ export class NetworkTab extends LitElement {
     return html`
       <div class="tab-header">
         <button class="tab-button ${this.activeTab === 'interfaces' ? 'active' : ''}" @click="${() => this.activeTab = 'interfaces'}">
-          Interfaces
+          ${t('network.interface')}
         </button>
         <button class="tab-button ${this.activeTab === 'bridges' ? 'active' : ''}" @click="${() => this.activeTab = 'bridges'}">
-          Bridges
+          ${t('network.bridges')}
         </button>
         <button class="tab-button ${this.activeTab === 'bonds' ? 'active' : ''}" @click="${() => this.activeTab = 'bonds'}">
-          Bonds
+          ${t('network.bonds')}
         </button>
         <button class="tab-button ${this.activeTab === 'vlans' ? 'active' : ''}" @click="${() => this.activeTab = 'vlans'}">
-          VLANs
+          ${t('network.vlans')}
         </button>
       </div>
     `;
@@ -941,7 +943,7 @@ export class NetworkTab extends LitElement {
   override render() {
     return html`
       <div class="tab-container">
-        <h1>Network Management</h1>
+        <h1>${t('network.title')}</h1>
         ${this.renderTabs()}
         <div class="tab-content">
           ${this.activeTab === 'interfaces' ? html`
@@ -954,7 +956,7 @@ export class NetworkTab extends LitElement {
                 <input 
                   class="form-input search-input"
                   type="text"
-                  placeholder="Search Interfaces"
+                  placeholder="${t('network.searchInterfaces')}"
                   .value=${this.searchQuery}
                   @input=${(e: Event) => this.searchQuery = (e.target as HTMLInputElement).value}
                 />
@@ -964,11 +966,11 @@ ${this.interfaces.length > 0 ? html`
               <table class="network-table">
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>State</th>
-                    <th>RX Bytes</th>
-                    <th>TX Bytes</th>
-                    <th>Actions</th>
+                    <th>${t('common.name')}</th>
+                    <th>${t('common.state')}</th>
+                    <th>${t('network.rxBytes')}</th>
+                    <th>${t('network.txBytes')}</th>
+                    <th>${t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -990,7 +992,7 @@ ${this.interfaces.length > 0 ? html`
                               ${iface.state === 'up' ? 'Down' : 'Up'}
                             </button>
                             <button @click=${() => { this.closeAllMenus(); this.handleConfigureAddress(iface); }}>
-                              Configure
+                              ${t('network.configure')}
                             </button>
                           </div>
                         </div>
@@ -999,7 +1001,7 @@ ${this.interfaces.length > 0 ? html`
                   `)}
                 </tbody>
               </table>
-            ` : html`<div class="empty-state">No interfaces found.</div>`}
+            ` : html`<div class="empty-state">${t('network.noInterfaces')}</div>`}
           ` : ''}
 
           ${this.activeTab === 'bridges' ? html`
@@ -1012,13 +1014,13 @@ ${this.interfaces.length > 0 ? html`
                 <input 
                   class="form-input search-input"
                   type="text"
-                  placeholder="Search Bridges"
+                  placeholder="${t('network.searchBridges')}"
                   .value=${this.bridgeSearchQuery}
                   @input=${(e: Event) => this.bridgeSearchQuery = (e.target as HTMLInputElement).value}
                 />
               </div>
               <button class="action-button primary" @click="${this.openBridgeDrawer}">
-                Create Bridge
+                ${t('network.createBridge')}
               </button>
             </div>
             
@@ -1026,9 +1028,9 @@ ${this.interfaces.length > 0 ? html`
               <table class="network-table">
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>State</th>
-                    <th>Actions</th>
+                    <th>${t('common.name')}</th>
+                    <th>${t('common.state')}</th>
+                    <th>${t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1045,7 +1047,7 @@ ${this.interfaces.length > 0 ? html`
                           <button class="action-dots" @click=${(e: Event) => this.toggleActionMenu(e, `bridge-${index}`)}>${'⋮'}</button>
                           <div class="action-dropdown" id="bridge-${index}">
                             <button class="danger" @click=${() => { this.closeAllMenus(); this.deleteBridge(bridge.name); }}>
-                              Delete
+                              ${t('common.delete')}
                             </button>
                           </div>
                         </div>
@@ -1054,7 +1056,7 @@ ${this.interfaces.length > 0 ? html`
                   `)}
                 </tbody>
               </table>
-            ` : html`<div class="empty-state">No bridges configured.</div>`}
+            ` : html`<div class="empty-state">${t('network.noBridges')}</div>`}
           ` : ''}
 
           ${this.activeTab === 'bonds' ? html`
@@ -1067,13 +1069,13 @@ ${this.interfaces.length > 0 ? html`
                 <input 
                   class="form-input search-input"
                   type="text"
-                  placeholder="Search Bonds"
+                  placeholder="${t('network.searchBonds')}"
                   .value=${this.bondSearchQuery}
                   @input=${(e: Event) => this.bondSearchQuery = (e.target as HTMLInputElement).value}
                 />
               </div>
               <button class="action-button primary" @click="${this.openBondDrawer}">
-                Create Bond
+                ${t('network.createBond')}
               </button>
             </div>
             
@@ -1081,10 +1083,10 @@ ${this.interfaces.length > 0 ? html`
               <table class="network-table">
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>State</th>
-                    <th>Mode</th>
-                    <th>Actions</th>
+                    <th>${t('common.name')}</th>
+                    <th>${t('common.state')}</th>
+                    <th>${t('network.mode')}</th>
+                    <th>${t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1102,7 +1104,7 @@ ${this.interfaces.length > 0 ? html`
                           <button class="action-dots" @click=${(e: Event) => this.toggleActionMenu(e, `bond-${index}`)}>${'⋮'}</button>
                           <div class="action-dropdown" id="bond-${index}">
                             <button class="danger" @click=${() => { this.closeAllMenus(); this.deleteBond(bond.name); }}>
-                              Delete
+                              ${t('common.delete')}
                             </button>
                           </div>
                         </div>
@@ -1111,7 +1113,7 @@ ${this.interfaces.length > 0 ? html`
                   `)}
                 </tbody>
               </table>
-            ` : html`<div class="empty-state">No bonds configured.</div>`}
+            ` : html`<div class="empty-state">${t('network.noBonds')}</div>`}
           ` : ''}
 
           ${this.activeTab === 'vlans' ? html`
@@ -1124,13 +1126,13 @@ ${this.interfaces.length > 0 ? html`
                 <input 
                   class="form-input search-input"
                   type="text"
-                  placeholder="Search VLANs"
+                  placeholder="${t('network.searchVLANs')}"
                   .value=${this.vlanSearchQuery}
                   @input=${(e: Event) => this.vlanSearchQuery = (e.target as HTMLInputElement).value}
                 />
               </div>
               <button class="action-button primary" @click="${this.openVLANDrawer}">
-                Create VLAN
+                ${t('network.createVLAN')}
               </button>
             </div>
             
@@ -1138,9 +1140,9 @@ ${this.interfaces.length > 0 ? html`
               <table class="network-table">
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>State</th>
-                    <th>Actions</th>
+                    <th>${t('common.name')}</th>
+                    <th>${t('common.state')}</th>
+                    <th>${t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1157,7 +1159,7 @@ ${this.interfaces.length > 0 ? html`
                           <button class="action-dots" @click=${(e: Event) => this.toggleActionMenu(e, `vlan-${index}`)}>${'⋮'}</button>
                           <div class="action-dropdown" id="vlan-${index}">
                             <button class="danger" @click=${() => { this.closeAllMenus(); this.deleteVlan(vlan.name); }}>
-                              Delete
+                              ${t('common.delete')}
                             </button>
                           </div>
                         </div>
@@ -1166,7 +1168,7 @@ ${this.interfaces.length > 0 ? html`
                   `)}
                 </tbody>
               </table>
-            ` : html`<div class="empty-state">No VLANs configured.</div>`}
+            ` : html`<div class="empty-state">${t('network.noVLANs')}</div>`}
           ` : ''}
         </div>
       </div>

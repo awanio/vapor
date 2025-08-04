@@ -1,10 +1,11 @@
-import { LitElement, html, css } from 'lit';
+import { html, css } from 'lit';
 import { state } from 'lit/decorators.js';
 import { t } from '../i18n';
+import { I18nLitElement } from '../i18n-mixin';
 import { WebSocketManager } from '../api';
 import type { WSLogMessage } from '../types/api';
 
-export class LogsTab extends LitElement {
+export class LogsTab extends I18nLitElement {
   @state()
   private logs: WSLogMessage[] = [];
 

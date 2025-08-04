@@ -1,9 +1,11 @@
-import { LitElement, html, css } from 'lit';
-import { property } from 'lit/decorators.js';
+import { html, css } from 'lit';
+import { property, state } from 'lit/decorators.js';
+import { theme } from '../theme';
+import { i18n, t } from '../i18n';
+import { I18nLitElement } from '../i18n-mixin';
 import { auth } from '../auth';
-import { t, i18n } from '../i18n';
 
-export class StatusBar extends LitElement {
+export class StatusBar extends I18nLitElement {
   @property({ type: String }) currentUser = '';
   @property({ type: String }) hostname = '';
   @property({ type: Boolean }) connected = true;
@@ -129,10 +131,10 @@ export class StatusBar extends LitElement {
     }));
   }
 
-  private handleLanguageChange(event: Event) {
+  private async handleLanguageChange(event: Event) {
     const select = event.target as HTMLSelectElement;
     const locale = select.value as 'en' | 'id';
-    i18n.setLocale(locale);
+    await i18n.setLocale(locale);
   }
 
   private handleLogout() {

@@ -1,9 +1,11 @@
-import { LitElement, html, css } from 'lit';
+import { html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { auth } from '../auth';
+import { t } from '../i18n';
+import { I18nLitElement } from '../i18n-mixin';
 
 @customElement('login-page')
-export class LoginPage extends LitElement {
+export class LoginPage extends I18nLitElement {
   static override styles = css`
     :host {
       display: flex;
