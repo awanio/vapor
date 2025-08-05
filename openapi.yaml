@@ -797,25 +797,26 @@ paths:
                         example: containerd
                   error:
                     type: object
-      '503':
-        description: No container runtime available
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                status:
-                  type: string
-                  example: error
-                error:
-                  type: object
-                  properties:
-                    code:
-                      type: string
-                      example: NO_RUNTIME_AVAILABLE
-                    message:
-                      type: string
-                      example: "No container runtime found. Tried CRI sockets ([/run/containerd/containerd.sock /var/run/crio/crio.sock]) and Docker. Last error: Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?"
+                    nullable: true
+        '503':
+          description: No container runtime available
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        example: NO_RUNTIME_AVAILABLE
+                      message:
+                        type: string
+                        example: "No container runtime found. Tried CRI sockets ([/run/containerd/containerd.sock /var/run/crio/crio.sock]) and Docker. Last error: Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?"
 
   /containers/{id}:
     get:
@@ -1032,25 +1033,26 @@ paths:
                         example: containerd
                   error:
                     type: object
-      '503':
-        description: No container runtime available
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                status:
-                  type: string
-                  example: error
-                error:
-                  type: object
-                  properties:
-                    code:
-                      type: string
-                      example: NO_RUNTIME_AVAILABLE
-                    message:
-                      type: string
-                      example: "No container runtime found. Tried CRI sockets ([/run/containerd/containerd.sock /var/run/crio/crio.sock]) and Docker. Last error: Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?"
+                    nullable: true
+        '503':
+          description: No container runtime available
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        example: NO_RUNTIME_AVAILABLE
+                      message:
+                        type: string
+                        example: "No container runtime found. Tried CRI sockets ([/run/containerd/containerd.sock /var/run/crio/crio.sock]) and Docker. Last error: Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?"
 
   /images/{id}:
     get:
@@ -2717,6 +2719,534 @@ paths:
                 $ref: '#/components/schemas/ClusterInfoResponse'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/pods/{namespace}/{name}:
+    get:
+      summary: Get detailed pod information
+      description: Get detailed information about a specific pod in a namespace
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: Pod namespace
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          description: Pod name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Pod details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PodDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Pod not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/deployments/{namespace}/{name}:
+    get:
+      summary: Get detailed deployment information
+      description: Get detailed information about a specific deployment in a namespace
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: Deployment namespace
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          description: Deployment name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deployment details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeploymentDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Deployment not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/services/{namespace}/{name}:
+    get:
+      summary: Get detailed service information
+      description: Get detailed information about a specific service in a namespace
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: Service namespace
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          description: Service name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Service details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Service not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/ingresses/{namespace}/{name}:
+    get:
+      summary: Get detailed ingress information
+      description: Get detailed information about a specific ingress in a namespace
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: Ingress namespace
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          description: Ingress name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ingress details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngressDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Ingress not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/pvcs/{namespace}/{name}:
+    get:
+      summary: Get detailed PVC information
+      description: Get detailed information about a specific persistent volume claim in a namespace
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: PVC namespace
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          description: PVC name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: PVC details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PVCDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: PVC not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/pvs/{name}:
+    get:
+      summary: Get detailed PV information
+      description: Get detailed information about a specific persistent volume
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: PV name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: PV details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PVDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: PV not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/secrets/{namespace}/{name}:
+    get:
+      summary: Get detailed secret information
+      description: Get detailed information about a specific secret in a namespace
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: Secret namespace
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          description: Secret name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Secret details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecretDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Secret not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/configmaps/{namespace}/{name}:
+    get:
+      summary: Get detailed configmap information
+      description: Get detailed information about a specific configmap in a namespace
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: ConfigMap namespace
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          description: ConfigMap name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ConfigMap details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigMapDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: ConfigMap not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/namespaces/{name}:
+    get:
+      summary: Get detailed namespace information
+      description: Get detailed information about a specific namespace
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Namespace name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Namespace details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NamespaceDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Namespace not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/nodes/{name}:
+    get:
+      summary: Get detailed node information
+      description: Get detailed information about a specific node
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Node name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Node details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Node not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/daemonsets/{namespace}/{name}:
+    get:
+      summary: Get detailed daemonset information
+      description: Get detailed information about a specific daemonset in a namespace
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: DaemonSet namespace
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          description: DaemonSet name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: DaemonSet details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DaemonSetDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: DaemonSet not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/statefulsets/{namespace}/{name}:
+    get:
+      summary: Get detailed statefulset information
+      description: Get detailed information about a specific statefulset in a namespace
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: StatefulSet namespace
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          description: StatefulSet name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: StatefulSet details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatefulSetDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: StatefulSet not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/jobs/{namespace}/{name}:
+    get:
+      summary: Get detailed job information
+      description: Get detailed information about a specific job in a namespace
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: Job namespace
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          description: Job name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/cronjobs/{namespace}/{name}:
+    get:
+      summary: Get detailed cronjob information
+      description: Get detailed information about a specific cronjob in a namespace
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: CronJob namespace
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          description: CronJob name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: CronJob details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CronJobDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: CronJob not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '503':
           $ref: '#/components/responses/KubernetesNotInstalledError'
 
@@ -5718,3 +6248,252 @@ components:
           type: string
           description: Repository containing the chart
           example: "bitnami"
+
+    # Kubernetes Resource Detail Response Schemas
+    PodDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/PodDetail'
+
+    DeploymentDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/DeploymentInfo'
+
+    ServiceDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ServiceInfo'
+
+    IngressDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/IngressInfo'
+
+    PVCDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/PVCInfo'
+
+    PVDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/PVInfo'
+
+    SecretDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/SecretInfo'
+
+    ConfigMapDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ConfigMapInfo'
+
+    NamespaceDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/NamespaceInfo'
+
+    NodeDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/NodeInfo'
+
+    DaemonSetDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/DaemonSetInfo'
+
+    StatefulSetDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/StatefulSetInfo'
+
+    JobDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/JobInfo'
+
+    CronJobDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/CronJobInfo'
+
+    # Pod Detail Schema (already exists but adding reference here for completeness)
+    PodDetail:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Pod name
+        namespace:
+          type: string
+          description: Pod namespace
+        uid:
+          type: string
+          description: Pod UID
+        resource_version:
+          type: string
+          description: Resource version
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+          description: Pod labels
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+          description: Pod annotations
+        status:
+          type: string
+          description: Pod status
+        phase:
+          type: string
+          description: Pod phase
+        ip:
+          type: string
+          description: Pod IP address
+        host_ip:
+          type: string
+          description: Host IP address
+        node:
+          type: string
+          description: Node name where pod is running
+        service_account:
+          type: string
+          description: Service account name
+        restart_policy:
+          type: string
+          description: Restart policy
+        dns_policy:
+          type: string
+          description: DNS policy
+        node_selector:
+          type: object
+          additionalProperties:
+            type: string
+          description: Node selector
+        tolerations:
+          type: array
+          items:
+            type: object
+          description: Pod tolerations
+        containers:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContainerInfo'
+          description: Container information
+        init_containers:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContainerInfo'
+          description: Init container information
+        conditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PodCondition'
+          description: Pod conditions
+        qos_class:
+          type: string
+          description: QoS class
+        start_time:
+          type: string
+          format: date-time
+          description: Pod start time
+        creation_timestamp:
+          type: string
+          format: date-time
+          description: Pod creation timestamp
+        age:
+          type: string
+          description: Pod age
+
+    ContainerInfo:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Container name
+        image:
+          type: string
+          description: Container image
+        ready:
+          type: boolean
+          description: Container ready status
+        restart_count:
+          type: integer
+          description: Container restart count
+        state:
+          type: string
+          description: Container state
+        state_reason:
+          type: string
+          description: Container state reason
+
+    PodCondition:
+      type: object
+      properties:
+        type:
+          type: string
+          description: Condition type
+        status:
+          type: string
+          description: Condition status
+        last_probe_time:
+          type: string
+          format: date-time
+          description: Last probe time
+        last_transition_time:
+          type: string
+          format: date-time
+          description: Last transition time
+        reason:
+          type: string
+          description: Condition reason
+        message:
+          type: string
+          description: Condition message

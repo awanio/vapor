@@ -19,8 +19,8 @@ import (
 	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/load"
 	"github.com/shirou/gopsutil/v3/mem"
-	"github.com/vapor/system-api/internal/system"
-	"github.com/vapor/system-api/internal/logs"
+	"github.com/awanio/vapor/internal/system"
+	"github.com/awanio/vapor/internal/logs"
 )
 
 var upgrader = websocket.Upgrader{

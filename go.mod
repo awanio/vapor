@@ -1,4 +1,4 @@
-module github.com/vapor/system-api
+module github.com/awanio/vapor
 
 go 1.24.0
 

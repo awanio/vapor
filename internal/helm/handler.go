@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
-	"github.com/vapor/system-api/internal/common"
+	"github.com/awanio/vapor/internal/common"
 )
 
 // Service wrapper for HTTP handlers

@@ -15,6 +15,13 @@ class KubernetesTab extends LitElement {
   @property({ type: String }) activeStorageTab = 'pvc';
   @property({ type: String }) activeConfigurationTab = 'secrets';
   @property({ type: String }) activeHelmTab = 'releases';
+  @property({ type: Boolean }) showPodDetails = false;
+  @property({ type: Object }) selectedPod = null;
+  @property({ type: Boolean }) loadingPodDetails = false;
+  @property({ type: Array }) namespaces = [];
+  @property({ type: String }) selectedNamespace = 'all';
+  @property({ type: Boolean }) showNamespaceDropdown = false;
+  @property({ type: String }) namespaceSearchQuery = '';
 
   static styles = css`
     :host {
@@ -130,17 +137,19 @@ class KubernetesTab extends LitElement {
     }
 
     .action-dots:hover {
-      background-color: var(--hover-bg);
+      background-color: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.1)));
     }
 
     .action-dropdown {
       position: absolute;
       right: 0;
       top: 100%;
-      background: var(--vscode-dropdown-background, var(--vscode-menu-background));
-      border: 1px solid var(--vscode-dropdown-border, var(--vscode-menu-border));
+      margin-top: 4px;
+      background: var(--vscode-dropdown-background, var(--vscode-menu-background, var(--vscode-bg-light, #252526)));
+      border: 1px solid var(--vscode-dropdown-border, var(--vscode-menu-border, var(--border-color, #454545)));
       border-radius: 4px;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      min-width: 160px;
       z-index: 1000;
       display: none;
     }
@@ -152,17 +161,19 @@ class KubernetesTab extends LitElement {
     .action-dropdown button {
       display: block;
       width: 100%;
+      text-align: left;
       padding: 8px 16px;
       border: none;
       background: none;
-      text-align: left;
+      color: var(--vscode-menu-foreground, var(--vscode-foreground, var(--vscode-text, #cccccc)));
       cursor: pointer;
-      color: var(--vscode-text);
+      font-size: 13px;
       transition: background-color 0.2s;
     }
 
     .action-dropdown button:hover {
-      background-color: var(--hover-bg);
+      background-color: var(--vscode-list-hoverBackground, var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.08)));
+      color: var(--vscode-list-hoverForeground, var(--vscode-foreground));
     }
 
     .action-dropdown button.danger {
@@ -286,6 +297,418 @@ class KubernetesTab extends LitElement {
       color: var(--vscode-input-placeholderForeground, #999);
       opacity: 0.7;
     }
+
+    .namespace-filter {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .namespace-select {
+      padding: 6px 12px;
+      border: 1px solid var(--vscode-widget-border, var(--vscode-input-border, var(--vscode-panel-border, #454545)));
+      border-radius: 4px;
+      background-color: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+      font-size: 0.875rem;
+      min-width: 150px;
+      transition: all 0.2s;
+      outline: none;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08);
+    }
+
+    .namespace-select:hover {
+      border-color: var(--vscode-inputOption-hoverBorder, var(--vscode-widget-border, #858585));
+    }
+
+    .namespace-select:focus {
+      border-color: var(--vscode-focusBorder, #007acc);
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1), 0 0 0 1px var(--vscode-focusBorder, #007acc);
+    }
+
+    .namespace-dropdown {
+      position: relative;
+      min-width: 150px;
+    }
+
+    .namespace-button {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 6px 12px;
+      border: 1px solid var(--vscode-widget-border, var(--vscode-input-border, var(--vscode-panel-border, #454545)));
+      border-radius: 4px;
+      background-color: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      outline: none;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08);
+    }
+
+    .namespace-button:hover {
+      border-color: var(--vscode-inputOption-hoverBorder, var(--vscode-widget-border, #858585));
+    }
+
+    .namespace-button:focus,
+    .namespace-button.active {
+      border-color: var(--vscode-focusBorder, #007acc);
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1), 0 0 0 1px var(--vscode-focusBorder, #007acc);
+    }
+
+    .namespace-arrow {
+      margin-left: 8px;
+      transition: transform 0.2s;
+      font-size: 12px;
+    }
+
+    .namespace-arrow.open {
+      transform: rotate(180deg);
+    }
+
+    .namespace-dropdown-content {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      margin-top: 4px;
+      background: var(--vscode-dropdown-background, var(--vscode-menu-background, var(--vscode-bg-light, #252526)));
+      border: 1px solid var(--vscode-dropdown-border, var(--vscode-menu-border, var(--border-color, #454545)));
+      border-radius: 4px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      z-index: 1000;
+      max-height: 250px;
+      overflow: hidden;
+      display: none;
+    }
+
+    .namespace-dropdown-content.show {
+      display: block;
+    }
+
+    .namespace-search {
+      padding: 8px;
+      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+    }
+
+    .namespace-search-input {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid var(--vscode-widget-border, var(--vscode-input-border, var(--vscode-panel-border, #454545)));
+      border-radius: 3px;
+      background-color: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+      font-size: 0.8125rem;
+      outline: none;
+      box-sizing: border-box;
+    }
+
+    .namespace-search-input:focus {
+      border-color: var(--vscode-focusBorder, #007acc);
+    }
+
+    .namespace-search-input::placeholder {
+      color: var(--vscode-input-placeholderForeground, #999);
+      opacity: 0.7;
+    }
+
+    .namespace-options {
+      max-height: 180px;
+      overflow-y: auto;
+    }
+
+    .namespace-option {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 8px 12px;
+      border: none;
+      background: none;
+      color: var(--vscode-menu-foreground, var(--vscode-foreground, var(--vscode-text, #cccccc)));
+      cursor: pointer;
+      font-size: 0.875rem;
+      transition: background-color 0.2s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .namespace-option:hover {
+      background-color: var(--vscode-list-hoverBackground, var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.08)));
+      color: var(--vscode-list-hoverForeground, var(--vscode-foreground));
+    }
+
+    .namespace-option.selected {
+      background-color: var(--vscode-list-activeSelectionBackground, var(--vscode-accent, #007acc));
+      color: var(--vscode-list-activeSelectionForeground, white);
+    }
+
+    .namespace-option.selected:hover {
+      background-color: var(--vscode-list-activeSelectionBackground, var(--vscode-accent, #007acc));
+    }
+
+    .no-namespaces {
+      padding: 8px 12px;
+      color: var(--vscode-descriptionForeground, var(--text-secondary, #999));
+      font-style: italic;
+      font-size: 0.8125rem;
+    }
+
+    .filter-label {
+      margin-right: 8px;
+      font-size: 0.875rem;
+      color: var(--vscode-foreground);
+      font-weight: 500;
+    }
+
+    .pod-details-drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 600px;
+      height: 100vh;
+      background: var(--vscode-editor-background, var(--vscode-bg-light));
+      border-left: 0.5px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+      z-index: 1001;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    .close-button {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--vscode-text);
+      font-size: 18px;
+      padding: 4px;
+      border-radius: 4px;
+      transition: background-color 0.2s;
+    }
+
+    .close-button:hover {
+      background-color: var(--hover-bg);
+    }
+
+    .pod-details-drawer h2 {
+      margin: 0 0 20px 0;
+      padding: 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--vscode-text);
+    }
+
+    .pod-details-drawer ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .pod-details-drawer li {
+      padding: 8px 0;
+      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      font-size: 0.875rem;
+      color: var(--vscode-text);
+    }
+
+    .pod-details-drawer li:last-child {
+      border-bottom: none;
+    }
+
+    .pod-details-drawer strong {
+      font-weight: bold;
+      font-size: 0.9rem;
+    }
+
+    .loading-state {
+      text-align: center;
+      padding: 20px;
+      color: var(--vscode-text);
+      font-style: italic;
+    }
+
+    .no-data {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-secondary);
+      font-style: italic;
+    }
+
+    .pod-details-content {
+      font-size: 0.875rem;
+    }
+
+    .detail-section {
+      margin-bottom: 8px;
+    }
+
+    .detail-item {
+      margin-bottom: 8px;
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .detail-item:last-child {
+      border-bottom: none;
+    }
+
+    .detail-key {
+      font-weight: 600;
+      display: inline-block;
+      min-width: 120px;
+      margin-right: 8px;
+    }
+
+    .detail-value {
+      color: var(--vscode-foreground, var(--vscode-text, #cccccc));
+      word-break: break-word;
+      display: inline;
+    }
+
+    .detail-value.null {
+      color: var(--vscode-descriptionForeground, var(--text-secondary, #999));
+      font-style: italic;
+    }
+
+    .detail-item.nested {
+      border-left: 1px solid var(--vscode-accent, #007acc);
+      padding-left: 8px;
+      margin-left: 8px;
+    }
+
+    .nested-content {
+      margin-top: 4px;
+    }
+
+    .detail-item.array {
+      border-left: 2px solid var(--vscode-symbolIcon-arrayForeground, #4FC1FF);
+      padding-left: 8px;
+      margin-left: 8px;
+    }
+
+    .array-content {
+      margin-top: 4px;
+    }
+
+    .array-item {
+      margin: 4px 0;
+      padding: 2px 0;
+    }
+
+    .array-index {
+      color: var(--vscode-symbolIcon-numberForeground, #B5CEA8);
+      font-weight: 600;
+      margin-right: 8px;
+      font-size: 0.8rem;
+    }
+
+    .array-value {
+      color: var(--vscode-text);
+    }
+
+    .empty-array {
+      color: var(--text-secondary);
+      font-style: italic;
+    }
+
+    .pod-name-link {
+      color: var(--vscode-link-foreground, #0096ff);
+      cursor: pointer;
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: all 0.2s ease;
+    }
+
+    .pod-name-link:hover {
+      color: var(--vscode-link-activeForeground, #0096ff);
+      text-decoration: underline;
+      border-bottom-color: var(--vscode-link-foreground, #0096ff);
+    }
+
+    .pod-name-link:active {
+      color: var(--vscode-link-activeForeground, #0096ff);
+    }
+
+    .detail-sections {
+      padding: 0;
+    }
+
+    .detail-section {
+      margin-bottom: 24px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--vscode-widget-border, rgba(255, 255, 255, 0.1));
+    }
+
+    .detail-section:last-child {
+      border-bottom: none;
+    }
+
+    .detail-section h3 {
+      margin: 0 0 12px 0;
+      padding: 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--vscode-foreground);
+      border-bottom: 1px solid var(--vscode-accent, #007acc);
+      padding-bottom: 6px;
+      margin-bottom: 16px;
+    }
+
+    .detail-item {
+      margin-bottom: 8px;
+      padding: 6px 0;
+      display: flex;
+      align-items: flex-start;
+    }
+
+    .detail-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .detail-key {
+      font-weight: 600;
+      min-width: 140px;
+      margin-right: 12px;
+      flex-shrink: 0;
+    }
+
+    .detail-value {
+      color: var(--vscode-foreground, var(--vscode-text, #cccccc));
+      word-break: break-word;
+      flex: 1;
+      line-height: 1.4;
+    }
+
+    .detail-value.null {
+      color: var(--vscode-descriptionForeground, var(--text-secondary, #999));
+      font-style: italic;
+    }
+
+    .detail-item.nested {
+      border-left: 3px solid var(--vscode-accent, #007acc);
+      padding-left: 12px;
+      margin-left: 0;
+      background: rgba(0, 122, 204, 0.05);
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 12px;
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .nested-content {
+      margin-top: 8px;
+    }
+
+    .nested-content .detail-item {
+      margin-bottom: 6px;
+      padding: 4px 0;
+    }
   `;
 
   renderContent() {
@@ -338,7 +761,12 @@ class KubernetesTab extends LitElement {
         <tbody>
           ${data.map((item, index) => html`
             <tr>
-              <td>${item.name}</td>
+              <td>
+                ${item.type === 'Pod' 
+                  ? html`<span class="pod-name-link" @click=${() => this.viewDetails(item)}>${item.name}</span>`
+                  : item.name
+                }
+              </td>
               <td>${item.type}</td>
               <td>${item.namespace}</td>
               <td><span class="status ${item.status.toLowerCase()}">${item.status}</span></td>
@@ -559,8 +987,17 @@ class KubernetesTab extends LitElement {
       data = this.getFilteredHelmData();
     }
     
-    if (!this.searchQuery) return data;
-    return data.filter(item => JSON.stringify(item).toLowerCase().includes(this.searchQuery));
+    // Filter by namespace if a specific namespace is selected
+    if (this.selectedNamespace !== 'all') {
+      data = data.filter(item => item.namespace === this.selectedNamespace);
+    }
+    
+    // Apply search query filter
+    if (this.searchQuery) {
+      data = data.filter(item => JSON.stringify(item).toLowerCase().includes(this.searchQuery));
+    }
+    
+    return data;
   }
 
   private getFilteredWorkloadData(): Array<any> {
@@ -573,6 +1010,12 @@ class KubernetesTab extends LitElement {
         return allWorkloads.filter(item => item.type === 'Deployment');
       case 'statefulsets':
         return allWorkloads.filter(item => item.type === 'StatefulSet');
+      case 'daemonsets':
+        return allWorkloads.filter(item => item.type === 'DaemonSet');
+      case 'jobs':
+        return allWorkloads.filter(item => item.type === 'Job');
+      case 'cronjobs':
+        return allWorkloads.filter(item => item.type === 'CronJob');
       default:
         return allWorkloads;
     }
@@ -658,6 +1101,24 @@ class KubernetesTab extends LitElement {
         >
           StatefulSets
         </button>
+        <button 
+          class="tab-button ${this.activeWorkloadTab === 'daemonsets' ? 'active' : ''}"
+          @click=${() => this.handleWorkloadTabClick('daemonsets')}
+        >
+          DaemonSets
+        </button>
+        <button 
+          class="tab-button ${this.activeWorkloadTab === 'jobs' ? 'active' : ''}"
+          @click=${() => this.handleWorkloadTabClick('jobs')}
+        >
+          Jobs
+        </button>
+        <button 
+          class="tab-button ${this.activeWorkloadTab === 'cronjobs' ? 'active' : ''}"
+          @click=${() => this.handleWorkloadTabClick('cronjobs')}
+        >
+          CronJobs
+        </button>
       </div>
     `;
   }
@@ -718,6 +1179,213 @@ class KubernetesTab extends LitElement {
       </div>
     `;
   }
+  renderPodDetailsDrawer() {
+    if (!this.showPodDetails) {
+      return null;
+    }
+
+    if (this.loadingPodDetails) {
+      return html`
+        <div class="pod-details-drawer">
+          <button class="close-button" @click="${() => this.showPodDetails = false}">&#x2715;</button>
+          <h2>Pod Details</h2>
+          <div class="loading-state">Loading pod details...</div>
+        </div>
+      `;
+    }
+
+    return html`
+      <div class="pod-details-drawer">
+        <button class="close-button" @click="${() => this.showPodDetails = false}">&#x2715;</button>
+        <h2>Pod Details</h2>
+        <div class="pod-details-content">
+          ${this.renderPodDetailContent(this.selectedPod)}
+        </div>
+      </div>
+    `;
+  }
+
+renderPodDetailContent(data: any) {
+    if (!data) {
+      return html`<div class="no-data">No data available</div>`;
+    }
+
+    // Handle the actual API response structure where data is under 'pod_detail' key
+    const podData = data.pod_detail || data;
+    
+    console.log('Processing pod data:', podData);
+
+    return html`
+      <div class="detail-sections">
+        <!-- Basic Information -->
+        <div class="detail-section">
+          <h3>Basic Information</h3>
+          ${this.renderDetailItem('Name', podData.name)}
+          ${this.renderDetailItem('Namespace', podData.namespace)}
+          ${this.renderDetailItem('UID', podData.uid)}
+          ${this.renderDetailItem('Resource Version', podData.resourceVersion)}
+          ${this.renderDetailItem('Creation Timestamp', podData.creationTimestamp)}
+          ${this.renderDetailItem('Age', podData.age)}
+        </div>
+
+        <!-- Status Information -->
+        <div class="detail-section">
+          <h3>Status</h3>
+          ${this.renderDetailItem('Status', podData.status)}
+          ${this.renderDetailItem('Phase', podData.phase)}
+          ${this.renderDetailItem('QoS Class', podData.qosClass)}
+          ${this.renderDetailItem('Start Time', podData.startTime)}
+        </div>
+
+        <!-- Network Information -->
+        <div class="detail-section">
+          <h3>Network</h3>
+          ${this.renderDetailItem('Pod IP', podData.ip)}
+          ${this.renderDetailItem('Host IP', podData.hostIP)}
+          ${this.renderDetailItem('Node', podData.node)}
+        </div>
+
+        <!-- Configuration -->
+        <div class="detail-section">
+          <h3>Configuration</h3>
+          ${this.renderDetailItem('Restart Policy', podData.restartPolicy)}
+          ${this.renderDetailItem('DNS Policy', podData.dnsPolicy)}
+          ${this.renderDetailItem('Service Account', podData.serviceAccount)}
+          ${this.renderDetailItem('Node Selector', podData.nodeSelector, true)}
+        </div>
+
+        <!-- Labels -->
+        ${podData.labels ? html`
+          <div class="detail-section">
+            <h3>Labels</h3>
+            ${this.renderObjectAsKeyValue(podData.labels)}
+          </div>
+        ` : ''}
+
+        <!-- Annotations -->
+        ${podData.annotations ? html`
+          <div class="detail-section">
+            <h3>Annotations</h3>
+            ${this.renderObjectAsKeyValue(podData.annotations)}
+          </div>
+        ` : ''}
+
+        <!-- Containers -->
+        ${podData.containers && podData.containers.length > 0 ? html`
+          <div class="detail-section">
+            <h3>Containers</h3>
+            ${podData.containers.map((container, index) => html`
+              <div class="detail-item nested">
+                <strong class="detail-key">Container ${index + 1}:</strong>
+                <div class="nested-content">
+                  ${this.renderDetailItem('Name', container.name)}
+                  ${this.renderDetailItem('Image', container.image)}
+                  ${this.renderDetailItem('Ready', container.ready)}
+                  ${this.renderDetailItem('Restart Count', container.restartCount)}
+                  ${this.renderDetailItem('State', container.state)}
+                </div>
+              </div>
+            `)}
+          </div>
+        ` : ''}
+
+        <!-- Conditions -->
+        ${podData.conditions && podData.conditions.length > 0 ? html`
+          <div class="detail-section">
+            <h3>Conditions</h3>
+            ${podData.conditions.map((condition, index) => html`
+              <div class="detail-item nested">
+                <strong class="detail-key">${condition.type}:</strong>
+                <div class="nested-content">
+                  ${this.renderDetailItem('Status', condition.status)}
+                  ${this.renderDetailItem('Last Probe Time', condition.lastProbeTime)}
+                  ${this.renderDetailItem('Last Transition Time', condition.lastTransitionTime)}
+                  ${this.renderDetailItem('Reason', condition.reason)}
+                  ${this.renderDetailItem('Message', condition.message)}
+                </div>
+              </div>
+            `)}
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  renderDetailItem(label: string, value: any, isObject: boolean = false) {
+    if (value === null || value === undefined) {
+      return html`
+        <div class="detail-item">
+          <strong class="detail-key">${label}:</strong>
+          <span class="detail-value null">null</span>
+        </div>
+      `;
+    }
+
+    if (isObject && typeof value === 'object') {
+      return html`
+        <div class="detail-item nested">
+          <strong class="detail-key">${label}:</strong>
+          <div class="nested-content">
+            ${this.renderObjectAsKeyValue(value)}
+          </div>
+        </div>
+      `;
+    }
+
+    return html`
+      <div class="detail-item">
+        <strong class="detail-key">${label}:</strong>
+        <span class="detail-value">${this.formatValue(value)}</span>
+      </div>
+    `;
+  }
+
+  renderObjectAsKeyValue(obj: any) {
+    if (!obj || typeof obj !== 'object') {
+      return html`<span class="detail-value null">N/A</span>`;
+    }
+
+    const entries = Object.entries(obj);
+    if (entries.length === 0) {
+      return html`<span class="detail-value null">Empty</span>`;
+    }
+
+    return html`
+      ${entries.map(([key, value]) => html`
+        <div class="detail-item">
+          <strong class="detail-key">${key}:</strong>
+          <span class="detail-value">${this.formatValue(value)}</span>
+        </div>
+      `)}
+    `;
+  }
+
+  formatValue(value: any): string {
+    if (typeof value === 'string') {
+      return value;
+    }
+    if (typeof value === 'number' || typeof value === 'boolean') {
+      return String(value);
+    }
+    if (Array.isArray(value)) {
+      return `[${value.length} items]`;
+    }
+    if (typeof value === 'object' && value !== null) {
+      try {
+        const str = JSON.stringify(value, null, 2);
+        // If it's a short object, show it inline, otherwise show a summary
+        if (str.length < 100) {
+          return str;
+        } else {
+          const keys = Object.keys(value);
+          return `{${keys.length} properties: ${keys.slice(0, 3).join(', ')}${keys.length > 3 ? '...' : ''}}`;
+        }
+      } catch {
+        return String(value);
+      }
+    }
+    return String(value);
+  }
 
   render() {
     return html`
@@ -728,6 +1396,35 @@ class KubernetesTab extends LitElement {
         ${this.activeSubmenu === 'configurations' ? this.renderConfigurationTabs() : ''}
         ${this.activeSubmenu === 'helms' ? this.renderHelmTabs() : ''}
         <div class="search-container">
+          <div class="namespace-filter">
+          <div class="namespace-dropdown">
+            <button class="namespace-button" @click=${this.toggleNamespaceDropdown}>
+              ${this.getSelectedNamespaceDisplayName()}
+              <span class="namespace-arrow ${this.showNamespaceDropdown ? 'open' : ''}">▼</span>
+            </button>
+            <div class="namespace-dropdown-content ${this.showNamespaceDropdown ? 'show' : ''}">
+              <div class="namespace-search">
+                <input 
+                  type="text" 
+                  class="namespace-search-input" 
+                  .value=${this.namespaceSearchQuery}
+                  @input=${this.handleNamespaceSearch}
+                  placeholder="Filter namespaces..."
+                />
+              </div>
+              <div class="namespace-options">
+                ${this.getFilteredNamespaces().map(namespace => html`
+                  <button class="namespace-option ${namespace === this.selectedNamespace ? 'selected' : ''}"
+                    @click=${() => this.selectNamespace(namespace)}>
+                    ${namespace}
+                  </button>`
+                )}
+                ${this.getFilteredNamespaces().length === 0 ? 
+                  html`<div class="no-namespaces">No namespaces found</div>` : ''}
+              </div>
+            </div>
+          </div>
+          </div>
           <div class="search-wrapper">
             <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="11" cy="11" r="8"></circle>
@@ -749,6 +1446,7 @@ class KubernetesTab extends LitElement {
               <p>${this.error}</p>
             </div>` : this.renderContent()}
         </div>
+        ${this.renderPodDetailsDrawer()}
       </div>
     `;
   }
@@ -768,6 +1466,8 @@ class KubernetesTab extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     window.removeEventListener('popstate', this.handleRouteChange);
+    window.removeEventListener('keydown', this.handleKeyDown);
+    document.removeEventListener('click', this.handleNamespaceDropdownOutsideClick);
   }
   
   private handleRouteChange = () => {
@@ -777,6 +1477,13 @@ class KubernetesTab extends LitElement {
       if (submenu && ['workloads', 'networks', 'storages', 'configurations', 'helms'].includes(submenu)) {
         this.activeSubmenu = submenu;
       }
+    }
+  };
+
+  private handleKeyDown = (event: KeyboardEvent) => {
+    if (event.key === 'Escape' && this.showPodDetails) {
+      this.showPodDetails = false;
+      this.requestUpdate();
     }
   };
 
@@ -1340,6 +2047,60 @@ class KubernetesTab extends LitElement {
     }
   }
 
+  async fetchDaemonSets() {
+    try {
+      const data = await Api.get('/kubernetes/daemonsets');
+      const daemonsets = data.daemonsets.map(ds => ({
+        name: ds.name,
+        type: 'DaemonSet',
+        namespace: ds.namespace,
+        status: ds.ready > 0 ? 'Running' : 'Pending',
+        replicas: `${ds.ready}/${ds.desired}`,
+        age: ds.age
+      }));
+      return daemonsets;
+    } catch (error) {
+      console.error('Failed to fetch daemon sets:', error);
+      return [];
+    }
+  }
+
+  async fetchJobs() {
+    try {
+      const data = await Api.get('/kubernetes/jobs');
+      const jobs = data.jobs.map(job => ({
+        name: job.name,
+        type: 'Job',
+        namespace: job.namespace,
+        status: job.succeeded > 0 ? 'Running' : job.failed > 0 ? 'Failed' : 'Pending',
+        replicas: `${job.succeeded}/${job.completions || 1}`,
+        age: job.age
+      }));
+      return jobs;
+    } catch (error) {
+      console.error('Failed to fetch jobs:', error);
+      return [];
+    }
+  }
+
+  async fetchCronJobs() {
+    try {
+      const data = await Api.get('/kubernetes/cronjobs');
+      const cronjobs = data.cronjobs.map(cj => ({
+        name: cj.name,
+        type: 'CronJob',
+        namespace: cj.namespace,
+        status: cj.suspended ? 'Suspended' : 'Active',
+        replicas: cj.schedule,
+        age: cj.age
+      }));
+      return cronjobs;
+    } catch (error) {
+      console.error('Failed to fetch cron jobs:', error);
+      return [];
+    }
+  }
+
   async fetchServices() {
     try {
       const data = await Api.get('/kubernetes/services');
@@ -1427,15 +2188,89 @@ class KubernetesTab extends LitElement {
     }
   }
 
+  async fetchNamespaces() {
+    try {
+      const data = await Api.get('/kubernetes/namespaces');
+      this.namespaces = data.namespaces.map(ns => ns.name);
+      this.error = null;
+    } catch (error) {
+      console.error('Failed to fetch namespaces:', error);
+      // Set some default namespaces if API fails
+      this.namespaces = ['default', 'kube-system', 'kube-public'];
+    }
+  }
+
+  private handleNamespaceChange(event: Event) {
+    const target = event.target as HTMLSelectElement;
+    this.selectedNamespace = target.value;
+    this.requestUpdate();
+  }
+
+  private toggleNamespaceDropdown() {
+    console.log('toggleNamespaceDropdown called, current state:', this.showNamespaceDropdown);
+    this.showNamespaceDropdown = !this.showNamespaceDropdown;
+    console.log('new state:', this.showNamespaceDropdown);
+    if (this.showNamespaceDropdown) {
+      this.namespaceSearchQuery = '';
+      // Focus on search input after dropdown opens
+      setTimeout(() => {
+        const searchInput = this.shadowRoot?.querySelector('.namespace-search-input') as HTMLInputElement;
+        if (searchInput) {
+          searchInput.focus();
+        }
+      }, 0);
+    }
+    this.requestUpdate();
+  }
+
+  private handleNamespaceSearch(event: Event) {
+    const target = event.target as HTMLInputElement;
+    this.namespaceSearchQuery = target.value.toLowerCase();
+    this.requestUpdate();
+  }
+
+  private selectNamespace(namespace: string) {
+    this.selectedNamespace = namespace;
+    this.showNamespaceDropdown = false;
+    this.namespaceSearchQuery = '';
+    this.requestUpdate();
+  }
+
+  private getFilteredNamespaces(): string[] {
+    const allNamespaces = ['all', ...this.namespaces];
+    if (!this.namespaceSearchQuery.trim()) {
+      return allNamespaces;
+    }
+    return allNamespaces.filter(namespace => 
+      namespace.toLowerCase().includes(this.namespaceSearchQuery)
+    );
+  }
+
+  private getSelectedNamespaceDisplayName(): string {
+    return this.selectedNamespace === 'all' ? 'All Namespaces' : this.selectedNamespace;
+  }
+
+  private handleNamespaceDropdownOutsideClick = (event: Event) => {
+    const dropdown = this.shadowRoot?.querySelector('.namespace-dropdown');
+    if (dropdown && !dropdown.contains(event.target as Node)) {
+      console.log('Outside click detected, closing dropdown');
+      this.showNamespaceDropdown = false;
+      this.requestUpdate();
+    }
+  }
+
   connectedCallback() {
     super.connectedCallback();
     this.initializeMockData();
     this.updateActiveSubmenu();
     
-    // Fetch all Kubernetes resources
+    // Fetch namespaces and all Kubernetes resources
+    this.fetchNamespaces();
     this.fetchAllResources();
     
     window.addEventListener('popstate', this.handleRouteChange);
+    window.addEventListener('keydown', this.handleKeyDown);
+    document.addEventListener('click', this.handleNamespaceDropdownOutsideClick);
   }
 
   async fetchAllResources() {
@@ -1446,12 +2281,18 @@ class KubernetesTab extends LitElement {
       this.configurations = [];
       this.helms = [];
       
-      // Fetch all workload resources
-      await Promise.all([
+      // Fetch all workload resources and combine them
+      const [pods, deployments, statefulsets, daemonsets, jobs, cronjobs] = await Promise.all([
         this.fetchPods(),
         this.fetchDeployments(),
-        this.fetchStatefulSets()
+        this.fetchStatefulSets(),
+        this.fetchDaemonSets(),
+        this.fetchJobs(),
+        this.fetchCronJobs()
       ]);
+      
+      // Combine all workload data
+      this.workloads = [...pods, ...deployments, ...statefulsets, ...daemonsets, ...jobs, ...cronjobs];
       
       // Fetch network resources (services)
       await this.fetchServices();
@@ -1467,6 +2308,8 @@ class KubernetesTab extends LitElement {
         this.fetchHelmReleases(),
         this.fetchHelmCharts()
       ]);
+      
+      this.error = null;
     } catch (error) {
       console.error('Failed to fetch Kubernetes resources:', error);
       this.error = 'Failed to fetch some Kubernetes resources';
@@ -1474,9 +2317,43 @@ class KubernetesTab extends LitElement {
   }
 
   viewDetails(item) {
-    // Implement detailed view logic here
-    console.log('Viewing details for:', item);
-    alert(`Viewing details for ${item.name || item.id}`);
+    console.log('viewDetails called with item:', item);
+    
+    if (item.type !== 'Pod') {
+      console.log('Item is not a Pod, type:', item.type);
+      // For non-pod items, show a generic alert for now
+      alert(`Viewing details for ${item.name} (${item.type}) - Pod details drawer only supports Pods currently`);
+      return;
+    }
+    
+    console.log('Fetching pod details for:', item.name, 'in namespace:', item.namespace);
+    this.loadingPodDetails = true;
+    this.showPodDetails = true;
+    this.selectedPod = null;
+    this.requestUpdate();
+    
+    const url = `/kubernetes/pods/${item.namespace}/${item.name}`;
+    console.log('Making API request to:', url);
+    
+    Api.get(url)
+      .then(response => {
+        console.log('Pod details response:', response);
+        console.log('Response keys:', Object.keys(response));
+        console.log('Response metadata:', response.metadata);
+        console.log('Response spec:', response.spec);
+        console.log('Response status:', response.status);
+        this.selectedPod = response;
+        console.log('selectedPod set to:', this.selectedPod);
+        this.loadingPodDetails = false;
+        this.requestUpdate();
+      })
+      .catch(error => {
+        console.error('Failed to fetch pod details:', error);
+        this.loadingPodDetails = false;
+        this.showPodDetails = false; // Hide drawer on error
+        this.requestUpdate();
+        alert(`Failed to fetch pod details: ${error.message || error}`);
+      });
   }
 
   editItem(item) {

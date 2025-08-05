@@ -8,7 +8,7 @@ DOCKER_IMAGE=system-api:latest
 # Build the binary
 build: embed-web
 	@echo "Building production binary with version $(shell git rev-parse --short HEAD)..."
-	go build -ldflags "-X github.com/vapor/system-api/internal/auth.Version=$(shell git rev-parse --short HEAD)" -o bin/$(BINARY_NAME) $(MAIN_PATH)
+	go build -ldflags "-X github.com/awanio/vapor/internal/auth.Version=$(shell git rev-parse --short HEAD)" -o bin/$(BINARY_NAME) $(MAIN_PATH)
 
 # Build for development (without version injection)
 build-dev: embed-web
@@ -34,7 +34,7 @@ embed-web:
 # Build for Linux x86_64
 build-linux: embed-web
 	@echo "Building for Linux x86_64..."
-	GOOS=linux GOARCH=amd64 go build -ldflags "-X github.com/vapor/system-api/internal/auth.Version=$(shell git rev-parse --short HEAD)" -o bin/$(BINARY_NAME)-linux-amd64 $(MAIN_PATH)
+	GOOS=linux GOARCH=amd64 go build -ldflags "-X github.com/awanio/vapor/internal/auth.Version=$(shell git rev-parse --short HEAD)" -o bin/$(BINARY_NAME)-linux-amd64 $(MAIN_PATH)
 
 # Run tests
 test:

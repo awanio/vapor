@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/vapor/system-api/internal/common"
+	"github.com/awanio/vapor/internal/common"
 )
 
 // Service handles log operations

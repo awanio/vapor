@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/vapor/system-api/internal/logs"
+	"github.com/awanio/vapor/internal/logs"
 )
 
 // Client represents a WebSocket client

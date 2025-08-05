@@ -10,7 +10,7 @@ import (
 	"helm.sh/helm/v3/pkg/repo"
 	"k8s.io/client-go/rest"
 
-	"github.com/vapor/system-api/internal/kubernetes"
+	"github.com/awanio/vapor/internal/kubernetes"
 )
 
 // Service represents the Helm service

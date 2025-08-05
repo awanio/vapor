@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/vapor/system-api/internal/common"
+	"github.com/awanio/vapor/internal/common"
 )
 
 // Handler represents the HTTP handler for Kubernetes operations

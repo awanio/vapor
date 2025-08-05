@@ -1,0 +1,28 @@
+{
+  "name": "api",
+  "version": "1.0.0",
+  "description": "A RESTful API service for Linux system management, providing functionality similar to Cockpit Project but built in Go with JSON-based REST APIs.",
+  "main": "validate.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@gitlab.com/awan.io/vapor/api.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://gitlab.com/awan.io/vapor/api/issues"
+  },
+  "homepage": "https://gitlab.com/awan.io/vapor/api#readme",
+  "dependencies": {
+    "@apidevtools/swagger-parser": "^12.0.0",
+    "js-yaml": "^4.1.0"
+  }
+}

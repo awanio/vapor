@@ -133,7 +133,7 @@ Export as openapi.yaml
 STRUCTURE SUGGESTION
 
 ```
-/cmd/system-api/main.go
+/cmd/vapor/main.go
 /internal/
   ├─ network/
   ├─ storage/

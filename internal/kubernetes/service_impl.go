@@ -78,7 +78,7 @@ func NewService() (*Service, error) {
 		}
 	}
 
-return &Service{
+	return &Service{
 		client:        clientset,
 		nodeName:      nodeName,
 		isControlPlane: isControlPlane,
@@ -488,6 +488,191 @@ func (s *Service) GetPodDetail(ctx context.Context, namespace, name string) (Pod
 
 	return detail, nil
 }
+
+// GetDeploymentDetail retrieves detailed information of a specific deployment
+func (s *Service) GetDeploymentDetail(ctx context.Context, namespace, name string) (DeploymentInfo, error) {
+	deployment, err := s.client.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return DeploymentInfo{}, fmt.Errorf("failed to get deployment details for %s/%s: %w", namespace, name, err)
+	}
+
+	return DeploymentInfo{
+		Name:      deployment.Name,
+		Namespace: deployment.Namespace,
+		Ready:     fmt.Sprintf("%d/%d", deployment.Status.ReadyReplicas, deployment.Status.Replicas),
+		UpToDate:  deployment.Status.UpdatedReplicas,
+		Available: deployment.Status.AvailableReplicas,
+		Age:       calculateAge(deployment.CreationTimestamp.Time),
+		Labels:    deployment.Labels,
+	}, nil
+}
+
+// GetServiceDetail retrieves detailed information of a specific service
+func (s *Service) GetServiceDetail(ctx context.Context, namespace, name string) (ServiceInfo, error) {
+	service, err := s.client.CoreV1().Services(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return ServiceInfo{}, fmt.Errorf("failed to get service details for %s/%s: %w", namespace, name, err)
+	}
+
+	return ServiceInfo{
+		Name:      service.Name,
+		Namespace: service.Namespace,
+		Type:      string(service.Spec.Type),
+		ClusterIP: service.Spec.ClusterIP,
+		Ports:     "",
+		Labels:    service.Labels,
+	}, nil
+}
+
+// GetIngressDetail retrieves detailed information of a specific ingress
+func (s *Service) GetIngressDetail(ctx context.Context, namespace, name string) (IngressInfo, error) {
+	ingress, err := s.client.NetworkingV1().Ingresses(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return IngressInfo{}, fmt.Errorf("failed to get ingress details for %s/%s: %w", namespace, name, err)
+	}
+
+	hosts := make([]string, 0, len(ingress.Spec.Rules))
+	for _, rule := range ingress.Spec.Rules {
+		hosts = append(hosts, rule.Host)
+	}
+
+	return IngressInfo{
+		Name:      ingress.Name,
+		Namespace: ingress.Namespace,
+		Hosts:     hosts,
+		Labels:    ingress.Labels,
+	}, nil
+}
+
+// GetPVCDetail retrieves detailed information of a specific persistent volume claim
+func (s *Service) GetPVCDetail(ctx context.Context, namespace, name string) (PVCInfo, error) {
+	pvc, err := s.client.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return PVCInfo{}, fmt.Errorf("failed to get PVC details for %s/%s: %w", namespace, name, err)
+	}
+
+	return PVCInfo{
+		Name:      pvc.Name,
+		Namespace: pvc.Namespace,
+		Status:    string(pvc.Status.Phase),
+		Volume:    pvc.Spec.VolumeName,
+	}, nil
+}
+
+// GetPVDetail retrieves detailed information of a specific persistent volume
+func (s *Service) GetPVDetail(ctx context.Context, name string) (PVInfo, error) {
+	pv, err := s.client.CoreV1().PersistentVolumes().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return PVInfo{}, fmt.Errorf("failed to get PV details for %s: %w", name, err)
+	}
+
+	return PVInfo{
+		Name: pv.Name,
+	}, nil
+}
+
+// GetSecretDetail retrieves detailed information of a specific secret
+func (s *Service) GetSecretDetail(ctx context.Context, namespace, name string) (SecretInfo, error) {
+	secret, err := s.client.CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return SecretInfo{}, fmt.Errorf("failed to get secret details for %s/%s: %w", namespace, name, err)
+	}
+
+	return SecretInfo{
+		Name:      secret.Name,
+		Namespace: secret.Namespace,
+	}, nil
+}
+
+// GetConfigMapDetail retrieves detailed information of a specific configmap
+func (s *Service) GetConfigMapDetail(ctx context.Context, namespace, name string) (ConfigMapInfo, error) {
+	configmap, err := s.client.CoreV1().ConfigMaps(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return ConfigMapInfo{}, fmt.Errorf("failed to get configmap details for %s/%s: %w", namespace, name, err)
+	}
+
+	return ConfigMapInfo{
+		Name:      configmap.Name,
+		Namespace: configmap.Namespace,
+	}, nil
+}
+
+// GetNamespaceDetail retrieves detailed information of a specific namespace
+func (s *Service) GetNamespaceDetail(ctx context.Context, name string) (NamespaceInfo, error) {
+	namespace, err := s.client.CoreV1().Namespaces().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return NamespaceInfo{}, fmt.Errorf("failed to get namespace details for %s: %w", name, err)
+	}
+
+	return NamespaceInfo{
+		Name: namespace.Name,
+	}, nil
+}
+
+// GetNodeDetail retrieves detailed information of a specific node
+func (s *Service) GetNodeDetail(ctx context.Context, name string) (NodeInfo, error) {
+	node, err := s.client.CoreV1().Nodes().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return NodeInfo{}, fmt.Errorf("failed to get node details for %s: %w", name, err)
+	}
+
+	return NodeInfo{
+		Name: node.Name,
+	}, nil
+}
+
+// GetDaemonSetDetail retrieves detailed information of a specific daemonset
+func (s *Service) GetDaemonSetDetail(ctx context.Context, namespace, name string) (DaemonSetInfo, error) {
+	daemonset, err := s.client.AppsV1().DaemonSets(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return DaemonSetInfo{}, fmt.Errorf("failed to get daemonset details for %s/%s: %w", namespace, name, err)
+	}
+
+	return DaemonSetInfo{
+		Name:      daemonset.Name,
+		Namespace: daemonset.Namespace,
+	}, nil
+}
+
+// GetStatefulSetDetail retrieves detailed information of a specific statefulset
+func (s *Service) GetStatefulSetDetail(ctx context.Context, namespace, name string) (StatefulSetInfo, error) {
+	statefulset, err := s.client.AppsV1().StatefulSets(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return StatefulSetInfo{}, fmt.Errorf("failed to get statefulset details for %s/%s: %w", namespace, name, err)
+	}
+
+	return StatefulSetInfo{
+		Name:      statefulset.Name,
+		Namespace: statefulset.Namespace,
+	}, nil
+}
+
+// GetJobDetail retrieves detailed information of a specific job
+func (s *Service) GetJobDetail(ctx context.Context, namespace, name string) (JobInfo, error) {
+	job, err := s.client.BatchV1().Jobs(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return JobInfo{}, fmt.Errorf("failed to get job details for %s/%s: %w", namespace, name, err)
+	}
+
+	return JobInfo{
+		Name:      job.Name,
+		Namespace: job.Namespace,
+	}, nil
+}
+
+// GetCronJobDetail retrieves detailed information of a specific cronjob
+func (s *Service) GetCronJobDetail(ctx context.Context, namespace, name string) (CronJobInfo, error) {
+	cronjob, err := s.client.BatchV1().CronJobs(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return CronJobInfo{}, fmt.Errorf("failed to get cronjob details for %s/%s: %w", namespace, name, err)
+	}
+
+	return CronJobInfo{
+		Name:      cronjob.Name,
+		Namespace: cronjob.Namespace,
+	}, nil
+}
+
 
 // GetClusterInfo returns cluster information
 func (s *Service) GetClusterInfo(ctx context.Context, opts interface{}) (ClusterInfo, error) {

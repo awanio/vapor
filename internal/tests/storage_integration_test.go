@@ -10,8 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vapor/system-api/internal/auth"
-	"github.com/vapor/system-api/internal/storage"
+	"github.com/awanio/vapor/internal/auth"
+	"github.com/awanio/vapor/internal/storage"
 )
 
 func TestStorageEndpoints(t *testing.T) {

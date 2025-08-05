@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/vapor/system-api/internal/common"
+	"github.com/awanio/vapor/internal/common"
 	"github.com/shirou/gopsutil/v3/disk"
 )
 

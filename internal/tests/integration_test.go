@@ -9,8 +9,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
-	"github.com/vapor/system-api/internal/auth"
-	"github.com/vapor/system-api/internal/common"
+	"github.com/awanio/vapor/internal/auth"
+	"github.com/awanio/vapor/internal/common"
 )
 
 func setupRouter() *gin.Engine {
