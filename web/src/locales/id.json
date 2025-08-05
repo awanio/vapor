@@ -319,11 +319,11 @@
   },
   "kubernetes": {
     "title": "Kubernetes",
-    "workload": "Beban Kerja",
+    "workloads": "Beban Kerja",
     "networks": "Jaringan",
-    "storage": "Penyimpanan",
+    "storages": "Penyimpanan",
     "configurations": "Konfigurasi",
-    "helm": "Helm"
+    "helms": "Grafik Helm"
   },
   "users": {
     "title": "Manajemen Pengguna",

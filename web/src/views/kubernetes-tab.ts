@@ -2,13 +2,17 @@ import { LitElement, html, css } from 'lit';
 import { property } from 'lit/decorators.js';
 
 class KubernetesTab extends LitElement {
-  @property({ type: String }) activeSubmenu = 'workload';
+  @property({ type: String }) activeSubmenu = 'workloads';
+  @property({ type: String }) subRoute: string | null = null;
   @property({ type: Array }) workloads = [];
   @property({ type: Array }) networks = [];
   @property({ type: Array }) storages = [];
   @property({ type: Array }) configurations = [];
   @property({ type: Array }) helms = [];
   @property({ type: String }) error = null;
+  @property({ type: String }) activeWorkloadTab = 'pods';
+  @property({ type: String }) activeStorageTab = 'pvc';
+  @property({ type: String }) activeConfigurationTab = 'secrets';
 
   static styles = css`
     :host {
@@ -20,6 +24,12 @@ class KubernetesTab extends LitElement {
       display: flex;
       flex-direction: column;
       height: 100%;
+    }
+
+
+    .tab-content {
+      flex: 1;
+      overflow-y: auto;
     }
 
     .tab-header {
@@ -49,15 +59,9 @@ class KubernetesTab extends LitElement {
       border-bottom-color: var(--primary);
     }
 
-    .tab-content {
-      flex: 1;
-      overflow-y: auto;
-    }
-
     .table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 1.5rem;
       background: var(--vscode-bg-light);
       border-radius: 1px;
       overflow: hidden;
@@ -196,75 +200,155 @@ class KubernetesTab extends LitElement {
     .table td:last-child {
       text-align: right;
     }
-  `;
-  renderTabs() {
-    return html`
-      <div class="tab-header">
-        <button 
-          class="tab-button ${this.activeSubmenu === 'workload' ? 'active' : ''}" 
-          @click="${() => this.handleTabClick('workload')}"
-        >
-          Workload
-        </button>
-        <button 
-          class="tab-button ${this.activeSubmenu === 'networks' ? 'active' : ''}" 
-          @click="${() => this.handleTabClick('networks')}"
-        >
-          Networks
-        </button>
-        <button 
-          class="tab-button ${this.activeSubmenu === 'storage' ? 'active' : ''}" 
-          @click="${() => this.handleTabClick('storage')}"
-        >
-          Storages
-        </button>
-        <button 
-          class="tab-button ${this.activeSubmenu === 'configurations' ? 'active' : ''}" 
-          @click="${() => this.handleTabClick('configurations')}"
-        >
-          Configurations
-        </button>
-        <button 
-          class="tab-button ${this.activeSubmenu === 'helm' ? 'active' : ''}" 
-          @click="${() => this.handleTabClick('helm')}"
-        >
-          Helm
-        </button>
-      </div>
-    `;
-  }
 
-  renderTable() {
-    const data = this[this.activeSubmenu] || [];
-    
-    if (data.length === 0) {
-      return html`
-        <div class="empty-state">No ${this.activeSubmenu} found.</div>
-      `;
+    .status {
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
     }
 
+    .status.running,
+    .status.active,
+    .status.deployed,
+    .status.bound,
+    .status.available,
+    .status.ready {
+      background-color: rgba(34, 197, 94, 0.1);
+      color: rgb(34, 197, 94);
+    }
+
+    .status.pending {
+      background-color: rgba(251, 191, 36, 0.1);
+      color: rgb(251, 191, 36);
+    }
+
+    .status.failed,
+    .status.error {
+      background-color: rgba(239, 68, 68, 0.1);
+      color: rgb(239, 68, 68);
+    }
+
+    .status.enforced {
+      background-color: rgba(59, 130, 246, 0.1);
+      color: rgb(59, 130, 246);
+    }
+
+    .search-container {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      gap: 1rem;
+    }
+
+    .search-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      max-width: 400px;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      color: var(--vscode-input-placeholderForeground, #999);
+      pointer-events: none;
+      width: 16px;
+      height: 16px;
+    }
+
+    .search-input {
+      padding: 6px 12px 6px 32px;
+      border: 1px solid var(--vscode-widget-border, var(--vscode-input-border, var(--vscode-panel-border, #454545)));
+      border-radius: 4px;
+      background-color: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+      font-size: 0.875rem;
+      width: 250px;
+      transition: all 0.2s;
+      outline: none;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08);
+    }
+
+    .search-input:hover {
+      border-color: var(--vscode-inputOption-hoverBorder, var(--vscode-widget-border, #858585));
+    }
+
+    .search-input:focus {
+      border-color: var(--vscode-focusBorder, #007acc);
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1), 0 0 0 1px var(--vscode-focusBorder, #007acc);
+    }
+
+    .search-input::placeholder {
+      color: var(--vscode-input-placeholderForeground, #999);
+      opacity: 0.7;
+    }
+  `;
+
+  renderContent() {
+    // Use filtered data based on search query
+    const data = this.getFilteredData();
+
+    if (data.length === 0) {
+      const allData = this[this.activeSubmenu] || [];
+      if (allData.length === 0) {
+        return html`
+          <div class="empty-state">No ${this.activeSubmenu} resources found.</div>
+        `;
+      } else {
+        return html`
+          <div class="empty-state">No ${this.activeSubmenu} resources match your search.</div>
+        `;
+      }
+    }
+
+    switch (this.activeSubmenu) {
+      case 'workloads':
+        return this.renderWorkloadTable(data);
+      case 'networks':
+        return this.renderNetworksTable(data);
+      case 'storages':
+        return this.renderStorageTable(data);
+      case 'configurations':
+        return this.renderConfigurationsTable(data);
+      case 'helms':
+        return this.renderHelmTable(data);
+      default:
+        return html`<div class="empty-state">Invalid submenu</div>`;
+    }
+  }
+
+  renderWorkloadTable(data) {
     return html`
       <table class="table">
         <thead>
           <tr>
-            <th>ID</th>
             <th>Name</th>
+            <th>Type</th>
+            <th>Namespace</th>
             <th>Status</th>
+            <th>Replicas</th>
+            <th>Age</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           ${data.map((item, index) => html`
             <tr>
-              <td>${item.id || `${this.activeSubmenu}-${index + 1}`}</td>
-              <td>${item.name || `Sample ${this.activeSubmenu} ${index + 1}`}</td>
-              <td>${item.status || 'Running'}</td>
+              <td>${item.name}</td>
+              <td>${item.type}</td>
+              <td>${item.namespace}</td>
+              <td><span class="status ${item.status.toLowerCase()}">${item.status}</span></td>
+              <td>${item.replicas || '-'}</td>
+              <td>${item.age}</td>
               <td>
                 <div class="action-menu">
-                  <button class="action-dots" @click=${(e) => this.toggleActionMenu(e, `k8s-${this.activeSubmenu}-${index}`)}>⋮</button>
-                  <div class="action-dropdown" id="k8s-${this.activeSubmenu}-${index}">
+                  <button class="action-dots" @click=${(e) => this.toggleActionMenu(e, `k8s-workload-${index}`)}>⋮</button>
+                  <div class="action-dropdown" id="k8s-workload-${index}">
                     <button @click=${() => { this.closeAllMenus(); this.viewDetails(item); }}>View Details</button>
-                    <button @click=${() => { this.closeAllMenus(); this.editItem(item); }}>Edit</button>
+                    <button @click=${() => { this.closeAllMenus(); this.scalePods(item); }}>Scale</button>
+                    <button @click=${() => { this.closeAllMenus(); this.viewLogs(item); }}>View Logs</button>
                     <button class="danger" @click=${() => { this.closeAllMenus(); this.deleteItem(item); }}>Delete</button>
                   </div>
                 </div>
@@ -276,56 +360,817 @@ class KubernetesTab extends LitElement {
     `;
   }
 
+  renderNetworksTable(data) {
+    return html`
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Namespace</th>
+            <th>Status</th>
+            <th>Endpoints</th>
+            <th>Age</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.map((item, index) => html`
+            <tr>
+              <td>${item.name}</td>
+              <td>${item.type}</td>
+              <td>${item.namespace}</td>
+              <td><span class="status ${item.status.toLowerCase()}">${item.status}</span></td>
+              <td>${item.endpoints}</td>
+              <td>${item.age}</td>
+              <td>
+                <div class="action-menu">
+                  <button class="action-dots" @click=${(e) => this.toggleActionMenu(e, `k8s-networks-${index}`)}>⋮</button>
+                  <div class="action-dropdown" id="k8s-networks-${index}">
+                    <button @click=${() => { this.closeAllMenus(); this.viewDetails(item); }}>View Details</button>
+                    <button @click=${() => { this.closeAllMenus(); this.editItem(item); }}>Edit</button>
+                    <button @click=${() => { this.closeAllMenus(); this.viewEndpoints(item); }}>View Endpoints</button>
+                    <button class="danger" @click=${() => { this.closeAllMenus(); this.deleteItem(item); }}>Delete</button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          `)}
+        </tbody>
+      </table>
+    `;
+  }
+
+  renderStorageTable(data) {
+    return html`
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Namespace</th>
+            <th>Status</th>
+            <th>Capacity</th>
+            <th>Access Mode</th>
+            <th>Age</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.map((item, index) => html`
+            <tr>
+              <td>${item.name}</td>
+              <td>${item.type}</td>
+              <td>${item.namespace}</td>
+              <td><span class="status ${item.status.toLowerCase()}">${item.status}</span></td>
+              <td>${item.capacity}</td>
+              <td>${item.accessMode}</td>
+              <td>${item.age}</td>
+              <td>
+                <div class="action-menu">
+                  <button class="action-dots" @click=${(e) => this.toggleActionMenu(e, `k8s-storage-${index}`)}>⋮</button>
+                  <div class="action-dropdown" id="k8s-storage-${index}">
+                    <button @click=${() => { this.closeAllMenus(); this.viewDetails(item); }}>View Details</button>
+                    <button @click=${() => { this.closeAllMenus(); this.editItem(item); }}>Edit</button>
+                    <button @click=${() => { this.closeAllMenus(); this.expandVolume(item); }}>Expand</button>
+                    <button class="danger" @click=${() => { this.closeAllMenus(); this.deleteItem(item); }}>Delete</button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          `)}
+        </tbody>
+      </table>
+    `;
+  }
+
+  renderConfigurationsTable(data) {
+    return html`
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Namespace</th>
+            <th>Status</th>
+            <th>Keys</th>
+            <th>Age</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.map((item, index) => html`
+            <tr>
+              <td>${item.name}</td>
+              <td>${item.type}</td>
+              <td>${item.namespace}</td>
+              <td><span class="status ${item.status.toLowerCase()}">${item.status}</span></td>
+              <td>${item.keys}</td>
+              <td>${item.age}</td>
+              <td>
+                <div class="action-menu">
+                  <button class="action-dots" @click=${(e) => this.toggleActionMenu(e, `k8s-configurations-${index}`)}>⋮</button>
+                  <div class="action-dropdown" id="k8s-configurations-${index}">
+                    <button @click=${() => { this.closeAllMenus(); this.viewDetails(item); }}>View Details</button>
+                    <button @click=${() => { this.closeAllMenus(); this.editItem(item); }}>Edit</button>
+                    <button @click=${() => { this.closeAllMenus(); this.viewKeys(item); }}>View Keys</button>
+                    <button class="danger" @click=${() => { this.closeAllMenus(); this.deleteItem(item); }}>Delete</button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          `)}
+        </tbody>
+      </table>
+    `;
+  }
+
+  renderHelmTable(data) {
+    return html`
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Namespace</th>
+            <th>Revision</th>
+            <th>Status</th>
+            <th>Chart</th>
+            <th>Updated</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.map((item, index) => html`
+            <tr>
+              <td>${item.name}</td>
+              <td>${item.namespace}</td>
+              <td>${item.revision}</td>
+              <td><span class="status ${item.status.toLowerCase()}">${item.status}</span></td>
+              <td>${item.chart}</td>
+              <td>${item.updated}</td>
+              <td>
+                <div class="action-menu">
+                  <button class="action-dots" @click=${(e) => this.toggleActionMenu(e, `k8s-helm-${index}`)}>⋮</button>
+                  <div class="action-dropdown" id="k8s-helm-${index}">
+                    <button @click=${() => { this.closeAllMenus(); this.viewDetails(item); }}>View Details</button>
+                    <button @click=${() => { this.closeAllMenus(); this.upgradeRelease(item); }}>Upgrade</button>
+                    <button @click=${() => { this.closeAllMenus(); this.rollbackRelease(item); }}>Rollback</button>
+                    <button class="danger" @click=${() => { this.closeAllMenus(); this.uninstallRelease(item); }}>Uninstall</button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          `)}
+        </tbody>
+      </table>
+    `;
+  }
+
+  private searchQuery: string = '';
+
+  private handleSearchInput(event: Event) {
+    const target = event.target as HTMLInputElement;
+    this.searchQuery = target.value.toLowerCase();
+    this.requestUpdate();
+  }
+
+  private getFilteredData(): Array<any> {
+    let data = this[this.activeSubmenu] || [];
+    
+    // If viewing workloads, filter by active workload tab
+    if (this.activeSubmenu === 'workloads') {
+      data = this.getFilteredWorkloadData();
+    }
+    
+    // If viewing storages, filter by active storage tab
+    if (this.activeSubmenu === 'storages') {
+      data = this.getFilteredStorageData();
+    }
+    
+    // If viewing configurations, filter by active configuration tab
+    if (this.activeSubmenu === 'configurations') {
+      data = this.getFilteredConfigurationData();
+    }
+    
+    if (!this.searchQuery) return data;
+    return data.filter(item => JSON.stringify(item).toLowerCase().includes(this.searchQuery));
+  }
+
+  private getFilteredWorkloadData(): Array<any> {
+    const allWorkloads = this.workloads || [];
+    
+    switch (this.activeWorkloadTab) {
+      case 'pods':
+        return allWorkloads.filter(item => item.type === 'Pod');
+      case 'deployments':
+        return allWorkloads.filter(item => item.type === 'Deployment');
+      case 'statefulsets':
+        return allWorkloads.filter(item => item.type === 'StatefulSet');
+      default:
+        return allWorkloads;
+    }
+  }
+
+  private getFilteredStorageData(): Array<any> {
+    const allStorages = this.storages || [];
+    
+    switch (this.activeStorageTab) {
+      case 'pvc':
+        return allStorages.filter(item => item.type === 'PersistentVolumeClaim');
+      case 'pv':
+        return allStorages.filter(item => item.type === 'PersistentVolume');
+      default:
+        return allStorages;
+    }
+  }
+
+  private getFilteredConfigurationData(): Array<any> {
+    const allConfigurations = this.configurations || [];
+    
+    switch (this.activeConfigurationTab) {
+      case 'secrets':
+        return allConfigurations.filter(item => item.type === 'Secret');
+      case 'configmap':
+        return allConfigurations.filter(item => item.type === 'ConfigMap');
+      default:
+        return allConfigurations;
+    }
+  }
+
+  private handleWorkloadTabClick(tab: string) {
+    this.activeWorkloadTab = tab;
+    this.requestUpdate();
+  }
+
+  private handleStorageTabClick(tab: string) {
+    this.activeStorageTab = tab;
+    this.requestUpdate();
+  }
+
+  private handleConfigurationTabClick(tab: string) {
+    this.activeConfigurationTab = tab;
+    this.requestUpdate();
+  }
+
+  private renderWorkloadTabs() {
+    return html`
+      <div class="tab-header">
+        <button 
+          class="tab-button ${this.activeWorkloadTab === 'pods' ? 'active' : ''}"
+          @click=${() => this.handleWorkloadTabClick('pods')}
+        >
+          Pods
+        </button>
+        <button 
+          class="tab-button ${this.activeWorkloadTab === 'deployments' ? 'active' : ''}"
+          @click=${() => this.handleWorkloadTabClick('deployments')}
+        >
+          Deployments
+        </button>
+        <button 
+          class="tab-button ${this.activeWorkloadTab === 'statefulsets' ? 'active' : ''}"
+          @click=${() => this.handleWorkloadTabClick('statefulsets')}
+        >
+          StatefulSets
+        </button>
+      </div>
+    `;
+  }
+
+  private renderStorageTabs() {
+    return html`
+      <div class="tab-header">
+        <button 
+          class="tab-button ${this.activeStorageTab === 'pvc' ? 'active' : ''}"
+          @click=${() => this.handleStorageTabClick('pvc')}
+        >
+          PVC
+        </button>
+        <button 
+          class="tab-button ${this.activeStorageTab === 'pv' ? 'active' : ''}"
+          @click=${() => this.handleStorageTabClick('pv')}
+        >
+          PV
+        </button>
+      </div>
+    `;
+  }
+
+  private renderConfigurationTabs() {
+    return html`
+      <div class="tab-header">
+        <button 
+          class="tab-button ${this.activeConfigurationTab === 'secrets' ? 'active' : ''}"
+          @click=${() => this.handleConfigurationTabClick('secrets')}
+        >
+          Secrets
+        </button>
+        <button 
+          class="tab-button ${this.activeConfigurationTab === 'configmap' ? 'active' : ''}"
+          @click=${() => this.handleConfigurationTabClick('configmap')}
+        >
+          ConfigMap
+        </button>
+      </div>
+    `;
+  }
+
   render() {
     return html`
       <div class="tab-container">
-        <h1>Kubernetes</h1>
-        ${this.renderTabs()}
+        <h1>${this.renderTitle()}</h1>
+        ${this.activeSubmenu === 'workloads' ? this.renderWorkloadTabs() : ''}
+        ${this.activeSubmenu === 'storages' ? this.renderStorageTabs() : ''}
+        ${this.activeSubmenu === 'configurations' ? this.renderConfigurationTabs() : ''}
+        <div class="search-container">
+          <div class="search-wrapper">
+            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
+            <input 
+              class="search-input"
+              type="text" 
+              placeholder="Search..."
+              .value=${this.searchQuery}
+              @input=${this.handleSearchInput}
+            />
+          </div>
+        </div>
         <div class="tab-content">
           ${this.error ? html`
             <div class="error-state">
               <h3>Error</h3>
               <p>${this.error}</p>
-            </div>` : this.renderTable()}
+            </div>` : this.renderContent()}
         </div>
       </div>
     `;
   }
 
+  renderTitle() {
+    const titles = {
+      workloads: 'Kubernetes Workloads',
+      networks: 'Kubernetes Networks',
+      storages: 'Kubernetes Storages',
+      configurations: 'Kubernetes Configurations',
+      helms: 'Kubernetes Helm Charts'
+    };
+    return titles[this.activeSubmenu] || 'Kubernetes';
+  }
+
   connectedCallback() {
     super.connectedCallback();
     this.initializeMockData();
+    
+    // Set initial activeSubmenu based on subRoute or URL
+    this.updateActiveSubmenu();
+    
+    // Listen for URL changes
+    window.addEventListener('popstate', this.handleRouteChange);
+  }
+  
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    window.removeEventListener('popstate', this.handleRouteChange);
+  }
+  
+  private handleRouteChange = () => {
+    const path = window.location.pathname;
+    if (path.includes('/kubernetes/')) {
+      const submenu = path.split('/kubernetes/')[1];
+      if (submenu && ['workloads', 'networks', 'storages', 'configurations', 'helms'].includes(submenu)) {
+        this.activeSubmenu = submenu;
+      }
+    }
+  };
+
+  private updateActiveSubmenu() {
+    // Priority: subRoute property > URL path > default
+    if (this.subRoute && ['workloads', 'networks', 'storages', 'configurations', 'helms'].includes(this.subRoute)) {
+      this.activeSubmenu = this.subRoute;
+    } else {
+      // Fallback to URL detection
+      const path = window.location.pathname;
+      if (path.includes('/kubernetes/')) {
+        const submenu = path.split('/kubernetes/')[1];
+        if (submenu && ['workloads', 'networks', 'storages', 'configurations', 'helms'].includes(submenu)) {
+          this.activeSubmenu = submenu;
+        }
+      }
+    }
+  }
+
+  // Watch for changes to subRoute property
+  override updated(changedProperties: Map<string, any>) {
+    super.updated(changedProperties);
+    if (changedProperties.has('subRoute')) {
+      this.updateActiveSubmenu();
+    }
   }
 
   initializeMockData() {
-    // Initialize with mock data for demonstration
+    // Workload mock data - Deployments, Services, Pods
     this.workloads = [
-      { id: 'wl-1', name: 'nginx-deployment', status: 'Running' },
-      { id: 'wl-2', name: 'api-service', status: 'Pending' }
+      { 
+        name: 'nginx-deployment', 
+        type: 'Deployment', 
+        namespace: 'default', 
+        status: 'Running', 
+        replicas: '3/3', 
+        age: '2d' 
+      },
+      { 
+        name: 'api-gateway', 
+        type: 'Deployment', 
+        namespace: 'production', 
+        status: 'Running', 
+        replicas: '2/2', 
+        age: '5d' 
+      },
+      { 
+        name: 'redis-deployment', 
+        type: 'Deployment', 
+        namespace: 'database', 
+        status: 'Running', 
+        replicas: '1/1', 
+        age: '3d' 
+      },
+      { 
+        name: 'web-frontend', 
+        type: 'Deployment', 
+        namespace: 'frontend', 
+        status: 'Running', 
+        replicas: '5/5', 
+        age: '1w' 
+      },
+      { 
+        name: 'auth-service', 
+        type: 'Deployment', 
+        namespace: 'auth', 
+        status: 'Failed', 
+        replicas: '0/2', 
+        age: '1h' 
+      },
+      { 
+        name: 'frontend-service', 
+        type: 'Service', 
+        namespace: 'default', 
+        status: 'Active', 
+        replicas: '-', 
+        age: '1d' 
+      },
+      { 
+        name: 'database-service', 
+        type: 'Service', 
+        namespace: 'database', 
+        status: 'Active', 
+        replicas: '-', 
+        age: '1w' 
+      },
+      { 
+        name: 'api-loadbalancer', 
+        type: 'Service', 
+        namespace: 'production', 
+        status: 'Active', 
+        replicas: '-', 
+        age: '2w' 
+      },
+      { 
+        name: 'worker-pod-xyz', 
+        type: 'Pod', 
+        namespace: 'default', 
+        status: 'Pending', 
+        replicas: '-', 
+        age: '5m' 
+      },
+      { 
+        name: 'nginx-pod-abc', 
+        type: 'Pod', 
+        namespace: 'default', 
+        status: 'Running', 
+        replicas: '-', 
+        age: '2d' 
+      },
+      { 
+        name: 'redis-pod-def', 
+        type: 'Pod', 
+        namespace: 'database', 
+        status: 'Running', 
+        replicas: '-', 
+        age: '3d' 
+      },
+      { 
+        name: 'auth-pod-ghi', 
+        type: 'Pod', 
+        namespace: 'auth', 
+        status: 'Error', 
+        replicas: '-', 
+        age: '30m' 
+      },
+      { 
+        name: 'monitoring-daemon', 
+        type: 'DaemonSet', 
+        namespace: 'kube-system', 
+        status: 'Running', 
+        replicas: '3/3', 
+        age: '10d' 
+      },
+      { 
+        name: 'log-collector', 
+        type: 'DaemonSet', 
+        namespace: 'logging', 
+        status: 'Running', 
+        replicas: '3/3', 
+        age: '7d' 
+      }
     ];
+    
+    // Network mock data - Services, Ingress, NetworkPolicies
     this.networks = [
-      { id: 'net-1', name: 'cluster-network', status: 'Active' },
-      { id: 'net-2', name: 'ingress-network', status: 'Active' }
+      { 
+        name: 'main-ingress', 
+        type: 'Ingress', 
+        namespace: 'default', 
+        status: 'Active', 
+        endpoints: 'api.example.com', 
+        age: '3d' 
+      },
+      { 
+        name: 'load-balancer', 
+        type: 'Service', 
+        namespace: 'production', 
+        status: 'Active', 
+        endpoints: '10.0.1.100:80', 
+        age: '7d' 
+      },
+      { 
+        name: 'deny-all-policy', 
+        type: 'NetworkPolicy', 
+        namespace: 'default', 
+        status: 'Enforced', 
+        endpoints: '-', 
+        age: '1d' 
+      },
+      { 
+        name: 'external-endpoint', 
+        type: 'Endpoints', 
+        namespace: 'default', 
+        status: 'Ready', 
+        endpoints: '192.168.1.100:8080', 
+        age: '6h' 
+      }
     ];
+    
+    // Storage mock data - PVs, PVCs, StorageClasses
     this.storages = [
-      { id: 'pv-1', name: 'database-volume', status: 'Bound' },
-      { id: 'pv-2', name: 'logs-volume', status: 'Available' }
+      { 
+        name: 'mysql-volume', 
+        type: 'PersistentVolume', 
+        namespace: 'database', 
+        status: 'Bound', 
+        capacity: '10Gi', 
+        accessMode: 'ReadWriteOnce', 
+        age: '10d' 
+      },
+      { 
+        name: 'app-data-claim', 
+        type: 'PersistentVolumeClaim', 
+        namespace: 'default', 
+        status: 'Bound', 
+        capacity: '5Gi', 
+        accessMode: 'ReadWriteOnce', 
+        age: '3d' 
+      },
+      { 
+        name: 'redis-data-claim', 
+        type: 'PersistentVolumeClaim', 
+        namespace: 'database', 
+        status: 'Bound', 
+        capacity: '2Gi', 
+        accessMode: 'ReadWriteOnce', 
+        age: '5d' 
+      },
+      { 
+        name: 'log-storage-claim', 
+        type: 'PersistentVolumeClaim', 
+        namespace: 'logging', 
+        status: 'Pending', 
+        capacity: '20Gi', 
+        accessMode: 'ReadWriteMany', 
+        age: '2h' 
+      },
+      { 
+        name: 'media-files-claim', 
+        type: 'PersistentVolumeClaim', 
+        namespace: 'frontend', 
+        status: 'Bound', 
+        capacity: '50Gi', 
+        accessMode: 'ReadWriteMany', 
+        age: '1w' 
+      },
+      { 
+        name: 'fast-ssd', 
+        type: 'StorageClass', 
+        namespace: '-', 
+        status: 'Available', 
+        capacity: '-', 
+        accessMode: 'ReadWriteOnce', 
+        age: '30d' 
+      },
+      { 
+        name: 'standard-hdd', 
+        type: 'StorageClass', 
+        namespace: '-', 
+        status: 'Available', 
+        capacity: '-', 
+        accessMode: 'ReadWriteOnce', 
+        age: '45d' 
+      },
+      { 
+        name: 'network-storage', 
+        type: 'StorageClass', 
+        namespace: '-', 
+        status: 'Available', 
+        capacity: '-', 
+        accessMode: 'ReadWriteMany', 
+        age: '60d' 
+      },
+      { 
+        name: 'backup-storage', 
+        type: 'PersistentVolume', 
+        namespace: 'backup', 
+        status: 'Available', 
+        capacity: '100Gi', 
+        accessMode: 'ReadWriteMany', 
+        age: '15d' 
+      },
+      { 
+        name: 'prometheus-storage', 
+        type: 'PersistentVolume', 
+        namespace: 'monitoring', 
+        status: 'Bound', 
+        capacity: '25Gi', 
+        accessMode: 'ReadWriteOnce', 
+        age: '1w' 
+      },
+      { 
+        name: 'grafana-storage', 
+        type: 'PersistentVolume', 
+        namespace: 'monitoring', 
+        status: 'Bound', 
+        capacity: '5Gi', 
+        accessMode: 'ReadWriteOnce', 
+        age: '1w' 
+      },
+      { 
+        name: 'shared-cache', 
+        type: 'PersistentVolume', 
+        namespace: 'cache', 
+        status: 'Available', 
+        capacity: '15Gi', 
+        accessMode: 'ReadWriteMany', 
+        age: '3d' 
+      }
     ];
+    
+    // Configuration mock data - ConfigMaps, Secrets, ServiceAccounts
     this.configurations = [
-      { id: 'cm-1', name: 'app-config', status: 'Active' },
-      { id: 'sec-1', name: 'db-secrets', status: 'Active' }
+      { 
+        name: 'app-config', 
+        type: 'ConfigMap', 
+        namespace: 'default', 
+        status: 'Active', 
+        keys: '3', 
+        age: '2d' 
+      },
+      { 
+        name: 'db-credentials', 
+        type: 'Secret', 
+        namespace: 'database', 
+        status: 'Active', 
+        keys: '2', 
+        age: '7d' 
+      },
+      { 
+        name: 'api-service-account', 
+        type: 'ServiceAccount', 
+        namespace: 'default', 
+        status: 'Active', 
+        keys: '-', 
+        age: '5d' 
+      },
+      { 
+        name: 'tls-certificates', 
+        type: 'Secret', 
+        namespace: 'production', 
+        status: 'Active', 
+        keys: '4', 
+        age: '1d' 
+      }
     ];
+    
+    // Helm mock data - Charts and Releases
     this.helms = [
-      { id: 'helm-1', name: 'prometheus', status: 'Deployed' },
-      { id: 'helm-2', name: 'grafana', status: 'Failed' }
+      { 
+        name: 'prometheus-stack', 
+        namespace: 'monitoring', 
+        revision: '3', 
+        status: 'Deployed', 
+        chart: 'kube-prometheus-stack-45.7.1', 
+        updated: '2024-01-15 10:30:00' 
+      },
+      { 
+        name: 'grafana-dashboard', 
+        namespace: 'monitoring', 
+        revision: '1', 
+        status: 'Deployed', 
+        chart: 'grafana-6.50.7', 
+        updated: '2024-01-14 14:22:00' 
+      },
+      { 
+        name: 'nginx-ingress', 
+        namespace: 'ingress-nginx', 
+        revision: '2', 
+        status: 'Failed', 
+        chart: 'ingress-nginx-4.4.2', 
+        updated: '2024-01-16 09:15:00' 
+      },
+      { 
+        name: 'cert-manager', 
+        namespace: 'cert-manager', 
+        revision: '1', 
+        status: 'Pending', 
+        chart: 'cert-manager-v1.13.3', 
+        updated: '2024-01-16 11:45:00' 
+      },
+      { 
+        name: 'redis-cluster', 
+        namespace: 'database', 
+        revision: '4', 
+        status: 'Deployed', 
+        chart: 'redis-17.3.7', 
+        updated: '2024-01-10 16:20:00' 
+      },
+      { 
+        name: 'mysql-primary', 
+        namespace: 'database', 
+        revision: '2', 
+        status: 'Deployed', 
+        chart: 'mysql-9.4.6', 
+        updated: '2024-01-12 09:45:00' 
+      },
+      { 
+        name: 'elasticsearch', 
+        namespace: 'logging', 
+        revision: '1', 
+        status: 'Deployed', 
+        chart: 'elasticsearch-19.5.0', 
+        updated: '2024-01-13 14:30:00' 
+      },
+      { 
+        name: 'kibana', 
+        namespace: 'logging', 
+        revision: '1', 
+        status: 'Deployed', 
+        chart: 'kibana-10.2.3', 
+        updated: '2024-01-13 15:15:00' 
+      },
+      { 
+        name: 'wordpress', 
+        namespace: 'frontend', 
+        revision: '3', 
+        status: 'Deployed', 
+        chart: 'wordpress-15.2.5', 
+        updated: '2024-01-11 11:20:00' 
+      },
+      { 
+        name: 'jenkins', 
+        namespace: 'ci-cd', 
+        revision: '1', 
+        status: 'Failed', 
+        chart: 'jenkins-4.2.17', 
+        updated: '2024-01-16 13:45:00' 
+      },
+      { 
+        name: 'argocd', 
+        namespace: 'argocd', 
+        revision: '2', 
+        status: 'Deployed', 
+        chart: 'argo-cd-5.16.13', 
+        updated: '2024-01-09 08:30:00' 
+      },
+      { 
+        name: 'vault', 
+        namespace: 'vault', 
+        revision: '1', 
+        status: 'Pending', 
+        chart: 'vault-0.22.1', 
+        updated: '2024-01-16 16:00:00' 
+      }
     ];
   }
 
-  handleTabClick(tab) {
-    this.activeSubmenu = tab;
-    // You can add route handling here if needed
-    // window.history.pushState({}, '', `/kubernetes/${tab}`);
-  }
 
   toggleActionMenu(event, menuId) {
     event.stopPropagation();
@@ -385,13 +1230,91 @@ class KubernetesTab extends LitElement {
     // Implement delete logic here
     console.log('Deleting item:', item);
     if (confirm(`Are you sure you want to delete ${item.name || item.id}?`)) {
-      // Remove item from the appropriate array
+      // Now activeSubmenu directly matches property names (all plural)
       const currentData = this[this.activeSubmenu];
-      const index = currentData.indexOf(item);
-      if (index > -1) {
-        currentData.splice(index, 1);
-        this.requestUpdate();
+      if (currentData) {
+        const index = currentData.indexOf(item);
+        if (index > -1) {
+          currentData.splice(index, 1);
+          this.requestUpdate();
+        }
       }
+    }
+  }
+
+  // Workload-specific actions
+  scalePods(item) {
+    console.log('Scaling pods for:', item);
+    const replicas = prompt(`Enter new replica count for ${item.name}:`, '3');
+    if (replicas && !isNaN(replicas)) {
+      alert(`Scaling ${item.name} to ${replicas} replicas`);
+      // In a real app, you would make an API call here
+    }
+  }
+
+  viewLogs(item) {
+    console.log('Viewing logs for:', item);
+    alert(`Opening logs for ${item.name}`);
+    // In a real app, you would open a logs viewer or modal
+  }
+
+  // Network-specific actions
+  viewEndpoints(item) {
+    console.log('Viewing endpoints for:', item);
+    alert(`Endpoints for ${item.name}: ${item.endpoints}`);
+    // In a real app, you would show detailed endpoint information
+  }
+
+  // Storage-specific actions
+  expandVolume(item) {
+    console.log('Expanding volume:', item);
+    const newSize = prompt(`Enter new size for ${item.name} (current: ${item.capacity}):`);
+    if (newSize) {
+      alert(`Expanding ${item.name} to ${newSize}`);
+      // In a real app, you would make an API call to expand the volume
+    }
+  }
+
+  // Configuration-specific actions
+  viewKeys(item) {
+    console.log('Viewing keys for:', item);
+    alert(`${item.name} has ${item.keys} keys`);
+    // In a real app, you would show the actual keys (for ConfigMaps) or key names (for Secrets)
+  }
+
+  // Helm-specific actions
+  upgradeRelease(item) {
+    console.log('Upgrading release:', item);
+    const newChart = prompt(`Enter new chart version for ${item.name}:`, item.chart);
+    if (newChart) {
+      alert(`Upgrading ${item.name} to ${newChart}`);
+      // In a real app, you would make an API call to upgrade the Helm release
+    }
+  }
+
+  rollbackRelease(item) {
+    console.log('Rolling back release:', item);
+    const targetRevision = prompt(`Enter revision to rollback to for ${item.name}:`, (parseInt(item.revision) - 1).toString());
+    if (targetRevision && !isNaN(targetRevision)) {
+      alert(`Rolling back ${item.name} to revision ${targetRevision}`);
+      // In a real app, you would make an API call to rollback the Helm release
+    }
+  }
+
+  uninstallRelease(item) {
+    console.log('Uninstalling release:', item);
+    if (confirm(`Are you sure you want to uninstall ${item.name}? This action cannot be undone.`)) {
+      alert(`Uninstalling ${item.name}`);
+      // Now activeSubmenu directly matches property names (all plural)
+      const currentData = this[this.activeSubmenu];
+      if (currentData) {
+        const index = currentData.indexOf(item);
+        if (index > -1) {
+          currentData.splice(index, 1);
+          this.requestUpdate();
+        }
+      }
+      // In a real app, you would make an API call to uninstall the Helm release
     }
   }
 }

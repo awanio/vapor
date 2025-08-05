@@ -450,7 +450,7 @@ export class AppRoot extends LitElement {
             ${this.activeView === 'logs' ? html`<logs-tab></logs-tab>` : ''}
             ${this.activeView === 'terminal' ? html`<terminal-tab></terminal-tab>` : ''}
             ${this.activeView === 'users' ? html`<users-tab></users-tab>` : ''}
-            ${this.activeView.startsWith('kubernetes') ? html`<kubernetes-tab></kubernetes-tab>` : ''}
+            ${this.activeView === 'kubernetes' ? html`<kubernetes-tab .subRoute=${this.subRoute}></kubernetes-tab>` : ''}
             ${!this.isValidRoute(this.activeView) ? html`<div>404 - Page Not Found</div>` : ''}
           </div>
         </main>

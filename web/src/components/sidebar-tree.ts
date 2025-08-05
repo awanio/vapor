@@ -276,10 +276,10 @@ export class SidebarTree extends I18nLitElement {
       route: 'kubernetes',
       children: [
         {
-          id: 'kubernetes-workload',
-          label: 'kubernetes.workload',
+          id: 'kubernetes-workloads',
+          label: 'kubernetes.workloads',
           icon: 'workload',
-          route: 'kubernetes/workload'
+          route: 'kubernetes/workloads'
         },
         {
           id: 'kubernetes-networks',
@@ -288,10 +288,10 @@ export class SidebarTree extends I18nLitElement {
           route: 'kubernetes/networks'
         },
         {
-          id: 'kubernetes-storage',
-          label: 'kubernetes.storage',
+          id: 'kubernetes-storages',
+          label: 'kubernetes.storages',
           icon: 'k8s-storage',
-          route: 'kubernetes/storage'
+          route: 'kubernetes/storages'
         },
         {
           id: 'kubernetes-configurations',
@@ -300,10 +300,10 @@ export class SidebarTree extends I18nLitElement {
           route: 'kubernetes/configurations'
         },
         {
-          id: 'kubernetes-helm',
-          label: 'kubernetes.helm',
+          id: 'kubernetes-helms',
+          label: 'kubernetes.helms',
           icon: 'helm',
-          route: 'kubernetes/helm'
+          route: 'kubernetes/helms'
         }
       ]
     },

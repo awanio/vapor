@@ -303,11 +303,11 @@
   },
   "kubernetes": {
     "title": "Kubernetes",
-    "workload": "Workload",
+    "workloads": "Workloads",
     "networks": "Networks",
-    "storage": "Storage",
+    "storages": "Storages",
     "configurations": "Configurations",
-    "helm": "Helm"
+    "helms": "Helm Charts"
   },
   "users": {
     "title": "User Management",
