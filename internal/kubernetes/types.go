@@ -36,6 +36,53 @@ type PodInfo struct {
 	CreationTimestamp time.Time         `json:"creationTimestamp"`
 }
 
+// ContainerInfo represents container information within a pod
+type ContainerInfo struct {
+	Name         string `json:"name"`
+	Image        string `json:"image"`
+	Ready        bool   `json:"ready"`
+	RestartCount int32  `json:"restartCount"`
+	State        string `json:"state"`
+	StateReason  string `json:"stateReason,omitempty"`
+}
+
+// PodCondition represents a pod condition
+type PodCondition struct {
+	Type               string    `json:"type"`
+	Status             string    `json:"status"`
+	LastProbeTime      time.Time `json:"lastProbeTime,omitempty"`
+	LastTransitionTime time.Time `json:"lastTransitionTime,omitempty"`
+	Reason             string    `json:"reason,omitempty"`
+	Message            string    `json:"message,omitempty"`
+}
+
+// PodDetail represents detailed pod information
+type PodDetail struct {
+	Name              string                 `json:"name"`
+	Namespace         string                 `json:"namespace"`
+	UID               string                 `json:"uid"`
+	ResourceVersion   string                 `json:"resourceVersion"`
+	Labels            map[string]string      `json:"labels"`
+	Annotations       map[string]string      `json:"annotations"`
+	Status            string                 `json:"status"`
+	Phase             string                 `json:"phase"`
+	IP                string                 `json:"ip"`
+	HostIP            string                 `json:"hostIP"`
+	Node              string                 `json:"node"`
+	ServiceAccount    string                 `json:"serviceAccount"`
+	RestartPolicy     string                 `json:"restartPolicy"`
+	DNSPolicy         string                 `json:"dnsPolicy"`
+	NodeSelector      map[string]string      `json:"nodeSelector,omitempty"`
+	Tolerations       []map[string]interface{} `json:"tolerations,omitempty"`
+	Containers        []ContainerInfo        `json:"containers"`
+	InitContainers    []ContainerInfo        `json:"initContainers,omitempty"`
+	Conditions        []PodCondition         `json:"conditions"`
+	QOSClass          string                 `json:"qosClass"`
+	StartTime         *time.Time             `json:"startTime,omitempty"`
+	CreationTimestamp time.Time              `json:"creationTimestamp"`
+	Age               string                 `json:"age"`
+}
+
 // DeploymentInfo represents simplified deployment information
 type DeploymentInfo struct {
 	Name              string            `json:"name"`

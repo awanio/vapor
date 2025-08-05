@@ -401,6 +401,94 @@ func (s *Service) ListPods(ctx context.Context, opts interface{}) ([]PodInfo, er
 	return podList, nil
 }
 
+// GetPodDetail retrieves detailed information of a specific pod
+func (s *Service) GetPodDetail(ctx context.Context, namespace, name string) (PodDetail, error) {
+	pod, err := s.client.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return PodDetail{}, fmt.Errorf("failed to get pod details for %s/%s: %w", namespace, name, err)
+	}
+
+	containers := make([]ContainerInfo, len(pod.Spec.Containers))
+	for i, c := range pod.Spec.Containers {
+		containerInfo := ContainerInfo{
+			Name:  c.Name,
+			Image: c.Image,
+		}
+
+		// Handle container status if available
+		if i < len(pod.Status.ContainerStatuses) {
+			containerStatus := pod.Status.ContainerStatuses[i]
+			containerInfo.Ready = containerStatus.Ready
+			containerInfo.RestartCount = containerStatus.RestartCount
+
+			// Determine container state
+			if containerStatus.State.Running != nil {
+				containerInfo.State = "Running"
+			} else if containerStatus.State.Waiting != nil {
+				containerInfo.State = "Waiting"
+				containerInfo.StateReason = containerStatus.State.Waiting.Reason
+			} else if containerStatus.State.Terminated != nil {
+				containerInfo.State = "Terminated"
+				containerInfo.StateReason = containerStatus.State.Terminated.Reason
+			} else {
+				containerInfo.State = "Unknown"
+			}
+		} else {
+			containerInfo.State = "Unknown"
+			containerInfo.Ready = false
+			containerInfo.RestartCount = 0
+		}
+
+		containers[i] = containerInfo
+	}
+
+	conditions := make([]PodCondition, len(pod.Status.Conditions))
+	for i, c := range pod.Status.Conditions {
+		conditions[i] = PodCondition{
+			Type:               string(c.Type),
+			Status:             string(c.Status),
+			LastProbeTime:      c.LastProbeTime.Time,
+			LastTransitionTime: c.LastTransitionTime.Time,
+			Reason:             c.Reason,
+			Message:            c.Message,
+		}
+	}
+
+	// Handle StartTime conversion
+	var startTime *time.Time
+	if pod.Status.StartTime != nil {
+		startTime = &pod.Status.StartTime.Time
+	}
+
+	detail := PodDetail{
+		Name:              pod.Name,
+		Namespace:         pod.Namespace,
+		UID:               string(pod.UID),
+		ResourceVersion:   pod.ResourceVersion,
+		Labels:            pod.Labels,
+		Annotations:       pod.Annotations,
+		Status:            string(pod.Status.Phase),
+		Phase:             string(pod.Status.Phase),
+		IP:                pod.Status.PodIP,
+		HostIP:            pod.Status.HostIP,
+		Node:              pod.Spec.NodeName,
+		ServiceAccount:    pod.Spec.ServiceAccountName,
+		RestartPolicy:     string(pod.Spec.RestartPolicy),
+		DNSPolicy:         string(pod.Spec.DNSPolicy),
+		NodeSelector:      pod.Spec.NodeSelector,
+		Tolerations:       nil, // Tolerations handling can be implemented as needed
+		Containers:        containers,
+		InitContainers:    nil, // InitContainers handling can be implemented as needed
+		Conditions:        conditions,
+		QOSClass:          string(pod.Status.QOSClass),
+		StartTime:         startTime,
+		CreationTimestamp: pod.CreationTimestamp.Time,
+		Age:               calculateAge(pod.CreationTimestamp.Time),
+	}
+
+	return detail, nil
+}
+
 // GetClusterInfo returns cluster information
 func (s *Service) GetClusterInfo(ctx context.Context, opts interface{}) (ClusterInfo, error) {
 	version, err := s.client.Discovery().ServerVersion()

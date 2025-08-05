@@ -1,5 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { property } from 'lit/decorators.js';
+import { Api } from '../api.js';
 
 class KubernetesTab extends LitElement {
   @property({ type: String }) activeSubmenu = 'workloads';
@@ -763,16 +764,6 @@ class KubernetesTab extends LitElement {
     return titles[this.activeSubmenu] || 'Kubernetes';
   }
 
-  connectedCallback() {
-    super.connectedCallback();
-    this.initializeMockData();
-    
-    // Set initial activeSubmenu based on subRoute or URL
-    this.updateActiveSubmenu();
-    
-    // Listen for URL changes
-    window.addEventListener('popstate', this.handleRouteChange);
-  }
   
   disconnectedCallback() {
     super.disconnectedCallback();
@@ -1295,15 +1286,190 @@ class KubernetesTab extends LitElement {
     this.closeAllMenus();
   }
 
-  async fetchData() {
+  async fetchPods() {
     try {
-      // Replace this URL with the actual API endpoint
-      const response = await fetch(`/api/kubernetes/${this.activeSubmenu}`);
-      const data = await response.json();
-      this[this.activeSubmenu] = data.items || [];
+      const data = await Api.get('/kubernetes/pods');
+      const pods = data.pods.map(pod => ({
+        name: pod.name,
+        type: 'Pod',
+        namespace: pod.namespace,
+        status: pod.status,
+        replicas: pod.ready,
+        age: pod.age
+      }));
+      return pods;
+    } catch (error) {
+      console.error('Failed to fetch pods:', error);
+      return [];
+    }
+  }
+
+  async fetchDeployments() {
+    try {
+      const data = await Api.get('/kubernetes/deployments');
+      const deployments = data.deployments.map(dep => ({
+        name: dep.name,
+        type: 'Deployment',
+        namespace: dep.namespace,
+        status: dep.available > 0 ? 'Running' : 'Pending',
+        replicas: `${dep.available}/${dep.replicas}`,
+        age: dep.age
+      }));
+      return deployments;
+    } catch (error) {
+      console.error('Failed to fetch deployments:', error);
+      return [];
+    }
+  }
+
+  async fetchStatefulSets() {
+    try {
+      const data = await Api.get('/kubernetes/statefulsets');
+      const statefulsets = data.statefulsets.map(set => ({
+        name: set.name,
+        type: 'StatefulSet',
+        namespace: set.namespace,
+        status: set.ready_replicas > 0 ? 'Running' : 'Pending',
+        replicas: `${set.ready_replicas}/${set.replicas}`,
+        age: set.age
+      }));
+      return statefulsets;
+    } catch (error) {
+      console.error('Failed to fetch stateful sets:', error);
+      return [];
+    }
+  }
+
+  async fetchServices() {
+    try {
+      const data = await Api.get('/kubernetes/services');
+      this.networks = data.services.map(svc => ({
+        name: svc.name,
+        type: svc.type,
+        namespace: svc.namespace,
+        status: 'Active',
+        endpoints: svc.cluster_ip,
+        age: svc.age
+      }));
       this.error = null;
     } catch (error) {
-      this.error = 'Failed to fetch data';
+      this.error = 'Failed to fetch services';
+    }
+  }
+
+  async fetchConfigMaps() {
+    try {
+      const data = await Api.get('/kubernetes/configmaps');
+      this.configurations = data.configmaps.map(map => ({
+        name: map.name,
+        type: 'ConfigMap',
+        namespace: map.namespace,
+        status: 'Active',
+        keys: map.data,
+        age: map.age
+      }));
+      this.error = null;
+    } catch (error) {
+      this.error = 'Failed to fetch config maps';
+    }
+  }
+
+  async fetchSecrets() {
+    try {
+      const data = await Api.get('/kubernetes/secrets');
+      this.configurations = this.configurations.concat(data.secrets.map(sec => ({
+        name: sec.name,
+        type: 'Secret',
+        namespace: sec.namespace,
+        status: 'Active',
+        keys: sec.data,
+        age: sec.age
+      })));
+      this.error = null;
+    } catch (error) {
+      this.error = 'Failed to fetch secrets';
+    }
+  }
+
+  async fetchHelmReleases() {
+    try {
+      const data = await Api.get('/kubernetes/helm/releases');
+      this.helms = data.releases.map(release => ({
+        name: release.name,
+        type: 'Release',
+        namespace: release.namespace,
+        revision: release.version,
+        status: release.status,
+        chart: `${release.chart} (${release.chart_version})`,
+        updated: release.updated
+      }));
+      this.error = null;
+    } catch (error) {
+      this.error = 'Failed to fetch helm releases';
+    }
+  }
+
+  async fetchHelmCharts() {
+    try {
+      const data = await Api.get('/kubernetes/helm/charts');
+      this.helms = this.helms.concat(data.charts.map(chart => ({
+        name: chart.name,
+        type: 'Chart',
+        namespace: '-',
+        revision: '-',
+        status: 'Available',
+        chart: chart.name,
+        updated: '-'  // No updated information available for charts
+      })));
+      this.error = null;
+    } catch (error) {
+      this.error = 'Failed to fetch helm charts';
+    }
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    this.initializeMockData();
+    this.updateActiveSubmenu();
+    
+    // Fetch all Kubernetes resources
+    this.fetchAllResources();
+    
+    window.addEventListener('popstate', this.handleRouteChange);
+  }
+
+  async fetchAllResources() {
+    try {
+      // Clear existing arrays before fetching
+      this.workloads = [];
+      this.networks = [];
+      this.configurations = [];
+      this.helms = [];
+      
+      // Fetch all workload resources
+      await Promise.all([
+        this.fetchPods(),
+        this.fetchDeployments(),
+        this.fetchStatefulSets()
+      ]);
+      
+      // Fetch network resources (services)
+      await this.fetchServices();
+      
+      // Fetch configuration resources
+      await Promise.all([
+        this.fetchConfigMaps(),
+        this.fetchSecrets()
+      ]);
+      
+      // Fetch Helm resources
+      await Promise.all([
+        this.fetchHelmReleases(),
+        this.fetchHelmCharts()
+      ]);
+    } catch (error) {
+      console.error('Failed to fetch Kubernetes resources:', error);
+      this.error = 'Failed to fetch some Kubernetes resources';
     }
   }
 

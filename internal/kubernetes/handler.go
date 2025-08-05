@@ -29,6 +29,18 @@ func (h *Handler) ListPodsGin(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"pods": pods, "count": len(pods)})
 }
 
+func (h *Handler) GetPodDetailGin(c *gin.Context) {
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+
+	podDetail, err := h.service.GetPodDetail(c.Request.Context(), namespace, name)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get pod details", err.Error())
+		return
+	}
+	common.SendSuccess(c, gin.H{"pod_detail": podDetail})
+}
+
 func (h *Handler) ListDeploymentsGin(c *gin.Context) {
 	deployments, err := h.service.ListDeployments(c.Request.Context(), nil)
 	if err != nil {
