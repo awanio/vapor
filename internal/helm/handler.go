@@ -27,6 +27,7 @@ func (h *ServiceHandler) ListChartsGin(c *gin.Context) {
 	opts := ListChartsOptions{
 		Repository:  c.Query("repository"),
 		AllVersions: c.Query("all_versions") == "true",
+		Devel:       c.Query("devel") == "true",
 	}
 
 	// List charts
@@ -41,6 +42,27 @@ func (h *ServiceHandler) ListChartsGin(c *gin.Context) {
 	common.SendSuccess(c, gin.H{
 		"charts": charts,
 		"count":  len(charts),
+	})
+}
+
+// ListRepositoriesGin handles listing Helm repositories for Gin router
+func (h *ServiceHandler) ListRepositoriesGin(c *gin.Context) {
+	ctx := c.Request.Context()
+	// Parse query parameters (none for now)
+	opts := ListRepositoriesOptions{}
+
+	// List repositories
+	repositories, err := h.service.ListRepositories(ctx, opts)
+	if err != nil {
+		logrus.Errorf("failed to list helm repositories: %v", err)
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to list repositories", err.Error())
+		return
+	}
+
+	// Return response
+	common.SendSuccess(c, gin.H{
+		"repositories": repositories,
+		"count":        len(repositories),
 	})
 }
 

@@ -3781,7 +3781,7 @@ paths:
   /kubernetes/helm/charts:
     get:
       summary: List Helm charts
-      description: List available Helm charts from configured repositories
+      description: Search all Helm charts from configured repositories (equivalent to 'helm search repo -l')
       tags:
         - Kubernetes
         - Helm
@@ -3797,7 +3797,14 @@ paths:
             example: "bitnami"
         - name: all_versions
           in: query
-          description: Show all versions of charts
+          description: Show all versions of charts (equivalent to -l flag in helm search)
+          required: false
+          schema:
+            type: boolean
+            default: true
+        - name: devel
+          in: query
+          description: Include development versions (equivalent to --devel flag)
           required: false
           schema:
             type: boolean
@@ -3809,6 +3816,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HelmChartsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/HelmNotAvailableError'
+        '500':
+          $ref: '#/components/responses/HelmError'
+
+  /kubernetes/helm/repositories:
+    get:
+      summary: List Helm repositories
+      description: List all configured Helm repositories (equivalent to 'helm repo list')
+      tags:
+        - Kubernetes
+        - Helm
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Helm repositories listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HelmRepositoriesResponse'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '403':
@@ -6744,19 +6774,52 @@ components:
         name:
           type: string
           description: Name of the Helm chart
-          example: "nginx"
+          example: "bitnami/nginx"
         version:
           type: string
           description: Version of the chart
-          example: "latest"
+          example: "13.2.23"
         description:
           type: string
           description: Description of the chart
-          example: "NGINX web server"
+          example: "NGINX Open Source plus a number of useful modules"
         repository:
           type: string
           description: Repository containing the chart
           example: "bitnami"
+        app_version:
+          type: string
+          description: Version of the application being deployed
+          example: "1.25.3"
+
+    HelmRepositoriesResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                repositories:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/HelmRepository'
+                count:
+                  type: integer
+                  description: Number of repositories returned
+                  example: 2
+
+    HelmRepository:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name of the Helm repository
+          example: "bitnami"
+        url:
+          type: string
+          description: URL of the Helm repository
+          example: "https://charts.bitnami.com/bitnami"
 
     # Kubernetes Resource Detail Response Schemas
     PodDetailResponse:

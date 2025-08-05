@@ -182,10 +182,11 @@ func main() {
 			api.GET("/kubernetes/cronjobs", noK8sHandler)
 			api.GET("/kubernetes/cluster-info", noK8sHandler)
 			
-			// Helm routes with NoHelmHandler
-			noHelmHandler := helm.NoHelmHandler()
-			api.GET("/kubernetes/helm/releases", noHelmHandler)
-			api.GET("/kubernetes/helm/charts", noHelmHandler)
+				// Helm routes with NoHelmHandler
+				noHelmHandler := helm.NoHelmHandler()
+				api.GET("/kubernetes/helm/releases", noHelmHandler)
+				api.GET("/kubernetes/helm/charts", noHelmHandler)
+				api.GET("/kubernetes/helm/repositories", noHelmHandler)
 		} else {
 			// Register Kubernetes routes
 			k8sHandler := kubernetes.NewHandler(kubernetesService)
@@ -213,11 +214,12 @@ func main() {
 				noHelmHandler := helm.NoHelmHandler()
 				api.GET("/kubernetes/helm/releases", noHelmHandler)
 				api.GET("/kubernetes/helm/charts", noHelmHandler)
-			} else {
-				helmHandler := helm.NewServiceHandler(helmService)
-				api.GET("/kubernetes/helm/releases", helmHandler.ListReleasesGin)
-				api.GET("/kubernetes/helm/charts", helmHandler.ListChartsGin)
-			}
+				} else {
+					helmHandler := helm.NewServiceHandler(helmService)
+					api.GET("/kubernetes/helm/releases", helmHandler.ListReleasesGin)
+					api.GET("/kubernetes/helm/charts", helmHandler.ListChartsGin)
+					api.GET("/kubernetes/helm/repositories", helmHandler.ListRepositoriesGin)
+				}
 		}
 
 // User management endpoints

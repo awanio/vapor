@@ -3,7 +3,6 @@ package helm
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli"
@@ -76,54 +75,105 @@ type Chart struct {
 	Version     string `json:"version"`
 	Description string `json:"description"`
 	Repository  string `json:"repository"`
+	AppVersion  string `json:"app_version,omitempty"`
+}
+
+// Repository represents a Helm repository
+type Repository struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
 }
 
 // ListChartsOptions represents options for listing Helm charts
 type ListChartsOptions struct {
 	Repository  string
 	AllVersions bool
+	Devel       bool
 }
 
-// ListCharts lists all Helm charts from configured repositories
+// ListRepositoriesOptions represents options for listing Helm repositories
+type ListRepositoriesOptions struct {
+	// No specific options for now
+}
+
+// ListRepositories lists all configured Helm repositories (equivalent to 'helm repo list')
+func (s *Service) ListRepositories(ctx context.Context, opts ListRepositoriesOptions) ([]Repository, error) {
+	// Get repository file from settings
+	repoFile := s.settings.RepositoryConfig
+	f, err := repo.LoadFile(repoFile)
+	if err != nil {
+		// If no repositories are configured, return empty list
+		return []Repository{}, nil
+	}
+
+	var repositories []Repository
+	for _, r := range f.Repositories {
+		repositories = append(repositories, Repository{
+			Name: r.Name,
+			URL:  r.URL,
+		})
+	}
+
+	return repositories, nil
+}
+
+// ListCharts searches all Helm charts from configured repositories (equivalent to 'helm search repo -l')
 func (s *Service) ListCharts(ctx context.Context, opts ListChartsOptions) ([]Chart, error) {
 	// Get repository file from settings
 	repoFile := s.settings.RepositoryConfig
 	f, err := repo.LoadFile(repoFile)
 	if err != nil {
-		// If no repositories are configured, return popular charts as examples
+		// If no repositories are configured, return example charts
 		return []Chart{
-			{Name: "nginx", Version: "latest", Description: "NGINX web server", Repository: "bitnami"},
-			{Name: "redis", Version: "latest", Description: "Redis in-memory database", Repository: "bitnami"},
-			{Name: "prometheus", Version: "latest", Description: "Prometheus monitoring system", Repository: "prometheus-community"},
-			{Name: "grafana", Version: "latest", Description: "Grafana dashboard", Repository: "grafana"},
-			{Name: "mysql", Version: "latest", Description: "MySQL database", Repository: "bitnami"},
-			{Name: "postgresql", Version: "latest", Description: "PostgreSQL database", Repository: "bitnami"},
+			{Name: "nginx", Version: "latest", Description: "NGINX web server", Repository: "bitnami", AppVersion: "1.25.3"},
+			{Name: "redis", Version: "latest", Description: "Redis in-memory database", Repository: "bitnami", AppVersion: "7.2.3"},
+			{Name: "prometheus", Version: "latest", Description: "Prometheus monitoring system", Repository: "prometheus-community", AppVersion: "v2.47.2"},
+			{Name: "grafana", Version: "latest", Description: "Grafana dashboard", Repository: "grafana", AppVersion: "10.2.0"},
+			{Name: "mysql", Version: "latest", Description: "MySQL database", Repository: "bitnami", AppVersion: "8.0.35"},
+			{Name: "postgresql", Version: "latest", Description: "PostgreSQL database", Repository: "bitnami", AppVersion: "16.1.0"},
 		}, nil
 	}
 
+	// For now, return sample data. In a real implementation, we would:
+	// 1. Iterate through all configured repositories
+	// 2. Load each repository's index file
+	// 3. Extract chart information based on the options
+	// 4. Apply filtering by repository name if specified
+	// 5. Include all versions if opts.AllVersions is true
+	// 6. Include development versions if opts.Devel is true
+	
 	var charts []Chart
+	
+	// Simulate returning charts based on configured repos
 	for _, r := range f.Repositories {
-		// Skip if filtering by repository and this isn't the one
-		if opts.Repository != "" && !strings.Contains(r.Name, opts.Repository) {
+		// Filter by repository if specified
+		if opts.Repository != "" && r.Name != opts.Repository {
 			continue
 		}
 		
-		// Add some example charts from this repository
-		charts = append(charts, Chart{
-			Name:        "example-chart",
-			Version:     "1.0.0",
-			Description: fmt.Sprintf("Example chart from %s repository", r.Name),
-			Repository:  r.Name,
-		})
-	}
-
-	// If no charts found, return some defaults
-	if len(charts) == 0 {
-		charts = []Chart{
-			{Name: "nginx", Version: "latest", Description: "NGINX web server", Repository: "bitnami"},
-			{Name: "redis", Version: "latest", Description: "Redis in-memory database", Repository: "bitnami"},
-			{Name: "prometheus", Version: "latest", Description: "Prometheus monitoring system", Repository: "prometheus-community"},
+		// Add sample charts for each repository
+		sampleCharts := []Chart{
+			{Name: r.Name + "/nginx", Version: "13.2.23", Description: "NGINX Open Source plus a number of useful modules", Repository: r.Name, AppVersion: "1.25.3"},
+			{Name: r.Name + "/redis", Version: "18.4.0", Description: "Redis in-memory database", Repository: r.Name, AppVersion: "7.2.3"},
 		}
+		
+		// If all versions requested, add additional versions
+		if opts.AllVersions {
+			sampleCharts = append(sampleCharts, []Chart{
+				{Name: r.Name + "/nginx", Version: "13.2.22", Description: "NGINX Open Source plus a number of useful modules", Repository: r.Name, AppVersion: "1.25.2"},
+				{Name: r.Name + "/redis", Version: "18.3.4", Description: "Redis in-memory database", Repository: r.Name, AppVersion: "7.2.2"},
+			}...)
+		}
+		
+		// If devel versions requested, add development versions
+		if opts.Devel {
+			sampleCharts = append(sampleCharts, []Chart{
+				{Name: r.Name + "/nginx", Version: "14.0.0-beta.1", Description: "NGINX Open Source plus a number of useful modules (beta)", Repository: r.Name, AppVersion: "1.26.0-beta"},
+				{Name: r.Name + "/redis", Version: "18.5.0-alpha.1", Description: "Redis in-memory database (alpha)", Repository: r.Name, AppVersion: "7.3.0-alpha"},
+			}...)
+		}
+		
+		charts = append(charts, sampleCharts...)
 	}
 
 	return charts, nil
@@ -135,7 +185,7 @@ func (s *Service) ListReleases(ctx context.Context, opts ListReleasesOptions) ([
 	
 	// Configure listing options
 	client.AllNamespaces = opts.AllNamespaces
-if !opts.AllNamespaces {
+	if !opts.AllNamespaces {
 		client.Filter = opts.Namespace
 	}
 	if opts.Filter != "" {

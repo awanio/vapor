@@ -6,6 +6,14 @@ import { api, ApiError } from '../api';
 import type { DockerContainer, DockerImage, DockerVolume, DockerNetwork, DockerContainersResponse, DockerImagesResponse, DockerVolumesResponse, DockerNetworksResponse } from '../types/api';
 import '../components/modal-dialog';
 
+interface UploadItem {
+  id: string;
+  file: File;
+  progress: number;
+  status: 'pending' | 'uploading' | 'completed' | 'error';
+  error?: string;
+}
+
 export class DockerTab extends LitElement {
   @state() private activeTab = 'processes';
   @state() private containers: DockerContainer[] = [];
@@ -27,6 +35,13 @@ export class DockerTab extends LitElement {
   @state() private containerLogs = '';
   @state() private logsError: string | null = null;
   @state() private logsSearchTerm = '';
+  @state() private showImageActionsDropdown: boolean = false;
+  @state() private showPullImageModal: boolean = false;
+  @state() private imageName: string = '';
+  @state() private selectedFile: File | null = null;
+  @state() private showUploadDrawer: boolean = false;
+  @state() private uploadQueue: UploadItem[] = [];
+  @state() private isUploading: boolean = false;
 
   static override styles = css`
     :host {
@@ -183,9 +198,11 @@ export class DockerTab extends LitElement {
       gap: 1rem;
     }
 
-    .section-header {
+    .search-container {
       display: flex;
       align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
       gap: 1rem;
     }
 
@@ -725,6 +742,170 @@ export class DockerTab extends LitElement {
       font-weight: 600;
       color: var(--vscode-foreground);
     }
+
+    /* Upload drawer styles */
+    .upload-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+    }
+
+    .upload-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--vscode-foreground);
+    }
+
+    .upload-zone {
+      border: 2px dashed var(--vscode-widget-border, #454545);
+      border-radius: 8px;
+      padding: 40px 20px;
+      text-align: center;
+      margin-bottom: 24px;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .upload-zone:hover {
+      border-color: var(--vscode-focusBorder, #007acc);
+      background: rgba(0, 122, 204, 0.05);
+    }
+
+    .upload-zone.dragover {
+      border-color: var(--vscode-focusBorder, #007acc);
+      background: rgba(0, 122, 204, 0.1);
+    }
+
+    .upload-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      color: var(--vscode-descriptionForeground, #999);
+    }
+
+    .upload-text {
+      font-size: 16px;
+      margin-bottom: 8px;
+      color: var(--vscode-foreground);
+    }
+
+    .upload-hint {
+      font-size: 14px;
+      color: var(--vscode-descriptionForeground, #999);
+    }
+
+    .upload-queue {
+      margin-top: 24px;
+    }
+
+    .upload-item {
+      background: var(--vscode-bg-dark);
+      border: 1px solid var(--vscode-widget-border, #454545);
+      border-radius: 6px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+
+    .upload-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .upload-item-name {
+      font-weight: 500;
+      color: var(--vscode-foreground);
+      flex: 1;
+      margin-right: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .upload-item-size {
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground, #999);
+      margin-right: 12px;
+    }
+
+    .upload-item-status {
+      font-size: 12px;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .upload-item-status.pending {
+      background: rgba(255, 193, 7, 0.2);
+      color: #ffc107;
+    }
+
+    .upload-item-status.uploading {
+      background: rgba(0, 122, 204, 0.2);
+      color: #007acc;
+    }
+
+    .upload-item-status.completed {
+      background: rgba(76, 175, 80, 0.2);
+      color: #4caf50;
+    }
+
+    .upload-item-status.error {
+      background: rgba(244, 67, 54, 0.2);
+      color: #f44336;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: var(--vscode-widget-border, #454545);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--vscode-focusBorder, #007acc);
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+
+    .progress-fill.completed {
+      background: #4caf50;
+    }
+
+    .progress-fill.error {
+      background: #f44336;
+    }
+
+    .progress-text {
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground, #999);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .upload-error {
+      color: var(--vscode-errorForeground, #f48771);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    .upload-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--vscode-widget-border, #454545);
+    }
+
+    .hidden-file-input {
+      display: none;
+    }
   `;
 
   connectedCallback() {
@@ -995,6 +1176,114 @@ export class DockerTab extends LitElement {
               <div class="logs-container">${unsafeHTML(this.highlightSearchTerm(this.containerLogs, this.logsSearchTerm))}</div>`}
           </div>
         </div>` : ''}
+
+      ${this.showUploadDrawer ? html`
+        <div class="drawer">
+          <button class="close-btn" @click=${() => { 
+            this.showUploadDrawer = false; 
+            this.uploadQueue = [];
+            this.isUploading = false;
+          }}>✕</button>
+          <div class="drawer-content">
+            <div class="upload-header">
+              <h2 class="upload-title">Upload Docker Image</h2>
+            </div>
+            
+            <div class="upload-zone" 
+                 @click=${() => this.shadowRoot?.querySelector('#file-input')?.click()}
+                 @dragover=${this.handleDragOver}
+                 @dragleave=${this.handleDragLeave}
+                 @drop=${this.handleDrop}>
+              <div class="upload-icon">📁</div>
+              <div class="upload-text">Drop image files here or click to browse</div>
+              <div class="upload-hint">Supports .tar, .tar.gz, .tgz files</div>
+            </div>
+            
+            <input 
+              type="file" 
+              id="file-input" 
+              class="hidden-file-input"
+              accept=".tar,.tar.gz,.tgz"
+              @change=${this.handleFileSelect}
+            />
+            
+            ${this.uploadQueue.length > 0 ? html`
+              <div class="upload-queue">
+                <h3>Upload Queue</h3>
+                ${this.uploadQueue.map(item => html`
+                  <div class="upload-item">
+                    <div class="upload-item-header">
+                      <span class="upload-item-name">${item.file.name}</span>
+                      <span class="upload-item-size">${this.formatFileSize(item.file.size)}</span>
+                      <span class="upload-item-status ${item.status}">${item.status}</span>
+                    </div>
+                    
+                    ${item.status === 'uploading' || item.status === 'completed' ? html`
+                      <div class="progress-bar">
+                        <div class="progress-fill ${item.status}" style="width: ${item.progress}%"></div>
+                      </div>
+                      <div class="progress-text">
+                        <span>${item.progress}%</span>
+                        <span>${item.status === 'completed' ? 'Complete' : 'Uploading...'}</span>
+                      </div>
+                    ` : ''}
+                    
+                    ${item.error ? html`
+                      <div class="upload-error">${item.error}</div>
+                    ` : ''}
+                    
+                    ${item.status === 'pending' || item.status === 'error' ? html`
+                      <button class="btn btn-secondary" style="margin-top: 8px; font-size: 12px;" 
+                              @click=${() => this.removeFromUploadQueue(item.id)}>Remove</button>
+                    ` : ''}
+                  </div>
+                `)}
+              </div>
+              
+              <div class="upload-actions">
+                <button class="btn btn-primary" 
+                        ?disabled=${this.isUploading || this.uploadQueue.filter(i => i.status === 'pending').length === 0}
+                        @click=${this.startUpload}>
+                  ${this.isUploading ? 'Uploading...' : 'Start Upload'}
+                </button>
+                <button class="btn btn-secondary" @click=${this.clearCompletedUploads}>Clear Completed</button>
+              </div>
+            ` : ''}
+          </div>
+        </div>` : ''}
+
+      <modal-dialog
+        ?open=${this.showPullImageModal}
+        .title="Pull Docker Image"
+        size="medium"
+        @modal-close=${() => this.showPullImageModal = false}
+      >
+        <div style="margin-bottom: 16px;">
+          <label for="image-name" style="display: block; margin-bottom: 8px; font-weight: 500;">Image Name:</label>
+          <input 
+            id="image-name"
+            type="text" 
+            class="search-input"
+            style="width: 100%; max-width: none;"
+            placeholder="e.g., nginx:latest or ubuntu:20.04"
+            .value=${this.imageName}
+            @input=${(e: any) => this.imageName = e.target.value}
+          />
+          <div style="font-size: 12px; color: var(--vscode-descriptionForeground, #999); margin-top: 4px;">
+            Enter the full image name including tag (if needed)
+          </div>
+        </div>
+        <div slot="footer" style="display: flex; gap: 8px; justify-content: flex-end;">
+          <button class="btn btn-secondary" @click=${() => { this.showPullImageModal = false; this.imageName = ''; }}>
+            Cancel
+          </button>
+          <button class="btn btn-primary" 
+                  ?disabled=${!this.imageName.trim()}
+                  @click=${this.handlePullImage}>
+            Pull Image
+          </button>
+        </div>
+      </modal-dialog>
     `;
   }
 
@@ -1114,8 +1403,15 @@ export class DockerTab extends LitElement {
           @input=${(e: any) => this.searchTerm = e.target.value}
         />
       </div>
+      <div class="action-menu">
+        <button class="btn btn-primary" @click=${(e: Event) => this.toggleImageActionsMenu(e)}>+ Add Image</button>
+        <div class="action-dropdown ${this.showImageActionsDropdown ? 'show' : ''}">
+          <button @click=${() => { this.closeAllMenus(); this.showPullImageModal = true; }}>Pull Image</button>
+          <button @click=${() => { this.closeAllMenus(); this.showUploadImageDialog(); }}>Upload Image</button>
+        </div>
+      </div>
     </div>
-      <table class="table">
+    <table class="table">
         <thead>
           <tr>
             <th>ID</th>
@@ -1143,6 +1439,7 @@ export class DockerTab extends LitElement {
                 <div class="action-menu">
                   <button class="action-dots" @click=${(e: Event) => this.toggleActionMenu(e, `docker-image-${index}`)}>⋮</button>
                   <div class="action-dropdown" id="docker-image-${index}">
+                    <button @click=${() => { this.closeAllMenus(); this.fetchImageDetails(image.id); }}>View Details</button>
                     <button class="danger" @click=${() => { this.closeAllMenus(); this.confirmDeleteImage(image); }}>${t('common.delete')}</button>
                   </div>
                 </div>
@@ -1596,6 +1893,167 @@ export class DockerTab extends LitElement {
         <p class="error-message">${this.detailError}</p>
       </div>
     `;
+  }
+
+  // Image action methods
+  private toggleImageActionsMenu(event: Event) {
+    event.stopPropagation();
+    this.showImageActionsDropdown = !this.showImageActionsDropdown;
+  }
+
+  private showUploadImageDialog() {
+    this.showUploadDrawer = true;
+  }
+
+  private async fetchImageDetails(imageId: string) {
+    try {
+      this.detailError = null;
+      const response = await api.get(`/docker/images/${imageId}`);
+      this.selectedImage = response.image || response;
+      this.selectedContainer = null;
+      this.showDrawer = true;
+    } catch (error) {
+      console.error('Error fetching image details:', error);
+      this.detailError = error instanceof ApiError ? error.message : 'Failed to fetch image details';
+      this.selectedContainer = null;
+      this.selectedImage = null;
+      this.showDrawer = true;
+    }
+  }
+
+  // Upload methods
+  private handleFileSelect = (event: Event) => {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      const file = input.files[0];
+      this.addToUploadQueue(file);
+    }
+  };
+
+  private handleDragOver = (event: DragEvent) => {
+    event.preventDefault();
+    const zone = event.currentTarget as HTMLElement;
+    zone.classList.add('dragover');
+  };
+
+  private handleDragLeave = (event: DragEvent) => {
+    event.preventDefault();
+    const zone = event.currentTarget as HTMLElement;
+    zone.classList.remove('dragover');
+  };
+
+  private handleDrop = (event: DragEvent) => {
+    event.preventDefault();
+    const zone = event.currentTarget as HTMLElement;
+    zone.classList.remove('dragover');
+    
+    if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
+      const file = event.dataTransfer.files[0];
+      this.addToUploadQueue(file);
+    }
+  };
+
+  private addToUploadQueue(file: File) {
+    const uploadItem: UploadItem = {
+      id: crypto.randomUUID(),
+      file,
+      progress: 0,
+      status: 'pending'
+    };
+    
+    this.uploadQueue = [...this.uploadQueue, uploadItem];
+  }
+
+  private removeFromUploadQueue(id: string) {
+    this.uploadQueue = this.uploadQueue.filter(item => item.id !== id);
+  }
+
+  private async startUpload() {
+    const pendingItems = this.uploadQueue.filter(item => item.status === 'pending');
+    if (pendingItems.length === 0) return;
+
+    this.isUploading = true;
+    
+    for (const item of pendingItems) {
+      await this.uploadFile(item);
+    }
+    
+    this.isUploading = false;
+  }
+
+  private async uploadFile(item: UploadItem) {
+    try {
+      // Update status to uploading
+      this.updateUploadItem(item.id, { status: 'uploading', progress: 0 });
+      
+      const formData = new FormData();
+      formData.append('file', item.file);
+      
+      // Mock progress for now - in real implementation, you'd track actual upload progress
+      const progressInterval = setInterval(() => {
+        const currentItem = this.uploadQueue.find(i => i.id === item.id);
+        if (currentItem && currentItem.progress < 90) {
+          this.updateUploadItem(item.id, { progress: currentItem.progress + 10 });
+        }
+      }, 200);
+      
+      const response = await api.post('/docker/images/upload', formData);
+      
+      clearInterval(progressInterval);
+      this.updateUploadItem(item.id, { status: 'completed', progress: 100 });
+      
+      // Refresh images list
+      this.fetchImages();
+      
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      this.updateUploadItem(item.id, { 
+        status: 'error', 
+        error: error instanceof ApiError ? error.message : 'Upload failed' 
+      });
+    }
+  }
+
+  private updateUploadItem(id: string, updates: Partial<UploadItem>) {
+    this.uploadQueue = this.uploadQueue.map(item => 
+      item.id === id ? { ...item, ...updates } : item
+    );
+  }
+
+  private clearCompletedUploads() {
+    this.uploadQueue = this.uploadQueue.filter(item => 
+      item.status !== 'completed' && item.status !== 'error'
+    );
+  }
+
+  private formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  // Pull image method
+  private async handlePullImage() {
+    if (!this.imageName.trim()) return;
+    
+    try {
+      const response = await api.post('/docker/images/pull', {
+        image: this.imageName.trim()
+      });
+      
+      // Close modal and reset form
+      this.showPullImageModal = false;
+      this.imageName = '';
+      
+      // Refresh images list
+      this.fetchImages();
+      
+    } catch (error) {
+      console.error('Error pulling image:', error);
+      // TODO: Add error handling UI - could show a toast notification or update modal with error
+    }
   }
 }
 

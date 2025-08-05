@@ -6,6 +6,14 @@ import { api, ApiError } from '../api';
 import type { Container, Image, ContainersResponse, ImagesResponse } from '../types/api';
 import '../components/modal-dialog';
 
+interface UploadItem {
+  id: string;
+  file: File;
+  progress: number;
+  status: 'pending' | 'uploading' | 'completed' | 'error';
+  error?: string;
+}
+
 export class ContainersTab extends LitElement {
   @state()
   private activeTab = 'containers';
@@ -59,8 +67,6 @@ export class ContainersTab extends LitElement {
   private logsError: string | null = null;
 
   @state()
-
-  @state()
   private logsSearchTerm: string = '';
 
   @state()
@@ -74,6 +80,15 @@ export class ContainersTab extends LitElement {
 
   @state()
   private selectedFile: File | null = null;
+
+  @state()
+  private showUploadDrawer: boolean = false;
+
+  @state()
+  private uploadQueue: UploadItem[] = [];
+
+  @state()
+  private isUploading: boolean = false;
 
   static override styles = css`
     :host {
@@ -770,6 +785,170 @@ export class ContainersTab extends LitElement {
       font-size: 1.125rem;
       font-weight: 600;
       color: var(--vscode-foreground);
+    }
+
+    /* Upload drawer styles */
+    .upload-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+    }
+
+    .upload-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--vscode-foreground);
+    }
+
+    .upload-zone {
+      border: 2px dashed var(--vscode-widget-border, #454545);
+      border-radius: 8px;
+      padding: 40px 20px;
+      text-align: center;
+      margin-bottom: 24px;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .upload-zone:hover {
+      border-color: var(--vscode-focusBorder, #007acc);
+      background: rgba(0, 122, 204, 0.05);
+    }
+
+    .upload-zone.dragover {
+      border-color: var(--vscode-focusBorder, #007acc);
+      background: rgba(0, 122, 204, 0.1);
+    }
+
+    .upload-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      color: var(--vscode-descriptionForeground, #999);
+    }
+
+    .upload-text {
+      font-size: 16px;
+      margin-bottom: 8px;
+      color: var(--vscode-foreground);
+    }
+
+    .upload-hint {
+      font-size: 14px;
+      color: var(--vscode-descriptionForeground, #999);
+    }
+
+    .upload-queue {
+      margin-top: 24px;
+    }
+
+    .upload-item {
+      background: var(--vscode-bg-dark);
+      border: 1px solid var(--vscode-widget-border, #454545);
+      border-radius: 6px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+
+    .upload-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .upload-item-name {
+      font-weight: 500;
+      color: var(--vscode-foreground);
+      flex: 1;
+      margin-right: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .upload-item-size {
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground, #999);
+      margin-right: 12px;
+    }
+
+    .upload-item-status {
+      font-size: 12px;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .upload-item-status.pending {
+      background: rgba(255, 193, 7, 0.2);
+      color: #ffc107;
+    }
+
+    .upload-item-status.uploading {
+      background: rgba(0, 122, 204, 0.2);
+      color: #007acc;
+    }
+
+    .upload-item-status.completed {
+      background: rgba(76, 175, 80, 0.2);
+      color: #4caf50;
+    }
+
+    .upload-item-status.error {
+      background: rgba(244, 67, 54, 0.2);
+      color: #f44336;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: var(--vscode-widget-border, #454545);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--vscode-focusBorder, #007acc);
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+
+    .progress-fill.completed {
+      background: #4caf50;
+    }
+
+    .progress-fill.error {
+      background: #f44336;
+    }
+
+    .progress-text {
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground, #999);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .upload-error {
+      color: var(--vscode-errorForeground, #f48771);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    .upload-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--vscode-widget-border, #454545);
+    }
+
+    .hidden-file-input {
+      display: none;
     }
   `;
 
@@ -1502,6 +1681,13 @@ renderImagesTable() {
           </div>
         </div>
       ` : ''}
+
+      ${this.showUploadDrawer ? html`
+        <div class="drawer">
+          <button class="close-btn" @click=${this.closeUploadDrawer}>✕</button>
+          ${this.renderUploadDrawer()}
+        </div>
+      ` : ''}
     `;
   }
 
@@ -1558,7 +1744,7 @@ renderImagesTable() {
         }
       });
     } else if (action === 'upload') {
-      this.triggerFileUpload();
+      this.openUploadDrawer();
     }
   }
 
@@ -1639,6 +1825,257 @@ renderImagesTable() {
       console.error('Error pulling image:', error);
       // TODO: Show error message to user
     }
+  }
+
+  // Upload drawer methods
+  openUploadDrawer() {
+    this.showUploadDrawer = true;
+    this.uploadQueue = [];
+  }
+
+  closeUploadDrawer() {
+    this.showUploadDrawer = false;
+    this.uploadQueue = [];
+    this.isUploading = false;
+  }
+
+  handleUploadZoneClick() {
+    const fileInput = this.shadowRoot?.querySelector('#uploadFileInput') as HTMLInputElement;
+    fileInput?.click();
+  }
+
+  handleFileInputChange(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const files = input.files;
+    if (files && files.length > 0) {
+      this.addFilesToQueue(Array.from(files));
+    }
+    // Reset the input to allow selecting the same file again
+    input.value = '';
+  }
+
+  handleDragOver(event: DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    const uploadZone = event.currentTarget as HTMLElement;
+    uploadZone.classList.add('dragover');
+  }
+
+  handleDragLeave(event: DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    const uploadZone = event.currentTarget as HTMLElement;
+    uploadZone.classList.remove('dragover');
+  }
+
+  handleDrop(event: DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    const uploadZone = event.currentTarget as HTMLElement;
+    uploadZone.classList.remove('dragover');
+    
+    const files = Array.from(event.dataTransfer?.files || []);
+    if (files.length > 0) {
+      this.addFilesToQueue(files);
+    }
+  }
+
+  addFilesToQueue(files: File[]) {
+    const validFiles = files.filter(file => {
+      const validExtensions = ['.tar', '.tar.gz', '.tgz'];
+      return validExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+    });
+
+    const newItems: UploadItem[] = validFiles.map(file => ({
+      id: crypto.randomUUID(),
+      file,
+      progress: 0,
+      status: 'pending' as const
+    }));
+
+    this.uploadQueue = [...this.uploadQueue, ...newItems];
+  }
+
+  removeFromQueue(id: string) {
+    this.uploadQueue = this.uploadQueue.filter(item => item.id !== id);
+  }
+
+  async startUploads() {
+    if (this.isUploading) return;
+    
+    this.isUploading = true;
+    const pendingItems = this.uploadQueue.filter(item => item.status === 'pending');
+    
+    for (const item of pendingItems) {
+      await this.uploadSingleFile(item);
+    }
+    
+    this.isUploading = false;
+    // Refresh images list after all uploads complete
+    this.fetchImages();
+  }
+
+  async uploadSingleFile(item: UploadItem) {
+    try {
+      // Update status to uploading
+      const index = this.uploadQueue.findIndex(i => i.id === item.id);
+      if (index !== -1) {
+        this.uploadQueue[index] = { ...item, status: 'uploading', progress: 0 };
+        this.requestUpdate();
+      }
+
+      const formData = new FormData();
+      formData.append('image', item.file);
+
+      // Simulate progress for now (replace with actual XMLHttpRequest for real progress)
+      await this.simulateUploadProgress(item.id);
+
+      // TODO: Replace with actual upload API call
+      // const response = await api.post('/images/upload', formData, {
+      //   headers: {
+      //     'Content-Type': 'multipart/form-data'
+      //   },
+      //   onUploadProgress: (progressEvent) => {
+      //     const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+      //     this.updateUploadProgress(item.id, percentCompleted);
+      //   }
+      // });
+
+      // Update status to completed
+      const completedIndex = this.uploadQueue.findIndex(i => i.id === item.id);
+      if (completedIndex !== -1) {
+        this.uploadQueue[completedIndex] = { ...this.uploadQueue[completedIndex], status: 'completed', progress: 100 };
+        this.requestUpdate();
+      }
+
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      
+      // Update status to error
+      const errorIndex = this.uploadQueue.findIndex(i => i.id === item.id);
+      if (errorIndex !== -1) {
+        this.uploadQueue[errorIndex] = { 
+          ...this.uploadQueue[errorIndex], 
+          status: 'error', 
+          error: error instanceof Error ? error.message : 'Upload failed'
+        };
+        this.requestUpdate();
+      }
+    }
+  }
+
+  async simulateUploadProgress(itemId: string) {
+    // Simulate upload progress (remove this when implementing real upload)
+    for (let progress = 0; progress <= 100; progress += 10) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      this.updateUploadProgress(itemId, progress);
+    }
+  }
+
+  updateUploadProgress(itemId: string, progress: number) {
+    const index = this.uploadQueue.findIndex(item => item.id === itemId);
+    if (index !== -1) {
+      this.uploadQueue[index] = { ...this.uploadQueue[index], progress };
+      this.requestUpdate();
+    }
+  }
+
+  clearCompletedUploads() {
+    this.uploadQueue = this.uploadQueue.filter(item => item.status !== 'completed');
+  }
+
+  formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  renderUploadDrawer() {
+    return html`
+      <div class="drawer-content">
+        <div class="upload-header">
+          <h2 class="upload-title">Upload Images</h2>
+        </div>
+        
+        <div class="upload-zone" 
+             @click=${this.handleUploadZoneClick}
+             @dragover=${this.handleDragOver}
+             @dragleave=${this.handleDragLeave}
+             @drop=${this.handleDrop}>
+          <div class="upload-icon">📦</div>
+          <div class="upload-text">Drop image files here or click to browse</div>
+          <div class="upload-hint">Supported formats: .tar, .tar.gz, .tgz</div>
+        </div>
+        
+        <input id="uploadFileInput" 
+               class="hidden-file-input" 
+               type="file" 
+               accept=".tar,.tar.gz,.tgz" 
+               multiple
+               @change=${this.handleFileInputChange}>
+        
+        ${this.uploadQueue.length > 0 ? html`
+          <div class="upload-queue">
+            <h3>Upload Queue (${this.uploadQueue.length} files)</h3>
+            ${this.uploadQueue.map(item => this.renderUploadItem(item))}
+          </div>
+          
+          <div class="upload-actions">
+            ${!this.isUploading ? html`
+              <button class="btn btn-primary" 
+                      @click=${this.startUploads}
+                      ?disabled=${this.uploadQueue.filter(i => i.status === 'pending').length === 0}>
+                Start Upload${this.uploadQueue.filter(i => i.status === 'pending').length > 1 ? 's' : ''}
+              </button>
+            ` : html`
+              <button class="btn btn-secondary" disabled>
+                Uploading...
+              </button>
+            `}
+            
+            <button class="btn btn-secondary" @click=${this.clearCompletedUploads}>
+              Clear Completed
+            </button>
+            
+            <button class="btn btn-secondary" @click=${this.closeUploadDrawer}>
+              Close
+            </button>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  renderUploadItem(item: UploadItem) {
+    return html`
+      <div class="upload-item">
+        <div class="upload-item-header">
+          <span class="upload-item-name" title="${item.file.name}">${item.file.name}</span>
+          <span class="upload-item-size">${this.formatFileSize(item.file.size)}</span>
+          <span class="upload-item-status ${item.status}">${item.status.toUpperCase()}</span>
+          ${item.status === 'pending' ? html`
+            <button class="btn btn-danger" @click=${() => this.removeFromQueue(item.id)} style="padding: 2px 6px; font-size: 10px; margin-left: 8px;">✕</button>
+          ` : ''}
+        </div>
+        
+        ${item.status === 'uploading' || item.status === 'completed' || item.status === 'error' ? html`
+          <div class="progress-bar">
+            <div class="progress-fill ${item.status}" style="width: ${item.progress}%"></div>
+          </div>
+          <div class="progress-text">
+            <span>${item.progress}%</span>
+            <span>${item.status === 'completed' ? 'Complete' : 
+                     item.status === 'error' ? 'Failed' : 'Uploading...'}</span>
+          </div>
+        ` : ''}
+        
+        ${item.error ? html`
+          <div class="upload-error">${item.error}</div>
+        ` : ''}
+      </div>
+    `;
   }
 }
 
