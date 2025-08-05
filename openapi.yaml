@@ -4010,33 +4010,18 @@ components:
         version:
           type: string
           description: The version of the CRD
+        kind:
+          type: string
+          description: The kind of the custom resource
         scope:
           type: string
           description: The scope of the CRD (Namespaced or Cluster)
           enum: [Namespaced, Cluster]
-        plural:
-          type: string
-          description: The plural name used in URLs
-        singular:
-          type: string
-          description: The singular name
-        kind:
-          type: string
-          description: The kind of the custom resource
-        shortNames:
+        names:
           type: array
           items:
             type: string
-          description: Short names for the CRD
-        served:
-          type: boolean
-          description: Whether this version is served
-        storage:
-          type: boolean
-          description: Whether this version is used for storage
-        established:
-          type: boolean
-          description: Whether the CRD is established
+          description: All accepted names for the CRD (plural, singular, shortNames)
         age:
           type: string
           description: Age of the CRD
@@ -4045,6 +4030,10 @@ components:
           additionalProperties:
             type: string
           description: Labels attached to the CRD
+        creationTimestamp:
+          type: string
+          format: date-time
+          description: Timestamp when the CRD was created
     
     Interface:
       type: object

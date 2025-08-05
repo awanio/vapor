@@ -242,3 +242,16 @@ type CronJobInfo struct {
 	Labels            map[string]string `json:"labels"`
 	CreationTimestamp time.Time         `json:"creationTimestamp"`
 }
+
+// CRDInfo represents simplified Custom Resource Definition information
+type CRDInfo struct {
+	Name              string            `json:"name"`
+	Group             string            `json:"group"`
+	Version           string            `json:"version"`
+	Kind              string            `json:"kind"`
+	Scope             string            `json:"scope"`
+	Names             []string          `json:"names"`
+	Age               string            `json:"age"`
+	Labels            map[string]string `json:"labels"`
+	CreationTimestamp time.Time         `json:"creationTimestamp"`
+}

@@ -1452,35 +1452,37 @@ renderPodDetailContent(data: any) {
         ${this.activeSubmenu === 'configurations' ? this.renderConfigurationTabs() : ''}
         ${this.activeSubmenu === 'helms' ? this.renderHelmTabs() : ''}
         <div class="search-container">
-          <div class="namespace-filter">
-          <div class="namespace-dropdown">
-            <button class="namespace-button" @click=${(e) => this.toggleNamespaceDropdown(e)}>
-              ${this.getSelectedNamespaceDisplayName()}
-              <span class="namespace-arrow ${this.showNamespaceDropdown ? 'open' : ''}">▼</span>
-            </button>
-            <div class="namespace-dropdown-content ${this.showNamespaceDropdown ? 'show' : ''}">
-              <div class="namespace-search">
-                <input 
-                  type="text" 
-                  class="namespace-search-input" 
-                  .value=${this.namespaceSearchQuery}
-                  @input=${this.handleNamespaceSearch}
-                  placeholder="Filter namespaces..."
-                />
-              </div>
-              <div class="namespace-options">
-                ${this.getFilteredNamespaces().map(namespace => html`
-                  <button class="namespace-option ${namespace === this.selectedNamespace ? 'selected' : ''}"
-                    @click=${() => this.selectNamespace(namespace)}>
-                    ${namespace}
-                  </button>`
-                )}
-                ${this.getFilteredNamespaces().length === 0 ? 
-                  html`<div class="no-namespaces">No namespaces found</div>` : ''}
+          ${this.activeSubmenu !== 'nodes' ? html`
+            <div class="namespace-filter">
+            <div class="namespace-dropdown">
+              <button class="namespace-button" @click=${(e) => this.toggleNamespaceDropdown(e)}>
+                ${this.getSelectedNamespaceDisplayName()}
+                <span class="namespace-arrow ${this.showNamespaceDropdown ? 'open' : ''}">▼</span>
+              </button>
+              <div class="namespace-dropdown-content ${this.showNamespaceDropdown ? 'show' : ''}">
+                <div class="namespace-search">
+                  <input 
+                    type="text" 
+                    class="namespace-search-input" 
+                    .value=${this.namespaceSearchQuery}
+                    @input=${this.handleNamespaceSearch}
+                    placeholder="Filter namespaces..."
+                  />
+                </div>
+                <div class="namespace-options">
+                  ${this.getFilteredNamespaces().map(namespace => html`
+                    <button class="namespace-option ${namespace === this.selectedNamespace ? 'selected' : ''}"
+                      @click=${() => this.selectNamespace(namespace)}>
+                      ${namespace}
+                    </button>`
+                  )}
+                  ${this.getFilteredNamespaces().length === 0 ? 
+                    html`<div class="no-namespaces">No namespaces found</div>` : ''}
+                </div>
               </div>
             </div>
-          </div>
-          </div>
+            </div>
+          ` : ''}
           <div class="search-wrapper">
             <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="11" cy="11" r="8"></circle>

@@ -22,6 +22,7 @@ type KubernetesService interface {
 	ListJobs(ctx context.Context, opts interface{}) ([]JobInfo, error)
 	ListCronJobs(ctx context.Context, opts interface{}) ([]CronJobInfo, error)
 	ListPods(ctx context.Context, opts interface{}) ([]PodInfo, error)
+	ListCRDs(ctx context.Context, opts interface{}) ([]CRDInfo, error)
 	GetPodDetail(ctx context.Context, namespace, name string) (PodDetail, error)
 	GetClusterInfo(ctx context.Context, opts interface{}) (ClusterInfo, error)
 	GetDeploymentDetail(ctx context.Context, namespace, name string) (DeploymentInfo, error)

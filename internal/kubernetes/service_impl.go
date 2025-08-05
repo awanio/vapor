@@ -10,15 +10,17 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 // Service represents the Kubernetes service implementation
 type Service struct {
-	client        kubernetes.Interface
-	nodeName      string
-	isControlPlane bool
+	client               kubernetes.Interface
+	apiExtensionsClient  apiextensionsclient.Interface
+	nodeName             string
+	isControlPlane       bool
 }
 
 // NewService creates a new Kubernetes service
@@ -55,6 +57,12 @@ func NewService() (*Service, error) {
 		return nil, err
 	}
 
+	// Create the API extensions client for CRDs
+	apiExtensionsClient, err := apiextensionsclient.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create API extensions client: %w", err)
+	}
+
 	// Get node name from environment
 	nodeName := os.Getenv("NODE_NAME")
 
@@ -79,9 +87,10 @@ func NewService() (*Service, error) {
 	}
 
 	return &Service{
-		client:        clientset,
-		nodeName:      nodeName,
-		isControlPlane: isControlPlane,
+		client:               clientset,
+		apiExtensionsClient:  apiExtensionsClient,
+		nodeName:             nodeName,
+		isControlPlane:       isControlPlane,
 	}, nil
 }
 
@@ -674,6 +683,58 @@ func (s *Service) GetCronJobDetail(ctx context.Context, namespace, name string) 
 }
 
 
+// ListCRDs lists all custom resource definitions in the cluster
+func (s *Service) ListCRDs(ctx context.Context, opts interface{}) ([]CRDInfo, error) {
+	crds, err := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list CRDs: %w", err)
+	}
+
+	crdList := make([]CRDInfo, 0, len(crds.Items))
+	for _, crd := range crds.Items {
+		// Get the scope (Namespaced or Cluster)
+		scope := string(crd.Spec.Scope)
+
+		// Get the latest version
+		latestVersion := ""
+		if len(crd.Spec.Versions) > 0 {
+			// Find the served version
+			for _, version := range crd.Spec.Versions {
+				if version.Served {
+					latestVersion = version.Name
+					break
+				}
+			}
+			// If no served version found, use the first one
+			if latestVersion == "" {
+				latestVersion = crd.Spec.Versions[0].Name
+			}
+		}
+
+		// Get accepted names
+		names := []string{crd.Spec.Names.Plural}
+		if crd.Spec.Names.Singular != "" {
+			names = append(names, crd.Spec.Names.Singular)
+		}
+		if len(crd.Spec.Names.ShortNames) > 0 {
+			names = append(names, crd.Spec.Names.ShortNames...)
+		}
+
+		crdList = append(crdList, CRDInfo{
+			Name:        crd.Name,
+			Group:       crd.Spec.Group,
+			Version:     latestVersion,
+			Kind:        crd.Spec.Names.Kind,
+			Scope:       scope,
+			Names:       names,
+			Age:         calculateAge(crd.CreationTimestamp.Time),
+			Labels:      crd.Labels,
+		})
+	}
+
+	return crdList, nil
+}
+
 // GetClusterInfo returns cluster information
 func (s *Service) GetClusterInfo(ctx context.Context, opts interface{}) (ClusterInfo, error) {
 	version, err := s.client.Discovery().ServerVersion()
@@ -731,6 +792,12 @@ func createServiceWithConfig(config *rest.Config) (*Service, error) {
 		return nil, fmt.Errorf("failed to create kubernetes clientset: %w", err)
 	}
 
+	// Create the API extensions client for CRDs
+	apiExtensionsClient, err := apiextensionsclient.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create API extensions client: %w", err)
+	}
+
 	// Get node name from environment
 	nodeName := os.Getenv("NODE_NAME")
 
@@ -757,9 +824,10 @@ func createServiceWithConfig(config *rest.Config) (*Service, error) {
 	}
 
 	return &Service{
-		client:         clientset,
-		nodeName:       nodeName,
-		isControlPlane: isControlPlane,
+		client:               clientset,
+		apiExtensionsClient:  apiExtensionsClient,
+		nodeName:             nodeName,
+		isControlPlane:       isControlPlane,
 	}, nil
 }
 

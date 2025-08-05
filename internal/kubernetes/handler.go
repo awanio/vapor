@@ -158,6 +158,15 @@ func (h *Handler) ListCronJobsGin(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"cronjobs": cronjobs, "count": len(cronjobs)})
 }
 
+func (h *Handler) ListCRDsGin(c *gin.Context) {
+	crds, err := h.service.ListCRDs(c.Request.Context(), nil)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to list CRDs", err.Error())
+		return
+	}
+	common.SendSuccess(c, gin.H{"crds": crds, "count": len(crds)})
+}
+
 func (h *Handler) GetClusterInfoGin(c *gin.Context) {
 	clusterInfo, err := h.service.GetClusterInfo(c.Request.Context(), nil)
 	if err != nil {
