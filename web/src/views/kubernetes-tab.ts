@@ -10,6 +10,7 @@ class KubernetesTab extends LitElement {
   @property({ type: Array }) storages = [];
   @property({ type: Array }) configurations = [];
   @property({ type: Array }) helms = [];
+  @property({ type: Array }) nodes = [];
   @property({ type: String }) error = null;
   @property({ type: String }) activeWorkloadTab = 'pods';
   @property({ type: String }) activeStorageTab = 'pvc';
@@ -739,6 +740,8 @@ class KubernetesTab extends LitElement {
         return this.renderConfigurationsTable(data);
       case 'helms':
         return this.renderHelmTable(data);
+      case 'nodes':
+        return this.renderNodesTable(data);
       default:
         return html`<div class="empty-state">Invalid submenu</div>`;
     }
@@ -967,6 +970,47 @@ class KubernetesTab extends LitElement {
     `;
   }
 
+  renderNodesTable(data) {
+    return html`
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Roles</th>
+            <th>Age</th>
+            <th>Version</th>
+            <th>Internal IP</th>
+            <th>External IP</th>
+            <th>OS Image</th>
+            <th>Kernel Version</th>
+            <th>Container Runtime</th>
+            <th>Labels</th>
+            <th>Annotations</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.map((node, index) => html`
+            <tr>
+              <td>${node.name}</td>
+              <td>${node.status}</td>
+              <td>${node.roles.join(', ')}</td>
+              <td>${node.age}</td>
+              <td>${node.version}</td>
+              <td>${node.internalIP}</td>
+              <td>${node.externalIP || '-'}</td>
+              <td>${node.osImage}</td>
+              <td>${node.kernelVersion}</td>
+              <td>${node.containerRuntime}</td>
+              <td>${this.renderObjectAsKeyValue(node.labels)}</td>
+              <td>${this.renderObjectAsKeyValue(node.annotations)}</td>
+            </tr>
+          `)}
+        </tbody>
+      </table>
+    `;
+  }
+
   private searchQuery: string = '';
 
   private handleSearchInput(event: Event) {
@@ -999,7 +1043,8 @@ class KubernetesTab extends LitElement {
     }
     
     // Filter by namespace if a specific namespace is selected
-    if (this.selectedNamespace !== 'all') {
+    // Skip namespace filtering for nodes since they are cluster-level resources
+    if (this.selectedNamespace !== 'all' && this.activeSubmenu !== 'nodes') {
       data = data.filter(item => item.namespace === this.selectedNamespace);
     }
     
@@ -1468,7 +1513,8 @@ renderPodDetailContent(data: any) {
       networks: 'Kubernetes Networks',
       storages: 'Kubernetes Storages',
       configurations: 'Kubernetes Configurations',
-      helms: 'Kubernetes Helms'
+      helms: 'Kubernetes Helms',
+      nodes: 'Kubernetes Nodes'
     };
     return titles[this.activeSubmenu] || 'Kubernetes';
   }
@@ -1485,7 +1531,7 @@ renderPodDetailContent(data: any) {
     const path = window.location.pathname;
     if (path.includes('/kubernetes/')) {
       const submenu = path.split('/kubernetes/')[1];
-      if (submenu && ['workloads', 'networks', 'storages', 'configurations', 'helms'].includes(submenu)) {
+      if (submenu && ['workloads', 'networks', 'storages', 'configurations', 'helms', 'nodes'].includes(submenu)) {
         this.activeSubmenu = submenu;
       }
     }
@@ -1500,14 +1546,14 @@ renderPodDetailContent(data: any) {
 
   private updateActiveSubmenu() {
     // Priority: subRoute property > URL path > default
-    if (this.subRoute && ['workloads', 'networks', 'storages', 'configurations', 'helms'].includes(this.subRoute)) {
+    if (this.subRoute && ['workloads', 'networks', 'storages', 'configurations', 'helms', 'nodes'].includes(this.subRoute)) {
       this.activeSubmenu = this.subRoute;
     } else {
       // Fallback to URL detection
       const path = window.location.pathname;
       if (path.includes('/kubernetes/')) {
         const submenu = path.split('/kubernetes/')[1];
-        if (submenu && ['workloads', 'networks', 'storages', 'configurations', 'helms'].includes(submenu)) {
+        if (submenu && ['workloads', 'networks', 'storages', 'configurations', 'helms', 'nodes'].includes(submenu)) {
           this.activeSubmenu = submenu;
         }
       }
@@ -1971,6 +2017,79 @@ renderPodDetailContent(data: any) {
         updated: '2024-01-14 16:00:00' 
       }
     ];
+    
+    // Nodes mock data - Since nodes are cluster-level resources (no namespace)
+    this.nodes = [
+      {
+        name: 'minikube',
+        status: 'Ready',
+        roles: ['control-plane'],
+        age: '30d',
+        version: 'v1.28.2',
+        internalIP: '192.168.49.2',
+        externalIP: null,
+        osImage: 'Ubuntu 22.04.3 LTS',
+        kernelVersion: '5.15.0-76-generic',
+        containerRuntime: 'docker://24.0.4',
+        labels: {
+          'kubernetes.io/arch': 'amd64',
+          'kubernetes.io/hostname': 'minikube',
+          'kubernetes.io/os': 'linux',
+          'minikube.k8s.io/version': 'v1.31.0',
+          'node-role.kubernetes.io/control-plane': '',
+          'node.kubernetes.io/exclude-from-external-load-balancers': ''
+        },
+        annotations: {
+          'kubeadm.alpha.kubernetes.io/cri-socket': 'unix:///var/run/cri-dockerd.sock',
+          'node.alpha.kubernetes.io/ttl': '0',
+          'volumes.kubernetes.io/controller-managed-attach-detach': 'true'
+        }
+      },
+      {
+        name: 'worker-node-1',
+        status: 'Ready',
+        roles: ['worker'],
+        age: '25d',
+        version: 'v1.28.2',
+        internalIP: '192.168.1.100',
+        externalIP: '203.0.113.10',
+        osImage: 'Ubuntu 22.04.3 LTS',
+        kernelVersion: '5.15.0-76-generic',
+        containerRuntime: 'containerd://1.7.2',
+        labels: {
+          'kubernetes.io/arch': 'amd64',
+          'kubernetes.io/hostname': 'worker-node-1',
+          'kubernetes.io/os': 'linux',
+          'node-role.kubernetes.io/worker': ''
+        },
+        annotations: {
+          'node.alpha.kubernetes.io/ttl': '0',
+          'volumes.kubernetes.io/controller-managed-attach-detach': 'true'
+        }
+      },
+      {
+        name: 'worker-node-2',
+        status: 'Ready',
+        roles: ['worker'],
+        age: '20d',
+        version: 'v1.28.2',
+        internalIP: '192.168.1.101',
+        externalIP: '203.0.113.11',
+        osImage: 'Ubuntu 22.04.3 LTS',
+        kernelVersion: '5.15.0-76-generic',
+        containerRuntime: 'containerd://1.7.2',
+        labels: {
+          'kubernetes.io/arch': 'amd64',
+          'kubernetes.io/hostname': 'worker-node-2',
+          'kubernetes.io/os': 'linux',
+          'node-role.kubernetes.io/worker': ''
+        },
+        annotations: {
+          'node.alpha.kubernetes.io/ttl': '0',
+          'volumes.kubernetes.io/controller-managed-attach-detach': 'true'
+        }
+      }
+    ];
   }
 
 
@@ -2198,6 +2317,29 @@ renderPodDetailContent(data: any) {
     }
   }
 
+  async fetchNodes() {
+    try {
+      const data = await Api.get('/kubernetes/nodes');
+      this.nodes = data.nodes.map(node => ({
+        name: node.name,
+        status: node.status,
+        roles: node.roles,
+        age: node.age,
+        version: node.version,
+        internalIP: node.internalIP,
+        externalIP: node.externalIP,
+        osImage: node.osImage,
+        kernelVersion: node.kernelVersion,
+        containerRuntime: node.containerRuntime,
+        labels: node.labels,
+        annotations: node.annotations
+      }));
+      this.error = null;
+    } catch (error) {
+      this.error = 'Failed to fetch nodes';
+    }
+  }
+
   async fetchNamespaces() {
     try {
       const data = await Api.get('/kubernetes/namespaces');
@@ -2293,6 +2435,7 @@ renderPodDetailContent(data: any) {
       this.networks = [];
       this.configurations = [];
       this.helms = [];
+      this.nodes = [];
       
       // Fetch all workload resources and combine them
       const [pods, deployments, statefulsets, daemonsets, jobs, cronjobs] = await Promise.all([
@@ -2321,6 +2464,9 @@ renderPodDetailContent(data: any) {
         this.fetchHelmReleases(),
         this.fetchHelmCharts()
       ]);
+      
+      // Fetch nodes
+      await this.fetchNodes();
       
       this.error = null;
     } catch (error) {
