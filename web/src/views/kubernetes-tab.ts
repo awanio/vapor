@@ -994,7 +994,7 @@ class KubernetesTab extends LitElement {
             <tr>
               <td>${node.name}</td>
               <td>${node.status}</td>
-              <td>${node.roles.join(', ')}</td>
+              <td>${Array.isArray(node.roles) ? node.roles.join(', ') : (node.roles || '-')}</td>
               <td>${node.age}</td>
               <td>${node.version}</td>
               <td>${node.internalIP}</td>
@@ -2416,8 +2416,13 @@ renderPodDetailContent(data: any) {
 
   connectedCallback() {
     super.connectedCallback();
+    console.log('KubernetesTab: connectedCallback called');
+    
     this.initializeMockData();
+    console.log('KubernetesTab: Mock data initialized, nodes length:', this.nodes.length);
+    
     this.updateActiveSubmenu();
+    console.log('KubernetesTab: Active submenu after update:', this.activeSubmenu);
     
     // Fetch namespaces and all Kubernetes resources
     this.fetchNamespaces();
@@ -2426,6 +2431,9 @@ renderPodDetailContent(data: any) {
     window.addEventListener('popstate', this.handleRouteChange);
     window.addEventListener('keydown', this.handleKeyDown);
     document.addEventListener('click', this.handleNamespaceDropdownOutsideClick);
+    
+    // Debug: Force render update
+    this.requestUpdate();
   }
 
   async fetchAllResources() {

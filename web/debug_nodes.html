@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Kubernetes Nodes</title>
+    <script type="module" src="./src/views/kubernetes-tab.ts"></script>
+</head>
+<body>
+    <h1>Debug Kubernetes Nodes</h1>
+    
+    <div id="test-nodes">
+        <h2>Test 1: Default Component</h2>
+        <kubernetes-tab></kubernetes-tab>
+    </div>
+    
+    <div id="test-nodes-forced">
+        <h2>Test 2: Force Nodes Submenu</h2>
+        <kubernetes-tab id="forced-nodes"></kubernetes-tab>
+    </div>
+
+    <script>
+        // Force the second component to show nodes
+        document.addEventListener('DOMContentLoaded', () => {
+            const forcedComponent = document.getElementById('forced-nodes');
+            if (forcedComponent) {
+                forcedComponent.activeSubmenu = 'nodes';
+                console.log('Forced activeSubmenu to nodes');
+                
+                // Debug logging
+                setTimeout(() => {
+                    console.log('Component activeSubmenu:', forcedComponent.activeSubmenu);
+                    console.log('Component nodes array:', forcedComponent.nodes);
+                    console.log('Component nodes length:', forcedComponent.nodes ? forcedComponent.nodes.length : 'undefined');
+                }, 1000);
+            }
+        });
+    </script>
+</body>
+</html>

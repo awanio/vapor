@@ -1209,6 +1209,386 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /docker/images/upload:
+    post:
+      summary: Create resumable upload session
+      description: Create a new resumable upload session for Docker image using TUS protocol
+      tags:
+        - Docker
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: Upload-Length
+          in: header
+          required: true
+          description: Total size of the file to upload
+          schema:
+            type: integer
+            format: int64
+        - name: Upload-Metadata
+          in: header
+          required: false
+          description: Metadata about the upload (filename, etc.)
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Upload session created successfully
+          headers:
+            Location:
+              description: URL for the upload session
+              schema:
+                type: string
+            Upload-Offset:
+              description: Current upload offset (starts at 0)
+              schema:
+                type: integer
+            Tus-Resumable:
+              description: TUS protocol version
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  upload_id:
+                    type: string
+                    example: "abc123-def456-ghi789"
+                  upload_url:
+                    type: string
+                    example: "/docker/images/upload/abc123-def456-ghi789"
+                  expires_at:
+                    type: string
+                    format: date-time
+                    example: "2025-08-06T15:38:32Z"
+        '400':
+          description: Invalid upload request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: File too large
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: List active upload sessions
+      description: List all active resumable upload sessions
+      tags:
+        - Docker
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Upload sessions listed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      uploads:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            upload_id:
+                              type: string
+                            total_size:
+                              type: integer
+                            uploaded_size:
+                              type: integer
+                            progress:
+                              type: number
+                              format: float
+                            status:
+                              type: string
+                              enum: [created, in_progress, completed, failed, cancelled]
+                            created_at:
+                              type: string
+                              format: date-time
+                            updated_at:
+                              type: string
+                              format: date-time
+                            filename:
+                              type: string
+                      count:
+                        type: integer
+
+  /docker/images/upload/{id}:
+    head:
+      summary: Get upload session info
+      description: Get information about a resumable upload session
+      tags:
+        - Docker
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Upload session ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Upload session info retrieved successfully
+          headers:
+            Upload-Offset:
+              description: Current upload offset
+              schema:
+                type: integer
+            Upload-Length:
+              description: Total upload length
+              schema:
+                type: integer
+            Tus-Resumable:
+              description: TUS protocol version
+              schema:
+                type: string
+            Cache-Control:
+              description: Cache control header
+              schema:
+                type: string
+        '404':
+          description: Upload session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    patch:
+      summary: Upload chunk
+      description: Upload a chunk of data to a resumable upload session
+      tags:
+        - Docker
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Upload session ID
+          schema:
+            type: string
+        - name: Upload-Offset
+          in: header
+          required: true
+          description: Byte offset where this chunk starts
+          schema:
+            type: integer
+            format: int64
+        - name: Content-Type
+          in: header
+          required: true
+          description: Must be application/offset+octet-stream
+          schema:
+            type: string
+            enum: ["application/offset+octet-stream"]
+      requestBody:
+        required: true
+        content:
+          application/offset+octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '204':
+          description: Chunk uploaded successfully
+          headers:
+            Upload-Offset:
+              description: New upload offset after this chunk
+              schema:
+                type: integer
+            Tus-Resumable:
+              description: TUS protocol version
+              schema:
+                type: string
+        '400':
+          description: Invalid chunk upload request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Upload session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Offset mismatch or upload already completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '410':
+          description: Upload session expired or cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: Get upload status
+      description: Get detailed status of a resumable upload session
+      tags:
+        - Docker
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Upload session ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Upload status retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      upload_id:
+                        type: string
+                      total_size:
+                        type: integer
+                      uploaded_size:
+                        type: integer
+                      progress:
+                        type: number
+                        format: float
+                      status:
+                        type: string
+                        enum: [created, in_progress, completed, failed, cancelled]
+                      created_at:
+                        type: string
+                        format: date-time
+                      updated_at:
+                        type: string
+                        format: date-time
+                      metadata:
+                        type: object
+                        additionalProperties:
+                          type: string
+                      chunk_size:
+                        type: integer
+        '404':
+          description: Upload session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Cancel upload session
+      description: Cancel a resumable upload session
+      tags:
+        - Docker
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Upload session ID
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Upload session cancelled successfully
+          headers:
+            Tus-Resumable:
+              description: TUS protocol version
+              schema:
+                type: string
+        '404':
+          description: Upload session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /docker/images/upload/{id}/complete:
+    post:
+      summary: Complete upload and import image
+      description: Complete a resumable upload session and import the Docker image
+      tags:
+        - Docker
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Upload session ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Upload completed and image imported successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      upload_id:
+                        type: string
+                      import_result:
+                        $ref: '#/components/schemas/ImageImportResult'
+                      runtime:
+                        type: string
+                        example: docker
+                      filename:
+                        type: string
+        '400':
+          description: Upload not complete
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Upload session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Failed to import image
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: No container runtime available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /storage/iscsi/sessions:
     get:
       summary: List iSCSI sessions
