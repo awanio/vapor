@@ -138,6 +138,17 @@ type Layer struct {
 	Comment   string    `json:"comment,omitempty"`
 }
 
+// ImageImportResult represents the result of importing an image
+type ImageImportResult struct {
+	ImageID    string   `json:"image_id"`
+	RepoTags   []string `json:"repo_tags"`
+	Size       int64    `json:"size"`
+	ImportedAt time.Time `json:"imported_at"`
+	Runtime    string   `json:"runtime"`
+	Status     string   `json:"status"`
+	Message    string   `json:"message,omitempty"`
+}
+
 // RuntimeClient defines the interface for container runtime operations
 type RuntimeClient interface {
 	ListContainers() ([]Container, error)
@@ -145,6 +156,7 @@ type RuntimeClient interface {
 	ListImages() ([]Image, error)
 	GetImage(id string) (*ImageDetail, error)
 	GetContainerLogs(id string) (string, error)
+	ImportImage(imagePath string) (*ImageImportResult, error)
 	GetRuntimeName() string
 	Close() error
 }

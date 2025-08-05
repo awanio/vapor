@@ -335,6 +335,29 @@ func (c *CRIClient) GetRuntimeName() string {
 	return c.runtimeName
 }
 
+// ImportImage imports an image from a tar.gz file using crictl
+func (c *CRIClient) ImportImage(filePath string) (*ImageImportResult, error) {
+	// Use crictl load command to import image from tarball
+	cmd := exec.Command("crictl", "load", "-i", filePath)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("failed to import image: %v, output: %s", err, string(output))
+	}
+
+	// Parse the output to extract image information
+	// crictl load typically outputs: "Loaded image: <image_name>"
+	importResult := &ImageImportResult{
+		ImageID:    "", // crictl doesn't directly return the image ID
+		RepoTags:   []string{},
+		ImportedAt: time.Now(),
+		Runtime:    c.runtimeName,
+		Status:     "success",
+		Message:    string(output),
+	}
+
+	return importResult, nil
+}
+
 // Close closes the connection
 func (c *CRIClient) Close() error {
 	if c.conn != nil {

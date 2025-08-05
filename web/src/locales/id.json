@@ -323,6 +323,8 @@
     "networks": "Jaringan",
     "storages": "Penyimpanan",
     "configurations": "Konfigurasi",
+    "nodes": "Node",
+    "crds": "CRD",
     "helms": "Grafik Helm"
   },
   "users": {

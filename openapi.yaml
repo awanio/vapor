@@ -1106,6 +1106,109 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /images/import:
+    post:
+      summary: Import container image from tarball
+      tags:
+        - Container
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Image imported successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      import_result:
+                        $ref: '#/components/schemas/ImageImportResult'
+                      runtime:
+                        type: string
+                        example: docker
+                      filename:
+                        type: string
+                        example: "my-image.tar.gz"
+        '400':
+          description: Invalid file or request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Failed to import image
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /docker/images/import:
+    post:
+      summary: Import Docker image from tarball
+      tags:
+        - Docker
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Docker image imported successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      import_result:
+                        $ref: '#/components/schemas/ImageImportResult'
+                      runtime:
+                        type: string
+                        example: docker
+                      filename:
+                        type: string
+                        example: "docker-image.tar.gz"
+        '400':
+          description: Invalid file or request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Failed to import Docker image
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /storage/iscsi/sessions:
     get:
       summary: List iSCSI sessions
@@ -4578,6 +4681,43 @@ components:
               type: object
               additionalProperties:
                 type: string
+
+    ImageImportResult:
+      type: object
+      properties:
+        image_id:
+          type: string
+          description: The ID of the imported image
+          example: "sha256:abc123def456"
+        repo_tags:
+          type: array
+          items:
+            type: string
+          description: Repository tags for the imported image
+          example: ["my-app:latest"]
+        size:
+          type: integer
+          format: int64
+          description: Size of the imported image in bytes
+          example: 125829120
+        imported_at:
+          type: string
+          format: date-time
+          description: Timestamp when the image was imported
+          example: "2025-08-05T15:00:00Z"
+        runtime:
+          type: string
+          description: Container runtime used for import
+          example: "docker"
+        status:
+          type: string
+          description: Import status
+          enum: [success, failed]
+          example: "success"
+        message:
+          type: string
+          description: Additional information about the import operation
+          example: "Loaded image: my-app:latest"
 
     # WebSocket Message Schemas
     WSAuthMessage:

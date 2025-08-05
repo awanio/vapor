@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"time"
 
@@ -388,6 +389,42 @@ func (d *DockerClient) Close() error {
 		return d.client.Close()
 	}
 	return nil
+}
+
+// ImportImage imports a Docker image from a tar.gz file
+func (d *DockerClient) ImportImage(filePath string) (*ImageImportResult, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute) // Set a timeout for large operations
+	defer cancel()
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file: %w", err)
+	}
+	defer file.Close()
+
+	// Import the image
+	imageCreateResponse, err := d.client.ImageLoad(ctx, file, false)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load image: %w", err)
+	}
+	defer imageCreateResponse.Body.Close()
+
+	// Read the body to fetch response info
+	respContent, err := io.ReadAll(imageCreateResponse.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	importResult := &ImageImportResult{
+		ImageID:    "",
+		RepoTags:   []string{},
+		ImportedAt: time.Now(),
+		Runtime:    "docker",
+		Status:     "success",
+		Message:    string(respContent),
+	}
+
+	return importResult, nil
 }
 
 // parseDockerTime parses Docker time strings to time.Time

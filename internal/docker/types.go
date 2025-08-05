@@ -233,3 +233,21 @@ type ImagePullResponse struct {
 	Message   string `json:"message"`
 	Success   bool   `json:"success"`
 }
+
+// ImageImportRequest represents a request to import an image
+type ImageImportRequest struct {
+	Source      string `json:"source"`
+	Destination string `json:"destination,omitempty"`
+	Tag         string `json:"tag,omitempty"`
+}
+
+// ImageImportResult represents the result of importing an image
+type ImageImportResult struct {
+	ImageID    string    `json:"image_id"`
+	RepoTags   []string  `json:"repo_tags"`
+	Size       int64     `json:"size"`
+	ImportedAt time.Time `json:"imported_at"`
+	Runtime    string    `json:"runtime"`
+	Status     string    `json:"status"`
+	Message    string    `json:"message,omitempty"`
+}

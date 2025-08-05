@@ -745,6 +745,17 @@ class KubernetesTab extends LitElement {
   }
 
   renderWorkloadTable(data) {
+    // Check if we're showing only CronJobs or Jobs to adjust header
+    const isCronJobsOnly = this.activeWorkloadTab === 'cronjobs';
+    const isJobsOnly = this.activeWorkloadTab === 'jobs';
+    
+    let headerText = 'Replicas';
+    if (isCronJobsOnly) {
+      headerText = 'Schedule';
+    } else if (isJobsOnly) {
+      headerText = 'Completions';
+    }
+    
     return html`
       <table class="table">
         <thead>
@@ -752,8 +763,8 @@ class KubernetesTab extends LitElement {
             <th>Name</th>
             <th>Type</th>
             <th>Namespace</th>
-            <th>Status</th>
-            <th>Replicas</th>
+            ${!isJobsOnly ? html`<th>Status</th>` : ''}
+            <th>${headerText}</th>
             <th>Age</th>
             <th>Actions</th>
           </tr>
@@ -769,7 +780,7 @@ class KubernetesTab extends LitElement {
               </td>
               <td>${item.type}</td>
               <td>${item.namespace}</td>
-              <td><span class="status ${item.status.toLowerCase()}">${item.status}</span></td>
+              ${!isJobsOnly ? html`<td><span class="status ${item.status.toLowerCase()}">${item.status}</span></td>` : ''}
               <td>${item.replicas || '-'}</td>
               <td>${item.age}</td>
               <td>
@@ -1398,7 +1409,7 @@ renderPodDetailContent(data: any) {
         <div class="search-container">
           <div class="namespace-filter">
           <div class="namespace-dropdown">
-            <button class="namespace-button" @click=${this.toggleNamespaceDropdown}>
+            <button class="namespace-button" @click=${(e) => this.toggleNamespaceDropdown(e)}>
               ${this.getSelectedNamespaceDisplayName()}
               <span class="namespace-arrow ${this.showNamespaceDropdown ? 'open' : ''}">▼</span>
             </button>
@@ -2072,8 +2083,7 @@ renderPodDetailContent(data: any) {
         name: job.name,
         type: 'Job',
         namespace: job.namespace,
-        status: job.succeeded > 0 ? 'Running' : job.failed > 0 ? 'Failed' : 'Pending',
-        replicas: `${job.succeeded}/${job.completions || 1}`,
+        replicas: job.completions,
         age: job.age
       }));
       return jobs;
@@ -2206,8 +2216,11 @@ renderPodDetailContent(data: any) {
     this.requestUpdate();
   }
 
-  private toggleNamespaceDropdown() {
+  private toggleNamespaceDropdown(event?: Event) {
     console.log('toggleNamespaceDropdown called, current state:', this.showNamespaceDropdown);
+    if (event) {
+      event.stopPropagation();
+    }
     this.showNamespaceDropdown = !this.showNamespaceDropdown;
     console.log('new state:', this.showNamespaceDropdown);
     if (this.showNamespaceDropdown) {

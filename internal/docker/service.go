@@ -3,8 +3,11 @@ package docker
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"strconv"
+	"strings"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
@@ -28,6 +31,7 @@ func NewService(client Client) *Service {
 func (s *Service) RegisterRoutes(r *mux.Router) {
 	r.HandleFunc("/docker/containers", s.createContainer).Methods("POST")
 	r.HandleFunc("/docker/images/pull", s.pullImage).Methods("POST")
+	r.HandleFunc("/docker/images/import", s.importImage).Methods("POST")
 	r.HandleFunc("/docker/ps", s.listContainers).Methods("GET")
 	r.HandleFunc("/docker/images", s.listImages).Methods("GET")
 	r.HandleFunc("/docker/networks", s.listNetworks).Methods("GET")
@@ -287,6 +291,25 @@ func (s *Service) pullImage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	common.RespondSuccess(w, ImagePullResponse{ImageName: req.ImageName, Message: "Image pulled successfully", Success: true})
+}
+
+func (s *Service) importImage(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	var req ImageImportRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		logrus.Errorf("failed to decode request: %v", err)
+		common.RespondError(w, http.StatusBadRequest, "INVALID_REQUEST", "Failed to decode request: "+err.Error())
+		return
+	}
+
+	result, err := s.client.ImportImage(ctx, req)
+	if err != nil {
+		logrus.Errorf("failed to import image: %v", err)
+		common.RespondError(w, http.StatusInternalServerError, "IMPORT_IMAGE_FAILED", "Failed to import image: "+err.Error())
+		return
+	}
+
+	common.RespondSuccess(w, result)
 }
 
 func (s *Service) removeNetwork(w http.ResponseWriter, r *http.Request) {
@@ -603,6 +626,62 @@ func (s *Service) PullImageGin(c *gin.Context) {
 		ImageName: req.ImageName,
 		Message:   "Image pulled successfully",
 		Success:   true,
+	}))
+}
+
+// ImportImageGin handles image import for Gin router
+func (s *Service) ImportImageGin(c *gin.Context) {
+	ctx := c.Request.Context()
+	
+	// Parse multipart form
+	file, header, err := c.Request.FormFile("image")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse("INVALID_FILE", "Failed to get uploaded file: "+err.Error()))
+		return
+	}
+	defer file.Close()
+
+	// Validate file extension
+	filename := header.Filename
+	if !strings.HasSuffix(filename, ".tar.gz") && !strings.HasSuffix(filename, ".tar") {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse("INVALID_FILE_TYPE", "Only .tar.gz and .tar files are supported"))
+		return
+	}
+
+	// Create temporary file
+	tempFile, err := os.CreateTemp("/tmp", "docker-image-*.tar.gz")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse("TEMP_FILE_ERROR", "Failed to create temporary file: "+err.Error()))
+		return
+	}
+	defer os.Remove(tempFile.Name())
+	defer tempFile.Close()
+
+	// Copy uploaded file to temporary file
+	_, err = io.Copy(tempFile, file)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse("FILE_COPY_ERROR", "Failed to save uploaded file: "+err.Error()))
+		return
+	}
+
+	// Import the image using Docker SDK
+	req := ImageImportRequest{
+		Source:      tempFile.Name(),
+		Destination: "", // Let Docker determine the name from the tar file
+		Tag:         "",
+	}
+
+	result, err := s.client.ImportImage(ctx, req)
+	if err != nil {
+		logrus.Errorf("failed to import image: %v", err)
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse("IMPORT_IMAGE_FAILED", "Failed to import image: "+err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, common.SuccessResponse(gin.H{
+		"import_result": result,
+		"runtime":       "docker",
+		"filename":      filename,
 	}))
 }
 

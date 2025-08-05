@@ -123,6 +123,7 @@ func main() {
 			api.GET("/containers/:id", containerService.GetContainer)
 			api.GET("/containers/:id/logs", containerService.GetContainerLogs)
 			api.GET("/images/:id", containerService.GetImage)
+			api.POST("/images/import", containerService.ImportImage)
 		}
 
 		// Docker service (separate from container service)
@@ -142,6 +143,7 @@ func main() {
 			// Container creation and image pulling
 			api.POST("/docker/containers", dockerService.CreateContainerGin)
 			api.POST("/docker/images/pull", dockerService.PullImageGin)
+			api.POST("/docker/images/import", dockerService.ImportImageGin)
 			
 			// Container detail and actions
 			api.GET("/docker/containers/:id", dockerService.GetContainerDetailGin)

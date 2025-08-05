@@ -307,6 +307,8 @@
     "networks": "Networks",
     "storages": "Storages",
     "configurations": "Configurations",
+    "nodes": "Nodes",
+    "crds": "CRDs",
     "helms": "Helm Charts"
   },
   "users": {

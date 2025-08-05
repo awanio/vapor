@@ -125,6 +125,8 @@ export class SidebarTree extends I18nLitElement {
     .icon-k8s-networks::before { content: '🔗'; }
     .icon-k8s-storage::before { content: '💾'; }
     .icon-configurations::before { content: '⚙️'; }
+    .icon-nodes::before { content: '🖥️'; }
+    .icon-crds::before { content: '📋'; }
     .icon-helm::before { content: '⛵'; }
     .icon-users::before { content: '👥'; }
 
@@ -298,6 +300,18 @@ export class SidebarTree extends I18nLitElement {
           label: 'kubernetes.configurations',
           icon: 'configurations',
           route: 'kubernetes/configurations'
+        },
+        {
+          id: 'kubernetes-nodes',
+          label: 'kubernetes.nodes',
+          icon: 'nodes',
+          route: 'kubernetes/nodes'
+        },
+        {
+          id: 'kubernetes-crds',
+          label: 'kubernetes.crds',
+          icon: 'crds',
+          route: 'kubernetes/crds'
         },
         {
           id: 'kubernetes-helms',

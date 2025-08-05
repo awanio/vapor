@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"time"
 
@@ -34,6 +35,7 @@ type Client interface {
 	RemoveNetwork(ctx context.Context, networkID string) error
 	CreateContainer(ctx context.Context, config container.Config, hostConfig container.HostConfig, networkConfig network.NetworkingConfig, containerName string) (string, error)
 	PullImage(ctx context.Context, imageName string) error
+	ImportImage(ctx context.Context, req ImageImportRequest) (ImageImportResult, error)
 }
 
 // dockerClient implements the Client interface using Docker SDK
@@ -226,6 +228,69 @@ func (c *dockerClient) PullImage(ctx context.Context, imageName string) error {
 	}
 	
 	return nil
+}
+
+// ImportImage imports an image from a tarball or URL
+func (c *dockerClient) ImportImage(ctx context.Context, req ImageImportRequest) (ImageImportResult, error) {
+	// For file-based import, we should use ImageLoad instead of ImageImport
+	// ImageLoad is used for Docker save/load format, which is what we expect
+	file, err := os.Open(req.Source)
+	if err != nil {
+		return ImageImportResult{}, fmt.Errorf("failed to open file: %w", err)
+	}
+	defer file.Close()
+
+	// Load the image using Docker SDK
+	imageLoadResponse, err := c.client.ImageLoad(ctx, file, false)
+	if err != nil {
+		return ImageImportResult{}, fmt.Errorf("failed to load image: %w", err)
+	}
+	defer imageLoadResponse.Body.Close()
+
+	// Read the load response to get information
+	respContent, err := io.ReadAll(imageLoadResponse.Body)
+	if err != nil {
+		return ImageImportResult{}, fmt.Errorf("failed to read image load response: %w", err)
+	}
+
+	responseText := string(respContent)
+	
+	// Parse the response to extract image information
+	// Docker load response typically contains "Loaded image: name:tag" or "Loaded image ID: sha256:..."
+	imageID := ""
+	repoTags := []string{}
+	size := int64(0)
+
+	// Try to get the most recent image (the one we just loaded)
+	images, err := c.client.ImageList(ctx, image.ListOptions{})
+	if err == nil && len(images) > 0 {
+		// Sort by created time and get the most recent
+		var newestImage image.Summary
+		newestTime := time.Unix(0, 0)
+		for _, img := range images {
+			created := time.Unix(img.Created, 0)
+			if created.After(newestTime) {
+				newestTime = created
+				newestImage = img
+			}
+		}
+		
+		if newestImage.ID != "" {
+			imageID = newestImage.ID
+			repoTags = newestImage.RepoTags
+			size = newestImage.Size
+		}
+	}
+
+	return ImageImportResult{
+		ImageID:    imageID,
+		RepoTags:   repoTags,
+		Size:       size,
+		ImportedAt: time.Now(),
+		Runtime:    "docker",
+		Status:     "success",
+		Message:    responseText,
+	}, nil
 }
 
 // Close closes the Docker client connection

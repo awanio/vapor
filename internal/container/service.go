@@ -2,8 +2,10 @@ package container
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/awanio/vapor/internal/common"
@@ -177,6 +179,59 @@ func (s *Service) GetContainerLogs(c *gin.Context) {
 		"container_id": id,
 		"logs":         logs,
 		"runtime":      s.client.GetRuntimeName(),
+	})
+}
+
+// ImportImage handles the POST /images/import endpoint for uploading and importing container images
+func (s *Service) ImportImage(c *gin.Context) {
+	// Check if we have a runtime client
+	if s.client == nil {
+		common.SendError(c, 503, "NO_RUNTIME_AVAILABLE", s.errorMessage)
+		return
+	}
+
+	// Parse multipart form
+	file, header, err := c.Request.FormFile("image")
+	if err != nil {
+		common.SendError(c, 400, "INVALID_FILE", "Failed to get uploaded file: "+err.Error())
+		return
+	}
+	defer file.Close()
+
+	// Validate file extension
+	filename := header.Filename
+	if !strings.HasSuffix(filename, ".tar.gz") && !strings.HasSuffix(filename, ".tar") {
+		common.SendError(c, 400, "INVALID_FILE_TYPE", "Only .tar.gz and .tar files are supported")
+		return
+	}
+
+	// Create temporary file
+	tempFile, err := os.CreateTemp("/tmp", "container-image-*.tar.gz")
+	if err != nil {
+		common.SendError(c, 500, "TEMP_FILE_ERROR", "Failed to create temporary file: "+err.Error())
+		return
+	}
+	defer os.Remove(tempFile.Name())
+	defer tempFile.Close()
+
+	// Copy uploaded file to temporary file
+	_, err = io.Copy(tempFile, file)
+	if err != nil {
+		common.SendError(c, 500, "FILE_COPY_ERROR", "Failed to save uploaded file: "+err.Error())
+		return
+	}
+
+	// Import the image using the runtime client
+	result, err := s.client.ImportImage(tempFile.Name())
+	if err != nil {
+		common.SendError(c, 500, "IMAGE_IMPORT_ERROR", err.Error())
+		return
+	}
+
+	common.SendSuccess(c, gin.H{
+		"import_result": result,
+		"runtime":       s.client.GetRuntimeName(),
+		"filename":      filename,
 	})
 }
 
