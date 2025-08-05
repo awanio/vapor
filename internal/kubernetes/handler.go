@@ -192,8 +192,8 @@ func (h *Handler) ListCRDObjectsGin(c *gin.Context) {
 
 func (h *Handler) GetCRDObjectDetailGin(c *gin.Context) {
 	crdName := c.Param("name")
+	namespace := c.Param("namespace")
 	objectName := c.Param("object-name")
-	namespace := c.Query("namespace")
 
 	crdObjectDetail, err := h.service.GetCRDObjectDetail(c.Request.Context(), crdName, objectName, namespace)
 	if err != nil {

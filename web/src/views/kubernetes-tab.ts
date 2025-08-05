@@ -27,6 +27,8 @@ class KubernetesTab extends LitElement {
   @property({ type: String }) selectedNamespace = 'all';
   @property({ type: Boolean }) showNamespaceDropdown = false;
   @property({ type: String }) namespaceSearchQuery = '';
+  @property({ type: Array }) notifications = [];
+  @property({ type: Number }) notificationId = 0;
 
   static styles = css`
     :host {
@@ -713,6 +715,129 @@ class KubernetesTab extends LitElement {
     .nested-content .detail-item {
       margin-bottom: 6px;
       padding: 4px 0;
+    }
+
+    .notification-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 10000;
+      max-width: 400px;
+    }
+
+    .notification {
+      background: var(--vscode-notifications-background, #252526);
+      border: 1px solid var(--vscode-notifications-border, #454545);
+      border-radius: 6px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      display: flex;
+      align-items: flex-start;
+      animation: slideIn 0.3s ease-out;
+      position: relative;
+    }
+
+    .notification.error {
+      border-left: 4px solid var(--vscode-errorForeground, #f14c4c);
+    }
+
+    .notification.success {
+      border-left: 4px solid var(--vscode-terminal-ansiGreen, #23d18b);
+    }
+
+    .notification.info {
+      border-left: 4px solid var(--vscode-focusBorder, #007acc);
+    }
+
+    .notification.warning {
+      border-left: 4px solid var(--vscode-terminal-ansiYellow, #f1fa8c);
+    }
+
+    .notification-icon {
+      margin-right: 12px;
+      font-size: 18px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .notification-icon.error {
+      color: var(--vscode-errorForeground, #f14c4c);
+    }
+
+    .notification-icon.success {
+      color: var(--vscode-terminal-ansiGreen, #23d18b);
+    }
+
+    .notification-icon.info {
+      color: var(--vscode-focusBorder, #007acc);
+    }
+
+    .notification-icon.warning {
+      color: var(--vscode-terminal-ansiYellow, #f1fa8c);
+    }
+
+    .notification-content {
+      flex: 1;
+    }
+
+    .notification-title {
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 4px;
+      color: var(--vscode-notifications-foreground, #cccccc);
+    }
+
+    .notification-message {
+      font-size: 13px;
+      color: var(--vscode-descriptionForeground, #999);
+      line-height: 1.4;
+    }
+
+    .notification-close {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: none;
+      border: none;
+      color: var(--vscode-notifications-foreground, #cccccc);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 3px;
+      font-size: 16px;
+      opacity: 0.7;
+      transition: opacity 0.2s;
+    }
+
+    .notification-close:hover {
+      opacity: 1;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideOut {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+    }
+
+    .notification.removing {
+      animation: slideOut 0.3s ease-in;
     }
   `;
 
@@ -1557,6 +1682,68 @@ renderPodDetailContent(data: any) {
     return String(value);
   }
 
+  // Notification system
+  showNotification(type: 'error' | 'success' | 'info' | 'warning', title: string, message: string, duration: number = 5000) {
+    const id = ++this.notificationId;
+    const notification = {
+      id,
+      type,
+      title,
+      message,
+      timestamp: Date.now()
+    };
+
+    this.notifications = [...this.notifications, notification];
+    this.requestUpdate();
+
+    // Auto remove after duration
+    if (duration > 0) {
+      setTimeout(() => {
+        this.removeNotification(id);
+      }, duration);
+    }
+  }
+
+  removeNotification(id: number) {
+    this.notifications = this.notifications.filter(n => n.id !== id);
+    this.requestUpdate();
+  }
+
+  renderNotifications() {
+    if (this.notifications.length === 0) {
+      return null;
+    }
+
+    return html`
+      <div class="notification-container">
+        ${this.notifications.map(notification => html`
+          <div class="notification ${notification.type}">
+            <div class="notification-icon ${notification.type}">
+              ${this.getNotificationIcon(notification.type)}
+            </div>
+            <div class="notification-content">
+              <div class="notification-title">${notification.title}</div>
+              <div class="notification-message">${notification.message}</div>
+            </div>
+            <button class="notification-close" @click=${() => this.removeNotification(notification.id)}>
+              ×
+            </button>
+          </div>
+        `)}
+      </div>
+    `;
+  }
+
+  getNotificationIcon(type: string): string {
+    switch (type) {
+      case 'error': return '⚠️';
+      case 'success': return '✅';
+      case 'info': return 'ℹ️';
+      case 'warning': return '⚠️';
+      default: return 'ℹ️';
+    }
+  }
+
   render() {
     return html`
       <div class="tab-container">
@@ -1620,6 +1807,7 @@ renderPodDetailContent(data: any) {
         </div>
         ${this.renderPodDetailsDrawer()}
         ${this.renderCrdDetailsDrawer()}
+        ${this.renderNotifications()}
       </div>
     `;
   }
@@ -2638,7 +2826,11 @@ renderPodDetailContent(data: any) {
         break;
       default:
         console.log('View details not implemented for type:', item.type);
-        alert(`Viewing details for ${item.name} (${item.type}) is not supported yet.`);
+        this.showNotification(
+          'info',
+          'Feature Not Available',
+          `Detailed view for ${item.type} resources is not implemented yet. Only Pod and CRD details are currently supported.`
+        );
         break;
     }
   }
@@ -2665,7 +2857,11 @@ renderPodDetailContent(data: any) {
         this.loadingPodDetails = false;
         this.showPodDetails = false;
         this.requestUpdate();
-        alert(`Failed to fetch pod details: ${error.message || error}`);
+        this.showNotification(
+          'error',
+          'Failed to Load Pod Details',
+          `Unable to fetch details for pod "${pod.name}": ${error.message || 'Unknown error occurred'}`
+        );
       });
   }
 
@@ -2691,14 +2887,22 @@ renderPodDetailContent(data: any) {
         this.loadingCrdDetails = false;
         this.showCrdDetails = false;
         this.requestUpdate();
-        alert(`Failed to fetch CRD details: ${error.message || error}`);
+        this.showNotification(
+          'error',
+          'Failed to Load CRD Details',
+          `Unable to fetch details for CRD "${crd.name}": ${error.message || 'Unknown error occurred'}`
+        );
       });
   }
 
   editItem(item) {
     // Implement edit logic here
     console.log('Editing item:', item);
-    alert(`Editing ${item.name || item.id}`);
+    this.showNotification(
+      'info',
+      'Edit Feature',
+      `Edit functionality for "${item.name}" is not implemented yet.`
+    );
   }
 
   deleteItem(item) {
@@ -2722,21 +2926,33 @@ renderPodDetailContent(data: any) {
     console.log('Scaling pods for:', item);
     const replicas = prompt(`Enter new replica count for ${item.name}:`, '3');
     if (replicas && !isNaN(replicas)) {
-      alert(`Scaling ${item.name} to ${replicas} replicas`);
+      this.showNotification(
+        'success',
+        'Scaling Initiated',
+        `Scaling "${item.name}" to ${replicas} replicas. This feature is not fully implemented yet.`
+      );
       // In a real app, you would make an API call here
     }
   }
 
   viewLogs(item) {
     console.log('Viewing logs for:', item);
-    alert(`Opening logs for ${item.name}`);
+    this.showNotification(
+      'info',
+      'Logs Viewer',
+      `Log viewer for "${item.name}" is not implemented yet.`
+    );
     // In a real app, you would open a logs viewer or modal
   }
 
   // Network-specific actions
   viewEndpoints(item) {
     console.log('Viewing endpoints for:', item);
-    alert(`Endpoints for ${item.name}: ${item.endpoints}`);
+    this.showNotification(
+      'info',
+      'Endpoint Information',
+      `${item.name} endpoints: ${item.endpoints}`
+    );
     // In a real app, you would show detailed endpoint information
   }
 
@@ -2745,7 +2961,11 @@ renderPodDetailContent(data: any) {
     console.log('Expanding volume:', item);
     const newSize = prompt(`Enter new size for ${item.name} (current: ${item.capacity}):`);
     if (newSize) {
-      alert(`Expanding ${item.name} to ${newSize}`);
+      this.showNotification(
+        'success',
+        'Volume Expansion Initiated',
+        `Expanding "${item.name}" to ${newSize}. This feature is not fully implemented yet.`
+      );
       // In a real app, you would make an API call to expand the volume
     }
   }
@@ -2753,7 +2973,11 @@ renderPodDetailContent(data: any) {
   // Configuration-specific actions
   viewKeys(item) {
     console.log('Viewing keys for:', item);
-    alert(`${item.name} has ${item.keys} keys`);
+    this.showNotification(
+      'info',
+      'Configuration Keys',
+      `"${item.name}" contains ${item.keys} keys. Detailed key viewer is not implemented yet.`
+    );
     // In a real app, you would show the actual keys (for ConfigMaps) or key names (for Secrets)
   }
 
@@ -2762,7 +2986,11 @@ renderPodDetailContent(data: any) {
     console.log('Upgrading release:', item);
     const newChart = prompt(`Enter new chart version for ${item.name}:`, item.chart);
     if (newChart) {
-      alert(`Upgrading ${item.name} to ${newChart}`);
+      this.showNotification(
+        'success',
+        'Helm Release Upgrade',
+        `Upgrading "${item.name}" to ${newChart}. This feature is not fully implemented yet.`
+      );
       // In a real app, you would make an API call to upgrade the Helm release
     }
   }
@@ -2771,7 +2999,11 @@ renderPodDetailContent(data: any) {
     console.log('Rolling back release:', item);
     const targetRevision = prompt(`Enter revision to rollback to for ${item.name}:`, (parseInt(item.revision) - 1).toString());
     if (targetRevision && !isNaN(targetRevision)) {
-      alert(`Rolling back ${item.name} to revision ${targetRevision}`);
+      this.showNotification(
+        'success',
+        'Helm Release Rollback',
+        `Rolling back "${item.name}" to revision ${targetRevision}. This feature is not fully implemented yet.`
+      );
       // In a real app, you would make an API call to rollback the Helm release
     }
   }
@@ -2779,7 +3011,11 @@ renderPodDetailContent(data: any) {
   uninstallRelease(item) {
     console.log('Uninstalling release:', item);
     if (confirm(`Are you sure you want to uninstall ${item.name}? This action cannot be undone.`)) {
-      alert(`Uninstalling ${item.name}`);
+      this.showNotification(
+        'success',
+        'Helm Release Uninstall',
+        `Uninstalling "${item.name}". This feature is not fully implemented yet.`
+      );
       // Now activeSubmenu directly matches property names (all plural)
       const currentData = this[this.activeSubmenu];
       if (currentData) {

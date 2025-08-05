@@ -506,14 +506,16 @@ func (s *Service) GetCRDObjectDetail(ctx context.Context, crdName, objectName, n
 	// Get object using dynamic client
 	var unstructuredObj *unstructured.Unstructured
 	if crd.Spec.Scope == "Namespaced" {
-		// For namespaced resources, namespace is required
-		targetNamespace := namespace
-		if targetNamespace == "" {
-			return CRDObjectDetail{}, fmt.Errorf("namespace is required for namespaced CRD %s", crdName)
+		// For namespaced resources, namespace is required and cannot be "-"
+		if namespace == "" || namespace == "-" {
+			return CRDObjectDetail{}, fmt.Errorf("namespace is required for namespaced CRD %s (use actual namespace, not '-')", crdName)
 		}
-		unstructuredObj, err = s.dynamicClient.Resource(gvr).Namespace(targetNamespace).Get(ctx, objectName, metav1.GetOptions{})
+		unstructuredObj, err = s.dynamicClient.Resource(gvr).Namespace(namespace).Get(ctx, objectName, metav1.GetOptions{})
 	} else {
-		// For cluster-scoped resources, ignore namespace parameter
+		// For cluster-scoped resources, namespace should be "-" or empty
+		if namespace != "" && namespace != "-" {
+			return CRDObjectDetail{}, fmt.Errorf("cluster-scoped CRD %s does not use namespaces (use '-' as namespace)", crdName)
+		}
 		unstructuredObj, err = s.dynamicClient.Resource(gvr).Get(ctx, objectName, metav1.GetOptions{})
 	}
 
