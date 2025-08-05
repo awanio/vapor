@@ -8,14 +8,14 @@ The Helm endpoints provide access to Helm package manager operations in your Kub
 GET /api/v1/kubernetes/helm/releases
 ```
 
-Lists all Helm releases in the cluster.
+Lists all Helm releases from all namespaces in the cluster by default.
 
 ### Query Parameters
 
 | Parameter     | Type    | Description |
 |--------------|---------|-------------|
-| namespace    | string  | Filter releases by namespace |
-| all          | boolean | List releases across all namespaces |
+| namespace    | string  | Filter releases by specific namespace (overrides default all-namespace behavior) |
+| all          | boolean | Explicitly control whether to show releases from all namespaces (default: true) |
 | filter       | string  | Filter releases by regular expression |
 
 ### Authorization

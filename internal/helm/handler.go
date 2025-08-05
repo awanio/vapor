@@ -48,9 +48,19 @@ func (h *ServiceHandler) ListChartsGin(c *gin.Context) {
 func (h *ServiceHandler) ListReleasesGin(c *gin.Context) {
 	ctx := c.Request.Context()
 	// Parse query parameters
+	// Default to all namespaces unless a specific namespace is requested
+	allNamespaces := true
+	if namespace := c.Query("namespace"); namespace != "" {
+		allNamespaces = false
+	}
+	// Allow explicit override with "all" parameter
+	if allParam := c.Query("all"); allParam != "" {
+		allNamespaces = allParam == "true"
+	}
+	
 	opts := ListReleasesOptions{
 		Namespace:     c.Query("namespace"),
-		AllNamespaces: c.Query("all") == "true",
+		AllNamespaces: allNamespaces,
 		Filter:        c.Query("filter"),
 	}
 

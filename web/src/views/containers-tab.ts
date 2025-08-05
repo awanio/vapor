@@ -63,6 +63,18 @@ export class ContainersTab extends LitElement {
   @state()
   private logsSearchTerm: string = '';
 
+  @state()
+  private showImageActionsDropdown: boolean = false;
+
+  @state()
+  private showPullImageModal: boolean = false;
+
+  @state()
+  private imageName: string = '';
+
+  @state()
+  private selectedFile: File | null = null;
+
   static override styles = css`
     :host {
       display: block;
@@ -212,6 +224,7 @@ export class ContainersTab extends LitElement {
     .search-container {
       display: flex;
       align-items: center;
+      justify-content: space-between;
       margin-bottom: 1.5rem;
       gap: 1rem;
     }
@@ -1114,6 +1127,13 @@ renderImagesTable() {
           @input=${(e: any) => this.searchTerm = e.target.value}
         />
       </div>
+      <div class="action-menu">
+        <button class="btn btn-primary" @click=${(e: Event) => this.toggleImageActionsDropdown(e)}>+ Add Image</button>
+        <div class="action-dropdown ${this.showImageActionsDropdown ? 'show' : ''}">
+          <button @click=${() => this.handleImageActionSelect('pull')}>Pull Image</button>
+          <button @click=${() => this.handleImageActionSelect('upload')}>Upload Image</button>
+        </div>
+      </div>
     </div>
       <table class="table">
         <thead>
@@ -1401,6 +1421,39 @@ renderImagesTable() {
         </div>
       </modal-dialog>
 
+      <modal-dialog
+        ?open=${this.showPullImageModal}
+        .title="Pull Image"
+        size="medium"
+        @modal-close=${this.handleCancelPullImage}
+      >
+        <div style="margin-bottom: 1rem;">
+          <label for="imageName" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--vscode-foreground);">Image Name:</label>
+          <input 
+            id="imageName"
+            class="modal-input search-input"
+            type="text" 
+            placeholder="e.g., nginx:latest, ubuntu:20.04"
+            .value=${this.imageName}
+            @input=${(e: any) => this.imageName = e.target.value}
+            @keydown=${(e: KeyboardEvent) => {
+              if (e.key === 'Enter') {
+                this.handleConfirmPullImage();
+              }
+            }}
+            style="width: 100%; padding-left: 12px;"
+          />
+        </div>
+        <div slot="footer" style="display: flex; gap: 8px; justify-content: flex-end;">
+          <button class="btn btn-secondary" @click=${this.handleCancelPullImage}>
+            Cancel
+          </button>
+          <button class="btn btn-primary" @click=${this.handleConfirmPullImage} ?disabled=${!this.imageName.trim()}>
+            Pull Image
+          </button>
+        </div>
+      </modal-dialog>
+
       ${this.showDrawer ? html`
         <div class="drawer">
           <button class="close-btn" @click=${() => { this.showDrawer = false; this.detailError = null; }}>✕</button>
@@ -1461,6 +1514,131 @@ renderImagesTable() {
 
     // Replace matching term with highlighted HTML
     return text.replace(regex, '<mark style="background-color: #ffeb3b; color: #000; padding: 0 2px;">$1</mark>');
+  }
+
+  private handleOutsideClick(event: Event) {
+    // Close all menus when clicking outside
+    this.closeAllMenus();
+    this.showImageActionsDropdown = false;
+  }
+
+  private handleKeyDown(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      this.closeAllMenus();
+      this.showImageActionsDropdown = false;
+      if (this.showDrawer) {
+        this.showDrawer = false;
+      }
+      if (this.showLogsDrawer) {
+        this.showLogsDrawer = false;
+      }
+      if (this.showPullImageModal) {
+        this.handleCancelPullImage();
+      }
+    }
+  }
+
+  toggleImageActionsDropdown(event: Event) {
+    event.stopPropagation();
+    this.showImageActionsDropdown = !this.showImageActionsDropdown;
+  }
+
+  handleImageActionSelect(action: string) {
+    this.showImageActionsDropdown = false;
+    
+    if (action === 'pull') {
+      this.showPullImageModal = true;
+      this.imageName = '';
+      
+      // Focus on the modal input field after it opens
+      this.updateComplete.then(() => {
+        const inputField = this.shadowRoot?.querySelector('.modal-input') as HTMLInputElement;
+        if (inputField) {
+          setTimeout(() => inputField.focus(), 50);
+        }
+      });
+    } else if (action === 'upload') {
+      this.triggerFileUpload();
+    }
+  }
+
+  triggerFileUpload() {
+    // Create a temporary file input element
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.tar,.tar.gz,.tgz';
+    fileInput.style.display = 'none';
+    
+    fileInput.addEventListener('change', (event) => {
+      const files = (event.target as HTMLInputElement).files;
+      if (files && files.length > 0) {
+        this.selectedFile = files[0];
+        this.handleFileUpload();
+      }
+      // Clean up the temporary input
+      document.body.removeChild(fileInput);
+    });
+    
+    document.body.appendChild(fileInput);
+    fileInput.click();
+  }
+
+  async handleFileUpload() {
+    if (!this.selectedFile) return;
+    
+    try {
+      const formData = new FormData();
+      formData.append('image', this.selectedFile);
+      
+      // Note: This is a placeholder for the actual upload API call
+      // Replace with the correct API endpoint when available
+      console.log('Uploading image file:', this.selectedFile.name);
+      
+      // TODO: Implement actual file upload to the backend
+      // await api.post('/images/upload', formData, {
+      //   headers: {
+      //     'Content-Type': 'multipart/form-data'
+      //   }
+      // });
+      
+      // Refresh images list after successful upload
+      this.fetchImages();
+      this.selectedFile = null;
+      
+    } catch (error) {
+      console.error('Error uploading image file:', error);
+      // TODO: Show error message to user
+    }
+  }
+
+  handleConfirmPullImage() {
+    if (!this.imageName.trim()) return;
+    
+    this.pullImage(this.imageName.trim());
+    this.showPullImageModal = false;
+    this.imageName = '';
+  }
+
+  handleCancelPullImage() {
+    this.showPullImageModal = false;
+    this.imageName = '';
+  }
+
+  async pullImage(imageName: string) {
+    try {
+      console.log('Pulling image:', imageName);
+      
+      // Note: This is a placeholder for the actual pull API call
+      // Replace with the correct API endpoint when available
+      // await api.post('/images/pull', { imageName });
+      
+      // Refresh images list after successful pull
+      this.fetchImages();
+      
+    } catch (error) {
+      console.error('Error pulling image:', error);
+      // TODO: Show error message to user
+    }
   }
 }
 

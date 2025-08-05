@@ -3736,7 +3736,7 @@ paths:
   /kubernetes/helm/releases:
     get:
       summary: List Helm releases
-      description: List all Helm releases in the Kubernetes cluster
+      description: List all Helm releases from all namespaces in the Kubernetes cluster by default. Use namespace parameter to filter to a specific namespace.
       tags:
         - Kubernetes
         - Helm
@@ -3745,18 +3745,18 @@ paths:
       parameters:
         - name: namespace
           in: query
-          description: Filter releases by namespace
+          description: Filter releases by specific namespace (overrides default all-namespace behavior)
           required: false
           schema:
             type: string
             example: "default"
         - name: all
           in: query
-          description: Show releases from all namespaces
+          description: Explicitly control whether to show releases from all namespaces (default: true)
           required: false
           schema:
             type: boolean
-            default: false
+            default: true
         - name: filter
           in: query
           description: Filter releases by name pattern
