@@ -2720,7 +2720,88 @@ paths:
         '503':
           $ref: '#/components/responses/KubernetesNotInstalledError'
 
-  
+  /kubernetes/helm/releases:
+    get:
+      summary: List Helm releases
+      description: List all Helm releases in the Kubernetes cluster
+      tags:
+        - Kubernetes
+        - Helm
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: query
+          description: Filter releases by namespace
+          required: false
+          schema:
+            type: string
+            example: "default"
+        - name: all
+          in: query
+          description: Show releases from all namespaces
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - name: filter
+          in: query
+          description: Filter releases by name pattern
+          required: false
+          schema:
+            type: string
+            example: "nginx"
+      responses:
+        '200':
+          description: Helm releases listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HelmReleasesResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/HelmNotAvailableError'
+        '500':
+          $ref: '#/components/responses/HelmError'
+
+  /kubernetes/helm/charts:
+    get:
+      summary: List Helm charts
+      description: List available Helm charts from configured repositories
+      tags:
+        - Kubernetes
+        - Helm
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: repository
+          in: query
+          description: Filter charts by repository name
+          required: false
+          schema:
+            type: string
+            example: "bitnami"
+        - name: all_versions
+          in: query
+          description: Show all versions of charts
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Helm charts listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HelmChartsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/HelmNotAvailableError'
+        '500':
+          $ref: '#/components/responses/HelmError'
 
   
 
@@ -2761,6 +2842,55 @@ components:
                   details:
                     type: string
                     example: "The kubelet service was not found on this system. Please install Kubernetes to use these features."
+              data:
+                type: object
+                nullable: true
+
+    HelmNotAvailableError:
+      description: Helm is not available
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                enum: [error]
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    enum: [HELM_NOT_AVAILABLE]
+                  message:
+                    type: string
+                    example: "Helm is not available"
+                  details:
+                    type: string
+                    example: "Helm requires Kubernetes to be installed and configured. Please ensure Kubernetes is running and accessible."
+              data:
+                type: object
+                nullable: true
+
+    HelmError:
+      description: Helm operation failed
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                enum: [error]
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    enum: [HELM_ERROR]
+                  message:
+                    type: string
+                    example: "Failed to list releases: connection refused"
               data:
                 type: object
                 nullable: true
@@ -5484,3 +5614,107 @@ components:
                   type: string
                   description: Name of the pulled image
                   example: "nginx:latest"
+
+    # Helm Response Schemas
+    HelmReleasesResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                releases:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/HelmRelease'
+                count:
+                  type: integer
+                  description: Number of releases returned
+                  example: 3
+
+    HelmChartsResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                charts:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/HelmChart'
+                count:
+                  type: integer
+                  description: Number of charts returned
+                  example: 6
+
+    HelmRelease:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name of the Helm release
+          example: "nginx-release"
+        namespace:
+          type: string
+          description: Kubernetes namespace where the release is deployed
+          example: "default"
+        version:
+          type: integer
+          description: Release revision number
+          example: 1
+        status:
+          type: string
+          description: Current status of the release
+          enum: [unknown, deployed, uninstalled, superseded, failed, uninstalling, pending-install, pending-upgrade, pending-rollback]
+          example: "deployed"
+        chart:
+          type: string
+          description: Name of the Helm chart
+          example: "nginx"
+        chart_version:
+          type: string
+          description: Version of the Helm chart
+          example: "1.0.0"
+        app_version:
+          type: string
+          description: Version of the application being deployed
+          example: "1.21.0"
+        updated:
+          type: string
+          format: date-time
+          description: Last update time of the release
+          example: "2025-08-05T12:00:00Z"
+        description:
+          type: string
+          description: Description of the release
+          example: "Install complete"
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+          description: Labels attached to the release
+          example:
+            app.kubernetes.io/managed-by: "Helm"
+
+    HelmChart:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name of the Helm chart
+          example: "nginx"
+        version:
+          type: string
+          description: Version of the chart
+          example: "latest"
+        description:
+          type: string
+          description: Description of the chart
+          example: "NGINX web server"
+        repository:
+          type: string
+          description: Repository containing the chart
+          example: "bitnami"

@@ -3,71 +3,77 @@ package helm
 import (
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/render"
-
-	"github.com/vapor/system-api/internal/response"
+	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
+	"github.com/vapor/system-api/internal/common"
 )
 
-// Handler represents the HTTP handler for Helm operations
-type Handler struct {
+// Service wrapper for HTTP handlers
+type ServiceHandler struct {
 	service *Service
 }
 
-// NewHandler creates a new Helm handler
-func NewHandler(service *Service) *Handler {
-	return &Handler{
+// NewServiceHandler creates a new Helm service handler
+func NewServiceHandler(service *Service) *ServiceHandler {
+	return &ServiceHandler{
 		service: service,
 	}
 }
 
-// RegisterRoutes registers the Helm routes
-func (h *Handler) RegisterRoutes(r chi.Router) {
-	r.Route("/kubernetes/helm", func(r chi.Router) {
-		r.Get("/releases", h.listReleases)
-		r.Get("/charts", h.listCharts)
-	})
-}
-
-// listCharts handles listing Helm charts
-func (h *Handler) listCharts(w http.ResponseWriter, r *http.Request) {
+// ListChartsGin handles listing Helm charts for Gin router
+func (h *ServiceHandler) ListChartsGin(c *gin.Context) {
+	ctx := c.Request.Context()
 	// Parse query parameters
 	opts := ListChartsOptions{
-		Repository:  r.URL.Query().Get("repository"),
-		AllVersions: r.URL.Query().Get("all_versions") == "true",
+		Repository:  c.Query("repository"),
+		AllVersions: c.Query("all_versions") == "true",
 	}
 
 	// List charts
-	charts, err := h.service.ListCharts(r.Context(), opts)
+	charts, err := h.service.ListCharts(ctx, opts)
 	if err != nil {
-render.JSON(w, r, response.ErrorResponse("Failed to list charts", err))
+		logrus.Errorf("failed to list helm charts: %v", err)
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to list charts", err.Error())
 		return
 	}
 
 	// Return response
-	render.JSON(w, r, response.Data(map[string]interface{}{
+	common.SendSuccess(c, gin.H{
 		"charts": charts,
-	}))
+		"count":  len(charts),
+	})
 }
 
-// listReleases handles listing Helm releases
-func (h *Handler) listReleases(w http.ResponseWriter, r *http.Request) {
+// ListReleasesGin handles listing Helm releases for Gin router
+func (h *ServiceHandler) ListReleasesGin(c *gin.Context) {
+	ctx := c.Request.Context()
 	// Parse query parameters
 	opts := ListReleasesOptions{
-		Namespace:     r.URL.Query().Get("namespace"),
-		AllNamespaces: r.URL.Query().Get("all") == "true",
-		Filter:        r.URL.Query().Get("filter"),
+		Namespace:     c.Query("namespace"),
+		AllNamespaces: c.Query("all") == "true",
+		Filter:        c.Query("filter"),
 	}
 
 	// List releases
-	releases, err := h.service.ListReleases(r.Context(), opts)
+	releases, err := h.service.ListReleases(ctx, opts)
 	if err != nil {
-render.JSON(w, r, response.ErrorResponse("Failed to list releases", err))
+		logrus.Errorf("failed to list helm releases: %v", err)
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to list releases", err.Error())
 		return
 	}
 
 	// Return response
-	render.JSON(w, r, response.Data(map[string]interface{}{
+	common.SendSuccess(c, gin.H{
 		"releases": releases,
-	}))
+		"count":    len(releases),
+	})
+}
+
+// NoHelmHandler returns a handler that responds with Helm not available error
+func NoHelmHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		common.SendError(c, http.StatusServiceUnavailable, common.ErrCodeNotImplemented, 
+			"Helm is not available", 
+			"Helm requires Kubernetes to be installed and configured. Please ensure Kubernetes is running and accessible.")
+	}
 }

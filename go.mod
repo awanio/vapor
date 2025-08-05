@@ -6,8 +6,6 @@ require (
 	github.com/creack/pty v1.1.24
 	github.com/docker/docker v27.5.1+incompatible
 	github.com/gin-gonic/gin v1.9.1
-	github.com/go-chi/chi/v5 v5.2.2
-	github.com/go-chi/render v1.0.3
 	github.com/golang-jwt/jwt/v5 v5.2.0
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
@@ -34,7 +32,6 @@ require (
 	github.com/Masterminds/sprig/v3 v3.3.0 // indirect
 	github.com/Masterminds/squirrel v1.5.4 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
-	github.com/ajg/form v1.5.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/bytedance/sonic v1.9.1 // indirect

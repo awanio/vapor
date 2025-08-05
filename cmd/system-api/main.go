@@ -23,6 +23,7 @@ import (
 	"github.com/vapor/system-api/internal/websocket"
 	"github.com/vapor/system-api/internal/docker"
 	"github.com/vapor/system-api/internal/kubernetes"
+	"github.com/vapor/system-api/internal/helm"
 )
 
 func main() {
@@ -155,7 +156,7 @@ func main() {
 			api.DELETE("/docker/volumes/:id", dockerService.RemoveVolumeGin)
 			api.DELETE("/docker/networks/:id", dockerService.RemoveNetworkGin)
 		}
-
+		
 		// Kubernetes service
 		kubernetesService, err := kubernetes.NewService()
 		if err != nil {
@@ -177,6 +178,11 @@ func main() {
 			api.GET("/kubernetes/jobs", noK8sHandler)
 			api.GET("/kubernetes/cronjobs", noK8sHandler)
 			api.GET("/kubernetes/cluster-info", noK8sHandler)
+			
+			// Helm routes with NoHelmHandler
+			noHelmHandler := helm.NoHelmHandler()
+			api.GET("/kubernetes/helm/releases", noHelmHandler)
+			api.GET("/kubernetes/helm/charts", noHelmHandler)
 		} else {
 			// Register Kubernetes routes
 			k8sHandler := kubernetes.NewHandler(kubernetesService)
@@ -195,6 +201,19 @@ func main() {
 			api.GET("/kubernetes/jobs", k8sHandler.ListJobsGin)
 			api.GET("/kubernetes/cronjobs", k8sHandler.ListCronJobsGin)
 			api.GET("/kubernetes/cluster-info", k8sHandler.GetClusterInfoGin)
+			
+			// Helm service
+			helmService, err := helm.NewService(kubernetesService)
+			if err != nil {
+				log.Printf("Warning: Helm service not available: %v", err)
+				noHelmHandler := helm.NoHelmHandler()
+				api.GET("/kubernetes/helm/releases", noHelmHandler)
+				api.GET("/kubernetes/helm/charts", noHelmHandler)
+			} else {
+				helmHandler := helm.NewServiceHandler(helmService)
+				api.GET("/kubernetes/helm/releases", helmHandler.ListReleasesGin)
+				api.GET("/kubernetes/helm/charts", helmHandler.ListChartsGin)
+			}
 		}
 
 // User management endpoints
