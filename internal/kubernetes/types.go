@@ -255,3 +255,20 @@ type CRDInfo struct {
 	Labels            map[string]string `json:"labels"`
 	CreationTimestamp time.Time         `json:"creationTimestamp"`
 }
+
+// CRDObject represents a custom resource object instance
+type CRDObject struct {
+	Name              string            `json:"name"`
+	Namespace         string            `json:"namespace,omitempty"`
+	Kind              string            `json:"kind"`
+	APIVersion        string            `json:"apiVersion"`
+	CreationTimestamp time.Time         `json:"creationTimestamp"`
+	Labels            map[string]string `json:"labels,omitempty"`
+	Annotations       map[string]string `json:"annotations,omitempty"`
+}
+
+// CRDObjectDetail represents detailed information about a custom resource object
+type CRDObjectDetail struct {
+	CRDObject
+	Raw interface{} `json:"raw"` // Full Kubernetes object data
+}

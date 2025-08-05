@@ -166,6 +166,9 @@ func main() {
 			// Register Kubernetes routes with NoKubernetesHandler
 			noK8sHandler := kubernetes.NoKubernetesHandler()
 			api.GET("/kubernetes/crds", noK8sHandler)
+			api.GET("/kubernetes/crds/:name", noK8sHandler)
+			api.GET("/kubernetes/crds/:name/list", noK8sHandler)
+			api.GET("/kubernetes/crds/:name/detail/:object-name", noK8sHandler)
 			api.GET("/kubernetes/pods", noK8sHandler)
 			api.GET("/kubernetes/pods/:namespace/:name", noK8sHandler)
 			api.GET("/kubernetes/deployments", noK8sHandler)
@@ -192,6 +195,9 @@ func main() {
 			// Register Kubernetes routes
 			k8sHandler := kubernetes.NewHandler(kubernetesService)
 			api.GET("/kubernetes/crds", k8sHandler.ListCRDsGin)
+			api.GET("/kubernetes/crds/:name", k8sHandler.GetCRDDetailGin)
+			api.GET("/kubernetes/crds/:name/list", k8sHandler.ListCRDObjectsGin)
+			api.GET("/kubernetes/crds/:name/detail/:object-name", k8sHandler.GetCRDObjectDetailGin)
 			api.GET("/kubernetes/pods", k8sHandler.ListPodsGin)
 			api.GET("/kubernetes/pods/:namespace/:name", k8sHandler.GetPodDetailGin)
 			api.GET("/kubernetes/deployments", k8sHandler.ListDeploymentsGin)

@@ -9,6 +9,9 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/rest"
@@ -19,6 +22,7 @@ import (
 type Service struct {
 	client               kubernetes.Interface
 	apiExtensionsClient  apiextensionsclient.Interface
+	dynamicClient        dynamic.Interface
 	nodeName             string
 	isControlPlane       bool
 }
@@ -63,6 +67,12 @@ func NewService() (*Service, error) {
 		return nil, fmt.Errorf("failed to create API extensions client: %w", err)
 	}
 
+	// Create the dynamic client for dynamic CRD operations
+	dynamicClient, err := dynamic.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create dynamic client: %w", err)
+	}
+
 	// Get node name from environment
 	nodeName := os.Getenv("NODE_NAME")
 
@@ -89,6 +99,7 @@ func NewService() (*Service, error) {
 	return &Service{
 		client:               clientset,
 		apiExtensionsClient:  apiExtensionsClient,
+		dynamicClient:        dynamicClient,
 		nodeName:             nodeName,
 		isControlPlane:       isControlPlane,
 	}, nil
@@ -383,6 +394,148 @@ func (s *Service) ListCronJobs(ctx context.Context, opts interface{}) ([]CronJob
 	}
 
 	return cronJobList, nil
+}
+
+// GetCRDDetail retrieves detailed information about a specific CRD
+func (s *Service) GetCRDDetail(ctx context.Context, name string) (CRDInfo, error) {
+	crd, err := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return CRDInfo{}, fmt.Errorf("failed to get CRD detail: %w", err)
+	}
+
+	return CRDInfo{
+		Name:    crd.Name,
+		Group:   crd.Spec.Group,
+		Version: crd.Spec.Versions[0].Name, // TODO: handle multiple versions
+		Scope:   string(crd.Spec.Scope),
+		Kind:    crd.Spec.Names.Kind,
+		Labels:  crd.Labels,
+	}, nil
+}
+
+// ListCRDObjects lists all objects for a specific CRD
+func (s *Service) ListCRDObjects(ctx context.Context, crdName, namespace string) ([]CRDObject, error) {
+	// First, get the CRD to extract necessary information
+	crd, err := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, crdName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get CRD %s: %w", crdName, err)
+	}
+
+	// Find the served version
+	var version string
+	for _, v := range crd.Spec.Versions {
+		if v.Served {
+			version = v.Name
+			break
+		}
+	}
+	if version == "" && len(crd.Spec.Versions) > 0 {
+		version = crd.Spec.Versions[0].Name
+	}
+
+	// Create GroupVersionResource
+	gvr := schema.GroupVersionResource{
+		Group:    crd.Spec.Group,
+		Version:  version,
+		Resource: crd.Spec.Names.Plural,
+	}
+
+	// List objects using dynamic client
+	var unstructuredList *unstructured.UnstructuredList
+	if crd.Spec.Scope == "Namespaced" {
+		// For namespaced resources, use the provided namespace or default
+		targetNamespace := namespace
+		if targetNamespace == "" {
+			targetNamespace = "default"
+		}
+		unstructuredList, err = s.dynamicClient.Resource(gvr).Namespace(targetNamespace).List(ctx, metav1.ListOptions{})
+	} else {
+		// For cluster-scoped resources, ignore namespace parameter
+		unstructuredList, err = s.dynamicClient.Resource(gvr).List(ctx, metav1.ListOptions{})
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to list objects for CRD %s: %w", crdName, err)
+	}
+
+	// Convert unstructured objects to CRDObject
+	crdObjects := make([]CRDObject, 0, len(unstructuredList.Items))
+	for _, item := range unstructuredList.Items {
+		crdObject := CRDObject{
+			Name:              item.GetName(),
+			Namespace:         item.GetNamespace(),
+			Kind:              item.GetKind(),
+			APIVersion:        item.GetAPIVersion(),
+			CreationTimestamp: item.GetCreationTimestamp().Time,
+			Labels:            item.GetLabels(),
+			Annotations:       item.GetAnnotations(),
+		}
+		crdObjects = append(crdObjects, crdObject)
+	}
+
+	return crdObjects, nil
+}
+
+// GetCRDObjectDetail retrieves detailed information about a specific CRD object
+func (s *Service) GetCRDObjectDetail(ctx context.Context, crdName, objectName, namespace string) (CRDObjectDetail, error) {
+	// First, get the CRD to extract necessary information
+	crd, err := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, crdName, metav1.GetOptions{})
+	if err != nil {
+		return CRDObjectDetail{}, fmt.Errorf("failed to get CRD %s: %w", crdName, err)
+	}
+
+	// Find the served version
+	var version string
+	for _, v := range crd.Spec.Versions {
+		if v.Served {
+			version = v.Name
+			break
+		}
+	}
+	if version == "" && len(crd.Spec.Versions) > 0 {
+		version = crd.Spec.Versions[0].Name
+	}
+
+	// Create GroupVersionResource
+	gvr := schema.GroupVersionResource{
+		Group:    crd.Spec.Group,
+		Version:  version,
+		Resource: crd.Spec.Names.Plural,
+	}
+
+	// Get object using dynamic client
+	var unstructuredObj *unstructured.Unstructured
+	if crd.Spec.Scope == "Namespaced" {
+		// For namespaced resources, namespace is required
+		targetNamespace := namespace
+		if targetNamespace == "" {
+			return CRDObjectDetail{}, fmt.Errorf("namespace is required for namespaced CRD %s", crdName)
+		}
+		unstructuredObj, err = s.dynamicClient.Resource(gvr).Namespace(targetNamespace).Get(ctx, objectName, metav1.GetOptions{})
+	} else {
+		// For cluster-scoped resources, ignore namespace parameter
+		unstructuredObj, err = s.dynamicClient.Resource(gvr).Get(ctx, objectName, metav1.GetOptions{})
+	}
+
+	if err != nil {
+		return CRDObjectDetail{}, fmt.Errorf("failed to get object %s for CRD %s: %w", objectName, crdName, err)
+	}
+
+	// Convert unstructured object to CRDObjectDetail
+	crdObjectDetail := CRDObjectDetail{
+		CRDObject: CRDObject{
+			Name:              unstructuredObj.GetName(),
+			Namespace:         unstructuredObj.GetNamespace(),
+			Kind:              unstructuredObj.GetKind(),
+			APIVersion:        unstructuredObj.GetAPIVersion(),
+			CreationTimestamp: unstructuredObj.GetCreationTimestamp().Time,
+			Labels:            unstructuredObj.GetLabels(),
+			Annotations:       unstructuredObj.GetAnnotations(),
+		},
+		Raw: unstructuredObj.Object,
+	}
+
+	return crdObjectDetail, nil
 }
 
 // ListPods lists all pods in the cluster
@@ -798,6 +951,12 @@ func createServiceWithConfig(config *rest.Config) (*Service, error) {
 		return nil, fmt.Errorf("failed to create API extensions client: %w", err)
 	}
 
+	// Create the dynamic client for dynamic CRD operations
+	dynamicClient, err := dynamic.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create dynamic client: %w", err)
+	}
+
 	// Get node name from environment
 	nodeName := os.Getenv("NODE_NAME")
 
@@ -826,6 +985,7 @@ func createServiceWithConfig(config *rest.Config) (*Service, error) {
 	return &Service{
 		client:               clientset,
 		apiExtensionsClient:  apiExtensionsClient,
+		dynamicClient:        dynamicClient,
 		nodeName:             nodeName,
 		isControlPlane:       isControlPlane,
 	}, nil

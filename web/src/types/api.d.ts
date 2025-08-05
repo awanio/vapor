@@ -5,6 +5,23 @@ export interface APIResponse<T = any> {
   error?: APIError;
 }
 
+// Kubernetes Types
+export interface CRD {
+  name: string;
+  group: string;
+  version: string;
+  kind: string;
+  scope: string;
+  names: string[];
+  age: string;
+  labels: Record<string, string>;
+  creationTimestamp: string;
+}
+
+export interface CRDsResponse {
+  crds: CRD[];
+}
+
 export interface APIError {
   code: string;
   message: string;

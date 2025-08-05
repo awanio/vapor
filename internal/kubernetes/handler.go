@@ -167,6 +167,42 @@ func (h *Handler) ListCRDsGin(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"crds": crds, "count": len(crds)})
 }
 
+func (h *Handler) GetCRDDetailGin(c *gin.Context) {
+	name := c.Param("name")
+
+	crdDetail, err := h.service.GetCRDDetail(c.Request.Context(), name)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get CRD details", err.Error())
+		return
+	}
+	common.SendSuccess(c, gin.H{"crd_detail": crdDetail})
+}
+
+func (h *Handler) ListCRDObjectsGin(c *gin.Context) {
+	crdName := c.Param("name")
+	namespace := c.Query("namespace")
+
+	crdObjects, err := h.service.ListCRDObjects(c.Request.Context(), crdName, namespace)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to list CRD objects", err.Error())
+		return
+	}
+	common.SendSuccess(c, gin.H{"crd_objects": crdObjects, "count": len(crdObjects)})
+}
+
+func (h *Handler) GetCRDObjectDetailGin(c *gin.Context) {
+	crdName := c.Param("name")
+	objectName := c.Param("object-name")
+	namespace := c.Query("namespace")
+
+	crdObjectDetail, err := h.service.GetCRDObjectDetail(c.Request.Context(), crdName, objectName, namespace)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get CRD object details", err.Error())
+		return
+	}
+	common.SendSuccess(c, gin.H{"crd_object_detail": crdObjectDetail})
+}
+
 func (h *Handler) GetClusterInfoGin(c *gin.Context) {
 	clusterInfo, err := h.service.GetClusterInfo(c.Request.Context(), nil)
 	if err != nil {

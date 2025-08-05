@@ -2905,6 +2905,123 @@ paths:
         '503':
           $ref: '#/components/responses/KubernetesNotInstalledError'
 
+  /kubernetes/crds/{name}:
+    get:
+      summary: Get detailed CRD information
+      description: Get detailed information about a specific Custom Resource Definition
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: CRD name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: CRD details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CRDDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: CRD not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/crds/{name}/list:
+    get:
+      summary: List all objects for a specific CRD
+      description: List all Kubernetes objects for a specific Custom Resource Definition
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: CRD name
+          schema:
+            type: string
+        - name: namespace
+          in: query
+          required: false
+          description: Namespace to filter objects by. If not provided, all namespaces are searched for cluster-scoped CRDs, and the default namespace is used for namespaced-scoped CRDs.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: CRD objects listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CRDObjectListResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: CRD not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/crds/{name}/detail/{object-name}:
+    get:
+      summary: Get detailed CRD object information
+      description: Get detailed information about a specific CRD object
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: CRD name
+          schema:
+            type: string
+        - name: object-name
+          in: path
+          required: true
+          description: The name of the CRD object
+          schema:
+            type: string
+        - name: namespace
+          in: query
+          required: false
+          description: The namespace of the CRD object. Required for namespaced-scoped CRDs.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: CRD object details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CRDObjectDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: CRD or object not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
   /kubernetes/pods:
     get:
       summary: List all pods in the cluster
@@ -4063,6 +4180,108 @@ components:
           type: string
           format: date-time
           description: Timestamp when the CRD was created
+
+    CRDDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                crd:
+                  $ref: '#/components/schemas/CRDDetail'
+
+    CRDDetail:
+      allOf:
+        - $ref: '#/components/schemas/CRDInfo'
+        - type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                versions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        description: Version name
+                      served:
+                        type: boolean
+                        description: Whether this version is served
+                      storage:
+                        type: boolean
+                        description: Whether this version is the storage version
+                      schema:
+                        type: object
+                        description: OpenAPI v3 schema for this version
+                conversion:
+                  type: object
+                  properties:
+                    strategy:
+                      type: string
+                      description: Conversion strategy
+                preserveUnknownFields:
+                  type: boolean
+                  description: Whether unknown fields are preserved
+
+    CRDObjectListResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                objects:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/CRDObject'
+                count:
+                  type: integer
+
+    CRDObjectDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/CRDObjectDetail'
+
+    CRDObject:
+      type: object
+      properties:
+        name:
+          type: string
+        namespace:
+          type: string
+        kind:
+          type: string
+        apiVersion:
+          type: string
+        creationTimestamp:
+          type: string
+          format: date-time
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+
+    CRDObjectDetail:
+      allOf:
+        - $ref: '#/components/schemas/CRDObject'
+        - type: object
+          properties:
+            raw:
+              type: object
+              description: The full Kubernetes object data.
+              additionalProperties: true
     
     Interface:
       type: object

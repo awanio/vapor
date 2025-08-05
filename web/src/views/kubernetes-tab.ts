@@ -11,6 +11,7 @@ class KubernetesTab extends LitElement {
   @property({ type: Array }) configurations = [];
   @property({ type: Array }) helms = [];
   @property({ type: Array }) nodes = [];
+  @property({ type: Array }) crds = [];
   @property({ type: String }) error = null;
   @property({ type: String }) activeWorkloadTab = 'pods';
   @property({ type: String }) activeStorageTab = 'pvc';
@@ -19,6 +20,9 @@ class KubernetesTab extends LitElement {
   @property({ type: Boolean }) showPodDetails = false;
   @property({ type: Object }) selectedPod = null;
   @property({ type: Boolean }) loadingPodDetails = false;
+  @property({ type: Boolean }) showCrdDetails = false;
+  @property({ type: Object }) selectedCrd = null;
+  @property({ type: Boolean }) loadingCrdDetails = false;
   @property({ type: Array }) namespaces = [];
   @property({ type: String }) selectedNamespace = 'all';
   @property({ type: Boolean }) showNamespaceDropdown = false;
@@ -742,6 +746,8 @@ class KubernetesTab extends LitElement {
         return this.renderHelmTable(data);
       case 'nodes':
         return this.renderNodesTable(data);
+      case 'crds':
+        return this.renderCrdTable(data);
       default:
         return html`<div class="empty-state">Invalid submenu</div>`;
     }
@@ -1011,6 +1017,50 @@ class KubernetesTab extends LitElement {
     `;
   }
 
+  renderCrdTable(data) {
+    return html`
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Group</th>
+            <th>Version</th>
+            <th>Kind</th>
+            <th>Scope</th>
+            <th>Age</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.map((crd, index) => html`
+            <tr>
+              <td>
+                <span class="pod-name-link" @click=${() => this.viewDetails(crd)}>
+                  ${crd.name}
+                </span>
+              </td>
+              <td>${crd.group}</td>
+              <td>${crd.version}</td>
+              <td>${crd.kind}</td>
+              <td>${crd.scope}</td>
+              <td>${crd.age}</td>
+              <td>
+                <div class="action-menu">
+                  <button class="action-dots" @click=${(e) => this.toggleActionMenu(e, `k8s-crd-${index}`)}>⋮</button>
+                  <div class="action-dropdown" id="k8s-crd-${index}">
+                    <button @click=${() => { this.closeAllMenus(); this.viewDetails(crd); }}>View Details</button>
+                    <button @click=${() => { this.closeAllMenus(); this.editItem(crd); }}>Edit</button>
+                    <button class="danger" @click=${() => { this.closeAllMenus(); this.deleteItem(crd); }}>Delete</button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          `)}
+        </tbody>
+      </table>
+    `;
+  }
+
   private searchQuery: string = '';
 
   private handleSearchInput(event: Event) {
@@ -1261,6 +1311,70 @@ class KubernetesTab extends LitElement {
     `;
   }
 
+  renderCrdDetailsDrawer() {
+    if (!this.showCrdDetails) {
+      return null;
+    }
+
+    if (this.loadingCrdDetails) {
+      return html`
+        <div class="pod-details-drawer">
+          <button class="close-button" @click="${() => this.showCrdDetails = false}">&#x2715;</button>
+          <h2>CRD Details</h2>
+          <div class="loading-state">Loading CRD details...</div>
+        </div>
+      `;
+    }
+
+    return html`
+      <div class="pod-details-drawer">
+        <button class="close-button" @click="${() => this.showCrdDetails = false}">&#x2715;</button>
+        <h2>CRD Details</h2>
+        <div class="pod-details-content">
+          ${this.renderCrdDetailContent(this.selectedCrd)}
+        </div>
+      </div>
+    `;
+  }
+
+  renderCrdDetailContent(data: any) {
+    if (!data) {
+      return html`<div class="no-data">No data available</div>`;
+    }
+
+    const crdData = data.crd_detail || data;
+
+    return html`
+      <div class="detail-sections">
+        <div class="detail-section">
+          <h3>Basic Information</h3>
+          ${this.renderDetailItem('Name', crdData.name)}
+          ${this.renderDetailItem('UID', crdData.uid)}
+          ${this.renderDetailItem('Creation Timestamp', crdData.creationTimestamp)}
+          ${this.renderDetailItem('Age', crdData.age)}
+        </div>
+
+        ${crdData.spec ? html`
+        <div class="detail-section">
+          <h3>Specification</h3>
+          ${this.renderDetailItem('Group', crdData.spec.group)}
+          ${this.renderDetailItem('Scope', crdData.spec.scope)}
+          ${this.renderDetailItem('Names', crdData.spec.names, true)}
+          ${this.renderDetailItem('Versions', crdData.spec.versions, true)}
+        </div>` : ''}
+
+        ${crdData.status ? html`
+          <div class="detail-section">
+            <h3>Status</h3>
+            ${this.renderDetailItem('Accepted Names', crdData.status.acceptedNames, true)}
+            ${this.renderDetailItem('Stored Versions', crdData.status.storedVersions, true)}
+            ${this.renderDetailItem('Conditions', crdData.status.conditions, true)}
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
 renderPodDetailContent(data: any) {
     if (!data) {
       return html`<div class="no-data">No data available</div>`;
@@ -1452,7 +1566,7 @@ renderPodDetailContent(data: any) {
         ${this.activeSubmenu === 'configurations' ? this.renderConfigurationTabs() : ''}
         ${this.activeSubmenu === 'helms' ? this.renderHelmTabs() : ''}
         <div class="search-container">
-          ${this.activeSubmenu !== 'nodes' ? html`
+          ${this.activeSubmenu !== 'nodes' && this.activeSubmenu !== 'crds' ? html`
             <div class="namespace-filter">
             <div class="namespace-dropdown">
               <button class="namespace-button" @click=${(e) => this.toggleNamespaceDropdown(e)}>
@@ -1505,6 +1619,7 @@ renderPodDetailContent(data: any) {
             </div>` : this.renderContent()}
         </div>
         ${this.renderPodDetailsDrawer()}
+        ${this.renderCrdDetailsDrawer()}
       </div>
     `;
   }
@@ -1516,7 +1631,8 @@ renderPodDetailContent(data: any) {
       storages: 'Kubernetes Storages',
       configurations: 'Kubernetes Configurations',
       helms: 'Kubernetes Helms',
-      nodes: 'Kubernetes Nodes'
+      nodes: 'Kubernetes Nodes',
+      crds: 'Kubernetes CRDs'
     };
     return titles[this.activeSubmenu] || 'Kubernetes';
   }
@@ -1533,29 +1649,34 @@ renderPodDetailContent(data: any) {
     const path = window.location.pathname;
     if (path.includes('/kubernetes/')) {
       const submenu = path.split('/kubernetes/')[1];
-      if (submenu && ['workloads', 'networks', 'storages', 'configurations', 'helms', 'nodes'].includes(submenu)) {
+      if (submenu && ['workloads', 'networks', 'storages', 'configurations', 'helms', 'nodes', 'crds'].includes(submenu)) {
         this.activeSubmenu = submenu;
       }
     }
   };
 
   private handleKeyDown = (event: KeyboardEvent) => {
-    if (event.key === 'Escape' && this.showPodDetails) {
-      this.showPodDetails = false;
+    if (event.key === 'Escape') {
+      if (this.showPodDetails) {
+        this.showPodDetails = false;
+      }
+      if (this.showCrdDetails) {
+        this.showCrdDetails = false;
+      }
       this.requestUpdate();
     }
   };
 
   private updateActiveSubmenu() {
     // Priority: subRoute property > URL path > default
-    if (this.subRoute && ['workloads', 'networks', 'storages', 'configurations', 'helms', 'nodes'].includes(this.subRoute)) {
+    if (this.subRoute && ['workloads', 'networks', 'storages', 'configurations', 'helms', 'nodes', 'crds'].includes(this.subRoute)) {
       this.activeSubmenu = this.subRoute;
     } else {
       // Fallback to URL detection
       const path = window.location.pathname;
       if (path.includes('/kubernetes/')) {
         const submenu = path.split('/kubernetes/')[1];
-        if (submenu && ['workloads', 'networks', 'storages', 'configurations', 'helms', 'nodes'].includes(submenu)) {
+        if (submenu && ['workloads', 'networks', 'storages', 'configurations', 'helms', 'nodes', 'crds'].includes(submenu)) {
           this.activeSubmenu = submenu;
         }
       }
@@ -2342,6 +2463,24 @@ renderPodDetailContent(data: any) {
     }
   }
 
+  async fetchCrds() {
+    try {
+      const data = await Api.get('/kubernetes/crds');
+      this.crds = data.crds.map(crd => ({
+        name: crd.name,
+        type: 'CRD',
+        group: crd.group,
+        version: crd.version,
+        kind: crd.kind,
+        scope: crd.scope,
+        age: crd.age
+      }));
+      this.error = null;
+    } catch (error) {
+      this.error = 'Failed to fetch CRDs';
+    }
+  }
+
   async fetchNamespaces() {
     try {
       const data = await Api.get('/kubernetes/namespaces');
@@ -2446,6 +2585,7 @@ renderPodDetailContent(data: any) {
       this.configurations = [];
       this.helms = [];
       this.nodes = [];
+      this.crds = [];
       
       // Fetch all workload resources and combine them
       const [pods, deployments, statefulsets, daemonsets, jobs, cronjobs] = await Promise.all([
@@ -2478,6 +2618,9 @@ renderPodDetailContent(data: any) {
       // Fetch nodes
       await this.fetchNodes();
       
+      // Fetch CRDs
+      await this.fetchCrds();
+      
       this.error = null;
     } catch (error) {
       console.error('Failed to fetch Kubernetes resources:', error);
@@ -2486,42 +2629,69 @@ renderPodDetailContent(data: any) {
   }
 
   viewDetails(item) {
-    console.log('viewDetails called with item:', item);
-    
-    if (item.type !== 'Pod') {
-      console.log('Item is not a Pod, type:', item.type);
-      // For non-pod items, show a generic alert for now
-      alert(`Viewing details for ${item.name} (${item.type}) - Pod details drawer only supports Pods currently`);
-      return;
+    switch (item.type) {
+      case 'Pod':
+        this.viewPodDetails(item);
+        break;
+      case 'CRD':
+        this.viewCrdDetails(item);
+        break;
+      default:
+        console.log('View details not implemented for type:', item.type);
+        alert(`Viewing details for ${item.name} (${item.type}) is not supported yet.`);
+        break;
     }
-    
-    console.log('Fetching pod details for:', item.name, 'in namespace:', item.namespace);
+  }
+
+  viewPodDetails(pod) {
+    console.log('Fetching pod details for:', pod.name, 'in namespace:', pod.namespace);
     this.loadingPodDetails = true;
     this.showPodDetails = true;
     this.selectedPod = null;
     this.requestUpdate();
     
-    const url = `/kubernetes/pods/${item.namespace}/${item.name}`;
+    const url = `/kubernetes/pods/${pod.namespace}/${pod.name}`;
     console.log('Making API request to:', url);
     
     Api.get(url)
       .then(response => {
         console.log('Pod details response:', response);
-        console.log('Response keys:', Object.keys(response));
-        console.log('Response metadata:', response.metadata);
-        console.log('Response spec:', response.spec);
-        console.log('Response status:', response.status);
         this.selectedPod = response;
-        console.log('selectedPod set to:', this.selectedPod);
         this.loadingPodDetails = false;
         this.requestUpdate();
       })
       .catch(error => {
         console.error('Failed to fetch pod details:', error);
         this.loadingPodDetails = false;
-        this.showPodDetails = false; // Hide drawer on error
+        this.showPodDetails = false;
         this.requestUpdate();
         alert(`Failed to fetch pod details: ${error.message || error}`);
+      });
+  }
+
+  viewCrdDetails(crd) {
+    console.log('Fetching CRD details for:', crd.name);
+    this.loadingCrdDetails = true;
+    this.showCrdDetails = true;
+    this.selectedCrd = null;
+    this.requestUpdate();
+
+    const url = `/kubernetes/crds/${crd.name}`;
+    console.log('Making API request to:', url);
+
+    Api.get(url)
+      .then(response => {
+        console.log('CRD details response:', response);
+        this.selectedCrd = response;
+        this.loadingCrdDetails = false;
+        this.requestUpdate();
+      })
+      .catch(error => {
+        console.error('Failed to fetch CRD details:', error);
+        this.loadingCrdDetails = false;
+        this.showCrdDetails = false;
+        this.requestUpdate();
+        alert(`Failed to fetch CRD details: ${error.message || error}`);
       });
   }
 
