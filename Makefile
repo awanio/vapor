@@ -1,9 +1,9 @@
 .PHONY: build test clean run docker-build docker-run install-deps lint install-system-deps check-system-deps
 
 # Variables
-BINARY_NAME=system-api
-MAIN_PATH=cmd/system-api/main.go
-DOCKER_IMAGE=system-api:latest
+BINARY_NAME=vapor
+MAIN_PATH=cmd/vapor/main.go
+DOCKER_IMAGE=vapor:latest
 
 # Build the binary
 build: embed-web
