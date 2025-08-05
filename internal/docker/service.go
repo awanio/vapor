@@ -1,9 +1,13 @@
 package docker
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -22,6 +26,8 @@ func NewService(client Client) *Service {
 
 // RegisterRoutes registers Docker routes with the router
 func (s *Service) RegisterRoutes(r *mux.Router) {
+	r.HandleFunc("/docker/containers", s.createContainer).Methods("POST")
+	r.HandleFunc("/docker/images/pull", s.pullImage).Methods("POST")
 	r.HandleFunc("/docker/ps", s.listContainers).Methods("GET")
 	r.HandleFunc("/docker/images", s.listImages).Methods("GET")
 	r.HandleFunc("/docker/networks", s.listNetworks).Methods("GET")
@@ -229,6 +235,58 @@ func (s *Service) removeVolume(w http.ResponseWriter, r *http.Request) {
 	}
 
 	common.RespondSuccess(w, VolumeActionResponse{VolumeID: volumeID, Action: "remove", Message: "Volume removed successfully", Success: true})
+}
+
+func (s *Service) createContainer(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	var req ContainerCreateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		logrus.Errorf("failed to decode request: %v", err)
+		common.RespondError(w, http.StatusBadRequest, "INVALID_REQUEST", "Failed to decode request: "+err.Error())
+		return
+	}
+
+	containerConfig := container.Config{
+		Image: req.Image,
+		Cmd:   req.Cmd,
+		Env:   req.Env,
+	}
+
+	hostConfig := container.HostConfig{}
+	networkConfig := network.NetworkingConfig{}
+
+	containerID, err := s.client.CreateContainer(ctx, containerConfig, hostConfig, networkConfig, req.Name)
+	if err != nil {
+		logrus.Errorf("failed to create container: %v", err)
+		common.RespondError(w, http.StatusInternalServerError, "CREATE_CONTAINER_FAILED", "Failed to create container: "+err.Error())
+		return
+	}
+
+	common.RespondSuccess(w, ContainerCreateResponse{ContainerID: containerID, Message: "Container created successfully", Success: true})
+}
+
+func (s *Service) pullImage(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	var req ImagePullRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		logrus.Errorf("failed to decode request: %v", err)
+		common.RespondError(w, http.StatusBadRequest, "INVALID_REQUEST", "Failed to decode request: "+err.Error())
+		return
+	}
+
+	imageRef := req.ImageName
+	if req.Tag != "" {
+		imageRef = fmt.Sprintf("%s:%s", req.ImageName, req.Tag)
+	}
+
+	err := s.client.PullImage(ctx, imageRef)
+	if err != nil {
+		logrus.Errorf("failed to pull image: %v", err)
+		common.RespondError(w, http.StatusInternalServerError, "PULL_IMAGE_FAILED", "Failed to pull image: "+err.Error())
+		return
+	}
+
+	common.RespondSuccess(w, ImagePullResponse{ImageName: req.ImageName, Message: "Image pulled successfully", Success: true})
 }
 
 func (s *Service) removeNetwork(w http.ResponseWriter, r *http.Request) {
@@ -483,6 +541,68 @@ func (s *Service) RemoveVolumeGin(c *gin.Context) {
 		Action:   "remove",
 		Message:  "Volume removed successfully",
 		Success:  true,
+	}))
+}
+
+// CreateContainerGin handles container creation for Gin router
+func (s *Service) CreateContainerGin(c *gin.Context) {
+	ctx := c.Request.Context()
+	var req ContainerCreateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logrus.Errorf("failed to decode request: %v", err)
+		c.JSON(http.StatusBadRequest, common.ErrorResponse("INVALID_REQUEST", "Failed to decode request: "+err.Error()))
+		return
+	}
+
+	containerConfig := container.Config{
+		Image: req.Image,
+		Cmd:   req.Cmd,
+		Env:   req.Env,
+	}
+
+	hostConfig := container.HostConfig{}
+	networkConfig := network.NetworkingConfig{}
+
+	containerID, err := s.client.CreateContainer(ctx, containerConfig, hostConfig, networkConfig, req.Name)
+	if err != nil {
+		logrus.Errorf("failed to create container: %v", err)
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse("CREATE_CONTAINER_FAILED", "Failed to create container: "+err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusCreated, common.SuccessResponse(ContainerCreateResponse{
+		ContainerID: containerID,
+		Message:     "Container created successfully",
+		Success:     true,
+	}))
+}
+
+// PullImageGin handles image pulling for Gin router
+func (s *Service) PullImageGin(c *gin.Context) {
+	ctx := c.Request.Context()
+	var req ImagePullRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logrus.Errorf("failed to decode request: %v", err)
+		c.JSON(http.StatusBadRequest, common.ErrorResponse("INVALID_REQUEST", "Failed to decode request: "+err.Error()))
+		return
+	}
+
+	imageRef := req.ImageName
+	if req.Tag != "" {
+		imageRef = fmt.Sprintf("%s:%s", req.ImageName, req.Tag)
+	}
+
+	err := s.client.PullImage(ctx, imageRef)
+	if err != nil {
+		logrus.Errorf("failed to pull image: %v", err)
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse("PULL_IMAGE_FAILED", "Failed to pull image: "+err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, common.SuccessResponse(ImagePullResponse{
+		ImageName: req.ImageName,
+		Message:   "Image pulled successfully",
+		Success:   true,
 	}))
 }
 

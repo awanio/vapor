@@ -1433,6 +1433,118 @@ paths:
                   code: DOCKER_ERROR
                   message: "Failed to list images: Cannot connect to the Docker daemon"
 
+  /docker/images/pull:
+    post:
+      summary: Pull Docker image
+      description: Pull a Docker image from a registry (e.g., Docker Hub)
+      tags:
+        - Docker
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImagePullRequest'
+            examples:
+              pullNginx:
+                summary: Pull nginx image
+                value:
+                  imageName: nginx
+                  tag: latest
+              pullAlpine:
+                summary: Pull Alpine Linux
+                value:
+                  imageName: alpine
+                  tag: "3.18"
+      responses:
+        '200':
+          description: Image pulled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImagePullResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          description: Failed to pull image
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                error:
+                  code: PULL_IMAGE_FAILED
+                  message: "Failed to pull image: repository does not exist"
+
+  /docker/containers:
+    post:
+      summary: Create Docker container
+      description: Create a new Docker container from an image
+      tags:
+        - Docker
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContainerCreateRequest'
+            examples:
+              createNginx:
+                summary: Create nginx container
+                value:
+                  name: my-nginx
+                  image: nginx:latest
+                  env:
+                    - "ENV=production"
+                  portBindings:
+                    "80/tcp":
+                      - hostPort: "8080"
+              createUbuntu:
+                summary: Create Ubuntu container
+                value:
+                  name: my-ubuntu
+                  image: ubuntu:22.04
+                  cmd: ["/bin/bash"]
+                  env:
+                    - "DEBIAN_FRONTEND=noninteractive"
+      responses:
+        '201':
+          description: Container created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContainerCreateResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          description: Failed to create container
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                error:
+                  code: CREATE_CONTAINER_FAILED
+                  message: "Failed to create container: image not found"
+
   /docker/images/{id}:
     delete:
       summary: Remove Docker image
@@ -5240,3 +5352,135 @@ components:
                   type: boolean
                   description: Whether the action was successful
                   example: true
+
+    ContainerCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Optional container name
+          example: my-container
+        image:
+          type: string
+          description: Docker image to use for the container
+          example: "nginx:latest"
+        cmd:
+          type: array
+          items:
+            type: string
+          description: Command to run in the container
+          example: ["nginx", "-g", "daemon off;"]
+        env:
+          type: array
+          items:
+            type: string
+          description: List of environment variables to set in the container
+          example: ["ENV=production", "DEBUG=false"]
+        exposedPorts:
+          type: object
+          additionalProperties: {}
+          description: Ports to expose from the container
+          example:
+            "80/tcp": {}
+        portBindings:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: object
+              properties:
+                hostPort:
+                  type: string
+          description: Port mappings for exposed container ports
+          example:
+            "80/tcp":
+              - hostPort: "8080"
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+          description: Metadata labels assigned to the container
+        workingDir:
+          type: string
+          description: Working directory in the container
+          example: /app
+        volumes:
+          type: array
+          items:
+            type: object
+            properties:
+              source:
+                type: string
+              target:
+                type: string
+              type:
+                type: string
+              readOnly:
+                type: boolean
+              bindOptions:
+                type: object
+                properties:
+                  propagation:
+                    type: string
+            example:
+              source: "/var/www"
+              target: "/usr/share/nginx/html"
+              type: "bind"
+              readOnly: false
+        networkMode:
+          type: string
+          description: Which network to connect container to
+          example: bridge
+        restartPolicy:
+          type: object
+          properties:
+            name:
+              type: string
+              description: Restart policy to apply when a container exits
+              example: "always"
+            maximumRetryCount:
+              type: integer
+              description: Maximum retry count for 'on-failure' policy
+
+    ContainerCreateResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                containerId:
+                  type: string
+                  description: ID of the created container
+                  example: "8dfafdbc3a40"
+                warnings:
+                  type: array
+                  items:
+                    type: string
+                  description: Any warnings generated from container creation
+
+    ImagePullRequest:
+      type: object
+      properties:
+        imageName:
+          type: string
+          description: Name of the image to pull
+          example: "nginx"
+        tag:
+          type: string
+          description: Tag of the image to pull
+          example: "latest"
+
+    ImagePullResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                imageName:
+                  type: string
+                  description: Name of the pulled image
+                  example: "nginx:latest"

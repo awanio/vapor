@@ -138,6 +138,10 @@ func main() {
 			api.GET("/docker/networks", dockerService.ListNetworksGin)
 			api.GET("/docker/volumes", dockerService.ListVolumesGin)
 			
+			// Container creation and image pulling
+			api.POST("/docker/containers", dockerService.CreateContainerGin)
+			api.POST("/docker/images/pull", dockerService.PullImageGin)
+			
 			// Container detail and actions
 			api.GET("/docker/containers/:id", dockerService.GetContainerDetailGin)
 			api.DELETE("/docker/containers/:id", dockerService.RemoveContainerGin)

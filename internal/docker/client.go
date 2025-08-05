@@ -11,6 +11,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 )
@@ -31,6 +32,8 @@ type Client interface {
 	RemoveImage(ctx context.Context, imageID string) error
 	RemoveVolume(ctx context.Context, volumeID string) error
 	RemoveNetwork(ctx context.Context, networkID string) error
+	CreateContainer(ctx context.Context, config container.Config, hostConfig container.HostConfig, networkConfig network.NetworkingConfig, containerName string) (string, error)
+	PullImage(ctx context.Context, imageName string) error
 }
 
 // dockerClient implements the Client interface using Docker SDK
@@ -198,6 +201,31 @@ func (c *dockerClient) ListVolumes(ctx context.Context) ([]Volume, error) {
 	}
 
 	return result, nil
+}
+
+// CreateContainer creates a new Docker container
+func (c *dockerClient) CreateContainer(ctx context.Context, config container.Config, hostConfig container.HostConfig, networkConfig network.NetworkingConfig, containerName string) (string, error) {
+	resp, err := c.client.ContainerCreate(ctx, &config, &hostConfig, &networkConfig, nil, containerName)
+	if err != nil {
+		return "", fmt.Errorf("failed to create container: %w", err)
+	}
+	return resp.ID, nil
+}
+
+// PullImage pulls an image from the Docker registry
+func (c *dockerClient) PullImage(ctx context.Context, imageName string) error {
+	reader, err := c.client.ImagePull(ctx, imageName, image.PullOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to pull image: %w", err)
+	}
+	defer reader.Close()
+	
+	_, err = io.Copy(io.Discard, reader)
+	if err != nil {
+		return fmt.Errorf("failed to read image pull response: %w", err)
+	}
+	
+	return nil
 }
 
 // Close closes the Docker client connection

@@ -13,6 +13,7 @@ class KubernetesTab extends LitElement {
   @property({ type: String }) activeWorkloadTab = 'pods';
   @property({ type: String }) activeStorageTab = 'pvc';
   @property({ type: String }) activeConfigurationTab = 'secrets';
+  @property({ type: String }) activeHelmTab = 'releases';
 
   static styles = css`
     :host {
@@ -552,6 +553,11 @@ class KubernetesTab extends LitElement {
       data = this.getFilteredConfigurationData();
     }
     
+    // If viewing helms, filter by active helm tab
+    if (this.activeSubmenu === 'helms') {
+      data = this.getFilteredHelmData();
+    }
+    
     if (!this.searchQuery) return data;
     return data.filter(item => JSON.stringify(item).toLowerCase().includes(this.searchQuery));
   }
@@ -597,6 +603,19 @@ class KubernetesTab extends LitElement {
     }
   }
 
+  private getFilteredHelmData(): Array<any> {
+    const allHelms = this.helms || [];
+    
+    switch (this.activeHelmTab) {
+      case 'releases':
+        return allHelms.filter(item => item.type === 'Release');
+      case 'charts':
+        return allHelms.filter(item => item.type === 'Chart');
+      default:
+        return allHelms;
+    }
+  }
+
   private handleWorkloadTabClick(tab: string) {
     this.activeWorkloadTab = tab;
     this.requestUpdate();
@@ -609,6 +628,11 @@ class KubernetesTab extends LitElement {
 
   private handleConfigurationTabClick(tab: string) {
     this.activeConfigurationTab = tab;
+    this.requestUpdate();
+  }
+
+  private handleHelmTabClick(tab: string) {
+    this.activeHelmTab = tab;
     this.requestUpdate();
   }
 
@@ -675,6 +699,25 @@ class KubernetesTab extends LitElement {
     `;
   }
 
+  private renderHelmTabs() {
+    return html`
+      <div class="tab-header">
+        <button 
+          class="tab-button ${this.activeHelmTab === 'releases' ? 'active' : ''}"
+          @click=${() => this.handleHelmTabClick('releases')}
+        >
+          Releases
+        </button>
+        <button 
+          class="tab-button ${this.activeHelmTab === 'charts' ? 'active' : ''}"
+          @click=${() => this.handleHelmTabClick('charts')}
+        >
+          Charts
+        </button>
+      </div>
+    `;
+  }
+
   render() {
     return html`
       <div class="tab-container">
@@ -682,6 +725,7 @@ class KubernetesTab extends LitElement {
         ${this.activeSubmenu === 'workloads' ? this.renderWorkloadTabs() : ''}
         ${this.activeSubmenu === 'storages' ? this.renderStorageTabs() : ''}
         ${this.activeSubmenu === 'configurations' ? this.renderConfigurationTabs() : ''}
+        ${this.activeSubmenu === 'helms' ? this.renderHelmTabs() : ''}
         <div class="search-container">
           <div class="search-wrapper">
             <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -714,7 +758,7 @@ class KubernetesTab extends LitElement {
       networks: 'Kubernetes Networks',
       storages: 'Kubernetes Storages',
       configurations: 'Kubernetes Configurations',
-      helms: 'Kubernetes Helm Charts'
+      helms: 'Kubernetes Helms'
     };
     return titles[this.activeSubmenu] || 'Kubernetes';
   }
@@ -1074,6 +1118,7 @@ class KubernetesTab extends LitElement {
     this.helms = [
       { 
         name: 'prometheus-stack', 
+        type: 'Release',
         namespace: 'monitoring', 
         revision: '3', 
         status: 'Deployed', 
@@ -1082,6 +1127,7 @@ class KubernetesTab extends LitElement {
       },
       { 
         name: 'grafana-dashboard', 
+        type: 'Release',
         namespace: 'monitoring', 
         revision: '1', 
         status: 'Deployed', 
@@ -1090,6 +1136,7 @@ class KubernetesTab extends LitElement {
       },
       { 
         name: 'nginx-ingress', 
+        type: 'Release',
         namespace: 'ingress-nginx', 
         revision: '2', 
         status: 'Failed', 
@@ -1098,6 +1145,7 @@ class KubernetesTab extends LitElement {
       },
       { 
         name: 'cert-manager', 
+        type: 'Release',
         namespace: 'cert-manager', 
         revision: '1', 
         status: 'Pending', 
@@ -1106,6 +1154,7 @@ class KubernetesTab extends LitElement {
       },
       { 
         name: 'redis-cluster', 
+        type: 'Release',
         namespace: 'database', 
         revision: '4', 
         status: 'Deployed', 
@@ -1114,6 +1163,7 @@ class KubernetesTab extends LitElement {
       },
       { 
         name: 'mysql-primary', 
+        type: 'Release',
         namespace: 'database', 
         revision: '2', 
         status: 'Deployed', 
@@ -1122,6 +1172,7 @@ class KubernetesTab extends LitElement {
       },
       { 
         name: 'elasticsearch', 
+        type: 'Release',
         namespace: 'logging', 
         revision: '1', 
         status: 'Deployed', 
@@ -1130,6 +1181,7 @@ class KubernetesTab extends LitElement {
       },
       { 
         name: 'kibana', 
+        type: 'Release',
         namespace: 'logging', 
         revision: '1', 
         status: 'Deployed', 
@@ -1138,6 +1190,7 @@ class KubernetesTab extends LitElement {
       },
       { 
         name: 'wordpress', 
+        type: 'Release',
         namespace: 'frontend', 
         revision: '3', 
         status: 'Deployed', 
@@ -1146,6 +1199,7 @@ class KubernetesTab extends LitElement {
       },
       { 
         name: 'jenkins', 
+        type: 'Release',
         namespace: 'ci-cd', 
         revision: '1', 
         status: 'Failed', 
@@ -1154,6 +1208,7 @@ class KubernetesTab extends LitElement {
       },
       { 
         name: 'argocd', 
+        type: 'Release',
         namespace: 'argocd', 
         revision: '2', 
         status: 'Deployed', 
@@ -1162,11 +1217,49 @@ class KubernetesTab extends LitElement {
       },
       { 
         name: 'vault', 
+        type: 'Release',
         namespace: 'vault', 
         revision: '1', 
         status: 'Pending', 
         chart: 'vault-0.22.1', 
         updated: '2024-01-16 16:00:00' 
+      },
+      // Chart examples
+      { 
+        name: 'nginx-chart', 
+        type: 'Chart',
+        namespace: '-', 
+        revision: '-', 
+        status: 'Available', 
+        chart: 'nginx-1.25.3', 
+        updated: '2024-01-10 08:00:00' 
+      },
+      { 
+        name: 'mysql-chart', 
+        type: 'Chart',
+        namespace: '-', 
+        revision: '-', 
+        status: 'Available', 
+        chart: 'mysql-9.4.6', 
+        updated: '2024-01-12 10:00:00' 
+      },
+      { 
+        name: 'redis-chart', 
+        type: 'Chart',
+        namespace: '-', 
+        revision: '-', 
+        status: 'Available', 
+        chart: 'redis-17.3.7', 
+        updated: '2024-01-08 12:00:00' 
+      },
+      { 
+        name: 'postgresql-chart', 
+        type: 'Chart',
+        namespace: '-', 
+        revision: '-', 
+        status: 'Available', 
+        chart: 'postgresql-12.1.2', 
+        updated: '2024-01-14 16:00:00' 
       }
     ];
   }

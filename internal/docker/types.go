@@ -171,3 +171,65 @@ type NetworkActionResponse struct {
 	Message   string `json:"message"`
 	Success   bool   `json:"success"`
 }
+
+// ContainerCreateRequest represents a request to create a new container
+type ContainerCreateRequest struct {
+	Name        string            `json:"name,omitempty"`
+	Image       string            `json:"image"`
+	Cmd         []string          `json:"cmd,omitempty"`
+	Env         []string          `json:"env,omitempty"`
+	ExposedPorts map[string]struct{} `json:"exposedPorts,omitempty"`
+	PortBindings map[string][]PortBinding `json:"portBindings,omitempty"`
+	Labels      map[string]string `json:"labels,omitempty"`
+	WorkingDir  string            `json:"workingDir,omitempty"`
+	Volumes     []VolumeMount     `json:"volumes,omitempty"`
+	NetworkMode string            `json:"networkMode,omitempty"`
+	RestartPolicy RestartPolicy   `json:"restartPolicy,omitempty"`
+}
+
+// PortBinding represents a port binding configuration
+type PortBinding struct {
+	HostIP   string `json:"hostIp,omitempty"`
+	HostPort string `json:"hostPort"`
+}
+
+// VolumeMount represents a volume mount configuration
+type VolumeMount struct {
+	Source      string `json:"source"`
+	Target      string `json:"target"`
+	Type        string `json:"type,omitempty"` // bind, volume, tmpfs
+	ReadOnly    bool   `json:"readOnly,omitempty"`
+	BindOptions *BindOptions `json:"bindOptions,omitempty"`
+}
+
+// BindOptions represents bind mount options
+type BindOptions struct {
+	Propagation string `json:"propagation,omitempty"`
+}
+
+// RestartPolicy represents container restart policy
+type RestartPolicy struct {
+	Name              string `json:"name"` // no, always, on-failure, unless-stopped
+	MaximumRetryCount int    `json:"maximumRetryCount,omitempty"`
+}
+
+// ContainerCreateResponse represents response from container creation
+type ContainerCreateResponse struct {
+	ContainerID string   `json:"containerId"`
+	Warnings    []string `json:"warnings,omitempty"`
+	Message     string   `json:"message"`
+	Success     bool     `json:"success"`
+}
+
+// ImagePullRequest represents a request to pull an image
+type ImagePullRequest struct {
+	ImageName string `json:"imageName"`
+	Tag       string `json:"tag,omitempty"`
+}
+
+// ImagePullResponse represents response from image pull operation
+type ImagePullResponse struct {
+	ImageName string `json:"imageName"`
+	Message   string `json:"message"`
+	Success   bool   `json:"success"`
+}
