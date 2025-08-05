@@ -137,6 +137,18 @@ func main() {
 			api.GET("/docker/images", dockerService.ListImagesGin)
 			api.GET("/docker/networks", dockerService.ListNetworksGin)
 			api.GET("/docker/volumes", dockerService.ListVolumesGin)
+			
+			// Container detail and actions
+			api.GET("/docker/containers/:id", dockerService.GetContainerDetailGin)
+			api.DELETE("/docker/containers/:id", dockerService.RemoveContainerGin)
+			api.POST("/docker/containers/:id/start", dockerService.StartContainerGin)
+			api.POST("/docker/containers/:id/stop", dockerService.StopContainerGin)
+			api.GET("/docker/containers/:id/logs", dockerService.GetContainerLogsGin)
+			
+			// Resource deletion
+			api.DELETE("/docker/images/:id", dockerService.RemoveImageGin)
+			api.DELETE("/docker/volumes/:id", dockerService.RemoveVolumeGin)
+			api.DELETE("/docker/networks/:id", dockerService.RemoveNetworkGin)
 		}
 
 		// Kubernetes service

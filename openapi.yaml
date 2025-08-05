@@ -1433,6 +1433,42 @@ paths:
                   code: DOCKER_ERROR
                   message: "Failed to list images: Cannot connect to the Docker daemon"
 
+  /docker/images/{id}:
+    delete:
+      summary: Remove Docker image
+      description: Remove a Docker image from the system
+      tags:
+        - Docker
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Image ID or tag
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Image removed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageActionResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          description: Failed to remove image
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                error:
+                  code: REMOVE_IMAGE_FAILED
+                  message: "Failed to remove image: Image is being used by running container"
+
   /docker/networks:
     get:
       summary: List Docker networks
@@ -1462,6 +1498,42 @@ paths:
                   code: DOCKER_ERROR
                   message: "Failed to list networks: Cannot connect to the Docker daemon"
 
+  /docker/networks/{id}:
+    delete:
+      summary: Remove Docker network
+      description: Remove a Docker network from the system
+      tags:
+        - Docker
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Network ID or name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Network removed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkActionResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          description: Failed to remove network
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                error:
+                  code: REMOVE_NETWORK_FAILED
+                  message: "Failed to remove network: Network is in use by containers"
+
   /docker/volumes:
     get:
       summary: List Docker volumes
@@ -1490,6 +1562,221 @@ paths:
                 error:
                   code: DOCKER_ERROR
                   message: "Failed to list volumes: Cannot connect to the Docker daemon"
+
+  /docker/volumes/{id}:
+    delete:
+      summary: Remove Docker volume
+      description: Remove a Docker volume from the system
+      tags:
+        - Docker
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Volume name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Volume removed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VolumeActionResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          description: Failed to remove volume
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                error:
+                  code: REMOVE_VOLUME_FAILED
+                  message: "Failed to remove volume: Volume is in use by containers"
+
+  /docker/containers/{id}:
+    get:
+      summary: Get Docker container details
+      description: Get detailed information about a specific Docker container
+      tags:
+        - Docker
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Container ID or name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Container details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContainerDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Container not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                error:
+                  code: CONTAINER_NOT_FOUND
+                  message: "Failed to get container detail: No such container"
+    delete:
+      summary: Remove Docker container
+      description: Remove a Docker container (must be stopped first)
+      tags:
+        - Docker
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Container ID or name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Container removed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContainerActionResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          description: Failed to remove container
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                error:
+                  code: REMOVE_CONTAINER_FAILED
+                  message: "Failed to remove container: Cannot remove running container"
+
+  /docker/containers/{id}/start:
+    post:
+      summary: Start Docker container
+      description: Start a stopped Docker container
+      tags:
+        - Docker
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Container ID or name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Container started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContainerActionResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          description: Failed to start container
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                error:
+                  code: START_CONTAINER_FAILED
+                  message: "Failed to start container: Container already running"
+
+  /docker/containers/{id}/stop:
+    post:
+      summary: Stop Docker container
+      description: Stop a running Docker container
+      tags:
+        - Docker
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Container ID or name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Container stopped successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContainerActionResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          description: Failed to stop container
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                error:
+                  code: STOP_CONTAINER_FAILED
+                  message: "Failed to stop container: Container not running"
+
+
+  /docker/containers/{id}/logs:
+    get:
+      summary: Get Docker container logs
+      description: Get logs from a Docker container
+      tags:
+        - Docker
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Container ID or name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Container logs retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContainerLogsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          description: Failed to get logs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                error:
+                  code: GET_LOGS_FAILED
+                  message: "Failed to get container logs: Container not found"
 
   /users:
     get:
@@ -4784,3 +5071,136 @@ components:
           type: integer
         services:
           type: integer
+
+    # Container action and detail response schemas
+    ContainerDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              description: Detailed container information from Docker daemon
+              # The data contains the raw Docker ContainerJSON object
+              # which has extensive details about the container
+
+    ContainerActionResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                containerId:
+                  type: string
+                  description: Container ID that the action was performed on
+                  example: "abc123def456"
+                action:
+                  type: string
+                  description: Action that was performed
+                  enum: [start, stop, remove]
+                  example: "start"
+                message:
+                  type: string
+                  description: Human-readable message about the action result
+                  example: "Container started successfully"
+                success:
+                  type: boolean
+                  description: Whether the action was successful
+                  example: true
+
+    ContainerLogsResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                containerId:
+                  type: string
+                  description: Container ID that logs were retrieved from
+                  example: "abc123def456"
+                logs:
+                  type: string
+                  description: Container logs output
+                  example: "2025-08-04T12:00:00.000Z Starting application...\n2025-08-04T12:00:01.000Z Server listening on port 8080\n"
+
+    ImageActionResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                imageId:
+                  type: string
+                  description: Image ID that the action was performed on
+                  example: "sha256:abc123def456"
+                action:
+                  type: string
+                  description: Action that was performed
+                  enum: [remove]
+                  example: "remove"
+                message:
+                  type: string
+                  description: Human-readable message about the action result
+                  example: "Image removed successfully"
+                success:
+                  type: boolean
+                  description: Whether the action was successful
+                  example: true
+
+    VolumeActionResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                volumeId:
+                  type: string
+                  description: Volume ID that the action was performed on
+                  example: "my-volume"
+                action:
+                  type: string
+                  description: Action that was performed
+                  enum: [remove]
+                  example: "remove"
+                message:
+                  type: string
+                  description: Human-readable message about the action result
+                  example: "Volume removed successfully"
+                success:
+                  type: boolean
+                  description: Whether the action was successful
+                  example: true
+
+    NetworkActionResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                networkId:
+                  type: string
+                  description: Network ID that the action was performed on
+                  example: "bridge"
+                action:
+                  type: string
+                  description: Action that was performed
+                  enum: [remove]
+                  example: "remove"
+                message:
+                  type: string
+                  description: Human-readable message about the action result
+                  example: "Network removed successfully"
+                success:
+                  type: boolean
+                  description: Whether the action was successful
+                  example: true

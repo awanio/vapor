@@ -3,6 +3,7 @@ package docker
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -21,6 +22,14 @@ type Client interface {
 	ListNetworks(ctx context.Context) ([]Network, error)
 	ListVolumes(ctx context.Context) ([]Volume, error)
 	Close() error
+	ContainerDetail(ctx context.Context, containerID string) (types.ContainerJSON, error)
+	StartContainer(ctx context.Context, containerID string) error
+	StopContainer(ctx context.Context, containerID string) error
+	RemoveContainer(ctx context.Context, containerID string) error
+	ContainerLogs(ctx context.Context, containerID string) (string, error)
+	RemoveImage(ctx context.Context, imageID string) error
+	RemoveVolume(ctx context.Context, volumeID string) error
+	RemoveNetwork(ctx context.Context, networkID string) error
 }
 
 // dockerClient implements the Client interface using Docker SDK
@@ -81,7 +90,63 @@ func (c *dockerClient) ListContainers(ctx context.Context, options ContainerList
 		result = append(result, convertContainer(container))
 	}
 
-	return result, nil
+return result, nil
+}
+
+// ContainerDetail fetches detailed information of a specific container
+func (c *dockerClient) ContainerDetail(ctx context.Context, containerID string) (types.ContainerJSON, error) {
+	container, err := c.client.ContainerInspect(ctx, containerID)
+	if err != nil {
+		return types.ContainerJSON{}, fmt.Errorf("failed to inspect container: %w", err)
+	}
+	return container, nil
+}
+
+// StartContainer starts a Docker container
+func (c *dockerClient) StartContainer(ctx context.Context, containerID string) error {
+	return c.client.ContainerStart(ctx, containerID, container.StartOptions{})
+}
+
+// StopContainer stops a Docker container
+func (c *dockerClient) StopContainer(ctx context.Context, containerID string) error {
+	return c.client.ContainerStop(ctx, containerID, container.StopOptions{})
+}
+
+// RemoveContainer removes a Docker container
+func (c *dockerClient) RemoveContainer(ctx context.Context, containerID string) error {
+	return c.client.ContainerRemove(ctx, containerID, container.RemoveOptions{Force: true})
+}
+
+// ContainerLogs fetches logs of a Docker container
+func (c *dockerClient) ContainerLogs(ctx context.Context, containerID string) (string, error) {
+	logReader, err := c.client.ContainerLogs(ctx, containerID, container.LogsOptions{ShowStdout: true, ShowStderr: true})
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch logs: %w", err)
+	}
+	defer logReader.Close()
+
+	logs, err := io.ReadAll(logReader)
+	if err != nil {
+		return "", fmt.Errorf("failed to read logs: %w", err)
+	}
+
+	return string(logs), nil
+}
+
+// RemoveImage removes a Docker image
+func (c *dockerClient) RemoveImage(ctx context.Context, imageID string) error {
+	_, err := c.client.ImageRemove(ctx, imageID, image.RemoveOptions{Force: true})
+	return err
+}
+
+// RemoveVolume removes a Docker volume
+func (c *dockerClient) RemoveVolume(ctx context.Context, volumeID string) error {
+	return c.client.VolumeRemove(ctx, volumeID, true)
+}
+
+// RemoveNetwork removes a Docker network
+func (c *dockerClient) RemoveNetwork(ctx context.Context, networkID string) error {
+	return c.client.NetworkRemove(ctx, networkID)
 }
 
 // ListImages lists Docker images

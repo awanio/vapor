@@ -133,3 +133,41 @@ type ContainerListOptions struct {
 	Limit   int    `json:"limit"`
 	Filters string `json:"filters"`
 }
+
+// ContainerActionResponse represents response for container actions
+type ContainerActionResponse struct {
+	ContainerID string `json:"containerId"`
+	Action      string `json:"action"`
+	Message     string `json:"message"`
+	Success     bool   `json:"success"`
+}
+
+// ContainerLogsResponse represents container logs response
+type ContainerLogsResponse struct {
+	ContainerID string `json:"containerId"`
+	Logs        string `json:"logs"`
+}
+
+// ImageActionResponse represents response for image actions
+type ImageActionResponse struct {
+	ImageID string `json:"imageId"`
+	Action  string `json:"action"`
+	Message string `json:"message"`
+	Success bool   `json:"success"`
+}
+
+// VolumeActionResponse represents response for volume actions
+type VolumeActionResponse struct {
+	VolumeID string `json:"volumeId"`
+	Action   string `json:"action"`
+	Message  string `json:"message"`
+	Success  bool   `json:"success"`
+}
+
+// NetworkActionResponse represents response for network actions
+type NetworkActionResponse struct {
+	NetworkID string `json:"networkId"`
+	Action    string `json:"action"`
+	Message   string `json:"message"`
+	Success   bool   `json:"success"`
+}

@@ -26,6 +26,93 @@ func (s *Service) RegisterRoutes(r *mux.Router) {
 	r.HandleFunc("/docker/images", s.listImages).Methods("GET")
 	r.HandleFunc("/docker/networks", s.listNetworks).Methods("GET")
 	r.HandleFunc("/docker/volumes", s.listVolumes).Methods("GET")
+	
+	// Container detail and actions
+	r.HandleFunc("/docker/containers/{id}", s.getContainerDetail).Methods("GET")
+	r.HandleFunc("/docker/containers/{id}", s.removeContainer).Methods("DELETE")
+	r.HandleFunc("/docker/containers/{id}/start", s.startContainer).Methods("POST")
+	r.HandleFunc("/docker/containers/{id}/stop", s.stopContainer).Methods("POST")
+	r.HandleFunc("/docker/containers/{id}/logs", s.getContainerLogs).Methods("GET")
+	
+	// Resource deletion
+	r.HandleFunc("/docker/images/{id}", s.removeImage).Methods("DELETE")
+	r.HandleFunc("/docker/volumes/{id}", s.removeVolume).Methods("DELETE")
+	r.HandleFunc("/docker/networks/{id}", s.removeNetwork).Methods("DELETE")
+}
+
+func (s *Service) getContainerDetail(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	vars := mux.Vars(r)
+	containerID := vars["id"]
+
+	container, err := s.client.ContainerDetail(ctx, containerID)
+	if err != nil {
+		logrus.Errorf("failed to get container detail: %v", err)
+		common.RespondError(w, http.StatusNotFound, "CONTAINER_NOT_FOUND", "Failed to get container detail: "+err.Error())
+		return
+	}
+
+	common.RespondSuccess(w, container)
+}
+
+func (s *Service) startContainer(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	vars := mux.Vars(r)
+	containerID := vars["id"]
+
+	err := s.client.StartContainer(ctx, containerID)
+	if err != nil {
+		logrus.Errorf("failed to start container: %v", err)
+		common.RespondError(w, http.StatusInternalServerError, "START_CONTAINER_FAILED", "Failed to start container: "+err.Error())
+		return
+	}
+
+	common.RespondSuccess(w, ContainerActionResponse{ContainerID: containerID, Action: "start", Message: "Container started successfully", Success: true})
+}
+
+func (s *Service) stopContainer(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	vars := mux.Vars(r)
+	containerID := vars["id"]
+
+	err := s.client.StopContainer(ctx, containerID)
+	if err != nil {
+		logrus.Errorf("failed to stop container: %v", err)
+		common.RespondError(w, http.StatusInternalServerError, "STOP_CONTAINER_FAILED", "Failed to stop container: "+err.Error())
+		return
+	}
+
+	common.RespondSuccess(w, ContainerActionResponse{ContainerID: containerID, Action: "stop", Message: "Container stopped successfully", Success: true})
+}
+
+func (s *Service) removeContainer(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	vars := mux.Vars(r)
+	containerID := vars["id"]
+
+	err := s.client.RemoveContainer(ctx, containerID)
+	if err != nil {
+		logrus.Errorf("failed to remove container: %v", err)
+		common.RespondError(w, http.StatusInternalServerError, "REMOVE_CONTAINER_FAILED", "Failed to remove container: "+err.Error())
+		return
+	}
+
+	common.RespondSuccess(w, ContainerActionResponse{ContainerID: containerID, Action: "remove", Message: "Container removed successfully", Success: true})
+}
+
+func (s *Service) getContainerLogs(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	vars := mux.Vars(r)
+	containerID := vars["id"]
+
+	logs, err := s.client.ContainerLogs(ctx, containerID)
+	if err != nil {
+		logrus.Errorf("failed to get container logs: %v", err)
+		common.RespondError(w, http.StatusInternalServerError, "GET_LOGS_FAILED", "Failed to get container logs: "+err.Error())
+		return
+	}
+
+	common.RespondSuccess(w, ContainerLogsResponse{ContainerID: containerID, Logs: logs})
 }
 
 func (s *Service) listContainers(w http.ResponseWriter, r *http.Request) {
@@ -96,6 +183,144 @@ func (s *Service) listVolumes(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	common.RespondSuccess(w, volumes)
+}
+
+func (s *Service) removeImage(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	vars := mux.Vars(r)
+	imageID := vars["id"]
+
+	err := s.client.RemoveImage(ctx, imageID)
+	if err != nil {
+		logrus.Errorf("failed to remove image: %v", err)
+		common.RespondError(w, http.StatusInternalServerError, "REMOVE_IMAGE_FAILED", "Failed to remove image: "+err.Error())
+		return
+	}
+
+	common.RespondSuccess(w, ImageActionResponse{ImageID: imageID, Action: "remove", Message: "Image removed successfully", Success: true})
+}
+
+func (s *Service) removeVolume(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	vars := mux.Vars(r)
+	volumeID := vars["id"]
+
+	err := s.client.RemoveVolume(ctx, volumeID)
+	if err != nil {
+		logrus.Errorf("failed to remove volume: %v", err)
+		common.RespondError(w, http.StatusInternalServerError, "REMOVE_VOLUME_FAILED", "Failed to remove volume: "+err.Error())
+		return
+	}
+
+	common.RespondSuccess(w, VolumeActionResponse{VolumeID: volumeID, Action: "remove", Message: "Volume removed successfully", Success: true})
+}
+
+func (s *Service) removeNetwork(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	vars := mux.Vars(r)
+	networkID := vars["id"]
+
+	err := s.client.RemoveNetwork(ctx, networkID)
+	if err != nil {
+		logrus.Errorf("failed to remove network: %v", err)
+		common.RespondError(w, http.StatusInternalServerError, "REMOVE_NETWORK_FAILED", "Failed to remove network: "+err.Error())
+		return
+	}
+
+	common.RespondSuccess(w, NetworkActionResponse{NetworkID: networkID, Action: "remove", Message: "Network removed successfully", Success: true})
+}
+
+// GetContainerDetailGin handles container detail for Gin router
+func (s *Service) GetContainerDetailGin(c *gin.Context) {
+	ctx := c.Request.Context()
+	containerID := c.Param("id")
+
+	container, err := s.client.ContainerDetail(ctx, containerID)
+	if err != nil {
+		logrus.Errorf("failed to get container detail: %v", err)
+		c.JSON(http.StatusNotFound, common.ErrorResponse("CONTAINER_NOT_FOUND", "Failed to get container detail: "+err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, common.SuccessResponse(container))
+}
+
+// StartContainerGin handles container start for Gin router
+func (s *Service) StartContainerGin(c *gin.Context) {
+	ctx := c.Request.Context()
+	containerID := c.Param("id")
+
+	err := s.client.StartContainer(ctx, containerID)
+	if err != nil {
+		logrus.Errorf("failed to start container: %v", err)
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse("START_CONTAINER_FAILED", "Failed to start container: "+err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, common.SuccessResponse(ContainerActionResponse{
+		ContainerID: containerID, 
+		Action: "start", 
+		Message: "Container started successfully", 
+		Success: true,
+	}))
+}
+
+// StopContainerGin handles container stop for Gin router
+func (s *Service) StopContainerGin(c *gin.Context) {
+	ctx := c.Request.Context()
+	containerID := c.Param("id")
+
+	err := s.client.StopContainer(ctx, containerID)
+	if err != nil {
+		logrus.Errorf("failed to stop container: %v", err)
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse("STOP_CONTAINER_FAILED", "Failed to stop container: "+err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, common.SuccessResponse(ContainerActionResponse{
+		ContainerID: containerID, 
+		Action: "stop", 
+		Message: "Container stopped successfully", 
+		Success: true,
+	}))
+}
+
+// RemoveContainerGin handles container removal for Gin router
+func (s *Service) RemoveContainerGin(c *gin.Context) {
+	ctx := c.Request.Context()
+	containerID := c.Param("id")
+
+	err := s.client.RemoveContainer(ctx, containerID)
+	if err != nil {
+		logrus.Errorf("failed to remove container: %v", err)
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse("REMOVE_CONTAINER_FAILED", "Failed to remove container: "+err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, common.SuccessResponse(ContainerActionResponse{
+		ContainerID: containerID, 
+		Action: "remove", 
+		Message: "Container removed successfully", 
+		Success: true,
+	}))
+}
+
+// GetContainerLogsGin handles container logs for Gin router
+func (s *Service) GetContainerLogsGin(c *gin.Context) {
+	ctx := c.Request.Context()
+	containerID := c.Param("id")
+
+	logs, err := s.client.ContainerLogs(ctx, containerID)
+	if err != nil {
+		logrus.Errorf("failed to get container logs: %v", err)
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse("GET_LOGS_FAILED", "Failed to get container logs: "+err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, common.SuccessResponse(ContainerLogsResponse{
+		ContainerID: containerID, 
+		Logs: logs,
+	}))
 }
 
 // Gin handlers for compatibility with gin router
@@ -182,6 +407,66 @@ func (s *Service) ListVolumesGin(c *gin.Context) {
 	c.JSON(http.StatusOK, common.SuccessResponse(gin.H{
 		"volumes": volumes,
 		"count":   len(volumes),
+	}))
+}
+
+// RemoveImageGin handles image removal for Gin router
+func (s *Service) RemoveImageGin(c *gin.Context) {
+	ctx := c.Request.Context()
+	imageID := c.Param("id")
+
+	err := s.client.RemoveImage(ctx, imageID)
+	if err != nil {
+		logrus.Errorf("failed to remove image: %v", err)
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse("REMOVE_IMAGE_FAILED", "Failed to remove image: "+err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, common.SuccessResponse(ImageActionResponse{
+		ImageID: imageID,
+		Action:  "remove",
+		Message: "Image removed successfully",
+		Success: true,
+	}))
+}
+
+// RemoveVolumeGin handles volume removal for Gin router
+func (s *Service) RemoveVolumeGin(c *gin.Context) {
+	ctx := c.Request.Context()
+	volumeID := c.Param("id")
+
+	err := s.client.RemoveVolume(ctx, volumeID)
+	if err != nil {
+		logrus.Errorf("failed to remove volume: %v", err)
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse("REMOVE_VOLUME_FAILED", "Failed to remove volume: "+err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, common.SuccessResponse(VolumeActionResponse{
+		VolumeID: volumeID,
+		Action:   "remove",
+		Message:  "Volume removed successfully",
+		Success:  true,
+	}))
+}
+
+// RemoveNetworkGin handles network removal for Gin router
+func (s *Service) RemoveNetworkGin(c *gin.Context) {
+	ctx := c.Request.Context()
+	networkID := c.Param("id")
+
+	err := s.client.RemoveNetwork(ctx, networkID)
+	if err != nil {
+		logrus.Errorf("failed to remove network: %v", err)
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse("REMOVE_NETWORK_FAILED", "Failed to remove network: "+err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, common.SuccessResponse(NetworkActionResponse{
+		NetworkID: networkID,
+		Action:    "remove",
+		Message:   "Network removed successfully",
+		Success:   true,
 	}))
 }
 
