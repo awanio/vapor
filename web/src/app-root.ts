@@ -11,6 +11,8 @@ import './views/containers-tab';
 import './views/logs-tab';
 import './views/terminal-tab';
 import './views/users-tab';
+import './views/docker-tab';
+import './views/kubernetes-tab';
 import './components/sidebar-tree';
 
 export class AppRoot extends LitElement {
@@ -279,16 +281,20 @@ export class AppRoot extends LitElement {
     // Listen for popstate events to handle navigation
     window.addEventListener('popstate', (event) => {
       if (event.state && event.state.route) {
-        this.activeView = event.state.route;
+        const [mainRoute, ...subParts] = event.state.route.split('/');
+        this.activeView = mainRoute;
+        this.subRoute = subParts.length > 0 ? subParts.join('/') : null;
       } else {
         // Handle direct URL navigation
         const path = window.location.pathname.slice(1);
         if (!path || path === '') {
           this.activeView = 'dashboard';
+          this.subRoute = null;
         } else {
-          // Set activeView to the path regardless of validity
-          // The render method will handle showing 404 for invalid routes
-          this.activeView = path;
+          // Parse main route and sub-route
+          const [mainRoute, ...subParts] = path.split('/');
+          this.subRoute = subParts.length > 0 ? subParts.join('/') : null;
+          this.activeView = this.isValidRoute(mainRoute) ? mainRoute : path;
         }
       }
     });
@@ -440,9 +446,11 @@ export class AppRoot extends LitElement {
             ${this.activeView === 'network' ? html`<network-tab .subRoute=${this.subRoute}></network-tab>` : ''}
             ${this.activeView === 'storage' ? html`<storage-tab .subRoute=${this.subRoute}></storage-tab>` : ''}
             ${this.activeView === 'containers' ? html`<containers-tab></containers-tab>` : ''}
+            ${this.activeView === 'docker' ? html`<docker-tab .subRoute=${this.subRoute}></docker-tab>` : ''}
             ${this.activeView === 'logs' ? html`<logs-tab></logs-tab>` : ''}
             ${this.activeView === 'terminal' ? html`<terminal-tab></terminal-tab>` : ''}
             ${this.activeView === 'users' ? html`<users-tab></users-tab>` : ''}
+            ${this.activeView.startsWith('kubernetes') ? html`<kubernetes-tab></kubernetes-tab>` : ''}
             ${!this.isValidRoute(this.activeView) ? html`<div>404 - Page Not Found</div>` : ''}
           </div>
         </main>
@@ -457,6 +465,7 @@ export class AppRoot extends LitElement {
 
   private handleNavigation(e: CustomEvent) {
     const route = e.detail.route;
+    
     // Parse main route and sub-route
     const [mainRoute, ...subParts] = route.split('/');
     this.activeView = mainRoute;
@@ -465,7 +474,7 @@ export class AppRoot extends LitElement {
   }
   
   private isValidRoute(route: string): boolean {
-    const validRoutes = ['dashboard', 'network', 'storage', 'containers', 'logs', 'terminal', 'users'];
+    const validRoutes = ['dashboard', 'network', 'storage', 'containers', 'logs', 'terminal', 'users', 'docker', 'kubernetes'];
     return validRoutes.includes(route);
   }
 }

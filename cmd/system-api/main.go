@@ -143,6 +143,7 @@ func main() {
 			api.DELETE("/docker/containers/:id", dockerService.RemoveContainerGin)
 			api.POST("/docker/containers/:id/start", dockerService.StartContainerGin)
 			api.POST("/docker/containers/:id/stop", dockerService.StopContainerGin)
+			api.POST("/docker/containers/:id/kill", dockerService.KillContainerGin)
 			api.GET("/docker/containers/:id/logs", dockerService.GetContainerLogsGin)
 			
 			// Resource deletion

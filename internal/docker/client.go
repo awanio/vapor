@@ -25,6 +25,7 @@ type Client interface {
 	ContainerDetail(ctx context.Context, containerID string) (types.ContainerJSON, error)
 	StartContainer(ctx context.Context, containerID string) error
 	StopContainer(ctx context.Context, containerID string) error
+	KillContainer(ctx context.Context, containerID string) error
 	RemoveContainer(ctx context.Context, containerID string) error
 	ContainerLogs(ctx context.Context, containerID string) (string, error)
 	RemoveImage(ctx context.Context, imageID string) error
@@ -110,6 +111,11 @@ func (c *dockerClient) StartContainer(ctx context.Context, containerID string) e
 // StopContainer stops a Docker container
 func (c *dockerClient) StopContainer(ctx context.Context, containerID string) error {
 	return c.client.ContainerStop(ctx, containerID, container.StopOptions{})
+}
+
+// KillContainer forcefully kills a Docker container
+func (c *dockerClient) KillContainer(ctx context.Context, containerID string) error {
+	return c.client.ContainerKill(ctx, containerID, "SIGKILL")
 }
 
 // RemoveContainer removes a Docker container

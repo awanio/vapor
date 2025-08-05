@@ -32,6 +32,7 @@ func (s *Service) RegisterRoutes(r *mux.Router) {
 	r.HandleFunc("/docker/containers/{id}", s.removeContainer).Methods("DELETE")
 	r.HandleFunc("/docker/containers/{id}/start", s.startContainer).Methods("POST")
 	r.HandleFunc("/docker/containers/{id}/stop", s.stopContainer).Methods("POST")
+	r.HandleFunc("/docker/containers/{id}/kill", s.killContainer).Methods("POST")
 	r.HandleFunc("/docker/containers/{id}/logs", s.getContainerLogs).Methods("GET")
 	
 	// Resource deletion
@@ -83,6 +84,21 @@ func (s *Service) stopContainer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	common.RespondSuccess(w, ContainerActionResponse{ContainerID: containerID, Action: "stop", Message: "Container stopped successfully", Success: true})
+}
+
+func (s *Service) killContainer(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	vars := mux.Vars(r)
+	containerID := vars["id"]
+
+	err := s.client.KillContainer(ctx, containerID)
+	if err != nil {
+		logrus.Errorf("failed to kill container: %v", err)
+		common.RespondError(w, http.StatusInternalServerError, "KILL_CONTAINER_FAILED", "Failed to kill container: "+err.Error())
+		return
+	}
+
+	common.RespondSuccess(w, ContainerActionResponse{ContainerID: containerID, Action: "kill", Message: "Container killed successfully", Success: true})
 }
 
 func (s *Service) removeContainer(w http.ResponseWriter, r *http.Request) {
@@ -281,6 +297,26 @@ func (s *Service) StopContainerGin(c *gin.Context) {
 		ContainerID: containerID, 
 		Action: "stop", 
 		Message: "Container stopped successfully", 
+		Success: true,
+	}))
+}
+
+// KillContainerGin handles container kill for Gin router
+func (s *Service) KillContainerGin(c *gin.Context) {
+	ctx := c.Request.Context()
+	containerID := c.Param("id")
+
+	err := s.client.KillContainer(ctx, containerID)
+	if err != nil {
+		logrus.Errorf("failed to kill container: %v", err)
+		c.JSON(http.StatusInternalServerError, common.ErrorResponse("KILL_CONTAINER_FAILED", "Failed to kill container: "+err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, common.SuccessResponse(ContainerActionResponse{
+		ContainerID: containerID, 
+		Action: "kill", 
+		Message: "Container killed successfully", 
 		Success: true,
 	}))
 }

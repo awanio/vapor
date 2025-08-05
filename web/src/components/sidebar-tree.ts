@@ -7,7 +7,15 @@ import type { NavItem } from '../types/system';
 export class SidebarTree extends I18nLitElement {
   @property({ type: Boolean }) collapsed = false;
   @property({ type: String }) activeItemId = 'dashboard';
-  @property({ type: Object }) expandedItems: Set<string> = new Set(['network', 'storage']);
+  @property({ type: Array }) expandedItemsArray: string[] = ['network', 'storage'];
+  
+  private get expandedItems(): Set<string> {
+    return new Set(this.expandedItemsArray);
+  }
+  
+  private set expandedItems(value: Set<string>) {
+    this.expandedItemsArray = Array.from(value);
+  }
 
   static override styles = css`
     :host {
@@ -112,6 +120,12 @@ export class SidebarTree extends I18nLitElement {
     .icon-containers::before { content: '📦'; }
     .icon-docker::before { content: '🐳'; }
     .icon-images::before { content: '💿'; }
+    .icon-kubernetes::before { content: '☸️'; }
+    .icon-workload::before { content: '⚙️'; }
+    .icon-k8s-networks::before { content: '🔗'; }
+    .icon-k8s-storage::before { content: '💾'; }
+    .icon-configurations::before { content: '⚙️'; }
+    .icon-helm::before { content: '⛵'; }
     .icon-users::before { content: '👥'; }
 
     :host([collapsed]) .tree-item-label,
@@ -167,7 +181,7 @@ export class SidebarTree extends I18nLitElement {
       children: [
         {
           id: 'network-interfaces',
-          label: 'network.interface',
+          label: 'network.interfaces',
           icon: 'interfaces',
           route: 'network/interfaces'
         },
@@ -251,7 +265,45 @@ export class SidebarTree extends I18nLitElement {
           id: 'containers-docker',
           label: 'nav.containers.docker',
           icon: 'docker',
-          route: 'containers/docker'
+          route: 'docker'
+        }
+      ]
+    },
+    {
+      id: 'kubernetes',
+      label: 'nav.kubernetes',
+      icon: 'kubernetes',
+      route: 'kubernetes',
+      children: [
+        {
+          id: 'kubernetes-workload',
+          label: 'kubernetes.workload',
+          icon: 'workload',
+          route: 'kubernetes/workload'
+        },
+        {
+          id: 'kubernetes-networks',
+          label: 'kubernetes.networks',
+          icon: 'k8s-networks',
+          route: 'kubernetes/networks'
+        },
+        {
+          id: 'kubernetes-storage',
+          label: 'kubernetes.storage',
+          icon: 'k8s-storage',
+          route: 'kubernetes/storage'
+        },
+        {
+          id: 'kubernetes-configurations',
+          label: 'kubernetes.configurations',
+          icon: 'configurations',
+          route: 'kubernetes/configurations'
+        },
+        {
+          id: 'kubernetes-helm',
+          label: 'kubernetes.helm',
+          icon: 'helm',
+          route: 'kubernetes/helm'
         }
       ]
     },
@@ -280,12 +332,13 @@ export class SidebarTree extends I18nLitElement {
 
     if (item.children) {
       // Toggle expanded state
-      if (this.expandedItems.has(item.id)) {
-        this.expandedItems.delete(item.id);
+      const expanded = new Set(this.expandedItemsArray);
+      if (expanded.has(item.id)) {
+        expanded.delete(item.id);
       } else {
-        this.expandedItems.add(item.id);
+        expanded.add(item.id);
       }
-      this.requestUpdate();
+      this.expandedItemsArray = Array.from(expanded);
     } else if (item.route) {
       // Navigate to route
       this.activeItemId = item.id;
@@ -304,6 +357,9 @@ export class SidebarTree extends I18nLitElement {
         bubbles: true,
         composed: true
       }));
+      
+      // Trigger re-render to update aria-selected state
+      this.requestUpdate();
     }
   }
 
@@ -313,15 +369,13 @@ export class SidebarTree extends I18nLitElement {
       this.handleItemClick(item, event);
     } else if (event.key === 'ArrowRight' && item.children) {
       event.preventDefault();
-      if (!this.expandedItems.has(item.id)) {
-        this.expandedItems.add(item.id);
-        this.requestUpdate();
+      if (!this.expandedItemsArray.includes(item.id)) {
+        this.expandedItemsArray = [...this.expandedItemsArray, item.id];
       }
     } else if (event.key === 'ArrowLeft' && item.children) {
       event.preventDefault();
-      if (this.expandedItems.has(item.id)) {
-        this.expandedItems.delete(item.id);
-        this.requestUpdate();
+      if (this.expandedItemsArray.includes(item.id)) {
+        this.expandedItemsArray = this.expandedItemsArray.filter(id => id !== item.id);
       }
     }
   }
@@ -329,7 +383,7 @@ export class SidebarTree extends I18nLitElement {
   private renderNavItem(item: NavItem): any {
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = this.expandedItems.has(item.id);
-    const isActive = this.activeItemId === item.id;
+    const isActive = this.isItemActive(item);
 
     return html`
       <li>
@@ -364,14 +418,21 @@ export class SidebarTree extends I18nLitElement {
 
   override connectedCallback() {
     super.connectedCallback();
-    this.expandedItems.add('containers');
+    // Ensure containers is expanded by default
+    if (!this.expandedItemsArray.includes('containers')) {
+      this.expandedItemsArray = [...this.expandedItemsArray, 'containers'];
+    }
+    // Ensure kubernetes is expanded by default
+    if (!this.expandedItemsArray.includes('kubernetes')) {
+      this.expandedItemsArray = [...this.expandedItemsArray, 'kubernetes'];
+    }
     
     // Set activeItemId from URL on component mount
     const path = window.location.pathname.slice(1);
     if (!path || path === '') {
       this.activeItemId = 'dashboard';
     } else {
-      const item = this.navigationItems.find(navItem => navItem.route === path);
+      const item = this.findNavItemByRoute(path);
       if (item) {
         this.activeItemId = item.id;
       } else {
@@ -389,10 +450,42 @@ export class SidebarTree extends I18nLitElement {
     window.removeEventListener('popstate', this.handlePopState);
   }
   
+  private findNavItemByRoute(route: string): NavItem | null {
+    const findInItems = (items: NavItem[]): NavItem | null => {
+      for (const item of items) {
+        if (item.route === route) {
+          return item;
+        }
+        // Also check if route starts with item route (for sub-routes like docker/processes)
+        if (item.route && route.startsWith(item.route + '/')) {
+          return item;
+        }
+        if (item.children) {
+          const found = findInItems(item.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    
+    return findInItems(this.navigationItems);
+  }
+
+  private isItemActive(item: NavItem): boolean {
+    // Rule: If item has children, it should NEVER be marked as active (aria-selected="true")
+    // Only leaf items (no children) can be marked as active
+    if (item.children && item.children.length > 0) {
+      return false;
+    }
+    
+    // For leaf items, check if this item is the currently active one
+    return this.activeItemId === item.id;
+  }
+
   private handlePopState = () => {
     const path = window.location.pathname.slice(1);
     if (path) {
-      const item = this.navigationItems.find(navItem => navItem.route === path);
+      const item = this.findNavItemByRoute(path);
       if (item) {
         this.activeItemId = item.id;
         this.requestUpdate();

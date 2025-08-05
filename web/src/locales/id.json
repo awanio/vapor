@@ -34,6 +34,7 @@
       "docker": "Docker"
     },
     "images": "Image",
+    "kubernetes": "Kubernetes",
     "users": "Pengguna"
   },
   "common": {
@@ -102,7 +103,7 @@
   },
   "network": {
     "title": "Jaringan",
-    "interface": "Antarmuka",
+    "interfaces": "Antarmuka",
     "bridges": "Bridge",
     "bonds": "Bond",
     "vlans": "VLAN",
@@ -133,7 +134,6 @@
     "bridgeNameRequired": "Nama Bridge *",
     "bondName": "Nama Bond",
     "bondNameRequired": "Nama Bond *",
-    "interfaces": "Antarmuka",
     "interfacesRequired": "Antarmuka *",
     "modeRequired": "Mode *",
     "baseInterface": "Antarmuka Dasar",
@@ -161,30 +161,6 @@
     "txBytes": "Byte Dikirim",
     "configure": "Konfigurasi",
     "noInterfaces": "Tidak ada antarmuka tersedia",
-    "interfaces": {
-      "title": "Antarmuka Jaringan",
-      "name": "Nama Antarmuka",
-      "state": "Status",
-      "up": "Aktif",
-      "down": "Nonaktif",
-      "mac": "Alamat MAC",
-      "mtu": "MTU",
-      "addresses": "Alamat IP",
-      "statistics": "Statistik",
-      "rxBytes": "Byte Diterima",
-      "txBytes": "Byte Dikirim",
-      "rxPackets": "Paket Diterima",
-      "txPackets": "Paket Dikirim",
-      "rxErrors": "Kesalahan Penerimaan",
-      "txErrors": "Kesalahan Pengiriman",
-      "bringUp": "Aktifkan",
-      "bringDown": "Nonaktifkan",
-      "configure": "Konfigurasi",
-      "configureAddress": "Konfigurasi Alamat IP",
-      "address": "Alamat IP",
-      "netmask": "Netmask",
-      "gateway": "Gateway"
-    },
     "bonding": {
       "title": "Network Bonding",
       "createBond": "Buat Bond",
@@ -335,6 +311,19 @@
       "imageName": "Nama Image",
       "removeConfirm": "Apakah Anda yakin ingin menghapus image ini?"
     }
+  },
+  "docker": {
+    "processes": "Proses",
+    "volumes": "Volume",
+    "networks": "Jaringan"
+  },
+  "kubernetes": {
+    "title": "Kubernetes",
+    "workload": "Beban Kerja",
+    "networks": "Jaringan",
+    "storage": "Penyimpanan",
+    "configurations": "Konfigurasi",
+    "helm": "Helm"
   },
   "users": {
     "title": "Manajemen Pengguna",

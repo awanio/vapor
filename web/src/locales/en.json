@@ -34,6 +34,7 @@
       "docker": "Docker"
     },
     "images": "Images",
+    "kubernetes": "Kubernetes",
     "users": "Users"
   },
   "common": {
@@ -102,7 +103,7 @@
   },
   "network": {
     "title": "Network",
-    "interface": "Interfaces",
+    "interfaces": "Interfaces",
     "bridges": "Bridges",
     "bonds": "Bonds",
     "vlans": "VLANs",
@@ -133,7 +134,6 @@
     "bridgeNameRequired": "Bridge Name *",
     "bondName": "Bond Name",
     "bondNameRequired": "Bond Name *",
-    "interfaces": "Interfaces",
     "interfacesRequired": "Interfaces *",
     "modeRequired": "Mode *",
     "baseInterface": "Base Interface",
@@ -161,30 +161,6 @@
     "txBytes": "TX Bytes",
     "configure": "Configure",
     "noInterfaces": "No interfaces available",
-    "interfaces": {
-      "title": "Network Interfaces",
-      "name": "Interface Name",
-      "state": "State",
-      "up": "Up",
-      "down": "Down",
-      "mac": "MAC Address",
-      "mtu": "MTU",
-      "addresses": "IP Addresses",
-      "statistics": "Statistics",
-      "rxBytes": "Received Bytes",
-      "txBytes": "Transmitted Bytes",
-      "rxPackets": "Received Packets",
-      "txPackets": "Transmitted Packets",
-      "rxErrors": "Receive Errors",
-      "txErrors": "Transmit Errors",
-      "bringUp": "Bring Up",
-      "bringDown": "Bring Down",
-      "configure": "Configure",
-      "configureAddress": "Configure IP Address",
-      "address": "IP Address",
-      "netmask": "Netmask",
-      "gateway": "Gateway"
-    },
     "bonding": {
       "title": "Network Bonding",
       "createBond": "Create Bond",
@@ -319,6 +295,19 @@
       "imageName": "Image Name",
       "removeConfirm": "Are you sure you want to remove this image?"
     }
+  },
+  "docker": {
+    "processes": "Processes",
+    "volumes": "Volumes",
+    "networks": "Networks"
+  },
+  "kubernetes": {
+    "title": "Kubernetes",
+    "workload": "Workload",
+    "networks": "Networks",
+    "storage": "Storage",
+    "configurations": "Configurations",
+    "helm": "Helm"
   },
   "users": {
     "title": "User Management",

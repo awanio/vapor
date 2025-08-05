@@ -376,6 +376,134 @@ export interface LogsResponse {
   page_size: number;
 }
 
+// Docker Types
+export interface DockerContainer {
+  id: string;
+  names: string[];
+  image: string;
+  imageId: string;
+  command: string;
+  created: string;
+  state: string;
+  status: string;
+  ports: DockerPort[];
+  labels: Record<string, string>;
+  sizeRw?: number;
+  sizeRootFs?: number;
+  hostConfig: DockerHostConfig;
+  networkSettings: DockerNetworkSettings;
+  mounts: DockerMount[];
+}
+
+export interface DockerPort {
+  ip?: string;
+  privatePort: number;
+  publicPort?: number;
+  type: string;
+}
+
+export interface DockerHostConfig {
+  networkMode: string;
+}
+
+export interface DockerNetworkSettings {
+  networks: Record<string, DockerNetworkInfo>;
+}
+
+export interface DockerNetworkInfo {
+  networkId: string;
+  endpointId: string;
+  gateway: string;
+  ipAddress: string;
+  ipPrefixLen: number;
+  ipv6Gateway?: string;
+  macAddress: string;
+}
+
+export interface DockerMount {
+  type: string;
+  source: string;
+  destination: string;
+  mode: string;
+  rw: boolean;
+  propagation?: string;
+}
+
+export interface DockerImage {
+  id: string;
+  parentId?: string;
+  repoTags: string[];
+  repoDigests: string[];
+  created: string;
+  size: number;
+  virtualSize?: number;
+  sharedSize?: number;
+  labels: Record<string, string>;
+  containers?: number;
+}
+
+export interface DockerNetwork {
+  id: string;
+  name: string;
+  driver: string;
+  created: string;
+  scope: string;
+  enableIPv6: boolean;
+  ipam: DockerIPAM;
+  internal: boolean;
+  attachable: boolean;
+  ingress: boolean;
+  configOnly: boolean;
+  options: Record<string, string>;
+  labels: Record<string, string>;
+  containers: Record<string, DockerNetworkInfo>;
+}
+
+export interface DockerIPAM {
+  driver: string;
+  options: Record<string, string>;
+  config: DockerIPAMConfig[];
+}
+
+export interface DockerIPAMConfig {
+  subnet: string;
+  ipRange?: string;
+  gateway: string;
+  auxAddress?: Record<string, string>;
+}
+
+export interface DockerVolume {
+  name: string;
+  driver: string;
+  mountpoint: string;
+  createdAt: string;
+  labels: Record<string, string>;
+  scope: string;
+  options: Record<string, string>;
+  usageData?: DockerVolumeUsageData;
+}
+
+export interface DockerVolumeUsageData {
+  size: number;
+  refCount: number;
+}
+
+export interface DockerContainersResponse {
+  containers: DockerContainer[];
+}
+
+export interface DockerImagesResponse {
+  images: DockerImage[];
+}
+
+export interface DockerNetworksResponse {
+  networks: DockerNetwork[];
+}
+
+export interface DockerVolumesResponse {
+  volumes: DockerVolume[];
+}
+
 // WebSocket Types
 export interface WSMessage {
   type: string;

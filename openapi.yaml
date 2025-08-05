@@ -1741,6 +1741,42 @@ paths:
                   code: STOP_CONTAINER_FAILED
                   message: "Failed to stop container: Container not running"
 
+  /docker/containers/{id}/kill:
+    post:
+      summary: Kill Docker container
+      description: Forcefully kill a running Docker container using SIGKILL
+      tags:
+        - Docker
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Container ID or name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Container killed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContainerActionResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          description: Failed to kill container
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                error:
+                  code: KILL_CONTAINER_FAILED
+                  message: "Failed to kill container: Container not running"
+
 
   /docker/containers/{id}/logs:
     get:

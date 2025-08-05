@@ -962,10 +962,25 @@ export class NetworkTab extends I18nLitElement {
     `;
   }
 
+  private getPageTitle() {
+    switch (this.activeTab) {
+      case 'interfaces':
+        return t('network.interfaces');
+      case 'bridges':
+        return t('network.bridges');
+      case 'bonds':
+        return t('network.bonds');
+      case 'vlans':
+        return t('network.vlans');
+      default:
+        return t('network.title');
+    }
+  }
+
   override render() {
     return html`
       <div class="tab-container">
-        <h1>${t('network.title')}</h1>
+        <h1>${this.getPageTitle()}</h1>
         <div class="tab-content">
           ${this.activeTab === 'interfaces' ? html`
             <div class="interface-search" style="display: flex; justify-content: flex-start; margin-bottom: 12px;">
