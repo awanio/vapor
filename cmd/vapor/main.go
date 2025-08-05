@@ -10,10 +10,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/awanio/vapor/internal/auth"
 	"github.com/awanio/vapor/internal/common"
 	"github.com/awanio/vapor/internal/container"
+	"github.com/awanio/vapor/internal/docker"
+	"github.com/awanio/vapor/internal/helm"
+	"github.com/awanio/vapor/internal/kubernetes"
 	"github.com/awanio/vapor/internal/logs"
 	"github.com/awanio/vapor/internal/network"
 	"github.com/awanio/vapor/internal/storage"
@@ -21,9 +23,7 @@ import (
 	"github.com/awanio/vapor/internal/users"
 	"github.com/awanio/vapor/internal/web"
 	"github.com/awanio/vapor/internal/websocket"
-	"github.com/awanio/vapor/internal/docker"
-	"github.com/awanio/vapor/internal/kubernetes"
-	"github.com/awanio/vapor/internal/helm"
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -133,18 +133,18 @@ func main() {
 		} else {
 			dockerService := docker.NewService(dockerClient)
 			defer dockerClient.Close() // Close client when server shuts down
-			
+
 			// Register Docker routes
 			api.GET("/docker/ps", dockerService.ListContainersGin)
 			api.GET("/docker/images", dockerService.ListImagesGin)
 			api.GET("/docker/networks", dockerService.ListNetworksGin)
 			api.GET("/docker/volumes", dockerService.ListVolumesGin)
-			
+
 			// Container creation and image pulling
 			api.POST("/docker/containers", dockerService.CreateContainerGin)
 			api.POST("/docker/images/pull", dockerService.PullImageGin)
 			api.POST("/docker/images/import", dockerService.ImportImageGin)
-			
+
 			// Container detail and actions
 			api.GET("/docker/containers/:id", dockerService.GetContainerDetailGin)
 			api.DELETE("/docker/containers/:id", dockerService.RemoveContainerGin)
@@ -152,19 +152,20 @@ func main() {
 			api.POST("/docker/containers/:id/stop", dockerService.StopContainerGin)
 			api.POST("/docker/containers/:id/kill", dockerService.KillContainerGin)
 			api.GET("/docker/containers/:id/logs", dockerService.GetContainerLogsGin)
-			
+
 			// Resource deletion
 			api.DELETE("/docker/images/:id", dockerService.RemoveImageGin)
 			api.DELETE("/docker/volumes/:id", dockerService.RemoveVolumeGin)
 			api.DELETE("/docker/networks/:id", dockerService.RemoveNetworkGin)
 		}
-		
+
 		// Kubernetes service
 		kubernetesService, err := kubernetes.NewService()
 		if err != nil {
 			log.Printf("Warning: Kubernetes service not available: %v", err)
 			// Register Kubernetes routes with NoKubernetesHandler
 			noK8sHandler := kubernetes.NoKubernetesHandler()
+			api.GET("/kubernetes/crds", noK8sHandler)
 			api.GET("/kubernetes/pods", noK8sHandler)
 			api.GET("/kubernetes/pods/:namespace/:name", noK8sHandler)
 			api.GET("/kubernetes/deployments", noK8sHandler)
@@ -181,15 +182,16 @@ func main() {
 			api.GET("/kubernetes/jobs", noK8sHandler)
 			api.GET("/kubernetes/cronjobs", noK8sHandler)
 			api.GET("/kubernetes/cluster-info", noK8sHandler)
-			
-				// Helm routes with NoHelmHandler
-				noHelmHandler := helm.NoHelmHandler()
-				api.GET("/kubernetes/helm/releases", noHelmHandler)
-				api.GET("/kubernetes/helm/charts", noHelmHandler)
-				api.GET("/kubernetes/helm/repositories", noHelmHandler)
+
+			// Helm routes with NoHelmHandler
+			noHelmHandler := helm.NoHelmHandler()
+			api.GET("/kubernetes/helm/releases", noHelmHandler)
+			api.GET("/kubernetes/helm/charts", noHelmHandler)
+			api.GET("/kubernetes/helm/repositories", noHelmHandler)
 		} else {
 			// Register Kubernetes routes
 			k8sHandler := kubernetes.NewHandler(kubernetesService)
+			api.GET("/kubernetes/crds", k8sHandler.ListCRDsGin)
 			api.GET("/kubernetes/pods", k8sHandler.ListPodsGin)
 			api.GET("/kubernetes/pods/:namespace/:name", k8sHandler.GetPodDetailGin)
 			api.GET("/kubernetes/deployments", k8sHandler.ListDeploymentsGin)
@@ -206,7 +208,7 @@ func main() {
 			api.GET("/kubernetes/jobs", k8sHandler.ListJobsGin)
 			api.GET("/kubernetes/cronjobs", k8sHandler.ListCronJobsGin)
 			api.GET("/kubernetes/cluster-info", k8sHandler.GetClusterInfoGin)
-			
+
 			// Helm service
 			helmService, err := helm.NewService(kubernetesService)
 			if err != nil {
@@ -214,15 +216,15 @@ func main() {
 				noHelmHandler := helm.NoHelmHandler()
 				api.GET("/kubernetes/helm/releases", noHelmHandler)
 				api.GET("/kubernetes/helm/charts", noHelmHandler)
-				} else {
-					helmHandler := helm.NewServiceHandler(helmService)
-					api.GET("/kubernetes/helm/releases", helmHandler.ListReleasesGin)
-					api.GET("/kubernetes/helm/charts", helmHandler.ListChartsGin)
-					api.GET("/kubernetes/helm/repositories", helmHandler.ListRepositoriesGin)
-				}
+			} else {
+				helmHandler := helm.NewServiceHandler(helmService)
+				api.GET("/kubernetes/helm/releases", helmHandler.ListReleasesGin)
+				api.GET("/kubernetes/helm/charts", helmHandler.ListChartsGin)
+				api.GET("/kubernetes/helm/repositories", helmHandler.ListRepositoriesGin)
+			}
 		}
 
-// User management endpoints
+		// User management endpoints
 		userService := users.NewService()
 		api.GET("/users", userService.GetUsers)
 		api.POST("/users", userService.CreateUser)
@@ -275,7 +277,7 @@ func main() {
 		} else {
 			// Serve all static files using StaticFS
 			router.StaticFS("/static", webFS)
-			
+
 			// Serve index.html for root
 			router.GET("/", func(c *gin.Context) {
 				data, err := web.GetIndexHTML()
@@ -285,7 +287,7 @@ func main() {
 				}
 				c.Data(http.StatusOK, "text/html; charset=utf-8", data)
 			})
-			
+
 			// Serve index.html explicitly
 			router.GET("/index.html", func(c *gin.Context) {
 				data, err := web.GetIndexHTML()
@@ -295,7 +297,7 @@ func main() {
 				}
 				c.Data(http.StatusOK, "text/html; charset=utf-8", data)
 			})
-			
+
 			// Catch-all route for SPA routing
 			router.NoRoute(func(c *gin.Context) {
 				// Skip API routes
@@ -313,14 +315,14 @@ func main() {
 					c.JSON(http.StatusNotFound, gin.H{"error": "Static file not found"})
 					return
 				}
-				
+
 				// Try to serve the file directly first
 				path := c.Request.URL.Path
 				// Remove leading slash for http.FS
 				if len(path) > 0 && path[0] == '/' {
 					path = path[1:]
 				}
-				
+
 				// Check if file exists
 				if file, err := webFS.Open(path); err == nil {
 					file.Close()
@@ -336,12 +338,12 @@ func main() {
 					c.Data(http.StatusOK, "text/html; charset=utf-8", data)
 				}
 			})
-			
+
 			log.Println("Web UI enabled and serving at /")
 		}
 	} else {
 		log.Println("Web UI not available (no files found in embedded filesystem)")
-		
+
 		// Serve a simple message when no web UI is available
 		router.GET("/", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{

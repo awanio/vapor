@@ -3752,7 +3752,8 @@ paths:
             example: "default"
         - name: all
           in: query
-          description: Explicitly control whether to show releases from all namespaces (default: true)
+          description: |
+            Explicitly control whether to show releases from all namespaces (default: true)
           required: false
           schema:
             type: boolean
@@ -3845,8 +3846,6 @@ paths:
           $ref: '#/components/responses/HelmNotAvailableError'
         '500':
           $ref: '#/components/responses/HelmError'
-
-  
 
 components:
   securitySchemes:
