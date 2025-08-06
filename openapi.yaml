@@ -24,6 +24,7 @@ paths:
            - Uses system authentication via 'su' command
       tags:
         - Auth
+      security: []  # No authentication required for login endpoint
       requestBody:
         required: true
         content:
@@ -795,9 +796,6 @@ paths:
                       runtime:
                         type: string
                         example: containerd
-                  error:
-                    type: object
-                    nullable: true
         '503':
           description: No container runtime available
           content:
@@ -939,9 +937,6 @@ paths:
                       runtime:
                         type: string
                         example: docker
-                  error:
-                    type: object
-                    nullable: true
         '400':
           description: Invalid container ID
           content:
@@ -1031,9 +1026,6 @@ paths:
                       runtime:
                         type: string
                         example: containerd
-                  error:
-                    type: object
-                    nullable: true
         '503':
           description: No container runtime available
           content:
@@ -3288,6 +3280,39 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
         '503':
           $ref: '#/components/responses/KubernetesNotInstalledError'
+    post:
+      summary: Create or update an Ingress
+      description: Create a new Ingress or update an existing Ingress using Kubernetes apply semantics.
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        description: Ingress specification in JSON or YAML format
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IngressDetail'
+          application/yaml:
+            schema:
+              type: string
+          text/yaml:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: Ingress created or updated successfully
+        '400':
+          description: Invalid Ingress specification or unsupported content type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
 
   /kubernetes/pvcs:
     get:
@@ -3341,32 +3366,6 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
         '503':
           $ref: '#/components/responses/KubernetesNotInstalledError'
-    delete:
-      summary: Delete a PVC
-      description: Delete a specific PVC
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: namespace
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: PVC deleted successfully
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '503':
-          $ref: '#/components/responses/KubernetesNotInstalledError'
-
   /kubernetes/pvs:
     get:
       summary: List all persistent volumes in the cluster
@@ -3382,6 +3381,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PVsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+    post:
+      summary: Create or update a PV
+      description: Create a new PV or update an existing PV using Kubernetes apply semantics.
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        description: PV specification in JSON or YAML format
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PVDetail'
+          application/yaml:
+            schema:
+              type: string
+          text/yaml:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: PV created or updated successfully
+        '400':
+          description: Invalid PV specification or unsupported content type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '503':
@@ -3475,26 +3507,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '503':
-          $ref: '#/components/responses/KubernetesNotInstalledError'
-    delete:
-      summary: Delete a Namespace
-      description: Delete a specific Namespace
-      tags:
-        - Kubernetes
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Namespace deleted successfully
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '503':
@@ -3648,6 +3660,58 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PodDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Pod not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+    put:
+      summary: Update a Pod
+      description: Update an existing Pod
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: Pod namespace
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          description: Pod name
+          schema:
+            type: string
+      requestBody:
+        required: true
+        description: Pod specification in JSON or YAML format
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PodDetail'
+          application/yaml:
+            schema:
+              type: string
+          text/yaml:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: Pod updated successfully
+        '400':
+          description: Invalid Pod specification or unsupported content type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '404':
@@ -4174,6 +4238,31 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '503':
           $ref: '#/components/responses/KubernetesNotInstalledError'
+    delete:
+      summary: Delete a PVC
+      description: Delete a specific PVC
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: PVC deleted successfully
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
 
   /kubernetes/pvs/{name}:
     get:
@@ -4486,6 +4575,73 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+    put:
+      summary: Update a Namespace
+      description: Update an existing Namespace
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Namespace name
+          schema:
+            type: string
+      requestBody:
+        required: true
+        description: Namespace specification in JSON or YAML format
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NamespaceDetail'
+          application/yaml:
+            schema:
+              type: string
+          text/yaml:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: Namespace updated successfully
+        '400':
+          description: Invalid Namespace specification or unsupported content type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Namespace not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+    delete:
+      summary: Delete a Namespace
+      description: Delete a specific Namespace
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Namespace name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Namespace deleted successfully
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
         '503':
           $ref: '#/components/responses/KubernetesNotInstalledError'
 
@@ -4829,9 +4985,8 @@ components:
                   details:
                     type: string
                     example: "The kubelet service was not found on this system. Please install Kubernetes to use these features."
-              data:
-                type: object
-                nullable: true
+                  data:
+                    type: object
 
     HelmNotAvailableError:
       description: Helm is not available
@@ -4855,9 +5010,8 @@ components:
                   details:
                     type: string
                     example: "Helm requires Kubernetes to be installed and configured. Please ensure Kubernetes is running and accessible."
-              data:
-                type: object
-                nullable: true
+                  data:
+                    type: object
 
     HelmError:
       description: Helm operation failed
@@ -4878,9 +5032,8 @@ components:
                   message:
                     type: string
                     example: "Failed to list releases: connection refused"
-              data:
-                type: object
-                nullable: true
+                  data:
+                    type: object
   
   schemas:
     APIResponse:
@@ -4891,12 +5044,10 @@ components:
         status:
           type: string
           enum: [success, error]
-        data:
-          type: object
-          nullable: true
-        error:
-          $ref: '#/components/schemas/APIError'
-          nullable: true
+    data:
+      type: object
+    error:
+      $ref: '#/components/schemas/APIError'
     
     APIError:
       type: object
@@ -5892,14 +6043,11 @@ components:
             started_at:
               type: string
               format: date-time
-              nullable: true
             finished_at:
               type: string
               format: date-time
-              nullable: true
             exit_code:
               type: integer
-              nullable: true
             pid:
               type: integer
             restart_count:
@@ -7349,7 +7497,6 @@ components:
           type: object
           additionalProperties:
             type: string
-          nullable: true
         creationTimestamp:
           type: string
           format: date-time
