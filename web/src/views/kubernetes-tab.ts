@@ -633,7 +633,7 @@ class KubernetesTab extends LitElement {
 
     .pod-name-link:hover {
       color: var(--vscode-link-activeForeground, #0096ff);
-      text-decoration: underline;
+      text-decoration: none;
       border-bottom-color: var(--vscode-link-foreground, #0096ff);
     }
 
@@ -838,6 +838,87 @@ class KubernetesTab extends LitElement {
 
     .notification.removing {
       animation: slideOut 0.3s ease-in;
+    }
+
+    /* CRD Details specific styles */
+    .crd-details-drawer {
+      width: 700px; /* Slightly wider for CRD details */
+    }
+
+    .raw-data {
+      background: var(--vscode-textCodeBlock-background, rgba(0, 0, 0, 0.2));
+      border: 1px solid var(--vscode-widget-border, rgba(255, 255, 255, 0.1));
+      border-radius: 4px;
+      padding: 12px;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 12px;
+      line-height: 1.4;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      color: var(--vscode-editor-foreground, #cccccc);
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    details {
+      margin: 8px 0;
+    }
+
+    summary {
+      cursor: pointer;
+      padding: 8px 0;
+      font-weight: 600;
+      color: var(--vscode-foreground);
+      user-select: none;
+      border-bottom: 1px solid var(--vscode-widget-border, rgba(255, 255, 255, 0.1));
+      margin-bottom: 8px;
+      list-style: none;
+      position: relative;
+    }
+
+    summary:hover {
+      color: var(--vscode-link-foreground, #0096ff);
+    }
+
+    /* Hide default browser disclosure triangles */
+    summary::-webkit-details-marker {
+      display: none;
+    }
+
+    summary::-moz-list-bullet {
+      list-style-type: none;
+    }
+
+    summary::marker {
+      display: none;
+      content: "";
+    }
+
+    details > summary {
+      list-style: none;
+    }
+
+    details > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    /* Custom arrow */
+    summary::before {
+      content: '▶';
+      display: inline-block;
+      margin-right: 8px;
+      transition: transform 0.2s;
+      font-size: 12px;
+      position: relative;
+    }
+
+    details[open] summary::before {
+      transform: rotate(90deg);
+    }
+
+    .detail-value.empty-object {
+      color: var(--vscode-descriptionForeground, var(--text-secondary, #999));
+      font-style: italic;
     }
   `;
 
@@ -1443,7 +1524,7 @@ class KubernetesTab extends LitElement {
 
     if (this.loadingCrdDetails) {
       return html`
-        <div class="pod-details-drawer">
+        <div class="pod-details-drawer crd-details-drawer">
           <button class="close-button" @click="${() => this.showCrdDetails = false}">&#x2715;</button>
           <h2>CRD Details</h2>
           <div class="loading-state">Loading CRD details...</div>
@@ -1452,7 +1533,7 @@ class KubernetesTab extends LitElement {
     }
 
     return html`
-      <div class="pod-details-drawer">
+      <div class="pod-details-drawer crd-details-drawer">
         <button class="close-button" @click="${() => this.showCrdDetails = false}">&#x2715;</button>
         <h2>CRD Details</h2>
         <div class="pod-details-content">
@@ -1467,35 +1548,86 @@ class KubernetesTab extends LitElement {
       return html`<div class="no-data">No data available</div>`;
     }
 
+    // Handle the actual API response structure where data might be under 'crd_detail' key
     const crdData = data.crd_detail || data;
+    
+    console.log('Processing CRD data:', crdData);
 
     return html`
       <div class="detail-sections">
         <div class="detail-section">
           <h3>Basic Information</h3>
           ${this.renderDetailItem('Name', crdData.name)}
-          ${this.renderDetailItem('UID', crdData.uid)}
+          ${this.renderDetailItem('Group', crdData.group)}
+          ${this.renderDetailItem('Version', crdData.version)}
+          ${this.renderDetailItem('Kind', crdData.kind)}
+          ${this.renderDetailItem('Scope', crdData.scope)}
           ${this.renderDetailItem('Creation Timestamp', crdData.creationTimestamp)}
-          ${this.renderDetailItem('Age', crdData.age)}
+          ${crdData.age ? this.renderDetailItem('Age', crdData.age) : ''}
+          ${crdData.uid ? this.renderDetailItem('UID', crdData.uid) : ''}
+          ${crdData.resourceVersion ? this.renderDetailItem('Resource Version', crdData.resourceVersion) : ''}
         </div>
 
+        <!-- Names Section -->
+        ${crdData.names ? html`
+          <div class="detail-section">
+            <h3>Names</h3>
+            ${typeof crdData.names === 'object' && crdData.names !== null ? 
+              html`${this.renderObjectAsKeyValue(crdData.names)}` : 
+              html`<div class="detail-item"><span class="detail-key">Names:</span> <span class="detail-value">${crdData.names || 'N/A'}</span></div>`
+            }
+          </div>
+        ` : ''}
+
+        <!-- Specification Section (if available) -->
         ${crdData.spec ? html`
         <div class="detail-section">
           <h3>Specification</h3>
           ${this.renderDetailItem('Group', crdData.spec.group)}
           ${this.renderDetailItem('Scope', crdData.spec.scope)}
-          ${this.renderDetailItem('Names', crdData.spec.names, true)}
-          ${this.renderDetailItem('Versions', crdData.spec.versions, true)}
+          ${crdData.spec.names ? this.renderDetailItem('Names', crdData.spec.names, true) : ''}
+          ${crdData.spec.versions ? this.renderDetailItem('Versions', crdData.spec.versions, true) : ''}
         </div>` : ''}
 
+        <!-- Status Section (if available) -->
         ${crdData.status ? html`
           <div class="detail-section">
             <h3>Status</h3>
-            ${this.renderDetailItem('Accepted Names', crdData.status.acceptedNames, true)}
-            ${this.renderDetailItem('Stored Versions', crdData.status.storedVersions, true)}
-            ${this.renderDetailItem('Conditions', crdData.status.conditions, true)}
+            ${crdData.status.acceptedNames ? this.renderDetailItem('Accepted Names', crdData.status.acceptedNames, true) : ''}
+            ${crdData.status.storedVersions ? this.renderDetailItem('Stored Versions', crdData.status.storedVersions, true) : ''}
+            ${crdData.status.conditions ? this.renderDetailItem('Conditions', crdData.status.conditions, true) : ''}
           </div>
         ` : ''}
+        
+        <!-- Labels Section -->
+        ${crdData.labels && Object.keys(crdData.labels).length > 0 ? html`
+          <div class="detail-section">
+            <h3>Labels</h3>
+            ${this.renderObjectAsKeyValue(crdData.labels)}
+          </div>
+        ` : html`
+          <div class="detail-section">
+            <h3>Labels</h3>
+            <div class="detail-item"><span class="detail-value">No labels</span></div>
+          </div>
+        `}
+
+        <!-- Annotations Section (if available) -->
+        ${crdData.annotations && Object.keys(crdData.annotations).length > 0 ? html`
+          <div class="detail-section">
+            <h3>Annotations</h3>
+            ${this.renderObjectAsKeyValue(crdData.annotations)}
+          </div>
+        ` : ''}
+
+        <!-- Raw Data Section for debugging and completeness -->
+        <div class="detail-section">
+          <h3>Raw Data</h3>
+          <details>
+            <summary>View raw CRD data</summary>
+            <pre class="raw-data">${JSON.stringify(crdData, null, 2)}</pre>
+          </details>
+        </div>
       </div>
     `;
   }

@@ -16,6 +16,57 @@ export interface CRD {
   age: string;
   labels: Record<string, string>;
   creationTimestamp: string;
+  uid: string;
+}
+
+export interface CRDDetail {
+  name: string;
+  group: string;
+  version: string;
+  kind: string;
+  scope: string;
+  names: any; // Can be null or object with plural, singular, etc.
+  age: string;
+  labels: Record<string, string> | null;
+  creationTimestamp: string;
+  uid?: string;
+  resourceVersion?: string;
+  // Additional fields that might be present in detailed response
+  spec?: {
+    group: string;
+    scope: string;
+    names: {
+      kind: string;
+      listKind: string;
+      plural: string;
+      singular: string;
+    };
+    versions: {
+      name: string;
+      served: boolean;
+      storage: boolean;
+    }[];
+  };
+  status?: {
+    acceptedNames: {
+      kind: string;
+      listKind: string;
+      plural: string;
+      singular: string;
+    };
+    storedVersions: string[];
+    conditions: {
+      type: string;
+      status: string;
+      lastTransitionTime: string;
+      reason: string;
+      message: string;
+    }[];
+  };
+}
+
+export interface CRDDetailResponse {
+  crd_detail: CRDDetail;
 }
 
 export interface CRDsResponse {
