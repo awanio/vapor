@@ -50,6 +50,18 @@ func (h *Handler) ListDeploymentsGin(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"deployments": deployments, "count": len(deployments)})
 }
 
+func (h *Handler) GetDeploymentDetailGin(c *gin.Context) {
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+
+	deploymentDetail, err := h.service.GetDeploymentDetail(c.Request.Context(), namespace, name)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get deployment details", err.Error())
+		return
+	}
+	common.SendSuccess(c, gin.H{"deployment_detail": deploymentDetail})
+}
+
 func (h *Handler) ListServicesGin(c *gin.Context) {
 	services, err := h.service.ListServices(c.Request.Context(), nil)
 	if err != nil {
@@ -57,6 +69,18 @@ func (h *Handler) ListServicesGin(c *gin.Context) {
 		return
 	}
 	common.SendSuccess(c, gin.H{"services": services, "count": len(services)})
+}
+
+func (h *Handler) GetServiceDetailGin(c *gin.Context) {
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+
+	serviceDetail, err := h.service.GetServiceDetail(c.Request.Context(), namespace, name)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get service details", err.Error())
+		return
+	}
+	common.SendSuccess(c, gin.H{"service_detail": serviceDetail})
 }
 
 func (h *Handler) ListIngressesGin(c *gin.Context) {
@@ -68,6 +92,18 @@ func (h *Handler) ListIngressesGin(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"ingresses": ingresses, "count": len(ingresses)})
 }
 
+func (h *Handler) GetIngressDetailGin(c *gin.Context) {
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+
+	ingressDetail, err := h.service.GetIngressDetail(c.Request.Context(), namespace, name)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get ingress details", err.Error())
+		return
+	}
+	common.SendSuccess(c, gin.H{"ingress_detail": ingressDetail})
+}
+
 func (h *Handler) ListPVCsGin(c *gin.Context) {
 	pvcs, err := h.service.ListPVCs(c.Request.Context(), nil)
 	if err != nil {
@@ -75,6 +111,18 @@ func (h *Handler) ListPVCsGin(c *gin.Context) {
 		return
 	}
 	common.SendSuccess(c, gin.H{"pvcs": pvcs, "count": len(pvcs)})
+}
+
+func (h *Handler) GetPVCDetailGin(c *gin.Context) {
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+
+	pvcDetail, err := h.service.GetPVCDetail(c.Request.Context(), namespace, name)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get PVC details", err.Error())
+		return
+	}
+	common.SendSuccess(c, gin.H{"pvc_detail": pvcDetail})
 }
 
 func (h *Handler) ListPVsGin(c *gin.Context) {
@@ -86,6 +134,17 @@ func (h *Handler) ListPVsGin(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"pvs": pvs, "count": len(pvs)})
 }
 
+func (h *Handler) GetPVDetailGin(c *gin.Context) {
+	name := c.Param("name")
+
+	pvDetail, err := h.service.GetPVDetail(c.Request.Context(), name)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get PV details", err.Error())
+		return
+	}
+	common.SendSuccess(c, gin.H{"pv_detail": pvDetail})
+}
+
 func (h *Handler) ListSecretsGin(c *gin.Context) {
 	secrets, err := h.service.ListSecrets(c.Request.Context(), nil)
 	if err != nil {
@@ -93,6 +152,18 @@ func (h *Handler) ListSecretsGin(c *gin.Context) {
 		return
 	}
 	common.SendSuccess(c, gin.H{"secrets": secrets, "count": len(secrets)})
+}
+
+func (h *Handler) GetSecretDetailGin(c *gin.Context) {
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+
+	secretDetail, err := h.service.GetSecretDetail(c.Request.Context(), namespace, name)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get secret details", err.Error())
+		return
+	}
+	common.SendSuccess(c, gin.H{"secret_detail": secretDetail})
 }
 
 func (h *Handler) ListConfigMapsGin(c *gin.Context) {
@@ -104,6 +175,18 @@ func (h *Handler) ListConfigMapsGin(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"configmaps": configmaps, "count": len(configmaps)})
 }
 
+func (h *Handler) GetConfigMapDetailGin(c *gin.Context) {
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+
+	configmapDetail, err := h.service.GetConfigMapDetail(c.Request.Context(), namespace, name)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get configmap details", err.Error())
+		return
+	}
+	common.SendSuccess(c, gin.H{"configmap_detail": configmapDetail})
+}
+
 func (h *Handler) ListNamespacesGin(c *gin.Context) {
 	namespaces, err := h.service.ListNamespaces(c.Request.Context(), nil)
 	if err != nil {
@@ -111,6 +194,17 @@ func (h *Handler) ListNamespacesGin(c *gin.Context) {
 		return
 	}
 	common.SendSuccess(c, gin.H{"namespaces": namespaces, "count": len(namespaces)})
+}
+
+func (h *Handler) GetNamespaceDetailGin(c *gin.Context) {
+	name := c.Param("name")
+
+	namespaceDetail, err := h.service.GetNamespaceDetail(c.Request.Context(), name)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get namespace details", err.Error())
+		return
+	}
+	common.SendSuccess(c, gin.H{"namespace_detail": namespaceDetail})
 }
 
 func (h *Handler) ListNodesGin(c *gin.Context) {
@@ -122,6 +216,17 @@ func (h *Handler) ListNodesGin(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"nodes": nodes, "count": len(nodes)})
 }
 
+func (h *Handler) GetNodeDetailGin(c *gin.Context) {
+	name := c.Param("name")
+
+	nodeDetail, err := h.service.GetNodeDetail(c.Request.Context(), name)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get node details", err.Error())
+		return
+	}
+	common.SendSuccess(c, gin.H{"node_detail": nodeDetail})
+}
+
 func (h *Handler) ListDaemonSetsGin(c *gin.Context) {
 	daemonsets, err := h.service.ListDaemonSets(c.Request.Context(), nil)
 	if err != nil {
@@ -129,6 +234,18 @@ func (h *Handler) ListDaemonSetsGin(c *gin.Context) {
 		return
 	}
 	common.SendSuccess(c, gin.H{"daemonsets": daemonsets, "count": len(daemonsets)})
+}
+
+func (h *Handler) GetDaemonSetDetailGin(c *gin.Context) {
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+
+	daemonsetDetail, err := h.service.GetDaemonSetDetail(c.Request.Context(), namespace, name)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get daemonset details", err.Error())
+		return
+	}
+	common.SendSuccess(c, gin.H{"daemonset_detail": daemonsetDetail})
 }
 
 func (h *Handler) ListStatefulSetsGin(c *gin.Context) {
@@ -140,6 +257,18 @@ func (h *Handler) ListStatefulSetsGin(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"statefulsets": statefulsets, "count": len(statefulsets)})
 }
 
+func (h *Handler) GetStatefulSetDetailGin(c *gin.Context) {
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+
+	statefulsetDetail, err := h.service.GetStatefulSetDetail(c.Request.Context(), namespace, name)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get statefulset details", err.Error())
+		return
+	}
+	common.SendSuccess(c, gin.H{"statefulset_detail": statefulsetDetail})
+}
+
 func (h *Handler) ListJobsGin(c *gin.Context) {
 	jobs, err := h.service.ListJobs(c.Request.Context(), nil)
 	if err != nil {
@@ -149,6 +278,18 @@ func (h *Handler) ListJobsGin(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"jobs": jobs, "count": len(jobs)})
 }
 
+func (h *Handler) GetJobDetailGin(c *gin.Context) {
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+
+	jobDetail, err := h.service.GetJobDetail(c.Request.Context(), namespace, name)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get job details", err.Error())
+		return
+	}
+	common.SendSuccess(c, gin.H{"job_detail": jobDetail})
+}
+
 func (h *Handler) ListCronJobsGin(c *gin.Context) {
 	cronjobs, err := h.service.ListCronJobs(c.Request.Context(), nil)
 	if err != nil {
@@ -156,6 +297,18 @@ func (h *Handler) ListCronJobsGin(c *gin.Context) {
 		return
 	}
 	common.SendSuccess(c, gin.H{"cronjobs": cronjobs, "count": len(cronjobs)})
+}
+
+func (h *Handler) GetCronJobDetailGin(c *gin.Context) {
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+
+	cronjobDetail, err := h.service.GetCronJobDetail(c.Request.Context(), namespace, name)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get cronjob details", err.Error())
+		return
+	}
+	common.SendSuccess(c, gin.H{"cronjob_detail": cronjobDetail})
 }
 
 func (h *Handler) ListCRDsGin(c *gin.Context) {

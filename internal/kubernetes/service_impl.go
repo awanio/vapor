@@ -678,13 +678,42 @@ func (s *Service) GetServiceDetail(ctx context.Context, namespace, name string) 
 		return ServiceInfo{}, fmt.Errorf("failed to get service details for %s/%s: %w", namespace, name, err)
 	}
 
+	// Format port information
+	portStr := ""
+	for i, port := range service.Spec.Ports {
+		if i > 0 {
+			portStr += ", "
+		}
+		portStr += fmt.Sprintf("%d:%d/%s", port.Port, port.TargetPort.IntVal, port.Protocol)
+	}
+
+	// Get external IP
+	externalIP := ""
+	if service.Spec.Type == corev1.ServiceTypeLoadBalancer {
+		for _, ingress := range service.Status.LoadBalancer.Ingress {
+			if ingress.IP != "" {
+				externalIP = ingress.IP
+				break
+			}
+			if ingress.Hostname != "" {
+				externalIP = ingress.Hostname
+				break
+			}
+		}
+	} else if service.Spec.Type == corev1.ServiceTypeNodePort {
+		externalIP = "<nodes>"
+	}
+
 	return ServiceInfo{
-		Name:      service.Name,
-		Namespace: service.Namespace,
-		Type:      string(service.Spec.Type),
-		ClusterIP: service.Spec.ClusterIP,
-		Ports:     "",
-		Labels:    service.Labels,
+		Name:              service.Name,
+		Namespace:         service.Namespace,
+		Type:              string(service.Spec.Type),
+		ClusterIP:         service.Spec.ClusterIP,
+		ExternalIP:        externalIP,
+		Ports:             portStr,
+		Age:               calculateAge(service.CreationTimestamp.Time),
+		Labels:            service.Labels,
+		CreationTimestamp: service.CreationTimestamp.Time,
 	}, nil
 }
 
