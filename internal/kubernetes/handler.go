@@ -472,6 +472,65 @@ func (h *Handler) ApplyPodGin(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"pod_detail": appliedPod})
 }
 
+// UpdatePodGin handles pod updates
+// Supports both JSON and YAML content types
+func (h *Handler) UpdatePodGin(c *gin.Context) {
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+	
+	contentType := c.GetHeader("Content-Type")
+	contentType = strings.ToLower(strings.TrimSpace(contentType))
+	
+	// Read the raw body
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to read request body", err.Error())
+		return
+	}
+	
+	if len(body) == 0 {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Request body is empty", "Please provide a valid Pod specification")
+		return
+	}
+	
+	var pod corev1.Pod
+	
+	// Parse based on content type
+	switch {
+	case strings.Contains(contentType, "application/yaml") || strings.Contains(contentType, "text/yaml"):
+		// Parse YAML
+		err = yaml.Unmarshal(body, &pod)
+		if err != nil {
+			common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Invalid YAML pod specification", err.Error())
+			return
+		}
+	case strings.Contains(contentType, "application/json"), contentType == "":
+		// Parse JSON (default if no content type specified)
+		err = json.Unmarshal(body, &pod)
+		if err != nil {
+			common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Invalid JSON pod specification", err.Error())
+			return
+		}
+	default:
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, 
+			"Unsupported content type", 
+			"Content-Type must be 'application/json', 'application/yaml', or 'text/yaml'")
+		return
+	}
+	
+	// Update the pod
+	updatedPod, err := h.service.UpdatePod(c.Request.Context(), namespace, name, &pod)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "Pod not found", err.Error())
+		} else {
+			common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to update pod", err.Error())
+		}
+		return
+	}
+	common.SendSuccess(c, gin.H{"pod_detail": updatedPod})
+}
+
 // NoKubernetesHandler returns a handler that responds with Kubernetes not installed error
 func NoKubernetesHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {

@@ -39,6 +39,21 @@ class KubernetesTab extends LitElement {
   @property({ type: Boolean }) showCronJobDetails = false;
   @property({ type: Object }) selectedCronJob = null;
   @property({ type: Boolean }) loadingCronJobDetails = false;
+  @property({ type: Boolean }) showPvcDetails = false;
+  @property({ type: Object }) selectedPvc = null;
+  @property({ type: Boolean }) loadingPvcDetails = false;
+  @property({ type: Boolean }) showPvDetails = false;
+  @property({ type: Object }) selectedPv = null;
+  @property({ type: Boolean }) loadingPvDetails = false;
+  @property({ type: Boolean }) showSecretDetails = false;
+  @property({ type: Object }) selectedSecret = null;
+  @property({ type: Boolean }) loadingSecretDetails = false;
+  @property({ type: Boolean }) showConfigMapDetails = false;
+  @property({ type: Object }) selectedConfigMap = null;
+  @property({ type: Boolean }) loadingConfigMapDetails = false;
+  @property({ type: Boolean }) showNodeDetails = false;
+  @property({ type: Object }) selectedNode = null;
+  @property({ type: Boolean }) loadingNodeDetails = false;
   @property({ type: Array }) namespaces = [];
   @property({ type: String }) selectedNamespace = 'all';
   @property({ type: Boolean }) showNamespaceDropdown = false;
@@ -1198,7 +1213,12 @@ class KubernetesTab extends LitElement {
         <tbody>
           ${data.map((item, index) => html`
             <tr>
-              <td>${item.name}</td>
+              <td>
+                ${(item.type === 'PersistentVolume' || item.type === 'PersistentVolumeClaim')
+                  ? html`<span class="pod-name-link" @click=${() => this.viewDetails(item)}>${item.name}</span>`
+                  : item.name
+                }
+              </td>
               <td>${item.type}</td>
               <td>${item.namespace}</td>
               <td><span class="status ${item.status.toLowerCase()}">${item.status}</span></td>
@@ -1240,7 +1260,12 @@ class KubernetesTab extends LitElement {
         <tbody>
           ${data.map((item, index) => html`
             <tr>
-              <td>${item.name}</td>
+              <td>
+                ${(item.type === 'Secret' || item.type === 'ConfigMap')
+                  ? html`<span class="pod-name-link" @click=${() => this.viewDetails(item)}>${item.name}</span>`
+                  : item.name
+                }
+              </td>
               <td>${item.type}</td>
               <td>${item.namespace}</td>
               <td><span class="status ${item.status.toLowerCase()}">${item.status}</span></td>
@@ -1320,15 +1345,18 @@ class KubernetesTab extends LitElement {
             <th>OS Image</th>
             <th>Kernel Version</th>
             <th>Container Runtime</th>
-            <th>Labels</th>
-            <th>Annotations</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           ${data.map((node, index) => html`
             <tr>
-              <td>${node.name}</td>
-              <td>${node.status}</td>
+              <td>
+                <span class="pod-name-link" @click=${() => this.viewDetails(node)}>
+                  ${node.name}
+                </span>
+              </td>
+              <td><span class="status ${node.status.toLowerCase()}">${node.status}</span></td>
               <td>${Array.isArray(node.roles) ? node.roles.join(', ') : (node.roles || '-')}</td>
               <td>${node.age}</td>
               <td>${node.version}</td>
@@ -1337,8 +1365,17 @@ class KubernetesTab extends LitElement {
               <td>${node.osImage}</td>
               <td>${node.kernelVersion}</td>
               <td>${node.containerRuntime}</td>
-              <td>${this.renderObjectAsKeyValue(node.labels)}</td>
-              <td>${this.renderObjectAsKeyValue(node.annotations)}</td>
+              <td>
+                <div class="action-menu">
+                  <button class="action-dots" @click=${(e) => this.toggleActionMenu(e, `k8s-node-${index}`)}>⋮</button>
+                  <div class="action-dropdown" id="k8s-node-${index}">
+                    <button @click=${() => { this.closeAllMenus(); this.viewDetails(node); }}>View Details</button>
+                    <button @click=${() => { this.closeAllMenus(); this.editItem(node); }}>Edit</button>
+                    <button @click=${() => { this.closeAllMenus(); this.drainNode(node); }}>Drain</button>
+                    <button @click=${() => { this.closeAllMenus(); this.cordonNode(node); }}>Cordon</button>
+                  </div>
+                </div>
+              </td>
             </tr>
           `)}
         </tbody>
@@ -1849,6 +1886,136 @@ class KubernetesTab extends LitElement {
         <h2>CronJob Details</h2>
         <div class="pod-details-content">
           ${this.renderCronJobDetailContent(this.selectedCronJob)}
+        </div>
+      </div>
+    `;
+  }
+
+  renderPvcDetailsDrawer() {
+    if (!this.showPvcDetails) {
+      return null;
+    }
+
+    if (this.loadingPvcDetails) {
+      return html`
+        <div class="pod-details-drawer">
+          <button class="close-button" @click="${() => this.showPvcDetails = false}">×</button>
+          <h2>PVC Details</h2>
+          <div class="loading-state">Loading PVC details...</div>
+        </div>
+      `;
+    }
+
+    return html`
+      <div class="pod-details-drawer">
+        <button class="close-button" @click="${() => this.showPvcDetails = false}">×</button>
+        <h2>PVC Details</h2>
+        <div class="pod-details-content">
+          ${this.renderPvcDetailContent(this.selectedPvc)}
+        </div>
+      </div>
+    `;
+  }
+
+  renderPvDetailsDrawer() {
+    if (!this.showPvDetails) {
+      return null;
+    }
+
+    if (this.loadingPvDetails) {
+      return html`
+        <div class="pod-details-drawer">
+          <button class="close-button" @click="${() => this.showPvDetails = false}">×</button>
+          <h2>PV Details</h2>
+          <div class="loading-state">Loading PV details...</div>
+        </div>
+      `;
+    }
+
+    return html`
+      <div class="pod-details-drawer">
+        <button class="close-button" @click="${() => this.showPvDetails = false}">×</button>
+        <h2>PV Details</h2>
+        <div class="pod-details-content">
+          ${this.renderPvDetailContent(this.selectedPv)}
+        </div>
+      </div>
+    `;
+  }
+
+  renderSecretDetailsDrawer() {
+    if (!this.showSecretDetails) {
+      return null;
+    }
+
+    if (this.loadingSecretDetails) {
+      return html`
+        <div class="pod-details-drawer">
+          <button class="close-button" @click="${() => this.showSecretDetails = false}">×</button>
+          <h2>Secret Details</h2>
+          <div class="loading-state">Loading secret details...</div>
+        </div>
+      `;
+    }
+
+    return html`
+      <div class="pod-details-drawer">
+        <button class="close-button" @click="${() => this.showSecretDetails = false}">×</button>
+        <h2>Secret Details</h2>
+        <div class="pod-details-content">
+          ${this.renderSecretDetailContent(this.selectedSecret)}
+        </div>
+      </div>
+    `;
+  }
+
+  renderConfigMapDetailsDrawer() {
+    if (!this.showConfigMapDetails) {
+      return null;
+    }
+
+    if (this.loadingConfigMapDetails) {
+      return html`
+        <div class="pod-details-drawer">
+          <button class="close-button" @click="${() => this.showConfigMapDetails = false}">×</button>
+          <h2>ConfigMap Details</h2>
+          <div class="loading-state">Loading configmap details...</div>
+        </div>
+      `;
+    }
+
+    return html`
+      <div class="pod-details-drawer">
+        <button class="close-button" @click="${() => this.showConfigMapDetails = false}">×</button>
+        <h2>ConfigMap Details</h2>
+        <div class="pod-details-content">
+          ${this.renderConfigMapDetailContent(this.selectedConfigMap)}
+        </div>
+      </div>
+    `;
+  }
+
+  renderNodeDetailsDrawer() {
+    if (!this.showNodeDetails) {
+      return null;
+    }
+
+    if (this.loadingNodeDetails) {
+      return html`
+        <div class="pod-details-drawer">
+          <button class="close-button" @click="${() => this.showNodeDetails = false}">×</button>
+          <h2>Node Details</h2>
+          <div class="loading-state">Loading node details...</div>
+        </div>
+      `;
+    }
+
+    return html`
+      <div class="pod-details-drawer">
+        <button class="close-button" @click="${() => this.showNodeDetails = false}">×</button>
+        <h2>Node Details</h2>
+        <div class="pod-details-content">
+          ${this.renderNodeDetailContent(this.selectedNode)}
         </div>
       </div>
     `;
@@ -2940,7 +3107,7 @@ renderCronJobDetailContent(data: any) {
     `;
   }
 
-renderCronJobDetailContent(data: any) {
+  renderCronJobDetailContent(data: any) {
     if (!data) {
       return html`<div class="no-data">No data available</div>`;
     }
@@ -3035,6 +3202,381 @@ renderCronJobDetailContent(data: any) {
     `;
   }
 
+  renderPvcDetailContent(data: any) {
+    if (!data) {
+      return html`<div class="no-data">No data available</div>`;
+    }
+
+    const pvcData = data.pvc_detail || data;
+
+    console.log('Processing PVC data:', pvcData);
+
+    return html`
+      <div class="detail-sections">
+        <!-- Basic Information -->
+        <div class="detail-section">
+          <h3>Basic Information</h3>
+          ${this.renderDetailItem('Name', pvcData.metadata.name)}
+          ${this.renderDetailItem('Namespace', pvcData.metadata.namespace)}
+          ${this.renderDetailItem('UID', pvcData.metadata.uid)}
+          ${this.renderDetailItem('Resource Version', pvcData.metadata.resourceVersion)}
+          ${this.renderDetailItem('Creation Timestamp', pvcData.metadata.creationTimestamp)}
+        </div>
+
+        <!-- Status Information -->
+        <div class="detail-section">
+          <h3>Status</h3>
+          ${this.renderDetailItem('Phase', pvcData.status.phase)}
+          ${this.renderDetailItem('Access Modes', pvcData.status.accessModes)}
+          ${this.renderDetailItem('Capacity', pvcData.status.capacity?.storage)}
+        </div>
+
+        <!-- Spec Information -->
+        <div class="detail-section">
+          <h3>Specification</h3>
+          ${this.renderDetailItem('Storage Class', pvcData.spec.storageClassName)}
+          ${this.renderDetailItem('Volume Name', pvcData.spec.volumeName)}
+          ${this.renderDetailItem('Volume Mode', pvcData.spec.volumeMode)}
+          ${this.renderDetailItem('Access Modes', pvcData.spec.accessModes)}
+          ${pvcData.spec.resources?.requests ? html`
+            <div class="detail-item nested">
+              <strong class="detail-key">Resources:</strong>
+              <div class="nested-content">
+                ${this.renderDetailItem('Storage Request', pvcData.spec.resources.requests.storage)}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- Labels -->
+        ${pvcData.metadata.labels ? html`
+          <div class="detail-section">
+            <h3>Labels</h3>
+            ${this.renderObjectAsKeyValue(pvcData.metadata.labels)}
+          </div>
+        ` : ''}
+
+        <!-- Annotations -->
+        ${pvcData.metadata.annotations ? html`
+          <div class="detail-section">
+            <h3>Annotations</h3>
+            ${this.renderObjectAsKeyValue(pvcData.metadata.annotations)}
+          </div>
+        ` : ''}
+
+        <!-- Events (if available) -->
+        ${pvcData.events && pvcData.events.length > 0 ? html`
+          <div class="detail-section">
+            <h3>Events</h3>
+            ${pvcData.events.map((event) => html`
+              <div class="detail-item nested">
+                <strong class="detail-key">${event.type}:</strong>
+                <div class="nested-content">
+                  ${this.renderDetailItem('Reason', event.reason)}
+                  ${this.renderDetailItem('Message', event.message)}
+                  ${this.renderDetailItem('Time', event.firstTimestamp)}
+                  ${this.renderDetailItem('Count', event.count)}
+                </div>
+              </div>
+            `)}
+          </div>
+        ` : ''}
+
+        <!-- Raw Data -->
+        <div class="detail-section">
+          <h3>Raw Data</h3>
+          <details>
+            <summary>View raw PVC data</summary>
+            <pre class="raw-data">${JSON.stringify(pvcData, null, 2)}</pre>
+          </details>
+        </div>
+      </div>
+    `;
+  }
+
+  renderPvDetailContent(data: any) {
+    if (!data) {
+      return html`<div class="no-data">No data available</div>`;
+    }
+
+    const pvData = data.pv_detail || data;
+
+    console.log('Processing PV data:', pvData);
+
+    return html`
+      <div class="detail-sections">
+        <!-- Basic Information -->
+        <div class="detail-section">
+          <h3>Basic Information</h3>
+          ${this.renderDetailItem('Name', pvData.metadata.name)}
+          ${this.renderDetailItem('UID', pvData.metadata.uid)}
+          ${this.renderDetailItem('Resource Version', pvData.metadata.resourceVersion)}
+          ${this.renderDetailItem('Creation Timestamp', pvData.metadata.creationTimestamp)}
+        </div>
+
+        <!-- Status Information -->
+        <div class="detail-section">
+          <h3>Status</h3>
+          ${this.renderDetailItem('Phase', pvData.status.phase)}
+          ${this.renderDetailItem('Message', pvData.status.message)}
+          ${this.renderDetailItem('Reason', pvData.status.reason)}
+        </div>
+
+        <!-- Spec Information -->
+        <div class="detail-section">
+          <h3>Specification</h3>
+          ${this.renderDetailItem('Storage Class', pvData.spec.storageClassName)}
+          ${this.renderDetailItem('Capacity', pvData.spec.capacity?.storage)}
+          ${this.renderDetailItem('Access Modes', pvData.spec.accessModes)}
+          ${this.renderDetailItem('Volume Mode', pvData.spec.volumeMode)}
+          ${this.renderDetailItem('Reclaim Policy', pvData.spec.persistentVolumeReclaimPolicy)}
+          ${this.renderDetailItem('Mount Options', pvData.spec.mountOptions)}
+        </div>
+
+        <!-- Claim Reference (if bound) -->
+        ${pvData.spec.claimRef ? html`
+          <div class="detail-section">
+            <h3>Claim Reference</h3>
+            ${this.renderDetailItem('Name', pvData.spec.claimRef.name)}
+            ${this.renderDetailItem('Namespace', pvData.spec.claimRef.namespace)}
+            ${this.renderDetailItem('UID', pvData.spec.claimRef.uid)}
+          </div>
+        ` : ''}
+
+        <!-- Storage Source -->
+        <div class="detail-section">
+          <h3>Storage Source</h3>
+          ${pvData.spec.hostPath ? html`
+            <div class="detail-item nested">
+              <strong class="detail-key">Host Path:</strong>
+              <div class="nested-content">
+                ${this.renderDetailItem('Path', pvData.spec.hostPath.path)}
+                ${this.renderDetailItem('Type', pvData.spec.hostPath.type)}
+              </div>
+            </div>
+          ` : ''}
+          ${pvData.spec.nfs ? html`
+            <div class="detail-item nested">
+              <strong class="detail-key">NFS:</strong>
+              <div class="nested-content">
+                ${this.renderDetailItem('Server', pvData.spec.nfs.server)}
+                ${this.renderDetailItem('Path', pvData.spec.nfs.path)}
+                ${this.renderDetailItem('Read Only', pvData.spec.nfs.readOnly)}
+              </div>
+            </div>
+          ` : ''}
+          ${pvData.spec.csi ? html`
+            <div class="detail-item nested">
+              <strong class="detail-key">CSI:</strong>
+              <div class="nested-content">
+                ${this.renderDetailItem('Driver', pvData.spec.csi.driver)}
+                ${this.renderDetailItem('Volume Handle', pvData.spec.csi.volumeHandle)}
+                ${this.renderDetailItem('Read Only', pvData.spec.csi.readOnly)}
+                ${pvData.spec.csi.volumeAttributes ? 
+                  this.renderDetailItem('Volume Attributes', pvData.spec.csi.volumeAttributes, true) : ''}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- Labels -->
+        ${pvData.metadata.labels ? html`
+          <div class="detail-section">
+            <h3>Labels</h3>
+            ${this.renderObjectAsKeyValue(pvData.metadata.labels)}
+          </div>
+        ` : ''}
+
+        <!-- Annotations -->
+        ${pvData.metadata.annotations ? html`
+          <div class="detail-section">
+            <h3>Annotations</h3>
+            ${this.renderObjectAsKeyValue(pvData.metadata.annotations)}
+          </div>
+        ` : ''}
+
+        <!-- Raw Data -->
+        <div class="detail-section">
+          <h3>Raw Data</h3>
+          <details>
+            <summary>View raw PV data</summary>
+            <pre class="raw-data">${JSON.stringify(pvData, null, 2)}</pre>
+          </details>
+        </div>
+      </div>
+    `;
+  }
+
+  renderSecretDetailContent(data: any) {
+    if (!data) {
+      return html`<div class="no-data">No data available</div>`;
+    }
+
+    const secretData = data.secret_detail || data;
+
+    console.log('Processing secret data:', secretData);
+
+    return html`
+      <div class="detail-sections">
+        <!-- Basic Information -->
+        <div class="detail-section">
+          <h3>Basic Information</h3>
+          ${this.renderDetailItem('Name', secretData.metadata.name)}
+          ${this.renderDetailItem('Namespace', secretData.metadata.namespace)}
+          ${this.renderDetailItem('UID', secretData.metadata.uid)}
+          ${this.renderDetailItem('Resource Version', secretData.metadata.resourceVersion)}
+          ${this.renderDetailItem('Creation Timestamp', secretData.metadata.creationTimestamp)}
+        </div>
+
+        <!-- Type and Data -->
+        <div class="detail-section">
+          <h3>Secret Information</h3>
+          ${this.renderDetailItem('Type', secretData.type)}
+          ${this.renderDetailItem('Data Keys', secretData.data ? Object.keys(secretData.data).length : 0)}
+          ${secretData.data ? html`
+            <div class="detail-item nested">
+              <strong class="detail-key">Data Fields:</strong>
+              <div class="nested-content">
+                ${Object.keys(secretData.data).map(key => html`
+                  <div class="detail-item">
+                    <strong class="detail-key">${key}:</strong>
+                    <span class="detail-value">*** (hidden)</span>
+                  </div>
+                `)}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- Labels -->
+        ${secretData.metadata.labels ? html`
+          <div class="detail-section">
+            <h3>Labels</h3>
+            ${this.renderObjectAsKeyValue(secretData.metadata.labels)}
+          </div>
+        ` : ''}
+
+        <!-- Annotations -->
+        ${secretData.metadata.annotations ? html`
+          <div class="detail-section">
+            <h3>Annotations</h3>
+            ${this.renderObjectAsKeyValue(secretData.metadata.annotations)}
+          </div>
+        ` : ''}
+
+        <!-- Immutable Flag -->
+        ${secretData.immutable !== undefined ? html`
+          <div class="detail-section">
+            <h3>Configuration</h3>
+            ${this.renderDetailItem('Immutable', secretData.immutable ? 'Yes' : 'No')}
+          </div>
+        ` : ''}
+
+        <!-- Raw Data (without showing actual secret values) -->
+        <div class="detail-section">
+          <h3>Raw Data</h3>
+          <details>
+            <summary>View raw secret metadata (values hidden)</summary>
+            <pre class="raw-data">${JSON.stringify({
+              ...secretData,
+              data: secretData.data ? Object.keys(secretData.data).reduce((acc, key) => {
+                acc[key] = '*** (base64 encoded)';
+                return acc;
+              }, {}) : {}
+            }, null, 2)}</pre>
+          </details>
+        </div>
+      </div>
+    `;
+  }
+
+  renderConfigMapDetailContent(data: any) {
+    if (!data) {
+      return html`<div class="no-data">No data available</div>`;
+    }
+
+    const configMapData = data.configmap_detail || data;
+
+    console.log('Processing configmap data:', configMapData);
+
+    return html`
+      <div class="detail-sections">
+        <!-- Basic Information -->
+        <div class="detail-section">
+          <h3>Basic Information</h3>
+          ${this.renderDetailItem('Name', configMapData.metadata.name)}
+          ${this.renderDetailItem('Namespace', configMapData.metadata.namespace)}
+          ${this.renderDetailItem('UID', configMapData.metadata.uid)}
+          ${this.renderDetailItem('Resource Version', configMapData.metadata.resourceVersion)}
+          ${this.renderDetailItem('Creation Timestamp', configMapData.metadata.creationTimestamp)}
+        </div>
+
+        <!-- Data -->
+        ${configMapData.data ? html`
+          <div class="detail-section">
+            <h3>Data</h3>
+            ${this.renderDetailItem('Number of Keys', Object.keys(configMapData.data).length)}
+            ${Object.entries(configMapData.data).map(([key, value]) => html`
+              <div class="detail-item nested">
+                <strong class="detail-key">${key}:</strong>
+                <div class="nested-content">
+                  <pre class="raw-data" style="margin: 0; max-height: 200px;">${value}</pre>
+                </div>
+              </div>
+            `)}
+          </div>
+        ` : ''}
+
+        <!-- Binary Data -->
+        ${configMapData.binaryData ? html`
+          <div class="detail-section">
+            <h3>Binary Data</h3>
+            ${this.renderDetailItem('Number of Binary Keys', Object.keys(configMapData.binaryData).length)}
+            ${Object.keys(configMapData.binaryData).map(key => html`
+              <div class="detail-item">
+                <strong class="detail-key">${key}:</strong>
+                <span class="detail-value">(binary data)</span>
+              </div>
+            `)}
+          </div>
+        ` : ''}
+
+        <!-- Labels -->
+        ${configMapData.metadata.labels ? html`
+          <div class="detail-section">
+            <h3>Labels</h3>
+            ${this.renderObjectAsKeyValue(configMapData.metadata.labels)}
+          </div>
+        ` : ''}
+
+        <!-- Annotations -->
+        ${configMapData.metadata.annotations ? html`
+          <div class="detail-section">
+            <h3>Annotations</h3>
+            ${this.renderObjectAsKeyValue(configMapData.metadata.annotations)}
+          </div>
+        ` : ''}
+
+        <!-- Immutable Flag -->
+        ${configMapData.immutable !== undefined ? html`
+          <div class="detail-section">
+            <h3>Configuration</h3>
+            ${this.renderDetailItem('Immutable', configMapData.immutable ? 'Yes' : 'No')}
+          </div>
+        ` : ''}
+
+        <!-- Raw Data -->
+        <div class="detail-section">
+          <h3>Raw Data</h3>
+          <details>
+            <summary>View raw configmap data</summary>
+            <pre class="raw-data">${JSON.stringify(configMapData, null, 2)}</pre>
+          </details>
+        </div>
+      </div>
+    `;
+  }
+
   renderDetailItem(label: string, value: any, isObject: boolean = false) {
     if (value === null || value === undefined) {
       return html`
@@ -3109,6 +3651,138 @@ renderCronJobDetailContent(data: any) {
       }
     }
     return String(value);
+  }
+
+  renderNodeDetailContent(data: any) {
+    if (!data) {
+      return html`<div class="no-data">No data available</div>`;
+    }
+
+    const nodeData = data.node_detail || data;
+
+    console.log('Processing node data:', nodeData);
+
+    return html`
+      <div class="detail-sections">
+        <!-- Basic Information -->
+        <div class="detail-section">
+          <h3>Basic Information</h3>
+          ${this.renderDetailItem('Name', nodeData.metadata?.name || nodeData.name)}
+          ${this.renderDetailItem('UID', nodeData.metadata?.uid)}
+          ${this.renderDetailItem('Resource Version', nodeData.metadata?.resourceVersion)}
+          ${this.renderDetailItem('Creation Timestamp', nodeData.metadata?.creationTimestamp)}
+        </div>
+
+        <!-- Status Information -->
+        <div class="detail-section">
+          <h3>Status</h3>
+          ${nodeData.status?.conditions ? html`
+            ${nodeData.status.conditions.map((condition) => html`
+              <div class="detail-item nested">
+                <strong class="detail-key">${condition.type}:</strong>
+                <div class="nested-content">
+                  ${this.renderDetailItem('Status', condition.status)}
+                  ${this.renderDetailItem('Last Heartbeat Time', condition.lastHeartbeatTime)}
+                  ${this.renderDetailItem('Last Transition Time', condition.lastTransitionTime)}
+                  ${this.renderDetailItem('Reason', condition.reason)}
+                  ${this.renderDetailItem('Message', condition.message)}
+                </div>
+              </div>
+            `)}` : ''}
+          ${this.renderDetailItem('Phase', nodeData.status?.phase)}
+        </div>
+
+        <!-- System Information -->
+        <div class="detail-section">
+          <h3>System Information</h3>
+          ${this.renderDetailItem('OS Image', nodeData.status?.nodeInfo?.osImage || nodeData.osImage)}
+          ${this.renderDetailItem('Kernel Version', nodeData.status?.nodeInfo?.kernelVersion || nodeData.kernelVersion)}
+          ${this.renderDetailItem('Container Runtime', nodeData.status?.nodeInfo?.containerRuntimeVersion || nodeData.containerRuntime)}
+          ${this.renderDetailItem('Kubelet Version', nodeData.status?.nodeInfo?.kubeletVersion || nodeData.version)}
+          ${this.renderDetailItem('Kube-Proxy Version', nodeData.status?.nodeInfo?.kubeProxyVersion)}
+          ${this.renderDetailItem('Operating System', nodeData.status?.nodeInfo?.operatingSystem)}
+          ${this.renderDetailItem('Architecture', nodeData.status?.nodeInfo?.architecture)}
+        </div>
+
+        <!-- Addresses -->
+        ${nodeData.status?.addresses ? html`
+          <div class="detail-section">
+            <h3>Addresses</h3>
+            ${nodeData.status.addresses.map((address) => html`
+              <div class="detail-item">
+                <strong class="detail-key">${address.type}:</strong>
+                <span class="detail-value">${address.address}</span>
+              </div>
+            `)}
+          </div>
+        ` : ''}
+
+        <!-- Capacity & Allocatable -->
+        ${nodeData.status?.capacity || nodeData.status?.allocatable ? html`
+          <div class="detail-section">
+            <h3>Resources</h3>
+            ${nodeData.status?.capacity ? html`
+              <div class="detail-item nested">
+                <strong class="detail-key">Capacity:</strong>
+                <div class="nested-content">
+                  ${this.renderObjectAsKeyValue(nodeData.status.capacity)}
+                </div>
+              </div>
+            ` : ''}
+            ${nodeData.status?.allocatable ? html`
+              <div class="detail-item nested">
+                <strong class="detail-key">Allocatable:</strong>
+                <div class="nested-content">
+                  ${this.renderObjectAsKeyValue(nodeData.status.allocatable)}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        ` : ''}
+
+        <!-- Labels -->
+        ${nodeData.metadata?.labels || nodeData.labels ? html`
+          <div class="detail-section">
+            <h3>Labels</h3>
+            ${this.renderObjectAsKeyValue(nodeData.metadata?.labels || nodeData.labels)}
+          </div>
+        ` : ''}
+
+        <!-- Annotations -->
+        ${nodeData.metadata?.annotations || nodeData.annotations ? html`
+          <div class="detail-section">
+            <h3>Annotations</h3>
+            ${this.renderObjectAsKeyValue(nodeData.metadata?.annotations || nodeData.annotations)}
+          </div>
+        ` : ''}
+
+        <!-- Taints (if any) -->
+        ${nodeData.spec?.taints && nodeData.spec.taints.length > 0 ? html`
+          <div class="detail-section">
+            <h3>Taints</h3>
+            ${nodeData.spec.taints.map((taint) => html`
+              <div class="detail-item nested">
+                <strong class="detail-key">${taint.key}:</strong>
+                <div class="nested-content">
+                  ${this.renderDetailItem('Value', taint.value)}
+                  ${this.renderDetailItem('Effect', taint.effect)}
+                  ${this.renderDetailItem('Time Added', taint.timeAdded)}
+                </div>
+              </div>
+            `)}
+          </div>
+        ` : ''}
+
+        <!-- Raw Data -->
+        <div class="detail-section">
+          <h3>Raw Data</h3>
+          <details>
+            <summary>View raw node data</summary>
+            <pre class="raw-data">${JSON.stringify(nodeData, null, 2)}</pre>
+          </details>
+        </div>
+      </div>
+    `;
   }
 
   // Notification system
@@ -3242,6 +3916,11 @@ renderCronJobDetailContent(data: any) {
         ${this.renderDaemonSetDetailsDrawer()}
         ${this.renderJobDetailsDrawer()}
         ${this.renderCronJobDetailsDrawer()}
+        ${this.renderPvcDetailsDrawer()}
+        ${this.renderPvDetailsDrawer()}
+        ${this.renderSecretDetailsDrawer()}
+        ${this.renderConfigMapDetailsDrawer()}
+        ${this.renderNodeDetailsDrawer()}
         ${this.renderNotifications()}
       </div>
     `;
@@ -3300,6 +3979,21 @@ renderCronJobDetailContent(data: any) {
       }
       if (this.showCronJobDetails) {
         this.showCronJobDetails = false;
+      }
+      if (this.showPvcDetails) {
+        this.showPvcDetails = false;
+      }
+      if (this.showPvDetails) {
+        this.showPvDetails = false;
+      }
+      if (this.showSecretDetails) {
+        this.showSecretDetails = false;
+      }
+      if (this.showConfigMapDetails) {
+        this.showConfigMapDetails = false;
+      }
+      if (this.showNodeDetails) {
+        this.showNodeDetails = false;
       }
       this.requestUpdate();
     }
@@ -4110,6 +4804,7 @@ renderCronJobDetailContent(data: any) {
       const data = await Api.get('/kubernetes/nodes');
       this.nodes = data.nodes.map(node => ({
         name: node.name,
+        type: 'Node',
         status: node.status,
         roles: node.roles,
         age: node.age,
@@ -4319,6 +5014,21 @@ renderCronJobDetailContent(data: any) {
         break;
       case 'CronJob':
         this.viewCronJobDetails(item);
+        break;
+      case 'PersistentVolumeClaim':
+        this.viewPvcDetails(item);
+        break;
+      case 'PersistentVolume':
+        this.viewPvDetails(item);
+        break;
+      case 'Secret':
+        this.viewSecretDetails(item);
+        break;
+      case 'ConfigMap':
+        this.viewConfigMapDetails(item);
+        break;
+      case 'Node':
+        this.viewNodeDetails(item);
         break;
       default:
         console.log('View details not implemented for type:', item.type);
@@ -4541,6 +5251,158 @@ renderCronJobDetailContent(data: any) {
       });
   }
 
+  viewPvcDetails(pvc) {
+    console.log('Fetching PVC details for:', pvc.name, 'in namespace:', pvc.namespace);
+    this.loadingPvcDetails = true;
+    this.showPvcDetails = true;
+    this.selectedPvc = null;
+    this.requestUpdate();
+
+    const url = `/kubernetes/pvcs/${pvc.namespace}/${pvc.name}`;
+    console.log('Making API request to:', url);
+
+    Api.get(url)
+      .then(response => {
+        console.log('PVC details response:', response);
+        this.selectedPvc = response;
+        this.loadingPvcDetails = false;
+        this.requestUpdate();
+      })
+      .catch(error => {
+        console.error('Failed to fetch PVC details:', error);
+        this.loadingPvcDetails = false;
+        this.showPvcDetails = false;
+        this.requestUpdate();
+        this.showNotification(
+          'error',
+          'Failed to Load PVC Details',
+          `Unable to fetch details for PVC "${pvc.name}": ${error.message || 'Unknown error occurred'}`
+        );
+      });
+  }
+
+  viewPvDetails(pv) {
+    console.log('Fetching PV details for:', pv.name);
+    this.loadingPvDetails = true;
+    this.showPvDetails = true;
+    this.selectedPv = null;
+    this.requestUpdate();
+
+    // PVs are cluster-scoped, so no namespace in the URL
+    const url = `/kubernetes/pvs/${pv.name}`;
+    console.log('Making API request to:', url);
+
+    Api.get(url)
+      .then(response => {
+        console.log('PV details response:', response);
+        this.selectedPv = response;
+        this.loadingPvDetails = false;
+        this.requestUpdate();
+      })
+      .catch(error => {
+        console.error('Failed to fetch PV details:', error);
+        this.loadingPvDetails = false;
+        this.showPvDetails = false;
+        this.requestUpdate();
+        this.showNotification(
+          'error',
+          'Failed to Load PV Details',
+          `Unable to fetch details for PV "${pv.name}": ${error.message || 'Unknown error occurred'}`
+        );
+      });
+  }
+
+  viewSecretDetails(secret) {
+    console.log('Fetching secret details for:', secret.name, 'in namespace:', secret.namespace);
+    this.loadingSecretDetails = true;
+    this.showSecretDetails = true;
+    this.selectedSecret = null;
+    this.requestUpdate();
+
+    const url = `/kubernetes/secrets/${secret.namespace}/${secret.name}`;
+    console.log('Making API request to:', url);
+
+    Api.get(url)
+      .then(response => {
+        console.log('Secret details response:', response);
+        this.selectedSecret = response;
+        this.loadingSecretDetails = false;
+        this.requestUpdate();
+      })
+      .catch(error => {
+        console.error('Failed to fetch secret details:', error);
+        this.loadingSecretDetails = false;
+        this.showSecretDetails = false;
+        this.requestUpdate();
+        this.showNotification(
+          'error',
+          'Failed to Load Secret Details',
+          `Unable to fetch details for secret "${secret.name}": ${error.message || 'Unknown error occurred'}`
+        );
+      });
+  }
+
+  viewConfigMapDetails(configMap) {
+    console.log('Fetching configmap details for:', configMap.name, 'in namespace:', configMap.namespace);
+    this.loadingConfigMapDetails = true;
+    this.showConfigMapDetails = true;
+    this.selectedConfigMap = null;
+    this.requestUpdate();
+
+    const url = `/kubernetes/configmaps/${configMap.namespace}/${configMap.name}`;
+    console.log('Making API request to:', url);
+
+    Api.get(url)
+      .then(response => {
+        console.log('ConfigMap details response:', response);
+        this.selectedConfigMap = response;
+        this.loadingConfigMapDetails = false;
+        this.requestUpdate();
+      })
+      .catch(error => {
+        console.error('Failed to fetch configmap details:', error);
+        this.loadingConfigMapDetails = false;
+        this.showConfigMapDetails = false;
+        this.requestUpdate();
+        this.showNotification(
+          'error',
+          'Failed to Load ConfigMap Details',
+          `Unable to fetch details for configmap "${configMap.name}": ${error.message || 'Unknown error occurred'}`
+        );
+      });
+  }
+
+  viewNodeDetails(node) {
+    console.log('Fetching node details for:', node.name);
+    this.loadingNodeDetails = true;
+    this.showNodeDetails = true;
+    this.selectedNode = null;
+    this.requestUpdate();
+
+    // Nodes are cluster-scoped, so no namespace in the URL
+    const url = `/kubernetes/nodes/${node.name}`;
+    console.log('Making API request to:', url);
+
+    Api.get(url)
+      .then(response => {
+        console.log('Node details response:', response);
+        this.selectedNode = response;
+        this.loadingNodeDetails = false;
+        this.requestUpdate();
+      })
+      .catch(error => {
+        console.error('Failed to fetch node details:', error);
+        this.loadingNodeDetails = false;
+        this.showNodeDetails = false;
+        this.requestUpdate();
+        this.showNotification(
+          'error',
+          'Failed to Load Node Details',
+          `Unable to fetch details for node "${node.name}": ${error.message || 'Unknown error occurred'}`
+        );
+      });
+  }
+
   editItem(item) {
     // Implement edit logic here
     console.log('Editing item:', item);
@@ -4672,6 +5534,33 @@ renderCronJobDetailContent(data: any) {
         }
       }
       // In a real app, you would make an API call to uninstall the Helm release
+    }
+  }
+
+  // Node-specific actions
+  drainNode(node) {
+    console.log('Draining node:', node);
+    if (confirm(`Are you sure you want to drain node ${node.name}? This will evict all pods from the node.`)) {
+      this.showNotification(
+        'warning',
+        'Node Drain Initiated',
+        `Draining node "${node.name}". All pods will be evicted. This feature is not fully implemented yet.`
+      );
+      // In a real app, you would make an API call to drain the node
+      // kubectl drain <node-name> --ignore-daemonsets --delete-emptydir-data
+    }
+  }
+
+  cordonNode(node) {
+    console.log('Cordoning node:', node);
+    if (confirm(`Are you sure you want to cordon node ${node.name}? This will prevent new pods from being scheduled on this node.`)) {
+      this.showNotification(
+        'info',
+        'Node Cordoned',
+        `Node "${node.name}" has been cordoned. No new pods will be scheduled on this node. This feature is not fully implemented yet.`
+      );
+      // In a real app, you would make an API call to cordon the node
+      // kubectl cordon <node-name>
     }
   }
 }

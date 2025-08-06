@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -291,8 +292,58 @@ func (s *Service) ListNodes(ctx context.Context, opts interface{}) ([]NodeInfo, 
 
 	nodeList := make([]NodeInfo, 0, len(nodes.Items))
 	for _, node := range nodes.Items {
+		// Get node status
+		status := "NotReady"
+		for _, condition := range node.Status.Conditions {
+			if condition.Type == corev1.NodeReady {
+				if condition.Status == corev1.ConditionTrue {
+					status = "Ready"
+				}
+				break
+			}
+		}
+
+		// Get node roles
+		roles := []string{}
+		for label := range node.Labels {
+			if strings.HasPrefix(label, "node-role.kubernetes.io/") {
+				role := strings.TrimPrefix(label, "node-role.kubernetes.io/")
+				roles = append(roles, role)
+			}
+		}
+		rolesStr := "<none>"
+		if len(roles) > 0 {
+			rolesStr = strings.Join(roles, ",")
+		}
+
+		// Get node IPs
+		internalIP := ""
+		externalIP := ""
+		for _, addr := range node.Status.Addresses {
+			switch addr.Type {
+			case corev1.NodeInternalIP:
+				internalIP = addr.Address
+			case corev1.NodeExternalIP:
+				externalIP = addr.Address
+			}
+		}
+
+		// Get node info
+		nodeInfo := node.Status.NodeInfo
+
 		nodeList = append(nodeList, NodeInfo{
-			Name: node.Name,
+			Name:              node.Name,
+			Status:            status,
+			Roles:             rolesStr,
+			Age:               calculateAge(node.CreationTimestamp.Time),
+			Version:           nodeInfo.KubeletVersion,
+			InternalIP:        internalIP,
+			ExternalIP:        externalIP,
+			OS:                nodeInfo.OSImage,
+			KernelVersion:     nodeInfo.KernelVersion,
+			ContainerRuntime:  nodeInfo.ContainerRuntimeVersion,
+			Labels:            node.Labels,
+			CreationTimestamp: node.CreationTimestamp.Time,
 		})
 	}
 
@@ -938,3 +989,37 @@ func (s *Service) ApplyPod(ctx context.Context, pod *corev1.Pod) (*corev1.Pod, e
 	
 	return updatedPod, nil
 }
+
+// UpdatePod updates an existing pod
+func (s *Service) UpdatePod(ctx context.Context, namespace, name string, pod *corev1.Pod) (*corev1.Pod, error) {
+	// Ensure the pod has the required fields
+	if pod.Name == "" {
+		pod.Name = name
+	}
+	if pod.Namespace == "" {
+		pod.Namespace = namespace
+	}
+	
+	// Validate that the names match
+	if pod.Name != name || pod.Namespace != namespace {
+		return nil, fmt.Errorf("pod name or namespace in body does not match URL parameters")
+	}
+	
+	// Get the existing pod first to preserve any fields we're not updating
+	existingPod, err := s.client.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get existing pod: %w", err)
+	}
+	
+	// Preserve the resource version for update
+	pod.ResourceVersion = existingPod.ResourceVersion
+	
+	// Update the pod
+	updatedPod, err := s.client.CoreV1().Pods(namespace).Update(ctx, pod, metav1.UpdateOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to update pod: %w", err)
+	}
+	
+	return updatedPod, nil
+}
+
