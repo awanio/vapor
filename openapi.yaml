@@ -3182,6 +3182,39 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
         '503':
           $ref: '#/components/responses/KubernetesNotInstalledError'
+    post:
+      summary: Create or update a Deployment
+      description: Create a new Deployment or update an existing Deployment using Kubernetes apply semantics.
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        description: Deployment specification in JSON or YAML format
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeploymentDetail'
+          application/yaml:
+            schema:
+              type: string
+          text/yaml:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: Deployment created or updated successfully
+        '400':
+          description: Invalid Deployment specification or unsupported content type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
 
   /kubernetes/services:
     get:
@@ -3198,6 +3231,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ServicesResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+    post:
+      summary: Create or update a Service
+      description: Create a new Service or update an existing Service using Kubernetes apply semantics.
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        description: Service specification in JSON or YAML format
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceDetail'
+          application/yaml:
+            schema:
+              type: string
+          text/yaml:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: Service created or updated successfully
+        '400':
+          description: Invalid Service specification or unsupported content type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '503':
@@ -3238,6 +3304,64 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PVCsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+    post:
+      summary: Create or update a PVC
+      description: Create a new PVC or update an existing PVC using Kubernetes apply semantics.
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        description: PVC specification in JSON or YAML format
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PVCDetail'
+          application/yaml:
+            schema:
+              type: string
+          text/yaml:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: PVC created or updated successfully
+        '400':
+          description: Invalid PVC specification or unsupported content type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+    delete:
+      summary: Delete a PVC
+      description: Delete a specific PVC
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: PVC deleted successfully
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '503':
@@ -3318,6 +3442,59 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/NamespacesResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+    post:
+      summary: Create or update a Namespace
+      description: Create a new Namespace or update an existing one using Kubernetes apply semantics.
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        description: Namespace specification in JSON or YAML format
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NamespaceDetail'
+          application/yaml:
+            schema:
+              type: string
+          text/yaml:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: Namespace created or updated successfully
+        '400':
+          description: Invalid Namespace specification or unsupported content type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+    delete:
+      summary: Delete a Namespace
+      description: Delete a specific Namespace
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Namespace deleted successfully
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '503':
@@ -3586,6 +3763,7 @@ paths:
           $ref: '#/components/responses/KubernetesNotInstalledError'
 
 
+
   /kubernetes/deployments/{namespace}/{name}:
     get:
       summary: Get detailed deployment information
@@ -3614,6 +3792,91 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DeploymentDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Deployment not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+    put:
+      summary: Update a Deployment
+      description: Update an existing Deployment
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: Deployment namespace
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          description: Deployment name
+          schema:
+            type: string
+      requestBody:
+        required: true
+        description: Deployment specification in JSON or YAML format
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeploymentDetail'
+          application/yaml:
+            schema:
+              type: string
+          text/yaml:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: Deployment updated successfully
+        '400':
+          description: Invalid Deployment specification or unsupported content type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Deployment not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+    delete:
+      summary: Delete a Deployment
+      description: Delete a specific Deployment
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: Deployment namespace
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          description: Deployment name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deployment deleted successfully
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '404':
@@ -3663,6 +3926,91 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '503':
           $ref: '#/components/responses/KubernetesNotInstalledError'
+    put:
+      summary: Update a Service
+      description: Update an existing Service
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: Service namespace
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          description: Service name
+          schema:
+            type: string
+      requestBody:
+        required: true
+        description: Service specification in JSON or YAML format
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceDetail'
+          application/yaml:
+            schema:
+              type: string
+          text/yaml:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: Service updated successfully
+        '400':
+          description: Invalid Service specification or unsupported content type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Service not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+    delete:
+      summary: Delete a Service
+      description: Delete a specific Service
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: Service namespace
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          description: Service name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Service deleted successfully
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Service not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
 
   /kubernetes/ingresses/{namespace}/{name}:
     get:
@@ -3692,6 +4040,91 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/IngressDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Ingress not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+    put:
+      summary: Update an Ingress
+      description: Update an existing Ingress
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: Ingress namespace
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          description: Ingress name
+          schema:
+            type: string
+      requestBody:
+        required: true
+        description: Ingress specification in JSON or YAML format
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IngressDetail'
+          application/yaml:
+            schema:
+              type: string
+          text/yaml:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: Ingress updated successfully
+        '400':
+          description: Invalid Ingress specification or unsupported content type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Ingress not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+    delete:
+      summary: Delete an Ingress
+      description: Delete a specific Ingress
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: Ingress namespace
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          description: Ingress name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ingress deleted successfully
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '404':
@@ -3813,6 +4246,91 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '503':
           $ref: '#/components/responses/KubernetesNotInstalledError'
+    put:
+      summary: Update a Secret
+      description: Update an existing Secret
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: Secret namespace
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          description: Secret name
+          schema:
+            type: string
+      requestBody:
+        required: true
+        description: Secret specification in JSON or YAML format
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SecretDetail'
+          application/yaml:
+            schema:
+              type: string
+          text/yaml:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: Secret updated successfully
+        '400':
+          description: Invalid Secret specification or unsupported content type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Secret not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+    delete:
+      summary: Delete a Secret
+      description: Delete a specific Secret
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: Secret namespace
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          description: Secret name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Secret deleted successfully
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Secret not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
 
   /kubernetes/configmaps/{namespace}/{name}:
     get:
@@ -3842,6 +4360,91 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ConfigMapDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: ConfigMap not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+    put:
+      summary: Update a ConfigMap
+      description: Update an existing ConfigMap
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: ConfigMap namespace
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          description: ConfigMap name
+          schema:
+            type: string
+      requestBody:
+        required: true
+        description: ConfigMap specification in JSON or YAML format
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigMapDetail'
+          application/yaml:
+            schema:
+              type: string
+          text/yaml:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: ConfigMap updated successfully
+        '400':
+          description: Invalid ConfigMap specification or unsupported content type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: ConfigMap not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+    delete:
+      summary: Delete a ConfigMap
+      description: Delete a specific ConfigMap
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: ConfigMap namespace
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          description: ConfigMap name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ConfigMap deleted successfully
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '404':
@@ -6425,6 +7028,9 @@ components:
             data:
               type: object
               properties:
+                count:
+                  type: integer
+                  description: Total number of nodes
                 nodes:
                   type: array
                   items:
@@ -6729,24 +7335,24 @@ components:
           type: string
         version:
           type: string
-        internal_ip:
+        internalIP:
           type: string
-        external_ip:
+        externalIP:
           type: string
-        os_image:
+        os:
           type: string
-        kernel_version:
+        kernelVersion:
           type: string
-        container_runtime:
+        containerRuntime:
           type: string
         labels:
           type: object
           additionalProperties:
             type: string
-        annotations:
-          type: object
-          additionalProperties:
-            type: string
+          nullable: true
+        creationTimestamp:
+          type: string
+          format: date-time
 
     DaemonSetInfo:
       type: object
