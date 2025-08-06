@@ -32,6 +32,12 @@ class KubernetesTab extends LitElement {
   @property({ type: Boolean }) showDaemonSetDetails = false;
   @property({ type: Object }) selectedDaemonSet = null;
   @property({ type: Boolean }) loadingDaemonSetDetails = false;
+  @property({ type: Boolean }) showJobDetails = false;
+  @property({ type: Object }) selectedJob = null;
+  @property({ type: Boolean }) loadingJobDetails = false;
+  @property({ type: Boolean }) showCronJobDetails = false;
+  @property({ type: Object }) selectedCronJob = null;
+  @property({ type: Boolean }) loadingCronJobDetails = false;
   @property({ type: Array }) namespaces = [];
   @property({ type: String }) selectedNamespace = 'all';
   @property({ type: Boolean }) showNamespaceDropdown = false;
@@ -997,7 +1003,7 @@ class KubernetesTab extends LitElement {
           ${data.map((item, index) => html`
             <tr>
               <td>
-                ${(item.type === 'Pod' || item.type === 'Deployment' || item.type === 'StatefulSet' || item.type === 'DaemonSet')
+                ${(item.type === 'Pod' || item.type === 'Deployment' || item.type === 'StatefulSet' || item.type === 'DaemonSet' || item.type === 'Job' || item.type === 'CronJob')
                   ? html`<span class="pod-name-link" @click=${() => this.viewDetails(item)}>${item.name}</span>`
                   : item.name
                 }
@@ -1508,7 +1514,7 @@ class KubernetesTab extends LitElement {
     if (this.loadingPodDetails) {
       return html`
         <div class="pod-details-drawer">
-          <button class="close-button" @click="${() => this.showPodDetails = false}">&#x2715;</button>
+          <button class="close-button" @click="${() => this.showPodDetails = false}">×</button>
           <h2>Pod Details</h2>
           <div class="loading-state">Loading pod details...</div>
         </div>
@@ -1517,7 +1523,7 @@ class KubernetesTab extends LitElement {
 
     return html`
       <div class="pod-details-drawer">
-        <button class="close-button" @click="${() => this.showPodDetails = false}">&#x2715;</button>
+        <button class="close-button" @click="${() => this.showPodDetails = false}">×</button>
         <h2>Pod Details</h2>
         <div class="pod-details-content">
           ${this.renderPodDetailContent(this.selectedPod)}
@@ -1534,7 +1540,7 @@ class KubernetesTab extends LitElement {
     if (this.loadingCrdDetails) {
       return html`
         <div class="pod-details-drawer crd-details-drawer">
-          <button class="close-button" @click="${() => this.showCrdDetails = false}">&#x2715;</button>
+          <button class="close-button" @click="${() => this.showCrdDetails = false}">×</button>
           <h2>CRD Details</h2>
           <div class="loading-state">Loading CRD details...</div>
         </div>
@@ -1543,7 +1549,7 @@ class KubernetesTab extends LitElement {
 
     return html`
       <div class="pod-details-drawer crd-details-drawer">
-        <button class="close-button" @click="${() => this.showCrdDetails = false}">&#x2715;</button>
+        <button class="close-button" @click="${() => this.showCrdDetails = false}">×</button>
         <h2>CRD Details</h2>
         <div class="pod-details-content">
           ${this.renderCrdDetailContent(this.selectedCrd)}
@@ -1560,7 +1566,7 @@ class KubernetesTab extends LitElement {
     if (this.loadingDeploymentDetails) {
       return html`
         <div class="pod-details-drawer crd-details-drawer">
-          <button class="close-button" @click="${() => this.showDeploymentDetails = false}">&#x2715;</button>
+          <button class="close-button" @click="${() => this.showDeploymentDetails = false}">×</button>
           <h2>Deployment Details</h2>
           <div class="loading-state">Loading deployment details...</div>
         </div>
@@ -1569,7 +1575,7 @@ class KubernetesTab extends LitElement {
 
     return html`
       <div class="pod-details-drawer crd-details-drawer">
-        <button class="close-button" @click="${() => this.showDeploymentDetails = false}">&#x2715;</button>
+        <button class="close-button" @click="${() => this.showDeploymentDetails = false}">×</button>
         <h2>Deployment Details</h2>
         <div class="pod-details-content">
           ${this.renderDeploymentDetailContent(this.selectedDeployment)}
@@ -1586,7 +1592,7 @@ class KubernetesTab extends LitElement {
     if (this.loadingStatefulSetDetails) {
       return html`
         <div class="pod-details-drawer">
-          <button class="close-button" @click="${() => this.showStatefulSetDetails = false}">&#x2715;</button>
+          <button class="close-button" @click="${() => this.showStatefulSetDetails = false}">×</button>
           <h2>StatefulSet Details</h2>
           <div class="loading-state">Loading statefulset details...</div>
         </div>
@@ -1595,7 +1601,7 @@ class KubernetesTab extends LitElement {
 
     return html`
       <div class="pod-details-drawer">
-        <button class="close-button" @click="${() => this.showStatefulSetDetails = false}">&#x2715;</button>
+        <button class="close-button" @click="${() => this.showStatefulSetDetails = false}">×</button>
         <h2>StatefulSet Details</h2>
         <div class="pod-details-content">
           ${this.renderStatefulSetDetailContent(this.selectedStatefulSet)}
@@ -1612,7 +1618,7 @@ class KubernetesTab extends LitElement {
     if (this.loadingDaemonSetDetails) {
       return html`
         <div class="pod-details-drawer">
-          <button class="close-button" @click="${() => this.showDaemonSetDetails = false}">&#x2715;</button>
+          <button class="close-button" @click="${() => this.showDaemonSetDetails = false}">×</button>
           <h2>DaemonSet Details</h2>
           <div class="loading-state">Loading daemonset details...</div>
         </div>
@@ -1621,10 +1627,62 @@ class KubernetesTab extends LitElement {
 
     return html`
       <div class="pod-details-drawer">
-        <button class="close-button" @click="${() => this.showDaemonSetDetails = false}">&#x2715;</button>
+        <button class="close-button" @click="${() => this.showDaemonSetDetails = false}">×</button>
         <h2>DaemonSet Details</h2>
         <div class="pod-details-content">
           ${this.renderDaemonSetDetailContent(this.selectedDaemonSet)}
+        </div>
+      </div>
+    `;
+  }
+
+  renderJobDetailsDrawer() {
+    if (!this.showJobDetails) {
+      return null;
+    }
+
+    if (this.loadingJobDetails) {
+      return html`
+        <div class="pod-details-drawer">
+          <button class="close-button" @click="${() => this.showJobDetails = false}">×</button>
+          <h2>Job Details</h2>
+          <div class="loading-state">Loading job details...</div>
+        </div>
+      `;
+    }
+
+    return html`
+      <div class="pod-details-drawer">
+        <button class="close-button" @click="${() => this.showJobDetails = false}">×</button>
+        <h2>Job Details</h2>
+        <div class="pod-details-content">
+          ${this.renderJobDetailContent(this.selectedJob)}
+        </div>
+      </div>
+    `;
+  }
+
+  renderCronJobDetailsDrawer() {
+    if (!this.showCronJobDetails) {
+      return null;
+    }
+
+    if (this.loadingCronJobDetails) {
+      return html`
+        <div class="pod-details-drawer">
+          <button class="close-button" @click="${() => this.showCronJobDetails = false}">×</button>
+          <h2>CronJob Details</h2>
+          <div class="loading-state">Loading cronjob details...</div>
+        </div>
+      `;
+    }
+
+    return html`
+      <div class="pod-details-drawer">
+        <button class="close-button" @click="${() => this.showCronJobDetails = false}">×</button>
+        <h2>CronJob Details</h2>
+        <div class="pod-details-content">
+          ${this.renderCronJobDetailContent(this.selectedCronJob)}
         </div>
       </div>
     `;
@@ -2443,6 +2501,281 @@ renderPodDetailContent(data: any) {
     `;
   }
 
+  renderJobDetailContent(data: any) {
+    if (!data) {
+      return html`<div class="no-data">No data available</div>`;
+    }
+
+    // Handle API response structure
+    const jobData = data.job_detail || data;
+
+    console.log('Processing job data:', jobData);
+
+    return html`
+      <div class="detail-sections">
+        <!-- Basic Information -->
+        <div class="detail-section">
+          <h3>Basic Information</h3>
+          ${this.renderDetailItem('Name', jobData.name)}
+          ${this.renderDetailItem('Namespace', jobData.namespace)}
+          ${this.renderDetailItem('UID', jobData.uid)}
+          ${this.renderDetailItem('Resource Version', jobData.resourceVersion)}
+          ${this.renderDetailItem('Creation Timestamp', jobData.creationTimestamp)}
+          ${this.renderDetailItem('Age', jobData.age)}
+          ${this.renderDetailItem('Generation', jobData.generation)}
+        </div>
+
+        <!-- Status Information -->
+        <div class="detail-section">
+          <h3>Status</h3>
+          ${this.renderDetailItem('Active', jobData.active)}
+          ${this.renderDetailItem('Succeeded', jobData.succeeded)}
+          ${this.renderDetailItem('Failed', jobData.failed)}
+          ${this.renderDetailItem('Completion Time', jobData.completionTime)}
+          ${this.renderDetailItem('Start Time', jobData.startTime)}
+        </div>
+
+        <!-- Job Spec -->
+        ${jobData.spec ? html`
+          <div class="detail-section">
+            <h3>Specification</h3>
+            ${this.renderDetailItem('Parallelism', jobData.spec.parallelism)}
+            ${this.renderDetailItem('Completions', jobData.spec.completions)}
+            ${this.renderDetailItem('Active Deadline Seconds', jobData.spec.activeDeadlineSeconds)}
+            ${this.renderDetailItem('Backoff Limit', jobData.spec.backoffLimit)}
+            ${this.renderDetailItem('TTL Seconds After Finished', jobData.spec.ttlSecondsAfterFinished)}
+          </div>
+        ` : ''}
+
+        <!-- Selector -->
+        ${jobData.spec?.selector ? html`
+          <div class="detail-section">
+            <h3>Selector</h3>
+            ${this.renderDetailItem('Match Labels', jobData.spec.selector.matchLabels, true)}
+          </div>
+        ` : ''}
+
+        <!-- Labels -->
+        ${jobData.labels && Object.keys(jobData.labels).length > 0 ? html`
+          <div class="detail-section">
+            <h3>Labels</h3>
+            ${this.renderObjectAsKeyValue(jobData.labels)}
+          </div>
+        ` : ''}
+
+        <!-- Annotations -->
+        ${jobData.annotations && Object.keys(jobData.annotations).length > 0 ? html`
+          <div class="detail-section">
+            <h3>Annotations</h3>
+            ${this.renderObjectAsKeyValue(jobData.annotations)}
+          </div>
+        ` : ''}
+
+        <!-- Pod Template -->
+        ${jobData.spec?.template ? html`
+          <div class="detail-section">
+            <h3>Pod Template</h3>
+            ${jobData.spec.template.metadata?.labels ? 
+              this.renderDetailItem('Pod Labels', jobData.spec.template.metadata.labels, true) : ''}
+            ${jobData.spec.template.spec?.containers && jobData.spec.template.spec.containers.length > 0 ? html`
+              <div class="detail-item nested">
+                <strong class="detail-key">Containers:</strong>
+                <div class="nested-content">
+                  ${jobData.spec.template.spec.containers.map((container, index) => html`
+                    <div class="detail-item nested">
+                      <strong class="detail-key">Container ${index + 1}:</strong>
+                      <div class="nested-content">
+                        ${this.renderDetailItem('Name', container.name)}
+                        ${this.renderDetailItem('Image', container.image)}
+                        ${container.command && container.command.length > 0 ? 
+                          this.renderDetailItem('Command', container.command.join(' ')) : ''}
+                        ${container.args && container.args.length > 0 ? 
+                          this.renderDetailItem('Args', container.args.join(' ')) : ''}
+                        ${container.env && container.env.length > 0 ? 
+                          this.renderDetailItem('Environment Variables', `${container.env.length} variables`) : ''}
+                        ${container.resources ? this.renderDetailItem('Resources', container.resources, true) : ''}
+                      </div>
+                    </div>
+                  `)}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        ` : ''}
+
+        <!-- Conditions -->
+        ${jobData.status?.conditions && jobData.status.conditions.length > 0 ? html`
+          <div class="detail-section">
+            <h3>Conditions</h3>
+            ${jobData.status.conditions.map((condition) => html`
+              <div class="detail-item nested">
+                <strong class="detail-key">${condition.type}:</strong>
+                <div class="nested-content">
+                  ${this.renderDetailItem('Status', condition.status)}
+                  ${this.renderDetailItem('Last Probe Time', condition.lastProbeTime)}
+                  ${this.renderDetailItem('Last Transition Time', condition.lastTransitionTime)}
+                  ${this.renderDetailItem('Reason', condition.reason)}
+                  ${this.renderDetailItem('Message', condition.message)}
+                </div>
+              </div>
+            `)}
+          </div>
+        ` : ''}
+
+        <!-- Raw Data -->
+        <div class="detail-section">
+          <h3>Raw Data</h3>
+          <details>
+            <summary>View raw job data</summary>
+            <pre class="raw-data">${JSON.stringify(jobData, null, 2)}</pre>
+          </details>
+        </div>
+      </div>
+    `;
+  }
+
+  renderCronJobDetailContent(data: any) {
+    if (!data) {
+      return html`<div class="no-data">No data available</div>`;
+    }
+
+    // Handle API response structure
+    const cronJobData = data.cronjob_detail || data;
+
+    console.log('Processing cronjob data:', cronJobData);
+
+    return html`
+      <div class="detail-sections">
+        <!-- Basic Information -->
+        <div class="detail-section">
+          <h3>Basic Information</h3>
+          ${this.renderDetailItem('Name', cronJobData.name)}
+          ${this.renderDetailItem('Namespace', cronJobData.namespace)}
+          ${this.renderDetailItem('UID', cronJobData.uid)}
+          ${this.renderDetailItem('Resource Version', cronJobData.resourceVersion)}
+          ${this.renderDetailItem('Creation Timestamp', cronJobData.creationTimestamp)}
+          ${this.renderDetailItem('Age', cronJobData.age)}
+          ${this.renderDetailItem('Generation', cronJobData.generation)}
+        </div>
+
+        <!-- Status Information -->
+        <div class="detail-section">
+          <h3>Status</h3>
+          ${this.renderDetailItem('Active', cronJobData.active)}
+          ${this.renderDetailItem('Last Schedule Time', cronJobData.lastScheduleTime)}
+          ${this.renderDetailItem('Last Successful Time', cronJobData.lastSuccessfulTime)}
+        </div>
+
+        <!-- CronJob Spec -->
+        ${cronJobData.spec ? html`
+          <div class="detail-section">
+            <h3>Specification</h3>
+            ${this.renderDetailItem('Schedule', cronJobData.spec.schedule)}
+            ${this.renderDetailItem('Concurrency Policy', cronJobData.spec.concurrencyPolicy)}
+            ${this.renderDetailItem('Suspend', cronJobData.spec.suspend)}
+            ${this.renderDetailItem('Starting Deadline Seconds', cronJobData.spec.startingDeadlineSeconds)}
+            ${this.renderDetailItem('Successful Jobs History Limit', cronJobData.spec.successfulJobsHistoryLimit)}
+            ${this.renderDetailItem('Failed Jobs History Limit', cronJobData.spec.failedJobsHistoryLimit)}
+          </div>
+        ` : ''}
+
+        <!-- Labels -->
+        ${cronJobData.labels && Object.keys(cronJobData.labels).length > 0 ? html`
+          <div class="detail-section">
+            <h3>Labels</h3>
+            ${this.renderObjectAsKeyValue(cronJobData.labels)}
+          </div>
+        ` : ''}
+
+        <!-- Annotations -->
+        ${cronJobData.annotations && Object.keys(cronJobData.annotations).length > 0 ? html`
+          <div class="detail-section">
+            <h3>Annotations</h3>
+            ${this.renderObjectAsKeyValue(cronJobData.annotations)}
+          </div>
+        ` : ''}
+
+        <!-- Job Template -->
+        ${cronJobData.spec?.jobTemplate ? html`
+          <div class="detail-section">
+            <h3>Job Template</h3>
+            
+            <!-- Job Template Spec -->
+            ${cronJobData.spec.jobTemplate.spec ? html`
+              <div class="detail-item nested">
+                <strong class="detail-key">Job Spec:</strong>
+                <div class="nested-content">
+                  ${this.renderDetailItem('Parallelism', cronJobData.spec.jobTemplate.spec.parallelism)}
+                  ${this.renderDetailItem('Completions', cronJobData.spec.jobTemplate.spec.completions)}
+                  ${this.renderDetailItem('Active Deadline Seconds', cronJobData.spec.jobTemplate.spec.activeDeadlineSeconds)}
+                  ${this.renderDetailItem('Backoff Limit', cronJobData.spec.jobTemplate.spec.backoffLimit)}
+                  ${this.renderDetailItem('TTL Seconds After Finished', cronJobData.spec.jobTemplate.spec.ttlSecondsAfterFinished)}
+                </div>
+              </div>
+            ` : ''}
+            
+            <!-- Pod Template -->
+            ${cronJobData.spec.jobTemplate.spec?.template ? html`
+              <div class="detail-item nested">
+                <strong class="detail-key">Pod Template:</strong>
+                <div class="nested-content">
+                  ${cronJobData.spec.jobTemplate.spec.template.metadata?.labels ? 
+                    this.renderDetailItem('Pod Labels', cronJobData.spec.jobTemplate.spec.template.metadata.labels, true) : ''}
+                  
+                  ${cronJobData.spec.jobTemplate.spec.template.spec?.containers && cronJobData.spec.jobTemplate.spec.template.spec.containers.length > 0 ? html`
+                    <div class="detail-item nested">
+                      <strong class="detail-key">Containers:</strong>
+                      <div class="nested-content">
+                        ${cronJobData.spec.jobTemplate.spec.template.spec.containers.map((container, index) => html`
+                          <div class="detail-item nested">
+                            <strong class="detail-key">Container ${index + 1}:</strong>
+                            <div class="nested-content">
+                              ${this.renderDetailItem('Name', container.name)}
+                              ${this.renderDetailItem('Image', container.image)}
+                              ${container.command && container.command.length > 0 ? 
+                                this.renderDetailItem('Command', container.command.join(' ')) : ''}
+                              ${container.args && container.args.length > 0 ? 
+                                this.renderDetailItem('Args', container.args.join(' ')) : ''}
+                              ${container.env && container.env.length > 0 ? 
+                                this.renderDetailItem('Environment Variables', `${container.env.length} variables`) : ''}
+                              ${container.resources ? this.renderDetailItem('Resources', container.resources, true) : ''}
+                            </div>
+                          </div>
+                        `)}
+                      </div>
+                    </div>
+                  ` : ''}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        ` : ''}
+
+        <!-- Active Jobs -->
+        ${cronJobData.status?.active && cronJobData.status.active.length > 0 ? html`
+          <div class="detail-section">
+            <h3>Active Jobs</h3>
+            ${cronJobData.status.active.map((job, index) => html`
+              <div class="detail-item">
+                <strong class="detail-key">Job ${index + 1}:</strong>
+                <span class="detail-value">${job.name || job}</span>
+              </div>
+            `)}
+          </div>
+        ` : ''}
+
+        <!-- Raw Data -->
+        <div class="detail-section">
+          <h3>Raw Data</h3>
+          <details>
+            <summary>View raw cronjob data</summary>
+            <pre class="raw-data">${JSON.stringify(cronJobData, null, 2)}</pre>
+          </details>
+        </div>
+      </div>
+    `;
+  }
+
   renderDetailItem(label: string, value: any, isObject: boolean = false) {
     if (value === null || value === undefined) {
       return html`
@@ -2647,6 +2980,8 @@ renderPodDetailContent(data: any) {
         ${this.renderDeploymentDetailsDrawer()}
         ${this.renderStatefulSetDetailsDrawer()}
         ${this.renderDaemonSetDetailsDrawer()}
+        ${this.renderJobDetailsDrawer()}
+        ${this.renderCronJobDetailsDrawer()}
         ${this.renderNotifications()}
       </div>
     `;
@@ -2699,6 +3034,12 @@ renderPodDetailContent(data: any) {
       }
       if (this.showDaemonSetDetails) {
         this.showDaemonSetDetails = false;
+      }
+      if (this.showJobDetails) {
+        this.showJobDetails = false;
+      }
+      if (this.showCronJobDetails) {
+        this.showCronJobDetails = false;
       }
       this.requestUpdate();
     }
@@ -3682,12 +4023,18 @@ renderPodDetailContent(data: any) {
       case 'DaemonSet':
         this.viewDaemonSetDetails(item);
         break;
+      case 'Job':
+        this.viewJobDetails(item);
+        break;
+      case 'CronJob':
+        this.viewCronJobDetails(item);
+        break;
       default:
         console.log('View details not implemented for type:', item.type);
         this.showNotification(
           'info',
           'Feature Not Available',
-          `Detailed view for ${item.type} resources is not implemented yet. Only Pod, Deployment, CRD, and StatefulSet details are currently supported.`
+          `Detailed view for ${item.type} resources is not implemented yet.`
         );
         break;
     }
@@ -3839,6 +4186,66 @@ renderPodDetailContent(data: any) {
           'error',
           'Failed to Load DaemonSet Details',
           `Unable to fetch details for daemonset "${daemonSet.name}": ${error.message || 'Unknown error occurred'}`
+        );
+      });
+  }
+
+  viewJobDetails(job) {
+    console.log('Fetching job details for:', job.name, 'in namespace:', job.namespace);
+    this.loadingJobDetails = true;
+    this.showJobDetails = true;
+    this.selectedJob = null;
+    this.requestUpdate();
+
+    const url = `/kubernetes/jobs/${job.namespace}/${job.name}`;
+    console.log('Making API request to:', url);
+
+    Api.get(url)
+      .then(response => {
+        console.log('Job details response:', response);
+        this.selectedJob = response;
+        this.loadingJobDetails = false;
+        this.requestUpdate();
+      })
+      .catch(error => {
+        console.error('Failed to fetch job details:', error);
+        this.loadingJobDetails = false;
+        this.showJobDetails = false;
+        this.requestUpdate();
+        this.showNotification(
+          'error',
+          'Failed to Load Job Details',
+          `Unable to fetch details for job "${job.name}": ${error.message || 'Unknown error occurred'}`
+        );
+      });
+  }
+
+  viewCronJobDetails(cronJob) {
+    console.log('Fetching cronjob details for:', cronJob.name, 'in namespace:', cronJob.namespace);
+    this.loadingCronJobDetails = true;
+    this.showCronJobDetails = true;
+    this.selectedCronJob = null;
+    this.requestUpdate();
+
+    const url = `/kubernetes/cronjobs/${cronJob.namespace}/${cronJob.name}`;
+    console.log('Making API request to:', url);
+
+    Api.get(url)
+      .then(response => {
+        console.log('CronJob details response:', response);
+        this.selectedCronJob = response;
+        this.loadingCronJobDetails = false;
+        this.requestUpdate();
+      })
+      .catch(error => {
+        console.error('Failed to fetch cronjob details:', error);
+        this.loadingCronJobDetails = false;
+        this.showCronJobDetails = false;
+        this.requestUpdate();
+        this.showNotification(
+          'error',
+          'Failed to Load CronJob Details',
+          `Unable to fetch details for cronjob "${cronJob.name}": ${error.message || 'Unknown error occurred'}`
         );
       });
   }

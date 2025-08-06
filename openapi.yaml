@@ -7157,6 +7157,77 @@ components:
       type: object
       description: Raw Kubernetes Pod object with full API specification
       additionalProperties: true
+      example:
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          name: nginx-pod
+          namespace: default
+          uid: 12345678-1234-1234-1234-123456789012
+          resourceVersion: "1234"
+          creationTimestamp: "2024-01-15T10:30:00Z"
+          labels:
+            app: nginx
+            environment: production
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: |
+              {"apiVersion":"v1","kind":"Pod",...}
+        spec:
+          containers:
+          - name: nginx
+            image: nginx:1.21
+            ports:
+            - containerPort: 80
+              protocol: TCP
+            resources:
+              limits:
+                cpu: "1"
+                memory: 1Gi
+              requests:
+                cpu: 100m
+                memory: 128Mi
+            volumeMounts:
+            - name: config
+              mountPath: /etc/nginx
+          volumes:
+          - name: config
+            configMap:
+              name: nginx-config
+          restartPolicy: Always
+          serviceAccountName: default
+          nodeName: worker-node-1
+        status:
+          phase: Running
+          conditions:
+          - type: Ready
+            status: "True"
+            lastProbeTime: null
+            lastTransitionTime: "2024-01-15T10:31:00Z"
+          - type: ContainersReady
+            status: "True"
+            lastProbeTime: null
+            lastTransitionTime: "2024-01-15T10:31:00Z"
+          - type: PodScheduled
+            status: "True"
+            lastProbeTime: null
+            lastTransitionTime: "2024-01-15T10:30:30Z"
+          hostIP: 10.0.1.100
+          podIP: 172.16.1.10
+          podIPs:
+          - ip: 172.16.1.10
+          startTime: "2024-01-15T10:30:30Z"
+          containerStatuses:
+          - name: nginx
+            state:
+              running:
+                startedAt: "2024-01-15T10:31:00Z"
+            lastState: {}
+            ready: true
+            restartCount: 0
+            image: nginx:1.21
+            imageID: docker://sha256:abcdef123456
+            containerID: docker://abcdef123456789
+            started: true
 
     ContainerInfo:
       type: object
@@ -7208,63 +7279,587 @@ components:
       type: object
       description: Raw Kubernetes Deployment object with full API specification
       additionalProperties: true
+      example:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: nginx-deployment
+          namespace: default
+          uid: 22345678-2234-2234-2234-223456789012
+          resourceVersion: "5678"
+          generation: 3
+          creationTimestamp: "2024-01-15T09:00:00Z"
+          labels:
+            app: nginx
+            tier: frontend
+          annotations:
+            deployment.kubernetes.io/revision: "3"
+        spec:
+          replicas: 3
+          selector:
+            matchLabels:
+              app: nginx
+          template:
+            metadata:
+              labels:
+                app: nginx
+            spec:
+              containers:
+              - name: nginx
+                image: nginx:1.21-alpine
+                ports:
+                - containerPort: 80
+                resources:
+                  limits:
+                    cpu: 500m
+                    memory: 512Mi
+                  requests:
+                    cpu: 250m
+                    memory: 256Mi
+          strategy:
+            type: RollingUpdate
+            rollingUpdate:
+              maxSurge: 1
+              maxUnavailable: 1
+          minReadySeconds: 10
+          revisionHistoryLimit: 10
+          progressDeadlineSeconds: 600
+        status:
+          observedGeneration: 3
+          replicas: 3
+          updatedReplicas: 3
+          readyReplicas: 3
+          availableReplicas: 3
+          conditions:
+          - type: Available
+            status: "True"
+            lastUpdateTime: "2024-01-15T09:05:00Z"
+            lastTransitionTime: "2024-01-15T09:05:00Z"
+            reason: MinimumReplicasAvailable
+            message: Deployment has minimum availability.
+          - type: Progressing
+            status: "True"
+            lastUpdateTime: "2024-01-15T09:05:00Z"
+            lastTransitionTime: "2024-01-15T09:01:00Z"
+            reason: NewReplicaSetAvailable
+            message: ReplicaSet "nginx-deployment-6b474476c4" has successfully progressed.
 
     StatefulSetDetail:
       type: object
       description: Raw Kubernetes StatefulSet object with full API specification
       additionalProperties: true
+      example:
+        apiVersion: apps/v1
+        kind: StatefulSet
+        metadata:
+          name: postgres-statefulset
+          namespace: database
+          uid: 32345678-3234-3234-3234-323456789012
+          resourceVersion: "8901"
+          generation: 2
+          creationTimestamp: "2024-01-15T08:00:00Z"
+          labels:
+            app: postgres
+            tier: database
+        spec:
+          serviceName: postgres-service
+          replicas: 3
+          selector:
+            matchLabels:
+              app: postgres
+          template:
+            metadata:
+              labels:
+                app: postgres
+            spec:
+              containers:
+              - name: postgres
+                image: postgres:14.5
+                ports:
+                - containerPort: 5432
+                  name: postgres
+                env:
+                - name: POSTGRES_DB
+                  value: mydb
+                - name: POSTGRES_USER
+                  value: myuser
+                - name: POSTGRES_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: password
+                volumeMounts:
+                - name: postgres-storage
+                  mountPath: /var/lib/postgresql/data
+          volumeClaimTemplates:
+          - metadata:
+              name: postgres-storage
+            spec:
+              accessModes: [ "ReadWriteOnce" ]
+              storageClassName: fast-ssd
+              resources:
+                requests:
+                  storage: 10Gi
+          updateStrategy:
+            type: RollingUpdate
+            rollingUpdate:
+              partition: 0
+          podManagementPolicy: OrderedReady
+          persistentVolumeClaimRetentionPolicy:
+            whenDeleted: Retain
+            whenScaled: Retain
+        status:
+          observedGeneration: 2
+          replicas: 3
+          readyReplicas: 3
+          currentReplicas: 3
+          updatedReplicas: 3
+          currentRevision: postgres-statefulset-6d4cf56b5f
+          updateRevision: postgres-statefulset-6d4cf56b5f
+          collisionCount: 0
+          conditions:
+          - type: Available
+            status: "True"
+            lastTransitionTime: "2024-01-15T08:10:00Z"
+            reason: MinimumReplicasAvailable
+            message: StatefulSet has minimum availability.
 
     ServiceDetail:
       type: object
       description: Raw Kubernetes Service object with full API specification
       additionalProperties: true
+      example:
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: nginx-service
+          namespace: default
+          uid: 42345678-4234-4234-4234-423456789012
+          resourceVersion: "9999"
+          creationTimestamp: "2024-01-15T10:00:00Z"
+          labels:
+            app: nginx
+            tier: frontend
+          annotations:
+            service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+        spec:
+          type: LoadBalancer
+          selector:
+            app: nginx
+          ports:
+          - name: http
+            port: 80
+            targetPort: 8080
+            protocol: TCP
+            nodePort: 30080
+          - name: https
+            port: 443
+            targetPort: 8443
+            protocol: TCP
+            nodePort: 30443
+          clusterIP: 10.96.0.44
+          externalTrafficPolicy: Cluster
+          sessionAffinity: None
+          loadBalancerSourceRanges:
+          - 0.0.0.0/0
+        status:
+          loadBalancer:
+            ingress:
+            - ip: 192.168.1.100
+              hostname: a1234567890abcdef.elb.us-west-2.amazonaws.com
+          conditions:
+          - type: LoadBalancerReady
+            status: "True"
+            lastTransitionTime: "2024-01-15T10:05:00Z"
+            reason: LoadBalancerProvisioned
+            message: Load balancer is ready
 
     IngressDetail:
       type: object
       description: Raw Kubernetes Ingress object with full API specification
       additionalProperties: true
+      example:
+        apiVersion: networking.k8s.io/v1
+        kind: Ingress
+        metadata:
+          name: app-ingress
+          namespace: default
+          uid: 52345678-5234-5234-5234-523456789012
+          resourceVersion: "11111"
+          creationTimestamp: "2024-01-15T11:00:00Z"
+          labels:
+            app: webapp
+            environment: production
+          annotations:
+            nginx.ingress.kubernetes.io/rewrite-target: /
+            cert-manager.io/cluster-issuer: letsencrypt-prod
+            nginx.ingress.kubernetes.io/ssl-redirect: "true"
+        spec:
+          ingressClassName: nginx
+          tls:
+          - hosts:
+            - app.example.com
+            - www.app.example.com
+            secretName: app-tls-secret
+          rules:
+          - host: app.example.com
+            http:
+              paths:
+              - path: /api
+                pathType: Prefix
+                backend:
+                  service:
+                    name: api-service
+                    port:
+                      number: 8080
+              - path: /
+                pathType: Prefix
+                backend:
+                  service:
+                    name: frontend-service
+                    port:
+                      number: 80
+          - host: www.app.example.com
+            http:
+              paths:
+              - path: /
+                pathType: Prefix
+                backend:
+                  service:
+                    name: frontend-service
+                    port:
+                      number: 80
+        status:
+          loadBalancer:
+            ingress:
+            - ip: 203.0.113.10
+              hostname: a234567890abcdef.elb.us-west-2.amazonaws.com
 
     PVCDetail:
       type: object
       description: Raw Kubernetes PersistentVolumeClaim object with full API specification
       additionalProperties: true
+      example:
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: postgres-pvc
+          namespace: database
+          uid: 62345678-6234-6234-6234-623456789012
+          resourceVersion: "12345"
+          creationTimestamp: "2024-01-15T07:30:00Z"
+          labels:
+            app: postgres
+            environment: production
+          annotations:
+            volume.beta.kubernetes.io/storage-provisioner: ebs.csi.aws.com
+            pv.kubernetes.io/bind-completed: "yes"
+            pv.kubernetes.io/bound-by-controller: "yes"
+          finalizers:
+          - kubernetes.io/pvc-protection
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 20Gi
+          storageClassName: gp3-encrypted
+          volumeMode: Filesystem
+          volumeName: pvc-62345678-6234-6234-6234-623456789012
+        status:
+          phase: Bound
+          accessModes:
+          - ReadWriteOnce
+          capacity:
+            storage: 20Gi
+          conditions:
+          - type: Resizing
+            status: "False"
+            lastProbeTime: null
+            lastTransitionTime: "2024-01-15T07:31:00Z"
+          - type: FileSystemResizePending
+            status: "False"
+            lastProbeTime: null
+            lastTransitionTime: "2024-01-15T07:31:00Z"
 
     PVDetail:
       type: object
       description: Raw Kubernetes PersistentVolume object with full API specification
       additionalProperties: true
+      example:
+        apiVersion: v1
+        kind: PersistentVolume
+        metadata:
+          name: postgres-pv
+          uid: 72345678-7234-7234-7234-723456789012
+          resourceVersion: "56789"
+          creationTimestamp: "2024-01-15T07:00:00Z"
+          labels:
+            type: gp3-encrypted
+            app: postgres
+          annotations:
+            pv.kubernetes.io/provisioned-by: ebs.csi.aws.com
+          finalizers:
+          - kubernetes.io/pv-protection
+        spec:
+          capacity:
+            storage: 20Gi
+          accessModes:
+          - ReadWriteOnce
+          persistentVolumeReclaimPolicy: Retain
+          storageClassName: gp3-encrypted
+          mountOptions:
+          - debug
+          volumeMode: Filesystem
+          csi:
+            driver: ebs.csi.aws.com
+            fsType: ext4
+            volumeHandle: vol-0a1b2c3d4e5f6g7h8
+        status:
+          phase: Bound
+          reason: ""
+          message: ""
+          conditions:
+          - type: Resizing
+            status: "False"
+            lastProbeTime: null
+            lastTransitionTime: "2024-01-15T07:45:00Z"
 
     SecretDetail:
       type: object
       description: Raw Kubernetes Secret object with full API specification
       additionalProperties: true
+      example:
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: postgres-secret
+          namespace: database
+          uid: 82345678-8234-8234-8234-823456789012
+          resourceVersion: "67890"
+          creationTimestamp: "2024-01-15T06:00:00Z"
+          labels:
+            app: postgres
+          annotations:
+            kubernetes.io/service-account.name: postgres
+        data:
+          password: cG9zdGdyZXM=
+          username: cG9zdGdyZXVzZXI=
+        type: Opaque
 
     ConfigMapDetail:
       type: object
       description: Raw Kubernetes ConfigMap object with full API specification
       additionalProperties: true
+      example:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: nginx-config
+          namespace: default
+          uid: 92345678-9234-9234-9234-923456789012
+          resourceVersion: "78901"
+          creationTimestamp: "2024-01-15T05:00:00Z"
+          labels:
+            app: nginx
+        data:
+          nginx.conf: |
+            server {
+              listen 80;
+              server_name localhost;
+              location / {
+                root /usr/share/nginx/html;
+                index index.html index.htm;
+              }
+            }
 
     NamespaceDetail:
       type: object
       description: Raw Kubernetes Namespace object with full API specification
       additionalProperties: true
+      example:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: production
+          uid: a2345678-a234-a234-a234-a23456789012
+          resourceVersion: "89012"
+          creationTimestamp: "2024-01-15T04:00:00Z"
+          labels:
+            name: production
+        status:
+          phase: Active
 
     NodeDetail:
       type: object
       description: Raw Kubernetes Node object with full API specification
       additionalProperties: true
+      example:
+        apiVersion: v1
+        kind: Node
+        metadata:
+          name: worker-node-1
+          uid: b2345678-b234-b234-b234-b23456789012
+          resourceVersion: "90123"
+          creationTimestamp: "2024-01-15T03:00:00Z"
+          labels:
+            node-role.kubernetes.io/worker: ""
+        spec:
+          podCIDR: 192.168.1.0/24
+          providerID: aws:///us-west-2a/i-0a1b2c3d4e5f6g7h8
+        status:
+          capacity:
+            cpu: "4"
+            memory: 16384Mi
+            pods: "110"
+          allocatable:
+            cpu: "4"
+            memory: 16384Mi
+            pods: "110"
+          addresses:
+          - type: InternalIP
+            address: 10.0.1.100
+          - type: ExternalIP
+            address: 52.10.15.20
+          - type: Hostname
+            address: worker-node-1.example.com
+          conditions:
+          - type: Ready
+            status: "True"
+            lastHeartbeatTime: "2024-01-15T03:10:00Z"
+            lastTransitionTime: "2024-01-15T03:05:00Z"
+            reason: KubeletReady
+            message: kubelet is posting ready status
+          nodeInfo:
+            machineID: ec2540b5b2540123
+            systemUUID: ecb4567-ebfd-44b1-a312-a23456789012
+            bootID: ec7c257e-a128-11ec-9620-a23456789012
+            kernelVersion: 5.4.0-1045-aws
+            osImage: Ubuntu 20.04.2 LTS
+            containerRuntimeVersion: docker://20.10.6
+            kubeletVersion: v1.21.1
+            kubeProxyVersion: v1.21.1
+            operatingSystem: linux
+            architecture: amd64
 
     DaemonSetDetail:
       type: object
       description: Raw Kubernetes DaemonSet object with full API specification
       additionalProperties: true
+      example:
+        apiVersion: apps/v1
+        kind: DaemonSet
+        metadata:
+          name: prometheus-node-exporter
+          namespace: monitoring
+          uid: c2345678-c234-c234-c234-c23456789012
+          resourceVersion: "91234"
+          creationTimestamp: "2024-01-15T02:00:00Z"
+          labels:
+            app: node-exporter
+            environment: production
+        spec:
+          selector:
+            matchLabels:
+              app: node-exporter
+          template:
+            metadata:
+              labels:
+                app: node-exporter
+            spec:
+              containers:
+              - name: node-exporter
+                image: prom/node-exporter:v1.0.1
+                resources:
+                  limits:
+                    cpu: "100m"
+                    memory: "200Mi"
+                  requests:
+                    cpu: "100m"
+                    memory: "200Mi"
+          updateStrategy:
+            type: RollingUpdate
+          minReadySeconds: 5
+        status:
+          currentNumberScheduled: 5
+          numberMisscheduled: 0
+          desiredNumberScheduled: 5
+          numberReady: 5
+          observedGeneration: 1
 
     JobDetail:
       type: object
       description: Raw Kubernetes Job object with full API specification
       additionalProperties: true
+      example:
+        apiVersion: batch/v1
+        kind: Job
+        metadata:
+          name: backup-job
+          namespace: backup
+          uid: d2345678-d234-d234-d234-d23456789012
+          resourceVersion: "92345"
+          creationTimestamp: "2024-01-15T01:00:00Z"
+          labels:
+            batch: backup
+            environment: production
+        spec:
+          template:
+            metadata:
+              labels:
+                batch: backup
+            spec:
+              containers:
+              - name: backup-container
+                image: myorg/backup:1.0
+                command: ["/bin/sh", "-c", "echo Backup started..."]
+              restartPolicy: Never
+          backoffLimit: 3
+        status:
+          conditions:
+          - type: Complete
+            status: "True"
+            lastProbeTime: "2024-01-15T01:20:00Z"
+            lastTransitionTime: "2024-01-15T01:15:00Z"
+          startTime: "2024-01-15T01:00:00Z"
+          completionTime: "2024-01-15T01:30:00Z"
+          succeeded: 1
 
     CronJobDetail:
       type: object
       description: Raw Kubernetes CronJob object with full API specification
       additionalProperties: true
+      example:
+        apiVersion: batch/v1
+        kind: CronJob
+        metadata:
+          name: database-backup
+          namespace: backups
+          uid: e2345678-e234-e234-e234-e23456789012
+          resourceVersion: "93456"
+          creationTimestamp: "2024-01-14T23:00:00Z"
+          labels:
+            batch: cron-job
+            environment: production
+        spec:
+          schedule: "0 1 * * *"
+          jobTemplate:
+            spec:
+              template:
+                metadata:
+                  labels:
+                    batch: cron-job
+                spec:
+                  containers:
+                  - name: backup-container
+                    image: myorg/backup:1.0
+                    command: ["/bin/sh", "-c", "echo Performing backup..."]
+                  restartPolicy: OnFailure
+          successfulJobsHistoryLimit: 3
+          failedJobsHistoryLimit: 1
+        status:
+          lastScheduleTime: "2024-01-19T01:00:00Z"
+          active:
+          - name: database-backup-273987
+            namespace: backups
+            uid: f2345678-f234-f234-f234-f23456789012

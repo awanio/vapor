@@ -7,7 +7,11 @@ import (
 	"os/exec"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -397,20 +401,12 @@ func (s *Service) ListCronJobs(ctx context.Context, opts interface{}) ([]CronJob
 }
 
 // GetCRDDetail retrieves detailed information about a specific CRD
-func (s *Service) GetCRDDetail(ctx context.Context, name string) (CRDInfo, error) {
+func (s *Service) GetCRDDetail(ctx context.Context, name string) (*apiextensionsv1.CustomResourceDefinition, error) {
 	crd, err := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		return CRDInfo{}, fmt.Errorf("failed to get CRD detail: %w", err)
+		return nil, fmt.Errorf("failed to get CRD detail: %w", err)
 	}
-
-	return CRDInfo{
-		Name:    crd.Name,
-		Group:   crd.Spec.Group,
-		Version: crd.Spec.Versions[0].Name, // TODO: handle multiple versions
-		Scope:   string(crd.Spec.Scope),
-		Kind:    crd.Spec.Names.Kind,
-		Labels:  crd.Labels,
-	}, nil
+	return crd, nil
 }
 
 // ListCRDObjects lists all objects for a specific CRD
@@ -477,11 +473,11 @@ func (s *Service) ListCRDObjects(ctx context.Context, crdName, namespace string)
 }
 
 // GetCRDObjectDetail retrieves detailed information about a specific CRD object
-func (s *Service) GetCRDObjectDetail(ctx context.Context, crdName, objectName, namespace string) (CRDObjectDetail, error) {
+func (s *Service) GetCRDObjectDetail(ctx context.Context, crdName, objectName, namespace string) (*unstructured.Unstructured, error) {
 	// First, get the CRD to extract necessary information
 	crd, err := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, crdName, metav1.GetOptions{})
 	if err != nil {
-		return CRDObjectDetail{}, fmt.Errorf("failed to get CRD %s: %w", crdName, err)
+		return nil, fmt.Errorf("failed to get CRD %s: %w", crdName, err)
 	}
 
 	// Find the served version
@@ -508,36 +504,22 @@ func (s *Service) GetCRDObjectDetail(ctx context.Context, crdName, objectName, n
 	if crd.Spec.Scope == "Namespaced" {
 		// For namespaced resources, namespace is required and cannot be "-"
 		if namespace == "" || namespace == "-" {
-			return CRDObjectDetail{}, fmt.Errorf("namespace is required for namespaced CRD %s (use actual namespace, not '-')", crdName)
+			return nil, fmt.Errorf("namespace is required for namespaced CRD %s (use actual namespace, not '-')", crdName)
 		}
 		unstructuredObj, err = s.dynamicClient.Resource(gvr).Namespace(namespace).Get(ctx, objectName, metav1.GetOptions{})
 	} else {
 		// For cluster-scoped resources, namespace should be "-" or empty
 		if namespace != "" && namespace != "-" {
-			return CRDObjectDetail{}, fmt.Errorf("cluster-scoped CRD %s does not use namespaces (use '-' as namespace)", crdName)
+			return nil, fmt.Errorf("cluster-scoped CRD %s does not use namespaces (use '-' as namespace)", crdName)
 		}
 		unstructuredObj, err = s.dynamicClient.Resource(gvr).Get(ctx, objectName, metav1.GetOptions{})
 	}
 
 	if err != nil {
-		return CRDObjectDetail{}, fmt.Errorf("failed to get object %s for CRD %s: %w", objectName, crdName, err)
+		return nil, fmt.Errorf("failed to get object %s for CRD %s: %w", objectName, crdName, err)
 	}
 
-	// Convert unstructured object to CRDObjectDetail
-	crdObjectDetail := CRDObjectDetail{
-		CRDObject: CRDObject{
-			Name:              unstructuredObj.GetName(),
-			Namespace:         unstructuredObj.GetNamespace(),
-			Kind:              unstructuredObj.GetKind(),
-			APIVersion:        unstructuredObj.GetAPIVersion(),
-			CreationTimestamp: unstructuredObj.GetCreationTimestamp().Time,
-			Labels:            unstructuredObj.GetLabels(),
-			Annotations:       unstructuredObj.GetAnnotations(),
-		},
-		Raw: unstructuredObj.Object,
-	}
-
-	return crdObjectDetail, nil
+	return unstructuredObj, nil
 }
 
 // ListPods lists all pods in the cluster
@@ -566,778 +548,130 @@ func (s *Service) ListPods(ctx context.Context, opts interface{}) ([]PodInfo, er
 }
 
 // GetPodDetail retrieves detailed information of a specific pod
-func (s *Service) GetPodDetail(ctx context.Context, namespace, name string) (PodDetail, error) {
+func (s *Service) GetPodDetail(ctx context.Context, namespace, name string) (*corev1.Pod, error) {
 	pod, err := s.client.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		return PodDetail{}, fmt.Errorf("failed to get pod details for %s/%s: %w", namespace, name, err)
+		return nil, fmt.Errorf("failed to get pod details for %s/%s: %w", namespace, name, err)
 	}
-
-	containers := make([]ContainerInfo, len(pod.Spec.Containers))
-	for i, c := range pod.Spec.Containers {
-		containerInfo := ContainerInfo{
-			Name:  c.Name,
-			Image: c.Image,
-		}
-
-		// Handle container status if available
-		if i < len(pod.Status.ContainerStatuses) {
-			containerStatus := pod.Status.ContainerStatuses[i]
-			containerInfo.Ready = containerStatus.Ready
-			containerInfo.RestartCount = containerStatus.RestartCount
-
-			// Determine container state
-			if containerStatus.State.Running != nil {
-				containerInfo.State = "Running"
-			} else if containerStatus.State.Waiting != nil {
-				containerInfo.State = "Waiting"
-				containerInfo.StateReason = containerStatus.State.Waiting.Reason
-			} else if containerStatus.State.Terminated != nil {
-				containerInfo.State = "Terminated"
-				containerInfo.StateReason = containerStatus.State.Terminated.Reason
-			} else {
-				containerInfo.State = "Unknown"
-			}
-		} else {
-			containerInfo.State = "Unknown"
-			containerInfo.Ready = false
-			containerInfo.RestartCount = 0
-		}
-
-		containers[i] = containerInfo
-	}
-
-	conditions := make([]PodCondition, len(pod.Status.Conditions))
-	for i, c := range pod.Status.Conditions {
-		conditions[i] = PodCondition{
-			Type:               string(c.Type),
-			Status:             string(c.Status),
-			LastProbeTime:      c.LastProbeTime.Time,
-			LastTransitionTime: c.LastTransitionTime.Time,
-			Reason:             c.Reason,
-			Message:            c.Message,
-		}
-	}
-
-	// Handle StartTime conversion
-	var startTime *time.Time
-	if pod.Status.StartTime != nil {
-		startTime = &pod.Status.StartTime.Time
-	}
-
-	detail := PodDetail{
-		Name:              pod.Name,
-		Namespace:         pod.Namespace,
-		UID:               string(pod.UID),
-		ResourceVersion:   pod.ResourceVersion,
-		Labels:            pod.Labels,
-		Annotations:       pod.Annotations,
-		Status:            string(pod.Status.Phase),
-		Phase:             string(pod.Status.Phase),
-		IP:                pod.Status.PodIP,
-		HostIP:            pod.Status.HostIP,
-		Node:              pod.Spec.NodeName,
-		ServiceAccount:    pod.Spec.ServiceAccountName,
-		RestartPolicy:     string(pod.Spec.RestartPolicy),
-		DNSPolicy:         string(pod.Spec.DNSPolicy),
-		NodeSelector:      pod.Spec.NodeSelector,
-		Tolerations:       nil, // Tolerations handling can be implemented as needed
-		Containers:        containers,
-		InitContainers:    nil, // InitContainers handling can be implemented as needed
-		Conditions:        conditions,
-		QOSClass:          string(pod.Status.QOSClass),
-		StartTime:         startTime,
-		CreationTimestamp: pod.CreationTimestamp.Time,
-		Age:               calculateAge(pod.CreationTimestamp.Time),
-	}
-
-	return detail, nil
+	return pod, nil
 }
 
 // GetDeploymentDetail retrieves detailed information of a specific deployment
-func (s *Service) GetDeploymentDetail(ctx context.Context, namespace, name string) (DeploymentDetail, error) {
+func (s *Service) GetDeploymentDetail(ctx context.Context, namespace, name string) (*appsv1.Deployment, error) {
 	deployment, err := s.client.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		return DeploymentDetail{}, fmt.Errorf("failed to get deployment details for %s/%s: %w", namespace, name, err)
+		return nil, fmt.Errorf("failed to get deployment details for %s/%s: %w", namespace, name, err)
 	}
-
-	// Convert containers
-	containers := make([]ContainerSpec, len(deployment.Spec.Template.Spec.Containers))
-	for i, c := range deployment.Spec.Template.Spec.Containers {
-		// Convert ports
-		ports := make([]ContainerPort, len(c.Ports))
-		for j, p := range c.Ports {
-			ports[j] = ContainerPort{
-				Name:          p.Name,
-				HostPort:      p.HostPort,
-				ContainerPort: p.ContainerPort,
-				Protocol:      string(p.Protocol),
-				HostIP:        p.HostIP,
-			}
-		}
-
-		// Convert environment variables
-		env := make([]EnvironmentVariable, len(c.Env))
-		for j, e := range c.Env {
-			var valueFrom interface{}
-			if e.ValueFrom != nil {
-				valueFrom = e.ValueFrom
-			}
-			env[j] = EnvironmentVariable{
-				Name:      e.Name,
-				Value:     e.Value,
-				ValueFrom: valueFrom,
-			}
-		}
-
-		// Convert volume mounts
-		volumeMounts := make([]VolumeMount, len(c.VolumeMounts))
-		for j, v := range c.VolumeMounts {
-			volumeMounts[j] = VolumeMount{
-				Name:             v.Name,
-				ReadOnly:         v.ReadOnly,
-				MountPath:        v.MountPath,
-				MountPropagation: string(safeDeref(v.MountPropagation, "")),
-				SubPath:          v.SubPath,
-				SubPathExpr:      v.SubPathExpr,
-			}
-		}
-
-		// Convert resources
-		resources := ResourceRequirements{
-			Limits:   make(map[string]string),
-			Requests: make(map[string]string),
-		}
-		for k, v := range c.Resources.Limits {
-			resources.Limits[string(k)] = v.String()
-		}
-		for k, v := range c.Resources.Requests {
-			resources.Requests[string(k)] = v.String()
-		}
-
-		containers[i] = ContainerSpec{
-			Name:                     c.Name,
-			Image:                    c.Image,
-			Command:                  c.Command,
-			Args:                     c.Args,
-			WorkingDir:               c.WorkingDir,
-			Ports:                    ports,
-			Env:                      env,
-			Resources:                resources,
-			VolumeMounts:             volumeMounts,
-			ImagePullPolicy:          string(c.ImagePullPolicy),
-			TerminationMessagePath:   c.TerminationMessagePath,
-			TerminationMessagePolicy: string(c.TerminationMessagePolicy),
-		}
-
-		// Store probe information as interface{} to preserve structure
-		if c.LivenessProbe != nil {
-			containers[i].LivenessProbe = c.LivenessProbe
-		}
-		if c.ReadinessProbe != nil {
-			containers[i].ReadinessProbe = c.ReadinessProbe
-		}
-		if c.StartupProbe != nil {
-			containers[i].StartupProbe = c.StartupProbe
-		}
-		if c.SecurityContext != nil {
-			containers[i].SecurityContext = c.SecurityContext
-		}
-	}
-
-	// Convert init containers
-	initContainers := make([]ContainerSpec, len(deployment.Spec.Template.Spec.InitContainers))
-	for i, c := range deployment.Spec.Template.Spec.InitContainers {
-		// Similar conversion as above - simplified for brevity
-		initContainers[i] = ContainerSpec{
-			Name:  c.Name,
-			Image: c.Image,
-		}
-	}
-
-	// Convert volumes to interface{} to preserve their structure
-	volumes := make([]interface{}, len(deployment.Spec.Template.Spec.Volumes))
-	for i, v := range deployment.Spec.Template.Spec.Volumes {
-		volumes[i] = v
-	}
-
-	// Convert image pull secrets
-	imagePullSecrets := make([]map[string]string, len(deployment.Spec.Template.Spec.ImagePullSecrets))
-	for i, s := range deployment.Spec.Template.Spec.ImagePullSecrets {
-		imagePullSecrets[i] = map[string]string{"name": s.Name}
-	}
-
-	// Convert tolerations
-	tolerations := make([]map[string]interface{}, len(deployment.Spec.Template.Spec.Tolerations))
-	for i, t := range deployment.Spec.Template.Spec.Tolerations {
-		tolerations[i] = map[string]interface{}{
-			"key":               t.Key,
-			"operator":          string(t.Operator),
-			"value":             t.Value,
-			"effect":            string(t.Effect),
-			"tolerationSeconds": t.TolerationSeconds,
-		}
-	}
-
-	// Build pod template spec
-	podTemplate := PodTemplateSpec{}
-	podTemplate.Metadata.Labels = deployment.Spec.Template.Labels
-	podTemplate.Metadata.Annotations = deployment.Spec.Template.Annotations
-	podTemplate.Spec.Containers = containers
-	podTemplate.Spec.InitContainers = initContainers
-	podTemplate.Spec.Volumes = volumes
-	podTemplate.Spec.ServiceAccountName = deployment.Spec.Template.Spec.ServiceAccountName
-	podTemplate.Spec.ImagePullSecrets = imagePullSecrets
-	podTemplate.Spec.Hostname = deployment.Spec.Template.Spec.Hostname
-	podTemplate.Spec.Subdomain = deployment.Spec.Template.Spec.Subdomain
-	podTemplate.Spec.SchedulerName = deployment.Spec.Template.Spec.SchedulerName
-	podTemplate.Spec.Tolerations = tolerations
-	podTemplate.Spec.PriorityClassName = deployment.Spec.Template.Spec.PriorityClassName
-	podTemplate.Spec.Priority = deployment.Spec.Template.Spec.Priority
-	podTemplate.Spec.DNSPolicy = string(deployment.Spec.Template.Spec.DNSPolicy)
-	podTemplate.Spec.RestartPolicy = string(deployment.Spec.Template.Spec.RestartPolicy)
-	podTemplate.Spec.NodeSelector = deployment.Spec.Template.Spec.NodeSelector
-	podTemplate.Spec.NodeName = deployment.Spec.Template.Spec.NodeName
-	podTemplate.Spec.HostNetwork = deployment.Spec.Template.Spec.HostNetwork
-	podTemplate.Spec.HostPID = deployment.Spec.Template.Spec.HostPID
-	podTemplate.Spec.HostIPC = deployment.Spec.Template.Spec.HostIPC
-	podTemplate.Spec.ShareProcessNamespace = deployment.Spec.Template.Spec.ShareProcessNamespace
-	podTemplate.Spec.TerminationGracePeriodSeconds = deployment.Spec.Template.Spec.TerminationGracePeriodSeconds
-	podTemplate.Spec.ActiveDeadlineSeconds = deployment.Spec.Template.Spec.ActiveDeadlineSeconds
-	podTemplate.Spec.RuntimeClassName = deployment.Spec.Template.Spec.RuntimeClassName
-	podTemplate.Spec.EnableServiceLinks = deployment.Spec.Template.Spec.EnableServiceLinks
-	podTemplate.Spec.PreemptionPolicy = (*string)(deployment.Spec.Template.Spec.PreemptionPolicy)
-
-	// Store complex fields as interface{} to preserve structure
-	if deployment.Spec.Template.Spec.SecurityContext != nil {
-		podTemplate.Spec.SecurityContext = deployment.Spec.Template.Spec.SecurityContext
-	}
-	if deployment.Spec.Template.Spec.Affinity != nil {
-		podTemplate.Spec.Affinity = deployment.Spec.Template.Spec.Affinity
-	}
-	if deployment.Spec.Template.Spec.DNSConfig != nil {
-		podTemplate.Spec.DNSConfig = deployment.Spec.Template.Spec.DNSConfig
-	}
-
-	// Convert selector
-	selector := LabelSelector{
-		MatchLabels: deployment.Spec.Selector.MatchLabels,
-	}
-	if len(deployment.Spec.Selector.MatchExpressions) > 0 {
-		selector.MatchExpressions = make([]map[string]interface{}, len(deployment.Spec.Selector.MatchExpressions))
-		for i, expr := range deployment.Spec.Selector.MatchExpressions {
-			selector.MatchExpressions[i] = map[string]interface{}{
-				"key":      expr.Key,
-				"operator": string(expr.Operator),
-				"values":   expr.Values,
-			}
-		}
-	}
-
-	// Convert strategy
-	strategy := DeploymentStrategy{
-		Type: string(deployment.Spec.Strategy.Type),
-	}
-	if deployment.Spec.Strategy.RollingUpdate != nil {
-		strategy.RollingUpdate = deployment.Spec.Strategy.RollingUpdate
-	}
-
-	// Build deployment spec
-	spec := DeploymentSpec{
-		Replicas:                deployment.Spec.Replicas,
-		Selector:                selector,
-		Template:                podTemplate,
-		Strategy:                strategy,
-		MinReadySeconds:         deployment.Spec.MinReadySeconds,
-		RevisionHistoryLimit:    deployment.Spec.RevisionHistoryLimit,
-		Paused:                  deployment.Spec.Paused,
-		ProgressDeadlineSeconds: deployment.Spec.ProgressDeadlineSeconds,
-	}
-
-	// Convert deployment conditions
-	conditions := make([]DeploymentCondition, len(deployment.Status.Conditions))
-	for i, c := range deployment.Status.Conditions {
-		conditions[i] = DeploymentCondition{
-			Type:               string(c.Type),
-			Status:             string(c.Status),
-			LastUpdateTime:     c.LastUpdateTime.Time,
-			LastTransitionTime: c.LastTransitionTime.Time,
-			Reason:             c.Reason,
-			Message:            c.Message,
-		}
-	}
-
-	// Build deployment status
-	status := DeploymentStatus{
-		ObservedGeneration:  deployment.Status.ObservedGeneration,
-		Replicas:            deployment.Status.Replicas,
-		UpdatedReplicas:     deployment.Status.UpdatedReplicas,
-		ReadyReplicas:       deployment.Status.ReadyReplicas,
-		AvailableReplicas:   deployment.Status.AvailableReplicas,
-		UnavailableReplicas: deployment.Status.UnavailableReplicas,
-		Conditions:          conditions,
-		CollisionCount:      deployment.Status.CollisionCount,
-	}
-
-	// Build the complete deployment detail
-	return DeploymentDetail{
-		Name:              deployment.Name,
-		Namespace:         deployment.Namespace,
-		UID:               string(deployment.UID),
-		ResourceVersion:   deployment.ResourceVersion,
-		Generation:        deployment.Generation,
-		CreationTimestamp: deployment.CreationTimestamp.Time,
-		Labels:            deployment.Labels,
-		Annotations:       deployment.Annotations,
-		Spec:              spec,
-		Status:            status,
-		Age:               calculateAge(deployment.CreationTimestamp.Time),
-	}, nil
+	return deployment, nil
 }
 
 // GetServiceDetail retrieves detailed information of a specific service
-func (s *Service) GetServiceDetail(ctx context.Context, namespace, name string) (ServiceInfo, error) {
+func (s *Service) GetServiceDetail(ctx context.Context, namespace, name string) (*corev1.Service, error) {
 	service, err := s.client.CoreV1().Services(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		return ServiceInfo{}, fmt.Errorf("failed to get service details for %s/%s: %w", namespace, name, err)
+		return nil, fmt.Errorf("failed to get service details for %s/%s: %w", namespace, name, err)
 	}
-
-	// Format port information
-	portStr := ""
-	for i, port := range service.Spec.Ports {
-		if i > 0 {
-			portStr += ", "
-		}
-		portStr += fmt.Sprintf("%d:%d/%s", port.Port, port.TargetPort.IntVal, port.Protocol)
-	}
-
-	// Get external IP
-	externalIP := ""
-	if service.Spec.Type == corev1.ServiceTypeLoadBalancer {
-		for _, ingress := range service.Status.LoadBalancer.Ingress {
-			if ingress.IP != "" {
-				externalIP = ingress.IP
-				break
-			}
-			if ingress.Hostname != "" {
-				externalIP = ingress.Hostname
-				break
-			}
-		}
-	} else if service.Spec.Type == corev1.ServiceTypeNodePort {
-		externalIP = "<nodes>"
-	}
-
-	return ServiceInfo{
-		Name:              service.Name,
-		Namespace:         service.Namespace,
-		Type:              string(service.Spec.Type),
-		ClusterIP:         service.Spec.ClusterIP,
-		ExternalIP:        externalIP,
-		Ports:             portStr,
-		Age:               calculateAge(service.CreationTimestamp.Time),
-		Labels:            service.Labels,
-		CreationTimestamp: service.CreationTimestamp.Time,
-	}, nil
+	return service, nil
 }
 
 // GetIngressDetail retrieves detailed information of a specific ingress
-func (s *Service) GetIngressDetail(ctx context.Context, namespace, name string) (IngressInfo, error) {
+func (s *Service) GetIngressDetail(ctx context.Context, namespace, name string) (*networkingv1.Ingress, error) {
 	ingress, err := s.client.NetworkingV1().Ingresses(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		return IngressInfo{}, fmt.Errorf("failed to get ingress details for %s/%s: %w", namespace, name, err)
+		return nil, fmt.Errorf("failed to get ingress details for %s/%s: %w", namespace, name, err)
 	}
-
-	hosts := make([]string, 0, len(ingress.Spec.Rules))
-	for _, rule := range ingress.Spec.Rules {
-		hosts = append(hosts, rule.Host)
-	}
-
-	return IngressInfo{
-		Name:      ingress.Name,
-		Namespace: ingress.Namespace,
-		Hosts:     hosts,
-		Labels:    ingress.Labels,
-	}, nil
+	return ingress, nil
 }
 
 // GetPVCDetail retrieves detailed information of a specific persistent volume claim
-func (s *Service) GetPVCDetail(ctx context.Context, namespace, name string) (PVCInfo, error) {
+func (s *Service) GetPVCDetail(ctx context.Context, namespace, name string) (*corev1.PersistentVolumeClaim, error) {
 	pvc, err := s.client.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		return PVCInfo{}, fmt.Errorf("failed to get PVC details for %s/%s: %w", namespace, name, err)
+		return nil, fmt.Errorf("failed to get PVC details for %s/%s: %w", namespace, name, err)
 	}
-
-	return PVCInfo{
-		Name:      pvc.Name,
-		Namespace: pvc.Namespace,
-		Status:    string(pvc.Status.Phase),
-		Volume:    pvc.Spec.VolumeName,
-	}, nil
+	return pvc, nil
 }
 
 // GetPVDetail retrieves detailed information of a specific persistent volume
-func (s *Service) GetPVDetail(ctx context.Context, name string) (PVInfo, error) {
+func (s *Service) GetPVDetail(ctx context.Context, name string) (*corev1.PersistentVolume, error) {
 	pv, err := s.client.CoreV1().PersistentVolumes().Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		return PVInfo{}, fmt.Errorf("failed to get PV details for %s: %w", name, err)
+		return nil, fmt.Errorf("failed to get PV details for %s: %w", name, err)
 	}
-
-	return PVInfo{
-		Name: pv.Name,
-	}, nil
+	return pv, nil
 }
 
 // GetSecretDetail retrieves detailed information of a specific secret
-func (s *Service) GetSecretDetail(ctx context.Context, namespace, name string) (SecretInfo, error) {
+func (s *Service) GetSecretDetail(ctx context.Context, namespace, name string) (*corev1.Secret, error) {
 	secret, err := s.client.CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		return SecretInfo{}, fmt.Errorf("failed to get secret details for %s/%s: %w", namespace, name, err)
+		return nil, fmt.Errorf("failed to get secret details for %s/%s: %w", namespace, name, err)
 	}
-
-	return SecretInfo{
-		Name:      secret.Name,
-		Namespace: secret.Namespace,
-	}, nil
+	return secret, nil
 }
 
 // GetConfigMapDetail retrieves detailed information of a specific configmap
-func (s *Service) GetConfigMapDetail(ctx context.Context, namespace, name string) (ConfigMapInfo, error) {
+func (s *Service) GetConfigMapDetail(ctx context.Context, namespace, name string) (*corev1.ConfigMap, error) {
 	configmap, err := s.client.CoreV1().ConfigMaps(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		return ConfigMapInfo{}, fmt.Errorf("failed to get configmap details for %s/%s: %w", namespace, name, err)
+		return nil, fmt.Errorf("failed to get configmap details for %s/%s: %w", namespace, name, err)
 	}
-
-	return ConfigMapInfo{
-		Name:      configmap.Name,
-		Namespace: configmap.Namespace,
-	}, nil
+	return configmap, nil
 }
 
 // GetNamespaceDetail retrieves detailed information of a specific namespace
-func (s *Service) GetNamespaceDetail(ctx context.Context, name string) (NamespaceInfo, error) {
+func (s *Service) GetNamespaceDetail(ctx context.Context, name string) (*corev1.Namespace, error) {
 	namespace, err := s.client.CoreV1().Namespaces().Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		return NamespaceInfo{}, fmt.Errorf("failed to get namespace details for %s: %w", name, err)
+		return nil, fmt.Errorf("failed to get namespace details for %s: %w", name, err)
 	}
-
-	return NamespaceInfo{
-		Name: namespace.Name,
-	}, nil
+	return namespace, nil
 }
 
 // GetNodeDetail retrieves detailed information of a specific node
-func (s *Service) GetNodeDetail(ctx context.Context, name string) (NodeInfo, error) {
+func (s *Service) GetNodeDetail(ctx context.Context, name string) (*corev1.Node, error) {
 	node, err := s.client.CoreV1().Nodes().Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		return NodeInfo{}, fmt.Errorf("failed to get node details for %s: %w", name, err)
+		return nil, fmt.Errorf("failed to get node details for %s: %w", name, err)
 	}
-
-	return NodeInfo{
-		Name: node.Name,
-	}, nil
+	return node, nil
 }
 
 // GetDaemonSetDetail retrieves detailed information of a specific daemonset
-func (s *Service) GetDaemonSetDetail(ctx context.Context, namespace, name string) (DaemonSetInfo, error) {
+func (s *Service) GetDaemonSetDetail(ctx context.Context, namespace, name string) (*appsv1.DaemonSet, error) {
 	daemonset, err := s.client.AppsV1().DaemonSets(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		return DaemonSetInfo{}, fmt.Errorf("failed to get daemonset details for %s/%s: %w", namespace, name, err)
+		return nil, fmt.Errorf("failed to get daemonset details for %s/%s: %w", namespace, name, err)
 	}
-
-	return DaemonSetInfo{
-		Name:      daemonset.Name,
-		Namespace: daemonset.Namespace,
-	}, nil
+	return daemonset, nil
 }
 
 // GetStatefulSetDetail retrieves detailed information of a specific statefulset
-func (s *Service) GetStatefulSetDetail(ctx context.Context, namespace, name string) (StatefulSetDetail, error) {
+func (s *Service) GetStatefulSetDetail(ctx context.Context, namespace, name string) (*appsv1.StatefulSet, error) {
 	statefulset, err := s.client.AppsV1().StatefulSets(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		return StatefulSetDetail{}, fmt.Errorf("failed to get statefulset details for %s/%s: %w", namespace, name, err)
+		return nil, fmt.Errorf("failed to get statefulset details for %s/%s: %w", namespace, name, err)
 	}
-
-	// Convert update strategy
-	var updateStrategy StatefulSetUpdateStrategy
-	updateStrategy.Type = string(statefulset.Spec.UpdateStrategy.Type)
-	if statefulset.Spec.UpdateStrategy.RollingUpdate != nil {
-		rollingUpdate := &RollingUpdateStatefulSetStrategy{
-			Partition: statefulset.Spec.UpdateStrategy.RollingUpdate.Partition,
-		}
-		if statefulset.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable != nil {
-			rollingUpdate.MaxUnavailable = statefulset.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable.String()
-		}
-		updateStrategy.RollingUpdate = rollingUpdate
-	}
-
-	// Convert PVC retention policy
-	var pvcRetentionPolicy *PVCRetentionPolicy
-	if statefulset.Spec.PersistentVolumeClaimRetentionPolicy != nil {
-		pvcRetentionPolicy = &PVCRetentionPolicy{
-			WhenDeleted: string(statefulset.Spec.PersistentVolumeClaimRetentionPolicy.WhenDeleted),
-			WhenScaled:  string(statefulset.Spec.PersistentVolumeClaimRetentionPolicy.WhenScaled),
-		}
-	}
-
-	// Convert ordinals
-	var ordinals *StatefulSetOrdinals
-	if statefulset.Spec.Ordinals != nil {
-		ordinals = &StatefulSetOrdinals{
-			Start: statefulset.Spec.Ordinals.Start,
-		}
-	}
-
-	// Convert label selector
-	var selector LabelSelector
-	if statefulset.Spec.Selector != nil {
-		selector.MatchLabels = statefulset.Spec.Selector.MatchLabels
-		if len(statefulset.Spec.Selector.MatchExpressions) > 0 {
-			selector.MatchExpressions = make([]map[string]interface{}, len(statefulset.Spec.Selector.MatchExpressions))
-			for i, expr := range statefulset.Spec.Selector.MatchExpressions {
-				selector.MatchExpressions[i] = map[string]interface{}{
-					"key":      expr.Key,
-					"operator": expr.Operator,
-					"values":   expr.Values,
-				}
-			}
-		}
-	}
-
-	// Convert pod template
-	podTemplate := PodTemplateSpec{}
-	podTemplate.Metadata.Labels = statefulset.Spec.Template.Labels
-	podTemplate.Metadata.Annotations = statefulset.Spec.Template.Annotations
-
-	// Convert containers in pod template
-	containers := make([]ContainerSpec, len(statefulset.Spec.Template.Spec.Containers))
-	for i, c := range statefulset.Spec.Template.Spec.Containers {
-		// Convert ports
-		ports := make([]ContainerPort, len(c.Ports))
-		for j, p := range c.Ports {
-			ports[j] = ContainerPort{
-				Name:          p.Name,
-				HostPort:      p.HostPort,
-				ContainerPort: p.ContainerPort,
-				Protocol:      string(p.Protocol),
-				HostIP:        p.HostIP,
-			}
-		}
-
-		// Convert environment variables
-		env := make([]EnvironmentVariable, len(c.Env))
-		for j, e := range c.Env {
-			var valueFrom interface{}
-			if e.ValueFrom != nil {
-				valueFrom = e.ValueFrom
-			}
-			env[j] = EnvironmentVariable{
-				Name:      e.Name,
-				Value:     e.Value,
-				ValueFrom: valueFrom,
-			}
-		}
-
-		// Convert volume mounts
-		volumeMounts := make([]VolumeMount, len(c.VolumeMounts))
-		for j, vm := range c.VolumeMounts {
-			volumeMounts[j] = VolumeMount{
-				Name:             vm.Name,
-				ReadOnly:         vm.ReadOnly,
-				MountPath:        vm.MountPath,
-				MountPropagation: string(safeDeref(vm.MountPropagation, "")),
-				SubPath:          vm.SubPath,
-				SubPathExpr:      vm.SubPathExpr,
-			}
-		}
-
-		// Convert resources
-		resources := ResourceRequirements{}
-		if c.Resources.Limits != nil {
-			resources.Limits = make(map[string]string)
-			for k, v := range c.Resources.Limits {
-				resources.Limits[string(k)] = v.String()
-			}
-		}
-		if c.Resources.Requests != nil {
-			resources.Requests = make(map[string]string)
-			for k, v := range c.Resources.Requests {
-				resources.Requests[string(k)] = v.String()
-			}
-		}
-
-		containers[i] = ContainerSpec{
-			Name:                     c.Name,
-			Image:                    c.Image,
-			Command:                  c.Command,
-			Args:                     c.Args,
-			WorkingDir:               c.WorkingDir,
-			Ports:                    ports,
-			Env:                      env,
-			Resources:                resources,
-			VolumeMounts:             volumeMounts,
-			LivenessProbe:            c.LivenessProbe,
-			ReadinessProbe:           c.ReadinessProbe,
-			StartupProbe:             c.StartupProbe,
-			ImagePullPolicy:          string(c.ImagePullPolicy),
-			SecurityContext:          c.SecurityContext,
-			TerminationMessagePath:   c.TerminationMessagePath,
-			TerminationMessagePolicy: string(c.TerminationMessagePolicy),
-		}
-	}
-	podTemplate.Spec.Containers = containers
-
-	// Convert init containers
-	initContainers := make([]ContainerSpec, len(statefulset.Spec.Template.Spec.InitContainers))
-	for i, c := range statefulset.Spec.Template.Spec.InitContainers {
-		// Similar conversion as containers (simplified for brevity)
-		initContainers[i] = ContainerSpec{
-			Name:            c.Name,
-			Image:           c.Image,
-			ImagePullPolicy: string(c.ImagePullPolicy),
-		}
-	}
-	podTemplate.Spec.InitContainers = initContainers
-
-	// Copy other pod spec fields
-	podTemplate.Spec.Volumes = convertVolumes(statefulset.Spec.Template.Spec.Volumes)
-	podTemplate.Spec.ServiceAccountName = statefulset.Spec.Template.Spec.ServiceAccountName
-	podTemplate.Spec.SecurityContext = statefulset.Spec.Template.Spec.SecurityContext
-	podTemplate.Spec.ImagePullSecrets = convertImagePullSecrets(statefulset.Spec.Template.Spec.ImagePullSecrets)
-	podTemplate.Spec.Hostname = statefulset.Spec.Template.Spec.Hostname
-	podTemplate.Spec.Subdomain = statefulset.Spec.Template.Spec.Subdomain
-	podTemplate.Spec.Affinity = statefulset.Spec.Template.Spec.Affinity
-	podTemplate.Spec.SchedulerName = statefulset.Spec.Template.Spec.SchedulerName
-	podTemplate.Spec.Tolerations = convertTolerations(statefulset.Spec.Template.Spec.Tolerations)
-	podTemplate.Spec.HostAliases = convertHostAliases(statefulset.Spec.Template.Spec.HostAliases)
-	podTemplate.Spec.PriorityClassName = statefulset.Spec.Template.Spec.PriorityClassName
-	podTemplate.Spec.Priority = statefulset.Spec.Template.Spec.Priority
-	podTemplate.Spec.DNSConfig = statefulset.Spec.Template.Spec.DNSConfig
-	podTemplate.Spec.DNSPolicy = string(statefulset.Spec.Template.Spec.DNSPolicy)
-	podTemplate.Spec.RestartPolicy = string(statefulset.Spec.Template.Spec.RestartPolicy)
-	podTemplate.Spec.NodeSelector = statefulset.Spec.Template.Spec.NodeSelector
-	podTemplate.Spec.NodeName = statefulset.Spec.Template.Spec.NodeName
-	podTemplate.Spec.HostNetwork = statefulset.Spec.Template.Spec.HostNetwork
-	podTemplate.Spec.HostPID = statefulset.Spec.Template.Spec.HostPID
-	podTemplate.Spec.HostIPC = statefulset.Spec.Template.Spec.HostIPC
-	podTemplate.Spec.ShareProcessNamespace = statefulset.Spec.Template.Spec.ShareProcessNamespace
-	podTemplate.Spec.TerminationGracePeriodSeconds = statefulset.Spec.Template.Spec.TerminationGracePeriodSeconds
-	podTemplate.Spec.ActiveDeadlineSeconds = statefulset.Spec.Template.Spec.ActiveDeadlineSeconds
-	podTemplate.Spec.ReadinessGates = convertReadinessGates(statefulset.Spec.Template.Spec.ReadinessGates)
-	podTemplate.Spec.RuntimeClassName = statefulset.Spec.Template.Spec.RuntimeClassName
-	podTemplate.Spec.EnableServiceLinks = statefulset.Spec.Template.Spec.EnableServiceLinks
-	podTemplate.Spec.PreemptionPolicy = (*string)(statefulset.Spec.Template.Spec.PreemptionPolicy)
-	podTemplate.Spec.Overhead = convertResourceList(statefulset.Spec.Template.Spec.Overhead)
-	podTemplate.Spec.TopologySpreadConstraints = convertTopologySpreadConstraints(statefulset.Spec.Template.Spec.TopologySpreadConstraints)
-
-	// Convert volume claim templates
-	volumeClaimTemplates := make([]VolumeClaimTemplate, len(statefulset.Spec.VolumeClaimTemplates))
-	for i, vct := range statefulset.Spec.VolumeClaimTemplates {
-		vcTemplate := VolumeClaimTemplate{}
-		vcTemplate.Metadata.Name = vct.Name
-		vcTemplate.Metadata.Labels = vct.Labels
-		vcTemplate.Metadata.Annotations = vct.Annotations
-		
-		// Convert access modes
-		accessModes := make([]string, len(vct.Spec.AccessModes))
-		for j, am := range vct.Spec.AccessModes {
-			accessModes[j] = string(am)
-		}
-		vcTemplate.Spec.AccessModes = accessModes
-		vcTemplate.Spec.StorageClassName = vct.Spec.StorageClassName
-		
-		// Convert resource requests
-		if vct.Spec.Resources.Requests != nil {
-			vcTemplate.Spec.Resources.Requests = make(map[string]string)
-			for k, v := range vct.Spec.Resources.Requests {
-				vcTemplate.Spec.Resources.Requests[string(k)] = v.String()
-			}
-		}
-		
-		volumeClaimTemplates[i] = vcTemplate
-	}
-
-	// Build spec
-	spec := StatefulSetSpec{
-		Replicas:                             statefulset.Spec.Replicas,
-		Selector:                             selector,
-		Template:                             podTemplate,
-		ServiceName:                          statefulset.Spec.ServiceName,
-		PodManagementPolicy:                  string(statefulset.Spec.PodManagementPolicy),
-		UpdateStrategy:                       updateStrategy,
-		RevisionHistoryLimit:                 statefulset.Spec.RevisionHistoryLimit,
-		MinReadySeconds:                      statefulset.Spec.MinReadySeconds,
-		PersistentVolumeClaimRetentionPolicy: pvcRetentionPolicy,
-		Ordinals:                             ordinals,
-	}
-
-	// Convert conditions
-	conditions := make([]StatefulSetCondition, len(statefulset.Status.Conditions))
-	for i, c := range statefulset.Status.Conditions {
-		conditions[i] = StatefulSetCondition{
-			Type:               string(c.Type),
-			Status:             string(c.Status),
-			LastTransitionTime: c.LastTransitionTime.Time,
-			Reason:             c.Reason,
-			Message:            c.Message,
-		}
-	}
-
-	// Build status
-	status := StatefulSetStatus{
-		ObservedGeneration:   statefulset.Status.ObservedGeneration,
-		Replicas:             statefulset.Status.Replicas,
-		ReadyReplicas:        statefulset.Status.ReadyReplicas,
-		CurrentReplicas:      statefulset.Status.CurrentReplicas,
-		UpdatedReplicas:      statefulset.Status.UpdatedReplicas,
-		CurrentRevision:      statefulset.Status.CurrentRevision,
-		UpdateRevision:       statefulset.Status.UpdateRevision,
-		CollisionCount:       statefulset.Status.CollisionCount,
-		Conditions:           conditions,
-		AvailableReplicas:    statefulset.Status.AvailableReplicas,
-	}
-
-	return StatefulSetDetail{
-		Name:                 statefulset.Name,
-		Namespace:            statefulset.Namespace,
-		UID:                  string(statefulset.UID),
-		ResourceVersion:      statefulset.ResourceVersion,
-		Generation:           statefulset.Generation,
-		CreationTimestamp:    statefulset.CreationTimestamp.Time,
-		Labels:               statefulset.Labels,
-		Annotations:          statefulset.Annotations,
-		Spec:                 spec,
-		Status:               status,
-		Age:                  calculateAge(statefulset.CreationTimestamp.Time),
-		VolumeClaimTemplates: volumeClaimTemplates,
-	}, nil
+	return statefulset, nil
 }
 
 // GetJobDetail retrieves detailed information of a specific job
-func (s *Service) GetJobDetail(ctx context.Context, namespace, name string) (JobInfo, error) {
+func (s *Service) GetJobDetail(ctx context.Context, namespace, name string) (*batchv1.Job, error) {
 	job, err := s.client.BatchV1().Jobs(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		return JobInfo{}, fmt.Errorf("failed to get job details for %s/%s: %w", namespace, name, err)
+		return nil, fmt.Errorf("failed to get job details for %s/%s: %w", namespace, name, err)
 	}
-
-	return JobInfo{
-		Name:      job.Name,
-		Namespace: job.Namespace,
-	}, nil
+	return job, nil
 }
 
 // GetCronJobDetail retrieves detailed information of a specific cronjob
-func (s *Service) GetCronJobDetail(ctx context.Context, namespace, name string) (CronJobInfo, error) {
+func (s *Service) GetCronJobDetail(ctx context.Context, namespace, name string) (*batchv1.CronJob, error) {
 	cronjob, err := s.client.BatchV1().CronJobs(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		return CronJobInfo{}, fmt.Errorf("failed to get cronjob details for %s/%s: %w", namespace, name, err)
+		return nil, fmt.Errorf("failed to get cronjob details for %s/%s: %w", namespace, name, err)
 	}
-
-	return CronJobInfo{
-		Name:      cronjob.Name,
-		Namespace: cronjob.Namespace,
-	}, nil
+	return cronjob, nil
 }
-
 
 // ListCRDs lists all custom resource definitions in the cluster
 func (s *Service) ListCRDs(ctx context.Context, opts interface{}) ([]CRDInfo, error) {
@@ -1494,14 +828,6 @@ func createServiceWithConfig(config *rest.Config) (*Service, error) {
 	}, nil
 }
 
-// safeDeref safely dereferences a pointer, returning the value or a default
-func safeDeref[T any](ptr *T, defaultValue T) T {
-	if ptr == nil {
-		return defaultValue
-	}
-	return *ptr
-}
-
 // isKubernetesInstalled checks if Kubernetes is installed on the system
 func isKubernetesInstalled() bool {
 	// Check for common Kubernetes installation indicators
@@ -1537,76 +863,4 @@ func isKubernetesInstalled() bool {
 	}
 
 	return false
-}
-
-// convertVolumes converts corev1.Volume slice to interface{} slice
-func convertVolumes(volumes []corev1.Volume) []interface{} {
-	result := make([]interface{}, len(volumes))
-	for i, v := range volumes {
-		result[i] = v
-	}
-	return result
-}
-
-// convertImagePullSecrets converts corev1.LocalObjectReference slice to map slice
-func convertImagePullSecrets(secrets []corev1.LocalObjectReference) []map[string]string {
-	result := make([]map[string]string, len(secrets))
-	for i, s := range secrets {
-		result[i] = map[string]string{"name": s.Name}
-	}
-	return result
-}
-
-// convertTolerations converts corev1.Toleration slice to map slice
-func convertTolerations(tolerations []corev1.Toleration) []map[string]interface{} {
-	result := make([]map[string]interface{}, len(tolerations))
-	for i, t := range tolerations {
-		result[i] = map[string]interface{}{
-			"key":               t.Key,
-			"operator":          string(t.Operator),
-			"value":             t.Value,
-			"effect":            string(t.Effect),
-			"tolerationSeconds": t.TolerationSeconds,
-		}
-	}
-	return result
-}
-
-// convertHostAliases converts corev1.HostAlias slice to interface{} slice  
-func convertHostAliases(aliases []corev1.HostAlias) []interface{} {
-	result := make([]interface{}, len(aliases))
-	for i, a := range aliases {
-		result[i] = a
-	}
-	return result
-}
-
-// convertReadinessGates converts corev1.PodReadinessGate slice to interface{} slice
-func convertReadinessGates(gates []corev1.PodReadinessGate) []interface{} {
-	result := make([]interface{}, len(gates))
-	for i, g := range gates {
-		result[i] = g
-	}
-	return result
-}
-
-// convertResourceList converts corev1.ResourceList to map[string]string
-func convertResourceList(resources corev1.ResourceList) map[string]string {
-	if resources == nil {
-		return nil
-	}
-	result := make(map[string]string)
-	for k, v := range resources {
-		result[string(k)] = v.String()
-	}
-	return result
-}
-
-// convertTopologySpreadConstraints converts corev1.TopologySpreadConstraint slice to interface{} slice
-func convertTopologySpreadConstraints(constraints []corev1.TopologySpreadConstraint) []interface{} {
-	result := make([]interface{}, len(constraints))
-	for i, c := range constraints {
-		result[i] = c
-	}
-	return result
 }
