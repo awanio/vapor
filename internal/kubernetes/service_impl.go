@@ -1051,15 +1051,264 @@ func (s *Service) GetDaemonSetDetail(ctx context.Context, namespace, name string
 }
 
 // GetStatefulSetDetail retrieves detailed information of a specific statefulset
-func (s *Service) GetStatefulSetDetail(ctx context.Context, namespace, name string) (StatefulSetInfo, error) {
+func (s *Service) GetStatefulSetDetail(ctx context.Context, namespace, name string) (StatefulSetDetail, error) {
 	statefulset, err := s.client.AppsV1().StatefulSets(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		return StatefulSetInfo{}, fmt.Errorf("failed to get statefulset details for %s/%s: %w", namespace, name, err)
+		return StatefulSetDetail{}, fmt.Errorf("failed to get statefulset details for %s/%s: %w", namespace, name, err)
 	}
 
-	return StatefulSetInfo{
-		Name:      statefulset.Name,
-		Namespace: statefulset.Namespace,
+	// Convert update strategy
+	var updateStrategy StatefulSetUpdateStrategy
+	updateStrategy.Type = string(statefulset.Spec.UpdateStrategy.Type)
+	if statefulset.Spec.UpdateStrategy.RollingUpdate != nil {
+		rollingUpdate := &RollingUpdateStatefulSetStrategy{
+			Partition: statefulset.Spec.UpdateStrategy.RollingUpdate.Partition,
+		}
+		if statefulset.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable != nil {
+			rollingUpdate.MaxUnavailable = statefulset.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable.String()
+		}
+		updateStrategy.RollingUpdate = rollingUpdate
+	}
+
+	// Convert PVC retention policy
+	var pvcRetentionPolicy *PVCRetentionPolicy
+	if statefulset.Spec.PersistentVolumeClaimRetentionPolicy != nil {
+		pvcRetentionPolicy = &PVCRetentionPolicy{
+			WhenDeleted: string(statefulset.Spec.PersistentVolumeClaimRetentionPolicy.WhenDeleted),
+			WhenScaled:  string(statefulset.Spec.PersistentVolumeClaimRetentionPolicy.WhenScaled),
+		}
+	}
+
+	// Convert ordinals
+	var ordinals *StatefulSetOrdinals
+	if statefulset.Spec.Ordinals != nil {
+		ordinals = &StatefulSetOrdinals{
+			Start: statefulset.Spec.Ordinals.Start,
+		}
+	}
+
+	// Convert label selector
+	var selector LabelSelector
+	if statefulset.Spec.Selector != nil {
+		selector.MatchLabels = statefulset.Spec.Selector.MatchLabels
+		if len(statefulset.Spec.Selector.MatchExpressions) > 0 {
+			selector.MatchExpressions = make([]map[string]interface{}, len(statefulset.Spec.Selector.MatchExpressions))
+			for i, expr := range statefulset.Spec.Selector.MatchExpressions {
+				selector.MatchExpressions[i] = map[string]interface{}{
+					"key":      expr.Key,
+					"operator": expr.Operator,
+					"values":   expr.Values,
+				}
+			}
+		}
+	}
+
+	// Convert pod template
+	podTemplate := PodTemplateSpec{}
+	podTemplate.Metadata.Labels = statefulset.Spec.Template.Labels
+	podTemplate.Metadata.Annotations = statefulset.Spec.Template.Annotations
+
+	// Convert containers in pod template
+	containers := make([]ContainerSpec, len(statefulset.Spec.Template.Spec.Containers))
+	for i, c := range statefulset.Spec.Template.Spec.Containers {
+		// Convert ports
+		ports := make([]ContainerPort, len(c.Ports))
+		for j, p := range c.Ports {
+			ports[j] = ContainerPort{
+				Name:          p.Name,
+				HostPort:      p.HostPort,
+				ContainerPort: p.ContainerPort,
+				Protocol:      string(p.Protocol),
+				HostIP:        p.HostIP,
+			}
+		}
+
+		// Convert environment variables
+		env := make([]EnvironmentVariable, len(c.Env))
+		for j, e := range c.Env {
+			var valueFrom interface{}
+			if e.ValueFrom != nil {
+				valueFrom = e.ValueFrom
+			}
+			env[j] = EnvironmentVariable{
+				Name:      e.Name,
+				Value:     e.Value,
+				ValueFrom: valueFrom,
+			}
+		}
+
+		// Convert volume mounts
+		volumeMounts := make([]VolumeMount, len(c.VolumeMounts))
+		for j, vm := range c.VolumeMounts {
+			volumeMounts[j] = VolumeMount{
+				Name:             vm.Name,
+				ReadOnly:         vm.ReadOnly,
+				MountPath:        vm.MountPath,
+				MountPropagation: string(safeDeref(vm.MountPropagation, "")),
+				SubPath:          vm.SubPath,
+				SubPathExpr:      vm.SubPathExpr,
+			}
+		}
+
+		// Convert resources
+		resources := ResourceRequirements{}
+		if c.Resources.Limits != nil {
+			resources.Limits = make(map[string]string)
+			for k, v := range c.Resources.Limits {
+				resources.Limits[string(k)] = v.String()
+			}
+		}
+		if c.Resources.Requests != nil {
+			resources.Requests = make(map[string]string)
+			for k, v := range c.Resources.Requests {
+				resources.Requests[string(k)] = v.String()
+			}
+		}
+
+		containers[i] = ContainerSpec{
+			Name:                     c.Name,
+			Image:                    c.Image,
+			Command:                  c.Command,
+			Args:                     c.Args,
+			WorkingDir:               c.WorkingDir,
+			Ports:                    ports,
+			Env:                      env,
+			Resources:                resources,
+			VolumeMounts:             volumeMounts,
+			LivenessProbe:            c.LivenessProbe,
+			ReadinessProbe:           c.ReadinessProbe,
+			StartupProbe:             c.StartupProbe,
+			ImagePullPolicy:          string(c.ImagePullPolicy),
+			SecurityContext:          c.SecurityContext,
+			TerminationMessagePath:   c.TerminationMessagePath,
+			TerminationMessagePolicy: string(c.TerminationMessagePolicy),
+		}
+	}
+	podTemplate.Spec.Containers = containers
+
+	// Convert init containers
+	initContainers := make([]ContainerSpec, len(statefulset.Spec.Template.Spec.InitContainers))
+	for i, c := range statefulset.Spec.Template.Spec.InitContainers {
+		// Similar conversion as containers (simplified for brevity)
+		initContainers[i] = ContainerSpec{
+			Name:            c.Name,
+			Image:           c.Image,
+			ImagePullPolicy: string(c.ImagePullPolicy),
+		}
+	}
+	podTemplate.Spec.InitContainers = initContainers
+
+	// Copy other pod spec fields
+	podTemplate.Spec.Volumes = convertVolumes(statefulset.Spec.Template.Spec.Volumes)
+	podTemplate.Spec.ServiceAccountName = statefulset.Spec.Template.Spec.ServiceAccountName
+	podTemplate.Spec.SecurityContext = statefulset.Spec.Template.Spec.SecurityContext
+	podTemplate.Spec.ImagePullSecrets = convertImagePullSecrets(statefulset.Spec.Template.Spec.ImagePullSecrets)
+	podTemplate.Spec.Hostname = statefulset.Spec.Template.Spec.Hostname
+	podTemplate.Spec.Subdomain = statefulset.Spec.Template.Spec.Subdomain
+	podTemplate.Spec.Affinity = statefulset.Spec.Template.Spec.Affinity
+	podTemplate.Spec.SchedulerName = statefulset.Spec.Template.Spec.SchedulerName
+	podTemplate.Spec.Tolerations = convertTolerations(statefulset.Spec.Template.Spec.Tolerations)
+	podTemplate.Spec.HostAliases = convertHostAliases(statefulset.Spec.Template.Spec.HostAliases)
+	podTemplate.Spec.PriorityClassName = statefulset.Spec.Template.Spec.PriorityClassName
+	podTemplate.Spec.Priority = statefulset.Spec.Template.Spec.Priority
+	podTemplate.Spec.DNSConfig = statefulset.Spec.Template.Spec.DNSConfig
+	podTemplate.Spec.DNSPolicy = string(statefulset.Spec.Template.Spec.DNSPolicy)
+	podTemplate.Spec.RestartPolicy = string(statefulset.Spec.Template.Spec.RestartPolicy)
+	podTemplate.Spec.NodeSelector = statefulset.Spec.Template.Spec.NodeSelector
+	podTemplate.Spec.NodeName = statefulset.Spec.Template.Spec.NodeName
+	podTemplate.Spec.HostNetwork = statefulset.Spec.Template.Spec.HostNetwork
+	podTemplate.Spec.HostPID = statefulset.Spec.Template.Spec.HostPID
+	podTemplate.Spec.HostIPC = statefulset.Spec.Template.Spec.HostIPC
+	podTemplate.Spec.ShareProcessNamespace = statefulset.Spec.Template.Spec.ShareProcessNamespace
+	podTemplate.Spec.TerminationGracePeriodSeconds = statefulset.Spec.Template.Spec.TerminationGracePeriodSeconds
+	podTemplate.Spec.ActiveDeadlineSeconds = statefulset.Spec.Template.Spec.ActiveDeadlineSeconds
+	podTemplate.Spec.ReadinessGates = convertReadinessGates(statefulset.Spec.Template.Spec.ReadinessGates)
+	podTemplate.Spec.RuntimeClassName = statefulset.Spec.Template.Spec.RuntimeClassName
+	podTemplate.Spec.EnableServiceLinks = statefulset.Spec.Template.Spec.EnableServiceLinks
+	podTemplate.Spec.PreemptionPolicy = (*string)(statefulset.Spec.Template.Spec.PreemptionPolicy)
+	podTemplate.Spec.Overhead = convertResourceList(statefulset.Spec.Template.Spec.Overhead)
+	podTemplate.Spec.TopologySpreadConstraints = convertTopologySpreadConstraints(statefulset.Spec.Template.Spec.TopologySpreadConstraints)
+
+	// Convert volume claim templates
+	volumeClaimTemplates := make([]VolumeClaimTemplate, len(statefulset.Spec.VolumeClaimTemplates))
+	for i, vct := range statefulset.Spec.VolumeClaimTemplates {
+		vcTemplate := VolumeClaimTemplate{}
+		vcTemplate.Metadata.Name = vct.Name
+		vcTemplate.Metadata.Labels = vct.Labels
+		vcTemplate.Metadata.Annotations = vct.Annotations
+		
+		// Convert access modes
+		accessModes := make([]string, len(vct.Spec.AccessModes))
+		for j, am := range vct.Spec.AccessModes {
+			accessModes[j] = string(am)
+		}
+		vcTemplate.Spec.AccessModes = accessModes
+		vcTemplate.Spec.StorageClassName = vct.Spec.StorageClassName
+		
+		// Convert resource requests
+		if vct.Spec.Resources.Requests != nil {
+			vcTemplate.Spec.Resources.Requests = make(map[string]string)
+			for k, v := range vct.Spec.Resources.Requests {
+				vcTemplate.Spec.Resources.Requests[string(k)] = v.String()
+			}
+		}
+		
+		volumeClaimTemplates[i] = vcTemplate
+	}
+
+	// Build spec
+	spec := StatefulSetSpec{
+		Replicas:                             statefulset.Spec.Replicas,
+		Selector:                             selector,
+		Template:                             podTemplate,
+		ServiceName:                          statefulset.Spec.ServiceName,
+		PodManagementPolicy:                  string(statefulset.Spec.PodManagementPolicy),
+		UpdateStrategy:                       updateStrategy,
+		RevisionHistoryLimit:                 statefulset.Spec.RevisionHistoryLimit,
+		MinReadySeconds:                      statefulset.Spec.MinReadySeconds,
+		PersistentVolumeClaimRetentionPolicy: pvcRetentionPolicy,
+		Ordinals:                             ordinals,
+	}
+
+	// Convert conditions
+	conditions := make([]StatefulSetCondition, len(statefulset.Status.Conditions))
+	for i, c := range statefulset.Status.Conditions {
+		conditions[i] = StatefulSetCondition{
+			Type:               string(c.Type),
+			Status:             string(c.Status),
+			LastTransitionTime: c.LastTransitionTime.Time,
+			Reason:             c.Reason,
+			Message:            c.Message,
+		}
+	}
+
+	// Build status
+	status := StatefulSetStatus{
+		ObservedGeneration:   statefulset.Status.ObservedGeneration,
+		Replicas:             statefulset.Status.Replicas,
+		ReadyReplicas:        statefulset.Status.ReadyReplicas,
+		CurrentReplicas:      statefulset.Status.CurrentReplicas,
+		UpdatedReplicas:      statefulset.Status.UpdatedReplicas,
+		CurrentRevision:      statefulset.Status.CurrentRevision,
+		UpdateRevision:       statefulset.Status.UpdateRevision,
+		CollisionCount:       statefulset.Status.CollisionCount,
+		Conditions:           conditions,
+		AvailableReplicas:    statefulset.Status.AvailableReplicas,
+	}
+
+	return StatefulSetDetail{
+		Name:                 statefulset.Name,
+		Namespace:            statefulset.Namespace,
+		UID:                  string(statefulset.UID),
+		ResourceVersion:      statefulset.ResourceVersion,
+		Generation:           statefulset.Generation,
+		CreationTimestamp:    statefulset.CreationTimestamp.Time,
+		Labels:               statefulset.Labels,
+		Annotations:          statefulset.Annotations,
+		Spec:                 spec,
+		Status:               status,
+		Age:                  calculateAge(statefulset.CreationTimestamp.Time),
+		VolumeClaimTemplates: volumeClaimTemplates,
 	}, nil
 }
 
@@ -1288,4 +1537,76 @@ func isKubernetesInstalled() bool {
 	}
 
 	return false
+}
+
+// convertVolumes converts corev1.Volume slice to interface{} slice
+func convertVolumes(volumes []corev1.Volume) []interface{} {
+	result := make([]interface{}, len(volumes))
+	for i, v := range volumes {
+		result[i] = v
+	}
+	return result
+}
+
+// convertImagePullSecrets converts corev1.LocalObjectReference slice to map slice
+func convertImagePullSecrets(secrets []corev1.LocalObjectReference) []map[string]string {
+	result := make([]map[string]string, len(secrets))
+	for i, s := range secrets {
+		result[i] = map[string]string{"name": s.Name}
+	}
+	return result
+}
+
+// convertTolerations converts corev1.Toleration slice to map slice
+func convertTolerations(tolerations []corev1.Toleration) []map[string]interface{} {
+	result := make([]map[string]interface{}, len(tolerations))
+	for i, t := range tolerations {
+		result[i] = map[string]interface{}{
+			"key":               t.Key,
+			"operator":          string(t.Operator),
+			"value":             t.Value,
+			"effect":            string(t.Effect),
+			"tolerationSeconds": t.TolerationSeconds,
+		}
+	}
+	return result
+}
+
+// convertHostAliases converts corev1.HostAlias slice to interface{} slice  
+func convertHostAliases(aliases []corev1.HostAlias) []interface{} {
+	result := make([]interface{}, len(aliases))
+	for i, a := range aliases {
+		result[i] = a
+	}
+	return result
+}
+
+// convertReadinessGates converts corev1.PodReadinessGate slice to interface{} slice
+func convertReadinessGates(gates []corev1.PodReadinessGate) []interface{} {
+	result := make([]interface{}, len(gates))
+	for i, g := range gates {
+		result[i] = g
+	}
+	return result
+}
+
+// convertResourceList converts corev1.ResourceList to map[string]string
+func convertResourceList(resources corev1.ResourceList) map[string]string {
+	if resources == nil {
+		return nil
+	}
+	result := make(map[string]string)
+	for k, v := range resources {
+		result[string(k)] = v.String()
+	}
+	return result
+}
+
+// convertTopologySpreadConstraints converts corev1.TopologySpreadConstraint slice to interface{} slice
+func convertTopologySpreadConstraints(constraints []corev1.TopologySpreadConstraint) []interface{} {
+	result := make([]interface{}, len(constraints))
+	for i, c := range constraints {
+		result[i] = c
+	}
+	return result
 }

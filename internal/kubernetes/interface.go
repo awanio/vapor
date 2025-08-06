@@ -38,7 +38,7 @@ type KubernetesService interface {
 	GetNamespaceDetail(ctx context.Context, name string) (NamespaceInfo, error)
 	GetNodeDetail(ctx context.Context, name string) (NodeInfo, error)
 	GetDaemonSetDetail(ctx context.Context, namespace, name string) (DaemonSetInfo, error)
-	GetStatefulSetDetail(ctx context.Context, namespace, name string) (StatefulSetInfo, error)
+	GetStatefulSetDetail(ctx context.Context, namespace, name string) (StatefulSetDetail, error)
 	GetJobDetail(ctx context.Context, namespace, name string) (JobInfo, error)
 	GetCronJobDetail(ctx context.Context, namespace, name string) (CronJobInfo, error)
 	GetRESTConfig() (*rest.Config, error)

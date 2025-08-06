@@ -397,6 +397,98 @@ type CronJobInfo struct {
 	CreationTimestamp time.Time         `json:"creationTimestamp"`
 }
 
+// StatefulSetSpec represents the specification of a statefulset
+type StatefulSetSpec struct {
+	Replicas             *int32                        `json:"replicas,omitempty"`
+	Selector             LabelSelector                 `json:"selector"`
+	Template             PodTemplateSpec               `json:"template"`
+	ServiceName          string                        `json:"serviceName"`
+	PodManagementPolicy  string                        `json:"podManagementPolicy,omitempty"`
+	UpdateStrategy       StatefulSetUpdateStrategy     `json:"updateStrategy,omitempty"`
+	RevisionHistoryLimit *int32                        `json:"revisionHistoryLimit,omitempty"`
+	MinReadySeconds      int32                         `json:"minReadySeconds,omitempty"`
+	PersistentVolumeClaimRetentionPolicy *PVCRetentionPolicy `json:"persistentVolumeClaimRetentionPolicy,omitempty"`
+	Ordinals             *StatefulSetOrdinals          `json:"ordinals,omitempty"`
+}
+
+// StatefulSetUpdateStrategy describes the strategy for updating pods in a StatefulSet
+type StatefulSetUpdateStrategy struct {
+	Type          string                        `json:"type,omitempty"`
+	RollingUpdate *RollingUpdateStatefulSetStrategy `json:"rollingUpdate,omitempty"`
+}
+
+// RollingUpdateStatefulSetStrategy is used to control the rolling update of a statefulset
+type RollingUpdateStatefulSetStrategy struct {
+	Partition       *int32 `json:"partition,omitempty"`
+	MaxUnavailable  string `json:"maxUnavailable,omitempty"`
+}
+
+// PVCRetentionPolicy describes the policy for retaining/deleting persistent volume claims
+type PVCRetentionPolicy struct {
+	WhenDeleted string `json:"whenDeleted,omitempty"`
+	WhenScaled  string `json:"whenScaled,omitempty"`
+}
+
+// StatefulSetOrdinals describes the ordinals to be assigned to StatefulSet replicas
+type StatefulSetOrdinals struct {
+	Start int32 `json:"start,omitempty"`
+}
+
+// StatefulSetStatus represents the current status of a statefulset
+type StatefulSetStatus struct {
+	ObservedGeneration   int64                          `json:"observedGeneration,omitempty"`
+	Replicas             int32                          `json:"replicas"`
+	ReadyReplicas        int32                          `json:"readyReplicas,omitempty"`
+	CurrentReplicas      int32                          `json:"currentReplicas,omitempty"`
+	UpdatedReplicas      int32                          `json:"updatedReplicas,omitempty"`
+	CurrentRevision      string                         `json:"currentRevision,omitempty"`
+	UpdateRevision       string                         `json:"updateRevision,omitempty"`
+	CollisionCount       *int32                         `json:"collisionCount,omitempty"`
+	Conditions           []StatefulSetCondition         `json:"conditions,omitempty"`
+	AvailableReplicas    int32                          `json:"availableReplicas,omitempty"`
+}
+
+// StatefulSetCondition describes the state of a statefulset at a certain point
+type StatefulSetCondition struct {
+	Type               string    `json:"type"`
+	Status             string    `json:"status"`
+	LastTransitionTime time.Time `json:"lastTransitionTime,omitempty"`
+	Reason             string    `json:"reason,omitempty"`
+	Message            string    `json:"message,omitempty"`
+}
+
+// VolumeClaimTemplate is used to produce PersistentVolumeClaim objects as part of a StatefulSet
+type VolumeClaimTemplate struct {
+	Metadata struct {
+		Name        string            `json:"name,omitempty"`
+		Labels      map[string]string `json:"labels,omitempty"`
+		Annotations map[string]string `json:"annotations,omitempty"`
+	} `json:"metadata,omitempty"`
+	Spec struct {
+		AccessModes []string               `json:"accessModes,omitempty"`
+		StorageClassName *string         `json:"storageClassName,omitempty"`
+		Resources   struct {
+			Requests map[string]string `json:"requests,omitempty"`
+		} `json:"resources,omitempty"`
+	} `json:"spec,omitempty"`
+}
+
+// StatefulSetDetail represents comprehensive statefulset information
+type StatefulSetDetail struct {
+	Name                    string                 `json:"name"`
+	Namespace               string                 `json:"namespace"`
+	UID                     string                 `json:"uid"`
+	ResourceVersion         string                 `json:"resourceVersion"`
+	Generation              int64                  `json:"generation"`
+	CreationTimestamp       time.Time              `json:"creationTimestamp"`
+	Labels                  map[string]string      `json:"labels,omitempty"`
+	Annotations             map[string]string      `json:"annotations,omitempty"`
+	Spec                    StatefulSetSpec        `json:"spec"`
+	Status                  StatefulSetStatus      `json:"status"`
+	Age                     string                 `json:"age"`
+	VolumeClaimTemplates    []VolumeClaimTemplate  `json:"volumeClaimTemplates,omitempty"`
+}
+
 // CRDInfo represents simplified Custom Resource Definition information
 type CRDInfo struct {
 	Name              string            `json:"name"`

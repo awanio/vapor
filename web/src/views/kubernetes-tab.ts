@@ -1586,7 +1586,7 @@ class KubernetesTab extends LitElement {
     if (this.loadingStatefulSetDetails) {
       return html`
         <div class="pod-details-drawer">
-          <button class="close-button" @click="${() => this.showStatefulSetDetails = false}">&amp;#x2715;</button>
+          <button class="close-button" @click="${() => this.showStatefulSetDetails = false}">&#x2715;</button>
           <h2>StatefulSet Details</h2>
           <div class="loading-state">Loading statefulset details...</div>
         </div>
@@ -1595,7 +1595,7 @@ class KubernetesTab extends LitElement {
 
     return html`
       <div class="pod-details-drawer">
-        <button class="close-button" @click="${() => this.showStatefulSetDetails = false}">&amp;#x2715;</button>
+        <button class="close-button" @click="${() => this.showStatefulSetDetails = false}">&#x2715;</button>
         <h2>StatefulSet Details</h2>
         <div class="pod-details-content">
           ${this.renderStatefulSetDetailContent(this.selectedStatefulSet)}
@@ -1612,7 +1612,7 @@ class KubernetesTab extends LitElement {
     if (this.loadingDaemonSetDetails) {
       return html`
         <div class="pod-details-drawer">
-          <button class="close-button" @click="${() => this.showDaemonSetDetails = false}">&amp;#x2715;</button>
+          <button class="close-button" @click="${() => this.showDaemonSetDetails = false}">&#x2715;</button>
           <h2>DaemonSet Details</h2>
           <div class="loading-state">Loading daemonset details...</div>
         </div>
@@ -1621,7 +1621,7 @@ class KubernetesTab extends LitElement {
 
     return html`
       <div class="pod-details-drawer">
-        <button class="close-button" @click="${() => this.showDaemonSetDetails = false}">&amp;#x2715;</button>
+        <button class="close-button" @click="${() => this.showDaemonSetDetails = false}">&#x2715;</button>
         <h2>DaemonSet Details</h2>
         <div class="pod-details-content">
           ${this.renderDaemonSetDetailContent(this.selectedDaemonSet)}
@@ -2017,27 +2017,40 @@ class KubernetesTab extends LitElement {
           ${this.renderDetailItem('Generation', deploymentData.generation)}
         </div>
 
+        <!-- Spec Information -->
+        ${deploymentData.spec ? html`
+          <div class="detail-section">
+            <h3>Specification</h3>
+            ${this.renderDetailItem('Replicas', deploymentData.spec.replicas)}
+            ${this.renderDetailItem('Revision History Limit', deploymentData.spec.revisionHistoryLimit)}
+            ${this.renderDetailItem('Progress Deadline Seconds', deploymentData.spec.progressDeadlineSeconds)}
+          </div>
+        ` : ''}
+
         <!-- Status Information -->
-        <div class="detail-section">
-          <h3>Status</h3>
-          ${this.renderDetailItem('Replicas', deploymentData.replicas)}
-          ${this.renderDetailItem('Ready Replicas', deploymentData.readyReplicas)}
-          ${this.renderDetailItem('Available Replicas', deploymentData.availableReplicas)}
-          ${this.renderDetailItem('Updated Replicas', deploymentData.updatedReplicas)}
-          ${this.renderDetailItem('Observed Generation', deploymentData.observedGeneration)}
-        </div>
+        ${deploymentData.status ? html`
+          <div class="detail-section">
+            <h3>Status</h3>
+            ${this.renderDetailItem('Observed Generation', deploymentData.status.observedGeneration)}
+            ${this.renderDetailItem('Replicas', deploymentData.status.replicas)}
+            ${this.renderDetailItem('Updated Replicas', deploymentData.status.updatedReplicas)}
+            ${this.renderDetailItem('Ready Replicas', deploymentData.status.readyReplicas)}
+            ${this.renderDetailItem('Available Replicas', deploymentData.status.availableReplicas)}
+            ${this.renderDetailItem('Unavailable Replicas', deploymentData.status.unavailableReplicas)}
+          </div>
+        ` : ''}
 
         <!-- Strategy -->
-        ${deploymentData.strategy ? html`
+        ${deploymentData.spec?.strategy ? html`
           <div class="detail-section">
             <h3>Deployment Strategy</h3>
-            ${this.renderDetailItem('Type', deploymentData.strategy.type)}
-            ${deploymentData.strategy.rollingUpdate ? html`
+            ${this.renderDetailItem('Type', deploymentData.spec.strategy.type)}
+            ${deploymentData.spec.strategy.rollingUpdate ? html`
               <div class="detail-item nested">
                 <strong class="detail-key">Rolling Update:</strong>
                 <div class="nested-content">
-                  ${this.renderDetailItem('Max Surge', deploymentData.strategy.rollingUpdate.maxSurge)}
-                  ${this.renderDetailItem('Max Unavailable', deploymentData.strategy.rollingUpdate.maxUnavailable)}
+                  ${this.renderDetailItem('Max Surge', deploymentData.spec.strategy.rollingUpdate.maxSurge)}
+                  ${this.renderDetailItem('Max Unavailable', deploymentData.spec.strategy.rollingUpdate.maxUnavailable)}
                 </div>
               </div>
             ` : ''}
@@ -2045,10 +2058,10 @@ class KubernetesTab extends LitElement {
         ` : ''}
 
         <!-- Selector -->
-        ${deploymentData.selector ? html`
+        ${deploymentData.spec?.selector ? html`
           <div class="detail-section">
             <h3>Selector</h3>
-            ${this.renderDetailItem('Match Labels', deploymentData.selector.matchLabels, true)}
+            ${this.renderDetailItem('Match Labels', deploymentData.spec.selector.matchLabels, true)}
           </div>
         ` : ''}
 
@@ -2068,41 +2081,236 @@ class KubernetesTab extends LitElement {
           </div>
         ` : ''}
 
-        <!-- Template -->
-        ${deploymentData.template ? html`
+        <!-- Pod Template -->
+        ${deploymentData.spec?.template ? html`
           <div class="detail-section">
             <h3>Pod Template</h3>
-            ${deploymentData.template.metadata?.labels ? 
-              this.renderDetailItem('Pod Labels', deploymentData.template.metadata.labels, true) : ''}
-            ${deploymentData.template.spec?.containers && deploymentData.template.spec.containers.length > 0 ? html`
-              <div class="detail-item nested">
-                <strong class="detail-key">Containers:</strong>
-                <div class="nested-content">
-                  ${deploymentData.template.spec.containers.map((container, index) => html`
-                    <div class="detail-item nested">
-                      <strong class="detail-key">Container ${index + 1}:</strong>
-                      <div class="nested-content">
-                        ${this.renderDetailItem('Name', container.name)}
-                        ${this.renderDetailItem('Image', container.image)}
-                        ${container.ports && container.ports.length > 0 ? 
-                          this.renderDetailItem('Ports', container.ports.map(p => `${p.containerPort}/${p.protocol || 'TCP'}`).join(', ')) : ''}
-                        ${container.env && container.env.length > 0 ? 
-                          this.renderDetailItem('Environment Variables', `${container.env.length} variables`) : ''}
-                        ${container.resources ? this.renderDetailItem('Resources', container.resources, true) : ''}
-                      </div>
-                    </div>
-                  `)}
+            
+            <!-- Pod Template Labels -->
+            ${deploymentData.spec.template.metadata?.labels ? 
+              this.renderDetailItem('Pod Labels', deploymentData.spec.template.metadata.labels, true) : ''}
+            
+            <!-- Pod Template Spec -->
+            ${deploymentData.spec.template.spec ? html`
+              <!-- Service Account -->
+              ${this.renderDetailItem('Service Account', deploymentData.spec.template.spec.serviceAccountName)}
+              ${this.renderDetailItem('DNS Policy', deploymentData.spec.template.spec.dnsPolicy)}
+              ${this.renderDetailItem('Restart Policy', deploymentData.spec.template.spec.restartPolicy)}
+              ${this.renderDetailItem('Termination Grace Period', deploymentData.spec.template.spec.terminationGracePeriodSeconds + 's')}
+              ${this.renderDetailItem('Scheduler Name', deploymentData.spec.template.spec.schedulerName)}
+              
+              <!-- Security Context -->
+              ${deploymentData.spec.template.spec.securityContext ? html`
+                <div class="detail-item nested">
+                  <strong class="detail-key">Security Context:</strong>
+                  <div class="nested-content">
+                    ${this.renderDetailItem('FS Group', deploymentData.spec.template.spec.securityContext.fsGroup)}
+                    ${deploymentData.spec.template.spec.securityContext.seccompProfile ? 
+                      this.renderDetailItem('Seccomp Profile', deploymentData.spec.template.spec.securityContext.seccompProfile.type) : ''}
+                  </div>
                 </div>
-              </div>
+              ` : ''}
+              
+              <!-- Affinity -->
+              ${deploymentData.spec.template.spec.affinity ? html`
+                <div class="detail-item nested">
+                  <strong class="detail-key">Affinity:</strong>
+                  <div class="nested-content">
+                    ${deploymentData.spec.template.spec.affinity.podAntiAffinity ? 
+                      this.renderDetailItem('Pod Anti-Affinity', 'Configured', false) : ''}
+                  </div>
+                </div>
+              ` : ''}
+              
+              <!-- Volumes -->
+              ${deploymentData.spec.template.spec.volumes && deploymentData.spec.template.spec.volumes.length > 0 ? html`
+                <div class="detail-item nested">
+                  <strong class="detail-key">Volumes:</strong>
+                  <div class="nested-content">
+                    ${deploymentData.spec.template.spec.volumes.map((volume, index) => html`
+                      <div class="detail-item">
+                        <strong class="detail-key">${volume.name}:</strong>
+                        <span class="detail-value">
+                          ${volume.persistentVolumeClaim ? 
+                            `PVC: ${volume.persistentVolumeClaim.claimName}` : 
+                            this.formatValue(volume)}
+                        </span>
+                      </div>
+                    `)}
+                  </div>
+                </div>
+              ` : ''}
+              
+              <!-- Containers -->
+              ${deploymentData.spec.template.spec.containers && deploymentData.spec.template.spec.containers.length > 0 ? html`
+                <div class="detail-item nested">
+                  <strong class="detail-key">Containers:</strong>
+                  <div class="nested-content">
+                    ${deploymentData.spec.template.spec.containers.map((container, index) => html`
+                      <div class="detail-item nested">
+                        <strong class="detail-key">Container ${index + 1}: ${container.name}</strong>
+                        <div class="nested-content">
+                          ${this.renderDetailItem('Image', container.image)}
+                          ${this.renderDetailItem('Image Pull Policy', container.imagePullPolicy)}
+                          
+                          <!-- Ports -->
+                          ${container.ports && container.ports.length > 0 ? html`
+                            <div class="detail-item nested">
+                              <strong class="detail-key">Ports:</strong>
+                              <div class="nested-content">
+                                ${container.ports.map(port => html`
+                                  <div class="detail-item">
+                                    <strong class="detail-key">${port.name || 'Port'}:</strong>
+                                    <span class="detail-value">${port.containerPort}/${port.protocol || 'TCP'}</span>
+                                  </div>
+                                `)}
+                              </div>
+                            </div>
+                          ` : ''}
+                          
+                          <!-- Environment Variables -->
+                          ${container.env && container.env.length > 0 ? html`
+                            <div class="detail-item nested">
+                              <strong class="detail-key">Environment Variables:</strong>
+                              <div class="nested-content">
+                                ${container.env.map(env => html`
+                                  <div class="detail-item">
+                                    <strong class="detail-key">${env.name}:</strong>
+                                    <span class="detail-value">
+                                      ${env.value !== undefined ? env.value : 
+                                        (env.valueFrom ? 
+                                          (env.valueFrom.secretKeyRef ? 
+                                            `Secret: ${env.valueFrom.secretKeyRef.name}[${env.valueFrom.secretKeyRef.key}]` :
+                                            (env.valueFrom.configMapKeyRef ?
+                                              `ConfigMap: ${env.valueFrom.configMapKeyRef.name}[${env.valueFrom.configMapKeyRef.key}]` :
+                                              'ValueFrom'))
+                                          : 'null')}
+                                    </span>
+                                  </div>
+                                `)}
+                              </div>
+                            </div>
+                          ` : ''}
+                          
+                          <!-- Resources -->
+                          ${container.resources ? html`
+                            <div class="detail-item nested">
+                              <strong class="detail-key">Resources:</strong>
+                              <div class="nested-content">
+                                ${container.resources.limits ? html`
+                                  <div class="detail-item nested">
+                                    <strong class="detail-key">Limits:</strong>
+                                    <div class="nested-content">
+                                      ${this.renderObjectAsKeyValue(container.resources.limits)}
+                                    </div>
+                                  </div>
+                                ` : ''}
+                                ${container.resources.requests ? html`
+                                  <div class="detail-item nested">
+                                    <strong class="detail-key">Requests:</strong>
+                                    <div class="nested-content">
+                                      ${this.renderObjectAsKeyValue(container.resources.requests)}
+                                    </div>
+                                  </div>
+                                ` : ''}
+                              </div>
+                            </div>
+                          ` : ''}
+                          
+                          <!-- Volume Mounts -->
+                          ${container.volumeMounts && container.volumeMounts.length > 0 ? html`
+                            <div class="detail-item nested">
+                              <strong class="detail-key">Volume Mounts:</strong>
+                              <div class="nested-content">
+                                ${container.volumeMounts.map(mount => html`
+                                  <div class="detail-item">
+                                    <strong class="detail-key">${mount.name}:</strong>
+                                    <span class="detail-value">
+                                      ${mount.mountPath}${mount.subPath ? ` (subPath: ${mount.subPath})` : ''}
+                                    </span>
+                                  </div>
+                                `)}
+                              </div>
+                            </div>
+                          ` : ''}
+                          
+                          <!-- Probes -->
+                          ${container.livenessProbe ? html`
+                            <div class="detail-item nested">
+                              <strong class="detail-key">Liveness Probe:</strong>
+                              <div class="nested-content">
+                                ${container.livenessProbe.httpGet ? html`
+                                  ${this.renderDetailItem('Type', 'HTTP GET')}
+                                  ${this.renderDetailItem('Path', container.livenessProbe.httpGet.path)}
+                                  ${this.renderDetailItem('Port', container.livenessProbe.httpGet.port)}
+                                  ${this.renderDetailItem('Scheme', container.livenessProbe.httpGet.scheme)}
+                                ` : ''}
+                                ${this.renderDetailItem('Initial Delay', container.livenessProbe.initialDelaySeconds + 's')}
+                                ${this.renderDetailItem('Timeout', container.livenessProbe.timeoutSeconds + 's')}
+                                ${this.renderDetailItem('Period', container.livenessProbe.periodSeconds + 's')}
+                                ${this.renderDetailItem('Success Threshold', container.livenessProbe.successThreshold)}
+                                ${this.renderDetailItem('Failure Threshold', container.livenessProbe.failureThreshold)}
+                              </div>
+                            </div>
+                          ` : ''}
+                          
+                          ${container.readinessProbe ? html`
+                            <div class="detail-item nested">
+                              <strong class="detail-key">Readiness Probe:</strong>
+                              <div class="nested-content">
+                                ${container.readinessProbe.httpGet ? html`
+                                  ${this.renderDetailItem('Type', 'HTTP GET')}
+                                  ${this.renderDetailItem('Path', container.readinessProbe.httpGet.path)}
+                                  ${this.renderDetailItem('Port', container.readinessProbe.httpGet.port)}
+                                  ${this.renderDetailItem('Scheme', container.readinessProbe.httpGet.scheme)}
+                                ` : ''}
+                                ${this.renderDetailItem('Initial Delay', container.readinessProbe.initialDelaySeconds + 's')}
+                                ${this.renderDetailItem('Timeout', container.readinessProbe.timeoutSeconds + 's')}
+                                ${this.renderDetailItem('Period', container.readinessProbe.periodSeconds + 's')}
+                                ${this.renderDetailItem('Success Threshold', container.readinessProbe.successThreshold)}
+                                ${this.renderDetailItem('Failure Threshold', container.readinessProbe.failureThreshold)}
+                              </div>
+                            </div>
+                          ` : ''}
+                          
+                          <!-- Security Context -->
+                          ${container.securityContext ? html`
+                            <div class="detail-item nested">
+                              <strong class="detail-key">Security Context:</strong>
+                              <div class="nested-content">
+                                ${this.renderDetailItem('Run As User', container.securityContext.runAsUser)}
+                                ${this.renderDetailItem('Run As Non-Root', container.securityContext.runAsNonRoot)}
+                                ${this.renderDetailItem('Read-Only Root Filesystem', container.securityContext.readOnlyRootFilesystem)}
+                                ${this.renderDetailItem('Allow Privilege Escalation', container.securityContext.allowPrivilegeEscalation)}
+                                ${container.securityContext.capabilities ? html`
+                                  <div class="detail-item nested">
+                                    <strong class="detail-key">Capabilities:</strong>
+                                    <div class="nested-content">
+                                      ${container.securityContext.capabilities.drop ? 
+                                        this.renderDetailItem('Drop', container.securityContext.capabilities.drop.join(', ')) : ''}
+                                      ${container.securityContext.capabilities.add ? 
+                                        this.renderDetailItem('Add', container.securityContext.capabilities.add.join(', ')) : ''}
+                                    </div>
+                                  </div>
+                                ` : ''}
+                              </div>
+                            </div>
+                          ` : ''}
+                        </div>
+                      </div>
+                    `)}
+                  </div>
+                </div>
+              ` : ''}
             ` : ''}
           </div>
         ` : ''}
 
         <!-- Conditions -->
-        ${deploymentData.conditions && deploymentData.conditions.length > 0 ? html`
+        ${deploymentData.status?.conditions && deploymentData.status.conditions.length > 0 ? html`
           <div class="detail-section">
             <h3>Conditions</h3>
-            ${deploymentData.conditions.map((condition) => html`
+            ${deploymentData.status.conditions.map((condition) => html`
               <div class="detail-item nested">
                 <strong class="detail-key">${condition.type}:</strong>
                 <div class="nested-content">
