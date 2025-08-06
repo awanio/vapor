@@ -95,6 +95,160 @@ type DeploymentInfo struct {
 	CreationTimestamp time.Time         `json:"creationTimestamp"`
 }
 
+// DeploymentCondition represents a deployment condition
+type DeploymentCondition struct {
+	Type               string    `json:"type"`
+	Status             string    `json:"status"`
+	LastUpdateTime     time.Time `json:"lastUpdateTime,omitempty"`
+	LastTransitionTime time.Time `json:"lastTransitionTime,omitempty"`
+	Reason             string    `json:"reason,omitempty"`
+	Message            string    `json:"message,omitempty"`
+}
+
+// ContainerPort represents a network port in a container
+type ContainerPort struct {
+	Name          string `json:"name,omitempty"`
+	HostPort      int32  `json:"hostPort,omitempty"`
+	ContainerPort int32  `json:"containerPort"`
+	Protocol      string `json:"protocol,omitempty"`
+	HostIP        string `json:"hostIP,omitempty"`
+}
+
+// EnvironmentVariable represents an environment variable
+type EnvironmentVariable struct {
+	Name      string      `json:"name"`
+	Value     string      `json:"value,omitempty"`
+	ValueFrom interface{} `json:"valueFrom,omitempty"`
+}
+
+// VolumeMount represents a mounting of a Volume within a container
+type VolumeMount struct {
+	Name             string `json:"name"`
+	ReadOnly         bool   `json:"readOnly,omitempty"`
+	MountPath        string `json:"mountPath"`
+	MountPropagation string `json:"mountPropagation,omitempty"`
+	SubPath          string `json:"subPath,omitempty"`
+	SubPathExpr      string `json:"subPathExpr,omitempty"`
+}
+
+// ResourceRequirements describes the compute resource requirements
+type ResourceRequirements struct {
+	Limits   map[string]string `json:"limits,omitempty"`
+	Requests map[string]string `json:"requests,omitempty"`
+}
+
+// ContainerSpec represents a container specification in a deployment
+type ContainerSpec struct {
+	Name                     string                `json:"name"`
+	Image                    string                `json:"image"`
+	Command                  []string              `json:"command,omitempty"`
+	Args                     []string              `json:"args,omitempty"`
+	WorkingDir               string                `json:"workingDir,omitempty"`
+	Ports                    []ContainerPort       `json:"ports,omitempty"`
+	Env                      []EnvironmentVariable `json:"env,omitempty"`
+	Resources                ResourceRequirements  `json:"resources,omitempty"`
+	VolumeMounts             []VolumeMount         `json:"volumeMounts,omitempty"`
+	LivenessProbe            interface{}           `json:"livenessProbe,omitempty"`
+	ReadinessProbe           interface{}           `json:"readinessProbe,omitempty"`
+	StartupProbe             interface{}           `json:"startupProbe,omitempty"`
+	ImagePullPolicy          string                `json:"imagePullPolicy,omitempty"`
+	SecurityContext          interface{}           `json:"securityContext,omitempty"`
+	TerminationMessagePath   string                `json:"terminationMessagePath,omitempty"`
+	TerminationMessagePolicy string                `json:"terminationMessagePolicy,omitempty"`
+}
+
+// DeploymentStrategy describes how to replace existing pods with new ones
+type DeploymentStrategy struct {
+	Type          string      `json:"type,omitempty"`
+	RollingUpdate interface{} `json:"rollingUpdate,omitempty"`
+}
+
+// LabelSelector represents a label selector
+type LabelSelector struct {
+	MatchLabels      map[string]string          `json:"matchLabels,omitempty"`
+	MatchExpressions []map[string]interface{}   `json:"matchExpressions,omitempty"`
+}
+
+// PodTemplateSpec describes the pod that will be created
+type PodTemplateSpec struct {
+	Metadata struct {
+		Labels      map[string]string `json:"labels,omitempty"`
+		Annotations map[string]string `json:"annotations,omitempty"`
+	} `json:"metadata,omitempty"`
+	Spec struct {
+		Containers                    []ContainerSpec          `json:"containers"`
+		InitContainers                []ContainerSpec          `json:"initContainers,omitempty"`
+		Volumes                       []interface{}            `json:"volumes,omitempty"`
+		ServiceAccountName            string                   `json:"serviceAccountName,omitempty"`
+		SecurityContext               interface{}              `json:"securityContext,omitempty"`
+		ImagePullSecrets              []map[string]string      `json:"imagePullSecrets,omitempty"`
+		Hostname                      string                   `json:"hostname,omitempty"`
+		Subdomain                     string                   `json:"subdomain,omitempty"`
+		Affinity                      interface{}              `json:"affinity,omitempty"`
+		SchedulerName                 string                   `json:"schedulerName,omitempty"`
+		Tolerations                   []map[string]interface{} `json:"tolerations,omitempty"`
+		HostAliases                   []interface{}            `json:"hostAliases,omitempty"`
+		PriorityClassName             string                   `json:"priorityClassName,omitempty"`
+		Priority                      *int32                   `json:"priority,omitempty"`
+		DNSConfig                     interface{}              `json:"dnsConfig,omitempty"`
+		DNSPolicy                     string                   `json:"dnsPolicy,omitempty"`
+		RestartPolicy                 string                   `json:"restartPolicy,omitempty"`
+		NodeSelector                  map[string]string        `json:"nodeSelector,omitempty"`
+		NodeName                      string                   `json:"nodeName,omitempty"`
+		HostNetwork                   bool                     `json:"hostNetwork,omitempty"`
+		HostPID                       bool                     `json:"hostPID,omitempty"`
+		HostIPC                       bool                     `json:"hostIPC,omitempty"`
+		ShareProcessNamespace         *bool                    `json:"shareProcessNamespace,omitempty"`
+		TerminationGracePeriodSeconds *int64                   `json:"terminationGracePeriodSeconds,omitempty"`
+		ActiveDeadlineSeconds         *int64                   `json:"activeDeadlineSeconds,omitempty"`
+		ReadinessGates                []interface{}            `json:"readinessGates,omitempty"`
+		RuntimeClassName              *string                  `json:"runtimeClassName,omitempty"`
+		EnableServiceLinks            *bool                    `json:"enableServiceLinks,omitempty"`
+		PreemptionPolicy              *string                  `json:"preemptionPolicy,omitempty"`
+		Overhead                      map[string]string        `json:"overhead,omitempty"`
+		TopologySpreadConstraints     []interface{}            `json:"topologySpreadConstraints,omitempty"`
+	} `json:"spec,omitempty"`
+}
+
+// DeploymentSpec represents the specification of a deployment
+type DeploymentSpec struct {
+	Replicas                *int32             `json:"replicas,omitempty"`
+	Selector                LabelSelector      `json:"selector"`
+	Template                PodTemplateSpec    `json:"template"`
+	Strategy                DeploymentStrategy `json:"strategy,omitempty"`
+	MinReadySeconds         int32              `json:"minReadySeconds,omitempty"`
+	RevisionHistoryLimit    *int32             `json:"revisionHistoryLimit,omitempty"`
+	Paused                  bool               `json:"paused,omitempty"`
+	ProgressDeadlineSeconds *int32             `json:"progressDeadlineSeconds,omitempty"`
+}
+
+// DeploymentStatus represents the current status of a deployment
+type DeploymentStatus struct {
+	ObservedGeneration  int64                 `json:"observedGeneration,omitempty"`
+	Replicas            int32                 `json:"replicas,omitempty"`
+	UpdatedReplicas     int32                 `json:"updatedReplicas,omitempty"`
+	ReadyReplicas       int32                 `json:"readyReplicas,omitempty"`
+	AvailableReplicas   int32                 `json:"availableReplicas,omitempty"`
+	UnavailableReplicas int32                 `json:"unavailableReplicas,omitempty"`
+	Conditions          []DeploymentCondition `json:"conditions,omitempty"`
+	CollisionCount      *int32                `json:"collisionCount,omitempty"`
+}
+
+// DeploymentDetail represents comprehensive deployment information
+type DeploymentDetail struct {
+	Name              string               `json:"name"`
+	Namespace         string               `json:"namespace"`
+	UID               string               `json:"uid"`
+	ResourceVersion   string               `json:"resourceVersion"`
+	Generation        int64                `json:"generation"`
+	CreationTimestamp time.Time            `json:"creationTimestamp"`
+	Labels            map[string]string    `json:"labels,omitempty"`
+	Annotations       map[string]string    `json:"annotations,omitempty"`
+	Spec              DeploymentSpec       `json:"spec"`
+	Status            DeploymentStatus     `json:"status"`
+	Age               string               `json:"age"`
+}
+
 // ServiceInfo represents simplified service information
 type ServiceInfo struct {
 	Name              string            `json:"name"`

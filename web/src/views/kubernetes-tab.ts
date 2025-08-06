@@ -23,6 +23,15 @@ class KubernetesTab extends LitElement {
   @property({ type: Boolean }) showCrdDetails = false;
   @property({ type: Object }) selectedCrd = null;
   @property({ type: Boolean }) loadingCrdDetails = false;
+  @property({ type: Boolean }) showDeploymentDetails = false;
+  @property({ type: Object }) selectedDeployment = null;
+  @property({ type: Boolean }) loadingDeploymentDetails = false;
+  @property({ type: Boolean }) showStatefulSetDetails = false;
+  @property({ type: Object }) selectedStatefulSet = null;
+  @property({ type: Boolean }) loadingStatefulSetDetails = false;
+  @property({ type: Boolean }) showDaemonSetDetails = false;
+  @property({ type: Object }) selectedDaemonSet = null;
+  @property({ type: Boolean }) loadingDaemonSetDetails = false;
   @property({ type: Array }) namespaces = [];
   @property({ type: String }) selectedNamespace = 'all';
   @property({ type: Boolean }) showNamespaceDropdown = false;
@@ -988,7 +997,7 @@ class KubernetesTab extends LitElement {
           ${data.map((item, index) => html`
             <tr>
               <td>
-                ${item.type === 'Pod' 
+                ${(item.type === 'Pod' || item.type === 'Deployment' || item.type === 'StatefulSet' || item.type === 'DaemonSet')
                   ? html`<span class="pod-name-link" @click=${() => this.viewDetails(item)}>${item.name}</span>`
                   : item.name
                 }
@@ -1543,6 +1552,358 @@ class KubernetesTab extends LitElement {
     `;
   }
 
+  renderDeploymentDetailsDrawer() {
+    if (!this.showDeploymentDetails) {
+      return null;
+    }
+
+    if (this.loadingDeploymentDetails) {
+      return html`
+        <div class="pod-details-drawer crd-details-drawer">
+          <button class="close-button" @click="${() => this.showDeploymentDetails = false}">&#x2715;</button>
+          <h2>Deployment Details</h2>
+          <div class="loading-state">Loading deployment details...</div>
+        </div>
+      `;
+    }
+
+    return html`
+      <div class="pod-details-drawer crd-details-drawer">
+        <button class="close-button" @click="${() => this.showDeploymentDetails = false}">&#x2715;</button>
+        <h2>Deployment Details</h2>
+        <div class="pod-details-content">
+          ${this.renderDeploymentDetailContent(this.selectedDeployment)}
+        </div>
+      </div>
+    `;
+  }
+
+  renderStatefulSetDetailsDrawer() {
+    if (!this.showStatefulSetDetails) {
+      return null;
+    }
+
+    if (this.loadingStatefulSetDetails) {
+      return html`
+        <div class="pod-details-drawer">
+          <button class="close-button" @click="${() => this.showStatefulSetDetails = false}">&amp;#x2715;</button>
+          <h2>StatefulSet Details</h2>
+          <div class="loading-state">Loading statefulset details...</div>
+        </div>
+      `;
+    }
+
+    return html`
+      <div class="pod-details-drawer">
+        <button class="close-button" @click="${() => this.showStatefulSetDetails = false}">&amp;#x2715;</button>
+        <h2>StatefulSet Details</h2>
+        <div class="pod-details-content">
+          ${this.renderStatefulSetDetailContent(this.selectedStatefulSet)}
+        </div>
+      </div>
+    `;
+  }
+
+  renderDaemonSetDetailsDrawer() {
+    if (!this.showDaemonSetDetails) {
+      return null;
+    }
+
+    if (this.loadingDaemonSetDetails) {
+      return html`
+        <div class="pod-details-drawer">
+          <button class="close-button" @click="${() => this.showDaemonSetDetails = false}">&amp;#x2715;</button>
+          <h2>DaemonSet Details</h2>
+          <div class="loading-state">Loading daemonset details...</div>
+        </div>
+      `;
+    }
+
+    return html`
+      <div class="pod-details-drawer">
+        <button class="close-button" @click="${() => this.showDaemonSetDetails = false}">&amp;#x2715;</button>
+        <h2>DaemonSet Details</h2>
+        <div class="pod-details-content">
+          ${this.renderDaemonSetDetailContent(this.selectedDaemonSet)}
+        </div>
+      </div>
+    `;
+  }
+
+  renderStatefulSetDetailContent(data: any) {
+    if (!data) {
+      return html`<div class="no-data">No data available</div>`;
+    }
+
+    // Handle API response structure
+    const statefulSetData = data.statefulset_detail || data;
+
+    console.log('Processing statefulset data:', statefulSetData);
+
+    return html`
+      <div class="detail-sections">
+        <!-- Basic Information -->
+        <div class="detail-section">
+          <h3>Basic Information</h3>
+          ${this.renderDetailItem('Name', statefulSetData.name)}
+          ${this.renderDetailItem('Namespace', statefulSetData.namespace)}
+          ${this.renderDetailItem('UID', statefulSetData.uid)}
+          ${this.renderDetailItem('Resource Version', statefulSetData.resourceVersion)}
+          ${this.renderDetailItem('Creation Timestamp', statefulSetData.creationTimestamp)}
+          ${this.renderDetailItem('Age', statefulSetData.age)}
+          ${this.renderDetailItem('Generation', statefulSetData.generation)}
+        </div>
+
+        <!-- Status Information -->
+        <div class="detail-section">
+          <h3>Status</h3>
+          ${this.renderDetailItem('Replicas', statefulSetData.replicas)}
+          ${this.renderDetailItem('Ready Replicas', statefulSetData.readyReplicas)}
+          ${this.renderDetailItem('Current Replicas', statefulSetData.currentReplicas)}
+          ${this.renderDetailItem('Updated Replicas', statefulSetData.updatedReplicas)}
+          ${this.renderDetailItem('Observed Generation', statefulSetData.observedGeneration)}
+        </div>
+
+        <!-- Update Strategy -->
+        ${statefulSetData.updateStrategy ? html`
+          <div class="detail-section">
+            <h3>Update Strategy</h3>
+            ${this.renderDetailItem('Type', statefulSetData.updateStrategy.type)}
+            ${statefulSetData.updateStrategy.rollingUpdate ? html`
+              <div class="detail-item nested">
+                <strong class="detail-key">Rolling Update:</strong>
+                <div class="nested-content">
+                  ${this.renderDetailItem('Partition', statefulSetData.updateStrategy.rollingUpdate.partition)}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        ` : ''}
+
+        <!-- Selector -->
+        ${statefulSetData.selector ? html`
+          <div class="detail-section">
+            <h3>Selector</h3>
+            ${this.renderDetailItem('Match Labels', statefulSetData.selector.matchLabels, true)}
+          </div>
+        ` : ''}
+
+        <!-- Labels -->
+        ${statefulSetData.labels && Object.keys(statefulSetData.labels).length > 0 ? html`
+          <div class="detail-section">
+            <h3>Labels</h3>
+            ${this.renderObjectAsKeyValue(statefulSetData.labels)}
+          </div>
+        ` : ''}
+
+        <!-- Annotations -->
+        ${statefulSetData.annotations && Object.keys(statefulSetData.annotations).length > 0 ? html`
+          <div class="detail-section">
+            <h3>Annotations</h3>
+            ${this.renderObjectAsKeyValue(statefulSetData.annotations)}
+          </div>
+        ` : ''}
+
+        <!-- Template -->
+        ${statefulSetData.template ? html`
+          <div class="detail-section">
+            <h3>Pod Template</h3>
+            ${statefulSetData.template.metadata?.labels ? 
+              this.renderDetailItem('Pod Labels', statefulSetData.template.metadata.labels, true) : ''}
+            ${statefulSetData.template.spec?.containers && statefulSetData.template.spec.containers.length > 0 ? html`
+              <div class="detail-item nested">
+                <strong class="detail-key">Containers:</strong>
+                <div class="nested-content">
+                  ${statefulSetData.template.spec.containers.map((container, index) => html`
+                    <div class="detail-item nested">
+                      <strong class="detail-key">Container ${index + 1}:</strong>
+                      <div class="nested-content">
+                        ${this.renderDetailItem('Name', container.name)}
+                        ${this.renderDetailItem('Image', container.image)}
+                        ${container.ports && container.ports.length > 0 ? 
+                          this.renderDetailItem('Ports', container.ports.map(p => `${p.containerPort}/${p.protocol || 'TCP'}`).join(', ')) : ''}
+                        ${container.env && container.env.length > 0 ? 
+                          this.renderDetailItem('Environment Variables', `${container.env.length} variables`) : ''}
+                        ${container.resources ? this.renderDetailItem('Resources', container.resources, true) : ''}
+                      </div>
+                    </div>
+                  `)}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        ` : ''}
+
+        <!-- Conditions -->
+        ${statefulSetData.conditions && statefulSetData.conditions.length > 0 ? html`
+          <div class="detail-section">
+            <h3>Conditions</h3>
+            ${statefulSetData.conditions.map((condition) => html`
+              <div class="detail-item nested">
+                <strong class="detail-key">${condition.type}:</strong>
+                <div class="nested-content">
+                  ${this.renderDetailItem('Status', condition.status)}
+                  ${this.renderDetailItem('Last Update Time', condition.lastUpdateTime)}
+                  ${this.renderDetailItem('Last Transition Time', condition.lastTransitionTime)}
+                  ${this.renderDetailItem('Reason', condition.reason)}
+                  ${this.renderDetailItem('Message', condition.message)}
+                </div>
+              </div>
+            `)}
+          </div>
+        ` : ''}
+
+        <!-- Raw Data -->
+        <div class="detail-section">
+          <h3>Raw Data</h3>
+          <details>
+            <summary>View raw statefulset data</summary>
+            <pre class="raw-data">${JSON.stringify(statefulSetData, null, 2)}</pre>
+          </details>
+        </div>
+      </div>
+    `;
+  }
+
+  renderDaemonSetDetailContent(data: any) {
+    if (!data) {
+      return html`<div class="no-data">No data available</div>`;
+    }
+
+    // Handle API response structure
+    const daemonSetData = data.daemonset_detail || data;
+
+    console.log('Processing daemonset data:', daemonSetData);
+
+    return html`
+      <div class="detail-sections">
+        <!-- Basic Information -->
+        <div class="detail-section">
+          <h3>Basic Information</h3>
+          ${this.renderDetailItem('Name', daemonSetData.name)}
+          ${this.renderDetailItem('Namespace', daemonSetData.namespace)}
+          ${this.renderDetailItem('UID', daemonSetData.uid)}
+          ${this.renderDetailItem('Resource Version', daemonSetData.resourceVersion)}
+          ${this.renderDetailItem('Creation Timestamp', daemonSetData.creationTimestamp)}
+          ${this.renderDetailItem('Age', daemonSetData.age)}
+          ${this.renderDetailItem('Generation', daemonSetData.generation)}
+        </div>
+
+        <!-- Status Information -->
+        <div class="detail-section">
+          <h3>Status</h3>
+          ${this.renderDetailItem('Current Number Scheduled', daemonSetData.currentNumberScheduled)}
+          ${this.renderDetailItem('Desired Number Scheduled', daemonSetData.desiredNumberScheduled)}
+          ${this.renderDetailItem('Number Ready', daemonSetData.numberReady)}
+          ${this.renderDetailItem('Number Available', daemonSetData.numberAvailable)}
+          ${this.renderDetailItem('Number Unavailable', daemonSetData.numberUnavailable)}
+          ${this.renderDetailItem('Number Misscheduled', daemonSetData.numberMisscheduled)}
+          ${this.renderDetailItem('Updated Number Scheduled', daemonSetData.updatedNumberScheduled)}
+          ${this.renderDetailItem('Observed Generation', daemonSetData.observedGeneration)}
+        </div>
+
+        <!-- Update Strategy -->
+        ${daemonSetData.updateStrategy ? html`
+          <div class="detail-section">
+            <h3>Update Strategy</h3>
+            ${this.renderDetailItem('Type', daemonSetData.updateStrategy.type)}
+            ${daemonSetData.updateStrategy.rollingUpdate ? html`
+              <div class="detail-item nested">
+                <strong class="detail-key">Rolling Update:</strong>
+                <div class="nested-content">
+                  ${this.renderDetailItem('Max Unavailable', daemonSetData.updateStrategy.rollingUpdate.maxUnavailable)}
+                  ${this.renderDetailItem('Max Surge', daemonSetData.updateStrategy.rollingUpdate.maxSurge)}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        ` : ''}
+
+        <!-- Selector -->
+        ${daemonSetData.selector ? html`
+          <div class="detail-section">
+            <h3>Selector</h3>
+            ${this.renderDetailItem('Match Labels', daemonSetData.selector.matchLabels, true)}
+          </div>
+        ` : ''}
+
+        <!-- Labels -->
+        ${daemonSetData.labels && Object.keys(daemonSetData.labels).length > 0 ? html`
+          <div class="detail-section">
+            <h3>Labels</h3>
+            ${this.renderObjectAsKeyValue(daemonSetData.labels)}
+          </div>
+        ` : ''}
+
+        <!-- Annotations -->
+        ${daemonSetData.annotations && Object.keys(daemonSetData.annotations).length > 0 ? html`
+          <div class="detail-section">
+            <h3>Annotations</h3>
+            ${this.renderObjectAsKeyValue(daemonSetData.annotations)}
+          </div>
+        ` : ''}
+
+        <!-- Template -->
+        ${daemonSetData.template ? html`
+          <div class="detail-section">
+            <h3>Pod Template</h3>
+            ${daemonSetData.template.metadata?.labels ? 
+              this.renderDetailItem('Pod Labels', daemonSetData.template.metadata.labels, true) : ''}
+            ${daemonSetData.template.spec?.containers && daemonSetData.template.spec.containers.length > 0 ? html`
+              <div class="detail-item nested">
+                <strong class="detail-key">Containers:</strong>
+                <div class="nested-content">
+                  ${daemonSetData.template.spec.containers.map((container, index) => html`
+                    <div class="detail-item nested">
+                      <strong class="detail-key">Container ${index + 1}:</strong>
+                      <div class="nested-content">
+                        ${this.renderDetailItem('Name', container.name)}
+                        ${this.renderDetailItem('Image', container.image)}
+                        ${container.ports && container.ports.length > 0 ? 
+                          this.renderDetailItem('Ports', container.ports.map(p => `${p.containerPort}/${p.protocol || 'TCP'}`).join(', ')) : ''}
+                        ${container.env && container.env.length > 0 ? 
+                          this.renderDetailItem('Environment Variables', `${container.env.length} variables`) : ''}
+                        ${container.resources ? this.renderDetailItem('Resources', container.resources, true) : ''}
+                      </div>
+                    </div>
+                  `)}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        ` : ''}
+
+        <!-- Conditions -->
+        ${daemonSetData.conditions && daemonSetData.conditions.length > 0 ? html`
+          <div class="detail-section">
+            <h3>Conditions</h3>
+            ${daemonSetData.conditions.map((condition) => html`
+              <div class="detail-item nested">
+                <strong class="detail-key">${condition.type}:</strong>
+                <div class="nested-content">
+                  ${this.renderDetailItem('Status', condition.status)}
+                  ${this.renderDetailItem('Last Update Time', condition.lastUpdateTime)}
+                  ${this.renderDetailItem('Last Transition Time', condition.lastTransitionTime)}
+                  ${this.renderDetailItem('Reason', condition.reason)}
+                  ${this.renderDetailItem('Message', condition.message)}
+                </div>
+              </div>
+            `)}
+          </div>
+        ` : ''}
+
+        <!-- Raw Data -->
+        <div class="detail-section">
+          <h3>Raw Data</h3>
+          <details>
+            <summary>View raw daemonset data</summary>
+            <pre class="raw-data">${JSON.stringify(daemonSetData, null, 2)}</pre>
+          </details>
+        </div>
+      </div>
+    `;
+  }
+
   renderCrdDetailContent(data: any) {
     if (!data) {
       return html`<div class="no-data">No data available</div>`;
@@ -1626,6 +1987,142 @@ class KubernetesTab extends LitElement {
           <details>
             <summary>View raw CRD data</summary>
             <pre class="raw-data">${JSON.stringify(crdData, null, 2)}</pre>
+          </details>
+        </div>
+      </div>
+    `;
+  }
+
+  renderDeploymentDetailContent(data: any) {
+    if (!data) {
+      return html`<div class="no-data">No data available</div>`;
+    }
+
+    // Handle the actual API response structure where data might be under 'deployment_detail' key
+    const deploymentData = data.deployment_detail || data;
+    
+    console.log('Processing deployment data:', deploymentData);
+
+    return html`
+      <div class="detail-sections">
+        <!-- Basic Information -->
+        <div class="detail-section">
+          <h3>Basic Information</h3>
+          ${this.renderDetailItem('Name', deploymentData.name)}
+          ${this.renderDetailItem('Namespace', deploymentData.namespace)}
+          ${this.renderDetailItem('UID', deploymentData.uid)}
+          ${this.renderDetailItem('Resource Version', deploymentData.resourceVersion)}
+          ${this.renderDetailItem('Creation Timestamp', deploymentData.creationTimestamp)}
+          ${this.renderDetailItem('Age', deploymentData.age)}
+          ${this.renderDetailItem('Generation', deploymentData.generation)}
+        </div>
+
+        <!-- Status Information -->
+        <div class="detail-section">
+          <h3>Status</h3>
+          ${this.renderDetailItem('Replicas', deploymentData.replicas)}
+          ${this.renderDetailItem('Ready Replicas', deploymentData.readyReplicas)}
+          ${this.renderDetailItem('Available Replicas', deploymentData.availableReplicas)}
+          ${this.renderDetailItem('Updated Replicas', deploymentData.updatedReplicas)}
+          ${this.renderDetailItem('Observed Generation', deploymentData.observedGeneration)}
+        </div>
+
+        <!-- Strategy -->
+        ${deploymentData.strategy ? html`
+          <div class="detail-section">
+            <h3>Deployment Strategy</h3>
+            ${this.renderDetailItem('Type', deploymentData.strategy.type)}
+            ${deploymentData.strategy.rollingUpdate ? html`
+              <div class="detail-item nested">
+                <strong class="detail-key">Rolling Update:</strong>
+                <div class="nested-content">
+                  ${this.renderDetailItem('Max Surge', deploymentData.strategy.rollingUpdate.maxSurge)}
+                  ${this.renderDetailItem('Max Unavailable', deploymentData.strategy.rollingUpdate.maxUnavailable)}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        ` : ''}
+
+        <!-- Selector -->
+        ${deploymentData.selector ? html`
+          <div class="detail-section">
+            <h3>Selector</h3>
+            ${this.renderDetailItem('Match Labels', deploymentData.selector.matchLabels, true)}
+          </div>
+        ` : ''}
+
+        <!-- Labels -->
+        ${deploymentData.labels && Object.keys(deploymentData.labels).length > 0 ? html`
+          <div class="detail-section">
+            <h3>Labels</h3>
+            ${this.renderObjectAsKeyValue(deploymentData.labels)}
+          </div>
+        ` : ''}
+
+        <!-- Annotations -->
+        ${deploymentData.annotations && Object.keys(deploymentData.annotations).length > 0 ? html`
+          <div class="detail-section">
+            <h3>Annotations</h3>
+            ${this.renderObjectAsKeyValue(deploymentData.annotations)}
+          </div>
+        ` : ''}
+
+        <!-- Template -->
+        ${deploymentData.template ? html`
+          <div class="detail-section">
+            <h3>Pod Template</h3>
+            ${deploymentData.template.metadata?.labels ? 
+              this.renderDetailItem('Pod Labels', deploymentData.template.metadata.labels, true) : ''}
+            ${deploymentData.template.spec?.containers && deploymentData.template.spec.containers.length > 0 ? html`
+              <div class="detail-item nested">
+                <strong class="detail-key">Containers:</strong>
+                <div class="nested-content">
+                  ${deploymentData.template.spec.containers.map((container, index) => html`
+                    <div class="detail-item nested">
+                      <strong class="detail-key">Container ${index + 1}:</strong>
+                      <div class="nested-content">
+                        ${this.renderDetailItem('Name', container.name)}
+                        ${this.renderDetailItem('Image', container.image)}
+                        ${container.ports && container.ports.length > 0 ? 
+                          this.renderDetailItem('Ports', container.ports.map(p => `${p.containerPort}/${p.protocol || 'TCP'}`).join(', ')) : ''}
+                        ${container.env && container.env.length > 0 ? 
+                          this.renderDetailItem('Environment Variables', `${container.env.length} variables`) : ''}
+                        ${container.resources ? this.renderDetailItem('Resources', container.resources, true) : ''}
+                      </div>
+                    </div>
+                  `)}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        ` : ''}
+
+        <!-- Conditions -->
+        ${deploymentData.conditions && deploymentData.conditions.length > 0 ? html`
+          <div class="detail-section">
+            <h3>Conditions</h3>
+            ${deploymentData.conditions.map((condition) => html`
+              <div class="detail-item nested">
+                <strong class="detail-key">${condition.type}:</strong>
+                <div class="nested-content">
+                  ${this.renderDetailItem('Status', condition.status)}
+                  ${this.renderDetailItem('Last Update Time', condition.lastUpdateTime)}
+                  ${this.renderDetailItem('Last Transition Time', condition.lastTransitionTime)}
+                  ${this.renderDetailItem('Reason', condition.reason)}
+                  ${this.renderDetailItem('Message', condition.message)}
+                </div>
+              </div>
+            `)}
+          </div>
+        ` : ''}
+
+        <!-- Raw Data Section for debugging -->
+        <div class="detail-section">
+          <h3>Raw Data</h3>
+          <details>
+            <summary>View raw deployment data</summary>
+            <pre class="raw-data">${JSON.stringify(deploymentData, null, 2)}</pre>
           </details>
         </div>
       </div>
@@ -1939,6 +2436,9 @@ renderPodDetailContent(data: any) {
         </div>
         ${this.renderPodDetailsDrawer()}
         ${this.renderCrdDetailsDrawer()}
+        ${this.renderDeploymentDetailsDrawer()}
+        ${this.renderStatefulSetDetailsDrawer()}
+        ${this.renderDaemonSetDetailsDrawer()}
         ${this.renderNotifications()}
       </div>
     `;
@@ -1982,6 +2482,15 @@ renderPodDetailContent(data: any) {
       }
       if (this.showCrdDetails) {
         this.showCrdDetails = false;
+      }
+      if (this.showDeploymentDetails) {
+        this.showDeploymentDetails = false;
+      }
+      if (this.showStatefulSetDetails) {
+        this.showStatefulSetDetails = false;
+      }
+      if (this.showDaemonSetDetails) {
+        this.showDaemonSetDetails = false;
       }
       this.requestUpdate();
     }
@@ -2956,12 +3465,21 @@ renderPodDetailContent(data: any) {
       case 'CRD':
         this.viewCrdDetails(item);
         break;
+      case 'Deployment':
+        this.viewDeploymentDetails(item);
+        break;
+      case 'StatefulSet':
+        this.viewStatefulSetDetails(item);
+        break;
+      case 'DaemonSet':
+        this.viewDaemonSetDetails(item);
+        break;
       default:
         console.log('View details not implemented for type:', item.type);
         this.showNotification(
           'info',
           'Feature Not Available',
-          `Detailed view for ${item.type} resources is not implemented yet. Only Pod and CRD details are currently supported.`
+          `Detailed view for ${item.type} resources is not implemented yet. Only Pod, Deployment, CRD, and StatefulSet details are currently supported.`
         );
         break;
     }
@@ -3023,6 +3541,96 @@ renderPodDetailContent(data: any) {
           'error',
           'Failed to Load CRD Details',
           `Unable to fetch details for CRD "${crd.name}": ${error.message || 'Unknown error occurred'}`
+        );
+      });
+  }
+
+  viewDeploymentDetails(deployment) {
+    console.log('Fetching deployment details for:', deployment.name, 'in namespace:', deployment.namespace);
+    this.loadingDeploymentDetails = true;
+    this.showDeploymentDetails = true;
+    this.selectedDeployment = null;
+    this.requestUpdate();
+
+    const url = `/kubernetes/deployments/${deployment.namespace}/${deployment.name}`;
+    console.log('Making API request to:', url);
+
+    Api.get(url)
+      .then(response => {
+        console.log('Deployment details response:', response);
+        this.selectedDeployment = response;
+        this.loadingDeploymentDetails = false;
+        this.requestUpdate();
+      })
+      .catch(error => {
+        console.error('Failed to fetch deployment details:', error);
+        this.loadingDeploymentDetails = false;
+        this.showDeploymentDetails = false;
+        this.requestUpdate();
+        this.showNotification(
+          'error',
+          'Failed to Load Deployment Details',
+          `Unable to fetch details for deployment "${deployment.name}": ${error.message || 'Unknown error occurred'}`
+        );
+      });
+  }
+
+  viewStatefulSetDetails(statefulSet) {
+    console.log('Fetching statefulset details for:', statefulSet.name, 'in namespace:', statefulSet.namespace);
+    this.loadingStatefulSetDetails = true;
+    this.showStatefulSetDetails = true;
+    this.selectedStatefulSet = null;
+    this.requestUpdate();
+
+    const url = `/kubernetes/statefulsets/${statefulSet.namespace}/${statefulSet.name}`;
+    console.log('Making API request to:', url);
+
+    Api.get(url)
+      .then(response => {
+        console.log('StatefulSet details response:', response);
+        this.selectedStatefulSet = response;
+        this.loadingStatefulSetDetails = false;
+        this.requestUpdate();
+      })
+      .catch(error => {
+        console.error('Failed to fetch statefulset details:', error);
+        this.loadingStatefulSetDetails = false;
+        this.showStatefulSetDetails = false;
+        this.requestUpdate();
+        this.showNotification(
+          'error',
+          'Failed to Load StatefulSet Details',
+          `Unable to fetch details for statefulset "${statefulSet.name}": ${error.message || 'Unknown error occurred'}`
+        );
+      });
+  }
+
+  viewDaemonSetDetails(daemonSet) {
+    console.log('Fetching daemonset details for:', daemonSet.name, 'in namespace:', daemonSet.namespace);
+    this.loadingDaemonSetDetails = true;
+    this.showDaemonSetDetails = true;
+    this.selectedDaemonSet = null;
+    this.requestUpdate();
+
+    const url = `/kubernetes/daemonsets/${daemonSet.namespace}/${daemonSet.name}`;
+    console.log('Making API request to:', url);
+
+    Api.get(url)
+      .then(response => {
+        console.log('DaemonSet details response:', response);
+        this.selectedDaemonSet = response;
+        this.loadingDaemonSetDetails = false;
+        this.requestUpdate();
+      })
+      .catch(error => {
+        console.error('Failed to fetch daemonset details:', error);
+        this.loadingDaemonSetDetails = false;
+        this.showDaemonSetDetails = false;
+        this.requestUpdate();
+        this.showNotification(
+          'error',
+          'Failed to Load DaemonSet Details',
+          `Unable to fetch details for daemonset "${daemonSet.name}": ${error.message || 'Unknown error occurred'}`
         );
       });
   }

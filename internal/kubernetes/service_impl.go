@@ -654,20 +654,243 @@ func (s *Service) GetPodDetail(ctx context.Context, namespace, name string) (Pod
 }
 
 // GetDeploymentDetail retrieves detailed information of a specific deployment
-func (s *Service) GetDeploymentDetail(ctx context.Context, namespace, name string) (DeploymentInfo, error) {
+func (s *Service) GetDeploymentDetail(ctx context.Context, namespace, name string) (DeploymentDetail, error) {
 	deployment, err := s.client.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		return DeploymentInfo{}, fmt.Errorf("failed to get deployment details for %s/%s: %w", namespace, name, err)
+		return DeploymentDetail{}, fmt.Errorf("failed to get deployment details for %s/%s: %w", namespace, name, err)
 	}
 
-	return DeploymentInfo{
-		Name:      deployment.Name,
-		Namespace: deployment.Namespace,
-		Ready:     fmt.Sprintf("%d/%d", deployment.Status.ReadyReplicas, deployment.Status.Replicas),
-		UpToDate:  deployment.Status.UpdatedReplicas,
-		Available: deployment.Status.AvailableReplicas,
-		Age:       calculateAge(deployment.CreationTimestamp.Time),
-		Labels:    deployment.Labels,
+	// Convert containers
+	containers := make([]ContainerSpec, len(deployment.Spec.Template.Spec.Containers))
+	for i, c := range deployment.Spec.Template.Spec.Containers {
+		// Convert ports
+		ports := make([]ContainerPort, len(c.Ports))
+		for j, p := range c.Ports {
+			ports[j] = ContainerPort{
+				Name:          p.Name,
+				HostPort:      p.HostPort,
+				ContainerPort: p.ContainerPort,
+				Protocol:      string(p.Protocol),
+				HostIP:        p.HostIP,
+			}
+		}
+
+		// Convert environment variables
+		env := make([]EnvironmentVariable, len(c.Env))
+		for j, e := range c.Env {
+			var valueFrom interface{}
+			if e.ValueFrom != nil {
+				valueFrom = e.ValueFrom
+			}
+			env[j] = EnvironmentVariable{
+				Name:      e.Name,
+				Value:     e.Value,
+				ValueFrom: valueFrom,
+			}
+		}
+
+		// Convert volume mounts
+		volumeMounts := make([]VolumeMount, len(c.VolumeMounts))
+		for j, v := range c.VolumeMounts {
+			volumeMounts[j] = VolumeMount{
+				Name:             v.Name,
+				ReadOnly:         v.ReadOnly,
+				MountPath:        v.MountPath,
+				MountPropagation: string(safeDeref(v.MountPropagation, "")),
+				SubPath:          v.SubPath,
+				SubPathExpr:      v.SubPathExpr,
+			}
+		}
+
+		// Convert resources
+		resources := ResourceRequirements{
+			Limits:   make(map[string]string),
+			Requests: make(map[string]string),
+		}
+		for k, v := range c.Resources.Limits {
+			resources.Limits[string(k)] = v.String()
+		}
+		for k, v := range c.Resources.Requests {
+			resources.Requests[string(k)] = v.String()
+		}
+
+		containers[i] = ContainerSpec{
+			Name:                     c.Name,
+			Image:                    c.Image,
+			Command:                  c.Command,
+			Args:                     c.Args,
+			WorkingDir:               c.WorkingDir,
+			Ports:                    ports,
+			Env:                      env,
+			Resources:                resources,
+			VolumeMounts:             volumeMounts,
+			ImagePullPolicy:          string(c.ImagePullPolicy),
+			TerminationMessagePath:   c.TerminationMessagePath,
+			TerminationMessagePolicy: string(c.TerminationMessagePolicy),
+		}
+
+		// Store probe information as interface{} to preserve structure
+		if c.LivenessProbe != nil {
+			containers[i].LivenessProbe = c.LivenessProbe
+		}
+		if c.ReadinessProbe != nil {
+			containers[i].ReadinessProbe = c.ReadinessProbe
+		}
+		if c.StartupProbe != nil {
+			containers[i].StartupProbe = c.StartupProbe
+		}
+		if c.SecurityContext != nil {
+			containers[i].SecurityContext = c.SecurityContext
+		}
+	}
+
+	// Convert init containers
+	initContainers := make([]ContainerSpec, len(deployment.Spec.Template.Spec.InitContainers))
+	for i, c := range deployment.Spec.Template.Spec.InitContainers {
+		// Similar conversion as above - simplified for brevity
+		initContainers[i] = ContainerSpec{
+			Name:  c.Name,
+			Image: c.Image,
+		}
+	}
+
+	// Convert volumes to interface{} to preserve their structure
+	volumes := make([]interface{}, len(deployment.Spec.Template.Spec.Volumes))
+	for i, v := range deployment.Spec.Template.Spec.Volumes {
+		volumes[i] = v
+	}
+
+	// Convert image pull secrets
+	imagePullSecrets := make([]map[string]string, len(deployment.Spec.Template.Spec.ImagePullSecrets))
+	for i, s := range deployment.Spec.Template.Spec.ImagePullSecrets {
+		imagePullSecrets[i] = map[string]string{"name": s.Name}
+	}
+
+	// Convert tolerations
+	tolerations := make([]map[string]interface{}, len(deployment.Spec.Template.Spec.Tolerations))
+	for i, t := range deployment.Spec.Template.Spec.Tolerations {
+		tolerations[i] = map[string]interface{}{
+			"key":               t.Key,
+			"operator":          string(t.Operator),
+			"value":             t.Value,
+			"effect":            string(t.Effect),
+			"tolerationSeconds": t.TolerationSeconds,
+		}
+	}
+
+	// Build pod template spec
+	podTemplate := PodTemplateSpec{}
+	podTemplate.Metadata.Labels = deployment.Spec.Template.Labels
+	podTemplate.Metadata.Annotations = deployment.Spec.Template.Annotations
+	podTemplate.Spec.Containers = containers
+	podTemplate.Spec.InitContainers = initContainers
+	podTemplate.Spec.Volumes = volumes
+	podTemplate.Spec.ServiceAccountName = deployment.Spec.Template.Spec.ServiceAccountName
+	podTemplate.Spec.ImagePullSecrets = imagePullSecrets
+	podTemplate.Spec.Hostname = deployment.Spec.Template.Spec.Hostname
+	podTemplate.Spec.Subdomain = deployment.Spec.Template.Spec.Subdomain
+	podTemplate.Spec.SchedulerName = deployment.Spec.Template.Spec.SchedulerName
+	podTemplate.Spec.Tolerations = tolerations
+	podTemplate.Spec.PriorityClassName = deployment.Spec.Template.Spec.PriorityClassName
+	podTemplate.Spec.Priority = deployment.Spec.Template.Spec.Priority
+	podTemplate.Spec.DNSPolicy = string(deployment.Spec.Template.Spec.DNSPolicy)
+	podTemplate.Spec.RestartPolicy = string(deployment.Spec.Template.Spec.RestartPolicy)
+	podTemplate.Spec.NodeSelector = deployment.Spec.Template.Spec.NodeSelector
+	podTemplate.Spec.NodeName = deployment.Spec.Template.Spec.NodeName
+	podTemplate.Spec.HostNetwork = deployment.Spec.Template.Spec.HostNetwork
+	podTemplate.Spec.HostPID = deployment.Spec.Template.Spec.HostPID
+	podTemplate.Spec.HostIPC = deployment.Spec.Template.Spec.HostIPC
+	podTemplate.Spec.ShareProcessNamespace = deployment.Spec.Template.Spec.ShareProcessNamespace
+	podTemplate.Spec.TerminationGracePeriodSeconds = deployment.Spec.Template.Spec.TerminationGracePeriodSeconds
+	podTemplate.Spec.ActiveDeadlineSeconds = deployment.Spec.Template.Spec.ActiveDeadlineSeconds
+	podTemplate.Spec.RuntimeClassName = deployment.Spec.Template.Spec.RuntimeClassName
+	podTemplate.Spec.EnableServiceLinks = deployment.Spec.Template.Spec.EnableServiceLinks
+	podTemplate.Spec.PreemptionPolicy = (*string)(deployment.Spec.Template.Spec.PreemptionPolicy)
+
+	// Store complex fields as interface{} to preserve structure
+	if deployment.Spec.Template.Spec.SecurityContext != nil {
+		podTemplate.Spec.SecurityContext = deployment.Spec.Template.Spec.SecurityContext
+	}
+	if deployment.Spec.Template.Spec.Affinity != nil {
+		podTemplate.Spec.Affinity = deployment.Spec.Template.Spec.Affinity
+	}
+	if deployment.Spec.Template.Spec.DNSConfig != nil {
+		podTemplate.Spec.DNSConfig = deployment.Spec.Template.Spec.DNSConfig
+	}
+
+	// Convert selector
+	selector := LabelSelector{
+		MatchLabels: deployment.Spec.Selector.MatchLabels,
+	}
+	if len(deployment.Spec.Selector.MatchExpressions) > 0 {
+		selector.MatchExpressions = make([]map[string]interface{}, len(deployment.Spec.Selector.MatchExpressions))
+		for i, expr := range deployment.Spec.Selector.MatchExpressions {
+			selector.MatchExpressions[i] = map[string]interface{}{
+				"key":      expr.Key,
+				"operator": string(expr.Operator),
+				"values":   expr.Values,
+			}
+		}
+	}
+
+	// Convert strategy
+	strategy := DeploymentStrategy{
+		Type: string(deployment.Spec.Strategy.Type),
+	}
+	if deployment.Spec.Strategy.RollingUpdate != nil {
+		strategy.RollingUpdate = deployment.Spec.Strategy.RollingUpdate
+	}
+
+	// Build deployment spec
+	spec := DeploymentSpec{
+		Replicas:                deployment.Spec.Replicas,
+		Selector:                selector,
+		Template:                podTemplate,
+		Strategy:                strategy,
+		MinReadySeconds:         deployment.Spec.MinReadySeconds,
+		RevisionHistoryLimit:    deployment.Spec.RevisionHistoryLimit,
+		Paused:                  deployment.Spec.Paused,
+		ProgressDeadlineSeconds: deployment.Spec.ProgressDeadlineSeconds,
+	}
+
+	// Convert deployment conditions
+	conditions := make([]DeploymentCondition, len(deployment.Status.Conditions))
+	for i, c := range deployment.Status.Conditions {
+		conditions[i] = DeploymentCondition{
+			Type:               string(c.Type),
+			Status:             string(c.Status),
+			LastUpdateTime:     c.LastUpdateTime.Time,
+			LastTransitionTime: c.LastTransitionTime.Time,
+			Reason:             c.Reason,
+			Message:            c.Message,
+		}
+	}
+
+	// Build deployment status
+	status := DeploymentStatus{
+		ObservedGeneration:  deployment.Status.ObservedGeneration,
+		Replicas:            deployment.Status.Replicas,
+		UpdatedReplicas:     deployment.Status.UpdatedReplicas,
+		ReadyReplicas:       deployment.Status.ReadyReplicas,
+		AvailableReplicas:   deployment.Status.AvailableReplicas,
+		UnavailableReplicas: deployment.Status.UnavailableReplicas,
+		Conditions:          conditions,
+		CollisionCount:      deployment.Status.CollisionCount,
+	}
+
+	// Build the complete deployment detail
+	return DeploymentDetail{
+		Name:              deployment.Name,
+		Namespace:         deployment.Namespace,
+		UID:               string(deployment.UID),
+		ResourceVersion:   deployment.ResourceVersion,
+		Generation:        deployment.Generation,
+		CreationTimestamp: deployment.CreationTimestamp.Time,
+		Labels:            deployment.Labels,
+		Annotations:       deployment.Annotations,
+		Spec:              spec,
+		Status:            status,
+		Age:               calculateAge(deployment.CreationTimestamp.Time),
 	}, nil
 }
 
@@ -1020,6 +1243,14 @@ func createServiceWithConfig(config *rest.Config) (*Service, error) {
 		nodeName:             nodeName,
 		isControlPlane:       isControlPlane,
 	}, nil
+}
+
+// safeDeref safely dereferences a pointer, returning the value or a default
+func safeDeref[T any](ptr *T, defaultValue T) T {
+	if ptr == nil {
+		return defaultValue
+	}
+	return *ptr
 }
 
 // isKubernetesInstalled checks if Kubernetes is installed on the system

@@ -28,7 +28,7 @@ type KubernetesService interface {
 	GetCRDObjectDetail(ctx context.Context, crdName, objectName, namespace string) (CRDObjectDetail, error)
 	GetPodDetail(ctx context.Context, namespace, name string) (PodDetail, error)
 	GetClusterInfo(ctx context.Context, opts interface{}) (ClusterInfo, error)
-	GetDeploymentDetail(ctx context.Context, namespace, name string) (DeploymentInfo, error)
+	GetDeploymentDetail(ctx context.Context, namespace, name string) (DeploymentDetail, error)
 	GetServiceDetail(ctx context.Context, namespace, name string) (ServiceInfo, error)
 	GetIngressDetail(ctx context.Context, namespace, name string) (IngressInfo, error)
 	GetPVCDetail(ctx context.Context, namespace, name string) (PVCInfo, error)

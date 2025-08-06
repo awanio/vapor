@@ -7054,7 +7054,7 @@ components:
         - type: object
           properties:
             data:
-              $ref: '#/components/schemas/DeploymentInfo'
+              $ref: '#/components/schemas/DeploymentDetail'
 
     ServiceDetailResponse:
       allOf:
@@ -7287,3 +7287,308 @@ components:
         message:
           type: string
           description: Condition message
+
+    DeploymentDetail:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Deployment name
+        namespace:
+          type: string
+          description: Deployment namespace
+        uid:
+          type: string
+          description: Deployment UID
+        creationTimestamp:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+          description: Deployment labels
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+          description: Deployment annotations
+        age:
+          type: string
+          description: Age of the deployment
+        spec:
+          type: object
+          properties:
+            replicas:
+              type: integer
+              description: Number of desired pods
+            selector:
+              type: object
+              properties:
+                matchLabels:
+                  type: object
+                  additionalProperties:
+                    type: string
+                  description: Label selector for pods
+                matchExpressions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      key:
+                        type: string
+                      operator:
+                        type: string
+                      values:
+                        type: array
+                        items:
+                          type: string
+                  description: Label selector expressions
+            strategy:
+              type: object
+              properties:
+                type:
+                  type: string
+                  description: Type of deployment strategy
+                  enum: [Recreate, RollingUpdate]
+                rollingUpdate:
+                  type: object
+                  properties:
+                    maxUnavailable:
+                      type: string
+                      description: Maximum number of pods that can be unavailable during update
+                    maxSurge:
+                      type: string
+                      description: Maximum number of pods that can be created over the desired number
+                  description: Rolling update configuration
+              description: Deployment strategy
+            revisionHistoryLimit:
+              type: integer
+              description: Number of old ReplicaSets to retain
+            progressDeadlineSeconds:
+              type: integer
+              description: Maximum time in seconds for a deployment to make progress
+            paused:
+              type: boolean
+              description: Whether the deployment is paused
+        status:
+          type: object
+          properties:
+            replicas:
+              type: integer
+              description: Total number of non-terminated pods targeted
+            updatedReplicas:
+              type: integer
+              description: Total number of non-terminated pods targeted with desired template spec
+            readyReplicas:
+              type: integer
+              description: Total number of ready pods targeted
+            availableReplicas:
+              type: integer
+              description: Total number of available pods targeted
+            unavailableReplicas:
+              type: integer
+              description: Total number of unavailable pods targeted
+            observedGeneration:
+              type: integer
+              description: Most recent generation observed
+          description: Deployment status
+        containers:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                description: Container name
+              image:
+                type: string
+                description: Container image
+              command:
+                type: array
+                items:
+                  type: string
+                description: Container command
+              args:
+                type: array
+                items:
+                  type: string
+                description: Container arguments
+              workingDir:
+                type: string
+                description: Container working directory
+              ports:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    containerPort:
+                      type: integer
+                    protocol:
+                      type: string
+                description: Container ports
+              env:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    value:
+                      type: string
+                    valueFrom:
+                      type: object
+                description: Environment variables
+              resources:
+                type: object
+                properties:
+                  limits:
+                    type: object
+                    additionalProperties:
+                      type: string
+                  requests:
+                    type: object
+                    additionalProperties:
+                      type: string
+                description: Resource requirements
+              volumeMounts:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    mountPath:
+                      type: string
+                    readOnly:
+                      type: boolean
+                    subPath:
+                      type: string
+                description: Volume mounts
+              livenessProbe:
+                type: object
+                description: Liveness probe configuration
+              readinessProbe:
+                type: object
+                description: Readiness probe configuration
+              startupProbe:
+                type: object
+                description: Startup probe configuration
+              imagePullPolicy:
+                type: string
+                description: Image pull policy
+                enum: [Always, Never, IfNotPresent]
+          description: Container specifications
+        initContainers:
+          type: array
+          items:
+            type: object
+          description: Init container specifications
+        volumes:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                description: Volume name
+              configMap:
+                type: object
+                properties:
+                  name:
+                    type: string
+                description: ConfigMap volume source
+              secret:
+                type: object
+                properties:
+                  secretName:
+                    type: string
+                description: Secret volume source
+              persistentVolumeClaim:
+                type: object
+                properties:
+                  claimName:
+                    type: string
+                description: PVC volume source
+              hostPath:
+                type: object
+                properties:
+                  path:
+                    type: string
+                description: HostPath volume source
+              emptyDir:
+                type: object
+                description: EmptyDir volume source
+          description: Pod volumes
+        strategy:
+          type: object
+          properties:
+            type:
+              type: string
+              description: Type of deployment strategy
+              enum: [Recreate, RollingUpdate]
+            rollingUpdate:
+              type: object
+              properties:
+                maxUnavailable:
+                  type: string
+                  description: Maximum number of pods that can be unavailable
+                maxSurge:
+                  type: string
+                  description: Maximum number of pods that can be created over desired
+          description: Update strategy
+        conditions:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                description: Type of deployment condition
+              status:
+                type: string
+                description: Status of the condition
+                enum: ["True", "False", "Unknown"]
+              lastUpdateTime:
+                type: string
+                format: date-time
+                description: Last time the condition was updated
+              lastTransitionTime:
+                type: string
+                format: date-time
+                description: Last time the condition transitioned
+              reason:
+                type: string
+                description: Reason for the condition's last transition
+              message:
+                type: string
+                description: Human-readable message about the transition
+          description: Current conditions
+        podTemplate:
+          type: object
+          properties:
+            restartPolicy:
+              type: string
+              description: Restart policy for pods
+              enum: [Always, OnFailure, Never]
+            dnsPolicy:
+              type: string
+              description: DNS policy for pods
+            serviceAccountName:
+              type: string
+              description: Service account name
+            securityContext:
+              type: object
+              description: Pod security context
+            affinity:
+              type: object
+              description: Pod affinity rules
+            tolerations:
+              type: array
+              items:
+                type: object
+              description: Pod tolerations
+          description: Pod template specification
