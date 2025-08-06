@@ -48,4 +48,8 @@ type KubernetesService interface {
 	GetJobDetail(ctx context.Context, namespace, name string) (*batchv1.Job, error)
 	GetCronJobDetail(ctx context.Context, namespace, name string) (*batchv1.CronJob, error)
 	GetRESTConfig() (*rest.Config, error)
+	// Pod management methods
+	GetPodLogs(ctx context.Context, namespace, name string, follow bool, lines *int64) (string, error)
+	DeletePod(ctx context.Context, namespace, name string) error
+	ApplyPod(ctx context.Context, pod *corev1.Pod) (*corev1.Pod, error)
 }

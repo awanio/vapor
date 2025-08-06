@@ -864,3 +864,77 @@ func isKubernetesInstalled() bool {
 
 	return false
 }
+
+// GetPodLogs retrieves logs from a specific pod
+func (s *Service) GetPodLogs(ctx context.Context, namespace, name string, follow bool, lines *int64) (string, error) {
+	req := s.client.CoreV1().Pods(namespace).GetLogs(name, &corev1.PodLogOptions{
+		Follow: follow,
+		TailLines: lines,
+	})
+	
+	logStream, err := req.Stream(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to get pod logs: %w", err)
+	}
+	defer logStream.Close()
+	
+	buf := make([]byte, 2048)
+	var logs string
+	
+	for {
+		n, err := logStream.Read(buf)
+		if err != nil {
+			if err.Error() == "EOF" {
+				break
+			}
+			return logs, fmt.Errorf("error reading log stream: %w", err)
+		}
+		if n > 0 {
+			logs += string(buf[:n])
+		}
+		if !follow {
+			continue
+		}
+	}
+	
+	return logs, nil
+}
+
+// DeletePod deletes a specific pod
+func (s *Service) DeletePod(ctx context.Context, namespace, name string) error {
+	err := s.client.CoreV1().Pods(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to delete pod: %w", err)
+	}
+	return nil
+}
+
+// ApplyPod creates or updates a pod using server-side apply
+func (s *Service) ApplyPod(ctx context.Context, pod *corev1.Pod) (*corev1.Pod, error) {
+	// Ensure the pod has the required fields
+	if pod.Name == "" {
+		return nil, fmt.Errorf("pod name is required")
+	}
+	if pod.Namespace == "" {
+		pod.Namespace = "default"
+	}
+	
+	// Try to get the existing pod first
+	_, err := s.client.CoreV1().Pods(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
+	if err != nil {
+		// Pod doesn't exist, create it
+		createdPod, err := s.client.CoreV1().Pods(pod.Namespace).Create(ctx, pod, metav1.CreateOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create pod: %w", err)
+		}
+		return createdPod, nil
+	}
+	
+	// Pod exists, update it
+	updatedPod, err := s.client.CoreV1().Pods(pod.Namespace).Update(ctx, pod, metav1.UpdateOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to update pod: %w", err)
+	}
+	
+	return updatedPod, nil
+}

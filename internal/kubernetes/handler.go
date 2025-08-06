@@ -1,10 +1,16 @@
 package kubernetes
 
 import (
+	"encoding/json"
+	"io"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/awanio/vapor/internal/common"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/yaml"
 )
 
 // Handler represents the HTTP handler for Kubernetes operations
@@ -363,6 +369,107 @@ func (h *Handler) GetClusterInfoGin(c *gin.Context) {
 		return
 	}
 	common.SendSuccess(c, gin.H{"cluster_info": clusterInfo})
+}
+
+// GetPodLogsGin handles retrieving pod logs
+func (h *Handler) GetPodLogsGin(c *gin.Context) {
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+	
+	// Parse query parameters
+	follow := c.DefaultQuery("follow", "false") == "true"
+	linesStr := c.DefaultQuery("lines", "100")
+	var lines *int64
+	if linesStr != "" {
+		l, err := strconv.ParseInt(linesStr, 10, 64)
+		if err == nil && l > 0 {
+			lines = &l
+		}
+	}
+	
+	logs, err := h.service.GetPodLogs(c.Request.Context(), namespace, name, follow, lines)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get pod logs", err.Error())
+		return
+	}
+	common.SendSuccess(c, gin.H{"logs": logs})
+}
+
+// DeletePodGin handles pod deletion
+func (h *Handler) DeletePodGin(c *gin.Context) {
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+	
+	err := h.service.DeletePod(c.Request.Context(), namespace, name)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to delete pod", err.Error())
+		return
+	}
+	common.SendSuccess(c, gin.H{"message": "Pod deleted successfully"})
+}
+
+// ApplyPodGin handles pod creation/update using apply
+// Supports both JSON and YAML content types
+func (h *Handler) ApplyPodGin(c *gin.Context) {
+	contentType := c.GetHeader("Content-Type")
+	contentType = strings.ToLower(strings.TrimSpace(contentType))
+	
+	// Read the raw body
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to read request body", err.Error())
+		return
+	}
+	
+	if len(body) == 0 {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Request body is empty", "Please provide a valid Pod specification")
+		return
+	}
+	
+	var pod corev1.Pod
+	
+	// Parse based on content type
+	switch {
+	case strings.Contains(contentType, "application/yaml") || strings.Contains(contentType, "text/yaml"):
+		// Parse YAML
+		err = yaml.Unmarshal(body, &pod)
+		if err != nil {
+			common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Invalid YAML pod specification", err.Error())
+			return
+		}
+	case strings.Contains(contentType, "application/json"), contentType == "":
+		// Parse JSON (default if no content type specified)
+		err = c.ShouldBindJSON(&pod)
+		if err != nil {
+			// If ShouldBindJSON fails, try manual unmarshal since body was already read
+			err = json.Unmarshal(body, &pod)
+			if err != nil {
+				common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Invalid JSON pod specification", err.Error())
+				return
+			}
+		}
+	default:
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, 
+			"Unsupported content type", 
+			"Content-Type must be 'application/json', 'application/yaml', or 'text/yaml'")
+		return
+	}
+	
+	// Validate that we have at least the required fields
+	if pod.Name == "" && pod.ObjectMeta.Name == "" {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, 
+			"Invalid pod specification", 
+			"Pod name is required in metadata.name")
+		return
+	}
+	
+	// Apply the pod
+	appliedPod, err := h.service.ApplyPod(c.Request.Context(), &pod)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to apply pod", err.Error())
+		return
+	}
+	common.SendSuccess(c, gin.H{"pod_detail": appliedPod})
 }
 
 // NoKubernetesHandler returns a handler that responds with Kubernetes not installed error

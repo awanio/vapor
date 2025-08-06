@@ -3041,6 +3041,127 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
         '503':
           $ref: '#/components/responses/KubernetesNotInstalledError'
+    post:
+      summary: Create or update a pod
+      description: |
+        Create a new pod or update an existing pod using Kubernetes apply semantics.
+        
+        Supports both JSON and YAML content types:
+        - For JSON: Set Content-Type to "application/json"
+        - For YAML: Set Content-Type to "application/yaml" or "text/yaml"
+        
+        If no Content-Type is specified, JSON is assumed by default.
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        description: Pod specification in JSON or YAML format
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PodDetail'
+            example:
+              apiVersion: v1
+              kind: Pod
+              metadata:
+                name: nginx-pod
+                namespace: default
+                labels:
+                  app: nginx
+              spec:
+                containers:
+                  - name: nginx
+                    image: nginx:latest
+                    ports:
+                      - containerPort: 80
+          application/yaml:
+            schema:
+              type: string
+              description: Pod specification in YAML format
+            example: |
+              apiVersion: v1
+              kind: Pod
+              metadata:
+                name: nginx-pod
+                namespace: default
+                labels:
+                  app: nginx
+              spec:
+                containers:
+                - name: nginx
+                  image: nginx:latest
+                  ports:
+                  - containerPort: 80
+          text/yaml:
+            schema:
+              type: string
+              description: Pod specification in YAML format
+            example: |
+              apiVersion: v1
+              kind: Pod
+              metadata:
+                name: nginx-pod
+                namespace: default
+                labels:
+                  app: nginx
+              spec:
+                containers:
+                - name: nginx
+                  image: nginx:latest
+                  ports:
+                  - containerPort: 80
+      responses:
+        '200':
+          description: Pod created or updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PodDetailResponse'
+        '400':
+          description: Invalid pod specification or unsupported content type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidYaml:
+                  summary: Invalid YAML format
+                  value:
+                    status: error
+                    error:
+                      code: INVALID_INPUT
+                      message: "Invalid YAML pod specification"
+                      details: "yaml: line 5: found character that cannot start any token"
+                invalidJson:
+                  summary: Invalid JSON format
+                  value:
+                    status: error
+                    error:
+                      code: INVALID_INPUT
+                      message: "Invalid JSON pod specification"
+                      details: "unexpected end of JSON input"
+                unsupportedContentType:
+                  summary: Unsupported content type
+                  value:
+                    status: error
+                    error:
+                      code: INVALID_INPUT
+                      message: "Unsupported content type"
+                      details: "Content-Type must be 'application/json', 'application/yaml', or 'text/yaml'"
+                missingName:
+                  summary: Missing required field
+                  value:
+                    status: error
+                    error:
+                      code: INVALID_INPUT
+                      message: "Invalid pod specification"
+                      details: "Pod name is required in metadata.name"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
 
   /kubernetes/deployments:
     get:
@@ -3360,6 +3481,110 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '503':
           $ref: '#/components/responses/KubernetesNotInstalledError'
+    delete:
+      summary: Delete a pod
+      description: Delete a specific pod from a namespace
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: Pod namespace
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          description: Pod name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Pod deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  message:
+                    type: string
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Pod not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/pods/{namespace}/{name}/logs:
+    get:
+      summary: Get pod logs
+      description: Retrieve logs from a specific pod
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: Pod namespace
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          description: Pod name
+          schema:
+            type: string
+        - name: follow
+          in: query
+          required: false
+          description: Follow the log output
+          schema:
+            type: boolean
+            default: false
+        - name: lines
+          in: query
+          required: false
+          description: Number of lines to retrieve from the end of the logs
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: Pod logs retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  logs:
+                    type: string
+                    description: Pod log output
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Pod not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
 
   /kubernetes/deployments/{namespace}/{name}:
     get:
@@ -7041,116 +7266,172 @@ components:
 
     # Kubernetes Resource Detail Response Schemas
     PodDetailResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              $ref: '#/components/schemas/PodDetail'
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, error]
+        pod_detail:
+          $ref: '#/components/schemas/PodDetail'
+        error:
+          $ref: '#/components/schemas/APIError'
+          nullable: true
 
     DeploymentDetailResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              $ref: '#/components/schemas/DeploymentDetail'
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, error]
+        deployment_detail:
+          $ref: '#/components/schemas/DeploymentDetail'
+        error:
+          $ref: '#/components/schemas/APIError'
+          nullable: true
 
     ServiceDetailResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              $ref: '#/components/schemas/ServiceDetail'
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, error]
+        service_detail:
+          $ref: '#/components/schemas/ServiceDetail'
+        error:
+          $ref: '#/components/schemas/APIError'
+          nullable: true
 
     IngressDetailResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              $ref: '#/components/schemas/IngressDetail'
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, error]
+        ingress_detail:
+          $ref: '#/components/schemas/IngressDetail'
+        error:
+          $ref: '#/components/schemas/APIError'
+          nullable: true
 
     PVCDetailResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              $ref: '#/components/schemas/PVCDetail'
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, error]
+        pvc_detail:
+          $ref: '#/components/schemas/PVCDetail'
+        error:
+          $ref: '#/components/schemas/APIError'
+          nullable: true
 
     PVDetailResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              $ref: '#/components/schemas/PVDetail'
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, error]
+        pv_detail:
+          $ref: '#/components/schemas/PVDetail'
+        error:
+          $ref: '#/components/schemas/APIError'
+          nullable: true
 
     SecretDetailResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              $ref: '#/components/schemas/SecretDetail'
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, error]
+        secret_detail:
+          $ref: '#/components/schemas/SecretDetail'
+        error:
+          $ref: '#/components/schemas/APIError'
+          nullable: true
 
     ConfigMapDetailResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              $ref: '#/components/schemas/ConfigMapDetail'
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, error]
+        configmap_detail:
+          $ref: '#/components/schemas/ConfigMapDetail'
+        error:
+          $ref: '#/components/schemas/APIError'
+          nullable: true
 
     NamespaceDetailResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              $ref: '#/components/schemas/NamespaceDetail'
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, error]
+        namespace_detail:
+          $ref: '#/components/schemas/NamespaceDetail'
+        error:
+          $ref: '#/components/schemas/APIError'
+          nullable: true
 
     NodeDetailResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              $ref: '#/components/schemas/NodeDetail'
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, error]
+        node_detail:
+          $ref: '#/components/schemas/NodeDetail'
+        error:
+          $ref: '#/components/schemas/APIError'
+          nullable: true
 
     DaemonSetDetailResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              $ref: '#/components/schemas/DaemonSetDetail'
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, error]
+        daemonset_detail:
+          $ref: '#/components/schemas/DaemonSetDetail'
+        error:
+          $ref: '#/components/schemas/APIError'
+          nullable: true
 
     StatefulSetDetailResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              $ref: '#/components/schemas/StatefulSetDetail'
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, error]
+        statefulset_detail:
+          $ref: '#/components/schemas/StatefulSetDetail'
+        error:
+          $ref: '#/components/schemas/APIError'
+          nullable: true
 
     JobDetailResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              $ref: '#/components/schemas/JobDetail'
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, error]
+        job_detail:
+          $ref: '#/components/schemas/JobDetail'
+        error:
+          $ref: '#/components/schemas/APIError'
+          nullable: true
 
     CronJobDetailResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
-          properties:
-            data:
-              $ref: '#/components/schemas/CronJobDetail'
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, error]
+        cronjob_detail:
+          $ref: '#/components/schemas/CronJobDetail'
+        error:
+          $ref: '#/components/schemas/APIError'
+          nullable: true
 
     # Pod Detail Schema - Returns raw Kubernetes Pod object
     PodDetail:

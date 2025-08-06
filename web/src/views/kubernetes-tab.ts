@@ -14,6 +14,7 @@ class KubernetesTab extends LitElement {
   @property({ type: Array }) crds = [];
   @property({ type: String }) error = null;
   @property({ type: String }) activeWorkloadTab = 'pods';
+  @property({ type: String }) activeNetworkTab = 'services';
   @property({ type: String }) activeStorageTab = 'pvc';
   @property({ type: String }) activeConfigurationTab = 'secrets';
   @property({ type: String }) activeHelmTab = 'releases';
@@ -975,6 +976,12 @@ class KubernetesTab extends LitElement {
   }
 
   renderWorkloadTable(data) {
+    if (this.loadingPodDetails || this.loadingStatefulSetDetails) {
+      console.log('Raw data in detail drawers:');
+      console.log('Pod data:', this.selectedPod);
+      console.log('StatefulSet data:', this.selectedStatefulSet);
+    }
+    
     // Check if we're showing only CronJobs or Jobs to adjust header
     const isCronJobsOnly = this.activeWorkloadTab === 'cronjobs';
     const isJobsOnly = this.activeWorkloadTab === 'jobs';
@@ -1032,44 +1039,145 @@ class KubernetesTab extends LitElement {
   }
 
   renderNetworksTable(data) {
-    return html`
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Namespace</th>
-            <th>Status</th>
-            <th>Endpoints</th>
-            <th>Age</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${data.map((item, index) => html`
+    // Check which network tab is active to render appropriate columns
+    const isServices = this.activeNetworkTab === 'services';
+    const isIngresses = this.activeNetworkTab === 'ingresses';
+    const isIngressClasses = this.activeNetworkTab === 'ingressclasses';
+    const isNetworkPolicies = this.activeNetworkTab === 'networkpolicies';
+    
+    if (isServices) {
+      return html`
+        <table class="table">
+          <thead>
             <tr>
-              <td>${item.name}</td>
-              <td>${item.type}</td>
-              <td>${item.namespace}</td>
-              <td><span class="status ${item.status.toLowerCase()}">${item.status}</span></td>
-              <td>${item.endpoints}</td>
-              <td>${item.age}</td>
-              <td>
-                <div class="action-menu">
-                  <button class="action-dots" @click=${(e) => this.toggleActionMenu(e, `k8s-networks-${index}`)}>⋮</button>
-                  <div class="action-dropdown" id="k8s-networks-${index}">
-                    <button @click=${() => { this.closeAllMenus(); this.viewDetails(item); }}>View Details</button>
-                    <button @click=${() => { this.closeAllMenus(); this.editItem(item); }}>Edit</button>
-                    <button @click=${() => { this.closeAllMenus(); this.viewEndpoints(item); }}>View Endpoints</button>
-                    <button class="danger" @click=${() => { this.closeAllMenus(); this.deleteItem(item); }}>Delete</button>
-                  </div>
-                </div>
-              </td>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Namespace</th>
+              <th>Cluster IP</th>
+              <th>External IP</th>
+              <th>Ports</th>
+              <th>Age</th>
+              <th>Actions</th>
             </tr>
-          `)}
-        </tbody>
-      </table>
-    `;
+          </thead>
+          <tbody>
+            ${data.map((item, index) => html`
+              <tr>
+                <td>
+                  <span class="pod-name-link" @click=${() => this.viewDetails(item)}>
+                    ${item.name}
+                  </span>
+                </td>
+                <td>${item.serviceType}</td>
+                <td>${item.namespace}</td>
+                <td>${item.clusterIP || '-'}</td>
+                <td>${item.externalIP || '-'}</td>
+                <td>${item.ports || '-'}</td>
+                <td>${item.age}</td>
+                <td>
+                  <div class="action-menu">
+                    <button class="action-dots" @click=${(e) => this.toggleActionMenu(e, `k8s-networks-${index}`)}>⋮</button>
+                    <div class="action-dropdown" id="k8s-networks-${index}">
+                      <button @click=${() => { this.closeAllMenus(); this.viewDetails(item); }}>View Details</button>
+                      <button @click=${() => { this.closeAllMenus(); this.editItem(item); }}>Edit</button>
+                      <button @click=${() => { this.closeAllMenus(); this.viewEndpoints(item); }}>View Endpoints</button>
+                      <button class="danger" @click=${() => { this.closeAllMenus(); this.deleteItem(item); }}>Delete</button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            `)}
+          </tbody>
+        </table>
+      `;
+    } else if (isIngresses) {
+      return html`
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Namespace</th>
+              <th>Class</th>
+              <th>Hosts</th>
+              <th>Address</th>
+              <th>Ports</th>
+              <th>Age</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.map((item, index) => html`
+              <tr>
+                <td>
+                  <span class="pod-name-link" @click=${() => this.viewDetails(item)}>
+                    ${item.name}
+                  </span>
+                </td>
+                <td>${item.namespace}</td>
+                <td>${item.ingressClass || '-'}</td>
+                <td>${item.hosts || '-'}</td>
+                <td>${item.address || '-'}</td>
+                <td>${item.ports || '-'}</td>
+                <td>${item.age}</td>
+                <td>
+                  <div class="action-menu">
+                    <button class="action-dots" @click=${(e) => this.toggleActionMenu(e, `k8s-networks-${index}`)}>⋮</button>
+                    <div class="action-dropdown" id="k8s-networks-${index}">
+                      <button @click=${() => { this.closeAllMenus(); this.viewDetails(item); }}>View Details</button>
+                      <button @click=${() => { this.closeAllMenus(); this.editItem(item); }}>Edit</button>
+                      <button class="danger" @click=${() => { this.closeAllMenus(); this.deleteItem(item); }}>Delete</button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            `)}
+          </tbody>
+        </table>
+      `;
+    } else {
+      // For IngressClasses and NetworkPolicies (not yet implemented)
+      return html`
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Namespace</th>
+              <th>Status</th>
+              <th>Age</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.length === 0 ? html`
+              <tr>
+                <td colspan="6" style="text-align: center; padding: 2rem;">
+                  ${isIngressClasses ? 'IngressClasses' : 'NetworkPolicies'} API endpoint is not yet implemented
+                </td>
+              </tr>
+            ` : data.map((item, index) => html`
+              <tr>
+                <td>${item.name}</td>
+                <td>${item.type}</td>
+                <td>${item.namespace}</td>
+                <td><span class="status ${item.status.toLowerCase()}">${item.status}</span></td>
+                <td>${item.age}</td>
+                <td>
+                  <div class="action-menu">
+                    <button class="action-dots" @click=${(e) => this.toggleActionMenu(e, `k8s-networks-${index}`)}>⋮</button>
+                    <div class="action-dropdown" id="k8s-networks-${index}">
+                      <button @click=${() => { this.closeAllMenus(); this.viewDetails(item); }}>View Details</button>
+                      <button @click=${() => { this.closeAllMenus(); this.editItem(item); }}>Edit</button>
+                      <button class="danger" @click=${() => { this.closeAllMenus(); this.deleteItem(item); }}>Delete</button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            `)}
+          </tbody>
+        </table>
+      `;
+    }
   }
 
   renderStorageTable(data) {
@@ -1298,6 +1406,11 @@ class KubernetesTab extends LitElement {
       data = this.getFilteredWorkloadData();
     }
     
+    // If viewing networks, filter by active network tab
+    if (this.activeSubmenu === 'networks') {
+      data = this.getFilteredNetworkData();
+    }
+    
     // If viewing storages, filter by active storage tab
     if (this.activeSubmenu === 'storages') {
       data = this.getFilteredStorageData();
@@ -1348,6 +1461,23 @@ class KubernetesTab extends LitElement {
     }
   }
 
+  private getFilteredNetworkData(): Array<any> {
+    const allNetworks = this.networks || [];
+    
+    switch (this.activeNetworkTab) {
+      case 'services':
+        return allNetworks.filter(item => item.type === 'Service');
+      case 'ingresses':
+        return allNetworks.filter(item => item.type === 'Ingress');
+      case 'ingressclasses':
+        return allNetworks.filter(item => item.type === 'IngressClass');
+      case 'networkpolicies':
+        return allNetworks.filter(item => item.type === 'NetworkPolicy');
+      default:
+        return allNetworks;
+    }
+  }
+
   private getFilteredStorageData(): Array<any> {
     const allStorages = this.storages || [];
     
@@ -1389,6 +1519,11 @@ class KubernetesTab extends LitElement {
 
   private handleWorkloadTabClick(tab: string) {
     this.activeWorkloadTab = tab;
+    this.requestUpdate();
+  }
+
+  private handleNetworkTabClick(tab: string) {
+    this.activeNetworkTab = tab;
     this.requestUpdate();
   }
 
@@ -1445,6 +1580,37 @@ class KubernetesTab extends LitElement {
           @click=${() => this.handleWorkloadTabClick('cronjobs')}
         >
           CronJobs
+        </button>
+      </div>
+    `;
+  }
+
+  private renderNetworkTabs() {
+    return html`
+      <div class="tab-header">
+        <button 
+          class="tab-button ${this.activeNetworkTab === 'services' ? 'active' : ''}"
+          @click=${() => this.handleNetworkTabClick('services')}
+        >
+          Services
+        </button>
+        <button 
+          class="tab-button ${this.activeNetworkTab === 'ingresses' ? 'active' : ''}"
+          @click=${() => this.handleNetworkTabClick('ingresses')}
+        >
+          Ingresses
+        </button>
+        <button 
+          class="tab-button ${this.activeNetworkTab === 'ingressclasses' ? 'active' : ''}"
+          @click=${() => this.handleNetworkTabClick('ingressclasses')}
+        >
+          IngressClasses
+        </button>
+        <button 
+          class="tab-button ${this.activeNetworkTab === 'networkpolicies' ? 'active' : ''}"
+          @click=${() => this.handleNetworkTabClick('networkpolicies')}
+        >
+          NetworkPolicies
         </button>
       </div>
     `;
@@ -1688,50 +1854,139 @@ class KubernetesTab extends LitElement {
     `;
   }
 
-  renderStatefulSetDetailContent(data: any) {
+renderStatefulSetDetailContent(data: any) {
     if (!data) {
       return html`<div class="no-data">No data available</div>`;
     }
 
-    // Handle API response structure
     const statefulSetData = data.statefulset_detail || data;
 
-    console.log('Processing statefulset data:', statefulSetData);
+    console.log('Processing stateful set data:', statefulSetData);
 
     return html`
       <div class="detail-sections">
         <!-- Basic Information -->
         <div class="detail-section">
           <h3>Basic Information</h3>
-          ${this.renderDetailItem('Name', statefulSetData.name)}
-          ${this.renderDetailItem('Namespace', statefulSetData.namespace)}
-          ${this.renderDetailItem('UID', statefulSetData.uid)}
-          ${this.renderDetailItem('Resource Version', statefulSetData.resourceVersion)}
-          ${this.renderDetailItem('Creation Timestamp', statefulSetData.creationTimestamp)}
-          ${this.renderDetailItem('Age', statefulSetData.age)}
-          ${this.renderDetailItem('Generation', statefulSetData.generation)}
+          ${this.renderDetailItem('Name', statefulSetData.metadata.name)}
+          ${this.renderDetailItem('Namespace', statefulSetData.metadata.namespace)}
+          ${this.renderDetailItem('UID', statefulSetData.metadata.uid)}
+          ${this.renderDetailItem('Resource Version', statefulSetData.metadata.resourceVersion)}
+          ${this.renderDetailItem('Creation Timestamp', statefulSetData.metadata.creationTimestamp)}
         </div>
 
         <!-- Status Information -->
         <div class="detail-section">
           <h3>Status</h3>
-          ${this.renderDetailItem('Replicas', statefulSetData.replicas)}
-          ${this.renderDetailItem('Ready Replicas', statefulSetData.readyReplicas)}
-          ${this.renderDetailItem('Current Replicas', statefulSetData.currentReplicas)}
-          ${this.renderDetailItem('Updated Replicas', statefulSetData.updatedReplicas)}
-          ${this.renderDetailItem('Observed Generation', statefulSetData.observedGeneration)}
+          ${this.renderDetailItem('Replicas', statefulSetData.status.replicas)}
+          ${this.renderDetailItem('Ready Replicas', statefulSetData.status.readyReplicas)}
+          ${this.renderDetailItem('Current Replicas', statefulSetData.status.currentReplicas)}
+          ${this.renderDetailItem('Updated Replicas', statefulSetData.status.updatedReplicas)}
         </div>
 
         <!-- Update Strategy -->
-        ${statefulSetData.updateStrategy ? html`
+        ${statefulSetData.spec.updateStrategy ? html`
           <div class="detail-section">
             <h3>Update Strategy</h3>
-            ${this.renderDetailItem('Type', statefulSetData.updateStrategy.type)}
-            ${statefulSetData.updateStrategy.rollingUpdate ? html`
+            ${this.renderDetailItem('Type', statefulSetData.spec.updateStrategy.type)}
+            ${statefulSetData.spec.updateStrategy.rollingUpdate ? html`
               <div class="detail-item nested">
                 <strong class="detail-key">Rolling Update:</strong>
                 <div class="nested-content">
-                  ${this.renderDetailItem('Partition', statefulSetData.updateStrategy.rollingUpdate.partition)}
+                  ${this.renderDetailItem('Partition', statefulSetData.spec.updateStrategy.rollingUpdate.partition)}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        ` : ''}
+
+        <!-- Labels -->
+        ${statefulSetData.metadata.labels ? html`
+          <div class="detail-section">
+            <h3>Labels</h3>
+            ${this.renderObjectAsKeyValue(statefulSetData.metadata.labels)}
+          </div>
+        ` : ''}
+
+        <!-- Annotations -->
+        ${statefulSetData.metadata.annotations ? html`
+          <div class="detail-section">
+            <h3>Annotations</h3>
+            ${this.renderObjectAsKeyValue(statefulSetData.metadata.annotations)}
+          </div>
+        ` : ''}
+
+        <!-- Pod Template -->
+        ${statefulSetData.spec.template ? html`
+          <div class="detail-section">
+            <h3>Pod Template</h3>
+            ${statefulSetData.spec.template.metadata?.labels ? 
+              this.renderDetailItem('Pod Labels', statefulSetData.spec.template.metadata.labels, true) : ''}
+            ${statefulSetData.spec.template.spec?.containers ? html`
+              ${statefulSetData.spec.template.spec.containers.map((container) => html`
+                <div class="detail-item nested">
+                  <strong class="detail-key">Container:</strong>
+                  <div class="nested-content">
+                    ${this.renderDetailItem('Name', container.name)}
+                    ${this.renderDetailItem('Image', container.image)}
+                  </div>
+                </div>
+              `)}
+            ` : ''}
+          </div>
+        ` : ''}
+
+        <!-- Raw Data -->
+        <div class="detail-section">
+          <h3>Raw Data</h3>
+          <details>
+            <summary>View raw stateful set data</summary>
+            <pre class="raw-data">${JSON.stringify(statefulSetData, null, 2)}</pre>
+          </details>
+        </div>
+      </div>
+    `;
+  }
+renderDaemonSetDetailContent(data: any) {
+    if (!data) {
+      return html`<div class="no-data">No data available</div>`;
+    }
+
+    const daemonSetData = data.daemonset_detail || data;
+
+    console.log('Processing daemon set data:', daemonSetData);
+
+    return html`
+      <div class="detail-sections">
+        <!-- Basic Information -->
+        <div class="detail-section">
+          <h3>Basic Information</h3>
+          ${this.renderDetailItem('Name', daemonSetData.metadata.name)}
+          ${this.renderDetailItem('Namespace', daemonSetData.metadata.namespace)}
+          ${this.renderDetailItem('UID', daemonSetData.metadata.uid)}
+          ${this.renderDetailItem('Resource Version', daemonSetData.metadata.resourceVersion)}
+          ${this.renderDetailItem('Creation Timestamp', daemonSetData.metadata.creationTimestamp)}
+        </div>
+
+<!-- Status Information -->
+        <div class="detail-section">
+          <h3>Status</h3>
+          ${this.renderDetailItem('Current Number Scheduled', daemonSetData.status.currentNumberScheduled)}
+          ${this.renderDetailItem('Number Ready', daemonSetData.status.numberReady)}
+          ${this.renderDetailItem('Desired Number Scheduled', daemonSetData.status.desiredNumberScheduled)}
+          ${this.renderDetailItem('Number Misscheduled', daemonSetData.status.numberMisscheduled)}
+        </div>
+
+        <!-- Update Strategy -->
+        ${daemonSetData.spec.updateStrategy ? html`
+          <div class="detail-section">
+            <h3>Update Strategy</h3>
+            ${this.renderDetailItem('Type', daemonSetData.spec.updateStrategy.type)}
+            ${daemonSetData.spec.updateStrategy.rollingUpdate ? html`
+              <div class="detail-item nested">
+                <strong class="detail-key">Rolling Update:</strong>
+                <div class="nested-content">
+                  ${this.renderDetailItem('Max Unavailable', daemonSetData.spec.updateStrategy.rollingUpdate.maxUnavailable)}
                 </div>
               </div>
             ` : ''}
@@ -1823,41 +2078,120 @@ class KubernetesTab extends LitElement {
     `;
   }
 
-  renderDaemonSetDetailContent(data: any) {
+renderDaemonSetDetailContent(data: any) {
     if (!data) {
       return html`<div class="no-data">No data available</div>`;
     }
 
-    // Handle API response structure
     const daemonSetData = data.daemonset_detail || data;
 
-    console.log('Processing daemonset data:', daemonSetData);
+    console.log('Processing daemon set data:', daemonSetData);
 
     return html`
       <div class="detail-sections">
         <!-- Basic Information -->
         <div class="detail-section">
           <h3>Basic Information</h3>
-          ${this.renderDetailItem('Name', daemonSetData.name)}
-          ${this.renderDetailItem('Namespace', daemonSetData.namespace)}
-          ${this.renderDetailItem('UID', daemonSetData.uid)}
-          ${this.renderDetailItem('Resource Version', daemonSetData.resourceVersion)}
-          ${this.renderDetailItem('Creation Timestamp', daemonSetData.creationTimestamp)}
-          ${this.renderDetailItem('Age', daemonSetData.age)}
-          ${this.renderDetailItem('Generation', daemonSetData.generation)}
+          ${this.renderDetailItem('Name', daemonSetData.metadata.name)}
+          ${this.renderDetailItem('Namespace', daemonSetData.metadata.namespace)}
+          ${this.renderDetailItem('UID', daemonSetData.metadata.uid)}
+          ${this.renderDetailItem('Resource Version', daemonSetData.metadata.resourceVersion)}
+          ${this.renderDetailItem('Creation Timestamp', daemonSetData.metadata.creationTimestamp)}
         </div>
 
         <!-- Status Information -->
         <div class="detail-section">
           <h3>Status</h3>
-          ${this.renderDetailItem('Current Number Scheduled', daemonSetData.currentNumberScheduled)}
-          ${this.renderDetailItem('Desired Number Scheduled', daemonSetData.desiredNumberScheduled)}
-          ${this.renderDetailItem('Number Ready', daemonSetData.numberReady)}
-          ${this.renderDetailItem('Number Available', daemonSetData.numberAvailable)}
-          ${this.renderDetailItem('Number Unavailable', daemonSetData.numberUnavailable)}
-          ${this.renderDetailItem('Number Misscheduled', daemonSetData.numberMisscheduled)}
-          ${this.renderDetailItem('Updated Number Scheduled', daemonSetData.updatedNumberScheduled)}
-          ${this.renderDetailItem('Observed Generation', daemonSetData.observedGeneration)}
+          ${this.renderDetailItem('Current Number Scheduled', daemonSetData.status.currentNumberScheduled)}
+          ${this.renderDetailItem('Number Ready', daemonSetData.status.numberReady)}
+          ${this.renderDetailItem('Desired Number Scheduled', daemonSetData.status.desiredNumberScheduled)}
+        </div>
+
+        <!-- Update Strategy -->
+        ${daemonSetData.spec.updateStrategy ? html`
+          <div class="detail-section">
+            <h3>Update Strategy</h3>
+            ${this.renderDetailItem('Type', daemonSetData.spec.updateStrategy.type)}
+          </div>
+        ` : ''}
+
+        <!-- Labels -->
+        ${daemonSetData.metadata.labels ? html`
+          <div class="detail-section">
+            <h3>Labels</h3>
+            ${this.renderObjectAsKeyValue(daemonSetData.metadata.labels)}
+          </div>
+        ` : ''}
+
+        <!-- Annotations -->
+        ${daemonSetData.metadata.annotations ? html`
+          <div class="detail-section">
+            <h3>Annotations</h3>
+            ${this.renderObjectAsKeyValue(daemonSetData.metadata.annotations)}
+          </div>
+        ` : ''}
+
+        <!-- Pod Template -->
+        ${daemonSetData.spec.template ? html`
+          <div class="detail-section">
+            <h3>Pod Template</h3>
+            ${daemonSetData.spec.template.metadata?.labels ? 
+              this.renderDetailItem('Pod Labels', daemonSetData.spec.template.metadata.labels, true) : ''}
+            ${daemonSetData.spec.template.spec?.containers ? html`
+              ${daemonSetData.spec.template.spec.containers.map((container) => html`
+                <div class="detail-item nested">
+                  <strong class="detail-key">Container:</strong>
+                  <div class="nested-content">
+                    ${this.renderDetailItem('Name', container.name)}
+                    ${this.renderDetailItem('Image', container.image)}
+                  </div>
+                </div>
+              `)}
+            ` : ''}
+          </div>
+        ` : ''}
+
+        <!-- Raw Data -->
+        <div class="detail-section">
+          <h3>Raw Data</h3>
+          <details>
+            <summary>View raw daemon set data</summary>
+            <pre class="raw-data">${JSON.stringify(daemonSetData, null, 2)}</pre>
+          </details>
+        </div>
+      </div>
+    `;
+  }
+  
+renderJobDetailContent(data: any) {
+    if (!data) {
+      return html`<div class="no-data">No data available</div>`;
+    }
+
+    const jobData = data.job_detail || data;
+
+    console.log('Processing job data:', jobData);
+
+    return html`
+      <div class="detail-sections">
+        <!-- Basic Information -->
+        <div class="detail-section">
+          <h3>Basic Information</h3>
+          ${this.renderDetailItem('Name', jobData.metadata.name)}
+          ${this.renderDetailItem('Namespace', jobData.metadata.namespace)}
+          ${this.renderDetailItem('UID', jobData.metadata.uid)}
+          ${this.renderDetailItem('Resource Version', jobData.metadata.resourceVersion)}
+          ${this.renderDetailItem('Creation Timestamp', jobData.metadata.creationTimestamp)}
+        </div>
+
+<!-- Status Information -->
+        <div class="detail-section">
+          <h3>Status</h3>
+          ${this.renderDetailItem('Succeeded', jobData.status.succeeded)}
+          ${this.renderDetailItem('Failed', jobData.status.failed)}
+          ${this.renderDetailItem('Active', jobData.status.active)}
+          ${this.renderDetailItem('Start Time', jobData.status.startTime)}
+          ${this.renderDetailItem('Completion Time', jobData.status.completionTime)}
         </div>
 
         <!-- Update Strategy -->
@@ -2051,14 +2385,13 @@ class KubernetesTab extends LitElement {
     `;
   }
 
-  renderDeploymentDetailContent(data: any) {
+renderDeploymentDetailContent(data: any) {
     if (!data) {
       return html`<div class="no-data">No data available</div>`;
     }
 
-    // Handle the actual API response structure where data might be under 'deployment_detail' key
     const deploymentData = data.deployment_detail || data;
-    
+
     console.log('Processing deployment data:', deploymentData);
 
     return html`
@@ -2066,42 +2399,26 @@ class KubernetesTab extends LitElement {
         <!-- Basic Information -->
         <div class="detail-section">
           <h3>Basic Information</h3>
-          ${this.renderDetailItem('Name', deploymentData.name)}
-          ${this.renderDetailItem('Namespace', deploymentData.namespace)}
-          ${this.renderDetailItem('UID', deploymentData.uid)}
-          ${this.renderDetailItem('Resource Version', deploymentData.resourceVersion)}
-          ${this.renderDetailItem('Creation Timestamp', deploymentData.creationTimestamp)}
-          ${this.renderDetailItem('Age', deploymentData.age)}
-          ${this.renderDetailItem('Generation', deploymentData.generation)}
+          ${this.renderDetailItem('Name', deploymentData.metadata.name)}
+          ${this.renderDetailItem('Namespace', deploymentData.metadata.namespace)}
+          ${this.renderDetailItem('UID', deploymentData.metadata.uid)}
+          ${this.renderDetailItem('Resource Version', deploymentData.metadata.resourceVersion)}
+          ${this.renderDetailItem('Creation Timestamp', deploymentData.metadata.creationTimestamp)}
         </div>
 
-        <!-- Spec Information -->
-        ${deploymentData.spec ? html`
-          <div class="detail-section">
-            <h3>Specification</h3>
-            ${this.renderDetailItem('Replicas', deploymentData.spec.replicas)}
-            ${this.renderDetailItem('Revision History Limit', deploymentData.spec.revisionHistoryLimit)}
-            ${this.renderDetailItem('Progress Deadline Seconds', deploymentData.spec.progressDeadlineSeconds)}
-          </div>
-        ` : ''}
-
         <!-- Status Information -->
-        ${deploymentData.status ? html`
-          <div class="detail-section">
-            <h3>Status</h3>
-            ${this.renderDetailItem('Observed Generation', deploymentData.status.observedGeneration)}
-            ${this.renderDetailItem('Replicas', deploymentData.status.replicas)}
-            ${this.renderDetailItem('Updated Replicas', deploymentData.status.updatedReplicas)}
-            ${this.renderDetailItem('Ready Replicas', deploymentData.status.readyReplicas)}
-            ${this.renderDetailItem('Available Replicas', deploymentData.status.availableReplicas)}
-            ${this.renderDetailItem('Unavailable Replicas', deploymentData.status.unavailableReplicas)}
-          </div>
-        ` : ''}
+        <div class="detail-section">
+          <h3>Status</h3>
+          ${this.renderDetailItem('Replicas', deploymentData.status.replicas)}
+          ${this.renderDetailItem('Updated Replicas', deploymentData.status.updatedReplicas)}
+          ${this.renderDetailItem('Ready Replicas', deploymentData.status.readyReplicas)}
+          ${this.renderDetailItem('Unavailable Replicas', deploymentData.status.unavailableReplicas)}
+        </div>
 
         <!-- Strategy -->
-        ${deploymentData.spec?.strategy ? html`
+        ${deploymentData.spec.strategy ? html`
           <div class="detail-section">
-            <h3>Deployment Strategy</h3>
+            <h3>Strategy</h3>
             ${this.renderDetailItem('Type', deploymentData.spec.strategy.type)}
             ${deploymentData.spec.strategy.rollingUpdate ? html`
               <div class="detail-item nested">
@@ -2116,7 +2433,7 @@ class KubernetesTab extends LitElement {
         ` : ''}
 
         <!-- Selector -->
-        ${deploymentData.spec?.selector ? html`
+        ${deploymentData.spec.selector ? html`
           <div class="detail-section">
             <h3>Selector</h3>
             ${this.renderDetailItem('Match Labels', deploymentData.spec.selector.matchLabels, true)}
@@ -2124,366 +2441,46 @@ class KubernetesTab extends LitElement {
         ` : ''}
 
         <!-- Labels -->
-        ${deploymentData.labels && Object.keys(deploymentData.labels).length > 0 ? html`
+        ${deploymentData.metadata.labels ? html`
           <div class="detail-section">
             <h3>Labels</h3>
-            ${this.renderObjectAsKeyValue(deploymentData.labels)}
+            ${this.renderObjectAsKeyValue(deploymentData.metadata.labels)}
           </div>
         ` : ''}
 
         <!-- Annotations -->
-        ${deploymentData.annotations && Object.keys(deploymentData.annotations).length > 0 ? html`
+        ${deploymentData.metadata.annotations ? html`
           <div class="detail-section">
             <h3>Annotations</h3>
-            ${this.renderObjectAsKeyValue(deploymentData.annotations)}
+            ${this.renderObjectAsKeyValue(deploymentData.metadata.annotations)}
           </div>
         ` : ''}
 
         <!-- Pod Template -->
-        ${deploymentData.spec?.template ? html`
+        ${deploymentData.spec.template ? html`
           <div class="detail-section">
             <h3>Pod Template</h3>
-            
-            <!-- Pod Template Labels -->
             ${deploymentData.spec.template.metadata?.labels ? 
               this.renderDetailItem('Pod Labels', deploymentData.spec.template.metadata.labels, true) : ''}
-            
-            <!-- Pod Template Spec -->
-            ${deploymentData.spec.template.spec ? html`
-              <!-- Service Account -->
-              ${this.renderDetailItem('Service Account', deploymentData.spec.template.spec.serviceAccountName)}
-              ${this.renderDetailItem('DNS Policy', deploymentData.spec.template.spec.dnsPolicy)}
-              ${this.renderDetailItem('Restart Policy', deploymentData.spec.template.spec.restartPolicy)}
-              ${this.renderDetailItem('Termination Grace Period', deploymentData.spec.template.spec.terminationGracePeriodSeconds + 's')}
-              ${this.renderDetailItem('Scheduler Name', deploymentData.spec.template.spec.schedulerName)}
-              
-              <!-- Security Context -->
-              ${deploymentData.spec.template.spec.securityContext ? html`
+            ${deploymentData.spec.template.spec?.containers ? html`
+              ${deploymentData.spec.template.spec.containers.map((container) => html`
                 <div class="detail-item nested">
-                  <strong class="detail-key">Security Context:</strong>
+                  <strong class="detail-key">Container:</strong>
                   <div class="nested-content">
-                    ${this.renderDetailItem('FS Group', deploymentData.spec.template.spec.securityContext.fsGroup)}
-                    ${deploymentData.spec.template.spec.securityContext.seccompProfile ? 
-                      this.renderDetailItem('Seccomp Profile', deploymentData.spec.template.spec.securityContext.seccompProfile.type) : ''}
+                    ${this.renderDetailItem('Name', container.name)}
+                    ${this.renderDetailItem('Image', container.image)}
                   </div>
                 </div>
-              ` : ''}
-              
-              <!-- Affinity -->
-              ${deploymentData.spec.template.spec.affinity ? html`
-                <div class="detail-item nested">
-                  <strong class="detail-key">Affinity:</strong>
-                  <div class="nested-content">
-                    ${deploymentData.spec.template.spec.affinity.podAntiAffinity ? 
-                      this.renderDetailItem('Pod Anti-Affinity', 'Configured', false) : ''}
-                  </div>
-                </div>
-              ` : ''}
-              
-              <!-- Volumes -->
-              ${deploymentData.spec.template.spec.volumes && deploymentData.spec.template.spec.volumes.length > 0 ? html`
-                <div class="detail-item nested">
-                  <strong class="detail-key">Volumes:</strong>
-                  <div class="nested-content">
-                    ${deploymentData.spec.template.spec.volumes.map((volume, index) => html`
-                      <div class="detail-item">
-                        <strong class="detail-key">${volume.name}:</strong>
-                        <span class="detail-value">
-                          ${volume.persistentVolumeClaim ? 
-                            `PVC: ${volume.persistentVolumeClaim.claimName}` : 
-                            this.formatValue(volume)}
-                        </span>
-                      </div>
-                    `)}
-                  </div>
-                </div>
-              ` : ''}
-              
-              <!-- Containers -->
-              ${deploymentData.spec.template.spec.containers && deploymentData.spec.template.spec.containers.length > 0 ? html`
-                <div class="detail-item nested">
-                  <strong class="detail-key">Containers:</strong>
-                  <div class="nested-content">
-                    ${deploymentData.spec.template.spec.containers.map((container, index) => html`
-                      <div class="detail-item nested">
-                        <strong class="detail-key">Container ${index + 1}: ${container.name}</strong>
-                        <div class="nested-content">
-                          ${this.renderDetailItem('Image', container.image)}
-                          ${this.renderDetailItem('Image Pull Policy', container.imagePullPolicy)}
-                          
-                          <!-- Ports -->
-                          ${container.ports && container.ports.length > 0 ? html`
-                            <div class="detail-item nested">
-                              <strong class="detail-key">Ports:</strong>
-                              <div class="nested-content">
-                                ${container.ports.map(port => html`
-                                  <div class="detail-item">
-                                    <strong class="detail-key">${port.name || 'Port'}:</strong>
-                                    <span class="detail-value">${port.containerPort}/${port.protocol || 'TCP'}</span>
-                                  </div>
-                                `)}
-                              </div>
-                            </div>
-                          ` : ''}
-                          
-                          <!-- Environment Variables -->
-                          ${container.env && container.env.length > 0 ? html`
-                            <div class="detail-item nested">
-                              <strong class="detail-key">Environment Variables:</strong>
-                              <div class="nested-content">
-                                ${container.env.map(env => html`
-                                  <div class="detail-item">
-                                    <strong class="detail-key">${env.name}:</strong>
-                                    <span class="detail-value">
-                                      ${env.value !== undefined ? env.value : 
-                                        (env.valueFrom ? 
-                                          (env.valueFrom.secretKeyRef ? 
-                                            `Secret: ${env.valueFrom.secretKeyRef.name}[${env.valueFrom.secretKeyRef.key}]` :
-                                            (env.valueFrom.configMapKeyRef ?
-                                              `ConfigMap: ${env.valueFrom.configMapKeyRef.name}[${env.valueFrom.configMapKeyRef.key}]` :
-                                              'ValueFrom'))
-                                          : 'null')}
-                                    </span>
-                                  </div>
-                                `)}
-                              </div>
-                            </div>
-                          ` : ''}
-                          
-                          <!-- Resources -->
-                          ${container.resources ? html`
-                            <div class="detail-item nested">
-                              <strong class="detail-key">Resources:</strong>
-                              <div class="nested-content">
-                                ${container.resources.limits ? html`
-                                  <div class="detail-item nested">
-                                    <strong class="detail-key">Limits:</strong>
-                                    <div class="nested-content">
-                                      ${this.renderObjectAsKeyValue(container.resources.limits)}
-                                    </div>
-                                  </div>
-                                ` : ''}
-                                ${container.resources.requests ? html`
-                                  <div class="detail-item nested">
-                                    <strong class="detail-key">Requests:</strong>
-                                    <div class="nested-content">
-                                      ${this.renderObjectAsKeyValue(container.resources.requests)}
-                                    </div>
-                                  </div>
-                                ` : ''}
-                              </div>
-                            </div>
-                          ` : ''}
-                          
-                          <!-- Volume Mounts -->
-                          ${container.volumeMounts && container.volumeMounts.length > 0 ? html`
-                            <div class="detail-item nested">
-                              <strong class="detail-key">Volume Mounts:</strong>
-                              <div class="nested-content">
-                                ${container.volumeMounts.map(mount => html`
-                                  <div class="detail-item">
-                                    <strong class="detail-key">${mount.name}:</strong>
-                                    <span class="detail-value">
-                                      ${mount.mountPath}${mount.subPath ? ` (subPath: ${mount.subPath})` : ''}
-                                    </span>
-                                  </div>
-                                `)}
-                              </div>
-                            </div>
-                          ` : ''}
-                          
-                          <!-- Probes -->
-                          ${container.livenessProbe ? html`
-                            <div class="detail-item nested">
-                              <strong class="detail-key">Liveness Probe:</strong>
-                              <div class="nested-content">
-                                ${container.livenessProbe.httpGet ? html`
-                                  ${this.renderDetailItem('Type', 'HTTP GET')}
-                                  ${this.renderDetailItem('Path', container.livenessProbe.httpGet.path)}
-                                  ${this.renderDetailItem('Port', container.livenessProbe.httpGet.port)}
-                                  ${this.renderDetailItem('Scheme', container.livenessProbe.httpGet.scheme)}
-                                ` : ''}
-                                ${this.renderDetailItem('Initial Delay', container.livenessProbe.initialDelaySeconds + 's')}
-                                ${this.renderDetailItem('Timeout', container.livenessProbe.timeoutSeconds + 's')}
-                                ${this.renderDetailItem('Period', container.livenessProbe.periodSeconds + 's')}
-                                ${this.renderDetailItem('Success Threshold', container.livenessProbe.successThreshold)}
-                                ${this.renderDetailItem('Failure Threshold', container.livenessProbe.failureThreshold)}
-                              </div>
-                            </div>
-                          ` : ''}
-                          
-                          ${container.readinessProbe ? html`
-                            <div class="detail-item nested">
-                              <strong class="detail-key">Readiness Probe:</strong>
-                              <div class="nested-content">
-                                ${container.readinessProbe.httpGet ? html`
-                                  ${this.renderDetailItem('Type', 'HTTP GET')}
-                                  ${this.renderDetailItem('Path', container.readinessProbe.httpGet.path)}
-                                  ${this.renderDetailItem('Port', container.readinessProbe.httpGet.port)}
-                                  ${this.renderDetailItem('Scheme', container.readinessProbe.httpGet.scheme)}
-                                ` : ''}
-                                ${this.renderDetailItem('Initial Delay', container.readinessProbe.initialDelaySeconds + 's')}
-                                ${this.renderDetailItem('Timeout', container.readinessProbe.timeoutSeconds + 's')}
-                                ${this.renderDetailItem('Period', container.readinessProbe.periodSeconds + 's')}
-                                ${this.renderDetailItem('Success Threshold', container.readinessProbe.successThreshold)}
-                                ${this.renderDetailItem('Failure Threshold', container.readinessProbe.failureThreshold)}
-                              </div>
-                            </div>
-                          ` : ''}
-                          
-                          <!-- Security Context -->
-                          ${container.securityContext ? html`
-                            <div class="detail-item nested">
-                              <strong class="detail-key">Security Context:</strong>
-                              <div class="nested-content">
-                                ${this.renderDetailItem('Run As User', container.securityContext.runAsUser)}
-                                ${this.renderDetailItem('Run As Non-Root', container.securityContext.runAsNonRoot)}
-                                ${this.renderDetailItem('Read-Only Root Filesystem', container.securityContext.readOnlyRootFilesystem)}
-                                ${this.renderDetailItem('Allow Privilege Escalation', container.securityContext.allowPrivilegeEscalation)}
-                                ${container.securityContext.capabilities ? html`
-                                  <div class="detail-item nested">
-                                    <strong class="detail-key">Capabilities:</strong>
-                                    <div class="nested-content">
-                                      ${container.securityContext.capabilities.drop ? 
-                                        this.renderDetailItem('Drop', container.securityContext.capabilities.drop.join(', ')) : ''}
-                                      ${container.securityContext.capabilities.add ? 
-                                        this.renderDetailItem('Add', container.securityContext.capabilities.add.join(', ')) : ''}
-                                    </div>
-                                  </div>
-                                ` : ''}
-                              </div>
-                            </div>
-                          ` : ''}
-                        </div>
-                      </div>
-                    `)}
-                  </div>
-                </div>
-              ` : ''}
+              `)}
             ` : ''}
           </div>
         ` : ''}
 
         <!-- Conditions -->
-        ${deploymentData.status?.conditions && deploymentData.status.conditions.length > 0 ? html`
+        ${deploymentData.status.conditions ? html`
           <div class="detail-section">
             <h3>Conditions</h3>
             ${deploymentData.status.conditions.map((condition) => html`
-              <div class="detail-item nested">
-                <strong class="detail-key">${condition.type}:</strong>
-                <div class="nested-content">
-                  ${this.renderDetailItem('Status', condition.status)}
-                  ${this.renderDetailItem('Last Update Time', condition.lastUpdateTime)}
-                  ${this.renderDetailItem('Last Transition Time', condition.lastTransitionTime)}
-                  ${this.renderDetailItem('Reason', condition.reason)}
-                  ${this.renderDetailItem('Message', condition.message)}
-                </div>
-              </div>
-            `)}
-          </div>
-        ` : ''}
-
-        <!-- Raw Data Section for debugging -->
-        <div class="detail-section">
-          <h3>Raw Data</h3>
-          <details>
-            <summary>View raw deployment data</summary>
-            <pre class="raw-data">${JSON.stringify(deploymentData, null, 2)}</pre>
-          </details>
-        </div>
-      </div>
-    `;
-  }
-
-renderPodDetailContent(data: any) {
-    if (!data) {
-      return html`<div class="no-data">No data available</div>`;
-    }
-
-    // Handle the actual API response structure where data is under 'pod_detail' key
-    const podData = data.pod_detail || data;
-    
-    console.log('Processing pod data:', podData);
-
-    return html`
-      <div class="detail-sections">
-        <!-- Basic Information -->
-        <div class="detail-section">
-          <h3>Basic Information</h3>
-          ${this.renderDetailItem('Name', podData.name)}
-          ${this.renderDetailItem('Namespace', podData.namespace)}
-          ${this.renderDetailItem('UID', podData.uid)}
-          ${this.renderDetailItem('Resource Version', podData.resourceVersion)}
-          ${this.renderDetailItem('Creation Timestamp', podData.creationTimestamp)}
-          ${this.renderDetailItem('Age', podData.age)}
-        </div>
-
-        <!-- Status Information -->
-        <div class="detail-section">
-          <h3>Status</h3>
-          ${this.renderDetailItem('Status', podData.status)}
-          ${this.renderDetailItem('Phase', podData.phase)}
-          ${this.renderDetailItem('QoS Class', podData.qosClass)}
-          ${this.renderDetailItem('Start Time', podData.startTime)}
-        </div>
-
-        <!-- Network Information -->
-        <div class="detail-section">
-          <h3>Network</h3>
-          ${this.renderDetailItem('Pod IP', podData.ip)}
-          ${this.renderDetailItem('Host IP', podData.hostIP)}
-          ${this.renderDetailItem('Node', podData.node)}
-        </div>
-
-        <!-- Configuration -->
-        <div class="detail-section">
-          <h3>Configuration</h3>
-          ${this.renderDetailItem('Restart Policy', podData.restartPolicy)}
-          ${this.renderDetailItem('DNS Policy', podData.dnsPolicy)}
-          ${this.renderDetailItem('Service Account', podData.serviceAccount)}
-          ${this.renderDetailItem('Node Selector', podData.nodeSelector, true)}
-        </div>
-
-        <!-- Labels -->
-        ${podData.labels ? html`
-          <div class="detail-section">
-            <h3>Labels</h3>
-            ${this.renderObjectAsKeyValue(podData.labels)}
-          </div>
-        ` : ''}
-
-        <!-- Annotations -->
-        ${podData.annotations ? html`
-          <div class="detail-section">
-            <h3>Annotations</h3>
-            ${this.renderObjectAsKeyValue(podData.annotations)}
-          </div>
-        ` : ''}
-
-        <!-- Containers -->
-        ${podData.containers && podData.containers.length > 0 ? html`
-          <div class="detail-section">
-            <h3>Containers</h3>
-            ${podData.containers.map((container, index) => html`
-              <div class="detail-item nested">
-                <strong class="detail-key">Container ${index + 1}:</strong>
-                <div class="nested-content">
-                  ${this.renderDetailItem('Name', container.name)}
-                  ${this.renderDetailItem('Image', container.image)}
-                  ${this.renderDetailItem('Ready', container.ready)}
-                  ${this.renderDetailItem('Restart Count', container.restartCount)}
-                  ${this.renderDetailItem('State', container.state)}
-                </div>
-              </div>
-            `)}
-          </div>
-        ` : ''}
-
-        <!-- Conditions -->
-        ${podData.conditions && podData.conditions.length > 0 ? html`
-          <div class="detail-section">
-            <h3>Conditions</h3>
-            ${podData.conditions.map((condition, index) => html`
               <div class="detail-item nested">
                 <strong class="detail-key">${condition.type}:</strong>
                 <div class="nested-content">
@@ -2497,16 +2494,231 @@ renderPodDetailContent(data: any) {
             `)}
           </div>
         ` : ''}
+
+        <!-- Raw Data -->
+        <div class="detail-section">
+          <h3>Raw Data</h3>
+          <details>
+            <summary>View raw deployment data</summary>
+            <pre class="raw-data">${JSON.stringify(deploymentData, null, 2)}</pre>
+          </details>
+        </div>
       </div>
     `;
   }
-
-  renderJobDetailContent(data: any) {
+  
+renderStatefulSetDetailContent(data: any) {
     if (!data) {
       return html`<div class="no-data">No data available</div>`;
     }
 
-    // Handle API response structure
+    const statefulSetData = data.statefulset_detail || data;
+
+    console.log('Processing stateful set data:', statefulSetData);
+
+    return html`
+      <div class="detail-sections">
+        <!-- Basic Information -->
+        <div class="detail-section">
+          <h3>Basic Information</h3>
+          ${this.renderDetailItem('Name', statefulSetData.metadata.name)}
+          ${this.renderDetailItem('Namespace', statefulSetData.metadata.namespace)}
+          ${this.renderDetailItem('UID', statefulSetData.metadata.uid)}
+          ${this.renderDetailItem('Resource Version', statefulSetData.metadata.resourceVersion)}
+          ${this.renderDetailItem('Creation Timestamp', statefulSetData.metadata.creationTimestamp)}
+        </div>
+
+        <!-- Status Information -->
+        <div class="detail-section">
+          <h3>Status</h3>
+          ${this.renderDetailItem('Replicas', statefulSetData.status.replicas)}
+          ${this.renderDetailItem('Ready Replicas', statefulSetData.status.readyReplicas)}
+          ${this.renderDetailItem('Current Replicas', statefulSetData.status.currentReplicas)}
+          ${this.renderDetailItem('Updated Replicas', statefulSetData.status.updatedReplicas)}
+        </div>
+
+        <!-- Update Strategy -->
+        ${statefulSetData.spec.updateStrategy ? html`
+          <div class="detail-section">
+            <h3>Update Strategy</h3>
+            ${this.renderDetailItem('Type', statefulSetData.spec.updateStrategy.type)}
+            ${statefulSetData.spec.updateStrategy.rollingUpdate ? html`
+              <div class="detail-item nested">
+                <strong class="detail-key">Rolling Update:</strong>
+                <div class="nested-content">
+                  ${this.renderDetailItem('Partition', statefulSetData.spec.updateStrategy.rollingUpdate.partition)}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        ` : ''}
+
+        <!-- Labels -->
+        ${statefulSetData.metadata.labels ? html`
+          <div class="detail-section">
+            <h3>Labels</h3>
+            ${this.renderObjectAsKeyValue(statefulSetData.metadata.labels)}
+          </div>
+        ` : ''}
+
+        <!-- Annotations -->
+        ${statefulSetData.metadata.annotations ? html`
+          <div class="detail-section">
+            <h3>Annotations</h3>
+            ${this.renderObjectAsKeyValue(statefulSetData.metadata.annotations)}
+          </div>
+        ` : ''}
+
+        <!-- Pod Template -->
+        ${statefulSetData.spec.template ? html`
+          <div class="detail-section">
+            <h3>Pod Template</h3>
+            ${statefulSetData.spec.template.metadata?.labels ? 
+              this.renderDetailItem('Pod Labels', statefulSetData.spec.template.metadata.labels, true) : ''}
+            ${statefulSetData.spec.template.spec?.containers ? html`
+              ${statefulSetData.spec.template.spec.containers.map((container) => html`
+                <div class="detail-item nested">
+                  <strong class="detail-key">Container:</strong>
+                  <div class="nested-content">
+                    ${this.renderDetailItem('Name', container.name)}
+                    ${this.renderDetailItem('Image', container.image)}
+                  </div>
+                </div>
+              `)}
+            ` : ''}
+          </div>
+        ` : ''}
+
+        <!-- Raw Data -->
+        <div class="detail-section">
+          <h3>Raw Data</h3>
+          <details>
+            <summary>View raw stateful set data</summary>
+            <pre class="raw-data">${JSON.stringify(statefulSetData, null, 2)}</pre>
+          </details>
+        </div>
+      </div>
+    `;
+  }
+
+renderPodDetailContent(data: any) {
+    if (!data) {
+      return html`<div class="no-data">No data available</div>`;
+    }
+
+    const podData = data.pod_detail || data;
+    
+    console.log('Processing pod data:', podData);
+
+    return html`
+      <div class="detail-sections">
+        <!-- Basic Information -->
+        <div class="detail-section">
+          <h3>Basic Information</h3>
+          ${this.renderDetailItem('Name', podData.metadata.name)}
+          ${this.renderDetailItem('Namespace', podData.metadata.namespace)}
+          ${this.renderDetailItem('UID', podData.metadata.uid)}
+          ${this.renderDetailItem('Resource Version', podData.metadata.resourceVersion)}
+          ${this.renderDetailItem('Creation Timestamp', podData.metadata.creationTimestamp)}
+          ${this.renderDetailItem('Age', podData.metadata.creationTimestamp)}
+        </div>
+
+        <!-- Status Information -->
+        <div class="detail-section">
+          <h3>Status</h3>
+          ${this.renderDetailItem('Phase', podData.status.phase)}
+          ${this.renderDetailItem('QoS Class', podData.status.qosClass)}
+          ${this.renderDetailItem('Start Time', podData.status.startTime)}
+        </div>
+
+        <!-- Network Information -->
+        <div class="detail-section">
+          <h3>Network</h3>
+          ${this.renderDetailItem('Pod IP', podData.status.podIP)}
+          ${this.renderDetailItem('Host IP', podData.status.hostIP)}
+          ${this.renderDetailItem('Node', podData.spec.nodeName)}
+        </div>
+
+        <!-- Configuration -->
+        <div class="detail-section">
+          <h3>Configuration</h3>
+          ${this.renderDetailItem('Restart Policy', podData.spec.restartPolicy)}
+          ${this.renderDetailItem('DNS Policy', podData.spec.dnsPolicy)}
+          ${this.renderDetailItem('Service Account', podData.spec.serviceAccountName)}
+          ${this.renderDetailItem('Node Selector', podData.spec.nodeSelector, true)}
+        </div>
+
+        <!-- Labels -->
+        ${podData.metadata.labels ? html`
+          <div class="detail-section">
+            <h3>Labels</h3>
+            ${this.renderObjectAsKeyValue(podData.metadata.labels)}
+          </div>
+        ` : ''}
+
+        <!-- Annotations -->
+        ${podData.metadata.annotations ? html`
+          <div class="detail-section">
+            <h3>Annotations</h3>
+            ${this.renderObjectAsKeyValue(podData.metadata.annotations)}
+          </div>
+        ` : ''}
+
+        <!-- Containers -->
+        ${podData.spec.containers && podData.spec.containers.length > 0 ? html`
+          <div class="detail-section">
+            <h3>Containers</h3>
+            ${podData.spec.containers.map((container, index) => html`
+              <div class="detail-item nested">
+                <strong class="detail-key">Container ${index + 1}:</strong>
+                <div class="nested-content">
+                  ${this.renderDetailItem('Name', container.name)}
+                  ${this.renderDetailItem('Image', container.image)}
+                  ${this.renderDetailItem('Ready', container.ready)}
+                  ${this.renderDetailItem('Restart Count', container.restartCount)}
+                  ${this.renderDetailItem('State', container.state?.running?.startedAt)}
+                </div>
+              </div>
+            `)}
+          </div>
+        ` : ''}
+
+        <!-- Conditions -->
+        ${podData.status.conditions && podData.status.conditions.length > 0 ? html`
+          <div class="detail-section">
+            <h3>Conditions</h3>
+            ${podData.status.conditions.map((condition, index) => html`
+              <div class="detail-item nested">
+                <strong class="detail-key">${condition.type}:</strong>
+                <div class="nested-content">
+                  ${this.renderDetailItem('Status', condition.status)}
+                  ${this.renderDetailItem('Last Probe Time', condition.lastProbeTime)}
+                  ${this.renderDetailItem('Last Transition Time', condition.lastTransitionTime)}
+                  ${this.renderDetailItem('Reason', condition.reason)}
+                  ${this.renderDetailItem('Message', condition.message)}
+                </div>
+              </div>
+            `)}
+          </div>
+        ` : ''}
+
+        <!-- Raw Data -->
+        <div class="detail-section">
+          <h3>Raw Data</h3>
+          <details>
+            <summary>View raw pod data</summary>
+            <pre class="raw-data">${JSON.stringify(podData, null, 2)}</pre>
+          </details>
+        </div>
+      </div>
+    `;
+  }
+
+renderJobDetailContent(data: any) {
+    if (!data) {
+      return html`<div class="no-data">No data available</div>`;
+    }
+
     const jobData = data.job_detail || data;
 
     console.log('Processing job data:', jobData);
@@ -2516,23 +2728,117 @@ renderPodDetailContent(data: any) {
         <!-- Basic Information -->
         <div class="detail-section">
           <h3>Basic Information</h3>
-          ${this.renderDetailItem('Name', jobData.name)}
-          ${this.renderDetailItem('Namespace', jobData.namespace)}
-          ${this.renderDetailItem('UID', jobData.uid)}
-          ${this.renderDetailItem('Resource Version', jobData.resourceVersion)}
-          ${this.renderDetailItem('Creation Timestamp', jobData.creationTimestamp)}
-          ${this.renderDetailItem('Age', jobData.age)}
-          ${this.renderDetailItem('Generation', jobData.generation)}
+          ${this.renderDetailItem('Name', jobData.metadata.name)}
+          ${this.renderDetailItem('Namespace', jobData.metadata.namespace)}
+          ${this.renderDetailItem('UID', jobData.metadata.uid)}
+          ${this.renderDetailItem('Resource Version', jobData.metadata.resourceVersion)}
+          ${this.renderDetailItem('Creation Timestamp', jobData.metadata.creationTimestamp)}
         </div>
 
         <!-- Status Information -->
         <div class="detail-section">
           <h3>Status</h3>
-          ${this.renderDetailItem('Active', jobData.active)}
-          ${this.renderDetailItem('Succeeded', jobData.succeeded)}
-          ${this.renderDetailItem('Failed', jobData.failed)}
-          ${this.renderDetailItem('Completion Time', jobData.completionTime)}
-          ${this.renderDetailItem('Start Time', jobData.startTime)}
+          ${this.renderDetailItem('Succeeded', jobData.status.succeeded)}
+          ${this.renderDetailItem('Failed', jobData.status.failed)}
+          ${this.renderDetailItem('Active', jobData.status.active)}
+        </div>
+
+        <!-- Conditions -->
+        ${jobData.status.conditions ? html`
+          <div class="detail-section">
+            <h3>Conditions</h3>
+            ${jobData.status.conditions.map((condition) => html`
+              <div class="detail-item nested">
+                <strong class="detail-key">${condition.type}:</strong>
+                <div class="nested-content">
+                  ${this.renderDetailItem('Status', condition.status)}
+                  ${this.renderDetailItem('Last Probe Time', condition.lastProbeTime)}
+                  ${this.renderDetailItem('Last Transition Time', condition.lastTransitionTime)}
+                  ${this.renderDetailItem('Reason', condition.reason)}
+                  ${this.renderDetailItem('Message', condition.message)}
+                </div>
+              </div>
+            `)}
+          </div>
+        ` : ''}
+
+        <!-- Labels -->
+        ${jobData.metadata.labels ? html`
+          <div class="detail-section">
+            <h3>Labels</h3>
+            ${this.renderObjectAsKeyValue(jobData.metadata.labels)}
+          </div>
+        ` : ''}
+
+        <!-- Annotations -->
+        ${jobData.metadata.annotations ? html`
+          <div class="detail-section">
+            <h3>Annotations</h3>
+            ${this.renderObjectAsKeyValue(jobData.metadata.annotations)}
+          </div>
+        ` : ''}
+
+        <!-- Pod Template -->
+        ${jobData.spec.template ? html`
+          <div class="detail-section">
+            <h3>Pod Template</h3>
+            ${jobData.spec.template.metadata?.labels ? 
+              this.renderDetailItem('Pod Labels', jobData.spec.template.metadata.labels, true) : ''}
+            ${jobData.spec.template.spec?.containers ? html`
+              ${jobData.spec.template.spec.containers.map((container) => html`
+                <div class="detail-item nested">
+                  <strong class="detail-key">Container:</strong>
+                  <div class="nested-content">
+                    ${this.renderDetailItem('Name', container.name)}
+                    ${this.renderDetailItem('Image', container.image)}
+                  </div>
+                </div>
+              `)}
+            ` : ''}
+          </div>
+        ` : ''}
+
+        <!-- Raw Data -->
+        <div class="detail-section">
+          <h3>Raw Data</h3>
+          <details>
+            <summary>View raw job data</summary>
+            <pre class="raw-data">${JSON.stringify(jobData, null, 2)}</pre>
+          </details>
+        </div>
+      </div>
+    `;
+  }
+  
+renderCronJobDetailContent(data: any) {
+    if (!data) {
+      return html`<div class="no-data">No data available</div>`;
+    }
+
+    const cronJobData = data.cronjob_detail || data;
+
+    console.log('Processing cronjob data:', cronJobData);
+
+    return html`
+      <div class="detail-sections">
+        <!-- Basic Information -->
+        <div class="detail-section">
+          <h3>Basic Information</h3>
+          ${this.renderDetailItem('Name', cronJobData.metadata.name)}
+          ${this.renderDetailItem('Namespace', cronJobData.metadata.namespace)}
+          ${this.renderDetailItem('UID', cronJobData.metadata.uid)}
+          ${this.renderDetailItem('Resource Version', cronJobData.metadata.resourceVersion)}
+          ${this.renderDetailItem('Creation Timestamp', cronJobData.metadata.creationTimestamp)}
+        </div>
+
+        <!-- Schedule Information -->
+        <div class="detail-section">
+          <h3>Schedule</h3>
+          ${this.renderDetailItem('Schedule', cronJobData.spec.schedule)}
+          ${this.renderDetailItem('Concurrency Policy', cronJobData.spec.concurrencyPolicy)}
+          ${this.renderDetailItem('Starting Deadline Seconds', cronJobData.spec.startingDeadlineSeconds)}
+          ${this.renderDetailItem('Successful Jobs History Limit', cronJobData.spec.successfulJobsHistoryLimit)}
+          ${this.renderDetailItem('Failed Jobs History Limit', cronJobData.spec.failedJobsHistoryLimit)}
         </div>
 
         <!-- Job Spec -->
@@ -2634,12 +2940,11 @@ renderPodDetailContent(data: any) {
     `;
   }
 
-  renderCronJobDetailContent(data: any) {
+renderCronJobDetailContent(data: any) {
     if (!data) {
       return html`<div class="no-data">No data available</div>`;
     }
 
-    // Handle API response structure
     const cronJobData = data.cronjob_detail || data;
 
     console.log('Processing cronjob data:', cronJobData);
@@ -2649,118 +2954,72 @@ renderPodDetailContent(data: any) {
         <!-- Basic Information -->
         <div class="detail-section">
           <h3>Basic Information</h3>
-          ${this.renderDetailItem('Name', cronJobData.name)}
-          ${this.renderDetailItem('Namespace', cronJobData.namespace)}
-          ${this.renderDetailItem('UID', cronJobData.uid)}
-          ${this.renderDetailItem('Resource Version', cronJobData.resourceVersion)}
-          ${this.renderDetailItem('Creation Timestamp', cronJobData.creationTimestamp)}
-          ${this.renderDetailItem('Age', cronJobData.age)}
-          ${this.renderDetailItem('Generation', cronJobData.generation)}
+          ${this.renderDetailItem('Name', cronJobData.metadata.name)}
+          ${this.renderDetailItem('Namespace', cronJobData.metadata.namespace)}
+          ${this.renderDetailItem('UID', cronJobData.metadata.uid)}
+          ${this.renderDetailItem('Resource Version', cronJobData.metadata.resourceVersion)}
+          ${this.renderDetailItem('Creation Timestamp', cronJobData.metadata.creationTimestamp)}
         </div>
 
-        <!-- Status Information -->
+        <!-- Schedule Information -->
         <div class="detail-section">
-          <h3>Status</h3>
-          ${this.renderDetailItem('Active', cronJobData.active)}
-          ${this.renderDetailItem('Last Schedule Time', cronJobData.lastScheduleTime)}
-          ${this.renderDetailItem('Last Successful Time', cronJobData.lastSuccessfulTime)}
+          <h3>Schedule</h3>
+          ${this.renderDetailItem('Schedule', cronJobData.spec.schedule)}
+          ${this.renderDetailItem('Concurrency Policy', cronJobData.spec.concurrencyPolicy)}
+          ${this.renderDetailItem('Starting Deadline Seconds', cronJobData.spec.startingDeadlineSeconds)}
+          ${this.renderDetailItem('Successful Jobs History Limit', cronJobData.spec.successfulJobsHistoryLimit)}
+          ${this.renderDetailItem('Failed Jobs History Limit', cronJobData.spec.failedJobsHistoryLimit)}
         </div>
 
-        <!-- CronJob Spec -->
-        ${cronJobData.spec ? html`
+        <!-- Active Jobs -->
+        ${cronJobData.status && cronJobData.status.active ? html`
           <div class="detail-section">
-            <h3>Specification</h3>
-            ${this.renderDetailItem('Schedule', cronJobData.spec.schedule)}
-            ${this.renderDetailItem('Concurrency Policy', cronJobData.spec.concurrencyPolicy)}
-            ${this.renderDetailItem('Suspend', cronJobData.spec.suspend)}
-            ${this.renderDetailItem('Starting Deadline Seconds', cronJobData.spec.startingDeadlineSeconds)}
-            ${this.renderDetailItem('Successful Jobs History Limit', cronJobData.spec.successfulJobsHistoryLimit)}
-            ${this.renderDetailItem('Failed Jobs History Limit', cronJobData.spec.failedJobsHistoryLimit)}
+            <h3>Active Jobs</h3>
+            ${cronJobData.status.active.map((job) => html`
+              <div class="detail-item nested">
+                <strong class="detail-key">Job:</strong>
+                <div class="nested-content">
+                  ${this.renderDetailItem('Name', job.name)}
+                  ${this.renderDetailItem('Namespace', job.namespace)}
+                </div>
+              </div>
+            `)}
           </div>
         ` : ''}
 
         <!-- Labels -->
-        ${cronJobData.labels && Object.keys(cronJobData.labels).length > 0 ? html`
+        ${cronJobData.metadata.labels ? html`
           <div class="detail-section">
             <h3>Labels</h3>
-            ${this.renderObjectAsKeyValue(cronJobData.labels)}
+            ${this.renderObjectAsKeyValue(cronJobData.metadata.labels)}
           </div>
         ` : ''}
 
         <!-- Annotations -->
-        ${cronJobData.annotations && Object.keys(cronJobData.annotations).length > 0 ? html`
+        ${cronJobData.metadata.annotations ? html`
           <div class="detail-section">
             <h3>Annotations</h3>
-            ${this.renderObjectAsKeyValue(cronJobData.annotations)}
+            ${this.renderObjectAsKeyValue(cronJobData.metadata.annotations)}
           </div>
         ` : ''}
 
         <!-- Job Template -->
-        ${cronJobData.spec?.jobTemplate ? html`
+        ${cronJobData.spec.jobTemplate ? html`
           <div class="detail-section">
             <h3>Job Template</h3>
-            
-            <!-- Job Template Spec -->
-            ${cronJobData.spec.jobTemplate.spec ? html`
-              <div class="detail-item nested">
-                <strong class="detail-key">Job Spec:</strong>
-                <div class="nested-content">
-                  ${this.renderDetailItem('Parallelism', cronJobData.spec.jobTemplate.spec.parallelism)}
-                  ${this.renderDetailItem('Completions', cronJobData.spec.jobTemplate.spec.completions)}
-                  ${this.renderDetailItem('Active Deadline Seconds', cronJobData.spec.jobTemplate.spec.activeDeadlineSeconds)}
-                  ${this.renderDetailItem('Backoff Limit', cronJobData.spec.jobTemplate.spec.backoffLimit)}
-                  ${this.renderDetailItem('TTL Seconds After Finished', cronJobData.spec.jobTemplate.spec.ttlSecondsAfterFinished)}
+            ${cronJobData.spec.jobTemplate.spec?.template?.metadata?.labels ? 
+              this.renderDetailItem('Pod Labels', cronJobData.spec.jobTemplate.spec.template.metadata.labels, true) : ''}
+            ${cronJobData.spec.jobTemplate.spec?.template?.spec?.containers ? html`
+              ${cronJobData.spec.jobTemplate.spec.template.spec.containers.map((container) => html`
+                <div class="detail-item nested">
+                  <strong class="detail-key">Container:</strong>
+                  <div class="nested-content">
+                    ${this.renderDetailItem('Name', container.name)}
+                    ${this.renderDetailItem('Image', container.image)}
+                  </div>
                 </div>
-              </div>
+              `)}
             ` : ''}
-            
-            <!-- Pod Template -->
-            ${cronJobData.spec.jobTemplate.spec?.template ? html`
-              <div class="detail-item nested">
-                <strong class="detail-key">Pod Template:</strong>
-                <div class="nested-content">
-                  ${cronJobData.spec.jobTemplate.spec.template.metadata?.labels ? 
-                    this.renderDetailItem('Pod Labels', cronJobData.spec.jobTemplate.spec.template.metadata.labels, true) : ''}
-                  
-                  ${cronJobData.spec.jobTemplate.spec.template.spec?.containers && cronJobData.spec.jobTemplate.spec.template.spec.containers.length > 0 ? html`
-                    <div class="detail-item nested">
-                      <strong class="detail-key">Containers:</strong>
-                      <div class="nested-content">
-                        ${cronJobData.spec.jobTemplate.spec.template.spec.containers.map((container, index) => html`
-                          <div class="detail-item nested">
-                            <strong class="detail-key">Container ${index + 1}:</strong>
-                            <div class="nested-content">
-                              ${this.renderDetailItem('Name', container.name)}
-                              ${this.renderDetailItem('Image', container.image)}
-                              ${container.command && container.command.length > 0 ? 
-                                this.renderDetailItem('Command', container.command.join(' ')) : ''}
-                              ${container.args && container.args.length > 0 ? 
-                                this.renderDetailItem('Args', container.args.join(' ')) : ''}
-                              ${container.env && container.env.length > 0 ? 
-                                this.renderDetailItem('Environment Variables', `${container.env.length} variables`) : ''}
-                              ${container.resources ? this.renderDetailItem('Resources', container.resources, true) : ''}
-                            </div>
-                          </div>
-                        `)}
-                      </div>
-                    </div>
-                  ` : ''}
-                </div>
-              </div>
-            ` : ''}
-          </div>
-        ` : ''}
-
-        <!-- Active Jobs -->
-        ${cronJobData.status?.active && cronJobData.status.active.length > 0 ? html`
-          <div class="detail-section">
-            <h3>Active Jobs</h3>
-            ${cronJobData.status.active.map((job, index) => html`
-              <div class="detail-item">
-                <strong class="detail-key">Job ${index + 1}:</strong>
-                <span class="detail-value">${job.name || job}</span>
-              </div>
-            `)}
           </div>
         ` : ''}
 
@@ -2919,6 +3178,7 @@ renderPodDetailContent(data: any) {
       <div class="tab-container">
         <h1>${this.renderTitle()}</h1>
         ${this.activeSubmenu === 'workloads' ? this.renderWorkloadTabs() : ''}
+        ${this.activeSubmenu === 'networks' ? this.renderNetworkTabs() : ''}
         ${this.activeSubmenu === 'storages' ? this.renderStorageTabs() : ''}
         ${this.activeSubmenu === 'configurations' ? this.renderConfigurationTabs() : ''}
         ${this.activeSubmenu === 'helms' ? this.renderHelmTabs() : ''}
@@ -3734,17 +3994,44 @@ renderPodDetailContent(data: any) {
   async fetchServices() {
     try {
       const data = await Api.get('/kubernetes/services');
-      this.networks = data.services.map(svc => ({
+      const services = data.services.map(svc => ({
         name: svc.name,
-        type: svc.type,
+        type: 'Service',
         namespace: svc.namespace,
-        status: 'Active',
-        endpoints: svc.cluster_ip,
-        age: svc.age
+        serviceType: svc.type,
+        clusterIP: svc.cluster_ip,
+        externalIP: svc.external_ip || '-',
+        ports: svc.ports,
+        age: svc.age,
+        labels: svc.labels,
+        annotations: svc.annotations
       }));
-      this.error = null;
+      return services;
     } catch (error) {
-      this.error = 'Failed to fetch services';
+      console.error('Failed to fetch services:', error);
+      return [];
+    }
+  }
+
+  async fetchIngresses() {
+    try {
+      const data = await Api.get('/kubernetes/ingresses');
+      const ingresses = data.ingresses.map(ing => ({
+        name: ing.name,
+        type: 'Ingress',
+        namespace: ing.namespace,
+        ingressClass: ing.class || '-',
+        hosts: ing.hosts,
+        address: ing.address || '-',
+        ports: ing.ports,
+        age: ing.age,
+        labels: ing.labels,
+        annotations: ing.annotations
+      }));
+      return ingresses;
+    } catch (error) {
+      console.error('Failed to fetch ingresses:', error);
+      return [];
     }
   }
 
@@ -3978,8 +4265,12 @@ renderPodDetailContent(data: any) {
       // Combine all workload data
       this.workloads = [...pods, ...deployments, ...statefulsets, ...daemonsets, ...jobs, ...cronjobs];
       
-      // Fetch network resources (services)
-      await this.fetchServices();
+      // Fetch network resources (services and ingresses)
+      const [services, ingresses] = await Promise.all([
+        this.fetchServices(),
+        this.fetchIngresses()
+      ]);
+      this.networks = [...services, ...ingresses];
       
       // Fetch configuration resources
       await Promise.all([
