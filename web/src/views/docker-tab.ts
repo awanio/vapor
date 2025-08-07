@@ -22,7 +22,7 @@ export class DockerTab extends LitElement {
   @state() private networks: DockerNetwork[] = [];
   @state() private searchTerm = '';
   @state() private error: string | null = null;
-  @state() private runtime: string | null = null;
+  // @state() private runtime: string | null = null;
   @state() private showConfirmModal = false;
   @state() private confirmAction: (() => void) | null = null;
   @state() private selectedContainer: DockerContainer | null = null;
@@ -38,7 +38,7 @@ export class DockerTab extends LitElement {
   @state() private showImageActionsDropdown: boolean = false;
   @state() private showPullImageModal: boolean = false;
   @state() private imageName: string = '';
-  @state() private selectedFile: File | null = null;
+  // @state() private selectedFile: File | null = null;
   @state() private showUploadDrawer: boolean = false;
   @state() private uploadQueue: UploadItem[] = [];
   @state() private isUploading: boolean = false;
@@ -908,7 +908,7 @@ export class DockerTab extends LitElement {
     }
   `;
 
-  connectedCallback() {
+  override connectedCallback() {
     super.connectedCallback();
     this.handleLocationChange();
     window.addEventListener('popstate', this.handleLocationChange);
@@ -916,7 +916,7 @@ export class DockerTab extends LitElement {
     document.addEventListener('keydown', this.handleKeyDown);
   }
 
-  disconnectedCallback() {
+  override disconnectedCallback() {
     super.disconnectedCallback();
     window.removeEventListener('popstate', this.handleLocationChange);
     document.removeEventListener('click', this.handleDocumentClick);
@@ -961,7 +961,7 @@ export class DockerTab extends LitElement {
     try {
       const data = await api.get<DockerContainersResponse>('/docker/ps');
       this.containers = data.containers || [];
-      this.runtime = data.runtime || null;
+      // this.runtime = data.runtime || null;
       this.error = null;
     } catch (error) {
       console.error('Error fetching containers:', error);
@@ -973,7 +973,7 @@ export class DockerTab extends LitElement {
     try {
       const data = await api.get<DockerImagesResponse>('/docker/images');
       this.images = data.images || [];
-      this.runtime = data.runtime || null;
+      // this.runtime = data.runtime || null;
       this.error = null;
     } catch (error) {
       console.error('Error fetching images:', error);
@@ -1074,7 +1074,7 @@ export class DockerTab extends LitElement {
     `;
   }
 
-  render() {
+  override render() {
     return html`
       <div class="tab-container">
         <h1>${t('Docker')}</h1>
@@ -1190,7 +1190,7 @@ export class DockerTab extends LitElement {
             </div>
             
             <div class="upload-zone" 
-                 @click=${() => this.shadowRoot?.querySelector('#file-input')?.click()}
+                  @click=${() => (this.shadowRoot?.querySelector('#file-input') as HTMLInputElement)?.click()}
                  @dragover=${this.handleDragOver}
                  @dragleave=${this.handleDragLeave}
                  @drop=${this.handleDrop}>
@@ -1926,7 +1926,9 @@ export class DockerTab extends LitElement {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
       const file = input.files[0];
-      this.addToUploadQueue(file);
+      if (file) {
+        this.addToUploadQueue(file);
+      }
     }
   };
 
@@ -1949,7 +1951,9 @@ export class DockerTab extends LitElement {
     
     if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
       const file = event.dataTransfer.files[0];
-      this.addToUploadQueue(file);
+      if (file) {
+        this.addToUploadQueue(file);
+      }
     }
   };
 
@@ -1997,7 +2001,7 @@ export class DockerTab extends LitElement {
         }
       }, 200);
       
-      const response = await api.post('/docker/images/upload', formData);
+      await api.post('/docker/images/upload', formData);
       
       clearInterval(progressInterval);
       this.updateUploadItem(item.id, { status: 'completed', progress: 100 });
@@ -2039,7 +2043,7 @@ export class DockerTab extends LitElement {
     if (!this.imageName.trim()) return;
     
     try {
-      const response = await api.post('/docker/images/pull', {
+      await api.post('/docker/images/pull', {
         image: this.imageName.trim()
       });
       

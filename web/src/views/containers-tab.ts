@@ -1702,7 +1702,7 @@ renderImagesTable() {
     return text.replace(regex, '<mark style="background-color: #ffeb3b; color: #000; padding: 0 2px;">$1</mark>');
   }
 
-  private handleOutsideClick(event: Event) {
+  private handleOutsideClick(_event: Event) {
     // Close all menus when clicking outside
     this.closeAllMenus();
     this.showImageActionsDropdown = false;
@@ -1757,7 +1757,7 @@ renderImagesTable() {
     
     fileInput.addEventListener('change', (event) => {
       const files = (event.target as HTMLInputElement).files;
-      if (files && files.length > 0) {
+      if (files && files.length > 0 && files[0]) {
         this.selectedFile = files[0];
         this.handleFileUpload();
       }
@@ -1943,8 +1943,9 @@ renderImagesTable() {
 
       // Update status to completed
       const completedIndex = this.uploadQueue.findIndex(i => i.id === item.id);
-      if (completedIndex !== -1) {
-        this.uploadQueue[completedIndex] = { ...this.uploadQueue[completedIndex], status: 'completed', progress: 100 };
+      if (completedIndex !== -1 && this.uploadQueue[completedIndex]) {
+        const existingItem = this.uploadQueue[completedIndex];
+        this.uploadQueue[completedIndex] = { ...existingItem, status: 'completed', progress: 100 };
         this.requestUpdate();
       }
 
@@ -1953,9 +1954,10 @@ renderImagesTable() {
       
       // Update status to error
       const errorIndex = this.uploadQueue.findIndex(i => i.id === item.id);
-      if (errorIndex !== -1) {
+      if (errorIndex !== -1 && this.uploadQueue[errorIndex]) {
+        const existingItem = this.uploadQueue[errorIndex];
         this.uploadQueue[errorIndex] = { 
-          ...this.uploadQueue[errorIndex], 
+          ...existingItem, 
           status: 'error', 
           error: error instanceof Error ? error.message : 'Upload failed'
         };
@@ -1974,8 +1976,9 @@ renderImagesTable() {
 
   updateUploadProgress(itemId: string, progress: number) {
     const index = this.uploadQueue.findIndex(item => item.id === itemId);
-    if (index !== -1) {
-      this.uploadQueue[index] = { ...this.uploadQueue[index], progress };
+    if (index !== -1 && this.uploadQueue[index]) {
+      const existingItem = this.uploadQueue[index];
+      this.uploadQueue[index] = { ...existingItem, progress };
       this.requestUpdate();
     }
   }

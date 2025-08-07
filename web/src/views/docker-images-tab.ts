@@ -25,7 +25,7 @@ export class DockerImagesTab extends LitElement {
     isDangerous: false
   };
 
-  static styles = css`
+  static override styles = css`
     :host {
       display: block;
       padding: 16px;
@@ -310,14 +310,14 @@ export class DockerImagesTab extends LitElement {
     }
   `;
 
-  connectedCallback() {
+  override connectedCallback() {
     super.connectedCallback();
     this.fetchImages();
     document.addEventListener('click', this.handleDocumentClick);
     document.addEventListener('keydown', this.handleKeyDown);
   }
 
-  disconnectedCallback() {
+  override disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('click', this.handleDocumentClick);
     document.removeEventListener('keydown', this.handleKeyDown);
@@ -440,7 +440,7 @@ export class DockerImagesTab extends LitElement {
     }
   }
 
-render() {
+override render() {
     return html`
       ${!this.error && this.images.length > 0 ? html`
         <div class="search-box">

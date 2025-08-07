@@ -26,7 +26,7 @@ export class StorageTab extends I18nLitElement {
   @property({ type: Array }) iscsiSessions: ISCSISession[] = [];
   @property({ type: Array }) multipathDevices: MultipathDevice[] = [];
   @property({ type: Array }) btrfsSubvolumes: string[] = [];
-  @property({ type: String }) activeSection = 'disks';
+  @property({ type: String }) activeSection: 'disks' | 'lvm' | 'raid' | 'iscsi' | 'multipath' | 'btrfs' = 'disks';
   @property({ type: String }) subRoute: string | null = null;
   @property({ type: Boolean }) loading = false;
   @property({ type: String }) error = '';
@@ -308,15 +308,15 @@ export class StorageTab extends I18nLitElement {
   private updateActiveSection() {
     // First try to get section from sub-route
     if (this.subRoute && ['disks', 'lvm', 'raid', 'iscsi', 'multipath', 'btrfs'].includes(this.subRoute)) {
-      this.activeSection = this.subRoute;
+      this.activeSection = this.subRoute as typeof this.activeSection;
       return;
     }
 
     // Otherwise try to get it from URL path
     const pathSegments = window.location.pathname.split('/');
     const section = pathSegments[pathSegments.length - 1];
-    if (['disks', 'lvm', 'raid', 'iscsi', 'multipath', 'btrfs'].includes(section)) {
-      this.activeSection = section;
+    if (section && ['disks', 'lvm', 'raid', 'iscsi', 'multipath', 'btrfs'].includes(section)) {
+      this.activeSection = section as typeof this.activeSection;
     }
   }
 
@@ -328,8 +328,8 @@ export class StorageTab extends I18nLitElement {
   handlePopState() {
     const pathSegments = window.location.pathname.split('/');
     const section = pathSegments[pathSegments.length - 1];
-    if (['disks', 'lvm', 'raid', 'iscsi', 'multipath', 'btrfs'].includes(section)) {
-      this.activeSection = section;
+    if (section && ['disks', 'lvm', 'raid', 'iscsi', 'multipath', 'btrfs'].includes(section)) {
+      this.activeSection = section as typeof this.activeSection;
       this.loadData();
     }
   }

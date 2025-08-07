@@ -10,7 +10,7 @@ export class DockerVolumesTab extends LitElement {
   @state() private loading = false;
   @state() private searchTerm = '';
 
-  static styles = css`
+  static override styles = css`
     :host {
       display: block;
       padding: 16px;
@@ -217,13 +217,13 @@ export class DockerVolumesTab extends LitElement {
     }
   `;
 
-  connectedCallback() {
+  override connectedCallback() {
     super.connectedCallback();
     this.fetchVolumes();
     document.addEventListener('click', this.handleDocumentClick);
   }
 
-  disconnectedCallback() {
+  override disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('click', this.handleDocumentClick);
   }
@@ -300,7 +300,7 @@ export class DockerVolumesTab extends LitElement {
     return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
   }
 
-  render() {
+  override render() {
     return html`
       ${!this.error && this.volumes.length > 0 ? html`
         <div class="search-box">

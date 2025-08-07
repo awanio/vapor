@@ -6,74 +6,74 @@ import { Api } from '../api.js';
 class KubernetesTab extends LitElement {
   @property({ type: String }) activeSubmenu = 'workloads';
   @property({ type: String }) subRoute: string | null = null;
-  @property({ type: Array }) workloads = [];
-  @property({ type: Array }) networks = [];
-  @property({ type: Array }) storages = [];
-  @property({ type: Array }) configurations = [];
-  @property({ type: Array }) helms = [];
-  @property({ type: Array }) nodes = [];
-  @property({ type: Array }) crds = [];
-  @property({ type: String }) error = null;
+  @property({ type: Array }) workloads: any[] = [];
+  @property({ type: Array }) networks: any[] = [];
+  @property({ type: Array }) storages: any[] = [];
+  @property({ type: Array }) configurations: any[] = [];
+  @property({ type: Array }) helms: any[] = [];
+  @property({ type: Array }) nodes: any[] = [];
+  @property({ type: Array }) crds: any[] = [];
+  @property({ type: String }) error: string | null = null;
   @property({ type: String }) activeWorkloadTab = 'pods';
   @property({ type: String }) activeNetworkTab = 'services';
   @property({ type: String }) activeStorageTab = 'pvc';
   @property({ type: String }) activeConfigurationTab = 'secrets';
   @property({ type: String }) activeHelmTab = 'releases';
   @property({ type: Boolean }) showPodDetails = false;
-  @property({ type: Object }) selectedPod = null;
+  @property({ type: Object }) selectedPod: any = null;
   @property({ type: Boolean }) loadingPodDetails = false;
   @property({ type: Boolean }) showCrdDetails = false;
-  @property({ type: Object }) selectedCrd = null;
+  @property({ type: Object }) selectedCrd: any = null;
   @property({ type: Boolean }) loadingCrdDetails = false;
   @property({ type: Boolean }) showDeploymentDetails = false;
-  @property({ type: Object }) selectedDeployment = null;
+  @property({ type: Object }) selectedDeployment: any = null;
   @property({ type: Boolean }) loadingDeploymentDetails = false;
   @property({ type: Boolean }) showStatefulSetDetails = false;
-  @property({ type: Object }) selectedStatefulSet = null;
+  @property({ type: Object }) selectedStatefulSet: any = null;
   @property({ type: Boolean }) loadingStatefulSetDetails = false;
   @property({ type: Boolean }) showDaemonSetDetails = false;
-  @property({ type: Object }) selectedDaemonSet = null;
+  @property({ type: Object }) selectedDaemonSet: any = null;
   @property({ type: Boolean }) loadingDaemonSetDetails = false;
   @property({ type: Boolean }) showJobDetails = false;
-  @property({ type: Object }) selectedJob = null;
+  @property({ type: Object }) selectedJob: any = null;
   @property({ type: Boolean }) loadingJobDetails = false;
   @property({ type: Boolean }) showCronJobDetails = false;
-  @property({ type: Object }) selectedCronJob = null;
+  @property({ type: Object }) selectedCronJob: any = null;
   @property({ type: Boolean }) loadingCronJobDetails = false;
   @property({ type: Boolean }) showPvcDetails = false;
-  @property({ type: Object }) selectedPvc = null;
+  @property({ type: Object }) selectedPvc: any = null;
   @property({ type: Boolean }) loadingPvcDetails = false;
   @property({ type: Boolean }) showPvDetails = false;
-  @property({ type: Object }) selectedPv = null;
+  @property({ type: Object }) selectedPv: any = null;
   @property({ type: Boolean }) loadingPvDetails = false;
   @property({ type: Boolean }) showSecretDetails = false;
-  @property({ type: Object }) selectedSecret = null;
+  @property({ type: Object }) selectedSecret: any = null;
   @property({ type: Boolean }) loadingSecretDetails = false;
   @property({ type: Boolean }) showConfigMapDetails = false;
-  @property({ type: Object }) selectedConfigMap = null;
+  @property({ type: Object }) selectedConfigMap: any = null;
   @property({ type: Boolean }) loadingConfigMapDetails = false;
   @property({ type: Boolean }) showNodeDetails = false;
-  @property({ type: Object }) selectedNode = null;
+  @property({ type: Object }) selectedNode: any = null;
   @property({ type: Boolean }) loadingNodeDetails = false;
-  @property({ type: Array }) namespaces = [];
+  @property({ type: Array }) namespaces: string[] = [];
   @property({ type: String }) selectedNamespace = 'all';
   @property({ type: Boolean }) showNamespaceDropdown = false;
   @property({ type: String }) namespaceSearchQuery = '';
-  @property({ type: Array }) notifications = [];
+  @property({ type: Array }) notifications: any[] = [];
   @property({ type: Number }) notificationId = 0;
   @property({ type: Boolean }) showLogsDrawer = false;
   @property({ type: String }) containerLogs = '';
   @property({ type: String }) logsSearchTerm = '';
-  @property({ type: String }) logsError = null;
+  @property({ type: String }) logsError: string | null = null;
   @property({ type: Boolean }) showCreateDrawer = false;
   @property({ type: String }) createResourceYaml = '';
   @property({ type: Boolean }) isResourceValid = false;
   @property({ type: String }) validationError = '';
   @property({ type: Boolean }) showDeleteModal = false;
-  @property({ type: Object }) itemToDelete = null;
+  @property({ type: Object }) itemToDelete: any = null;
   @property({ type: Boolean }) isDeleting = false;
 
-  static styles = css`
+  static override styles = css`
     :host {
       display: block;
       padding: 16px;
@@ -1288,7 +1288,7 @@ class KubernetesTab extends LitElement {
     const data = this.getFilteredData();
 
     if (data.length === 0) {
-      const allData = this[this.activeSubmenu] || [];
+      const allData = this.getDataForActiveSubmenu();
       if (allData.length === 0) {
         return html`
           <div class="empty-state">No ${this.activeSubmenu} resources found.</div>
@@ -1320,7 +1320,7 @@ class KubernetesTab extends LitElement {
     }
   }
 
-  renderWorkloadTable(data) {
+  renderWorkloadTable(data: Array<any>) {
     if (this.loadingPodDetails || this.loadingStatefulSetDetails) {
       console.log('Raw data in detail drawers:');
       console.log('Pod data:', this.selectedPod);
@@ -1352,7 +1352,7 @@ class KubernetesTab extends LitElement {
           </tr>
         </thead>
         <tbody>
-          ${data.map((item, index) => html`
+          ${data.map((item: any, index: number) => html`
             <tr>
               <td>
                 ${(item.type === 'Pod' || item.type === 'Deployment' || item.type === 'StatefulSet' || item.type === 'DaemonSet' || item.type === 'Job' || item.type === 'CronJob')
@@ -1367,7 +1367,7 @@ class KubernetesTab extends LitElement {
               <td>${item.age}</td>
               <td>
                 <div class="action-menu">
-                  <button class="action-dots" @click=${(e) => this.toggleActionMenu(e, `k8s-workload-${index}`)}>⋮</button>
+                  <button class="action-dots" @click=${(e: MouseEvent) => this.toggleActionMenu(e, `k8s-workload-${index}`)}>⋮</button>
                   <div class="action-dropdown" id="k8s-workload-${index}">
                     <button @click=${() => { this.closeAllMenus(); this.viewDetails(item); }}>View Details</button>
                     ${item.type === 'Pod' ? html`<button @click=${() => { this.closeAllMenus(); this.viewLogs(item); }}>View Logs</button>` : ''}
@@ -1382,12 +1382,12 @@ class KubernetesTab extends LitElement {
     `;
   }
 
-  renderNetworksTable(data) {
+  renderNetworksTable(data: Array<any>) {
     // Check which network tab is active to render appropriate columns
     const isServices = this.activeNetworkTab === 'services';
     const isIngresses = this.activeNetworkTab === 'ingresses';
     const isIngressClasses = this.activeNetworkTab === 'ingressclasses';
-    const isNetworkPolicies = this.activeNetworkTab === 'networkpolicies';
+    // const isNetworkPolicies = this.activeNetworkTab === 'networkpolicies';
     
     if (isServices) {
       return html`
@@ -1405,7 +1405,7 @@ class KubernetesTab extends LitElement {
             </tr>
           </thead>
           <tbody>
-            ${data.map((item, index) => html`
+            ${data.map((item: any, index: number) => html`
               <tr>
                 <td>
                   <span class="pod-name-link" @click=${() => this.viewDetails(item)}>
@@ -1420,7 +1420,7 @@ class KubernetesTab extends LitElement {
                 <td>${item.age}</td>
                 <td>
                   <div class="action-menu">
-                    <button class="action-dots" @click=${(e) => this.toggleActionMenu(e, `k8s-networks-${index}`)}>⋮</button>
+                    <button class="action-dots" @click=${(e: MouseEvent) => this.toggleActionMenu(e, `k8s-networks-${index}`)}>⋮</button>
                     <div class="action-dropdown" id="k8s-networks-${index}">
                       <button @click=${() => { this.closeAllMenus(); this.viewDetails(item); }}>View Details</button>
                       <button @click=${() => { this.closeAllMenus(); this.editItem(item); }}>Edit</button>
@@ -1450,7 +1450,7 @@ class KubernetesTab extends LitElement {
             </tr>
           </thead>
           <tbody>
-            ${data.map((item, index) => html`
+            ${data.map((item: any, index: number) => html`
               <tr>
                 <td>
                   <span class="pod-name-link" @click=${() => this.viewDetails(item)}>
@@ -1465,7 +1465,7 @@ class KubernetesTab extends LitElement {
                 <td>${item.age}</td>
                 <td>
                   <div class="action-menu">
-                    <button class="action-dots" @click=${(e) => this.toggleActionMenu(e, `k8s-networks-${index}`)}>⋮</button>
+                    <button class="action-dots" @click=${(e: MouseEvent) => this.toggleActionMenu(e, `k8s-networks-${index}`)}>⋮</button>
                     <div class="action-dropdown" id="k8s-networks-${index}">
                       <button @click=${() => { this.closeAllMenus(); this.viewDetails(item); }}>View Details</button>
                       <button @click=${() => { this.closeAllMenus(); this.editItem(item); }}>Edit</button>
@@ -1499,7 +1499,7 @@ class KubernetesTab extends LitElement {
                   ${isIngressClasses ? 'IngressClasses' : 'NetworkPolicies'} API endpoint is not yet implemented
                 </td>
               </tr>
-            ` : data.map((item, index) => html`
+            ` : data.map((item: any, index: number) => html`
               <tr>
                 <td>${item.name}</td>
                 <td>${item.type}</td>
@@ -1508,7 +1508,7 @@ class KubernetesTab extends LitElement {
                 <td>${item.age}</td>
                 <td>
                   <div class="action-menu">
-                    <button class="action-dots" @click=${(e) => this.toggleActionMenu(e, `k8s-networks-${index}`)}>⋮</button>
+                    <button class="action-dots" @click=${(e: MouseEvent) => this.toggleActionMenu(e, `k8s-networks-${index}`)}>⋮</button>
                     <div class="action-dropdown" id="k8s-networks-${index}">
                       <button @click=${() => { this.closeAllMenus(); this.viewDetails(item); }}>View Details</button>
                       <button @click=${() => { this.closeAllMenus(); this.editItem(item); }}>Edit</button>
@@ -1524,7 +1524,7 @@ class KubernetesTab extends LitElement {
     }
   }
 
-  renderStorageTable(data) {
+  renderStorageTable(data: Array<any>) {
     return html`
       <table class="table">
         <thead>
@@ -1540,7 +1540,7 @@ class KubernetesTab extends LitElement {
           </tr>
         </thead>
         <tbody>
-          ${data.map((item, index) => html`
+          ${data.map((item: any, index: number) => html`
             <tr>
               <td>
                 ${(item.type === 'PersistentVolume' || item.type === 'PersistentVolumeClaim')
@@ -1556,7 +1556,7 @@ class KubernetesTab extends LitElement {
               <td>${item.age}</td>
               <td>
                 <div class="action-menu">
-                  <button class="action-dots" @click=${(e) => this.toggleActionMenu(e, `k8s-storage-${index}`)}>⋮</button>
+                  <button class="action-dots" @click=${(e: MouseEvent) => this.toggleActionMenu(e, `k8s-storage-${index}`)}>⋮</button>
                   <div class="action-dropdown" id="k8s-storage-${index}">
                     <button @click=${() => { this.closeAllMenus(); this.viewDetails(item); }}>View Details</button>
                     <button @click=${() => { this.closeAllMenus(); this.editItem(item); }}>Edit</button>
@@ -1572,7 +1572,7 @@ class KubernetesTab extends LitElement {
     `;
   }
 
-  renderConfigurationsTable(data) {
+  renderConfigurationsTable(data: Array<any>) {
     return html`
       <table class="table">
         <thead>
@@ -1587,7 +1587,7 @@ class KubernetesTab extends LitElement {
           </tr>
         </thead>
         <tbody>
-          ${data.map((item, index) => html`
+          ${data.map((item: any, index: number) => html`
             <tr>
               <td>
                 ${(item.type === 'Secret' || item.type === 'ConfigMap')
@@ -1602,7 +1602,7 @@ class KubernetesTab extends LitElement {
               <td>${item.age}</td>
               <td>
                 <div class="action-menu">
-                  <button class="action-dots" @click=${(e) => this.toggleActionMenu(e, `k8s-configurations-${index}`)}>⋮</button>
+                  <button class="action-dots" @click=${(e: MouseEvent) => this.toggleActionMenu(e, `k8s-configurations-${index}`)}>⋮</button>
                   <div class="action-dropdown" id="k8s-configurations-${index}">
                     <button @click=${() => { this.closeAllMenus(); this.viewDetails(item); }}>View Details</button>
                     <button @click=${() => { this.closeAllMenus(); this.editItem(item); }}>Edit</button>
@@ -1618,7 +1618,7 @@ class KubernetesTab extends LitElement {
     `;
   }
 
-  renderHelmTable(data) {
+  renderHelmTable(data: Array<any>) {
     return html`
       <table class="table">
         <thead>
@@ -1633,7 +1633,7 @@ class KubernetesTab extends LitElement {
           </tr>
         </thead>
         <tbody>
-          ${data.map((item, index) => html`
+          ${data.map((item: any, index: number) => html`
             <tr>
               <td>${item.name}</td>
               <td>${item.namespace}</td>
@@ -1643,7 +1643,7 @@ class KubernetesTab extends LitElement {
               <td>${item.updated}</td>
               <td>
                 <div class="action-menu">
-                  <button class="action-dots" @click=${(e) => this.toggleActionMenu(e, `k8s-helm-${index}`)}>⋮</button>
+                  <button class="action-dots" @click=${(e: MouseEvent) => this.toggleActionMenu(e, `k8s-helm-${index}`)}>⋮</button>
                   <div class="action-dropdown" id="k8s-helm-${index}">
                     <button @click=${() => { this.closeAllMenus(); this.viewDetails(item); }}>View Details</button>
                     <button @click=${() => { this.closeAllMenus(); this.upgradeRelease(item); }}>Upgrade</button>
@@ -1659,7 +1659,7 @@ class KubernetesTab extends LitElement {
     `;
   }
 
-  renderNodesTable(data) {
+  renderNodesTable(data: Array<any>) {
     return html`
       <table class="table">
         <thead>
@@ -1678,7 +1678,7 @@ class KubernetesTab extends LitElement {
           </tr>
         </thead>
         <tbody>
-          ${data.map((node, index) => html`
+          ${data.map((node: any, index: number) => html`
             <tr>
               <td>
                 <span class="pod-name-link" @click=${() => this.viewDetails(node)}>
@@ -1696,7 +1696,7 @@ class KubernetesTab extends LitElement {
               <td>${node.containerRuntime}</td>
               <td>
                 <div class="action-menu">
-                  <button class="action-dots" @click=${(e) => this.toggleActionMenu(e, `k8s-node-${index}`)}>⋮</button>
+                  <button class="action-dots" @click=${(e: MouseEvent) => this.toggleActionMenu(e, `k8s-node-${index}`)}>⋮</button>
                   <div class="action-dropdown" id="k8s-node-${index}">
                     <button @click=${() => { this.closeAllMenus(); this.viewDetails(node); }}>View Details</button>
                     <button @click=${() => { this.closeAllMenus(); this.editItem(node); }}>Edit</button>
@@ -1712,7 +1712,7 @@ class KubernetesTab extends LitElement {
     `;
   }
 
-  renderCrdTable(data) {
+  renderCrdTable(data: Array<any>) {
     return html`
       <table class="table">
         <thead>
@@ -1727,7 +1727,7 @@ class KubernetesTab extends LitElement {
           </tr>
         </thead>
         <tbody>
-          ${data.map((crd, index) => html`
+          ${data.map((crd: any, index: number) => html`
             <tr>
               <td>
                 <span class="pod-name-link" @click=${() => this.viewDetails(crd)}>
@@ -1741,7 +1741,7 @@ class KubernetesTab extends LitElement {
               <td>${crd.age}</td>
               <td>
                 <div class="action-menu">
-                  <button class="action-dots" @click=${(e) => this.toggleActionMenu(e, `k8s-crd-${index}`)}>⋮</button>
+                  <button class="action-dots" @click=${(e: MouseEvent) => this.toggleActionMenu(e, `k8s-crd-${index}`)}>⋮</button>
                   <div class="action-dropdown" id="k8s-crd-${index}">
                     <button @click=${() => { this.closeAllMenus(); this.viewDetails(crd); }}>View Details</button>
                     <button @click=${() => { this.closeAllMenus(); this.editItem(crd); }}>Edit</button>
@@ -1765,7 +1765,7 @@ class KubernetesTab extends LitElement {
   }
 
   private getFilteredData(): Array<any> {
-    let data = this[this.activeSubmenu] || [];
+    let data = this.getDataForActiveSubmenu();
     
     // If viewing workloads, filter by active workload tab
     if (this.activeSubmenu === 'workloads') {
@@ -1795,12 +1795,12 @@ class KubernetesTab extends LitElement {
     // Filter by namespace if a specific namespace is selected
     // Skip namespace filtering for nodes since they are cluster-level resources
     if (this.selectedNamespace !== 'all' && this.activeSubmenu !== 'nodes') {
-      data = data.filter(item => item.namespace === this.selectedNamespace);
+      data = data.filter((item: any) => item.namespace === this.selectedNamespace);
     }
     
     // Apply search query filter
     if (this.searchQuery) {
-      data = data.filter(item => JSON.stringify(item).toLowerCase().includes(this.searchQuery));
+      data = data.filter((item: any) => JSON.stringify(item).toLowerCase().includes(this.searchQuery));
     }
     
     return data;
@@ -1811,17 +1811,17 @@ class KubernetesTab extends LitElement {
     
     switch (this.activeWorkloadTab) {
       case 'pods':
-        return allWorkloads.filter(item => item.type === 'Pod');
+        return allWorkloads.filter((item: any) => item.type === 'Pod');
       case 'deployments':
-        return allWorkloads.filter(item => item.type === 'Deployment');
+        return allWorkloads.filter((item: any) => item.type === 'Deployment');
       case 'statefulsets':
-        return allWorkloads.filter(item => item.type === 'StatefulSet');
+        return allWorkloads.filter((item: any) => item.type === 'StatefulSet');
       case 'daemonsets':
-        return allWorkloads.filter(item => item.type === 'DaemonSet');
+        return allWorkloads.filter((item: any) => item.type === 'DaemonSet');
       case 'jobs':
-        return allWorkloads.filter(item => item.type === 'Job');
+        return allWorkloads.filter((item: any) => item.type === 'Job');
       case 'cronjobs':
-        return allWorkloads.filter(item => item.type === 'CronJob');
+        return allWorkloads.filter((item: any) => item.type === 'CronJob');
       default:
         return allWorkloads;
     }
@@ -1832,13 +1832,13 @@ class KubernetesTab extends LitElement {
     
     switch (this.activeNetworkTab) {
       case 'services':
-        return allNetworks.filter(item => item.type === 'Service');
+        return allNetworks.filter((item: any) => item.type === 'Service');
       case 'ingresses':
-        return allNetworks.filter(item => item.type === 'Ingress');
+        return allNetworks.filter((item: any) => item.type === 'Ingress');
       case 'ingressclasses':
-        return allNetworks.filter(item => item.type === 'IngressClass');
+        return allNetworks.filter((item: any) => item.type === 'IngressClass');
       case 'networkpolicies':
-        return allNetworks.filter(item => item.type === 'NetworkPolicy');
+        return allNetworks.filter((item: any) => item.type === 'NetworkPolicy');
       default:
         return allNetworks;
     }
@@ -1849,9 +1849,9 @@ class KubernetesTab extends LitElement {
     
     switch (this.activeStorageTab) {
       case 'pvc':
-        return allStorages.filter(item => item.type === 'PersistentVolumeClaim');
+        return allStorages.filter((item: any) => item.type === 'PersistentVolumeClaim');
       case 'pv':
-        return allStorages.filter(item => item.type === 'PersistentVolume');
+        return allStorages.filter((item: any) => item.type === 'PersistentVolume');
       default:
         return allStorages;
     }
@@ -1862,9 +1862,9 @@ class KubernetesTab extends LitElement {
     
     switch (this.activeConfigurationTab) {
       case 'secrets':
-        return allConfigurations.filter(item => item.type === 'Secret');
+        return allConfigurations.filter((item: any) => item.type === 'Secret');
       case 'configmap':
-        return allConfigurations.filter(item => item.type === 'ConfigMap');
+        return allConfigurations.filter((item: any) => item.type === 'ConfigMap');
       default:
         return allConfigurations;
     }
@@ -1875,9 +1875,9 @@ class KubernetesTab extends LitElement {
     
     switch (this.activeHelmTab) {
       case 'releases':
-        return allHelms.filter(item => item.type === 'Release');
+        return allHelms.filter((item: any) => item.type === 'Release');
       case 'charts':
-        return allHelms.filter(item => item.type === 'Chart');
+        return allHelms.filter((item: any) => item.type === 'Chart');
       default:
         return allHelms;
     }
@@ -2350,99 +2350,6 @@ class KubernetesTab extends LitElement {
     `;
   }
 
-renderStatefulSetDetailContent(data: any) {
-    if (!data) {
-      return html`<div class="no-data">No data available</div>`;
-    }
-
-    const statefulSetData = data.statefulset_detail || data;
-
-    console.log('Processing stateful set data:', statefulSetData);
-
-    return html`
-      <div class="detail-sections">
-        <!-- Basic Information -->
-        <div class="detail-section">
-          <h3>Basic Information</h3>
-          ${this.renderDetailItem('Name', statefulSetData.metadata.name)}
-          ${this.renderDetailItem('Namespace', statefulSetData.metadata.namespace)}
-          ${this.renderDetailItem('UID', statefulSetData.metadata.uid)}
-          ${this.renderDetailItem('Resource Version', statefulSetData.metadata.resourceVersion)}
-          ${this.renderDetailItem('Creation Timestamp', statefulSetData.metadata.creationTimestamp)}
-        </div>
-
-        <!-- Status Information -->
-        <div class="detail-section">
-          <h3>Status</h3>
-          ${this.renderDetailItem('Replicas', statefulSetData.status.replicas)}
-          ${this.renderDetailItem('Ready Replicas', statefulSetData.status.readyReplicas)}
-          ${this.renderDetailItem('Current Replicas', statefulSetData.status.currentReplicas)}
-          ${this.renderDetailItem('Updated Replicas', statefulSetData.status.updatedReplicas)}
-        </div>
-
-        <!-- Update Strategy -->
-        ${statefulSetData.spec.updateStrategy ? html`
-          <div class="detail-section">
-            <h3>Update Strategy</h3>
-            ${this.renderDetailItem('Type', statefulSetData.spec.updateStrategy.type)}
-            ${statefulSetData.spec.updateStrategy.rollingUpdate ? html`
-              <div class="detail-item nested">
-                <strong class="detail-key">Rolling Update:</strong>
-                <div class="nested-content">
-                  ${this.renderDetailItem('Partition', statefulSetData.spec.updateStrategy.rollingUpdate.partition)}
-                </div>
-              </div>
-            ` : ''}
-          </div>
-        ` : ''}
-
-        <!-- Labels -->
-        ${statefulSetData.metadata.labels ? html`
-          <div class="detail-section">
-            <h3>Labels</h3>
-            ${this.renderObjectAsKeyValue(statefulSetData.metadata.labels)}
-          </div>
-        ` : ''}
-
-        <!-- Annotations -->
-        ${statefulSetData.metadata.annotations ? html`
-          <div class="detail-section">
-            <h3>Annotations</h3>
-            ${this.renderObjectAsKeyValue(statefulSetData.metadata.annotations)}
-          </div>
-        ` : ''}
-
-        <!-- Pod Template -->
-        ${statefulSetData.spec.template ? html`
-          <div class="detail-section">
-            <h3>Pod Template</h3>
-            ${statefulSetData.spec.template.metadata?.labels ? 
-              this.renderDetailItem('Pod Labels', statefulSetData.spec.template.metadata.labels, true) : ''}
-            ${statefulSetData.spec.template.spec?.containers ? html`
-              ${statefulSetData.spec.template.spec.containers.map((container) => html`
-                <div class="detail-item nested">
-                  <strong class="detail-key">Container:</strong>
-                  <div class="nested-content">
-                    ${this.renderDetailItem('Name', container.name)}
-                    ${this.renderDetailItem('Image', container.image)}
-                  </div>
-                </div>
-              `)}
-            ` : ''}
-          </div>
-        ` : ''}
-
-        <!-- Raw Data -->
-        <div class="detail-section">
-          <h3>Raw Data</h3>
-          <details>
-            <summary>View raw stateful set data</summary>
-            <pre class="raw-data">${JSON.stringify(statefulSetData, null, 2)}</pre>
-          </details>
-        </div>
-      </div>
-    `;
-  }
 renderDaemonSetDetailContent(data: any) {
     if (!data) {
       return html`<div class="no-data">No data available</div>`;
@@ -2490,47 +2397,47 @@ renderDaemonSetDetailContent(data: any) {
         ` : ''}
 
         <!-- Selector -->
-        ${statefulSetData.selector ? html`
+        ${daemonSetData.spec.selector ? html`
           <div class="detail-section">
             <h3>Selector</h3>
-            ${this.renderDetailItem('Match Labels', statefulSetData.selector.matchLabels, true)}
+            ${this.renderDetailItem('Match Labels', daemonSetData.spec.selector.matchLabels, true)}
           </div>
         ` : ''}
 
         <!-- Labels -->
-        ${statefulSetData.labels && Object.keys(statefulSetData.labels).length > 0 ? html`
+        ${daemonSetData.metadata.labels && Object.keys(daemonSetData.metadata.labels).length > 0 ? html`
           <div class="detail-section">
             <h3>Labels</h3>
-            ${this.renderObjectAsKeyValue(statefulSetData.labels)}
+            ${this.renderObjectAsKeyValue(daemonSetData.metadata.labels)}
           </div>
         ` : ''}
 
         <!-- Annotations -->
-        ${statefulSetData.annotations && Object.keys(statefulSetData.annotations).length > 0 ? html`
+        ${daemonSetData.metadata.annotations && Object.keys(daemonSetData.metadata.annotations).length > 0 ? html`
           <div class="detail-section">
             <h3>Annotations</h3>
-            ${this.renderObjectAsKeyValue(statefulSetData.annotations)}
+            ${this.renderObjectAsKeyValue(daemonSetData.metadata.annotations)}
           </div>
         ` : ''}
 
         <!-- Template -->
-        ${statefulSetData.template ? html`
+        ${daemonSetData.spec.template ? html`
           <div class="detail-section">
             <h3>Pod Template</h3>
-            ${statefulSetData.template.metadata?.labels ? 
-              this.renderDetailItem('Pod Labels', statefulSetData.template.metadata.labels, true) : ''}
-            ${statefulSetData.template.spec?.containers && statefulSetData.template.spec.containers.length > 0 ? html`
+            ${daemonSetData.spec.template.metadata?.labels ? 
+              this.renderDetailItem('Pod Labels', daemonSetData.spec.template.metadata.labels, true) : ''}
+            ${daemonSetData.spec.template.spec?.containers && daemonSetData.spec.template.spec.containers.length > 0 ? html`
               <div class="detail-item nested">
                 <strong class="detail-key">Containers:</strong>
                 <div class="nested-content">
-                  ${statefulSetData.template.spec.containers.map((container, index) => html`
+                  ${daemonSetData.spec.template.spec.containers.map((container: any, index: number) => html`
                     <div class="detail-item nested">
                       <strong class="detail-key">Container ${index + 1}:</strong>
                       <div class="nested-content">
                         ${this.renderDetailItem('Name', container.name)}
                         ${this.renderDetailItem('Image', container.image)}
                         ${container.ports && container.ports.length > 0 ? 
-                          this.renderDetailItem('Ports', container.ports.map(p => `${p.containerPort}/${p.protocol || 'TCP'}`).join(', ')) : ''}
+                          this.renderDetailItem('Ports', container.ports.map((p: any) => `${p.containerPort}/${p.protocol || 'TCP'}`).join(', ')) : ''}
                         ${container.env && container.env.length > 0 ? 
                           this.renderDetailItem('Environment Variables', `${container.env.length} variables`) : ''}
                         ${container.resources ? this.renderDetailItem('Resources', container.resources, true) : ''}
@@ -2544,10 +2451,10 @@ renderDaemonSetDetailContent(data: any) {
         ` : ''}
 
         <!-- Conditions -->
-        ${statefulSetData.conditions && statefulSetData.conditions.length > 0 ? html`
+        ${daemonSetData.status.conditions && daemonSetData.status.conditions.length > 0 ? html`
           <div class="detail-section">
             <h3>Conditions</h3>
-            ${statefulSetData.conditions.map((condition) => html`
+            ${daemonSetData.status.conditions.map((condition: any) => html`
               <div class="detail-item nested">
                 <strong class="detail-key">${condition.type}:</strong>
                 <div class="nested-content">
@@ -2558,7 +2465,7 @@ renderDaemonSetDetailContent(data: any) {
                   ${this.renderDetailItem('Message', condition.message)}
                 </div>
               </div>
-            `)}
+            `)};
           </div>
         ` : ''}
 
@@ -2566,99 +2473,14 @@ renderDaemonSetDetailContent(data: any) {
         <div class="detail-section">
           <h3>Raw Data</h3>
           <details>
-            <summary>View raw statefulset data</summary>
-            <pre class="raw-data">${JSON.stringify(statefulSetData, null, 2)}</pre>
-          </details>
-        </div>
-      </div>
-    `;
-  }
-
-renderDaemonSetDetailContent(data: any) {
-    if (!data) {
-      return html`<div class="no-data">No data available</div>`;
-    }
-
-    const daemonSetData = data.daemonset_detail || data;
-
-    console.log('Processing daemon set data:', daemonSetData);
-
-    return html`
-      <div class="detail-sections">
-        <!-- Basic Information -->
-        <div class="detail-section">
-          <h3>Basic Information</h3>
-          ${this.renderDetailItem('Name', daemonSetData.metadata.name)}
-          ${this.renderDetailItem('Namespace', daemonSetData.metadata.namespace)}
-          ${this.renderDetailItem('UID', daemonSetData.metadata.uid)}
-          ${this.renderDetailItem('Resource Version', daemonSetData.metadata.resourceVersion)}
-          ${this.renderDetailItem('Creation Timestamp', daemonSetData.metadata.creationTimestamp)}
-        </div>
-
-        <!-- Status Information -->
-        <div class="detail-section">
-          <h3>Status</h3>
-          ${this.renderDetailItem('Current Number Scheduled', daemonSetData.status.currentNumberScheduled)}
-          ${this.renderDetailItem('Number Ready', daemonSetData.status.numberReady)}
-          ${this.renderDetailItem('Desired Number Scheduled', daemonSetData.status.desiredNumberScheduled)}
-        </div>
-
-        <!-- Update Strategy -->
-        ${daemonSetData.spec.updateStrategy ? html`
-          <div class="detail-section">
-            <h3>Update Strategy</h3>
-            ${this.renderDetailItem('Type', daemonSetData.spec.updateStrategy.type)}
-          </div>
-        ` : ''}
-
-        <!-- Labels -->
-        ${daemonSetData.metadata.labels ? html`
-          <div class="detail-section">
-            <h3>Labels</h3>
-            ${this.renderObjectAsKeyValue(daemonSetData.metadata.labels)}
-          </div>
-        ` : ''}
-
-        <!-- Annotations -->
-        ${daemonSetData.metadata.annotations ? html`
-          <div class="detail-section">
-            <h3>Annotations</h3>
-            ${this.renderObjectAsKeyValue(daemonSetData.metadata.annotations)}
-          </div>
-        ` : ''}
-
-        <!-- Pod Template -->
-        ${daemonSetData.spec.template ? html`
-          <div class="detail-section">
-            <h3>Pod Template</h3>
-            ${daemonSetData.spec.template.metadata?.labels ? 
-              this.renderDetailItem('Pod Labels', daemonSetData.spec.template.metadata.labels, true) : ''}
-            ${daemonSetData.spec.template.spec?.containers ? html`
-              ${daemonSetData.spec.template.spec.containers.map((container) => html`
-                <div class="detail-item nested">
-                  <strong class="detail-key">Container:</strong>
-                  <div class="nested-content">
-                    ${this.renderDetailItem('Name', container.name)}
-                    ${this.renderDetailItem('Image', container.image)}
-                  </div>
-                </div>
-              `)}
-            ` : ''}
-          </div>
-        ` : ''}
-
-        <!-- Raw Data -->
-        <div class="detail-section">
-          <h3>Raw Data</h3>
-          <details>
-            <summary>View raw daemon set data</summary>
+            <summary>View raw daemonset data</summary>
             <pre class="raw-data">${JSON.stringify(daemonSetData, null, 2)}</pre>
           </details>
         </div>
       </div>
     `;
   }
-  
+
 renderJobDetailContent(data: any) {
     if (!data) {
       return html`<div class="no-data">No data available</div>`;
@@ -2690,65 +2512,60 @@ renderJobDetailContent(data: any) {
           ${this.renderDetailItem('Completion Time', jobData.status.completionTime)}
         </div>
 
-        <!-- Update Strategy -->
-        ${daemonSetData.updateStrategy ? html`
+        <!-- Job Spec -->
+        ${jobData.spec ? html`
           <div class="detail-section">
-            <h3>Update Strategy</h3>
-            ${this.renderDetailItem('Type', daemonSetData.updateStrategy.type)}
-            ${daemonSetData.updateStrategy.rollingUpdate ? html`
-              <div class="detail-item nested">
-                <strong class="detail-key">Rolling Update:</strong>
-                <div class="nested-content">
-                  ${this.renderDetailItem('Max Unavailable', daemonSetData.updateStrategy.rollingUpdate.maxUnavailable)}
-                  ${this.renderDetailItem('Max Surge', daemonSetData.updateStrategy.rollingUpdate.maxSurge)}
-                </div>
-              </div>
-            ` : ''}
+            <h3>Specification</h3>
+            ${this.renderDetailItem('Parallelism', jobData.spec.parallelism)}
+            ${this.renderDetailItem('Completions', jobData.spec.completions)}
+            ${this.renderDetailItem('Active Deadline Seconds', jobData.spec.activeDeadlineSeconds)}
+            ${this.renderDetailItem('Backoff Limit', jobData.spec.backoffLimit)}
+            ${this.renderDetailItem('TTL Seconds After Finished', jobData.spec.ttlSecondsAfterFinished)}
           </div>
         ` : ''}
 
         <!-- Selector -->
-        ${daemonSetData.selector ? html`
+        ${jobData.spec?.selector ? html`
           <div class="detail-section">
             <h3>Selector</h3>
-            ${this.renderDetailItem('Match Labels', daemonSetData.selector.matchLabels, true)}
+            ${this.renderDetailItem('Match Labels', jobData.spec.selector.matchLabels, true)}
           </div>
         ` : ''}
 
         <!-- Labels -->
-        ${daemonSetData.labels && Object.keys(daemonSetData.labels).length > 0 ? html`
+        ${jobData.metadata.labels && Object.keys(jobData.metadata.labels).length > 0 ? html`
           <div class="detail-section">
             <h3>Labels</h3>
-            ${this.renderObjectAsKeyValue(daemonSetData.labels)}
+            ${this.renderObjectAsKeyValue(jobData.metadata.labels)}
           </div>
         ` : ''}
 
         <!-- Annotations -->
-        ${daemonSetData.annotations && Object.keys(daemonSetData.annotations).length > 0 ? html`
+        ${jobData.metadata.annotations && Object.keys(jobData.metadata.annotations).length > 0 ? html`
           <div class="detail-section">
             <h3>Annotations</h3>
-            ${this.renderObjectAsKeyValue(daemonSetData.annotations)}
+            ${this.renderObjectAsKeyValue(jobData.metadata.annotations)}
           </div>
         ` : ''}
 
         <!-- Template -->
-        ${daemonSetData.template ? html`
+        ${jobData.spec?.template ? html`
           <div class="detail-section">
             <h3>Pod Template</h3>
-            ${daemonSetData.template.metadata?.labels ? 
-              this.renderDetailItem('Pod Labels', daemonSetData.template.metadata.labels, true) : ''}
-            ${daemonSetData.template.spec?.containers && daemonSetData.template.spec.containers.length > 0 ? html`
+            ${jobData.spec.template.metadata?.labels ? 
+              this.renderDetailItem('Pod Labels', jobData.spec.template.metadata.labels, true) : ''}
+            ${jobData.spec.template.spec?.containers && jobData.spec.template.spec.containers.length > 0 ? html`
               <div class="detail-item nested">
                 <strong class="detail-key">Containers:</strong>
                 <div class="nested-content">
-                  ${daemonSetData.template.spec.containers.map((container, index) => html`
+                  ${jobData.spec.template.spec.containers.map((container: any, index: number) => html`
                     <div class="detail-item nested">
                       <strong class="detail-key">Container ${index + 1}:</strong>
                       <div class="nested-content">
                         ${this.renderDetailItem('Name', container.name)}
                         ${this.renderDetailItem('Image', container.image)}
                         ${container.ports && container.ports.length > 0 ? 
-                          this.renderDetailItem('Ports', container.ports.map(p => `${p.containerPort}/${p.protocol || 'TCP'}`).join(', ')) : ''}
+                          this.renderDetailItem('Ports', container.ports.map((p: any) => `${p.containerPort}/${p.protocol || 'TCP'}`).join(', ')) : ''}
                         ${container.env && container.env.length > 0 ? 
                           this.renderDetailItem('Environment Variables', `${container.env.length} variables`) : ''}
                         ${container.resources ? this.renderDetailItem('Resources', container.resources, true) : ''}
@@ -2762,10 +2579,10 @@ renderJobDetailContent(data: any) {
         ` : ''}
 
         <!-- Conditions -->
-        ${daemonSetData.conditions && daemonSetData.conditions.length > 0 ? html`
+        ${jobData.status?.conditions && jobData.status.conditions.length > 0 ? html`
           <div class="detail-section">
             <h3>Conditions</h3>
-            ${daemonSetData.conditions.map((condition) => html`
+            ${jobData.status.conditions.map((condition: any) => html`
               <div class="detail-item nested">
                 <strong class="detail-key">${condition.type}:</strong>
                 <div class="nested-content">
@@ -2776,7 +2593,7 @@ renderJobDetailContent(data: any) {
                   ${this.renderDetailItem('Message', condition.message)}
                 </div>
               </div>
-            `)}
+            `)};
           </div>
         ` : ''}
 
@@ -2784,8 +2601,8 @@ renderJobDetailContent(data: any) {
         <div class="detail-section">
           <h3>Raw Data</h3>
           <details>
-            <summary>View raw daemonset data</summary>
-            <pre class="raw-data">${JSON.stringify(daemonSetData, null, 2)}</pre>
+            <summary>View raw job data</summary>
+            <pre class="raw-data">${JSON.stringify(jobData, null, 2)}</pre>
           </details>
         </div>
       </div>
@@ -2959,7 +2776,7 @@ renderDeploymentDetailContent(data: any) {
             ${deploymentData.spec.template.metadata?.labels ? 
               this.renderDetailItem('Pod Labels', deploymentData.spec.template.metadata.labels, true) : ''}
             ${deploymentData.spec.template.spec?.containers ? html`
-              ${deploymentData.spec.template.spec.containers.map((container) => html`
+              ${deploymentData.spec.template.spec.containers.map((container: any) => html`
                 <div class="detail-item nested">
                   <strong class="detail-key">Container:</strong>
                   <div class="nested-content">
@@ -2976,7 +2793,7 @@ renderDeploymentDetailContent(data: any) {
         ${deploymentData.status.conditions ? html`
           <div class="detail-section">
             <h3>Conditions</h3>
-            ${deploymentData.status.conditions.map((condition) => html`
+            ${deploymentData.status.conditions.map((condition: any) => html`
               <div class="detail-item nested">
                 <strong class="detail-key">${condition.type}:</strong>
                 <div class="nested-content">
@@ -3072,7 +2889,7 @@ renderStatefulSetDetailContent(data: any) {
             ${statefulSetData.spec.template.metadata?.labels ? 
               this.renderDetailItem('Pod Labels', statefulSetData.spec.template.metadata.labels, true) : ''}
             ${statefulSetData.spec.template.spec?.containers ? html`
-              ${statefulSetData.spec.template.spec.containers.map((container) => html`
+              ${statefulSetData.spec.template.spec.containers.map((container: any) => html`
                 <div class="detail-item nested">
                   <strong class="detail-key">Container:</strong>
                   <div class="nested-content">
@@ -3164,7 +2981,7 @@ renderPodDetailContent(data: any) {
         ${podData.spec.containers && podData.spec.containers.length > 0 ? html`
           <div class="detail-section">
             <h3>Containers</h3>
-            ${podData.spec.containers.map((container, index) => html`
+            ${podData.spec.containers.map((container: any, index: number) => html`
               <div class="detail-item nested">
                 <strong class="detail-key">Container ${index + 1}:</strong>
                 <div class="nested-content">
@@ -3180,10 +2997,10 @@ renderPodDetailContent(data: any) {
         ` : ''}
 
         <!-- Conditions -->
-        ${podData.status.conditions && podData.status.conditions.length > 0 ? html`
+          ${podData.status.conditions && podData.status.conditions.length > 0 ? html`
           <div class="detail-section">
             <h3>Conditions</h3>
-            ${podData.status.conditions.map((condition, index) => html`
+            ${podData.status.conditions.map((condition: any) => html`
               <div class="detail-item nested">
                 <strong class="detail-key">${condition.type}:</strong>
                 <div class="nested-content">
@@ -3204,232 +3021,6 @@ renderPodDetailContent(data: any) {
           <details>
             <summary>View raw pod data</summary>
             <pre class="raw-data">${JSON.stringify(podData, null, 2)}</pre>
-          </details>
-        </div>
-      </div>
-    `;
-  }
-
-renderJobDetailContent(data: any) {
-    if (!data) {
-      return html`<div class="no-data">No data available</div>`;
-    }
-
-    const jobData = data.job_detail || data;
-
-    console.log('Processing job data:', jobData);
-
-    return html`
-      <div class="detail-sections">
-        <!-- Basic Information -->
-        <div class="detail-section">
-          <h3>Basic Information</h3>
-          ${this.renderDetailItem('Name', jobData.metadata.name)}
-          ${this.renderDetailItem('Namespace', jobData.metadata.namespace)}
-          ${this.renderDetailItem('UID', jobData.metadata.uid)}
-          ${this.renderDetailItem('Resource Version', jobData.metadata.resourceVersion)}
-          ${this.renderDetailItem('Creation Timestamp', jobData.metadata.creationTimestamp)}
-        </div>
-
-        <!-- Status Information -->
-        <div class="detail-section">
-          <h3>Status</h3>
-          ${this.renderDetailItem('Succeeded', jobData.status.succeeded)}
-          ${this.renderDetailItem('Failed', jobData.status.failed)}
-          ${this.renderDetailItem('Active', jobData.status.active)}
-        </div>
-
-        <!-- Conditions -->
-        ${jobData.status.conditions ? html`
-          <div class="detail-section">
-            <h3>Conditions</h3>
-            ${jobData.status.conditions.map((condition) => html`
-              <div class="detail-item nested">
-                <strong class="detail-key">${condition.type}:</strong>
-                <div class="nested-content">
-                  ${this.renderDetailItem('Status', condition.status)}
-                  ${this.renderDetailItem('Last Probe Time', condition.lastProbeTime)}
-                  ${this.renderDetailItem('Last Transition Time', condition.lastTransitionTime)}
-                  ${this.renderDetailItem('Reason', condition.reason)}
-                  ${this.renderDetailItem('Message', condition.message)}
-                </div>
-              </div>
-            `)}
-          </div>
-        ` : ''}
-
-        <!-- Labels -->
-        ${jobData.metadata.labels ? html`
-          <div class="detail-section">
-            <h3>Labels</h3>
-            ${this.renderObjectAsKeyValue(jobData.metadata.labels)}
-          </div>
-        ` : ''}
-
-        <!-- Annotations -->
-        ${jobData.metadata.annotations ? html`
-          <div class="detail-section">
-            <h3>Annotations</h3>
-            ${this.renderObjectAsKeyValue(jobData.metadata.annotations)}
-          </div>
-        ` : ''}
-
-        <!-- Pod Template -->
-        ${jobData.spec.template ? html`
-          <div class="detail-section">
-            <h3>Pod Template</h3>
-            ${jobData.spec.template.metadata?.labels ? 
-              this.renderDetailItem('Pod Labels', jobData.spec.template.metadata.labels, true) : ''}
-            ${jobData.spec.template.spec?.containers ? html`
-              ${jobData.spec.template.spec.containers.map((container) => html`
-                <div class="detail-item nested">
-                  <strong class="detail-key">Container:</strong>
-                  <div class="nested-content">
-                    ${this.renderDetailItem('Name', container.name)}
-                    ${this.renderDetailItem('Image', container.image)}
-                  </div>
-                </div>
-              `)}
-            ` : ''}
-          </div>
-        ` : ''}
-
-        <!-- Raw Data -->
-        <div class="detail-section">
-          <h3>Raw Data</h3>
-          <details>
-            <summary>View raw job data</summary>
-            <pre class="raw-data">${JSON.stringify(jobData, null, 2)}</pre>
-          </details>
-        </div>
-      </div>
-    `;
-  }
-  
-renderCronJobDetailContent(data: any) {
-    if (!data) {
-      return html`<div class="no-data">No data available</div>`;
-    }
-
-    const cronJobData = data.cronjob_detail || data;
-
-    console.log('Processing cronjob data:', cronJobData);
-
-    return html`
-      <div class="detail-sections">
-        <!-- Basic Information -->
-        <div class="detail-section">
-          <h3>Basic Information</h3>
-          ${this.renderDetailItem('Name', cronJobData.metadata.name)}
-          ${this.renderDetailItem('Namespace', cronJobData.metadata.namespace)}
-          ${this.renderDetailItem('UID', cronJobData.metadata.uid)}
-          ${this.renderDetailItem('Resource Version', cronJobData.metadata.resourceVersion)}
-          ${this.renderDetailItem('Creation Timestamp', cronJobData.metadata.creationTimestamp)}
-        </div>
-
-        <!-- Schedule Information -->
-        <div class="detail-section">
-          <h3>Schedule</h3>
-          ${this.renderDetailItem('Schedule', cronJobData.spec.schedule)}
-          ${this.renderDetailItem('Concurrency Policy', cronJobData.spec.concurrencyPolicy)}
-          ${this.renderDetailItem('Starting Deadline Seconds', cronJobData.spec.startingDeadlineSeconds)}
-          ${this.renderDetailItem('Successful Jobs History Limit', cronJobData.spec.successfulJobsHistoryLimit)}
-          ${this.renderDetailItem('Failed Jobs History Limit', cronJobData.spec.failedJobsHistoryLimit)}
-        </div>
-
-        <!-- Job Spec -->
-        ${jobData.spec ? html`
-          <div class="detail-section">
-            <h3>Specification</h3>
-            ${this.renderDetailItem('Parallelism', jobData.spec.parallelism)}
-            ${this.renderDetailItem('Completions', jobData.spec.completions)}
-            ${this.renderDetailItem('Active Deadline Seconds', jobData.spec.activeDeadlineSeconds)}
-            ${this.renderDetailItem('Backoff Limit', jobData.spec.backoffLimit)}
-            ${this.renderDetailItem('TTL Seconds After Finished', jobData.spec.ttlSecondsAfterFinished)}
-          </div>
-        ` : ''}
-
-        <!-- Selector -->
-        ${jobData.spec?.selector ? html`
-          <div class="detail-section">
-            <h3>Selector</h3>
-            ${this.renderDetailItem('Match Labels', jobData.spec.selector.matchLabels, true)}
-          </div>
-        ` : ''}
-
-        <!-- Labels -->
-        ${jobData.labels && Object.keys(jobData.labels).length > 0 ? html`
-          <div class="detail-section">
-            <h3>Labels</h3>
-            ${this.renderObjectAsKeyValue(jobData.labels)}
-          </div>
-        ` : ''}
-
-        <!-- Annotations -->
-        ${jobData.annotations && Object.keys(jobData.annotations).length > 0 ? html`
-          <div class="detail-section">
-            <h3>Annotations</h3>
-            ${this.renderObjectAsKeyValue(jobData.annotations)}
-          </div>
-        ` : ''}
-
-        <!-- Pod Template -->
-        ${jobData.spec?.template ? html`
-          <div class="detail-section">
-            <h3>Pod Template</h3>
-            ${jobData.spec.template.metadata?.labels ? 
-              this.renderDetailItem('Pod Labels', jobData.spec.template.metadata.labels, true) : ''}
-            ${jobData.spec.template.spec?.containers && jobData.spec.template.spec.containers.length > 0 ? html`
-              <div class="detail-item nested">
-                <strong class="detail-key">Containers:</strong>
-                <div class="nested-content">
-                  ${jobData.spec.template.spec.containers.map((container, index) => html`
-                    <div class="detail-item nested">
-                      <strong class="detail-key">Container ${index + 1}:</strong>
-                      <div class="nested-content">
-                        ${this.renderDetailItem('Name', container.name)}
-                        ${this.renderDetailItem('Image', container.image)}
-                        ${container.command && container.command.length > 0 ? 
-                          this.renderDetailItem('Command', container.command.join(' ')) : ''}
-                        ${container.args && container.args.length > 0 ? 
-                          this.renderDetailItem('Args', container.args.join(' ')) : ''}
-                        ${container.env && container.env.length > 0 ? 
-                          this.renderDetailItem('Environment Variables', `${container.env.length} variables`) : ''}
-                        ${container.resources ? this.renderDetailItem('Resources', container.resources, true) : ''}
-                      </div>
-                    </div>
-                  `)}
-                </div>
-              </div>
-            ` : ''}
-          </div>
-        ` : ''}
-
-        <!-- Conditions -->
-        ${jobData.status?.conditions && jobData.status.conditions.length > 0 ? html`
-          <div class="detail-section">
-            <h3>Conditions</h3>
-            ${jobData.status.conditions.map((condition) => html`
-              <div class="detail-item nested">
-                <strong class="detail-key">${condition.type}:</strong>
-                <div class="nested-content">
-                  ${this.renderDetailItem('Status', condition.status)}
-                  ${this.renderDetailItem('Last Probe Time', condition.lastProbeTime)}
-                  ${this.renderDetailItem('Last Transition Time', condition.lastTransitionTime)}
-                  ${this.renderDetailItem('Reason', condition.reason)}
-                  ${this.renderDetailItem('Message', condition.message)}
-                </div>
-              </div>
-            `)}
-          </div>
-        ` : ''}
-
-        <!-- Raw Data -->
-        <div class="detail-section">
-          <h3>Raw Data</h3>
-          <details>
-            <summary>View raw job data</summary>
-            <pre class="raw-data">${JSON.stringify(jobData, null, 2)}</pre>
           </details>
         </div>
       </div>
@@ -3467,24 +3058,28 @@ renderCronJobDetailContent(data: any) {
           ${this.renderDetailItem('Failed Jobs History Limit', cronJobData.spec.failedJobsHistoryLimit)}
         </div>
 
-        <!-- Active Jobs -->
-        ${cronJobData.status && cronJobData.status.active ? html`
+        <!-- Job Spec -->
+        ${cronJobData.spec ? html`
           <div class="detail-section">
-            <h3>Active Jobs</h3>
-            ${cronJobData.status.active.map((job) => html`
-              <div class="detail-item nested">
-                <strong class="detail-key">Job:</strong>
-                <div class="nested-content">
-                  ${this.renderDetailItem('Name', job.name)}
-                  ${this.renderDetailItem('Namespace', job.namespace)}
-                </div>
-              </div>
-            `)}
+            <h3>Job Template Specification</h3>
+            ${cronJobData.spec.jobTemplate?.spec?.parallelism !== undefined ? this.renderDetailItem('Parallelism', cronJobData.spec.jobTemplate.spec.parallelism) : ''}
+            ${cronJobData.spec.jobTemplate?.spec?.completions !== undefined ? this.renderDetailItem('Completions', cronJobData.spec.jobTemplate.spec.completions) : ''}
+            ${cronJobData.spec.jobTemplate?.spec?.activeDeadlineSeconds !== undefined ? this.renderDetailItem('Active Deadline Seconds', cronJobData.spec.jobTemplate.spec.activeDeadlineSeconds) : ''}
+            ${cronJobData.spec.jobTemplate?.spec?.backoffLimit !== undefined ? this.renderDetailItem('Backoff Limit', cronJobData.spec.jobTemplate.spec.backoffLimit) : ''}
+            ${cronJobData.spec.jobTemplate?.spec?.ttlSecondsAfterFinished !== undefined ? this.renderDetailItem('TTL Seconds After Finished', cronJobData.spec.jobTemplate.spec.ttlSecondsAfterFinished) : ''}
+          </div>
+        ` : ''}
+
+        <!-- Selector -->
+        ${cronJobData.spec?.jobTemplate?.spec?.selector ? html`
+          <div class="detail-section">
+            <h3>Selector</h3>
+            ${this.renderDetailItem('Match Labels', cronJobData.spec.jobTemplate.spec.selector.matchLabels, true)}
           </div>
         ` : ''}
 
         <!-- Labels -->
-        ${cronJobData.metadata.labels ? html`
+        ${cronJobData.metadata.labels && Object.keys(cronJobData.metadata.labels).length > 0 ? html`
           <div class="detail-section">
             <h3>Labels</h3>
             ${this.renderObjectAsKeyValue(cronJobData.metadata.labels)}
@@ -3492,30 +3087,61 @@ renderCronJobDetailContent(data: any) {
         ` : ''}
 
         <!-- Annotations -->
-        ${cronJobData.metadata.annotations ? html`
+        ${cronJobData.metadata.annotations && Object.keys(cronJobData.metadata.annotations).length > 0 ? html`
           <div class="detail-section">
             <h3>Annotations</h3>
             ${this.renderObjectAsKeyValue(cronJobData.metadata.annotations)}
           </div>
         ` : ''}
 
-        <!-- Job Template -->
-        ${cronJobData.spec.jobTemplate ? html`
+        <!-- Pod Template -->
+        ${cronJobData.spec?.jobTemplate?.spec?.template ? html`
           <div class="detail-section">
-            <h3>Job Template</h3>
-            ${cronJobData.spec.jobTemplate.spec?.template?.metadata?.labels ? 
+            <h3>Pod Template</h3>
+            ${cronJobData.spec.jobTemplate.spec.template.metadata?.labels ? 
               this.renderDetailItem('Pod Labels', cronJobData.spec.jobTemplate.spec.template.metadata.labels, true) : ''}
-            ${cronJobData.spec.jobTemplate.spec?.template?.spec?.containers ? html`
-              ${cronJobData.spec.jobTemplate.spec.template.spec.containers.map((container) => html`
-                <div class="detail-item nested">
-                  <strong class="detail-key">Container:</strong>
-                  <div class="nested-content">
-                    ${this.renderDetailItem('Name', container.name)}
-                    ${this.renderDetailItem('Image', container.image)}
-                  </div>
+            ${cronJobData.spec.jobTemplate.spec.template.spec?.containers && cronJobData.spec.jobTemplate.spec.template.spec.containers.length > 0 ? html`
+              <div class="detail-item nested">
+                <strong class="detail-key">Containers:</strong>
+                <div class="nested-content">
+                  ${cronJobData.spec.jobTemplate.spec.template.spec.containers.map((container: any, index: number) => html`
+                    <div class="detail-item nested">
+                      <strong class="detail-key">Container ${index + 1}:</strong>
+                      <div class="nested-content">
+                        ${this.renderDetailItem('Name', container.name)}
+                        ${this.renderDetailItem('Image', container.image)}
+                        ${container.command && container.command.length > 0 ? 
+                          this.renderDetailItem('Command', container.command.join(' ')) : ''}
+                        ${container.args && container.args.length > 0 ? 
+                          this.renderDetailItem('Args', container.args.join(' ')) : ''}
+                        ${container.env && container.env.length > 0 ? 
+                          this.renderDetailItem('Environment Variables', `${container.env.length} variables`) : ''}
+                        ${container.resources ? this.renderDetailItem('Resources', container.resources, true) : ''}
+                      </div>
+                    </div>
+                  `)}
                 </div>
-              `)}
+              </div>
             ` : ''}
+          </div>
+        ` : ''}
+
+        <!-- Conditions -->
+        ${cronJobData.status?.conditions && cronJobData.status.conditions.length > 0 ? html`
+          <div class="detail-section">
+            <h3>Conditions</h3>
+            ${cronJobData.status.conditions.map((condition: any) => html`
+              <div class="detail-item nested">
+                <strong class="detail-key">${condition.type}:</strong>
+                <div class="nested-content">
+                  ${this.renderDetailItem('Status', condition.status)}
+                  ${this.renderDetailItem('Last Probe Time', condition.lastProbeTime)}
+                  ${this.renderDetailItem('Last Transition Time', condition.lastTransitionTime)}
+                  ${this.renderDetailItem('Reason', condition.reason)}
+                  ${this.renderDetailItem('Message', condition.message)}
+                </div>
+              </div>
+            `)};
           </div>
         ` : ''}
 
@@ -3530,6 +3156,7 @@ renderCronJobDetailContent(data: any) {
       </div>
     `;
   }
+
 
   renderPvcDetailContent(data: any) {
     if (!data) {
@@ -3597,7 +3224,7 @@ renderCronJobDetailContent(data: any) {
         ${pvcData.events && pvcData.events.length > 0 ? html`
           <div class="detail-section">
             <h3>Events</h3>
-            ${pvcData.events.map((event) => html`
+            ${pvcData.events.map((event: any) => html`
               <div class="detail-item nested">
                 <strong class="detail-key">${event.type}:</strong>
                 <div class="nested-content">
@@ -3766,7 +3393,7 @@ renderCronJobDetailContent(data: any) {
             <div class="detail-item nested">
               <strong class="detail-key">Data Fields:</strong>
               <div class="nested-content">
-                ${Object.keys(secretData.data).map(key => html`
+                ${Object.keys(secretData.data).map((key: string) => html`
                   <div class="detail-item">
                     <strong class="detail-key">${key}:</strong>
                     <span class="detail-value">*** (hidden)</span>
@@ -3808,7 +3435,7 @@ renderCronJobDetailContent(data: any) {
             <summary>View raw secret metadata (values hidden)</summary>
             <pre class="raw-data">${JSON.stringify({
               ...secretData,
-              data: secretData.data ? Object.keys(secretData.data).reduce((acc, key) => {
+              data: secretData.data ? Object.keys(secretData.data).reduce((acc: any, key: string) => {
                 acc[key] = '*** (base64 encoded)';
                 return acc;
               }, {}) : {}
@@ -4006,7 +3633,7 @@ renderCronJobDetailContent(data: any) {
         <div class="detail-section">
           <h3>Status</h3>
           ${nodeData.status?.conditions ? html`
-            ${nodeData.status.conditions.map((condition) => html`
+            ${nodeData.status.conditions.map((condition: any) => html`
               <div class="detail-item nested">
                 <strong class="detail-key">${condition.type}:</strong>
                 <div class="nested-content">
@@ -4037,7 +3664,7 @@ renderCronJobDetailContent(data: any) {
         ${nodeData.status?.addresses ? html`
           <div class="detail-section">
             <h3>Addresses</h3>
-            ${nodeData.status.addresses.map((address) => html`
+            ${nodeData.status.addresses.map((address: any) => html`
               <div class="detail-item">
                 <strong class="detail-key">${address.type}:</strong>
                 <span class="detail-value">${address.address}</span>
@@ -4089,7 +3716,7 @@ renderCronJobDetailContent(data: any) {
         ${nodeData.spec?.taints && nodeData.spec.taints.length > 0 ? html`
           <div class="detail-section">
             <h3>Taints</h3>
-            ${nodeData.spec.taints.map((taint) => html`
+            ${nodeData.spec.taints.map((taint: any) => html`
               <div class="detail-item nested">
                 <strong class="detail-key">${taint.key}:</strong>
                 <div class="nested-content">
@@ -4137,7 +3764,7 @@ renderCronJobDetailContent(data: any) {
   }
 
   removeNotification(id: number) {
-    this.notifications = this.notifications.filter(n => n.id !== id);
+    this.notifications = this.notifications.filter((n: any) => n.id !== id);
     this.requestUpdate();
   }
 
@@ -4148,7 +3775,7 @@ renderCronJobDetailContent(data: any) {
 
     return html`
       <div class="notification-container">
-        ${this.notifications.map(notification => html`
+        ${this.notifications.map((notification: any) => html`
           <div class="notification ${notification.type}">
             <div class="notification-icon ${notification.type}">
               ${this.getNotificationIcon(notification.type)}
@@ -4176,7 +3803,20 @@ renderCronJobDetailContent(data: any) {
     }
   }
 
-  render() {
+  private getDataForActiveSubmenu(): Array<any> {
+    switch (this.activeSubmenu) {
+      case 'workloads': return this.workloads || [];
+      case 'networks': return this.networks || [];
+      case 'storages': return this.storages || [];
+      case 'configurations': return this.configurations || [];
+      case 'helms': return this.helms || [];
+      case 'nodes': return this.nodes || [];
+      case 'crds': return this.crds || [];
+      default: return [];
+    }
+  }
+
+  override render() {
     return html`
       <div class="tab-container">
         <h1>${this.renderTitle()}</h1>
@@ -4190,7 +3830,7 @@ renderCronJobDetailContent(data: any) {
             ${this.activeSubmenu !== 'nodes' && this.activeSubmenu !== 'crds' ? html`
               <div class="namespace-filter">
               <div class="namespace-dropdown">
-                <button class="namespace-button" @click=${(e) => this.toggleNamespaceDropdown(e)}>
+                <button class="namespace-button" @click=${(e: Event) => this.toggleNamespaceDropdown(e)}>
                   ${this.getSelectedNamespaceDisplayName()}
                   <span class="namespace-arrow ${this.showNamespaceDropdown ? 'open' : ''}">▼</span>
                 </button>
@@ -4205,7 +3845,7 @@ renderCronJobDetailContent(data: any) {
                     />
                   </div>
                   <div class="namespace-options">
-                    ${this.getFilteredNamespaces().map(namespace => html`
+                    ${this.getFilteredNamespaces().map((namespace: string) => html`
                       <button class="namespace-option ${namespace === this.selectedNamespace ? 'selected' : ''}"
                         @click=${() => this.selectNamespace(namespace)}>
                         ${namespace}
@@ -4268,7 +3908,7 @@ renderCronJobDetailContent(data: any) {
   }
 
   renderTitle() {
-    const titles = {
+    const titles: Record<string, string> = {
       workloads: 'Kubernetes Workloads',
       networks: 'Kubernetes Networks',
       storages: 'Kubernetes Storages',
@@ -4281,7 +3921,7 @@ renderCronJobDetailContent(data: any) {
   }
 
   
-  disconnectedCallback() {
+  override disconnectedCallback() {
     super.disconnectedCallback();
     window.removeEventListener('popstate', this.handleRouteChange);
     window.removeEventListener('keydown', this.handleKeyDown);
@@ -4902,7 +4542,7 @@ renderCronJobDetailContent(data: any) {
   }
 
 
-  toggleActionMenu(event, menuId) {
+  toggleActionMenu(event: MouseEvent, menuId: string) {
     event.stopPropagation();
     
     // Close all other menus first
@@ -4935,7 +4575,7 @@ renderCronJobDetailContent(data: any) {
   async fetchPods() {
     try {
       const data = await Api.get('/kubernetes/pods');
-      const pods = data.pods.map(pod => ({
+      const pods = data.pods.map((pod: any) => ({
         name: pod.name,
         type: 'Pod',
         namespace: pod.namespace,
@@ -4953,7 +4593,7 @@ renderCronJobDetailContent(data: any) {
   async fetchDeployments() {
     try {
       const data = await Api.get('/kubernetes/deployments');
-      const deployments = data.deployments.map(dep => ({
+      const deployments = data.deployments.map((dep: any) => ({
         name: dep.name,
         type: 'Deployment',
         namespace: dep.namespace,
@@ -4971,7 +4611,7 @@ renderCronJobDetailContent(data: any) {
   async fetchStatefulSets() {
     try {
       const data = await Api.get('/kubernetes/statefulsets');
-      const statefulsets = data.statefulsets.map(set => ({
+      const statefulsets = data.statefulsets.map((set: any) => ({
         name: set.name,
         type: 'StatefulSet',
         namespace: set.namespace,
@@ -4989,7 +4629,7 @@ renderCronJobDetailContent(data: any) {
   async fetchDaemonSets() {
     try {
       const data = await Api.get('/kubernetes/daemonsets');
-      const daemonsets = data.daemonsets.map(ds => ({
+      const daemonsets = data.daemonsets.map((ds: any) => ({
         name: ds.name,
         type: 'DaemonSet',
         namespace: ds.namespace,
@@ -5007,7 +4647,7 @@ renderCronJobDetailContent(data: any) {
   async fetchJobs() {
     try {
       const data = await Api.get('/kubernetes/jobs');
-      const jobs = data.jobs.map(job => ({
+      const jobs = data.jobs.map((job: any) => ({
         name: job.name,
         type: 'Job',
         namespace: job.namespace,
@@ -5024,7 +4664,7 @@ renderCronJobDetailContent(data: any) {
   async fetchCronJobs() {
     try {
       const data = await Api.get('/kubernetes/cronjobs');
-      const cronjobs = data.cronjobs.map(cj => ({
+      const cronjobs = data.cronjobs.map((cj: any) => ({
         name: cj.name,
         type: 'CronJob',
         namespace: cj.namespace,
@@ -5042,7 +4682,7 @@ renderCronJobDetailContent(data: any) {
   async fetchServices() {
     try {
       const data = await Api.get('/kubernetes/services');
-      const services = data.services.map(svc => ({
+      const services = data.services.map((svc: any) => ({
         name: svc.name,
         type: 'Service',
         namespace: svc.namespace,
@@ -5064,7 +4704,7 @@ renderCronJobDetailContent(data: any) {
   async fetchIngresses() {
     try {
       const data = await Api.get('/kubernetes/ingresses');
-      const ingresses = data.ingresses.map(ing => ({
+      const ingresses = data.ingresses.map((ing: any) => ({
         name: ing.name,
         type: 'Ingress',
         namespace: ing.namespace,
@@ -5086,7 +4726,7 @@ renderCronJobDetailContent(data: any) {
   async fetchConfigMaps() {
     try {
       const data = await Api.get('/kubernetes/configmaps');
-      this.configurations = data.configmaps.map(map => ({
+      this.configurations = data.configmaps.map((map: any) => ({
         name: map.name,
         type: 'ConfigMap',
         namespace: map.namespace,
@@ -5103,7 +4743,7 @@ renderCronJobDetailContent(data: any) {
   async fetchSecrets() {
     try {
       const data = await Api.get('/kubernetes/secrets');
-      this.configurations = this.configurations.concat(data.secrets.map(sec => ({
+      this.configurations = this.configurations.concat(data.secrets.map((sec: any) => ({
         name: sec.name,
         type: 'Secret',
         namespace: sec.namespace,
@@ -5121,7 +4761,7 @@ renderCronJobDetailContent(data: any) {
     try {
       const response = await Api.get('/kubernetes/pvcs');
       const pvcs = response.data?.pvcs || response.pvcs || [];
-      return pvcs.map(pvc => ({
+      return pvcs.map((pvc: any) => ({
         name: pvc.name,
         type: 'PersistentVolumeClaim',
         namespace: pvc.namespace,
@@ -5142,7 +4782,7 @@ renderCronJobDetailContent(data: any) {
     try {
       const response = await Api.get('/kubernetes/pvs');
       const pvs = response.data?.pvs || response.pvs || [];
-      return pvs.map(pv => ({
+      return pvs.map((pv: any) => ({
         name: pv.name,
         type: 'PersistentVolume',
         namespace: '-',  // PVs are not namespaced
@@ -5163,7 +4803,7 @@ renderCronJobDetailContent(data: any) {
   async fetchHelmReleases() {
     try {
       const data = await Api.get('/kubernetes/helm/releases');
-      this.helms = data.releases.map(release => ({
+      this.helms = data.releases.map((release: any) => ({
         name: release.name,
         type: 'Release',
         namespace: release.namespace,
@@ -5181,7 +4821,7 @@ renderCronJobDetailContent(data: any) {
   async fetchHelmCharts() {
     try {
       const data = await Api.get('/kubernetes/helm/charts');
-      this.helms = this.helms.concat(data.charts.map(chart => ({
+      this.helms = this.helms.concat(data.charts.map((chart: any) => ({
         name: chart.name,
         type: 'Chart',
         namespace: '-',
@@ -5199,7 +4839,7 @@ renderCronJobDetailContent(data: any) {
   async fetchNodes() {
     try {
       const data = await Api.get('/kubernetes/nodes');
-      this.nodes = data.nodes.map(node => ({
+      this.nodes = data.nodes.map((node: any) => ({
         name: node.name,
         type: 'Node',
         status: node.status,
@@ -5223,7 +4863,7 @@ renderCronJobDetailContent(data: any) {
   async fetchCrds() {
     try {
       const data = await Api.get('/kubernetes/crds');
-      this.crds = data.crds.map(crd => ({
+      this.crds = data.crds.map((crd: any) => ({
         name: crd.name,
         type: 'CRD',
         group: crd.group,
@@ -5241,7 +4881,7 @@ renderCronJobDetailContent(data: any) {
   async fetchNamespaces() {
     try {
       const data = await Api.get('/kubernetes/namespaces');
-      this.namespaces = data.namespaces.map(ns => ns.name);
+      this.namespaces = data.namespaces.map((ns: any) => ns.name);
       this.error = null;
     } catch (error) {
       console.error('Failed to fetch namespaces:', error);
@@ -5250,11 +4890,11 @@ renderCronJobDetailContent(data: any) {
     }
   }
 
-  private handleNamespaceChange(event: Event) {
-    const target = event.target as HTMLSelectElement;
-    this.selectedNamespace = target.value;
-    this.requestUpdate();
-  }
+  // private handleNamespaceChange(event: Event) {
+  //   const target = event.target as HTMLSelectElement;
+  //   this.selectedNamespace = target.value;
+  //   this.requestUpdate();
+  // }
 
   private toggleNamespaceDropdown(event?: Event) {
     console.log('toggleNamespaceDropdown called, current state:', this.showNamespaceDropdown);
@@ -5312,7 +4952,7 @@ renderCronJobDetailContent(data: any) {
     }
   }
 
-  connectedCallback() {
+  override connectedCallback() {
     super.connectedCallback();
     console.log('KubernetesTab: connectedCallback called');
     
@@ -5397,7 +5037,7 @@ renderCronJobDetailContent(data: any) {
     }
   }
 
-  viewDetails(item) {
+  viewDetails(item: any) {
     switch (item.type) {
       case 'Pod':
         this.viewPodDetails(item);
@@ -5446,7 +5086,7 @@ renderCronJobDetailContent(data: any) {
     }
   }
 
-  viewPodDetails(pod) {
+  viewPodDetails(pod: any) {
     console.log('Fetching pod details for:', pod.name, 'in namespace:', pod.namespace);
     this.loadingPodDetails = true;
     this.showPodDetails = true;
@@ -5476,7 +5116,7 @@ renderCronJobDetailContent(data: any) {
       });
   }
 
-  viewCrdDetails(crd) {
+  viewCrdDetails(crd: any) {
     console.log('Fetching CRD details for:', crd.name);
     this.loadingCrdDetails = true;
     this.showCrdDetails = true;
@@ -5506,7 +5146,7 @@ renderCronJobDetailContent(data: any) {
       });
   }
 
-  viewDeploymentDetails(deployment) {
+  viewDeploymentDetails(deployment: any) {
     console.log('Fetching deployment details for:', deployment.name, 'in namespace:', deployment.namespace);
     this.loadingDeploymentDetails = true;
     this.showDeploymentDetails = true;
@@ -5536,7 +5176,7 @@ renderCronJobDetailContent(data: any) {
       });
   }
 
-  viewStatefulSetDetails(statefulSet) {
+  viewStatefulSetDetails(statefulSet: any) {
     console.log('Fetching statefulset details for:', statefulSet.name, 'in namespace:', statefulSet.namespace);
     this.loadingStatefulSetDetails = true;
     this.showStatefulSetDetails = true;
@@ -5566,7 +5206,7 @@ renderCronJobDetailContent(data: any) {
       });
   }
 
-  viewDaemonSetDetails(daemonSet) {
+  viewDaemonSetDetails(daemonSet: any) {
     console.log('Fetching daemonset details for:', daemonSet.name, 'in namespace:', daemonSet.namespace);
     this.loadingDaemonSetDetails = true;
     this.showDaemonSetDetails = true;
@@ -5596,7 +5236,7 @@ renderCronJobDetailContent(data: any) {
       });
   }
 
-  viewJobDetails(job) {
+  viewJobDetails(job: any) {
     console.log('Fetching job details for:', job.name, 'in namespace:', job.namespace);
     this.loadingJobDetails = true;
     this.showJobDetails = true;
@@ -5626,7 +5266,7 @@ renderCronJobDetailContent(data: any) {
       });
   }
 
-  viewCronJobDetails(cronJob) {
+  viewCronJobDetails(cronJob: any) {
     console.log('Fetching cronjob details for:', cronJob.name, 'in namespace:', cronJob.namespace);
     this.loadingCronJobDetails = true;
     this.showCronJobDetails = true;
@@ -5656,7 +5296,7 @@ renderCronJobDetailContent(data: any) {
       });
   }
 
-  viewPvcDetails(pvc) {
+  viewPvcDetails(pvc: any) {
     console.log('Fetching PVC details for:', pvc.name, 'in namespace:', pvc.namespace);
     this.loadingPvcDetails = true;
     this.showPvcDetails = true;
@@ -5686,7 +5326,7 @@ renderCronJobDetailContent(data: any) {
       });
   }
 
-  viewPvDetails(pv) {
+  viewPvDetails(pv: any) {
     console.log('Fetching PV details for:', pv.name);
     this.loadingPvDetails = true;
     this.showPvDetails = true;
@@ -5717,7 +5357,7 @@ renderCronJobDetailContent(data: any) {
       });
   }
 
-  viewSecretDetails(secret) {
+  viewSecretDetails(secret: any) {
     console.log('Fetching secret details for:', secret.name, 'in namespace:', secret.namespace);
     this.loadingSecretDetails = true;
     this.showSecretDetails = true;
@@ -5747,7 +5387,7 @@ renderCronJobDetailContent(data: any) {
       });
   }
 
-  viewConfigMapDetails(configMap) {
+  viewConfigMapDetails(configMap: any) {
     console.log('Fetching configmap details for:', configMap.name, 'in namespace:', configMap.namespace);
     this.loadingConfigMapDetails = true;
     this.showConfigMapDetails = true;
@@ -5777,7 +5417,7 @@ renderCronJobDetailContent(data: any) {
       });
   }
 
-  viewNodeDetails(node) {
+  viewNodeDetails(node: any) {
     console.log('Fetching node details for:', node.name);
     this.loadingNodeDetails = true;
     this.showNodeDetails = true;
@@ -5808,7 +5448,7 @@ renderCronJobDetailContent(data: any) {
       });
   }
 
-  editItem(item) {
+  editItem(item: any) {
     // Implement edit logic here
     console.log('Editing item:', item);
     this.showNotification(
@@ -5818,7 +5458,7 @@ renderCronJobDetailContent(data: any) {
     );
   }
 
-  deleteItem(item) {
+  deleteItem(item: any) {
     this.itemToDelete = item;
     this.showDeleteModal = true;
   }
@@ -5871,7 +5511,7 @@ renderCronJobDetailContent(data: any) {
       
       // Close the modal
       this.closeDeleteModal();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to delete resource:', error);
       this.showNotification(
         'error',
@@ -5896,7 +5536,7 @@ renderCronJobDetailContent(data: any) {
     const item = this.itemToDelete;
 
     return html`
-      <div class="modal-overlay" @click=${(e) => e.target === e.currentTarget && !this.isDeleting && this.closeDeleteModal()}>
+      <div class="modal-overlay" @click=${(e: MouseEvent) => e.target === e.currentTarget && !this.isDeleting && this.closeDeleteModal()}>
         <div class="modal">
           <div class="modal-header">
             <span class="modal-icon warning">⚠️</span>
@@ -6208,7 +5848,7 @@ data:
       }
       
       return { isValid: true };
-    } catch (e) {
+    } catch (e: any) {
       return { isValid: false, error: `Invalid JSON: ${e.message}` };
     }
   }
@@ -6274,7 +5914,7 @@ data:
       }
       
       return { isValid: true };
-    } catch (e) {
+    } catch (e: any) {
       return { isValid: false, error: `Invalid YAML: ${e.message}` };
     }
   }
@@ -6304,7 +5944,7 @@ data:
       } else {
         // Simple YAML parsing to extract kind
         const kindMatch = this.createResourceYaml.match(/^kind:\s*(.+)$/m);
-        resourceData = { kind: kindMatch ? kindMatch[1].trim() : '' };
+        resourceData = { kind: kindMatch && kindMatch[1] ? kindMatch[1].trim() : '' };
       }
       
       // Determine the API endpoint based on resource kind
@@ -6376,7 +6016,7 @@ data:
       
       // Refresh the data
       this.fetchAllResources();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create resource:', error);
       this.showNotification(
         'error',
@@ -6386,7 +6026,7 @@ data:
     }
   }
 
-  viewLogs(item) {
+  viewLogs(item: any) {
     console.log('Viewing logs for:', item);
     if (item.type === 'Pod') {
       this.showPodLogs(item);
@@ -6399,7 +6039,7 @@ data:
     }
   }
 
-  private async showPodLogs(pod) {
+  private async showPodLogs(pod: any) {
     try {
       this.logsError = null;
       this.containerLogs = 'Loading logs...';
@@ -6407,7 +6047,7 @@ data:
       
       const response = await Api.get(`/kubernetes/pods/${pod.namespace}/${pod.name}/logs`);
       this.containerLogs = response.logs || 'No logs available';
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching pod logs:', error);
       this.logsError = error.message || 'Failed to fetch logs';
     }
@@ -6620,7 +6260,7 @@ data:
   }
 
   // Network-specific actions
-  viewEndpoints(item) {
+  viewEndpoints(item: any) {
     console.log('Viewing endpoints for:', item);
     this.showNotification(
       'info',
@@ -6631,7 +6271,7 @@ data:
   }
 
   // Storage-specific actions
-  expandVolume(item) {
+  expandVolume(item: any) {
     console.log('Expanding volume:', item);
     const newSize = prompt(`Enter new size for ${item.name} (current: ${item.capacity}):`);
     if (newSize) {
@@ -6645,7 +6285,7 @@ data:
   }
 
   // Configuration-specific actions
-  viewKeys(item) {
+  viewKeys(item: any) {
     console.log('Viewing keys for:', item);
     this.showNotification(
       'info',
@@ -6656,7 +6296,7 @@ data:
   }
 
   // Helm-specific actions
-  upgradeRelease(item) {
+  upgradeRelease(item: any) {
     console.log('Upgrading release:', item);
     const newChart = prompt(`Enter new chart version for ${item.name}:`, item.chart);
     if (newChart) {
@@ -6669,10 +6309,10 @@ data:
     }
   }
 
-  rollbackRelease(item) {
+  rollbackRelease(item: any) {
     console.log('Rolling back release:', item);
     const targetRevision = prompt(`Enter revision to rollback to for ${item.name}:`, (parseInt(item.revision) - 1).toString());
-    if (targetRevision && !isNaN(targetRevision)) {
+    if (targetRevision && !isNaN(parseInt(targetRevision))) {
       this.showNotification(
         'success',
         'Helm Release Rollback',
@@ -6682,7 +6322,7 @@ data:
     }
   }
 
-  uninstallRelease(item) {
+  uninstallRelease(item: any) {
     console.log('Uninstalling release:', item);
     if (confirm(`Are you sure you want to uninstall ${item.name}? This action cannot be undone.`)) {
       this.showNotification(
@@ -6691,8 +6331,8 @@ data:
         `Uninstalling "${item.name}". This feature is not fully implemented yet.`
       );
       // Now activeSubmenu directly matches property names (all plural)
-      const currentData = this[this.activeSubmenu];
-      if (currentData) {
+      const currentData = this[this.activeSubmenu as keyof KubernetesTab] as any[];
+      if (currentData && Array.isArray(currentData)) {
         const index = currentData.indexOf(item);
         if (index > -1) {
           currentData.splice(index, 1);
@@ -6704,7 +6344,7 @@ data:
   }
 
   // Node-specific actions
-  drainNode(node) {
+  drainNode(node: any) {
     console.log('Draining node:', node);
     if (confirm(`Are you sure you want to drain node ${node.name}? This will evict all pods from the node.`)) {
       this.showNotification(
@@ -6717,7 +6357,7 @@ data:
     }
   }
 
-  cordonNode(node) {
+  cordonNode(node: any) {
     console.log('Cordoning node:', node);
     if (confirm(`Are you sure you want to cordon node ${node.name}? This will prevent new pods from being scheduled on this node.`)) {
       this.showNotification(

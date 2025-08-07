@@ -3,7 +3,10 @@ import { state, property } from 'lit/decorators.js';
 import { t } from '../i18n';
 import { I18nLitElement } from '../i18n-mixin';
 import { api } from '../api';
-import type { AddressRequest, BridgeRequest, BondRequest, VLANRequest, NetworkInterface, BondMode } from '../types/api';
+import type { AddressRequest, BridgeRequest, BondRequest, VLANRequest, NetworkInterface } from '../types/api';
+
+// Define BondMode locally until it's exported from api types
+type BondMode = 'balance-rr' | 'active-backup' | 'balance-xor' | 'broadcast' | '802.3ad' | 'balance-tlb' | 'balance-alb';
 import '../components/modal-dialog';
 
 export class NetworkTab extends I18nLitElement {
@@ -538,7 +541,7 @@ export class NetworkTab extends I18nLitElement {
   handlePopState() {
     const pathSegments = window.location.pathname.split('/');
     const tab = pathSegments[pathSegments.length - 1];
-    if (['interfaces', 'bridges', 'bonds', 'vlans'].includes(tab)) {
+    if (tab && ['interfaces', 'bridges', 'bonds', 'vlans'].includes(tab)) {
       this.activeTab = tab;
     }
   }
@@ -552,7 +555,7 @@ export class NetworkTab extends I18nLitElement {
     // Initialize tab from URL or subRoute
     const pathSegments = window.location.pathname.split('/');
     const tab = pathSegments[pathSegments.length - 1];
-    if (['interfaces', 'bridges', 'bonds', 'vlans'].includes(tab)) {
+    if (tab && ['interfaces', 'bridges', 'bonds', 'vlans'].includes(tab)) {
       this.activeTab = tab;
     } else {
       this.handleSubRoute();
@@ -584,7 +587,7 @@ export class NetworkTab extends I18nLitElement {
   }
 
   handleDocumentClick(e: Event) {
-    const target = e.target as Node;
+    const target = e.target as Element;
     if (!target.closest('.action-menu')) {
       this.closeAllMenus();
     }
@@ -1134,7 +1137,7 @@ ${this.interfaces.length > 0 ? html`
                           <span class="status-icon ${bond.state === 'up' ? 'up' : 'down'}" data-tooltip="${bond.state === 'up' ? 'Up' : 'Down'}"></span>
                         </div>
                       </td>
-                      <td>${bond.mode || 'N/A'}</td>
+                      <td>${(bond as any).mode || 'N/A'}</td>
                       <td>
                         <div class="action-menu">
                           <button class="action-dots" @click=${(e: Event) => this.toggleActionMenu(e, `bond-${index}`)}>${'⋮'}</button>
@@ -1369,7 +1372,7 @@ ${this.interfaces.length > 0 ? html`
                   id="bond-mode"
                   class="form-select" 
                   .value=${this.bondFormData.mode}
-                  @input=${(e: Event) => this.bondFormData.mode = (e.target as HTMLSelectElement).value}
+                  @input=${(e: Event) => this.bondFormData.mode = (e.target as HTMLSelectElement).value as BondMode}
                   required
                 >
                   <option value="balance-rr">balance-rr (Round-robin)</option>

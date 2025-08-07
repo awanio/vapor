@@ -25,7 +25,7 @@ export class DockerProcessesTab extends LitElement {
     isDangerous: false
   };
 
-  static styles = css`
+  static override styles = css`
     :host {
       display: block;
       padding: 16px;
@@ -386,14 +386,14 @@ export class DockerProcessesTab extends LitElement {
     }
   `;
 
-  connectedCallback() {
+  override connectedCallback() {
     super.connectedCallback();
     this.fetchContainers();
     document.addEventListener('click', this.handleDocumentClick);
     document.addEventListener('keydown', this.handleKeyDown);
   }
 
-  disconnectedCallback() {
+  override disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('click', this.handleDocumentClick);
     document.removeEventListener('keydown', this.handleKeyDown);
@@ -511,10 +511,10 @@ export class DockerProcessesTab extends LitElement {
   }
 
   formatContainerName(names: string[]): string {
-    return names && names.length > 0 ? names[0].replace(/^\//, '') : 'Unnamed';
+    return names && names.length > 0 && names[0] ? names[0].replace(/^\//, '') : 'Unnamed';
   }
 
-  render() {
+  override render() {
     return html`
       ${!this.error && this.containers.length > 0 ? html`
         <div class="search-box">

@@ -10,7 +10,7 @@ export class DockerNetworksTab extends LitElement {
   @state() private loading = false;
   @state() private searchTerm = '';
 
-  static styles = css`
+  static override styles = css`
     :host {
       display: block;
       padding: 16px;
@@ -241,13 +241,13 @@ export class DockerNetworksTab extends LitElement {
     }
   `;
 
-  connectedCallback() {
+  override connectedCallback() {
     super.connectedCallback();
     this.fetchNetworks();
     document.addEventListener('click', this.handleDocumentClick);
   }
 
-  disconnectedCallback() {
+  override disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('click', this.handleDocumentClick);
   }
@@ -331,7 +331,7 @@ export class DockerNetworksTab extends LitElement {
     return 'N/A';
   }
 
-  render() {
+  override render() {
     return html`
       ${!this.error && this.networks.length > 0 ? html`
         <div class="search-box">

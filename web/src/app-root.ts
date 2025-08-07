@@ -1,5 +1,5 @@
 import { LitElement, html, css } from 'lit';
-import { property, state } from 'lit/decorators.js';
+import { state } from 'lit/decorators.js';
 import { auth } from './auth';
 import { theme } from './theme';
 import { i18n, t, Locale } from './i18n';
@@ -34,8 +34,6 @@ export class AppRoot extends LitElement {
   @state()
   private sidebarCollapsed = false;
   
-  @state()
-  private queryParams: URLSearchParams | null = null;
   
   @state()
   private subRoute: string | null = null;
@@ -270,9 +268,9 @@ export class AppRoot extends LitElement {
       const [mainRoute, ...subParts] = path.split('/');
       this.subRoute = subParts.length > 0 ? subParts.join('/') : null;
       
-      if (this.isValidRoute(mainRoute)) {
+      if (mainRoute && this.isValidRoute(mainRoute)) {
         this.activeView = mainRoute;
-      } else {
+      } else if (mainRoute) {
         // Invalid route - show 404
         this.activeView = path;
       }
@@ -294,7 +292,7 @@ export class AppRoot extends LitElement {
           // Parse main route and sub-route
           const [mainRoute, ...subParts] = path.split('/');
           this.subRoute = subParts.length > 0 ? subParts.join('/') : null;
-          this.activeView = this.isValidRoute(mainRoute) ? mainRoute : path;
+          this.activeView = mainRoute && this.isValidRoute(mainRoute) ? mainRoute : path;
         }
       }
     });
@@ -470,7 +468,7 @@ export class AppRoot extends LitElement {
     const [mainRoute, ...subParts] = route.split('/');
     this.activeView = mainRoute;
     this.subRoute = subParts.length > 0 ? subParts.join('/') : null;
-    this.queryParams = e.detail.queryParams;
+    // this.queryParams = e.detail.queryParams;
   }
   
   private isValidRoute(route: string): boolean {
