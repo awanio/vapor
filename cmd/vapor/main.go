@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -159,11 +160,13 @@ func main() {
 			api.DELETE("/docker/networks/:id", dockerService.RemoveNetworkGin)
 		}
 
-		// Kubernetes service
-		kubernetesService, err := kubernetes.NewService()
-		if err != nil {
-			log.Printf("Warning: Kubernetes service not available: %v", err)
-			// Register Kubernetes routes with NoKubernetesHandler
+	// Kubernetes service
+	fmt.Printf("[DEBUG] Attempting to create Kubernetes service...\n")
+	kubernetesService, err := kubernetes.NewService()
+	if err != nil {
+		fmt.Printf("[ERROR] Failed to create Kubernetes service: %v\n", err)
+		log.Printf("Warning: Kubernetes service not available: %v", err)
+		// Register Kubernetes routes with NoKubernetesHandler
 			noK8sHandler := kubernetes.NoKubernetesHandler()
 			api.GET("/kubernetes/crds", noK8sHandler)
 			api.GET("/kubernetes/crds/:name", noK8sHandler)
@@ -244,8 +247,10 @@ func main() {
 				api.GET("/kubernetes/helm/releases", noHelmHandler)
 				api.GET("/kubernetes/helm/charts", noHelmHandler)
 				api.GET("/kubernetes/helm/repositories", noHelmHandler)
-				api.PUT("/kubernetes/helm/repositories/:name/update", noHelmHandler)
+			api.PUT("/kubernetes/helm/repositories/:name/update", noHelmHandler)
 		} else {
+			fmt.Printf("[DEBUG] Successfully created Kubernetes service\n")
+			log.Printf("Kubernetes service initialized successfully")
 			// Register Kubernetes routes
 			k8sHandler := kubernetes.NewHandler(kubernetesService)
 			api.GET("/kubernetes/crds", k8sHandler.ListCRDsGin)

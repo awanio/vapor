@@ -1370,7 +1370,7 @@ class KubernetesTab extends LitElement {
                   <button class="action-dots" @click=${(e) => this.toggleActionMenu(e, `k8s-workload-${index}`)}>⋮</button>
                   <div class="action-dropdown" id="k8s-workload-${index}">
                     <button @click=${() => { this.closeAllMenus(); this.viewDetails(item); }}>View Details</button>
-                    <button @click=${() => { this.closeAllMenus(); this.viewLogs(item); }}>View Logs</button>
+                    ${item.type === 'Pod' ? html`<button @click=${() => { this.closeAllMenus(); this.viewLogs(item); }}>View Logs</button>` : ''}
                     <button class="danger" @click=${() => { this.closeAllMenus(); this.deleteItem(item); }}>Delete</button>
                   </div>
                 </div>
@@ -5782,11 +5782,27 @@ renderCronJobDetailContent(data: any) {
       // Determine the resource type and API endpoint
       let endpoint = '';
       
-      if (item.type === 'Pod') {
-        endpoint = `/kubernetes/pods/${item.namespace}/${item.name}`;
-      } else {
-        // For other resource types, we'll add their endpoints later
-        throw new Error(`Delete not implemented for ${item.type}`);
+      switch (item.type) {
+        case 'Pod':
+          endpoint = `/kubernetes/pods/${item.namespace}/${item.name}`;
+          break;
+        case 'Deployment':
+          endpoint = `/kubernetes/deployments/${item.namespace}/${item.name}`;
+          break;
+        case 'StatefulSet':
+          endpoint = `/kubernetes/statefulsets/${item.namespace}/${item.name}`;
+          break;
+        case 'DaemonSet':
+          endpoint = `/kubernetes/daemonsets/${item.namespace}/${item.name}`;
+          break;
+        case 'Job':
+          endpoint = `/kubernetes/jobs/${item.namespace}/${item.name}`;
+          break;
+        case 'CronJob':
+          endpoint = `/kubernetes/cronjobs/${item.namespace}/${item.name}`;
+          break;
+        default:
+          throw new Error(`Delete not implemented for ${item.type}`);
       }
 
       // Call the delete API
@@ -6230,15 +6246,70 @@ data:
       console.log('Applying resource with format:', format);
       console.log('Content:', this.createResourceYaml);
       
+      // Parse the content to determine resource type
+      let resourceData;
+      if (format === 'json') {
+        resourceData = JSON.parse(this.createResourceYaml.trim());
+      } else {
+        // Simple YAML parsing to extract kind
+        const kindMatch = this.createResourceYaml.match(/^kind:\s*(.+)$/m);
+        resourceData = { kind: kindMatch ? kindMatch[1].trim() : '' };
+      }
+      
+      // Determine the API endpoint based on resource kind
+      let endpoint = '';
+      let resourceTypeName = resourceData.kind || 'resource';
+      
+      switch (resourceData.kind) {
+        case 'Pod':
+          endpoint = '/kubernetes/pods';
+          break;
+        case 'Deployment':
+          endpoint = '/kubernetes/deployments';
+          break;
+        case 'StatefulSet':
+          endpoint = '/kubernetes/statefulsets';
+          break;
+        case 'DaemonSet':
+          endpoint = '/kubernetes/daemonsets';
+          break;
+        case 'Job':
+          endpoint = '/kubernetes/jobs';
+          break;
+        case 'CronJob':
+          endpoint = '/kubernetes/cronjobs';
+          break;
+        case 'Service':
+          endpoint = '/kubernetes/services';
+          break;
+        case 'Ingress':
+          endpoint = '/kubernetes/ingresses';
+          break;
+        case 'PersistentVolumeClaim':
+          endpoint = '/kubernetes/pvcs';
+          break;
+        case 'PersistentVolume':
+          endpoint = '/kubernetes/pvs';
+          break;
+        case 'ConfigMap':
+          endpoint = '/kubernetes/configmaps';
+          break;
+        case 'Secret':
+          endpoint = '/kubernetes/secrets';
+          break;
+        default:
+          throw new Error(`Resource type "${resourceData.kind}" is not supported for creation`);
+      }
+      
       this.showNotification(
         'info',
         'Creating Resource',
-        `Applying your Kubernetes resource (${format.toUpperCase()})...`
+        `Creating ${resourceTypeName}...`
       );
 
       // Send to API
       const response = await Api.postResource(
-        '/kubernetes/pods',
+        endpoint,
         this.createResourceYaml.trim(),
         contentType
       );
@@ -6249,7 +6320,7 @@ data:
       this.showNotification(
         'success',
         'Resource Created',
-        `Pod "${response.metadata?.name || 'resource'}" has been created successfully`
+        `${resourceTypeName} "${response.metadata?.name || 'resource'}" has been created successfully`
       );
       
       // Refresh the data

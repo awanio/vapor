@@ -2,6 +2,7 @@ package kubernetes
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -123,11 +124,23 @@ func (h *Handler) GetPVCDetailGin(c *gin.Context) {
 	namespace := c.Param("namespace")
 	name := c.Param("name")
 
+	// Log the request details
+	fmt.Printf("[DEBUG] GetPVCDetailGin called with namespace=%s, name=%s\n", namespace, name)
+
 	pvcDetail, err := h.service.GetPVCDetail(c.Request.Context(), namespace, name)
 	if err != nil {
-		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get PVC details", err.Error())
+		// Log the error details
+		fmt.Printf("[ERROR] GetPVCDetailGin failed: namespace=%s, name=%s, error=%v\n", namespace, name, err)
+		
+		// Check if it's a not found error
+		if strings.Contains(err.Error(), "not found") {
+			common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "PVC not found", err.Error())
+		} else {
+			common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get PVC details", err.Error())
+		}
 		return
 	}
+	fmt.Printf("[DEBUG] GetPVCDetailGin successful for namespace=%s, name=%s\n", namespace, name)
 	common.SendSuccess(c, gin.H{"pvc_detail": pvcDetail})
 }
 
@@ -143,11 +156,23 @@ func (h *Handler) ListPVsGin(c *gin.Context) {
 func (h *Handler) GetPVDetailGin(c *gin.Context) {
 	name := c.Param("name")
 
+	// Log the request details
+	fmt.Printf("[DEBUG] GetPVDetailGin called with name=%s\n", name)
+
 	pvDetail, err := h.service.GetPVDetail(c.Request.Context(), name)
 	if err != nil {
-		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get PV details", err.Error())
+		// Log the error details
+		fmt.Printf("[ERROR] GetPVDetailGin failed: name=%s, error=%v\n", name, err)
+		
+		// Check if it's a not found error
+		if strings.Contains(err.Error(), "not found") {
+			common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "PV not found", err.Error())
+		} else {
+			common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get PV details", err.Error())
+		}
 		return
 	}
+	fmt.Printf("[DEBUG] GetPVDetailGin successful for name=%s\n", name)
 	common.SendSuccess(c, gin.H{"pv_detail": pvDetail})
 }
 

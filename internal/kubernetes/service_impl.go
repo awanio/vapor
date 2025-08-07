@@ -34,30 +34,44 @@ type Service struct {
 
 // NewService creates a new Kubernetes service
 func NewService() (*Service, error) {
+	fmt.Printf("[DEBUG] NewService: Starting Kubernetes service initialization\n")
+	
 	// First, check if Kubernetes is installed by looking for admin.conf
 	if _, err := os.Stat("/etc/kubernetes/admin.conf"); err == nil {
+		fmt.Printf("[DEBUG] NewService: Found /etc/kubernetes/admin.conf\n")
 		// Try to load from admin.conf first (control plane node)
 		config, err := clientcmd.BuildConfigFromFlags("", "/etc/kubernetes/admin.conf")
 		if err == nil {
+			fmt.Printf("[DEBUG] NewService: Successfully loaded config from admin.conf\n")
 			// Successfully loaded admin config, create clientset and return
 			return createServiceWithConfig(config)
 		}
 		// If admin.conf exists but can't be loaded, log and continue with other methods
 		fmt.Printf("Warning: /etc/kubernetes/admin.conf exists but failed to load: %v\n", err)
+	} else {
+		fmt.Printf("[DEBUG] NewService: /etc/kubernetes/admin.conf not found: %v\n", err)
 	}
 
 	// Try to load from default kubeconfig location (~/.kube/config)
+	fmt.Printf("[DEBUG] NewService: Trying default kubeconfig location: %s\n", clientcmd.RecommendedHomeFile)
 	config, err := clientcmd.BuildConfigFromFlags("", clientcmd.RecommendedHomeFile)
 	if err != nil {
+		fmt.Printf("[DEBUG] NewService: Failed to load default kubeconfig: %v\n", err)
 		// If that fails, try in-cluster config (for pods running inside cluster)
+		fmt.Printf("[DEBUG] NewService: Trying in-cluster config\n")
 		config, err = rest.InClusterConfig()
 		if err != nil {
+			fmt.Printf("[DEBUG] NewService: Failed to load in-cluster config: %v\n", err)
 			// Check if kubectl is available as a fallback indicator
 			if !isKubernetesInstalled() {
+				fmt.Printf("[ERROR] NewService: Kubernetes not installed on this system\n")
 				return nil, fmt.Errorf("kubernetes is not installed on this system: %w", err)
 			}
 			return nil, fmt.Errorf("failed to create kubernetes config: %w", err)
 		}
+		fmt.Printf("[DEBUG] NewService: Successfully loaded in-cluster config\n")
+	} else {
+		fmt.Printf("[DEBUG] NewService: Successfully loaded config from default kubeconfig\n")
 	}
 
 	// Create the clientset
@@ -636,19 +650,29 @@ func (s *Service) GetIngressDetail(ctx context.Context, namespace, name string) 
 
 // GetPVCDetail retrieves detailed information of a specific persistent volume claim
 func (s *Service) GetPVCDetail(ctx context.Context, namespace, name string) (*corev1.PersistentVolumeClaim, error) {
+	fmt.Printf("[DEBUG] GetPVCDetail called with namespace=%s, name=%s\n", namespace, name)
+	
 	pvc, err := s.client.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
+		fmt.Printf("[ERROR] Failed to get PVC details: namespace=%s, name=%s, error=%v\n", namespace, name, err)
 		return nil, fmt.Errorf("failed to get PVC details for %s/%s: %w", namespace, name, err)
 	}
+	
+	fmt.Printf("[DEBUG] Successfully retrieved PVC: namespace=%s, name=%s\n", namespace, name)
 	return pvc, nil
 }
 
 // GetPVDetail retrieves detailed information of a specific persistent volume
 func (s *Service) GetPVDetail(ctx context.Context, name string) (*corev1.PersistentVolume, error) {
+	fmt.Printf("[DEBUG] GetPVDetail called with name=%s\n", name)
+	
 	pv, err := s.client.CoreV1().PersistentVolumes().Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
+		fmt.Printf("[ERROR] Failed to get PV details: name=%s, error=%v\n", name, err)
 		return nil, fmt.Errorf("failed to get PV details for %s: %w", name, err)
 	}
+	
+	fmt.Printf("[DEBUG] Successfully retrieved PV: name=%s\n", name)
 	return pv, nil
 }
 
@@ -827,23 +851,28 @@ func calculateAge(creationTime time.Time) string {
 
 // createServiceWithConfig creates a Service instance with the given config
 func createServiceWithConfig(config *rest.Config) (*Service, error) {
+	fmt.Printf("[DEBUG] Creating Kubernetes service with config\n")
+	
 	// Create the clientset
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kubernetes clientset: %w", err)
 	}
+	fmt.Printf("[DEBUG] Successfully created Kubernetes clientset\n")
 
 	// Create the API extensions client for CRDs
 	apiExtensionsClient, err := apiextensionsclient.NewForConfig(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create API extensions client: %w", err)
 	}
+	fmt.Printf("[DEBUG] Successfully created API extensions client\n")
 
 	// Create the dynamic client for dynamic CRD operations
 	dynamicClient, err := dynamic.NewForConfig(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create dynamic client: %w", err)
 	}
+	fmt.Printf("[DEBUG] Successfully created dynamic client\n")
 
 	// Get node name from environment
 	nodeName := os.Getenv("NODE_NAME")
