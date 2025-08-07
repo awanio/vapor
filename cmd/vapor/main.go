@@ -160,13 +160,13 @@ func main() {
 			api.DELETE("/docker/networks/:id", dockerService.RemoveNetworkGin)
 		}
 
-	// Kubernetes service
-	fmt.Printf("[DEBUG] Attempting to create Kubernetes service...\n")
-	kubernetesService, err := kubernetes.NewService()
-	if err != nil {
-		fmt.Printf("[ERROR] Failed to create Kubernetes service: %v\n", err)
-		log.Printf("Warning: Kubernetes service not available: %v", err)
-		// Register Kubernetes routes with NoKubernetesHandler
+		// Kubernetes service
+		fmt.Printf("[DEBUG] Attempting to create Kubernetes service...\n")
+		kubernetesService, err := kubernetes.NewService()
+		if err != nil {
+			fmt.Printf("[ERROR] Failed to create Kubernetes service: %v\n", err)
+			log.Printf("Warning: Kubernetes service not available: %v", err)
+			// Register Kubernetes routes with NoKubernetesHandler
 			noK8sHandler := kubernetes.NoKubernetesHandler()
 			api.GET("/kubernetes/crds", noK8sHandler)
 			api.GET("/kubernetes/crds/:name", noK8sHandler)
@@ -254,9 +254,9 @@ func main() {
 
 			// Helm routes with NoHelmHandler
 			noHelmHandler := helm.NoHelmHandler()
-				api.GET("/kubernetes/helm/releases", noHelmHandler)
-				api.GET("/kubernetes/helm/charts", noHelmHandler)
-				api.GET("/kubernetes/helm/repositories", noHelmHandler)
+			api.GET("/kubernetes/helm/releases", noHelmHandler)
+			api.GET("/kubernetes/helm/charts", noHelmHandler)
+			api.GET("/kubernetes/helm/repositories", noHelmHandler)
 			api.PUT("/kubernetes/helm/repositories/:name/update", noHelmHandler)
 		} else {
 			fmt.Printf("[DEBUG] Successfully created Kubernetes service\n")
@@ -288,16 +288,16 @@ func main() {
 			api.POST("/kubernetes/ingresses", k8sHandler.ApplyIngressGin)
 			api.PUT("/kubernetes/ingresses/:namespace/:name", k8sHandler.UpdateIngressGin)
 			api.DELETE("/kubernetes/ingresses/:namespace/:name", k8sHandler.DeleteIngressGin)
-			api.GET("/kubernetes/pvcs", k8sHandler.ListPVCsGin)
-			api.GET("/kubernetes/pvcs/:namespace/:name", k8sHandler.GetPVCDetailGin)
-			api.POST("/kubernetes/pvcs", k8sHandler.ApplyPVCGin)
-			api.PUT("/kubernetes/pvcs/:namespace/:name", k8sHandler.UpdatePVCGin)
-			api.DELETE("/kubernetes/pvcs/:namespace/:name", k8sHandler.DeletePVCGin)
-			api.GET("/kubernetes/pvs", k8sHandler.ListPVsGin)
-			api.GET("/kubernetes/pvs/:name", k8sHandler.GetPVDetailGin)
-			api.POST("/kubernetes/pvs", k8sHandler.ApplyPVGin)
-			api.PUT("/kubernetes/pvs/:name", k8sHandler.UpdatePVGin)
-			api.DELETE("/kubernetes/pvs/:name", k8sHandler.DeletePVGin)
+			api.GET("/kubernetes/persistentvolumeclaims", k8sHandler.ListPVCsGin)
+			api.GET("/kubernetes/persistentvolumeclaims/:namespace/:name", k8sHandler.GetPVCDetailGin)
+			api.POST("/kubernetes/persistentvolumeclaims", k8sHandler.ApplyPVCGin)
+			api.PUT("/kubernetes/persistentvolumeclaims/:namespace/:name", k8sHandler.UpdatePVCGin)
+			api.DELETE("/kubernetes/persistentvolumeclaims/:namespace/:name", k8sHandler.DeletePVCGin)
+			api.GET("/kubernetes/persistentvolumes", k8sHandler.ListPVsGin)
+			api.GET("/kubernetes/persistentvolumes/:name", k8sHandler.GetPVDetailGin)
+			api.POST("/kubernetes/persistentvolumes", k8sHandler.ApplyPVGin)
+			api.PUT("/kubernetes/persistentvolumes/:name", k8sHandler.UpdatePVGin)
+			api.DELETE("/kubernetes/persistentvolumes/:name", k8sHandler.DeletePVGin)
 			api.GET("/kubernetes/secrets", k8sHandler.ListSecretsGin)
 			api.GET("/kubernetes/secrets/:namespace/:name", k8sHandler.GetSecretDetailGin)
 			api.POST("/kubernetes/secrets", k8sHandler.ApplySecretGin)
