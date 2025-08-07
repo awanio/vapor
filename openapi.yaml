@@ -3632,6 +3632,350 @@ paths:
         '503':
           $ref: '#/components/responses/KubernetesNotInstalledError'
 
+  /kubernetes/ingressclasses:
+    get:
+      summary: List all ingress classes in the cluster
+      description: List all ingress classes in the Kubernetes cluster
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Ingress classes listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngressClassesResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+    post:
+      summary: Create or update an IngressClass
+      description: Create a new IngressClass or update an existing IngressClass using Kubernetes apply semantics.
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        description: IngressClass specification in JSON or YAML format
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IngressClassDetail'
+          application/yaml:
+            schema:
+              type: string
+          text/yaml:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: IngressClass created or updated successfully
+        '400':
+          description: Invalid IngressClass specification or unsupported content type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/ingressclasses/{name}:
+    get:
+      summary: Get detailed ingress class information
+      description: Get detailed information about a specific ingress class
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: IngressClass name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: IngressClass details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngressClassDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: IngressClass not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+    put:
+      summary: Update an IngressClass
+      description: Update an existing IngressClass
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: IngressClass name
+          schema:
+            type: string
+      requestBody:
+        required: true
+        description: IngressClass specification in JSON or YAML format
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IngressClassDetail'
+          application/yaml:
+            schema:
+              type: string
+          text/yaml:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: IngressClass updated successfully
+        '400':
+          description: Invalid IngressClass specification or unsupported content type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: IngressClass not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+    delete:
+      summary: Delete an ingress class
+      description: Delete a specific ingress class
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: IngressClass name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: IngressClass deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: IngressClass not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/networkpolicies:
+    get:
+      summary: List all network policies in the cluster
+      description: List all network policies across all namespaces in the Kubernetes cluster
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Network policies listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkPoliciesResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+    post:
+      summary: Create or update a NetworkPolicy
+      description: Create a new NetworkPolicy or update an existing NetworkPolicy using Kubernetes apply semantics.
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        description: NetworkPolicy specification in JSON or YAML format
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NetworkPolicyDetail'
+          application/yaml:
+            schema:
+              type: string
+          text/yaml:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: NetworkPolicy created or updated successfully
+        '400':
+          description: Invalid NetworkPolicy specification or unsupported content type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
+  /kubernetes/networkpolicies/{namespace}/{name}:
+    get:
+      summary: Get detailed network policy information
+      description: Get detailed information about a specific network policy in a namespace
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: NetworkPolicy namespace
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          description: NetworkPolicy name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: NetworkPolicy details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkPolicyDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: NetworkPolicy not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+    put:
+      summary: Update a NetworkPolicy
+      description: Update an existing NetworkPolicy
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: NetworkPolicy namespace
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          description: NetworkPolicy name
+          schema:
+            type: string
+      requestBody:
+        required: true
+        description: NetworkPolicy specification in JSON or YAML format
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NetworkPolicyDetail'
+          application/yaml:
+            schema:
+              type: string
+          text/yaml:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: NetworkPolicy updated successfully
+        '400':
+          description: Invalid NetworkPolicy specification or unsupported content type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: NetworkPolicy not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+    delete:
+      summary: Delete a network policy
+      description: Delete a specific network policy from a namespace
+      tags:
+        - Kubernetes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: NetworkPolicy namespace
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          description: NetworkPolicy name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: NetworkPolicy deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: NetworkPolicy not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          $ref: '#/components/responses/KubernetesNotInstalledError'
+
   /kubernetes/pods/{namespace}/{name}:
     get:
       summary: Get detailed pod information
@@ -4839,7 +5183,6 @@ paths:
       summary: List Helm releases
       description: List all Helm releases from all namespaces in the Kubernetes cluster by default. Use namespace parameter to filter to a specific namespace.
       tags:
-        - Kubernetes
         - Helm
       security:
         - bearerAuth: []
@@ -4885,7 +5228,6 @@ paths:
       summary: List Helm charts
       description: Search all Helm charts from configured repositories (equivalent to 'helm search repo -l')
       tags:
-        - Kubernetes
         - Helm
       security:
         - bearerAuth: []
@@ -4930,7 +5272,6 @@ paths:
       summary: List Helm repositories
       description: List all configured Helm repositories (equivalent to 'helm repo list')
       tags:
-        - Kubernetes
         - Helm
       security:
         - bearerAuth: []
@@ -4951,7 +5292,6 @@ paths:
       summary: Add a new Helm repository
       description: Add a new Helm repository to the configuration (equivalent to 'helm repo add')
       tags:
-        - Kubernetes
         - Helm
       security:
         - bearerAuth: []
@@ -5003,7 +5343,6 @@ paths:
       summary: Update a Helm repository
       description: Update a specific Helm repository to fetch the latest charts (equivalent to 'helm repo update {repo-name}')
       tags:
-        - Kubernetes
         - Helm
       security:
         - bearerAuth: []
@@ -7348,6 +7687,36 @@ components:
                 cluster:
                   $ref: '#/components/schemas/ClusterInfo'
 
+    IngressClassesResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                ingressClasses:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/IngressClassInfo'
+                count:
+                  type: integer
+
+    NetworkPoliciesResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                networkPolicies:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/NetworkPolicyInfo'
+                count:
+                  type: integer
+
     # Kubernetes Resource Info Schemas
     PodInfo:
       type: object
@@ -7715,6 +8084,60 @@ components:
           type: integer
         services:
           type: integer
+
+    IngressClassInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        controller:
+          type: string
+        parameters:
+          type: object
+          properties:
+            apiGroup:
+              type: string
+            kind:
+              type: string
+            name:
+              type: string
+        age:
+          type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+
+    NetworkPolicyInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        namespace:
+          type: string
+        pod_selector:
+          type: object
+          additionalProperties:
+            type: string
+        policy_types:
+          type: array
+          items:
+            type: string
+            enum: [Ingress, Egress]
+        age:
+          type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
 
     # Container action and detail response schemas
     ContainerDetailResponse:
@@ -8371,6 +8794,30 @@ components:
           enum: [success, error]
         cronjob_detail:
           $ref: '#/components/schemas/CronJobDetail'
+        error:
+          $ref: '#/components/schemas/APIError'
+          nullable: true
+
+    IngressClassDetailResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, error]
+        ingressclass_detail:
+          $ref: '#/components/schemas/IngressClassDetail'
+        error:
+          $ref: '#/components/schemas/APIError'
+          nullable: true
+
+    NetworkPolicyDetailResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, error]
+        networkpolicy_detail:
+          $ref: '#/components/schemas/NetworkPolicyDetail'
         error:
           $ref: '#/components/schemas/APIError'
           nullable: true
@@ -9086,3 +9533,72 @@ components:
           - name: database-backup-273987
             namespace: backups
             uid: f2345678-f234-f234-f234-f23456789012
+
+    IngressClassDetail:
+      type: object
+      description: Raw Kubernetes IngressClass object with full API specification
+      additionalProperties: true
+      example:
+        apiVersion: networking.k8s.io/v1
+        kind: IngressClass
+        metadata:
+          name: nginx
+          uid: f3345678-f334-f334-f334-f33456789012
+          resourceVersion: "94567"
+          creationTimestamp: "2024-01-14T22:00:00Z"
+          labels:
+            app.kubernetes.io/component: controller
+            app.kubernetes.io/instance: nginx
+            app.kubernetes.io/name: ingress-nginx
+          annotations:
+            ingressclass.kubernetes.io/is-default-class: "true"
+        spec:
+          controller: k8s.io/ingress-nginx
+          parameters:
+            apiGroup: v1
+            kind: ConfigMap
+            name: nginx-load-balancer-microk8s-conf
+            namespace: ingress
+
+    NetworkPolicyDetail:
+      type: object
+      description: Raw Kubernetes NetworkPolicy object with full API specification
+      additionalProperties: true
+      example:
+        apiVersion: networking.k8s.io/v1
+        kind: NetworkPolicy
+        metadata:
+          name: web-deny-all
+          namespace: default
+          uid: f4345678-f434-f434-f434-f43456789012
+          resourceVersion: "95678"
+          creationTimestamp: "2024-01-14T21:00:00Z"
+          labels:
+            app: web
+            environment: production
+        spec:
+          podSelector:
+            matchLabels:
+              app: web
+          policyTypes:
+          - Ingress
+          - Egress
+          ingress:
+          - from:
+            - namespaceSelector:
+                matchLabels:
+                  name: production
+            - podSelector:
+                matchLabels:
+                  role: frontend
+            ports:
+            - protocol: TCP
+              port: 80
+          egress:
+          - to:
+            - podSelector:
+                matchLabels:
+                  role: database
+            ports:
+            - protocol: TCP
+              port: 5432
