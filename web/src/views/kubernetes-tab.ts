@@ -65,6 +65,10 @@ class KubernetesTab extends LitElement {
   @property({ type: String }) containerLogs = '';
   @property({ type: String }) logsSearchTerm = '';
   @property({ type: String }) logsError = null;
+  @property({ type: Boolean }) showCreateDrawer = false;
+  @property({ type: String }) createResourceYaml = '';
+  @property({ type: Boolean }) isResourceValid = false;
+  @property({ type: String }) validationError = '';
 
   static styles = css`
     :host {
@@ -387,12 +391,42 @@ class KubernetesTab extends LitElement {
     }
 
     .btn-primary {
-      background: var(--vscode-accent);
-      color: white;
+      background: var(--vscode-button-background, #007acc);
+      color: var(--vscode-button-foreground, white);
     }
 
     .btn-primary:hover {
-      background: var(--vscode-accent-hover);
+      background: var(--vscode-button-hoverBackground, #005a9e);
+    }
+
+    .btn-create {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: var(--vscode-button-background, #007acc);
+      color: var(--vscode-button-foreground, white);
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    }
+
+    .btn-create:hover {
+      background: var(--vscode-button-hoverBackground, #005a9e);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.16);
+    }
+
+    .btn-create:active {
+      transform: translateY(1px);
+    }
+
+    .btn-create svg {
+      width: 14px;
+      height: 14px;
     }
 
     h1 {
@@ -447,7 +481,14 @@ class KubernetesTab extends LitElement {
     .search-container {
       display: flex;
       align-items: center;
+      justify-content: space-between;
       margin-bottom: 1.5rem;
+      gap: 1rem;
+    }
+
+    .search-controls {
+      display: flex;
+      align-items: center;
       gap: 1rem;
     }
 
@@ -1198,7 +1239,6 @@ class KubernetesTab extends LitElement {
                   <button class="action-dots" @click=${(e) => this.toggleActionMenu(e, `k8s-workload-${index}`)}>⋮</button>
                   <div class="action-dropdown" id="k8s-workload-${index}">
                     <button @click=${() => { this.closeAllMenus(); this.viewDetails(item); }}>View Details</button>
-                    ${item.type !== 'Pod' ? html`<button @click=${() => { this.closeAllMenus(); this.scalePods(item); }}>Scale</button>` : ''}
                     <button @click=${() => { this.closeAllMenus(); this.viewLogs(item); }}>View Logs</button>
                     <button class="danger" @click=${() => { this.closeAllMenus(); this.deleteItem(item); }}>Delete</button>
                   </div>
@@ -4015,50 +4055,59 @@ renderCronJobDetailContent(data: any) {
         ${this.activeSubmenu === 'configurations' ? this.renderConfigurationTabs() : ''}
         ${this.activeSubmenu === 'helms' ? this.renderHelmTabs() : ''}
         <div class="search-container">
-          ${this.activeSubmenu !== 'nodes' && this.activeSubmenu !== 'crds' ? html`
-            <div class="namespace-filter">
-            <div class="namespace-dropdown">
-              <button class="namespace-button" @click=${(e) => this.toggleNamespaceDropdown(e)}>
-                ${this.getSelectedNamespaceDisplayName()}
-                <span class="namespace-arrow ${this.showNamespaceDropdown ? 'open' : ''}">▼</span>
-              </button>
-              <div class="namespace-dropdown-content ${this.showNamespaceDropdown ? 'show' : ''}">
-                <div class="namespace-search">
-                  <input 
-                    type="text" 
-                    class="namespace-search-input" 
-                    .value=${this.namespaceSearchQuery}
-                    @input=${this.handleNamespaceSearch}
-                    placeholder="Filter namespaces..."
-                  />
-                </div>
-                <div class="namespace-options">
-                  ${this.getFilteredNamespaces().map(namespace => html`
-                    <button class="namespace-option ${namespace === this.selectedNamespace ? 'selected' : ''}"
-                      @click=${() => this.selectNamespace(namespace)}>
-                      ${namespace}
-                    </button>`
-                  )}
-                  ${this.getFilteredNamespaces().length === 0 ? 
-                    html`<div class="no-namespaces">No namespaces found</div>` : ''}
+          <div class="search-controls">
+            ${this.activeSubmenu !== 'nodes' && this.activeSubmenu !== 'crds' ? html`
+              <div class="namespace-filter">
+              <div class="namespace-dropdown">
+                <button class="namespace-button" @click=${(e) => this.toggleNamespaceDropdown(e)}>
+                  ${this.getSelectedNamespaceDisplayName()}
+                  <span class="namespace-arrow ${this.showNamespaceDropdown ? 'open' : ''}">▼</span>
+                </button>
+                <div class="namespace-dropdown-content ${this.showNamespaceDropdown ? 'show' : ''}">
+                  <div class="namespace-search">
+                    <input 
+                      type="text" 
+                      class="namespace-search-input" 
+                      .value=${this.namespaceSearchQuery}
+                      @input=${this.handleNamespaceSearch}
+                      placeholder="Filter namespaces..."
+                    />
+                  </div>
+                  <div class="namespace-options">
+                    ${this.getFilteredNamespaces().map(namespace => html`
+                      <button class="namespace-option ${namespace === this.selectedNamespace ? 'selected' : ''}"
+                        @click=${() => this.selectNamespace(namespace)}>
+                        ${namespace}
+                      </button>`
+                    )}
+                    ${this.getFilteredNamespaces().length === 0 ? 
+                      html`<div class="no-namespaces">No namespaces found</div>` : ''}
+                  </div>
                 </div>
               </div>
+              </div>
+            ` : ''}
+            <div class="search-wrapper">
+              <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
+              <input 
+                class="search-input"
+                type="text" 
+                placeholder="Search..."
+                .value=${this.searchQuery}
+                @input=${this.handleSearchInput}
+              />
             </div>
-            </div>
-          ` : ''}
-          <div class="search-wrapper">
-            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8"></circle>
-              <path d="m21 21-4.35-4.35"></path>
-            </svg>
-            <input 
-              class="search-input"
-              type="text" 
-              placeholder="Search..."
-              .value=${this.searchQuery}
-              @input=${this.handleSearchInput}
-            />
           </div>
+          <button class="btn-create" @click=${() => this.handleCreate()}>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Create
+          </button>
         </div>
         <div class="tab-content">
           ${this.error ? html`
@@ -4081,6 +4130,7 @@ renderCronJobDetailContent(data: any) {
         ${this.renderNodeDetailsDrawer()}
         ${this.renderNotifications()}
         ${this.renderLogsDrawer()}
+        ${this.renderCreateDrawer()}
       </div>
     `;
   }
@@ -4123,6 +4173,10 @@ renderCronJobDetailContent(data: any) {
         this.logsError = null;
         this.containerLogs = '';
         this.logsSearchTerm = '';
+      }
+      if (this.showCreateDrawer) {
+        this.showCreateDrawer = false;
+        this.createResourceYaml = '';
       }
       if (this.showPodDetails) {
         this.showPodDetails = false;
@@ -5595,16 +5649,401 @@ renderCronJobDetailContent(data: any) {
   }
 
   // Workload-specific actions
-  scalePods(item) {
-    console.log('Scaling pods for:', item);
-    const replicas = prompt(`Enter new replica count for ${item.name}:`, '3');
-    if (replicas && !isNaN(replicas)) {
+  handleCreate() {
+    console.log('Create button clicked');
+    this.showCreateDrawer = true;
+    // Pre-populate with a sample YAML template based on the active submenu
+    this.createResourceYaml = this.getResourceTemplate();
+    // Validate the template
+    const validation = this.validateResource(this.createResourceYaml);
+    this.isResourceValid = validation.isValid;
+    this.validationError = validation.error || '';
+    this.requestUpdate();
+  }
+
+  private getResourceTemplate(): string {
+    // Return a basic template based on the active submenu and tab
+    if (this.activeSubmenu === 'workloads') {
+      switch (this.activeWorkloadTab) {
+        case 'pods':
+          return `apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+  namespace: default
+spec:
+  containers:
+  - name: nginx
+    image: nginx:latest
+    ports:
+    - containerPort: 80`;
+        case 'deployments':
+          return `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-deployment
+  namespace: default
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80`;
+        case 'statefulsets':
+          return `apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: my-statefulset
+  namespace: default
+spec:
+  serviceName: my-service
+  replicas: 3
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80`;
+        case 'daemonsets':
+          return `apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: my-daemonset
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest`;
+        case 'jobs':
+          return `apiVersion: batch/v1
+kind: Job
+metadata:
+  name: my-job
+  namespace: default
+spec:
+  template:
+    spec:
+      containers:
+      - name: hello
+        image: busybox
+        command: ['sh', '-c', 'echo "Hello, Kubernetes!" && sleep 30']
+      restartPolicy: Never
+  backoffLimit: 4`;
+        case 'cronjobs':
+          return `apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: my-cronjob
+  namespace: default
+spec:
+  schedule: "*/5 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: hello
+            image: busybox
+            command: ['sh', '-c', 'date; echo Hello from the Kubernetes cluster']
+          restartPolicy: OnFailure`;
+        default:
+          return '# Enter your Kubernetes resource YAML here';
+      }
+    } else if (this.activeSubmenu === 'networks') {
+      switch (this.activeNetworkTab) {
+        case 'services':
+          return `apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+  namespace: default
+spec:
+  selector:
+    app: my-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: ClusterIP`;
+        case 'ingresses':
+          return `apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-ingress
+  namespace: default
+spec:
+  rules:
+  - host: example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: my-service
+            port:
+              number: 80`;
+        default:
+          return '# Enter your Kubernetes resource YAML here';
+      }
+    } else if (this.activeSubmenu === 'storages') {
+      switch (this.activeStorageTab) {
+        case 'pvc':
+          return `apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-pvc
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi`;
+        case 'pv':
+          return `apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: my-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /mnt/data`;
+        default:
+          return '# Enter your Kubernetes resource YAML here';
+      }
+    } else if (this.activeSubmenu === 'configurations') {
+      switch (this.activeConfigurationTab) {
+        case 'secrets':
+          return `apiVersion: v1
+kind: Secret
+metadata:
+  name: my-secret
+  namespace: default
+type: Opaque
+data:
+  username: YWRtaW4=
+  password: MWYyZDFlMmU2N2Rm`;
+        case 'configmap':
+          return `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-config
+  namespace: default
+data:
+  key1: value1
+  key2: value2
+  app.properties: |
+    property1=value1
+    property2=value2`;
+        default:
+          return '# Enter your Kubernetes resource YAML here';
+      }
+    }
+    return '# Enter your Kubernetes resource YAML here';
+  }
+
+  private detectFormat(content: string): 'yaml' | 'json' {
+    // Trim the content to check
+    const trimmed = content.trim();
+    
+    // Check if it starts with { or [ for JSON
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        JSON.parse(trimmed);
+        return 'json';
+      } catch (e) {
+        // If it fails to parse, it's probably YAML
+        return 'yaml';
+      }
+    }
+    
+    // Default to YAML
+    return 'yaml';
+  }
+
+  private validateResource(content: string): { isValid: boolean; error?: string } {
+    const trimmed = content.trim();
+    
+    if (!trimmed) {
+      return { isValid: false, error: 'Resource definition cannot be empty' };
+    }
+
+    const format = this.detectFormat(trimmed);
+    
+    if (format === 'json') {
+      return this.validateJSON(trimmed);
+    } else {
+      return this.validateYAML(trimmed);
+    }
+  }
+
+  private validateJSON(content: string): { isValid: boolean; error?: string } {
+    try {
+      const parsed = JSON.parse(content);
+      
+      // Basic Kubernetes resource validation
+      if (!parsed.apiVersion) {
+        return { isValid: false, error: 'Missing required field: apiVersion' };
+      }
+      if (!parsed.kind) {
+        return { isValid: false, error: 'Missing required field: kind' };
+      }
+      if (!parsed.metadata) {
+        return { isValid: false, error: 'Missing required field: metadata' };
+      }
+      if (!parsed.metadata.name) {
+        return { isValid: false, error: 'Missing required field: metadata.name' };
+      }
+      
+      return { isValid: true };
+    } catch (e) {
+      return { isValid: false, error: `Invalid JSON: ${e.message}` };
+    }
+  }
+
+  private validateYAML(content: string): { isValid: boolean; error?: string } {
+    try {
+      // Basic YAML validation without external library
+      const lines = content.split('\n');
+      let hasApiVersion = false;
+      let hasKind = false;
+      let hasMetadata = false;
+      let hasName = false;
+      let inMetadata = false;
+      
+      for (const line of lines) {
+        const trimmedLine = line.trim();
+        
+        // Skip empty lines and comments
+        if (!trimmedLine || trimmedLine.startsWith('#')) continue;
+        
+        // Check for required fields
+        if (trimmedLine.startsWith('apiVersion:')) {
+          hasApiVersion = true;
+        } else if (trimmedLine.startsWith('kind:')) {
+          hasKind = true;
+        } else if (trimmedLine === 'metadata:') {
+          hasMetadata = true;
+          inMetadata = true;
+        } else if (inMetadata && trimmedLine.startsWith('name:')) {
+          hasName = true;
+          inMetadata = false;
+        } else if (inMetadata && !trimmedLine.startsWith(' ') && !trimmedLine.startsWith('\t')) {
+          // Left metadata section without finding name
+          inMetadata = false;
+        }
+        
+        // Basic syntax checks
+        if (trimmedLine.includes(':') && !trimmedLine.includes(': ')) {
+          const colonIndex = trimmedLine.indexOf(':');
+          if (colonIndex < trimmedLine.length - 1 && trimmedLine[colonIndex + 1] !== ' ') {
+            // Check if it's not a time format (HH:MM:SS)
+            const beforeColon = trimmedLine.substring(0, colonIndex);
+            const afterColon = trimmedLine.substring(colonIndex + 1);
+            if (!/^\d+$/.test(beforeColon) || !/^\d+/.test(afterColon)) {
+              return { isValid: false, error: `Invalid YAML syntax at line: "${trimmedLine}". Add space after colon.` };
+            }
+          }
+        }
+      }
+      
+      // Check for required fields
+      if (!hasApiVersion) {
+        return { isValid: false, error: 'Missing required field: apiVersion' };
+      }
+      if (!hasKind) {
+        return { isValid: false, error: 'Missing required field: kind' };
+      }
+      if (!hasMetadata) {
+        return { isValid: false, error: 'Missing required field: metadata' };
+      }
+      if (!hasName) {
+        return { isValid: false, error: 'Missing required field: metadata.name' };
+      }
+      
+      return { isValid: true };
+    } catch (e) {
+      return { isValid: false, error: `Invalid YAML: ${e.message}` };
+    }
+  }
+
+  private async applyResource() {
+    if (!this.createResourceYaml.trim()) {
+      this.showNotification(
+        'error',
+        'Invalid Input',
+        'Please enter a valid Kubernetes resource YAML or JSON'
+      );
+      return;
+    }
+
+    try {
+      // Detect format
+      const format = this.detectFormat(this.createResourceYaml);
+      const contentType = format === 'json' ? 'application/json' : 'application/yaml';
+      
+      console.log('Applying resource with format:', format);
+      console.log('Content:', this.createResourceYaml);
+      
+      this.showNotification(
+        'info',
+        'Creating Resource',
+        `Applying your Kubernetes resource (${format.toUpperCase()})...`
+      );
+
+      // Send to API
+      const response = await Api.postResource(
+        '/kubernetes/pods',
+        this.createResourceYaml.trim(),
+        contentType
+      );
+
+      // Success
+      this.showCreateDrawer = false;
+      this.createResourceYaml = '';
       this.showNotification(
         'success',
-        'Scaling Initiated',
-        `Scaling "${item.name}" to ${replicas} replicas. This feature is not fully implemented yet.`
+        'Resource Created',
+        `Pod "${response.metadata?.name || 'resource'}" has been created successfully`
       );
-      // In a real app, you would make an API call here
+      
+      // Refresh the data
+      this.fetchAllResources();
+    } catch (error) {
+      console.error('Failed to create resource:', error);
+      this.showNotification(
+        'error',
+        'Creation Failed',
+        `Failed to create resource: ${error.message || 'Unknown error'}`
+      );
     }
   }
 
@@ -5675,6 +6114,167 @@ renderCronJobDetailContent(data: any) {
               <p class="error-message">${this.logsError}</p>
             </div>` : html`
             <div class="logs-container">${unsafeHTML(this.highlightSearchTerm(this.containerLogs, this.logsSearchTerm))}</div>`}
+        </div>
+      </div>
+    `;
+  }
+
+  renderCreateDrawer() {
+    if (!this.showCreateDrawer) return html``;
+    
+    const detectedFormat = this.detectFormat(this.createResourceYaml);
+    
+    return html`
+      <div class="drawer">
+        <button class="close-btn" @click=${() => { 
+          this.showCreateDrawer = false; 
+          this.createResourceYaml = '';
+          this.isResourceValid = false;
+          this.validationError = '';
+        }}>✕</button>
+        <div class="drawer-content">
+          <div class="logs-header">
+            <h2 class="logs-title">Create Resource</h2>
+          </div>
+          <div style="display: flex; flex-direction: column; height: calc(100% - 60px);">
+            <div style="margin-bottom: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="color: var(--vscode-descriptionForeground);">
+                  Enter your Kubernetes resource definition:
+                </div>
+                <div style="
+                  display: inline-flex;
+                  align-items: center;
+                  padding: 6px 16px;
+                  background: ${detectedFormat === 'json' ? 'rgba(55, 148, 255, 0.1)' : 'rgba(137, 209, 133, 0.1)'};
+                  border: 1px solid ${detectedFormat === 'json' ? '#3794ff' : '#89d185'};
+                  border-radius: 6px;
+                  font-size: 13px;
+                  font-weight: 600;
+                  color: ${detectedFormat === 'json' ? '#3794ff' : '#89d185'};
+                  transition: all 0.2s ease;
+                ">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style="margin-right: 8px;">
+                    ${detectedFormat === 'json' ? html`
+                      <!-- JSON icon -->
+                      <path d="M6 2.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5v11a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-11z"/>
+                      <path d="M3.5 6a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5H5V6H3.5z"/>
+                      <path d="M11 6v4h1.5a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5H11z"/>
+                    ` : html`
+                      <!-- YAML icon -->
+                      <path d="M2 2v12h12V2H2zm11 11H3V3h10v10z"/>
+                      <path d="M5 5h2v1H5V5zm3 0h3v1H8V5zM5 7h1v1H5V7zm2 0h4v1H7V7zM5 9h2v1H5V9zm3 0h3v1H8V9z"/>
+                    `}
+                  </svg>
+                  ${detectedFormat.toUpperCase()} Format Detected
+                </div>
+              </div>
+              <div style="margin-top: 8px; font-size: 12px; color: var(--vscode-descriptionForeground);">
+                Supports both YAML and JSON formats. Content type is auto-detected based on your input.
+              </div>
+            </div>
+            ${this.validationError && this.createResourceYaml.trim() ? html`
+              <div style="
+                margin-bottom: 12px;
+                padding: 8px 12px;
+                background: rgba(248, 113, 113, 0.1);
+                border: 1px solid rgba(248, 113, 113, 0.3);
+                border-radius: 4px;
+                color: var(--vscode-errorForeground, #f87171);
+                font-size: 13px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+              ">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8z"/>
+                  <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z"/>
+                </svg>
+                ${this.validationError}
+              </div>
+            ` : ''}
+            <textarea
+              style="
+                flex: 1;
+                width: 100%;
+                min-height: 500px;
+                padding: 16px;
+                font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+                font-size: 14px;
+                line-height: 1.6;
+                background: var(--vscode-editor-background, #1e1e1e);
+                color: var(--vscode-editor-foreground, #d4d4d4);
+                border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+                border-radius: 6px;
+                resize: vertical;
+                outline: none;
+                box-sizing: border-box;
+                transition: border-color 0.2s;
+              "
+              .value=${this.createResourceYaml}
+              @input=${(e: any) => {
+                this.createResourceYaml = e.target.value;
+                const validation = this.validateResource(e.target.value);
+                this.isResourceValid = validation.isValid;
+                this.validationError = validation.error || '';
+                this.requestUpdate();
+              }}
+              @focus=${(e: any) => {
+                e.target.style.borderColor = 'var(--vscode-focusBorder, #007acc)';
+              }}
+              @blur=${(e: any) => {
+                e.target.style.borderColor = 'var(--vscode-widget-border, var(--vscode-panel-border, #454545))';
+              }}
+              placeholder="# Enter your Kubernetes resource YAML or JSON here\n\nExample YAML:\napiVersion: v1\nkind: Pod\nmetadata:\n  name: my-pod\n  namespace: default\nspec:\n  containers:\n  - name: nginx\n    image: nginx:latest\n\nExample JSON:\n{\n  \"apiVersion\": \"v1\",\n  \"kind\": \"Pod\",\n  \"metadata\": {\n    \"name\": \"my-pod\",\n    \"namespace\": \"default\"\n  },\n  \"spec\": {\n    \"containers\": [{\n      \"name\": \"nginx\",\n      \"image\": \"nginx:latest\"\n    }]\n  }\n}"
+            ></textarea>
+            <div style="margin-top: 16px; display: flex; justify-content: flex-end; gap: 12px;">
+              <button 
+                class="btn" 
+                style="
+                  padding: 8px 24px;
+                  background: var(--vscode-button-secondaryBackground);
+                  color: var(--vscode-button-secondaryForeground);
+                  border: 1px solid var(--vscode-button-border);
+                  border-radius: 4px;
+                  cursor: pointer;
+                  font-size: 13px;
+                  font-weight: 500;
+                  transition: all 0.2s;
+                "
+                @mouseover=${(e: any) => {
+                  e.target.style.background = 'var(--vscode-button-secondaryHoverBackground)';
+                }}
+                @mouseout=${(e: any) => {
+                  e.target.style.background = 'var(--vscode-button-secondaryBackground)';
+                }}
+                @click=${() => {
+                  this.showCreateDrawer = false;
+                  this.createResourceYaml = '';
+                  this.isResourceValid = false;
+                  this.validationError = '';
+                }}
+              >
+                Cancel
+              </button>
+              <button 
+                class="btn btn-primary" 
+                style="
+                  padding: 8px 24px;
+                  font-size: 13px;
+                  font-weight: 500;
+                  ${!this.isResourceValid ? `
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                    background: var(--vscode-button-secondaryBackground);
+                  ` : ''}
+                "
+                ?disabled=${!this.isResourceValid}
+                @click=${() => this.isResourceValid && this.applyResource()}
+              >
+                Apply
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     `;
