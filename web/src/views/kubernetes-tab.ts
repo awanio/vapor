@@ -69,6 +69,9 @@ class KubernetesTab extends LitElement {
   @property({ type: String }) createResourceYaml = '';
   @property({ type: Boolean }) isResourceValid = false;
   @property({ type: String }) validationError = '';
+  @property({ type: Boolean }) showDeleteModal = false;
+  @property({ type: Object }) itemToDelete = null;
+  @property({ type: Boolean }) isDeleting = false;
 
   static styles = css`
     :host {
@@ -851,6 +854,134 @@ class KubernetesTab extends LitElement {
     .empty-array {
       color: var(--text-secondary);
       font-style: italic;
+    }
+
+    /* Modal styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 2000;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 80px;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    .modal {
+      background: var(--vscode-editor-background, var(--vscode-bg-light));
+      border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-radius: 8px;
+      padding: 24px;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+      animation: modalFadeIn 0.3s ease-out;
+    }
+
+    @keyframes modalFadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .modal-icon {
+      font-size: 24px;
+      margin-right: 12px;
+    }
+
+    .modal-icon.warning {
+      color: var(--vscode-notificationsWarningIcon-foreground, #ff9800);
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--vscode-foreground);
+    }
+
+    .modal-body {
+      margin-bottom: 24px;
+      color: var(--vscode-foreground);
+      line-height: 1.5;
+    }
+
+    .modal-resource-info {
+      background: var(--vscode-editor-inactiveSelectionBackground, rgba(255, 255, 255, 0.05));
+      border: 1px solid var(--vscode-widget-border, rgba(255, 255, 255, 0.1));
+      border-radius: 4px;
+      padding: 12px;
+      margin: 12px 0;
+      font-family: var(--vscode-editor-font-family, monospace);
+      font-size: 14px;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    .modal-button {
+      padding: 8px 16px;
+      border: 1px solid var(--vscode-button-border, transparent);
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .modal-button.cancel {
+      background: var(--vscode-button-secondaryBackground, rgba(255, 255, 255, 0.1));
+      color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+    }
+
+    .modal-button.cancel:hover {
+      background: var(--vscode-button-secondaryHoverBackground, rgba(255, 255, 255, 0.15));
+    }
+
+    .modal-button.delete {
+      background: var(--vscode-notificationsErrorIcon-foreground, #f44336);
+      color: white;
+      border-color: var(--vscode-notificationsErrorIcon-foreground, #f44336);
+    }
+
+    .modal-button.delete:hover {
+      background: #d32f2f;
+      border-color: #d32f2f;
+    }
+
+    .modal-button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .modal-button.delete:disabled {
+      background: var(--vscode-notificationsErrorIcon-foreground, #f44336);
+      border-color: var(--vscode-notificationsErrorIcon-foreground, #f44336);
     }
 
     .pod-name-link {
@@ -4131,6 +4262,7 @@ renderCronJobDetailContent(data: any) {
         ${this.renderNotifications()}
         ${this.renderLogsDrawer()}
         ${this.renderCreateDrawer()}
+        ${this.renderDeleteModal()}
       </div>
     `;
   }
@@ -4213,6 +4345,9 @@ renderCronJobDetailContent(data: any) {
       }
       if (this.showNodeDetails) {
         this.showNodeDetails = false;
+      }
+      if (this.showDeleteModal && !this.isDeleting) {
+        this.closeDeleteModal();
       }
       this.requestUpdate();
     }
@@ -5633,19 +5768,101 @@ renderCronJobDetailContent(data: any) {
   }
 
   deleteItem(item) {
-    // Implement delete logic here
-    console.log('Deleting item:', item);
-    if (confirm(`Are you sure you want to delete ${item.name || item.id}?`)) {
-      // Now activeSubmenu directly matches property names (all plural)
-      const currentData = this[this.activeSubmenu];
-      if (currentData) {
-        const index = currentData.indexOf(item);
-        if (index > -1) {
-          currentData.splice(index, 1);
-          this.requestUpdate();
-        }
+    this.itemToDelete = item;
+    this.showDeleteModal = true;
+  }
+
+  async confirmDelete() {
+    if (!this.itemToDelete) return;
+
+    this.isDeleting = true;
+    const item = this.itemToDelete;
+
+    try {
+      // Determine the resource type and API endpoint
+      let endpoint = '';
+      
+      if (item.type === 'Pod') {
+        endpoint = `/kubernetes/pods/${item.namespace}/${item.name}`;
+      } else {
+        // For other resource types, we'll add their endpoints later
+        throw new Error(`Delete not implemented for ${item.type}`);
       }
+
+      // Call the delete API
+      await Api.delete(endpoint);
+
+      // Show success notification
+      this.showNotification(
+        'success',
+        `${item.type} Deleted`,
+        `${item.type} "${item.name}" in namespace "${item.namespace}" has been deleted successfully.`
+      );
+
+      // Refresh the data
+      await this.fetchAllResources();
+      
+      // Close the modal
+      this.closeDeleteModal();
+    } catch (error) {
+      console.error('Failed to delete resource:', error);
+      this.showNotification(
+        'error',
+        'Delete Failed',
+        `Failed to delete ${item.type} "${item.name}": ${error.message || 'Unknown error'}`
+      );
+      this.isDeleting = false;
     }
+  }
+
+  closeDeleteModal() {
+    this.showDeleteModal = false;
+    this.itemToDelete = null;
+    this.isDeleting = false;
+  }
+
+  renderDeleteModal() {
+    if (!this.showDeleteModal || !this.itemToDelete) {
+      return '';
+    }
+
+    const item = this.itemToDelete;
+
+    return html`
+      <div class="modal-overlay" @click=${(e) => e.target === e.currentTarget && !this.isDeleting && this.closeDeleteModal()}>
+        <div class="modal">
+          <div class="modal-header">
+            <span class="modal-icon warning">⚠️</span>
+            <h3 class="modal-title">Confirm Delete</h3>
+          </div>
+          <div class="modal-body">
+            <p>Are you sure you want to delete this ${item.type.toLowerCase()}?</p>
+            <div class="modal-resource-info">
+              <div><strong>Type:</strong> ${item.type}</div>
+              <div><strong>Name:</strong> ${item.name}</div>
+              <div><strong>Namespace:</strong> ${item.namespace || 'N/A'}</div>
+            </div>
+            <p><strong>This action cannot be undone.</strong></p>
+          </div>
+          <div class="modal-footer">
+            <button 
+              class="modal-button cancel" 
+              @click=${this.closeDeleteModal}
+              ?disabled=${this.isDeleting}
+            >
+              Cancel
+            </button>
+            <button 
+              class="modal-button delete" 
+              @click=${this.confirmDelete}
+              ?disabled=${this.isDeleting}
+            >
+              ${this.isDeleting ? 'Deleting...' : 'Delete'}
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   // Workload-specific actions
