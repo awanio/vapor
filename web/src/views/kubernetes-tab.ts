@@ -1,5 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { property } from 'lit/decorators.js';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { Api } from '../api.js';
 
 class KubernetesTab extends LitElement {
@@ -60,6 +61,10 @@ class KubernetesTab extends LitElement {
   @property({ type: String }) namespaceSearchQuery = '';
   @property({ type: Array }) notifications = [];
   @property({ type: Number }) notificationId = 0;
+  @property({ type: Boolean }) showLogsDrawer = false;
+  @property({ type: String }) containerLogs = '';
+  @property({ type: String }) logsSearchTerm = '';
+  @property({ type: String }) logsError = null;
 
   static styles = css`
     :host {
@@ -155,6 +160,159 @@ class KubernetesTab extends LitElement {
       text-align: center;
       padding: 3rem;
       color: var(--text-secondary);
+    }
+
+    /* Drawer styles */
+    .drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 50%;
+      height: 100%;
+      background: var(--vscode-bg-light);
+      border-left: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+      z-index: 1001;
+      overflow-y: auto;
+      padding: 24px;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @media (max-width: 1024px) {
+      .drawer {
+        width: 80%;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .drawer {
+        width: 100%;
+      }
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+      }
+      to {
+        transform: translateX(0);
+      }
+    }
+
+    .drawer button.close-btn {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.1));
+      color: var(--vscode-foreground, var(--vscode-editor-foreground));
+      border: 1px solid var(--vscode-widget-border, rgba(0, 0, 0, 0.1));
+      transition: all 0.2s;
+    }
+
+    .drawer button.close-btn:hover {
+      background: var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.2));
+      border-color: var(--vscode-widget-border, rgba(0, 0, 0, 0.2));
+    }
+
+    .drawer-content {
+      margin-top: 40px;
+    }
+
+    /* Logs styles */
+    .logs-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+    }
+
+    .logs-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--vscode-foreground);
+    }
+
+    .search-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      max-width: 400px;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      color: var(--vscode-input-placeholderForeground, #999);
+      pointer-events: none;
+      width: 16px;
+      height: 16px;
+    }
+
+    .search-input {
+      padding: 6px 12px 6px 32px;
+      border: 1px solid var(--vscode-widget-border, var(--vscode-input-border, var(--vscode-panel-border, #454545)));
+      border-radius: 4px;
+      background-color: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+      font-size: 0.875rem;
+      width: 250px;
+      transition: all 0.2s;
+      outline: none;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08);
+    }
+
+    .search-input:hover {
+      border-color: var(--vscode-inputOption-hoverBorder, var(--vscode-widget-border, #858585));
+    }
+
+    .search-input:focus {
+      border-color: var(--vscode-focusBorder, #007acc);
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1), 0 0 0 1px var(--vscode-focusBorder, #007acc);
+    }
+
+    .search-input::placeholder {
+      color: var(--vscode-input-placeholderForeground, #999);
+      opacity: 0.7;
+    }
+
+    .logs-container {
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      font-size: 0.875rem;
+      line-height: 1.5;
+      background: var(--vscode-editor-background, #1e1e1e);
+      color: var(--vscode-editor-foreground, #d4d4d4);
+      padding: 16px;
+      border-radius: 4px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: calc(100vh - 200px);
+      overflow-y: auto;
+    }
+
+    .error-container {
+      padding: 40px 20px;
+      text-align: center;
+    }
+
+    .error-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.7;
+    }
+
+    .error-message {
+      color: var(--vscode-errorForeground, #f48771);
+      font-size: 14px;
+      line-height: 1.5;
+      margin: 0;
     }
 
     .action-menu {
@@ -3922,6 +4080,7 @@ renderCronJobDetailContent(data: any) {
         ${this.renderConfigMapDetailsDrawer()}
         ${this.renderNodeDetailsDrawer()}
         ${this.renderNotifications()}
+        ${this.renderLogsDrawer()}
       </div>
     `;
   }
@@ -3959,6 +4118,12 @@ renderCronJobDetailContent(data: any) {
 
   private handleKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
+      if (this.showLogsDrawer) {
+        this.showLogsDrawer = false;
+        this.logsError = null;
+        this.containerLogs = '';
+        this.logsSearchTerm = '';
+      }
       if (this.showPodDetails) {
         this.showPodDetails = false;
       }
@@ -5445,12 +5610,74 @@ renderCronJobDetailContent(data: any) {
 
   viewLogs(item) {
     console.log('Viewing logs for:', item);
-    this.showNotification(
-      'info',
-      'Logs Viewer',
-      `Log viewer for "${item.name}" is not implemented yet.`
-    );
-    // In a real app, you would open a logs viewer or modal
+    if (item.type === 'Pod') {
+      this.showPodLogs(item);
+    } else {
+      this.showNotification(
+        'info',
+        'Logs Viewer',
+        `Log viewer for ${item.type} "${item.name}" is not implemented yet.`
+      );
+    }
+  }
+
+  private async showPodLogs(pod) {
+    try {
+      this.logsError = null;
+      this.containerLogs = 'Loading logs...';
+      this.showLogsDrawer = true;
+      
+      const response = await Api.get(`/kubernetes/pods/${pod.namespace}/${pod.name}/logs`);
+      this.containerLogs = response.logs || 'No logs available';
+    } catch (error) {
+      console.error('Error fetching pod logs:', error);
+      this.logsError = error.message || 'Failed to fetch logs';
+    }
+  }
+
+  private highlightSearchTerm(text: string, term: string): string {
+    if (!term || !text) return text;
+    const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    return text.replace(regex, '<mark style="background-color: #ffeb3b; color: #000; padding: 0 2px;">$1</mark>');
+  }
+
+  renderLogsDrawer() {
+    if (!this.showLogsDrawer) return html``;
+    
+    return html`
+      <div class="drawer">
+        <button class="close-btn" @click=${() => { 
+          this.showLogsDrawer = false; 
+          this.logsError = null;
+          this.containerLogs = '';
+          this.logsSearchTerm = '';
+        }}>✕</button>
+        <div class="drawer-content">
+          <div class="logs-header">
+            <h2 class="logs-title">Pod Logs</h2>
+            <div class="search-wrapper">
+              <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
+              <input
+                class="search-input"
+                type="text"
+                placeholder="Search logs..."
+                .value=${this.logsSearchTerm}
+                @input=${(e: any) => this.logsSearchTerm = e.target.value}
+              />
+            </div>
+          </div>
+          ${this.logsError ? html`
+            <div class="error-container">
+              <div class="error-icon">⚠️</div>
+              <p class="error-message">${this.logsError}</p>
+            </div>` : html`
+            <div class="logs-container">${unsafeHTML(this.highlightSearchTerm(this.containerLogs, this.logsSearchTerm))}</div>`}
+        </div>
+      </div>
+    `;
   }
 
   // Network-specific actions
