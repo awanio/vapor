@@ -5117,6 +5117,49 @@ renderCronJobDetailContent(data: any) {
     }
   }
 
+  async fetchPvcs() {
+    try {
+      const response = await Api.get('/kubernetes/pvcs');
+      const pvcs = response.data?.pvcs || response.pvcs || [];
+      return pvcs.map(pvc => ({
+        name: pvc.name,
+        type: 'PersistentVolumeClaim',
+        namespace: pvc.namespace,
+        status: pvc.status || 'Unknown',
+        capacity: pvc.capacity || '-',
+        accessMode: pvc.access_modes || '-',
+        storageClass: pvc.storage_class || '-',
+        volume: pvc.volume || '-',
+        age: pvc.age || '-'
+      }));
+    } catch (error) {
+      console.error('Failed to fetch PVCs:', error);
+      return [];
+    }
+  }
+
+  async fetchPvs() {
+    try {
+      const response = await Api.get('/kubernetes/pvs');
+      const pvs = response.data?.pvs || response.pvs || [];
+      return pvs.map(pv => ({
+        name: pv.name,
+        type: 'PersistentVolume',
+        namespace: '-',  // PVs are not namespaced
+        status: pv.status || 'Unknown',
+        capacity: pv.capacity || '-',
+        accessMode: pv.access_modes || '-',
+        reclaimPolicy: pv.reclaim_policy || '-',
+        storageClass: pv.storage_class || '-',
+        claim: pv.claim || '-',
+        age: pv.age || '-'
+      }));
+    } catch (error) {
+      console.error('Failed to fetch PVs:', error);
+      return [];
+    }
+  }
+
   async fetchHelmReleases() {
     try {
       const data = await Api.get('/kubernetes/helm/releases');
@@ -5296,6 +5339,7 @@ renderCronJobDetailContent(data: any) {
       // Clear existing arrays before fetching
       this.workloads = [];
       this.networks = [];
+      this.storages = [];
       this.configurations = [];
       this.helms = [];
       this.nodes = [];
@@ -5320,6 +5364,13 @@ renderCronJobDetailContent(data: any) {
         this.fetchIngresses()
       ]);
       this.networks = [...services, ...ingresses];
+      
+      // Fetch storage resources (PVCs and PVs)
+      const [pvcs, pvs] = await Promise.all([
+        this.fetchPvcs(),
+        this.fetchPvs()
+      ]);
+      this.storages = [...pvcs, ...pvs];
       
       // Fetch configuration resources
       await Promise.all([
