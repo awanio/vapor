@@ -113,4 +113,18 @@ type KubernetesService interface {
 	DeleteCronJob(ctx context.Context, namespace, name string) error
 	ApplyCronJob(ctx context.Context, cronjob *batchv1.CronJob) (*batchv1.CronJob, error)
 	UpdateCronJob(ctx context.Context, namespace, name string, cronjob *batchv1.CronJob) (*batchv1.CronJob, error)
+	
+	// IngressClass methods
+	ListIngressClasses(ctx context.Context, opts interface{}) ([]IngressClassInfo, error)
+	GetIngressClassDetail(ctx context.Context, name string) (*networkingv1.IngressClass, error)
+	DeleteIngressClass(ctx context.Context, name string) error
+	ApplyIngressClass(ctx context.Context, ingressClass *networkingv1.IngressClass) (*networkingv1.IngressClass, error)
+	UpdateIngressClass(ctx context.Context, name string, ingressClass *networkingv1.IngressClass) (*networkingv1.IngressClass, error)
+	
+	// NetworkPolicy methods
+	ListNetworkPolicies(ctx context.Context, opts interface{}) ([]NetworkPolicyInfo, error)
+	GetNetworkPolicyDetail(ctx context.Context, namespace, name string) (*networkingv1.NetworkPolicy, error)
+	DeleteNetworkPolicy(ctx context.Context, namespace, name string) error
+	ApplyNetworkPolicy(ctx context.Context, policy *networkingv1.NetworkPolicy) (*networkingv1.NetworkPolicy, error)
+	UpdateNetworkPolicy(ctx context.Context, namespace, name string, policy *networkingv1.NetworkPolicy) (*networkingv1.NetworkPolicy, error)
 }

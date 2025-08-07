@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/awanio/vapor/internal/common"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	"sigs.k8s.io/yaml"
 )
 
@@ -554,6 +555,303 @@ func (h *Handler) UpdatePodGin(c *gin.Context) {
 		return
 	}
 	common.SendSuccess(c, gin.H{"pod_detail": updatedPod})
+}
+
+// ListIngressClassesGin lists all ingress classes
+func (h *Handler) ListIngressClassesGin(c *gin.Context) {
+	ingressClasses, err := h.service.ListIngressClasses(c.Request.Context(), nil)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to list ingress classes", err.Error())
+		return
+	}
+	common.SendSuccess(c, gin.H{"ingressClasses": ingressClasses, "count": len(ingressClasses)})
+}
+
+// GetIngressClassDetailGin gets ingress class details
+func (h *Handler) GetIngressClassDetailGin(c *gin.Context) {
+	name := c.Param("name")
+
+	ingressClass, err := h.service.GetIngressClassDetail(c.Request.Context(), name)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "IngressClass not found", err.Error())
+		} else {
+			common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get ingress class details", err.Error())
+		}
+		return
+	}
+	common.SendSuccess(c, gin.H{"ingressClass_detail": ingressClass})
+}
+
+// DeleteIngressClassGin handles ingress class deletion
+func (h *Handler) DeleteIngressClassGin(c *gin.Context) {
+	name := c.Param("name")
+
+	err := h.service.DeleteIngressClass(c.Request.Context(), name)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "IngressClass not found", err.Error())
+		} else {
+			common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to delete ingress class", err.Error())
+		}
+		return
+	}
+	common.SendSuccess(c, gin.H{"message": "IngressClass deleted successfully"})
+}
+
+// ApplyIngressClassGin handles ingress class creation/update
+func (h *Handler) ApplyIngressClassGin(c *gin.Context) {
+	contentType := c.GetHeader("Content-Type")
+	contentType = strings.ToLower(strings.TrimSpace(contentType))
+
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to read request body", err.Error())
+		return
+	}
+
+	if len(body) == 0 {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Request body is empty", "Please provide a valid IngressClass specification")
+		return
+	}
+
+	var ingressClass networkingv1.IngressClass
+
+	switch {
+	case strings.Contains(contentType, "application/yaml") || strings.Contains(contentType, "text/yaml"):
+		err = yaml.Unmarshal(body, &ingressClass)
+		if err != nil {
+			common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Invalid YAML ingress class specification", err.Error())
+			return
+		}
+	case strings.Contains(contentType, "application/json"), contentType == "":
+		err = json.Unmarshal(body, &ingressClass)
+		if err != nil {
+			common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Invalid JSON ingress class specification", err.Error())
+			return
+		}
+	default:
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest,
+			"Unsupported content type",
+			"Content-Type must be 'application/json', 'application/yaml', or 'text/yaml'")
+		return
+	}
+
+	if ingressClass.Name == "" && ingressClass.ObjectMeta.Name == "" {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest,
+			"Invalid ingress class specification",
+			"IngressClass name is required in metadata.name")
+		return
+	}
+
+	appliedClass, err := h.service.ApplyIngressClass(c.Request.Context(), &ingressClass)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to apply ingress class", err.Error())
+		return
+	}
+	common.SendSuccess(c, gin.H{"ingressClass_detail": appliedClass})
+}
+
+// UpdateIngressClassGin handles ingress class updates
+func (h *Handler) UpdateIngressClassGin(c *gin.Context) {
+	name := c.Param("name")
+
+	contentType := c.GetHeader("Content-Type")
+	contentType = strings.ToLower(strings.TrimSpace(contentType))
+
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to read request body", err.Error())
+		return
+	}
+
+	if len(body) == 0 {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Request body is empty", "Please provide a valid IngressClass specification")
+		return
+	}
+
+	var ingressClass networkingv1.IngressClass
+
+	switch {
+	case strings.Contains(contentType, "application/yaml") || strings.Contains(contentType, "text/yaml"):
+		err = yaml.Unmarshal(body, &ingressClass)
+		if err != nil {
+			common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Invalid YAML ingress class specification", err.Error())
+			return
+		}
+	case strings.Contains(contentType, "application/json"), contentType == "":
+		err = json.Unmarshal(body, &ingressClass)
+		if err != nil {
+			common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Invalid JSON ingress class specification", err.Error())
+			return
+		}
+	default:
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest,
+			"Unsupported content type",
+			"Content-Type must be 'application/json', 'application/yaml', or 'text/yaml'")
+		return
+	}
+
+	updatedClass, err := h.service.UpdateIngressClass(c.Request.Context(), name, &ingressClass)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "IngressClass not found", err.Error())
+		} else {
+			common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to update ingress class", err.Error())
+		}
+		return
+	}
+	common.SendSuccess(c, gin.H{"ingressClass_detail": updatedClass})
+}
+
+// ListNetworkPoliciesGin lists all network policies
+func (h *Handler) ListNetworkPoliciesGin(c *gin.Context) {
+	policies, err := h.service.ListNetworkPolicies(c.Request.Context(), nil)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to list network policies", err.Error())
+		return
+	}
+	common.SendSuccess(c, gin.H{"networkPolicies": policies, "count": len(policies)})
+}
+
+// GetNetworkPolicyDetailGin gets network policy details
+func (h *Handler) GetNetworkPolicyDetailGin(c *gin.Context) {
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+
+	policy, err := h.service.GetNetworkPolicyDetail(c.Request.Context(), namespace, name)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "NetworkPolicy not found", err.Error())
+		} else {
+			common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get network policy details", err.Error())
+		}
+		return
+	}
+	common.SendSuccess(c, gin.H{"networkPolicy_detail": policy})
+}
+
+// DeleteNetworkPolicyGin handles network policy deletion
+func (h *Handler) DeleteNetworkPolicyGin(c *gin.Context) {
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+
+	err := h.service.DeleteNetworkPolicy(c.Request.Context(), namespace, name)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "NetworkPolicy not found", err.Error())
+		} else {
+			common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to delete network policy", err.Error())
+		}
+		return
+	}
+	common.SendSuccess(c, gin.H{"message": "NetworkPolicy deleted successfully"})
+}
+
+// ApplyNetworkPolicyGin handles network policy creation/update
+func (h *Handler) ApplyNetworkPolicyGin(c *gin.Context) {
+	contentType := c.GetHeader("Content-Type")
+	contentType = strings.ToLower(strings.TrimSpace(contentType))
+
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to read request body", err.Error())
+		return
+	}
+
+	if len(body) == 0 {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Request body is empty", "Please provide a valid NetworkPolicy specification")
+		return
+	}
+
+	var policy networkingv1.NetworkPolicy
+
+	switch {
+	case strings.Contains(contentType, "application/yaml") || strings.Contains(contentType, "text/yaml"):
+		err = yaml.Unmarshal(body, &policy)
+		if err != nil {
+			common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Invalid YAML network policy specification", err.Error())
+			return
+		}
+	case strings.Contains(contentType, "application/json"), contentType == "":
+		err = json.Unmarshal(body, &policy)
+		if err != nil {
+			common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Invalid JSON network policy specification", err.Error())
+			return
+		}
+	default:
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest,
+			"Unsupported content type",
+			"Content-Type must be 'application/json', 'application/yaml', or 'text/yaml'")
+		return
+	}
+
+	if policy.Name == "" && policy.ObjectMeta.Name == "" {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest,
+			"Invalid network policy specification",
+			"NetworkPolicy name is required in metadata.name")
+		return
+	}
+
+	appliedPolicy, err := h.service.ApplyNetworkPolicy(c.Request.Context(), &policy)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to apply network policy", err.Error())
+		return
+	}
+	common.SendSuccess(c, gin.H{"networkPolicy_detail": appliedPolicy})
+}
+
+// UpdateNetworkPolicyGin handles network policy updates
+func (h *Handler) UpdateNetworkPolicyGin(c *gin.Context) {
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+
+	contentType := c.GetHeader("Content-Type")
+	contentType = strings.ToLower(strings.TrimSpace(contentType))
+
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to read request body", err.Error())
+		return
+	}
+
+	if len(body) == 0 {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Request body is empty", "Please provide a valid NetworkPolicy specification")
+		return
+	}
+
+	var policy networkingv1.NetworkPolicy
+
+	switch {
+	case strings.Contains(contentType, "application/yaml") || strings.Contains(contentType, "text/yaml"):
+		err = yaml.Unmarshal(body, &policy)
+		if err != nil {
+			common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Invalid YAML network policy specification", err.Error())
+			return
+		}
+	case strings.Contains(contentType, "application/json"), contentType == "":
+		err = json.Unmarshal(body, &policy)
+		if err != nil {
+			common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Invalid JSON network policy specification", err.Error())
+			return
+		}
+	default:
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest,
+			"Unsupported content type",
+			"Content-Type must be 'application/json', 'application/yaml', or 'text/yaml'")
+		return
+	}
+
+	updatedPolicy, err := h.service.UpdateNetworkPolicy(c.Request.Context(), namespace, name, &policy)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "NetworkPolicy not found", err.Error())
+		} else {
+			common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to update network policy", err.Error())
+		}
+		return
+	}
+	common.SendSuccess(c, gin.H{"networkPolicy_detail": updatedPolicy})
 }
 
 // NoKubernetesHandler returns a handler that responds with Kubernetes not installed error

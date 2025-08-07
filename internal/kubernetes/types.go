@@ -502,6 +502,27 @@ type CRDInfo struct {
 	CreationTimestamp time.Time         `json:"creationTimestamp"`
 }
 
+// IngressClassInfo represents simplified ingress class information
+type IngressClassInfo struct {
+	Name              string            `json:"name"`
+	Controller        string            `json:"controller"`
+	IsDefault         bool              `json:"isDefault"`
+	Age               string            `json:"age"`
+	Labels            map[string]string `json:"labels"`
+	CreationTimestamp time.Time         `json:"creationTimestamp"`
+}
+
+// NetworkPolicyInfo represents simplified network policy information
+type NetworkPolicyInfo struct {
+	Name              string            `json:"name"`
+	Namespace         string            `json:"namespace"`
+	PodSelector       string            `json:"podSelector"`
+	PolicyTypes       []string          `json:"policyTypes"`
+	Age               string            `json:"age"`
+	Labels            map[string]string `json:"labels"`
+	CreationTimestamp time.Time         `json:"creationTimestamp"`
+}
+
 // CRDObject represents a custom resource object instance
 type CRDObject struct {
 	Name              string            `json:"name"`

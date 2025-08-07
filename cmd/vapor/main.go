@@ -241,6 +241,16 @@ func main() {
 			api.PUT("/kubernetes/cronjobs/:namespace/:name", noK8sHandler)
 			api.DELETE("/kubernetes/cronjobs/:namespace/:name", noK8sHandler)
 			api.GET("/kubernetes/cluster-info", noK8sHandler)
+			api.GET("/kubernetes/ingressclasses", noK8sHandler)
+			api.GET("/kubernetes/ingressclasses/:name", noK8sHandler)
+			api.DELETE("/kubernetes/ingressclasses/:name", noK8sHandler)
+			api.POST("/kubernetes/ingressclasses", noK8sHandler)
+			api.PUT("/kubernetes/ingressclasses/:name", noK8sHandler)
+			api.GET("/kubernetes/networkpolicies", noK8sHandler)
+			api.GET("/kubernetes/networkpolicies/:namespace/:name", noK8sHandler)
+			api.DELETE("/kubernetes/networkpolicies/:namespace/:name", noK8sHandler)
+			api.POST("/kubernetes/networkpolicies", noK8sHandler)
+			api.PUT("/kubernetes/networkpolicies/:namespace/:name", noK8sHandler)
 
 			// Helm routes with NoHelmHandler
 			noHelmHandler := helm.NoHelmHandler()
@@ -326,6 +336,20 @@ func main() {
 			api.PUT("/kubernetes/cronjobs/:namespace/:name", k8sHandler.UpdateCronJobGin)
 			api.DELETE("/kubernetes/cronjobs/:namespace/:name", k8sHandler.DeleteCronJobGin)
 			api.GET("/kubernetes/cluster-info", k8sHandler.GetClusterInfoGin)
+
+			// IngressClass routes
+			api.GET("/kubernetes/ingressclasses", k8sHandler.ListIngressClassesGin)
+			api.GET("/kubernetes/ingressclasses/:name", k8sHandler.GetIngressClassDetailGin)
+			api.DELETE("/kubernetes/ingressclasses/:name", k8sHandler.DeleteIngressClassGin)
+			api.POST("/kubernetes/ingressclasses", k8sHandler.ApplyIngressClassGin)
+			api.PUT("/kubernetes/ingressclasses/:name", k8sHandler.UpdateIngressClassGin)
+
+			// NetworkPolicy routes
+			api.GET("/kubernetes/networkpolicies", k8sHandler.ListNetworkPoliciesGin)
+			api.GET("/kubernetes/networkpolicies/:namespace/:name", k8sHandler.GetNetworkPolicyDetailGin)
+			api.DELETE("/kubernetes/networkpolicies/:namespace/:name", k8sHandler.DeleteNetworkPolicyGin)
+			api.POST("/kubernetes/networkpolicies", k8sHandler.ApplyNetworkPolicyGin)
+			api.PUT("/kubernetes/networkpolicies/:namespace/:name", k8sHandler.UpdateNetworkPolicyGin)
 
 			// Helm service
 			helmService, err := helm.NewService(kubernetesService)
