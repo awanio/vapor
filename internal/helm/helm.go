@@ -6,6 +6,7 @@ import (
 
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/repo"
 	"k8s.io/client-go/rest"
 
@@ -177,6 +178,42 @@ func (s *Service) ListCharts(ctx context.Context, opts ListChartsOptions) ([]Cha
 	}
 
 	return charts, nil
+}
+
+// UpdateRepository updates a specific Helm repository (equivalent to 'helm repo update {repo-name}')
+func (s *Service) UpdateRepository(ctx context.Context, name string) (string, error) {
+	// Get repository file from settings
+	repoFile := s.settings.RepositoryConfig
+	f, err := repo.LoadFile(repoFile)
+	if err != nil {
+		return "", fmt.Errorf("failed to load repository file: %w", err)
+	}
+
+	// Find the repository by name
+	var targetRepo *repo.Entry
+	for _, r := range f.Repositories {
+		if r.Name == name {
+			targetRepo = r
+			break
+		}
+	}
+
+	if targetRepo == nil {
+		return "", fmt.Errorf("no repository named '%s' found", name)
+	}
+
+	// Update the repository
+	r, err := repo.NewChartRepository(targetRepo, getter.All(s.settings))
+	if err != nil {
+		return "", fmt.Errorf("failed to create chart repository: %w", err)
+	}
+
+	if _, err := r.DownloadIndexFile(); err != nil {
+		return "", fmt.Errorf("failed to download repository index: %w", err)
+	}
+
+	// Return success message similar to helm CLI output
+	return fmt.Sprintf("Successfully got an update from the '%s' chart repository", name), nil
 }
 
 // ListReleases lists all Helm releases

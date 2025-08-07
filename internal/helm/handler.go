@@ -1,7 +1,9 @@
 package helm
 
 import (
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -99,6 +101,54 @@ func (h *ServiceHandler) ListReleasesGin(c *gin.Context) {
 		"releases": releases,
 		"count":    len(releases),
 	})
+}
+
+// UpdateRepositoryGin handles updating a specific Helm repository for Gin router
+func (h *ServiceHandler) UpdateRepositoryGin(c *gin.Context) {
+	ctx := c.Request.Context()
+	name := c.Param("name")
+
+	if name == "" {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeInvalidInput, "Repository name is required", "")
+		return
+	}
+
+	// Update the repository
+	message, err := h.service.UpdateRepository(ctx, name)
+	if err != nil {
+		logrus.Errorf("failed to update helm repository %s: %v", name, err)
+		if err.Error() == fmt.Sprintf("no repository named '%s' found", name) {
+			common.SendError(c, http.StatusNotFound, "REPOSITORY_NOT_FOUND", 
+				fmt.Sprintf("No repository named '%s' found", name), 
+				"Run 'helm repo add' to add the repository first")
+			return
+		}
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to update repository", err.Error())
+		return
+	}
+
+	// Get updated repository info
+	repositories, err := h.service.ListRepositories(ctx, ListRepositoriesOptions{})
+	if err != nil {
+		logrus.Errorf("failed to get repository info after update: %v", err)
+	}
+
+	var updatedRepo *Repository
+	for _, repo := range repositories {
+		if repo.Name == name {
+			updatedRepo = &repo
+			break
+		}
+	}
+
+	// Return response
+	response := gin.H{
+		"repository": updatedRepo,
+		"message":    message,
+		"updated_at": time.Now().Format(time.RFC3339),
+	}
+
+	common.SendSuccess(c, response)
 }
 
 // NoHelmHandler returns a handler that responds with Helm not available error

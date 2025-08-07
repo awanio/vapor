@@ -66,6 +66,7 @@ const (
 	ErrCodeBadRequest    = "BAD_REQUEST"
 	ErrCodeConflict      = "CONFLICT"
 	ErrCodeNotImplemented = "NOT_IMPLEMENTED"
+	ErrCodeInvalidInput   = "INVALID_INPUT"
 )
 
 // RespondSuccess writes a successful response to http.ResponseWriter

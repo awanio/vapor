@@ -241,9 +241,10 @@ func main() {
 
 			// Helm routes with NoHelmHandler
 			noHelmHandler := helm.NoHelmHandler()
-			api.GET("/kubernetes/helm/releases", noHelmHandler)
-			api.GET("/kubernetes/helm/charts", noHelmHandler)
-			api.GET("/kubernetes/helm/repositories", noHelmHandler)
+				api.GET("/kubernetes/helm/releases", noHelmHandler)
+				api.GET("/kubernetes/helm/charts", noHelmHandler)
+				api.GET("/kubernetes/helm/repositories", noHelmHandler)
+				api.PUT("/kubernetes/helm/repositories/:name/update", noHelmHandler)
 		} else {
 			// Register Kubernetes routes
 			k8sHandler := kubernetes.NewHandler(kubernetesService)
@@ -328,11 +329,14 @@ func main() {
 				noHelmHandler := helm.NoHelmHandler()
 				api.GET("/kubernetes/helm/releases", noHelmHandler)
 				api.GET("/kubernetes/helm/charts", noHelmHandler)
+				api.GET("/kubernetes/helm/repositories", noHelmHandler)
+				api.PUT("/kubernetes/helm/repositories/:name/update", noHelmHandler)
 			} else {
 				helmHandler := helm.NewServiceHandler(helmService)
 				api.GET("/kubernetes/helm/releases", helmHandler.ListReleasesGin)
 				api.GET("/kubernetes/helm/charts", helmHandler.ListChartsGin)
 				api.GET("/kubernetes/helm/repositories", helmHandler.ListRepositoriesGin)
+				api.PUT("/kubernetes/helm/repositories/:name/update", helmHandler.UpdateRepositoryGin)
 			}
 		}
 
