@@ -1198,7 +1198,7 @@ class KubernetesTab extends LitElement {
                   <button class="action-dots" @click=${(e) => this.toggleActionMenu(e, `k8s-workload-${index}`)}>⋮</button>
                   <div class="action-dropdown" id="k8s-workload-${index}">
                     <button @click=${() => { this.closeAllMenus(); this.viewDetails(item); }}>View Details</button>
-                    <button @click=${() => { this.closeAllMenus(); this.scalePods(item); }}>Scale</button>
+                    ${item.type !== 'Pod' ? html`<button @click=${() => { this.closeAllMenus(); this.scalePods(item); }}>Scale</button>` : ''}
                     <button @click=${() => { this.closeAllMenus(); this.viewLogs(item); }}>View Logs</button>
                     <button class="danger" @click=${() => { this.closeAllMenus(); this.deleteItem(item); }}>Delete</button>
                   </div>
