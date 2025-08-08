@@ -1,5 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import YAML from 'yaml';
 
 /**
  * Create resource drawer component for creating Kubernetes resources via YAML/JSON
@@ -25,27 +26,34 @@ export class CreateResourceDrawer extends LitElement {
       width: 700px;
       height: 100vh;
       z-index: 1000;
+      /* Prevent overlay from intercepting clicks when hidden */
+      pointer-events: none;
     }
 
-    .drawer {
+    :host([show]) {
+      pointer-events: auto;
+    }
+
+.drawer {
       width: 100%;
       height: 100%;
-      background: var(--drawer-bg, #1a1d23);
-      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.3);
+      background: var(--vscode-editor-background, var(--vscode-bg-light));
+      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
       display: flex;
       flex-direction: column;
       transform: translateX(100%);
       transition: transform 0.3s ease;
+      border-left: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
     }
 
     :host([show]) .drawer {
       transform: translateX(0);
     }
 
-    .drawer-header {
+.drawer-header {
       padding: 20px;
-      background: var(--header-bg, #2c2f3a);
-      border-bottom: 1px solid var(--header-border, #3a3d4a);
+      background: var(--vscode-bg-lighter, #2c2f3a);
+      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -76,35 +84,66 @@ export class CreateResourceDrawer extends LitElement {
       color: var(--close-hover-color, #e0e0e0);
     }
 
-    .format-toggle {
+.format-toggle {
       padding: 12px 20px;
-      background: var(--toggle-bg, #2c2f3a);
-      border-bottom: 1px solid var(--toggle-border, #3a3d4a);
+      background: var(--vscode-bg-lighter, #2c2f3a);
+      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
       display: flex;
       gap: 8px;
+      align-items: center;
+      justify-content: space-between;
       flex-shrink: 0;
     }
 
-    .format-button {
+    .format-left {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .format-hint {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .format-hint.yaml {
+      background: rgba(137, 209, 133, 0.08);
+      border-color: #89d185;
+      color: #89d185;
+    }
+
+    .format-hint.json {
+      background: rgba(55, 148, 255, 0.08);
+      border-color: #3794ff;
+      color: #3794ff;
+    }
+
+.format-button {
       padding: 8px 16px;
-      background: var(--format-bg, #3a3d4a);
-      color: var(--format-color, #e0e0e0);
-      border: 1px solid var(--format-border, #4a4d5a);
+      background: var(--button-bg, var(--vscode-bg-lighter, #3a3d4a));
+      color: var(--button-color, var(--vscode-foreground, #e0e0e0));
+      border: 1px solid var(--button-border, var(--vscode-widget-border, #4a4d5a));
       border-radius: 4px;
       cursor: pointer;
       font-size: 14px;
       transition: all 0.2s;
     }
 
-    .format-button:hover {
-      background: var(--format-hover-bg, #4a4d5a);
-      border-color: var(--format-hover-border, #5a5d6a);
+.format-button:hover {
+      background: var(--button-hover-bg, #4a4d5a);
+      border-color: var(--button-hover-border, #5a5d6a);
     }
 
-    .format-button.active {
-      background: var(--format-active-bg, #4a7c59);
-      border-color: var(--format-active-border, #5a8c69);
-      color: var(--format-active-color, #fff);
+.format-button.active {
+      background: var(--vscode-button-background, #0e639c);
+      border-color: var(--vscode-button-border, transparent);
+      color: var(--vscode-button-foreground, #ffffff);
     }
 
     .content {
@@ -120,13 +159,13 @@ export class CreateResourceDrawer extends LitElement {
       overflow-y: auto;
     }
 
-    .editor {
+.editor {
       width: 100%;
       min-height: 400px;
       padding: 16px;
-      background: var(--editor-bg, #0d0f12);
-      color: var(--editor-color, #e0e0e0);
-      border: 1px solid var(--editor-border, #3a3d4a);
+      background: var(--vscode-editor-background, #1e1e1e);
+      color: var(--vscode-editor-foreground, #d4d4d4);
+      border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
       border-radius: 4px;
       font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
       font-size: 14px;
@@ -135,8 +174,8 @@ export class CreateResourceDrawer extends LitElement {
       outline: none;
     }
 
-    .editor:focus {
-      border-color: var(--editor-focus-border, #4a7c59);
+.editor:focus {
+      border-color: var(--vscode-focusBorder, #007acc);
     }
 
     .editor::placeholder {
@@ -203,10 +242,10 @@ export class CreateResourceDrawer extends LitElement {
       border-color: var(--template-hover-border, #5a5d6a);
     }
 
-    .controls {
+.controls {
       padding: 20px;
-      background: var(--controls-bg, #2c2f3a);
-      border-top: 1px solid var(--controls-border, #3a3d4a);
+      background: var(--vscode-bg-lighter, #2c2f3a);
+      border-top: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
       display: flex;
       justify-content: flex-end;
       gap: 12px;
@@ -222,26 +261,26 @@ export class CreateResourceDrawer extends LitElement {
       border: 1px solid transparent;
     }
 
-    .control-button.cancel {
-      background: var(--cancel-bg, #3a3d4a);
-      color: var(--cancel-color, #e0e0e0);
-      border-color: var(--cancel-border, #4a4d5a);
+.control-button.cancel {
+      background: var(--vscode-button-secondaryBackground, #3a3d4a);
+      color: var(--vscode-button-secondaryForeground, #e0e0e0);
+      border-color: var(--vscode-button-border, #4a4d5a);
     }
 
-    .control-button.cancel:hover {
-      background: var(--cancel-hover-bg, #4a4d5a);
-      border-color: var(--cancel-hover-border, #5a5d6a);
+.control-button.cancel:hover {
+      background: var(--vscode-button-secondaryHoverBackground, #4a4d5a);
+      border-color: var(--vscode-button-border, #5a5d6a);
     }
 
-    .control-button.create {
-      background: var(--create-bg, #4a7c59);
-      color: var(--create-color, #fff);
-      border-color: var(--create-border, #5a8c69);
+.control-button.create {
+      background: var(--vscode-button-background, #0e639c);
+      color: var(--vscode-button-foreground, #ffffff);
+      border-color: var(--vscode-button-border, transparent);
     }
 
-    .control-button.create:hover {
-      background: var(--create-hover-bg, #5a8c69);
-      border-color: var(--create-hover-border, #6a9c79);
+.control-button.create:hover {
+      background: var(--vscode-button-hoverBackground, #1177bb);
+      border-color: var(--vscode-button-border, transparent);
     }
 
     .control-button:disabled {
@@ -254,12 +293,12 @@ export class CreateResourceDrawer extends LitElement {
       width: 8px;
     }
 
-    .editor-container::-webkit-scrollbar-track {
-      background: var(--scrollbar-track, #1a1d23);
+.editor-container::-webkit-scrollbar-track {
+      background: var(--scrollbar-track, var(--vscode-editor-background, #1e1e1e));
     }
 
-    .editor-container::-webkit-scrollbar-thumb {
-      background: var(--scrollbar-thumb, #4a4d5a);
+.editor-container::-webkit-scrollbar-thumb {
+      background: var(--scrollbar-thumb, var(--vscode-scrollbarSlider-background, #4a4d5a));
       border-radius: 4px;
     }
 
@@ -274,6 +313,7 @@ export class CreateResourceDrawer extends LitElement {
   @property({ type: Boolean }) loading = false;
   @property({ type: String }) error = '';
   @property({ type: String }) format: 'yaml' | 'json' = 'yaml';
+  @property({ type: String }) submitLabel: string = 'Create';
 
   @state() private validationMessage = '';
   @state() private validationStatus: 'error' | 'success' | '' = '';
@@ -353,18 +393,23 @@ data:
         </div>
 
         <div class="format-toggle">
-          <button
-            class="format-button ${this.format === 'yaml' ? 'active' : ''}"
-            @click=${() => this.setFormat('yaml')}
-          >
-            YAML
-          </button>
-          <button
-            class="format-button ${this.format === 'json' ? 'active' : ''}"
-            @click=${() => this.setFormat('json')}
-          >
-            JSON
-          </button>
+          <div class="format-left">
+            <button
+              class="format-button ${this.format === 'yaml' ? 'active' : ''}"
+              @click=${() => this.setFormat('yaml')}
+            >
+              YAML
+            </button>
+            <button
+              class="format-button ${this.format === 'json' ? 'active' : ''}"
+              @click=${() => this.setFormat('json')}
+            >
+              JSON
+            </button>
+          </div>
+          <div class="format-hint ${this.format}">
+            ${this.format.toUpperCase()} format detected
+          </div>
         </div>
 
         <div class="content" part="content">
@@ -424,7 +469,7 @@ data:
             @click=${this.handleCreate}
             ?disabled=${this.loading || !this.value.trim() || this.validationStatus === 'error'}
           >
-            ${this.loading ? 'Creating...' : 'Create'}
+            ${this.loading ? 'Processing...' : this.submitLabel}
           </button>
         </div>
       </div>
@@ -463,6 +508,9 @@ data:
   private handleInput(e: Event) {
     const textarea = e.target as HTMLTextAreaElement;
     this.value = textarea.value;
+    // Auto-detect format based on content
+    const detected = this.detectFormat(this.value);
+    this.format = detected;
     this.validateResource();
   }
 
@@ -474,48 +522,40 @@ data:
     }
   }
 
+  private detectFormat(text: string): 'yaml' | 'json' {
+    const t = text.trim();
+    if (!t) return this.format;
+    if (t.startsWith('{') || t.startsWith('[')) {
+      try {
+        JSON.parse(t);
+        return 'json';
+      } catch {
+        return 'yaml';
+      }
+    }
+    return 'yaml';
+  }
+
   private convertFormat() {
     try {
       if (this.format === 'json') {
-        // Convert YAML to JSON
-        // This is a simplified conversion - in real app, use a proper YAML parser
-        this.validationMessage = 'Format conversion requires a YAML parser library';
-        this.validationStatus = 'error';
+        // Convert YAML to pretty JSON
+        const obj = YAML.parse(this.value);
+        this.value = JSON.stringify(obj, null, 2);
+        this.validationMessage = '';
+        this.validationStatus = '';
       } else {
         // Convert JSON to YAML
         const obj = JSON.parse(this.value);
-        // This is a simplified conversion - in real app, use a proper YAML stringifier
-        this.value = this.objectToYaml(obj);
-        this.validateResource();
+        this.value = YAML.stringify(obj);
+        this.validationMessage = '';
+        this.validationStatus = '';
       }
+      this.validateResource();
     } catch (error) {
       this.validationMessage = 'Failed to convert format';
       this.validationStatus = 'error';
     }
-  }
-
-  private objectToYaml(obj: any, indent = ''): string {
-    // Very basic JSON to YAML conversion
-    let yaml = '';
-    for (const [key, value] of Object.entries(obj)) {
-      if (typeof value === 'object' && value !== null) {
-        if (Array.isArray(value)) {
-          yaml += `${indent}${key}:\n`;
-          value.forEach(item => {
-            if (typeof item === 'object') {
-              yaml += `${indent}- ${this.objectToYaml(item, indent + '  ').trim()}\n`;
-            } else {
-              yaml += `${indent}- ${item}\n`;
-            }
-          });
-        } else {
-          yaml += `${indent}${key}:\n${this.objectToYaml(value, indent + '  ')}`;
-        }
-      } else {
-        yaml += `${indent}${key}: ${value}\n`;
-      }
-    }
-    return yaml;
   }
 
   private validateResource() {
@@ -530,17 +570,9 @@ data:
         const resource = JSON.parse(this.value);
         this.validateResourceStructure(resource);
       } else {
-        // Basic YAML validation - check for required fields
-        const hasApiVersion = /^apiVersion:/m.test(this.value);
-        const hasKind = /^kind:/m.test(this.value);
-        const hasMetadata = /^metadata:/m.test(this.value);
-        
-        if (!hasApiVersion || !hasKind || !hasMetadata) {
-          throw new Error('Missing required fields: apiVersion, kind, or metadata');
-        }
-        
-        this.validationMessage = 'Valid Kubernetes resource';
-        this.validationStatus = 'success';
+        // Parse YAML and validate structure
+        const resource = YAML.parse(this.value);
+        this.validateResourceStructure(resource);
       }
     } catch (error: any) {
       this.validationMessage = error.message || 'Invalid format';

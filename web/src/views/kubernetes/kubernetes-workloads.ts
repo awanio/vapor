@@ -20,6 +20,8 @@ import '../../components/tables/resource-table.js';
 import '../../components/drawers/detail-drawer.js';
 import '../../components/modals/delete-modal.js';
 import '../../components/kubernetes/resource-detail-view.js';
+import '../../components/drawers/create-resource-drawer';
+import '../../components/ui/notification-container';
 import type { Tab } from '../../components/tabs/tab-group.js';
 import type { Column } from '../../components/tables/resource-table.js';
 import type { ActionItem } from '../../components/ui/action-dropdown.js';
@@ -44,6 +46,10 @@ export class KubernetesWorkloads extends LitElement {
   @state() private showDeleteModal = false;
   @state() private itemToDelete: DeleteItem | null = null;
   @state() private isDeleting = false;
+  @state() private showCreateDrawer = false;
+  @state() private createResourceValue = '';
+  @state() private createDrawerTitle = 'Create Resource';
+  @state() private isCreating = false;
 
   static override styles = css`
     :host {
@@ -287,8 +293,71 @@ export class KubernetesWorkloads extends LitElement {
   }
 
   private handleCreate() {
-    console.log('Create new resource');
-    // Implement create functionality
+    const ns = this.selectedNamespace === 'All Namespaces' ? 'default' : this.selectedNamespace;
+    switch ((this.activeTab || '').toLowerCase()) {
+      case 'pods':
+        this.createDrawerTitle = 'Create Pod';
+        this.createResourceValue = `apiVersion: v1\nkind: Pod\nmetadata:\n  name: my-pod\n  namespace: ${ns}\nspec:\n  containers:\n  - name: nginx\n    image: nginx:latest\n    ports:\n    - containerPort: 80`;
+        break;
+      case 'deployments':
+        this.createDrawerTitle = 'Create Deployment';
+        this.createResourceValue = `apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: my-deployment\n  namespace: ${ns}\nspec:\n  replicas: 3\n  selector:\n    matchLabels:\n      app: my-app\n  template:\n    metadata:\n      labels:\n        app: my-app\n    spec:\n      containers:\n      - name: nginx\n        image: nginx:latest\n        ports:\n        - containerPort: 80`;
+        break;
+      case 'statefulsets':
+        this.createDrawerTitle = 'Create StatefulSet';
+        this.createResourceValue = `apiVersion: apps/v1\nkind: StatefulSet\nmetadata:\n  name: my-statefulset\n  namespace: ${ns}\nspec:\n  serviceName: my-service\n  replicas: 3\n  selector:\n    matchLabels:\n      app: my-app\n  template:\n    metadata:\n      labels:\n        app: my-app\n    spec:\n      containers:\n      - name: nginx\n        image: nginx:latest\n        ports:\n        - containerPort: 80`;
+        break;
+      case 'daemonsets':
+        this.createDrawerTitle = 'Create DaemonSet';
+        this.createResourceValue = `apiVersion: apps/v1\nkind: DaemonSet\nmetadata:\n  name: my-daemonset\n  namespace: ${ns}\nspec:\n  selector:\n    matchLabels:\n      app: my-app\n  template:\n    metadata:\n      labels:\n        app: my-app\n    spec:\n      containers:\n      - name: nginx\n        image: nginx:latest`;
+        break;
+      case 'jobs':
+        this.createDrawerTitle = 'Create Job';
+        this.createResourceValue = `apiVersion: batch/v1\nkind: Job\nmetadata:\n  name: my-job\n  namespace: ${ns}\nspec:\n  template:\n    spec:\n      containers:\n      - name: hello\n        image: busybox\n        command: ['sh', '-c', 'echo "Hello, Kubernetes!" && sleep 30']\n      restartPolicy: Never\n  backoffLimit: 4`;
+        break;
+      case 'cronjobs':
+        this.createDrawerTitle = 'Create CronJob';
+        this.createResourceValue = `apiVersion: batch/v1\nkind: CronJob\nmetadata:\n  name: my-cronjob\n  namespace: ${ns}\nspec:\n  schedule: "*/5 * * * *"\n  jobTemplate:\n    spec:\n      template:\n        spec:\n          containers:\n          - name: hello\n            image: busybox\n            command: ['sh', '-c', 'date; echo Hello from the Kubernetes cluster']\n          restartPolicy: OnFailure`;
+        break;
+      default:
+        const nc = this.shadowRoot?.querySelector('notification-container') as any;
+        if (nc && typeof nc.addNotification === 'function') {
+          nc.addNotification({ type: 'info', message: `Create is not yet available for ${this.activeTab}.` });
+        }
+        return;
+    }
+    this.showCreateDrawer = true;
+  }
+
+  private async handleCreateResource(event: CustomEvent) {
+    // Accept YAML or JSON from drawer
+    const { resource, format } = event.detail as { resource: any; format: 'yaml' | 'json' };
+    let content = '';
+    try {
+      if (format === 'json') {
+        content = JSON.stringify(resource);
+      } else {
+        content = resource.yaml as string;
+      }
+      this.isCreating = true;
+      await KubernetesApi.createResource(content, format);
+      // Refresh pods
+      await this.fetchData();
+      // Close drawer and reset
+      this.showCreateDrawer = false;
+      this.createResourceValue = '';
+      const nc = this.shadowRoot?.querySelector('notification-container') as any;
+      if (nc && typeof nc.addNotification === 'function') {
+        nc.addNotification({ type: 'success', message: 'Resource applied successfully' });
+      }
+    } catch (err: any) {
+      const nc = this.shadowRoot?.querySelector('notification-container') as any;
+      if (nc && typeof nc.addNotification === 'function') {
+        nc.addNotification({ type: 'error', message: `Failed to apply resource: ${err?.message || 'Unknown error'}` });
+      }
+    } finally {
+      this.isCreating = false;
+    }
   }
 
   private handleDetailsClose() {
@@ -423,6 +492,18 @@ export class KubernetesWorkloads extends LitElement {
           @confirm-delete="${this.handleConfirmDelete}"
           @cancel-delete="${this.handleCancelDelete}"
         ></delete-modal>
+        <create-resource-drawer
+          .show="${this.showCreateDrawer}"
+          ?show="${this.showCreateDrawer}"
+          .title="${this.createDrawerTitle}"
+          .value="${this.createResourceValue}"
+          .submitLabel="Apply"
+          .loading="${this.isCreating}"
+          @close="${() => { this.showCreateDrawer = false; }}"
+          @create="${this.handleCreateResource}"
+        ></create-resource-drawer>
+
+        <notification-container></notification-container>
       </div>
     `;
   }
