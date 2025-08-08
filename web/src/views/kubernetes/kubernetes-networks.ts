@@ -16,6 +16,8 @@ import '../../components/tables/resource-table.js';
 import '../../components/drawers/detail-drawer.js';
 import '../../components/modals/delete-modal.js';
 import '../../components/kubernetes/resource-detail-view.js';
+import '../../components/drawers/create-resource-drawer';
+import '../../components/ui/notification-container';
 import type { Tab } from '../../components/tabs/tab-group.js';
 import type { Column } from '../../components/tables/resource-table.js';
 import type { ActionItem } from '../../components/ui/action-dropdown.js';
@@ -40,6 +42,12 @@ export class KubernetesNetworks extends LitElement {
   @state() private showDeleteModal = false;
   @state() private itemToDelete: DeleteItem | null = null;
   @state() private isDeleting = false;
+
+  // Create drawer state
+  @state() private showCreateDrawer = false;
+  @state() private createResourceValue = '';
+  @state() private createDrawerTitle = 'Create Resource';
+  @state() private isCreating = false;
 
   static override styles = css`
     :host {
@@ -253,8 +261,41 @@ export class KubernetesNetworks extends LitElement {
   }
 
   private handleCreate() {
-    console.log('Create new resource');
-    // Implement create functionality
+    const ns = this.selectedNamespace === 'All Namespaces' ? 'default' : this.selectedNamespace;
+    if (this.activeTab === 'services') {
+      this.createDrawerTitle = 'Create Service';
+      this.createResourceValue = `apiVersion: v1\nkind: Service\nmetadata:\n  name: my-service\n  namespace: ${ns}\nspec:\n  selector:\n    app: my-app\n  ports:\n    - protocol: TCP\n      port: 80\n      targetPort: 8080\n  type: ClusterIP`;
+      this.showCreateDrawer = true;
+    } else {
+      this.createDrawerTitle = 'Create Ingress';
+      this.createResourceValue = `apiVersion: networking.k8s.io/v1\nkind: Ingress\nmetadata:\n  name: my-ingress\n  namespace: ${ns}\nspec:\n  rules:\n    - host: example.com\n      http:\n        paths:\n          - path: /\n            pathType: Prefix\n            backend:\n              service:\n                name: my-service\n                port:\n                  number: 80`;
+      this.showCreateDrawer = true;
+    }
+  }
+
+  private async handleCreateResource(event: CustomEvent) {
+    const { resource, format } = event.detail as { resource: any; format: 'yaml' | 'json' };
+    let content = '';
+    try {
+      content = format === 'json' ? JSON.stringify(resource) : (resource.yaml as string);
+      this.isCreating = true;
+      await KubernetesApi.createResource(content, format);
+      await this.fetchData();
+      this.showCreateDrawer = false;
+      this.createResourceValue = '';
+      const nc = this.shadowRoot?.querySelector('notification-container') as any;
+      if (nc && typeof nc.addNotification === 'function') {
+        const createdType = this.getResourceType();
+        nc.addNotification({ type: 'success', message: `${createdType} created successfully` });
+      }
+    } catch (err: any) {
+      const nc = this.shadowRoot?.querySelector('notification-container') as any;
+      if (nc && typeof nc.addNotification === 'function') {
+        nc.addNotification({ type: 'error', message: `Failed to create resource: ${err?.message || 'Unknown error'}` });
+      }
+    } finally {
+      this.isCreating = false;
+    }
   }
 
   private handleDetailsClose() {
@@ -361,7 +402,6 @@ export class KubernetesNetworks extends LitElement {
             <resource-detail-view .resource="${this.detailsData}"></resource-detail-view>
           ` : ''}
         </detail-drawer>
-
         <delete-modal
           .show="${this.showDeleteModal}"
           .item="${this.itemToDelete}"
@@ -369,6 +409,18 @@ export class KubernetesNetworks extends LitElement {
           @confirm-delete="${this.handleConfirmDelete}"
           @cancel-delete="${this.handleCancelDelete}"
         ></delete-modal>
+
+        <create-resource-drawer
+          .show="${this.showCreateDrawer}"
+          .title="${this.createDrawerTitle}"
+          .value="${this.createResourceValue}"
+          .submitLabel="Apply"
+          .loading="${this.isCreating}"
+          @close="${() => { this.showCreateDrawer = false; }}"
+          @create="${this.handleCreateResource}"
+        ></create-resource-drawer>
+
+        <notification-container></notification-container>
       </div>
     `;
   }
