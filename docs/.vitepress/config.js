@@ -9,8 +9,8 @@ export default defineConfig({
     }
   },
   
-  title: 'Vapor Documentation',
-  description: 'Container and Kubernetes Management Platform',
+  title: 'Vapor',
+  description: 'Web Console for Modern Linux Stacks',
   
   // Enable theme switching with dark as default
   appearance: true,
@@ -107,7 +107,7 @@ export default defineConfig({
     
     // Social links
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/your-org/vapor' }
+      { icon: 'github', link: 'https://github.com/awanio/vapor' }
     ],
     
     // Search
@@ -117,8 +117,8 @@ export default defineConfig({
     
     // Footer
     footer: {
-      message: 'Released under the MIT License.',
-      copyright: 'Copyright © 2024 Vapor'
+      message: 'Dibuat dengan cinta dan gotong royong demi kemajuan bangsa.',
+      copyright: 'Copyright © 2025 Awanio'
     }
   },
   

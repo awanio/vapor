@@ -38,6 +38,6 @@ features:
 ---
 
 <div style="text-align: center; padding: 2rem;">
-  <h2>Ready to simplify your container management?</h2>
-  <p>Vapor provides a powerful yet user-friendly interface for managing your containerized applications.</p>
+  <h2>Ready to simplify your daily operation?</h2>
+  <p>Vapor provides a powerful yet user-friendly interface for managing your Linux stacks.</p>
 </div>
