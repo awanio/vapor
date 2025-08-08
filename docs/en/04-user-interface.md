@@ -1,16 +1,12 @@
 # User Interface Guide
 
-<p align="center">
-  <a href="../en/04-user-interface.md">English</a> | <a href="../id/04-antarmuka-pengguna.md">Bahasa Indonesia</a>
-</p>
-
 ## Overview
 
 Vapor features a modern, intuitive interface inspired by Visual Studio Code. This guide will help you navigate and use the interface effectively.
 
 ## Interface Layout
 
-![Main Interface](../assets/screenshots/ui_main_interface_dark.png)
+![Main Interface](../assets/screenshots/dashboard_main_view_realtime_metrics_dark.png)
 
 The Vapor interface consists of four main areas:
 
@@ -79,38 +75,6 @@ Vapor
 ├── 👥 Users             (User management)
 └── 🖥️ Terminal          (Web terminal)
 ```
-
-### Navigation Methods
-
-#### Mouse Navigation
-- **Click** sections to expand/collapse
-- **Click** items to open in main area
-- **Right-click** for context menus
-- **Drag** to reorder tabs
-
-#### Keyboard Navigation
-- `Tab` - Move between elements
-- `Enter` - Select/expand item
-- `Space` - Toggle selection
-- `Arrow keys` - Navigate tree
-- `Ctrl+B` - Toggle sidebar
-
-### Tab Management
-
-![Tab Bar](../assets/screenshots/ui_tab_bar_multiple_dark.png)
-
-#### Tab Features
-- **Multiple tabs**: Open several views simultaneously
-- **Tab switching**: Click tabs or use keyboard
-- **Close tabs**: Click × or middle-click
-- **Reorder**: Drag tabs to rearrange
-- **Context menu**: Right-click for options
-
-#### Tab Shortcuts
-- `Ctrl+Tab` - Next tab
-- `Ctrl+Shift+Tab` - Previous tab
-- `Ctrl+W` - Close current tab
-- `Ctrl+Shift+T` - Reopen closed tab
 
 ## Themes
 

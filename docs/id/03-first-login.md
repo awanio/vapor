@@ -1,9 +1,5 @@
 # Login Pertama
 
-<p align="center">
-  <a href="../en/03-first-login.md">English</a> | <a href="../id/">Bahasa Indonesia</a>
-</p>
-
 ## Gambaran Umum
 
 Bagian ini mencakup login pertama di Vapor.

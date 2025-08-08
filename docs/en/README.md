@@ -1,13 +1,5 @@
 # Vapor System Management - Documentation
 
-<p align="center">
-  <img src="../assets/vapor-logo.png" alt="Vapor Logo" width="200"/>
-</p>
-
-<p align="center">
-  <a href="../en/README.md">English</a> | <a href="../id/README.md">Bahasa Indonesia</a>
-</p>
-
 ## Welcome to Vapor
 
 Vapor is a comprehensive Linux system management platform that provides a modern, VS Code-inspired web interface for managing servers. It combines traditional system administration tools with container orchestration and Kubernetes management in a unified interface.

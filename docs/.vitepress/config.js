@@ -117,7 +117,7 @@ export default defineConfig({
     
     // Footer
     footer: {
-      message: 'Dibuat dengan cinta dan gotong royong demi kemajuan bangsa.',
+      message: 'Dibuat dengan semangat gotong royong demi kemajuan bangsa 🇮🇩',
       copyright: 'Copyright © 2025 Awanio'
     }
   },

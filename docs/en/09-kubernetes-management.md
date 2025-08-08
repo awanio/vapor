@@ -1,9 +1,5 @@
 # Kubernetes Management
 
-<p align="center">
-  <a href="../en/09-kubernetes-management.md">English</a> | <a href="../id/09-manajemen-kubernetes.md">Bahasa Indonesia</a>
-</p>
-
 ## Overview
 
 Vapor provides comprehensive Kubernetes cluster management capabilities, allowing you to manage workloads, monitor resources, and deploy applications directly from the web interface. The Kubernetes section integrates seamlessly with your cluster, providing both basic operations and advanced features like Helm chart management.
@@ -29,7 +25,7 @@ Kubernetes
 
 The Pods view provides comprehensive pod management:
 
-![Kubernetes Pods List](../assets/screenshots/k8s_workloads_pods_list_dark.png)
+![Kubernetes Pods List](../assets/screenshots/k8s_pods_list.png)
 
 #### Pod List Features
 
@@ -63,7 +59,7 @@ Each pod entry shows:
 
 Click on any pod to view detailed information:
 
-![Pod Details Modal](../assets/screenshots/k8s_pod_details_modal_dark.png)
+![Pod Details Modal](../assets/screenshots/k8s_pod_detail.png)
 
 #### Basic Information
 ```yaml
@@ -93,7 +89,7 @@ Node:        avid5
 
 Vapor supports creating Kubernetes resources using YAML or JSON:
 
-![Create Resource](../assets/screenshots/k8s_create_resource_yaml_dark.png)
+![Create Resource](../assets/screenshots/k8s_pod_create_form.png)
 
 #### Resource Creation Process
 
@@ -125,7 +121,7 @@ spec:
 
 Access real-time pod logs:
 
-![Pod Logs Viewer](../assets/screenshots/k8s_pod_logs_viewer_dark.png)
+![Pod Logs Viewer](../assets/screenshots/k8s_pods_log.png)
 
 **Log Features:**
 - Real-time streaming
@@ -138,7 +134,7 @@ Access real-time pod logs:
 
 Safe deletion with confirmation:
 
-![Delete Confirmation](../assets/screenshots/k8s_pod_delete_confirm_dark.png)
+![Delete Confirmation](../assets/screenshots/k8s_pods_delete.png)
 
 **Deletion Safety:**
 - Confirmation dialog shows pod details

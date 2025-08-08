@@ -1,14 +1,10 @@
 # Dashboard
 
-<p align="center">
-  <a href="../en/05-dashboard.md">English</a> | <a href="../id/05-dashboard.md">Bahasa Indonesia</a>
-</p>
-
 ## Overview
 
 The Vapor Dashboard provides a comprehensive real-time view of your system's health and performance. It's the first screen you see after logging in and serves as your command center for system monitoring.
 
-![Dashboard Overview](../assets/screenshots/dashboard_main_view_dark.png)
+![Main Interface](../assets/screenshots/dashboard_main_view_realtime_metrics_dark.png)
 
 ## Dashboard Layout
 

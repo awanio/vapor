@@ -1,13 +1,5 @@
 # Vapor System Management - Dokumentasi
 
-<p align="center">
-  <img src="../assets/vapor-logo.png" alt="Logo Vapor" width="200"/>
-</p>
-
-<p align="center">
-  <a href="../en/README.md">English</a> | <a href="../id/README.md">Bahasa Indonesia</a>
-</p>
-
 ## Selamat Datang di Vapor
 
 Vapor adalah platform manajemen sistem Linux yang komprehensif yang menyediakan antarmuka web modern dengan inspirasi VS Code untuk mengelola server. Platform ini menggabungkan alat administrasi sistem tradisional dengan orkestrasi kontainer dan manajemen Kubernetes dalam satu antarmuka terpadu.

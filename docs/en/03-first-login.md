@@ -19,7 +19,7 @@ Replace `your-server-ip` with your server's actual IP address or hostname.
 
 You'll be greeted with the Vapor login screen:
 
-![Login Screen](../assets/screenshots/auth/auth_login_form_empty_dark.png)
+![Login Screen](../assets/screenshots/auth_login_form_empty_dark.png)
 
 The login screen features:
 - Clean, modern interface with Vapor logo
@@ -39,7 +39,7 @@ The system authenticates against `/etc/passwd` and `/etc/shadow`.
 
 ### Step 1: Enter Credentials
 
-![Login with Credentials](../assets/screenshots/auth_login_form_filled_dark.png)
+<!-- ![Login with Credentials](../assets/screenshots/auth_login_form_filled_dark.png) -->
 
 1. Enter your username
 2. Enter your password
@@ -49,7 +49,7 @@ The system authenticates against `/etc/passwd` and `/etc/shadow`.
 
 If login fails, you'll see an error message:
 
-![Login Error](../assets/screenshots/auth_login_error_invalid_dark.png)
+![Login Error](../assets/screenshots/auth_login_error_invalid_credentials_dark.png)
 
 Common error reasons:
 - Incorrect username or password
@@ -124,7 +124,7 @@ Customize your experience:
 
 After login, you'll see the main interface:
 
-![Main Interface](../assets/screenshots/ui_main_logged_in_dark.png)
+![Main Interface](../assets/screenshots/dashboard_main_view_realtime_metrics_dark.png)
 
 ### Top Bar
 - **Vapor Logo**: Click to return to dashboard
