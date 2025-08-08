@@ -1,0 +1,235 @@
+/* Custom theme styling similar to VitePress official docs */
+
+:root {
+  /* Brand Colors - same for both themes */
+  --vp-c-brand-1: #3b82f6;
+  --vp-c-brand-2: #2563eb;
+  --vp-c-brand-3: #1d4ed8;
+  --vp-c-brand-soft: rgba(59, 130, 246, 0.14);
+}
+
+/* Light theme colors */
+html:not(.dark) {
+  --vp-c-bg: #ffffff;
+  --vp-c-bg-soft: #f6f6f7;
+  --vp-c-bg-mute: #e5e5e5;
+  --vp-c-bg-alt: #f6f6f7;
+  
+  --vp-c-border: #e2e2e3;
+  --vp-c-divider: #e2e2e3;
+  --vp-c-gutter: #e2e2e3;
+  
+  --vp-c-text-1: #213547;
+  --vp-c-text-2: #476582;
+  --vp-c-text-3: #8a8f9c;
+  
+  --vp-code-block-bg: #f6f6f7;
+}
+
+.dark {
+  /* Override dark theme colors */
+  --vp-c-bg: #0d1117;
+  --vp-c-bg-soft: #161b22;
+  --vp-c-bg-mute: #1c2128;
+  --vp-c-bg-alt: #0d1117;
+  
+  --vp-c-border: #30363d;
+  --vp-c-divider: #21262d;
+  --vp-c-gutter: #21262d;
+  
+  --vp-c-text-1: #e6edf3;
+  --vp-c-text-2: #7d8590;
+  --vp-c-text-3: #656d76;
+  --vp-c-text-4: #484f58;
+  
+  /* Code blocks */
+  --vp-code-block-bg: #161b22;
+  --vp-code-line-highlight-color: rgba(59, 130, 246, 0.1);
+  --vp-code-line-number-color: #484f58;
+  
+  /* Custom scrollbar */
+  --vp-scrollbar-bg-color: transparent;
+  --vp-scrollbar-thumb-color: #30363d;
+  --vp-scrollbar-thumb-hover-color: #484f58;
+}
+
+/* Navigation styling */
+.VPNav {
+  background-color: var(--vp-c-bg) !important;
+  border-bottom: 1px solid var(--vp-c-border);
+}
+
+/* Sidebar styling */
+.VPSidebar {
+  background-color: var(--vp-c-bg-soft) !important;
+}
+
+/* Content styling */
+.VPContent {
+  background-color: var(--vp-c-bg) !important;
+}
+
+/* Code block styling */
+div[class*='language-'] {
+  background-color: var(--vp-code-block-bg) !important;
+  border: 1px solid var(--vp-c-border);
+}
+
+/* Button hover effects */
+.VPButton:hover {
+  background-color: var(--vp-c-brand-2);
+}
+
+/* Link colors */
+.vp-doc a {
+  color: var(--vp-c-brand-1);
+}
+
+.vp-doc a:hover {
+  color: var(--vp-c-brand-2);
+}
+
+/* Home hero styling */
+.VPHero .name {
+  background: -webkit-linear-gradient(120deg, #3b82f6 30%, #2563eb);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Feature cards */
+.VPFeature {
+  background-color: var(--vp-c-bg-soft) !important;
+  border: 1px solid var(--vp-c-border) !important;
+}
+
+/* Search */
+.DocSearch {
+  --docsearch-primary-color: var(--vp-c-brand-1) !important;
+  --docsearch-modal-background: var(--vp-c-bg-soft) !important;
+  --docsearch-searchbox-background: var(--vp-c-bg-mute) !important;
+  --docsearch-hit-background: var(--vp-c-bg-mute) !important;
+  --docsearch-footer-background: var(--vp-c-bg) !important;
+}
+
+/* Tables */
+.vp-doc table {
+  background-color: var(--vp-c-bg-soft);
+}
+
+.vp-doc tr:nth-child(2n) {
+  background-color: var(--vp-c-bg-mute);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--vp-scrollbar-bg-color);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--vp-scrollbar-thumb-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--vp-scrollbar-thumb-hover-color);
+}
+
+/* Enhanced blue accent styling */
+.VPNavBarTitle .title {
+  color: var(--vp-c-brand-1) !important;
+}
+
+/* Active sidebar item */
+.VPSidebarItem.is-active > .item .text {
+  color: var(--vp-c-brand-1);
+}
+
+/* Hover effects with blue accent */
+.VPSidebarItem .item:hover .text {
+  color: var(--vp-c-brand-1);
+}
+
+/* Code syntax highlighting for blue theme */
+.dark .shiki span {
+  color: var(--shiki-dark-text) !important;
+}
+
+/* Blue accent for inline code */
+.vp-doc code {
+  color: var(--vp-c-brand-1);
+  background-color: var(--vp-c-brand-soft);
+}
+
+/* Selection color */
+::selection {
+  background-color: var(--vp-c-brand-soft);
+  color: var(--vp-c-text-1);
+}
+
+/* Focus outlines */
+:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 2px;
+}
+
+/* Hero Image Enhancements */
+/* Override default VitePress hero image constraints */
+.VPHero .VPImage {
+  max-width: 100% !important;
+  max-height: none !important;
+}
+
+.VPHero .image-container {
+  position: relative;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--vp-c-border);
+  background: #f8f9fa;
+  padding: 4px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  display: inline-block;
+  line-height: 0; /* Remove any line-height spacing */
+}
+
+.VPHero .image-container:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.VPHero .image {
+  max-width: 100%;
+  height: auto;
+  border-radius: 3px;
+  display: block;
+}
+
+/* Responsive hero image - ensure natural sizing */
+@media (min-width: 960px) {
+  .VPHero .image-container {
+    max-width: 100%;
+  }
+}
+
+@media (min-width: 1280px) {
+  .VPHero .image-container {
+    max-width: 100%;
+  }
+}
+
+/* Dark mode enhancements for hero image */
+.dark .VPHero .image-container {
+  background: #1a1f2e;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.dark .VPHero .image-container:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}

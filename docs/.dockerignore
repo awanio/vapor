@@ -1,0 +1,39 @@
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build output
+.vitepress/dist/
+.vitepress/cache/
+
+# Development files
+.git/
+.gitignore
+.env
+.env.*
+
+# Documentation and meta files
+README.md
+STRUCTURE.md
+USER_GUIDE.md
+VITEPRESS_SETUP.md
+LANGUAGE_SWITCHER.md
+landing_page.html
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor directories and files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Docker files (avoid recursive copy)
+Dockerfile
+.dockerignore
+docker-compose.yml
