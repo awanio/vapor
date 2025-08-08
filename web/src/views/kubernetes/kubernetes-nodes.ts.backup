@@ -1,0 +1,419 @@
+import { LitElement, html, css } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
+import { KubernetesApi } from '../../services/kubernetes-api.js';
+import type {
+  KubernetesNode,
+  KubernetesResourceDetails
+} from '../../services/kubernetes-api.js';
+import '../../components/ui/search-input.js';
+import '../../components/ui/empty-state.js';
+import '../../components/ui/loading-state.js';
+import '../../components/tables/resource-table.js';
+import '../../components/drawers/detail-drawer.js';
+import '../../components/ui/status-badge.js';
+import type { Column } from '../../components/tables/resource-table.js';
+import type { ActionItem } from '../../components/ui/action-dropdown.js';
+
+@customElement('kubernetes-nodes')
+export class KubernetesNodes extends LitElement {
+  @property({ type: Array }) nodes: KubernetesNode[] = [];
+  @property({ type: String }) searchQuery = '';
+  @property({ type: Boolean }) loading = false;
+  @property({ type: String }) error: string | null = null;
+  
+  @state() private showDetails = false;
+  @state() private selectedItem: KubernetesNode | null = null;
+  @state() private loadingDetails = false;
+  @state() private detailsData: KubernetesResourceDetails | null = null;
+
+  static override styles = css`
+    :host {
+      display: block;
+      height: 100%;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      gap: 1rem;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .content {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .detail-content {
+      padding: 1rem;
+    }
+
+    .detail-section {
+      margin-bottom: 1.5rem;
+    }
+
+    .detail-section h3 {
+      margin: 0 0 0.5rem 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--vscode-foreground, #cccccc);
+    }
+
+    .detail-item {
+      margin-bottom: 0.5rem;
+      font-size: 13px;
+    }
+
+    .detail-key {
+      font-weight: 500;
+      color: var(--vscode-textLink-foreground, #3794ff);
+    }
+
+    .detail-value {
+      color: var(--vscode-foreground, #cccccc);
+      font-family: var(--vscode-editor-font-family, monospace);
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .role-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      background: var(--vscode-badge-background, #007acc);
+      color: var(--vscode-badge-foreground, white);
+      margin-right: 4px;
+    }
+
+    .taint-item {
+      display: inline-block;
+      background: var(--vscode-textBlockQuote-background, #7f7f7f1a);
+      border-radius: 4px;
+      padding: 4px 8px;
+      margin: 2px;
+      font-size: 11px;
+    }
+
+    .condition-item {
+      background: var(--vscode-editor-background, #1e1e1e);
+      border: 1px solid var(--vscode-widget-border, #303031);
+      border-radius: 4px;
+      padding: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .condition-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .condition-type {
+      font-weight: 500;
+      color: var(--vscode-foreground, #cccccc);
+    }
+
+    .addresses-grid {
+      display: grid;
+      gap: 0.5rem;
+    }
+
+    .address-item {
+      padding: 0.5rem;
+      background: var(--vscode-editor-background, #1e1e1e);
+      border: 1px solid var(--vscode-widget-border, #303031);
+      border-radius: 4px;
+    }
+  `;
+
+  private getColumns(): Column[] {
+    return [
+      { key: 'name', label: 'Name', type: 'link' },
+      { key: 'status', label: 'Status', type: 'status' },
+      { key: 'roles', label: 'Roles', type: 'custom' },
+      { key: 'age', label: 'Age' },
+      { key: 'version', label: 'Version' },
+      { key: 'internalIP', label: 'Internal IP' },
+      { key: 'externalIP', label: 'External IP' },
+      { key: 'os', label: 'OS' },
+      { key: 'kernelVersion', label: 'Kernel' },
+      { key: 'containerRuntime', label: 'Container Runtime' }
+    ];
+  }
+
+  private getActions(_item: KubernetesNode): ActionItem[] {
+    return [
+      { label: 'View Details', action: 'view' }
+    ];
+  }
+
+  private getFilteredData(): KubernetesNode[] {
+    let data = this.nodes;
+
+    if (this.searchQuery) {
+      data = data.filter(item => 
+        JSON.stringify(item).toLowerCase().includes(this.searchQuery.toLowerCase())
+      );
+    }
+
+    return data;
+  }
+
+  private handleSearchChange(event: CustomEvent) {
+    this.searchQuery = event.detail.value;
+  }
+
+  private handleCellClick(event: CustomEvent) {
+    const { column, item } = event.detail;
+    
+    if (column.type === 'link') {
+      this.viewDetails(item);
+    }
+  }
+
+  private handleAction(event: CustomEvent) {
+    const { action, item } = event.detail;
+    
+    if (action === 'view') {
+      this.viewDetails(item);
+    }
+  }
+
+  private async viewDetails(item: KubernetesNode) {
+    this.selectedItem = item;
+    this.showDetails = true;
+    this.loadingDetails = true;
+    
+    try {
+      // Fetch additional details if needed
+      this.detailsData = await KubernetesApi.getResourceDetails('Node', item.name);
+    } catch (error) {
+      console.error('Failed to fetch details:', error);
+      this.detailsData = null;
+    } finally {
+      this.loadingDetails = false;
+    }
+  }
+
+  private handleDetailsClose() {
+    this.showDetails = false;
+    this.selectedItem = null;
+    this.detailsData = null;
+  }
+
+  async fetchData() {
+    this.loading = true;
+    this.error = null;
+    
+    try {
+      this.nodes = await KubernetesApi.getNodes();
+    } catch (error: any) {
+      console.error('Failed to fetch nodes:', error);
+      this.error = error.message || 'Failed to fetch nodes';
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  private renderDetailContent() {
+    if (!this.detailsData && !this.selectedItem) return html``;
+
+    const node = this.selectedItem;
+    if (!node) return html``;
+
+    return html`
+      <div class="detail-content">
+        <div class="detail-section">
+          <h3>Node Information</h3>
+          <div class="detail-item">
+            <span class="detail-key">Name:</span> ${node.name}
+          </div>
+          <div class="detail-item">
+            <span class="detail-key">Status:</span> 
+            <status-badge status=${node.status.toLowerCase()}></status-badge>
+          </div>
+          <div class="detail-item">
+            <span class="detail-key">Roles:</span> 
+            ${node.roles.split(',').map(role => html`<span class="role-badge">${role.trim()}</span>`)}
+          </div>
+          <div class="detail-item">
+            <span class="detail-key">Age:</span> ${node.age}
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h3>System Information</h3>
+          <div class="detail-item">
+            <span class="detail-key">Version:</span> ${node.version}
+          </div>
+          <div class="detail-item">
+            <span class="detail-key">OS:</span> ${node.os}
+          </div>
+          <div class="detail-item">
+            <span class="detail-key">Kernel Version:</span> ${node.kernelVersion}
+          </div>
+          <div class="detail-item">
+            <span class="detail-key">Container Runtime:</span> ${node.containerRuntime}
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h3>Network</h3>
+          <div class="detail-item">
+            <span class="detail-key">Internal IP:</span> ${node.internalIP || 'N/A'}
+          </div>
+          <div class="detail-item">
+            <span class="detail-key">External IP:</span> ${node.externalIP || 'N/A'}
+          </div>
+        </div>
+
+        ${this.detailsData ? html`
+          ${this.detailsData.status?.conditions ? html`
+            <div class="detail-section">
+              <h3>Conditions</h3>
+              ${this.detailsData.status.conditions.map((condition: any) => html`
+                <div class="condition-item">
+                  <div class="condition-header">
+                    <span class="condition-type">${condition.type}</span>
+                    <status-badge 
+                      status=${condition.status === 'True' ? 'success' : 'warning'}
+                    ></status-badge>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-key">Reason:</span> ${condition.reason || 'N/A'}
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-key">Message:</span> ${condition.message || 'N/A'}
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-key">Last Transition:</span> 
+                    ${new Date(condition.lastTransitionTime).toLocaleString()}
+                  </div>
+                </div>
+              `)}
+            </div>
+          ` : ''}
+
+          ${this.detailsData.status?.addresses ? html`
+            <div class="detail-section">
+              <h3>Addresses</h3>
+              <div class="addresses-grid">
+                ${this.detailsData.status.addresses.map((addr: any) => html`
+                  <div class="address-item">
+                    <span class="detail-key">${addr.type}:</span> ${addr.address}
+                  </div>
+                `)}
+              </div>
+            </div>
+          ` : ''}
+
+          ${this.detailsData.spec?.taints && this.detailsData.spec.taints.length > 0 ? html`
+            <div class="detail-section">
+              <h3>Taints</h3>
+              <div>
+                ${this.detailsData.spec.taints.map((taint: any) => html`
+                  <span class="taint-item">
+                    ${taint.key}=${taint.value || ''}:${taint.effect}
+                  </span>
+                `)}
+              </div>
+            </div>
+          ` : ''}
+
+          ${this.detailsData.metadata?.labels ? html`
+            <div class="detail-section">
+              <h3>Labels</h3>
+              ${Object.entries(this.detailsData.metadata.labels).map(([key, value]) => html`
+                <div class="detail-item">
+                  <span class="detail-key">${key}:</span> ${value}
+                </div>
+              `)}
+            </div>
+          ` : ''}
+
+          ${this.detailsData.metadata?.annotations ? html`
+            <div class="detail-section">
+              <h3>Annotations</h3>
+              ${Object.entries(this.detailsData.metadata.annotations).map(([key, value]) => html`
+                <div class="detail-item">
+                  <span class="detail-key">${key}:</span> ${value}
+                </div>
+              `)}
+            </div>
+          ` : ''}
+        ` : ''}
+      </div>
+    `;
+  }
+
+  override connectedCallback() {
+    super.connectedCallback();
+    this.fetchData();
+  }
+
+  override render() {
+    return html`
+      <div class="container">
+        <div class="header">
+          <search-input
+            .value="${this.searchQuery}"
+            placeholder="Search nodes..."
+            @search-change="${this.handleSearchChange}"
+          ></search-input>
+        </div>
+
+        <div class="content">
+          ${this.loading ? html`
+            <loading-state message="Loading nodes..."></loading-state>
+          ` : this.error ? html`
+            <empty-state 
+              message="${this.error}" 
+              icon="⚠️"
+            ></empty-state>
+          ` : html`
+            <resource-table
+              .columns="${this.getColumns()}"
+              .data="${this.getFilteredData()}"
+              .getActions="${(item: KubernetesNode) => this.getActions(item)}"
+              .customRenderers="${{
+                roles: (value: string) => html`
+                  ${value.split(',').map(role => html`
+                    <span class="role-badge">${role.trim()}</span>
+                  `)}
+                `
+              }}"
+              emptyMessage="No nodes found"
+              @cell-click="${this.handleCellClick}"
+              @action="${this.handleAction}"
+            ></resource-table>
+          `}
+        </div>
+
+        <detail-drawer
+          .show="${this.showDetails}"
+          .loading="${this.loadingDetails}"
+          title="${this.selectedItem?.name || ''} Details"
+          @close="${this.handleDetailsClose}"
+        >
+          ${this.renderDetailContent()}
+        </detail-drawer>
+      </div>
+    `;
+  }
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    'kubernetes-nodes': KubernetesNodes;
+  }
+}

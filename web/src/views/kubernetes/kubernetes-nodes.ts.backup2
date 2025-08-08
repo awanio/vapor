@@ -1,0 +1,1087 @@
+import { LitElement, html, css } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
+import { KubernetesApi } from '../../services/kubernetes-api.js';
+import type {
+  KubernetesNode,
+  KubernetesNamespace,
+  KubernetesResourceDetails
+} from '../../services/kubernetes-api.js';
+import '../../components/ui/search-input.js';
+import '../../components/ui/empty-state.js';
+import '../../components/ui/loading-state.js';
+import '../../components/tables/resource-table.js';
+import '../../components/drawers/detail-drawer.js';
+import '../../components/ui/status-badge.js';
+import type { Column } from '../../components/tables/resource-table.js';
+import type { ActionItem } from '../../components/ui/action-dropdown.js';
+
+@customElement('kubernetes-nodes')
+export class KubernetesNodes extends LitElement {
+  @property({ type: Array }) nodes: KubernetesNode[] = [];
+  @property({ type: Array }) namespaces: KubernetesNamespace[] = [];
+  @property({ type: String }) selectedNamespace = 'all';
+  @property({ type: String }) searchQuery = '';
+  @property({ type: Boolean }) loading = false;
+  @property({ type: String }) error: string | null = null;
+  
+  @state() private showDetails = false;
+  @state() private selectedItem: KubernetesNode | null = null;
+  @state() private loadingDetails = false;
+  @state() private detailsData: KubernetesResourceDetails | null = null;
+
+  static override styles = css`
+    :host {
+      display: block;
+      height: 100%;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      gap: 1rem;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .content {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .namespace-selector {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .namespace-selector label {
+      font-size: 13px;
+      color: var(--vscode-foreground, #cccccc);
+    }
+
+    .namespace-selector select {
+      padding: 6px 10px;
+      background: var(--vscode-dropdown-background, #3c3c3c);
+      color: var(--vscode-dropdown-foreground, #cccccc);
+      border: 1px solid var(--vscode-dropdown-border, #3c3c3c);
+      border-radius: 4px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .namespace-selector select:hover {
+      background: var(--vscode-dropdown-hoverBackground, #2a2a2a);
+    }
+
+    .detail-content {
+      padding: 1rem;
+    }
+
+    .detail-section {
+      margin-bottom: 1.5rem;
+    }
+
+    .detail-section h3 {
+      margin: 0 0 0.5rem 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--vscode-foreground, #cccccc);
+    }
+
+    .detail-item {
+      margin-bottom: 0.5rem;
+      font-size: 13px;
+    }
+
+    .detail-key {
+      font-weight: 500;
+      color: var(--vscode-textLink-foreground, #3794ff);
+    }
+
+    .detail-value {
+      color: var(--vscode-foreground, #cccccc);
+      font-family: var(--vscode-editor-font-family, monospace);
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .status-condition {
+      color: var(--vscode-descriptionForeground, #cccccc80);
+    }
+
+    .role-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      background: var(--vscode-badge-background, #007acc);
+      color: var(--vscode-badge-foreground, white);
+    }
+
+    .metrics-content {
+      background: var(--vscode-editor-background, #1e1e1e);
+      border: 1px solid var(--vscode-widget-border, #303031);
+      border-radius: 4px;
+      padding: 1rem;
+      font-family: var(--vscode-editor-font-family, monospace);
+      font-size: 12px;
+      white-space: pre-wrap;
+      overflow-x: auto;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .taint-item {
+      display: inline-block;
+      background: var(--vscode-badge-background, #666);
+      border-radius: 4px;
+      padding: 4px 8px;
+      margin: 2px;
+      font-size: 11px;
+    }
+  `;
+
+  private getColumns(): Column[] {
+    return [
+      { key: 'name', label: 'Name', type: 'link' },
+      { key: 'status', label: 'Status', type: 'status' },
+      { key: 'roles', label: 'Roles', type: 'custom' },
+      { key: 'age', label: 'Age' },
+      { key: 'version', label: 'Version' },
+      { key: 'os', label: 'OS' }
+    ];
+  }
+
+  private getActions(): ActionItem[] {
+    return [
+      { label: 'View Details', action: 'view' }
+    ];
+  }
+
+  private getFilteredData(): KubernetesNode[] {
+    let data = this.nodes;
+
+    if (this.searchQuery) {
+      data = data.filter(item => 
+        JSON.stringify(item).toLowerCase().includes(this.searchQuery.toLowerCase())
+      );
+    }
+
+    return data;
+  }
+
+  private handleSearchChange(event: CustomEvent) {
+    this.searchQuery = event.detail.value;
+  }
+
+  private handleCellClick(event: CustomEvent) {
+    const { column, item } = event.detail;
+    
+    if (column.type === 'link') {
+      this.viewDetails(item);
+    }
+  }
+
+  private handleAction(event: CustomEvent) {
+    const { action, item } = event.detail;
+    
+    if (action === 'view') {
+      this.viewDetails(item);
+    }
+  }
+
+  private async viewDetails(item: KubernetesNode) {
+    this.selectedItem = item;
+    this.showDetails = true;
+    this.loadingDetails = true;
+    
+    try {
+      // Fetch additional details if needed
+      this.detailsData = await KubernetesApi.getResourceDetails('Node', item.name);
+    } catch (error) {
+      console.error('Failed to fetch details:', error);
+      this.detailsData = null;
+    } finally {
+      this.loadingDetails = false;
+    }
+  }
+
+  async fetchData() {
+    this.loading = true;
+    this.error = null;
+    try {
+      this.nodes = await KubernetesApi.getNodes();
+    } catch (error: any) {
+      console.error('Failed to fetch nodes:', error);
+      this.error = error.message || 'Failed to fetch nodes';
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  private renderDetailContent() {
+    if (!this.detailsData && !this.selectedItem) return html``;
+
+    const node = this.selectedItem;
+    if (!node) return html``;
+
+    return html`
+      <div class="detail-content">
+        <div class="detail-section">
+          <h3>Node Information</h3>
+          <div class="detail-item">
+            <span class="detail-key">Name:</span> ${node.name}
+          </div>
+          <div class="detail-item">
+            <span class="detail-key">Namespace:</span> ${node.namespace || 'N/A'}
+          </div>
+          <div class="detail-item">
+            <span class="detail-key">Status:</span> 
+            <status-badge status=${node.status.toLowerCase()}></status-badge>
+          </div>
+          <div class="detail-item">
+            <span class="detail-key">Roles:</span> 
+            ${node.roles.split(',').map(role => html`<span class="role-badge">${role}</span>`)}
+          </div>
+          <div class="detail-item">
+            <span class="detail-key">Age:</span> ${node.age}
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h3>System Information</h3>
+          <div class="detail-item">
+            <span class="detail-key">Version:</span> ${node.version}
+          </div>
+          <div class="detail-item">
+            <span class="detail-key">OS:</span> ${node.os}
+          </div>
+        </div>
+
+        ${this.detailsData ? html`
+          ${this.detailsData.metadata?.annotations ? html`
+            <div class="detail-section">
+              <h3>Annotations</h3>
+              ${Object.entries(this.detailsData.metadata.annotations).map(([key, value]) => html`
+                <div class="detail-item">
+                  <span class="detail-key">${key}:</span> ${value}
+                </div>
+              `)}
+            </div>
+          ` : ''}
+
+          ${this.detailsData.spec?.taints ? html`
+            <div class="detail-section">
+              <h3>Taints</h3>
+              <div class="metrics-content">
+                ${this.detailsData.spec.taints.map((taint: any) => html`
+                  <span class="taint-item">
+                    ${taint.key}=${taint.value}:${taint.effect}
+                  </span>
+                `)}
+              </div>
+            </div>
+          ` : ''}
+        ` : ''}
+      </div>
+    `;
+  }
+
+  override connectedCallback() {
+    super.connectedCallback();
+    this.fetchData();
+  }
+
+  override render() {
+    return html`
+      <div class="container">
+        <div class="header">
+          <search-input
+            .value="${this.searchQuery}"
+            placeholder="Search Nodes..."
+            @search-change="${this.handleSearchChange}"
+          ></search-input>
+
+          <div class="controls">
+            <div class="namespace-selector">
+              <label for="namespace-select">Namespace:</label>
+              <select id="namespace-select" @change="${this.fetchData}" .value="${this.selectedNamespace}">
+                <option value="all">All namespaces</option>
+                ${this.namespaces.map(ns => html`
+                  <option value="${ns.name}">${ns.name}</option>
+                `)}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="content">
+          ${this.loading ? html`
+            <loading-state message="Loading Nodes..."></loading-state>
+          ` : this.error ? html`
+            <empty-state 
+              message="${this.error}" 
+              icon="⚠️"
+            ></empty-state>
+          ` : html`
+            <resource-table
+              .columns="${this.getColumns()}"
+              .data="${this.getFilteredData()}"
+              .getActions="${() => this.getActions()}"
+              emptyMessage="No nodes found"
+              @cell-click="${this.handleCellClick}"
+              @action="${this.handleAction}"
+            ></resource-table>
+          `}
+        </div>
+
+        <detail-drawer
+          .show="${this.showDetails}"
+          .loading="${this.loadingDetails}"
+          title="${this.selectedItem?.name || ''} Details"
+          @close="${() => this.showDetails = false}"
+        >
+          ${this.renderDetailContent()}
+        </detail-drawer>
+      </div>
+    `;
+  }
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    'kubernetes-nodes': KubernetesNodes;
+  }
+}
+
+import { LitElement, html, css } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
+import { Api } from '../../utils/api';
+import '../../components/tables/resource-table';
+import '../../components/ui/search-input';
+import '../../components/ui/loading-state';
+import '../../components/ui/empty-state';
+import '../../components/ui/status-badge';
+import '../../components/ui/notification-container';
+import '../../components/modals/delete-modal';
+import '../../components/drawers/detail-drawer';
+
+/**
+ * Kubernetes Nodes view component
+ * Manages cluster nodes
+ */
+@customElement('kubernetes-nodes')
+export class KubernetesNodes extends LitElement {
+  static override styles = css`
+    :host {
+      display: block;
+      height: 100%;
+      background: #1a1d23;
+      color: #e0e0e0;
+    }
+
+    .nodes-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      padding: 20px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .title {
+      font-size: 24px;
+      font-weight: 500;
+    }
+
+    .content {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .filters {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+      align-items: center;
+    }
+
+    .resource-count {
+      font-size: 14px;
+      color: #999;
+      margin-left: auto;
+    }
+
+    /* Detail styles */
+    .detail-content {
+      padding: 20px;
+    }
+
+    .detail-content h3 {
+      margin: 20px 0 10px 0;
+      color: #e0e0e0;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .detail-content h3:first-child {
+      margin-top: 0;
+    }
+
+    .detail-item {
+      display: flex;
+      padding: 8px 0;
+      border-bottom: 1px solid #2a2d3a;
+    }
+
+    .detail-item .label {
+      flex: 0 0 180px;
+      color: #999;
+      font-size: 14px;
+    }
+
+    .detail-item .value {
+      flex: 1;
+      color: #e0e0e0;
+      font-size: 14px;
+    }
+
+    .condition-item {
+      background: #2a2d3a;
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 8px;
+    }
+
+    .condition-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .condition-type {
+      font-weight: 500;
+      color: #e0e0e0;
+    }
+
+    .condition-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .resource-metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 12px;
+    }
+
+    .metric-card {
+      background: #2a2d3a;
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .metric-value {
+      font-size: 24px;
+      font-weight: 500;
+      color: #4a7c59;
+      margin: 8px 0;
+    }
+
+    .metric-label {
+      font-size: 12px;
+      color: #999;
+      text-transform: uppercase;
+    }
+
+    .usage-bar {
+      width: 100%;
+      height: 8px;
+      background: #1a1d23;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .usage-fill {
+      height: 100%;
+      background: #4a7c59;
+      transition: width 0.3s;
+    }
+
+    .usage-fill.warning {
+      background: #ff9800;
+    }
+
+    .usage-fill.danger {
+      background: #f44336;
+    }
+
+    .taints-section {
+      margin-top: 12px;
+    }
+
+    .taint-item {
+      display: inline-block;
+      background: #3a3d4a;
+      border-radius: 4px;
+      padding: 4px 12px;
+      margin: 4px;
+      font-size: 12px;
+    }
+  `;
+
+  @property({ type: String }) searchQuery = '';
+  
+  @state() private loading = false;
+  @state() private nodes: any[] = [];
+  
+  // UI state
+  @state() private showDetailDrawer = false;
+  @state() private showDeleteModal = false;
+  @state() private selectedNode: any = null;
+
+  private api = new Api();
+
+  override connectedCallback() {
+    super.connectedCallback();
+    this.fetchNodes();
+  }
+
+  override render() {
+    return html`
+      <div class="nodes-container">
+        <div class="header">
+          <h1 class="title">Cluster Nodes</h1>
+        </div>
+
+        <div class="content">
+          <div class="filters">
+            <search-input
+              .value=${this.searchQuery}
+              placeholder="Search nodes..."
+              @search-change=${this.handleSearch}
+            ></search-input>
+
+            <span class="resource-count">
+              ${this.getFilteredNodes().length} nodes
+            </span>
+          </div>
+
+          ${this.loading ? html`
+            <loading-state message="Loading nodes..."></loading-state>
+          ` : this.renderContent()}
+        </div>
+
+        <detail-drawer
+          .show=${this.showDetailDrawer}
+          .title=${this.getDetailTitle()}
+          @close=${() => this.showDetailDrawer = false}
+        >
+          ${this.renderNodeDetail()}
+        </detail-drawer>
+
+        <delete-modal
+          .show=${this.showDeleteModal}
+          .item=${this.selectedNode}
+          @confirm-delete=${this.handleDelete}
+          @cancel-delete=${this.handleCancelDelete}
+        ></delete-modal>
+
+        <notification-container></notification-container>
+      </div>
+    `;
+  }
+
+  private renderContent() {
+    const nodes = this.getFilteredNodes();
+
+    if (nodes.length === 0) {
+      return html`
+        <empty-state
+          message="No nodes found"
+          icon="nodes"
+        ></empty-state>
+      `;
+    }
+
+    return html`
+      <resource-table
+        .columns=${this.getColumns()}
+        .data=${nodes}
+        .getActions=${(item: any) => this.getNodeActions(item)}
+        @cell-click=${this.handleCellClick}
+        @action=${this.handleAction}
+      ></resource-table>
+    `;
+  }
+
+  private getColumns() {
+    return [
+      { key: 'name', label: 'Name', type: 'link' },
+      { key: 'status', label: 'Status', type: 'status' },
+      { key: 'roles', label: 'Roles' },
+      { key: 'version', label: 'Version' },
+      { key: 'os', label: 'OS' },
+      { key: 'containerRuntime', label: 'Container Runtime' },
+      { key: 'cpuUsage', label: 'CPU', type: 'custom' },
+      { key: 'memoryUsage', label: 'Memory', type: 'custom' },
+      { key: 'age', label: 'Age' }
+    ];
+  }
+
+  private getFilteredNodes() {
+    if (!this.searchQuery) {
+      return this.nodes;
+    }
+
+    const query = this.searchQuery.toLowerCase();
+    return this.nodes.filter(node => 
+      node.name.toLowerCase().includes(query) ||
+      node.status.toLowerCase().includes(query) ||
+      node.roles.toLowerCase().includes(query)
+    );
+  }
+
+  private getNodeActions(node: any) {
+    const actions = [
+      { label: 'View Details', action: 'view' }
+    ];
+
+    if (node.status === 'Ready') {
+      actions.push({ label: 'Cordon', action: 'cordon' });
+      actions.push({ label: 'Drain', action: 'drain' });
+    } else if (node.spec.unschedulable) {
+      actions.push({ label: 'Uncordon', action: 'uncordon' });
+    }
+
+    return actions;
+  }
+
+  private async fetchNodes() {
+    this.loading = true;
+    
+    try {
+      const response = await this.api.get('/kubernetes/nodes');
+      const metrics = await this.api.get('/kubernetes/nodes/metrics').catch(() => ({ items: [] }));
+      
+      this.nodes = this.processNodes(response.items || [], metrics.items || []);
+    } catch (error) {
+      console.error('Failed to fetch nodes:', error);
+      this.showNotification('Failed to load nodes', 'error');
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  private processNodes(nodes: any[], metrics: any[]): any[] {
+    const metricsMap = new Map(metrics.map(m => [m.metadata.name, m]));
+    
+    return nodes.map(node => {
+      const metric = metricsMap.get(node.metadata.name);
+      const conditions = node.status.conditions || [];
+      const readyCondition = conditions.find((c: any) => c.type === 'Ready');
+      
+      return {
+        name: node.metadata.name,
+        status: readyCondition?.status === 'True' ? 'Ready' : 'NotReady',
+        roles: this.getNodeRoles(node),
+        version: node.status.nodeInfo.kubeletVersion,
+        os: `${node.status.nodeInfo.osImage} (${node.status.nodeInfo.architecture})`,
+        containerRuntime: node.status.nodeInfo.containerRuntimeVersion,
+        cpuUsage: this.calculateCpuUsage(node, metric),
+        memoryUsage: this.calculateMemoryUsage(node, metric),
+        age: this.getAge(node.metadata.creationTimestamp),
+        spec: node.spec,
+        raw: node,
+        metrics: metric
+      };
+    });
+  }
+
+  private getNodeRoles(node: any): string {
+    const labels = node.metadata.labels || {};
+    const roles = [];
+    
+    if (labels['node-role.kubernetes.io/master'] !== undefined || 
+        labels['node-role.kubernetes.io/control-plane'] !== undefined) {
+      roles.push('control-plane');
+    }
+    
+    if (labels['node-role.kubernetes.io/worker'] !== undefined || roles.length === 0) {
+      roles.push('worker');
+    }
+    
+    return roles.join(', ');
+  }
+
+  private calculateCpuUsage(node: any, metric: any): number {
+    if (!metric) return 0;
+    
+    const allocatable = node.status.allocatable?.cpu;
+    const usage = metric.usage?.cpu;
+    
+    if (!allocatable || !usage) return 0;
+    
+    const allocatableCores = this.parseCpu(allocatable);
+    const usageCores = this.parseCpu(usage);
+    
+    return Math.round((usageCores / allocatableCores) * 100);
+  }
+
+  private calculateMemoryUsage(node: any, metric: any): number {
+    if (!metric) return 0;
+    
+    const allocatable = node.status.allocatable?.memory;
+    const usage = metric.usage?.memory;
+    
+    if (!allocatable || !usage) return 0;
+    
+    const allocatableBytes = this.parseMemory(allocatable);
+    const usageBytes = this.parseMemory(usage);
+    
+    return Math.round((usageBytes / allocatableBytes) * 100);
+  }
+
+  private parseCpu(cpu: string): number {
+    if (cpu.endsWith('m')) {
+      return parseInt(cpu) / 1000;
+    }
+    return parseFloat(cpu);
+  }
+
+  private parseMemory(memory: string): number {
+    const units: Record<string, number> = {
+      'Ki': 1024,
+      'Mi': 1024 * 1024,
+      'Gi': 1024 * 1024 * 1024,
+      'Ti': 1024 * 1024 * 1024 * 1024
+    };
+    
+    for (const [unit, multiplier] of Object.entries(units)) {
+      if (memory.endsWith(unit)) {
+        return parseFloat(memory) * multiplier;
+      }
+    }
+    
+    return parseFloat(memory);
+  }
+
+  private getAge(timestamp: string): string {
+    const created = new Date(timestamp);
+    const now = new Date();
+    const diff = now.getTime() - created.getTime();
+    
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    
+    if (days > 0) return `${days}d`;
+    if (hours > 0) return `${hours}h`;
+    return '<1h';
+  }
+
+  private handleSearch(e: CustomEvent) {
+    this.searchQuery = e.detail.value;
+  }
+
+  private handleCellClick(e: CustomEvent) {
+    if (e.detail.column.type === 'link') {
+      this.showNodeDetail(e.detail.item);
+    }
+  }
+
+  private handleAction(e: CustomEvent) {
+    const { action, item } = e.detail;
+    
+    switch (action) {
+      case 'view':
+        this.showNodeDetail(item);
+        break;
+      case 'cordon':
+        this.cordonNode(item);
+        break;
+      case 'uncordon':
+        this.uncordonNode(item);
+        break;
+      case 'drain':
+        this.drainNode(item);
+        break;
+    }
+  }
+
+  private showNodeDetail(node: any) {
+    this.selectedNode = node;
+    this.showDetailDrawer = true;
+  }
+
+  private async cordonNode(node: any) {
+    try {
+      await this.api.patch(`/kubernetes/nodes/${node.name}`, {
+        spec: { unschedulable: true }
+      });
+      this.showNotification(`Node ${node.name} cordoned`, 'success');
+      this.fetchNodes();
+    } catch (error) {
+      this.showNotification('Failed to cordon node', 'error');
+    }
+  }
+
+  private async uncordonNode(node: any) {
+    try {
+      await this.api.patch(`/kubernetes/nodes/${node.name}`, {
+        spec: { unschedulable: false }
+      });
+      this.showNotification(`Node ${node.name} uncordoned`, 'success');
+      this.fetchNodes();
+    } catch (error) {
+      this.showNotification('Failed to uncordon node', 'error');
+    }
+  }
+
+  private drainNode(_node: any) {
+    // TODO: Implement drain functionality with pod eviction
+    this.showNotification('Drain functionality coming soon', 'info');
+  }
+
+  private async handleDelete() {
+    // Nodes typically cannot be deleted via API
+    this.showNotification('Nodes cannot be deleted via the API', 'warning');
+    this.showDeleteModal = false;
+  }
+
+  private handleCancelDelete() {
+    this.showDeleteModal = false;
+    this.selectedNode = null;
+  }
+
+  private getDetailTitle(): string {
+    return this.selectedNode ? `Node Details: ${this.selectedNode.name}` : '';
+  }
+
+  private renderNodeDetail() {
+    if (!this.selectedNode) return html``;
+    
+    const node = this.selectedNode.raw;
+    const nodeInfo = node.status.nodeInfo;
+    const conditions = node.status.conditions || [];
+    const addresses = node.status.addresses || [];
+    
+    return html`
+      <div class="detail-content">
+        <h3>Basic Information</h3>
+        <div class="detail-item">
+          <span class="label">Name:</span>
+          <span class="value">${node.metadata.name}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Status:</span>
+          <span class="value">
+            <status-badge status=${this.selectedNode.status.toLowerCase()}></status-badge>
+          </span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Roles:</span>
+          <span class="value">${this.selectedNode.roles}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Created:</span>
+          <span class="value">${new Date(node.metadata.creationTimestamp).toLocaleString()}</span>
+        </div>
+        
+        <h3>System Information</h3>
+        <div class="detail-item">
+          <span class="label">Kubelet Version:</span>
+          <span class="value">${nodeInfo.kubeletVersion}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Kube-Proxy Version:</span>
+          <span class="value">${nodeInfo.kubeProxyVersion}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Container Runtime:</span>
+          <span class="value">${nodeInfo.containerRuntimeVersion}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Operating System:</span>
+          <span class="value">${nodeInfo.operatingSystem} ${nodeInfo.osImage}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Architecture:</span>
+          <span class="value">${nodeInfo.architecture}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Kernel Version:</span>
+          <span class="value">${nodeInfo.kernelVersion}</span>
+        </div>
+        
+        <h3>Addresses</h3>
+        ${addresses.map((addr: any) => html`
+          <div class="detail-item">
+            <span class="label">${addr.type}:</span>
+            <span class="value">${addr.address}</span>
+          </div>
+        `)}
+        
+        <h3>Resource Capacity</h3>
+        ${this.renderResourceMetrics(node)}
+        
+        <h3>Conditions</h3>
+        ${conditions.map((condition: any) => this.renderCondition(condition))}
+        
+        ${node.spec.taints && node.spec.taints.length > 0 ? html`
+          <h3>Taints</h3>
+          <div class="taints-section">
+            ${node.spec.taints.map((taint: any) => html`
+              <span class="taint-item">
+                ${taint.key}=${taint.value}:${taint.effect}
+              </span>
+            `)}
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  private renderResourceMetrics(node: any) {
+    const capacity = node.status.capacity || {};
+    const allocatable = node.status.allocatable || {};
+    const metrics = this.selectedNode.metrics;
+    
+    return html`
+      <div class="resource-metrics">
+        <div class="metric-card">
+          <div class="metric-label">CPU</div>
+          <div class="metric-value">${capacity.cpu || '0'}</div>
+          <div>Allocatable: ${allocatable.cpu || '0'}</div>
+          ${metrics ? html`
+            <div class="usage-bar">
+              <div 
+                class="usage-fill ${this.getUsageClass(this.selectedNode.cpuUsage)}"
+                style="width: ${this.selectedNode.cpuUsage}%"
+              ></div>
+            </div>
+            <div style="font-size: 12px; margin-top: 4px;">
+              Usage: ${this.selectedNode.cpuUsage}%
+            </div>
+          ` : ''}
+        </div>
+        
+        <div class="metric-card">
+          <div class="metric-label">Memory</div>
+          <div class="metric-value">${this.formatMemory(capacity.memory)}</div>
+          <div>Allocatable: ${this.formatMemory(allocatable.memory)}</div>
+          ${metrics ? html`
+            <div class="usage-bar">
+              <div 
+                class="usage-fill ${this.getUsageClass(this.selectedNode.memoryUsage)}"
+                style="width: ${this.selectedNode.memoryUsage}%"
+              ></div>
+            </div>
+            <div style="font-size: 12px; margin-top: 4px;">
+              Usage: ${this.selectedNode.memoryUsage}%
+            </div>
+          ` : ''}
+        </div>
+        
+        <div class="metric-card">
+          <div class="metric-label">Pods</div>
+          <div class="metric-value">${capacity.pods || '0'}</div>
+          <div>Allocatable: ${allocatable.pods || '0'}</div>
+        </div>
+        
+        <div class="metric-card">
+          <div class="metric-label">Storage</div>
+          <div class="metric-value">${this.formatMemory(capacity['ephemeral-storage'])}</div>
+          <div>Allocatable: ${this.formatMemory(allocatable['ephemeral-storage'])}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  private renderCondition(condition: any) {
+    return html`
+      <div class="condition-item">
+        <div class="condition-header">
+          <span class="condition-type">${condition.type}</span>
+          <div class="condition-status">
+            <status-badge 
+              status=${condition.status === 'True' ? 'success' : 'warning'}
+              text=${condition.status}
+            ></status-badge>
+          </div>
+        </div>
+        <div class="detail-item">
+          <span class="label">Reason:</span>
+          <span class="value">${condition.reason || 'Unknown'}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Message:</span>
+          <span class="value">${condition.message || 'No message'}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Last Transition:</span>
+          <span class="value">${new Date(condition.lastTransitionTime).toLocaleString()}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  private formatMemory(memory: string): string {
+    if (!memory) return '0';
+    
+    const value = this.parseMemory(memory);
+    const units = ['B', 'Ki', 'Mi', 'Gi', 'Ti'];
+    let unitIndex = 0;
+    let displayValue = value;
+    
+    while (displayValue >= 1024 && unitIndex < units.length - 1) {
+      displayValue /= 1024;
+      unitIndex++;
+    }
+    
+    return `${displayValue.toFixed(1)}${units[unitIndex]}`;
+  }
+
+  private getUsageClass(usage: number): string {
+    if (usage >= 90) return 'danger';
+    if (usage >= 70) return 'warning';
+    return '';
+  }
+
+  private showNotification(message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info') {
+    const container = this.shadowRoot?.querySelector('notification-container') as any;
+    if (container) {
+      container.addNotification({ type, message });
+    }
+  }
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    'kubernetes-nodes': KubernetesNodes;
+  }
+}

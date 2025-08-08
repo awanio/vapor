@@ -1,0 +1,722 @@
+import { LitElement, html, css } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
+import { KubernetesApi } from '../../services/kubernetes-api.js';
+import type {
+  KubernetesNamespace,
+  KubernetesService,
+  KubernetesIngress,
+  KubernetesResourceDetails
+} from '../../services/kubernetes-api.js';
+import '../../components/tabs/tab-group.js';
+import '../../components/tables/resource-table.js';
+import '../../components/ui/search-input.js';
+import '../../components/ui/loading-state.js';
+import '../../components/ui/empty-state.js';
+import '../../components/modals/delete-modal.js';
+import '../../components/drawers/detail-drawer.js';
+import type { Tab } from '../../components/tabs/tab-group.js';
+import type { Column } from '../../components/tables/resource-table.js';
+import type { ActionItem } from '../../components/ui/action-dropdown.js';
+import type { DeleteItem } from '../../components/modals/delete-modal.js';
+
+/**
+ * Kubernetes Networks view component
+ * Manages Services, Ingresses, IngressClasses, and NetworkPolicies
+ */
+@customElement('kubernetes-networks')
+export class KubernetesNetworks extends LitElement {
+  static override styles = css`
+    :host {
+      display: block;
+      height: 100%;
+      background: #1a1d23;
+      color: #e0e0e0;
+    }
+
+    .networks-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      padding: 20px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .title {
+      font-size: 24px;
+      font-weight: 500;
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .create-button {
+      background: #4a7c59;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+
+    .create-button:hover {
+      background: #5a8c69;
+    }
+
+    .content {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .filters {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+      align-items: center;
+    }
+
+    .resource-count {
+      font-size: 14px;
+      color: #999;
+      margin-left: auto;
+    }
+  `;
+
+  // Network resource types
+  @property({ type: String }) activeTab = 'services';
+  @property({ type: String }) selectedNamespace = 'all';
+  @property({ type: String }) searchQuery = '';
+  @property({ type: String }) error: string | null = null;
+  
+  @state() private loading = false;
+  @state() private services: KubernetesService[] = [];
+  @state() private ingresses: KubernetesIngress[] = [];
+  @state() private namespaces: KubernetesNamespace[] = [];
+  
+  // UI state
+  @state() private showDeleteModal = false;
+  @state() private showDetails = false;
+  @state() private selectedItem: KubernetesService | KubernetesIngress | null = null;
+  @state() private loadingDetails = false;
+  @state() private detailsData: KubernetesResourceDetails | null = null;
+  @state() private itemToDelete: DeleteItem | null = null;
+  @state() private isDeleting = false;
+
+  override connectedCallback() {
+    super.connectedCallback();
+    this.fetchNamespaces();
+    this.fetchNetworkResources();
+  }
+
+  override render() {
+    const tabs = [
+      { id: 'services', label: 'Services', count: this.services.length },
+      { id: 'ingresses', label: 'Ingresses', count: this.ingresses.length },
+      { id: 'ingressclasses', label: 'Ingress Classes', count: this.ingressClasses.length },
+      { id: 'networkpolicies', label: 'Network Policies', count: this.networkPolicies.length }
+    ];
+
+    return html`
+      <div class="networks-container">
+        <div class="header">
+          <h1 class="title">Network Resources</h1>
+          <div class="controls">
+            <button class="create-button" @click=${this.handleCreate}>
+              Create Resource
+            </button>
+          </div>
+        </div>
+
+        <div class="content">
+          <div class="filters">
+            <namespace-dropdown
+              .namespaces=${this.namespaces.map(ns => ({ name: ns }))}
+              .selectedNamespace=${this.namespace}
+              @namespace-change=${this.handleNamespaceChange}
+            ></namespace-dropdown>
+
+            <search-input
+              .value=${this.searchQuery}
+              placeholder="Search network resources..."
+              @search-change=${this.handleSearch}
+            ></search-input>
+
+            <span class="resource-count">
+              ${this.getFilteredData().length} resources
+            </span>
+          </div>
+
+          <tab-group
+            .tabs=${tabs}
+            .activeTab=${this.activeTab}
+            @tab-change=${this.handleTabChange}
+          ></tab-group>
+
+          ${this.loading ? html`
+            <loading-state message="Loading network resources..."></loading-state>
+          ` : this.renderContent()}
+        </div>
+
+        <delete-modal
+          .show=${this.showDeleteModal}
+          .item=${this.selectedResource}
+          @confirm-delete=${this.handleDelete}
+          @cancel-delete=${this.handleCancelDelete}
+        ></delete-modal>
+
+        <detail-drawer
+          .show=${this.showDetailDrawer}
+          .title=${this.getDetailTitle()}
+          @close=${() => this.showDetailDrawer = false}
+        >
+          ${this.renderResourceDetail()}
+        </detail-drawer>
+
+        <create-resource-drawer
+          .show=${this.showCreateDrawer}
+          .title="Create Network Resource"
+          @close=${() => this.showCreateDrawer = false}
+          @create=${this.handleCreateResource}
+        ></create-resource-drawer>
+
+        <notification-container></notification-container>
+      </div>
+    `;
+  }
+
+  private renderContent() {
+    const data = this.getFilteredData();
+
+    if (data.length === 0) {
+      return html`
+        <empty-state
+          message="No ${this.activeTab} found"
+          icon="network"
+        ></empty-state>
+      `;
+    }
+
+    return html`
+      <resource-table
+        .columns=${this.getColumns()}
+        .data=${data}
+        .getActions=${(item: any) => this.getResourceActions(item)}
+        @cell-click=${this.handleCellClick}
+        @action=${this.handleAction}
+      ></resource-table>
+    `;
+  }
+
+  private getColumns() {
+    switch (this.activeTab) {
+      case 'services':
+        return [
+          { key: 'name', label: 'Name', type: 'link' },
+          { key: 'namespace', label: 'Namespace' },
+          { key: 'type', label: 'Type' },
+          { key: 'clusterIP', label: 'Cluster IP' },
+          { key: 'ports', label: 'Ports', type: 'custom' },
+          { key: 'age', label: 'Age' }
+        ];
+      
+      case 'ingresses':
+        return [
+          { key: 'name', label: 'Name', type: 'link' },
+          { key: 'namespace', label: 'Namespace' },
+          { key: 'class', label: 'Class' },
+          { key: 'hosts', label: 'Hosts', type: 'custom' },
+          { key: 'address', label: 'Address' },
+          { key: 'age', label: 'Age' }
+        ];
+      
+      case 'ingressclasses':
+        return [
+          { key: 'name', label: 'Name', type: 'link' },
+          { key: 'controller', label: 'Controller' },
+          { key: 'default', label: 'Default', type: 'custom' },
+          { key: 'age', label: 'Age' }
+        ];
+      
+      case 'networkpolicies':
+        return [
+          { key: 'name', label: 'Name', type: 'link' },
+          { key: 'namespace', label: 'Namespace' },
+          { key: 'podSelector', label: 'Pod Selector', type: 'custom' },
+          { key: 'policyTypes', label: 'Policy Types', type: 'custom' },
+          { key: 'age', label: 'Age' }
+        ];
+      
+      default:
+        return [];
+    }
+  }
+
+  private getFilteredData() {
+    let data: any[] = [];
+    
+    switch (this.activeTab) {
+      case 'services':
+        data = this.services;
+        break;
+      case 'ingresses':
+        data = this.ingresses;
+        break;
+      case 'ingressclasses':
+        data = this.ingressClasses;
+        break;
+      case 'networkpolicies':
+        data = this.networkPolicies;
+        break;
+    }
+
+    // Filter by namespace
+    if (this.namespace !== 'All Namespaces' && this.activeTab !== 'ingressclasses') {
+      data = data.filter(item => item.namespace === this.namespace);
+    }
+
+    // Filter by search query
+    if (this.searchQuery) {
+      const query = this.searchQuery.toLowerCase();
+      data = data.filter(item => 
+        item.name.toLowerCase().includes(query) ||
+        (item.namespace && item.namespace.toLowerCase().includes(query))
+      );
+    }
+
+    return data;
+  }
+
+  private getResourceActions(_item: any) {
+    const actions = [
+      { label: 'View Details', action: 'view' },
+      { label: 'Edit', action: 'edit' }
+    ];
+
+    // Only add endpoints for services
+    if (this.activeTab === 'services') {
+      actions.push({ label: 'View Endpoints', action: 'endpoints' });
+    }
+
+    actions.push({ label: 'Delete', action: 'delete', danger: true } as any);
+    
+    return actions;
+  }
+
+  private async fetchNamespaces() {
+    try {
+      const response = await this.api.get('/kubernetes/namespaces');
+      this.namespaces = ['All Namespaces', ...response.items.map((ns: any) => ns.metadata.name)];
+    } catch (error) {
+      console.error('Failed to fetch namespaces:', error);
+    }
+  }
+
+  private async fetchNetworkResources() {
+    this.loading = true;
+    
+    try {
+      const [services, ingresses, ingressClasses, networkPolicies] = await Promise.all([
+        this.api.get('/kubernetes/services'),
+        this.api.get('/kubernetes/ingresses'),
+        this.api.get('/kubernetes/ingressclasses'),
+        this.api.get('/kubernetes/networkpolicies')
+      ]);
+
+      this.services = this.processServices(services.items || []);
+      this.ingresses = this.processIngresses(ingresses.items || []);
+      this.ingressClasses = this.processIngressClasses(ingressClasses.items || []);
+      this.networkPolicies = this.processNetworkPolicies(networkPolicies.items || []);
+    } catch (error) {
+      console.error('Failed to fetch network resources:', error);
+      this.showNotification('Failed to load network resources', 'error');
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  private processServices(services: any[]): any[] {
+    return services.map(service => ({
+      name: service.metadata.name,
+      namespace: service.metadata.namespace,
+      type: service.spec.type,
+      clusterIP: service.spec.clusterIP || 'None',
+      ports: service.spec.ports?.map((p: any) => `${p.port}:${p.targetPort}/${p.protocol}`).join(', ') || '',
+      age: this.getAge(service.metadata.creationTimestamp),
+      raw: service
+    }));
+  }
+
+  private processIngresses(ingresses: any[]): any[] {
+    return ingresses.map(ingress => ({
+      name: ingress.metadata.name,
+      namespace: ingress.metadata.namespace,
+      class: ingress.spec.ingressClassName || 'default',
+      hosts: ingress.spec.rules?.map((r: any) => r.host).filter(Boolean).join(', ') || '*',
+      address: ingress.status.loadBalancer?.ingress?.[0]?.ip || 
+               ingress.status.loadBalancer?.ingress?.[0]?.hostname || 
+               'Pending',
+      age: this.getAge(ingress.metadata.creationTimestamp),
+      raw: ingress
+    }));
+  }
+
+  private processIngressClasses(classes: any[]): any[] {
+    return classes.map(cls => ({
+      name: cls.metadata.name,
+      controller: cls.spec.controller,
+      default: cls.metadata.annotations?.['ingressclass.kubernetes.io/is-default-class'] === 'true',
+      age: this.getAge(cls.metadata.creationTimestamp),
+      raw: cls
+    }));
+  }
+
+  private processNetworkPolicies(policies: any[]): any[] {
+    return policies.map(policy => ({
+      name: policy.metadata.name,
+      namespace: policy.metadata.namespace,
+      podSelector: Object.entries(policy.spec.podSelector.matchLabels || {})
+        .map(([k, v]) => `${k}=${v}`)
+        .join(', ') || 'All pods',
+      policyTypes: policy.spec.policyTypes?.join(', ') || 'Ingress',
+      age: this.getAge(policy.metadata.creationTimestamp),
+      raw: policy
+    }));
+  }
+
+  private getAge(timestamp: string): string {
+    const created = new Date(timestamp);
+    const now = new Date();
+    const diff = now.getTime() - created.getTime();
+    
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    
+    if (days > 0) return `${days}d`;
+    if (hours > 0) return `${hours}h`;
+    return '<1h';
+  }
+
+  private handleTabChange(e: CustomEvent) {
+    this.activeTab = e.detail.tabId;
+  }
+
+  private handleNamespaceChange(e: CustomEvent) {
+    this.namespace = e.detail.namespace;
+  }
+
+  private handleSearch(e: CustomEvent) {
+    this.searchQuery = e.detail.value;
+  }
+
+  private handleCellClick(e: CustomEvent) {
+    if (e.detail.column.type === 'link') {
+      this.showResourceDetail(e.detail.item);
+    }
+  }
+
+  private handleAction(e: CustomEvent) {
+    const { action, item } = e.detail;
+    
+    switch (action) {
+      case 'view':
+        this.showResourceDetail(item);
+        break;
+      case 'edit':
+        this.editResource(item);
+        break;
+      case 'delete':
+        this.confirmDelete(item);
+        break;
+      case 'endpoints':
+        this.viewEndpoints(item);
+        break;
+    }
+  }
+
+  private showResourceDetail(item: any) {
+    this.selectedResource = item;
+    this.detailType = this.activeTab;
+    this.showDetailDrawer = true;
+  }
+
+  private editResource(_item: any) {
+    // TODO: Implement edit functionality
+    this.showNotification('Edit functionality coming soon', 'info');
+  }
+
+  private confirmDelete(item: any) {
+    this.selectedResource = item;
+    this.showDeleteModal = true;
+  }
+
+  private viewEndpoints(_item: any) {
+    // TODO: Implement endpoints view
+    this.showNotification('Endpoints view coming soon', 'info');
+  }
+
+  private handleCreate() {
+    this.showCreateDrawer = true;
+  }
+
+  private async handleCreateResource(e: CustomEvent) {
+    const { resource } = e.detail;
+    
+    try {
+      // TODO: Implement actual resource creation
+      await this.api.post(`/kubernetes/${this.activeTab}`, resource);
+      this.showNotification('Resource created successfully', 'success');
+      this.showCreateDrawer = false;
+      this.fetchNetworkResources();
+    } catch (error) {
+      this.showNotification('Failed to create resource', 'error');
+    }
+  }
+
+  private async handleDelete() {
+    if (!this.selectedResource) return;
+    
+    try {
+      const namespace = this.selectedResource.namespace || '';
+      const name = this.selectedResource.name;
+      
+      await this.api.delete(`/kubernetes/${this.activeTab}/${namespace}/${name}`);
+      this.showNotification(`${name} deleted successfully`, 'success');
+      this.showDeleteModal = false;
+      this.fetchNetworkResources();
+    } catch (error) {
+      this.showNotification('Failed to delete resource', 'error');
+    }
+  }
+
+  private handleCancelDelete() {
+    this.showDeleteModal = false;
+    this.selectedResource = null;
+  }
+
+  private getDetailTitle(): string {
+    if (!this.selectedResource) return '';
+    
+    const typeMap: Record<string, string> = {
+      services: 'Service',
+      ingresses: 'Ingress',
+      ingressclasses: 'IngressClass',
+      networkpolicies: 'NetworkPolicy'
+    };
+    
+    return `${typeMap[this.detailType] || ''} Details: ${this.selectedResource.name}`;
+  }
+
+  private renderResourceDetail() {
+    if (!this.selectedResource) return html``;
+    
+    switch (this.detailType) {
+      case 'services':
+        return this.renderServiceDetail();
+      case 'ingresses':
+        return this.renderIngressDetail();
+      case 'ingressclasses':
+        return this.renderIngressClassDetail();
+      case 'networkpolicies':
+        return this.renderNetworkPolicyDetail();
+      default:
+        return html``;
+    }
+  }
+
+  private renderServiceDetail() {
+    const service = this.selectedResource.raw;
+    
+    return html`
+      <div class="detail-content">
+        <h3>Basic Information</h3>
+        <div class="detail-item">
+          <span class="label">Name:</span>
+          <span class="value">${service.metadata.name}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Namespace:</span>
+          <span class="value">${service.metadata.namespace}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Type:</span>
+          <span class="value">${service.spec.type}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Cluster IP:</span>
+          <span class="value">${service.spec.clusterIP || 'None'}</span>
+        </div>
+        
+        <h3>Ports</h3>
+        ${service.spec.ports?.map((port: any) => html`
+          <div class="detail-item">
+            <span class="label">${port.name || 'Port'}:</span>
+            <span class="value">${port.port} → ${port.targetPort} (${port.protocol})</span>
+          </div>
+        `) || 'No ports defined'}
+        
+        <h3>Selector</h3>
+        ${Object.entries(service.spec.selector || {}).map(([key, value]) => html`
+          <div class="detail-item">
+            <span class="label">${key}:</span>
+            <span class="value">${value}</span>
+          </div>
+        `)}
+      </div>
+    `;
+  }
+
+  private renderIngressDetail() {
+    const ingress = this.selectedResource.raw;
+    
+    return html`
+      <div class="detail-content">
+        <h3>Basic Information</h3>
+        <div class="detail-item">
+          <span class="label">Name:</span>
+          <span class="value">${ingress.metadata.name}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Namespace:</span>
+          <span class="value">${ingress.metadata.namespace}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Class:</span>
+          <span class="value">${ingress.spec.ingressClassName || 'default'}</span>
+        </div>
+        
+        <h3>Rules</h3>
+        ${ingress.spec.rules?.map((rule: any) => html`
+          <div class="rule">
+            <div class="detail-item">
+              <span class="label">Host:</span>
+              <span class="value">${rule.host || '*'}</span>
+            </div>
+            ${rule.http?.paths?.map((path: any) => html`
+              <div class="detail-item" style="margin-left: 20px;">
+                <span class="label">Path:</span>
+                <span class="value">${path.path} → ${path.backend.service.name}:${path.backend.service.port.number}</span>
+              </div>
+            `)}
+          </div>
+        `) || 'No rules defined'}
+      </div>
+    `;
+  }
+
+  private renderIngressClassDetail() {
+    const ingressClass = this.selectedResource.raw;
+    
+    return html`
+      <div class="detail-content">
+        <h3>Basic Information</h3>
+        <div class="detail-item">
+          <span class="label">Name:</span>
+          <span class="value">${ingressClass.metadata.name}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Controller:</span>
+          <span class="value">${ingressClass.spec.controller}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Is Default:</span>
+          <span class="value">${this.selectedResource.default ? 'Yes' : 'No'}</span>
+        </div>
+        
+        <h3>Parameters</h3>
+        ${ingressClass.spec.parameters ? html`
+          <div class="detail-item">
+            <span class="label">API Group:</span>
+            <span class="value">${ingressClass.spec.parameters.apiGroup}</span>
+          </div>
+          <div class="detail-item">
+            <span class="label">Kind:</span>
+            <span class="value">${ingressClass.spec.parameters.kind}</span>
+          </div>
+          <div class="detail-item">
+            <span class="label">Name:</span>
+            <span class="value">${ingressClass.spec.parameters.name}</span>
+          </div>
+        ` : 'No parameters defined'}
+      </div>
+    `;
+  }
+
+  private renderNetworkPolicyDetail() {
+    const policy = this.selectedResource.raw;
+    
+    return html`
+      <div class="detail-content">
+        <h3>Basic Information</h3>
+        <div class="detail-item">
+          <span class="label">Name:</span>
+          <span class="value">${policy.metadata.name}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Namespace:</span>
+          <span class="value">${policy.metadata.namespace}</span>
+        </div>
+        
+        <h3>Pod Selector</h3>
+        ${Object.entries(policy.spec.podSelector.matchLabels || {}).map(([key, value]) => html`
+          <div class="detail-item">
+            <span class="label">${key}:</span>
+            <span class="value">${value}</span>
+          </div>
+        `)}
+        
+        <h3>Policy Types</h3>
+        ${policy.spec.policyTypes?.map((type: string) => html`
+          <div class="detail-item">
+            <span class="value">${type}</span>
+          </div>
+        `) || 'Ingress'}
+        
+        ${policy.spec.ingress ? html`
+          <h3>Ingress Rules</h3>
+          ${policy.spec.ingress.map((rule: any, index: number) => html`
+            <div class="rule">
+              <h4>Rule ${index + 1}</h4>
+              ${rule.from ? html`
+                <div class="detail-item">
+                  <span class="label">From:</span>
+                  <span class="value">${JSON.stringify(rule.from)}</span>
+                </div>
+              ` : ''}
+              ${rule.ports ? html`
+                <div class="detail-item">
+                  <span class="label">Ports:</span>
+                  <span class="value">${JSON.stringify(rule.ports)}</span>
+                </div>
+              ` : ''}
+            </div>
+          `)}
+        ` : ''}
+      </div>
+    `;
+  }
+
+  private showNotification(message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info') {
+    const container = this.shadowRoot?.querySelector('notification-container') as any;
+    if (container) {
+      container.addNotification({ type, message });
+    }
+  }
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    'kubernetes-networks': KubernetesNetworks;
+  }
+}

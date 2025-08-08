@@ -117,8 +117,8 @@ export class Api {
     return this.request<T>(endpoint, { method: 'PUT', body });
   }
 
-  static delete<T = any>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: 'DELETE' });
+  static delete<T = any>(endpoint: string, params?: Record<string, any>): Promise<T> {
+    return this.request<T>(endpoint, { method: 'DELETE', params });
   }
 
   static patch<T = any>(endpoint: string, body?: any): Promise<T> {

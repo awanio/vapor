@@ -290,10 +290,10 @@ export class SidebarTree extends I18nLitElement {
           route: 'kubernetes/networks'
         },
         {
-          id: 'kubernetes-storages',
+          id: 'kubernetes-storage',
           label: 'kubernetes.storages',
           icon: 'k8s-storage',
-          route: 'kubernetes/storages'
+          route: 'kubernetes/storage'
         },
         {
           id: 'kubernetes-configurations',
@@ -314,10 +314,10 @@ export class SidebarTree extends I18nLitElement {
           route: 'kubernetes/crds'
         },
         {
-          id: 'kubernetes-helms',
+          id: 'kubernetes-helm',
           label: 'kubernetes.helms',
           icon: 'helm',
-          route: 'kubernetes/helms'
+          route: 'kubernetes/helm'
         }
       ]
     },
