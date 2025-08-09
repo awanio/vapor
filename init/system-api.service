@@ -1,13 +1,13 @@
 [Unit]
 Description=System Management API Service
-Documentation=https://github.com/vapor/system-api
+Documentation=https://github.com/awanio/vapor
 After=network.target
 
 [Service]
 Type=simple
 User=root
 Group=root
-ExecStart=/usr/local/bin/system-api
+ExecStart=/usr/local/bin/vapor
 Restart=on-failure
 RestartSec=5
 
