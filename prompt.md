@@ -580,3 +580,8 @@ Component and module directory documentation.
 REST/WebSocket integration details.
 
 OpenAPI 3.1.0 Spec available from backend.
+
+Perfect! I've fixed the dropdown overflow issue in the table. Here's what I changed:
+
+The Problem
+The dropdown menu was being clipped by the table container because the table wrapper had overflow: auto which creates a new stacking context and clips any absolutely positioned children.

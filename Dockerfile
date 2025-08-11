@@ -23,8 +23,8 @@ RUN mkdir -p internal/web/dist && \
 
 # Build the binary specifically for Linux x86_64 with version injection
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags "-X github.com/vapor/system-api/internal/auth.Version=$(git rev-parse --short HEAD 2>/dev/null || echo 'no-git')" \
-    -a -installsuffix cgo -o system-api ./cmd/system-api
+    -ldflags "-X github.com/awanio/vapor/internal/auth.Version=$(git rev-parse --short HEAD 2>/dev/null || echo 'no-git')" \
+    -a -installsuffix cgo -o vapor ./cmd/vapor
 
 # Final stage
 FROM --platform=linux/amd64 alpine:latest
@@ -42,7 +42,7 @@ RUN apk --no-cache add ca-certificates \
 WORKDIR /root/
 
 # Copy the binary from builder
-COPY --from=builder /app/system-api .
+COPY --from=builder /app/vapor .
 COPY --from=builder /app/openapi.yaml .
 
 # Create docs directory
@@ -60,4 +60,4 @@ ENV JWT_SECRET=change-this-in-production
 ENV SERVER_ADDR=:8080
 
 # Run the binary
-CMD ["./system-api"]
+CMD ["./vapor"]
