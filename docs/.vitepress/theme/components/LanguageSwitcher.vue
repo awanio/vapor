@@ -55,62 +55,20 @@ const getLocalizedPath = (targetLang) => {
   const currentPath = route.path
   const currentLang = currentLanguage.value
   
-  // If we're on the home page
+  // If we're on the home page or root
   if (currentPath === '/' || currentPath === '/index') {
-    return targetLang.code === 'id' ? '/id/01-pendahuluan' : '/en/01-introduction'
+    return targetLang.code === 'id' ? '/id/01-introduction' : '/en/01-introduction'
   }
   
-  // For language switching between en and id, we need to handle the file name differences
-  if (currentLang.code === 'en' && targetLang.code === 'id') {
-    // Map English file names to Indonesian
-    const enToIdMap = {
-      '01-introduction': '01-pendahuluan',
-      '02-installation': '02-instalasi', 
-      '03-first-login': '03-login-pertama',
-      '04-user-interface': '04-antarmuka-pengguna',
-      '05-dashboard': '05-dashboard',
-      '06-network-management': '06-manajemen-jaringan',
-      '07-storage-management': '07-manajemen-penyimpanan',
-      '08-container-management': '08-manajemen-kontainer',
-      '09-kubernetes-management': '09-manajemen-kubernetes',
-      '10-user-management': '10-manajemen-pengguna',
-      '11-system-logs': '11-log-sistem',
-      '12-terminal-access': '12-akses-terminal',
-      '13-api-reference': '13-referensi-api',
-      '14-security': '14-keamanan',
-      '15-troubleshooting': '15-pemecahan-masalah'
-    }
+  // Since file names are now consistent between languages,
+  // we can simply replace the language prefix
+  if (currentLang.prefix && currentPath.startsWith(currentLang.prefix)) {
     const pagePath = currentPath.substring(currentLang.prefix.length)
-    const mappedPath = enToIdMap[pagePath] || pagePath
-    return targetLang.prefix + mappedPath
+    return targetLang.prefix + pagePath
   }
   
-  if (currentLang.code === 'id' && targetLang.code === 'en') {
-    // Map Indonesian file names to English
-    const idToEnMap = {
-      '01-pendahuluan': '01-introduction',
-      '02-instalasi': '02-installation',
-      '03-login-pertama': '03-first-login',
-      '04-antarmuka-pengguna': '04-user-interface',
-      '05-dashboard': '05-dashboard',
-      '06-manajemen-jaringan': '06-network-management',
-      '07-manajemen-penyimpanan': '07-storage-management',
-      '08-manajemen-kontainer': '08-container-management',
-      '09-manajemen-kubernetes': '09-kubernetes-management',
-      '10-manajemen-pengguna': '10-user-management',
-      '11-log-sistem': '11-system-logs',
-      '12-akses-terminal': '12-terminal-access',
-      '13-referensi-api': '13-api-reference',
-      '14-keamanan': '14-security',
-      '15-pemecahan-masalah': '15-troubleshooting'
-    }
-    const pagePath = currentPath.substring(currentLang.prefix.length)
-    const mappedPath = idToEnMap[pagePath] || pagePath
-    return targetLang.prefix + mappedPath
-  }
-  
-  // Default fallback
-  return targetLang.code === 'id' ? '/id/01-pendahuluan' : '/en/01-introduction'
+  // Default fallback to introduction page
+  return targetLang.code === 'id' ? '/id/01-introduction' : '/en/01-introduction'
 }
 
 const toggleDropdown = () => {
