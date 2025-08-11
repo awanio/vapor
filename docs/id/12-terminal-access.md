@@ -1,9 +1,5 @@
 # Akses Terminal
 
-<p align="center">
-  <a href="../en/12-terminal-access.md">English</a> | <a href="../id/">Bahasa Indonesia</a>
-</p>
-
 ## Gambaran Umum
 
 Bagian ini mencakup akses terminal di Vapor.

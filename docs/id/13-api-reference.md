@@ -1,12 +1,8 @@
 # Referensi API
 
-<p align="center">
-  <a href="../en/13-api-reference.md">English</a> | <a href="../id/">Bahasa Indonesia</a>
-</p>
-
 ## Gambaran Umum
 
-Bagian ini mencakup referensi api di Vapor.
+Bagian ini mencakup referensi API di Vapor.
 
 ## Fitur Utama
 

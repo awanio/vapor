@@ -1,9 +1,5 @@
 # Manajemen Pengguna
 
-<p align="center">
-  <a href="../en/10-user-management.md">English</a> | <a href="../id/">Bahasa Indonesia</a>
-</p>
-
 ## Gambaran Umum
 
 Bagian ini mencakup manajemen pengguna di Vapor.

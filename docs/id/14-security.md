@@ -1,9 +1,5 @@
 # Praktik Terbaik Keamanan
 
-<p align="center">
-  <a href="../en/14-security.md">English</a> | <a href="../id/">Bahasa Indonesia</a>
-</p>
-
 ## Gambaran Umum
 
 Bagian ini mencakup praktik terbaik keamanan di Vapor.

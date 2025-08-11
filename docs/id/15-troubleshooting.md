@@ -1,9 +1,5 @@
 # Pemecahan Masalah
 
-<p align="center">
-  <a href="../en/15-troubleshooting.md">English</a> | <a href="../id/">Bahasa Indonesia</a>
-</p>
-
 ## Gambaran Umum
 
 Bagian ini mencakup pemecahan masalah di Vapor.

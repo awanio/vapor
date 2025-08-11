@@ -1,9 +1,5 @@
 # Manajemen Jaringan
 
-<p align="center">
-  <a href="../en/06-network-management.md">English</a> | <a href="../id/">Bahasa Indonesia</a>
-</p>
-
 ## Gambaran Umum
 
 Bagian ini mencakup manajemen jaringan di Vapor.

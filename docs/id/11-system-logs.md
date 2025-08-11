@@ -1,9 +1,5 @@
 # Log Sistem
 
-<p align="center">
-  <a href="../en/11-system-logs.md">English</a> | <a href="../id/">Bahasa Indonesia</a>
-</p>
-
 ## Gambaran Umum
 
 Bagian ini mencakup log sistem di Vapor.
