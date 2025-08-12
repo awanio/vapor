@@ -11,6 +11,12 @@ Vapor is a comprehensive Linux system management platform inspired by [Cockpit](
   - iSCSI support: discover targets, manage sessions, login/logout
   - Multipath support: list devices and paths
   - BTRFS support: manage subvolumes and snapshots
+- **Ansible Integration**: 
+  - Execute playbooks with full parameter support
+  - Run ad-hoc commands across infrastructure
+  - Generate dynamic inventories from system state
+  - Real-time output streaming via WebSocket
+  - Playbook validation and management
 - **User Management**: Create, update, delete system users
 - **Container Management**: List containers and images
   - Requires Docker or CRI-compatible runtime to be installed and running
@@ -269,6 +275,16 @@ curl -H "Authorization: Bearer <token>" http://localhost:8080/api/v1/system/summ
 
 #### Logs
 - `GET /api/v1/logs` - Query system logs with filtering
+
+#### Ansible Automation
+- `POST /api/v1/ansible/playbooks/run` - Execute Ansible playbook
+- `POST /api/v1/ansible/adhoc` - Run ad-hoc command
+- `GET /api/v1/ansible/executions` - List all executions
+- `GET /api/v1/ansible/executions/{id}` - Get execution details
+- `WS /api/v1/ansible/executions/{id}/stream` - Stream execution output
+- `GET /api/v1/ansible/inventory/dynamic` - Generate dynamic inventory
+- `POST /api/v1/ansible/playbooks` - Save playbook
+- `POST /api/v1/ansible/playbooks/validate` - Validate playbook syntax
 
 ## Web UI
 

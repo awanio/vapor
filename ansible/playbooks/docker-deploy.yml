@@ -1,0 +1,69 @@
+---
+# Docker Application Deployment Playbook
+# Deploys containerized applications using Docker
+
+- name: Deploy Docker Application
+  hosts: docker
+  become: yes
+  gather_facts: yes
+  
+  vars:
+    app_name: "{{ app_name | default('myapp') }}"
+    app_image: "{{ app_image | default('nginx:latest') }}"
+    app_port: "{{ app_port | default(8080) }}"
+    container_port: "{{ container_port | default(80) }}"
+    replicas: "{{ replicas | default(1) }}"
+    
+  tasks:
+    - name: Ensure Docker is installed
+      package:
+        name: docker.io
+        state: present
+      when: ansible_os_family == "Debian"
+      
+    - name: Ensure Docker is running
+      service:
+        name: docker
+        state: started
+        enabled: yes
+        
+    - name: Pull Docker image
+      docker_image:
+        name: "{{ app_image }}"
+        source: pull
+        
+    - name: Create application network
+      docker_network:
+        name: "{{ app_name }}_network"
+        
+    - name: Deploy application containers
+      docker_container:
+        name: "{{ app_name }}_{{ item }}"
+        image: "{{ app_image }}"
+        state: started
+        restart_policy: unless-stopped
+        networks:
+          - name: "{{ app_name }}_network"
+        ports:
+          - "{{ app_port + item - 1 }}:{{ container_port }}"
+        env:
+          CONTAINER_ID: "{{ item }}"
+          APP_NAME: "{{ app_name }}"
+        labels:
+          app: "{{ app_name }}"
+          version: "{{ app_version | default('latest') }}"
+          managed_by: "ansible"
+          ansible_group: "{{ app_name }}"
+      with_sequence: start=1 end={{ replicas }}
+      
+    - name: Wait for containers to be healthy
+      wait_for:
+        port: "{{ app_port + item - 1 }}"
+        host: "{{ ansible_default_ipv4.address }}"
+        delay: 5
+        timeout: 60
+      with_sequence: start=1 end={{ replicas }}
+      
+    - name: Display deployment status
+      debug:
+        msg: "Application {{ app_name }} deployed with {{ replicas }} replicas on ports {{ app_port }}-{{ app_port + replicas - 1 }}"

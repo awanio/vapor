@@ -5388,6 +5388,723 @@ paths:
         '500':
           $ref: '#/components/responses/HelmError'
 
+  # Ansible Endpoints
+  /ansible/playbooks:
+    get:
+      summary: List all playbooks
+      description: Returns a list of all available Ansible playbooks in the system
+      tags:
+        - Ansible
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Playbooks listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlaybooksListResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          description: Failed to list playbooks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /ansible/playbooks/{name}:
+    get:
+      summary: Get playbook details
+      description: Returns detailed information about a specific playbook including its content
+      tags:
+        - Ansible
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Name of the playbook
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Playbook details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlaybookDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Playbook not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete playbook
+      description: Deletes a playbook from the system
+      tags:
+        - Ansible
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Name of the playbook to delete
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Playbook deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Playbook not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /ansible/playbooks/upload:
+    post:
+      summary: Upload playbook
+      description: Uploads a new playbook to the server
+      tags:
+        - Ansible
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaybookUploadRequest'
+      responses:
+        '201':
+          description: Playbook uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Invalid request or playbook validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '409':
+          description: Playbook already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /ansible/playbooks/validate:
+    post:
+      summary: Validate playbook
+      description: Validates playbook syntax using ansible-playbook --syntax-check
+      tags:
+        - Ansible
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  description: Name of the playbook to validate
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlaybookValidationResponse'
+        '400':
+          description: Playbook syntax is invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlaybookValidationResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Playbook not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /ansible/playbooks/run:
+    post:
+      summary: Run playbook
+      description: Executes an Ansible playbook with specified parameters
+      tags:
+        - Ansible
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaybookRunRequest'
+      responses:
+        '202':
+          description: Playbook execution started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionStartResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Playbook not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /ansible/playbooks/templates:
+    get:
+      summary: Get playbook templates
+      description: Returns a list of available playbook templates
+      tags:
+        - Ansible
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Templates retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplatesListResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /ansible/playbooks/from-template:
+    post:
+      summary: Create playbook from template
+      description: Creates a new playbook from a template with variable substitution
+      tags:
+        - Ansible
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFromTemplateRequest'
+      responses:
+        '201':
+          description: Playbook created from template successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Invalid request or template not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /ansible/playbooks/sync-git:
+    post:
+      summary: Sync playbooks from Git
+      description: Syncs playbooks from a Git repository
+      tags:
+        - Ansible
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GitSyncRequest'
+      responses:
+        '200':
+          description: Playbooks synced successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Invalid repository URL or authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /ansible/playbooks/from-galaxy:
+    post:
+      summary: Install from Ansible Galaxy
+      description: Installs roles or collections from Ansible Galaxy
+      tags:
+        - Ansible
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GalaxyInstallRequest'
+      responses:
+        '200':
+          description: Roles/collections installed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Invalid request or installation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /ansible/playbooks/from-url:
+    post:
+      summary: Download playbook from URL
+      description: Downloads a playbook from a URL
+      tags:
+        - Ansible
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - url
+                - name
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  description: URL of the playbook to download
+                name:
+                  type: string
+                  description: Name to save the playbook as
+      responses:
+        '200':
+          description: Playbook downloaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Invalid URL or download failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /ansible/adhoc:
+    post:
+      summary: Run ad-hoc command
+      description: Executes an ad-hoc Ansible command
+      tags:
+        - Ansible
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdHocRequest'
+      responses:
+        '202':
+          description: Ad-hoc command execution started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionStartResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /ansible/executions:
+    get:
+      summary: List executions
+      description: Returns a list of all Ansible execution results
+      tags:
+        - Ansible
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Filter by execution status
+          schema:
+            type: string
+            enum: [running, success, failed]
+        - name: type
+          in: query
+          required: false
+          description: Filter by execution type
+          schema:
+            type: string
+            enum: [playbook, adhoc]
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of results to return
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: Executions listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionsListResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /ansible/executions/{id}:
+    get:
+      summary: Get execution details
+      description: Returns detailed information about a specific execution
+      tags:
+        - Ansible
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Execution ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Execution details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Execution not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Cancel execution
+      description: Cancels a running execution (not yet implemented)
+      tags:
+        - Ansible
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Execution ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Execution cancelled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Execution not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Cancellation not yet implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /ansible/executions/{id}/stream:
+    get:
+      summary: Stream execution output
+      description: |
+        Establishes a WebSocket connection to stream real-time execution output.
+        
+        **WebSocket URL**: `ws://localhost:8080/api/v1/ansible/executions/{id}/stream`
+        
+        **Authentication**: Send JWT token as query parameter or in first message.
+        
+        **Message Format**:
+        ```json
+        {
+          "type": "output",
+          "content": "TASK [Update packages] *****",
+          "time": 1705315800
+        }
+        ```
+        
+        **Completion Message**:
+        ```json
+        {
+          "type": "complete",
+          "result": {
+            "id": "exec-123456",
+            "status": "success",
+            "exit_code": 0
+          }
+        }
+        ```
+      tags:
+        - Ansible
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Execution ID
+          schema:
+            type: string
+      responses:
+        '101':
+          description: Switching Protocols - WebSocket connection established
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Execution not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /ansible/inventory/dynamic:
+    get:
+      summary: Generate dynamic inventory
+      description: Generates a dynamic inventory from current system state
+      tags:
+        - Ansible
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dynamic inventory generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DynamicInventoryResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /ansible/inventory:
+    post:
+      summary: Save inventory
+      description: Saves an inventory configuration
+      tags:
+        - Ansible
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveInventoryRequest'
+      responses:
+        '200':
+          description: Inventory saved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Invalid inventory format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /ansible/inventory/{name}:
+    get:
+      summary: Get inventory
+      description: Retrieves a saved inventory (not yet implemented)
+      tags:
+        - Ansible
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Inventory name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Inventory retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DynamicInventoryResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Inventory not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Not yet implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /ansible/schedules:
+    get:
+      summary: List scheduled tasks
+      description: Returns all scheduled Ansible tasks (not yet implemented)
+      tags:
+        - Ansible
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Schedules listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchedulesListResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '501':
+          description: Scheduling not yet implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Create scheduled task
+      description: Creates a scheduled playbook execution (not yet implemented)
+      tags:
+        - Ansible
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateScheduleRequest'
+      responses:
+        '201':
+          description: Schedule created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Invalid schedule format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '501':
+          description: Scheduling not yet implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /ansible/schedules/{id}:
+    delete:
+      summary: Delete scheduled task
+      description: Deletes a scheduled task (not yet implemented)
+      tags:
+        - Ansible
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Schedule ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Schedule deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Schedule not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Scheduling not yet implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -9602,3 +10319,769 @@ components:
             ports:
             - protocol: TCP
               port: 5432
+
+    # Ansible Schema Definitions
+    PlaybooksListResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                playbooks:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/PlaybookInfo'
+                count:
+                  type: integer
+
+    PlaybookInfo:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Playbook filename
+          example: "site.yml"
+        path:
+          type: string
+          description: Full path to the playbook
+          example: "/opt/ansible/playbooks/site.yml"
+        size:
+          type: integer
+          description: File size in bytes
+          example: 2048
+        modified:
+          type: string
+          format: date-time
+          description: Last modification time
+          example: "2025-01-15T10:30:00Z"
+        is_directory:
+          type: boolean
+          description: Whether this is a directory
+          example: false
+
+    PlaybookDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                playbook:
+                  $ref: '#/components/schemas/PlaybookDetail'
+
+    PlaybookDetail:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Playbook filename
+          example: "site.yml"
+        path:
+          type: string
+          description: Full path to the playbook
+          example: "/opt/ansible/playbooks/site.yml"
+        content:
+          type: string
+          description: Playbook content (YAML)
+          example: |
+            ---
+            - name: Configure web servers
+              hosts: webservers
+              become: yes
+              tasks:
+                - name: Install nginx
+                  package:
+                    name: nginx
+                    state: present
+        size:
+          type: integer
+          description: File size in bytes
+          example: 2048
+        modified:
+          type: string
+          format: date-time
+          description: Last modification time
+          example: "2025-01-15T10:30:00Z"
+
+    PlaybookUploadRequest:
+      type: object
+      required:
+        - name
+        - content
+      properties:
+        name:
+          type: string
+          description: Name of the playbook file
+          example: "deploy.yml"
+        content:
+          type: string
+          description: Base64 encoded playbook content
+          example: "LS0tCi0gbmFtZTogRGVwbG95IGFwcGxpY2F0aW9uCiAgaG9zdHM6IGFsbAogIHRhc2tzOgogICAgLSBuYW1lOiBVcGRhdGUgYXBwCiAgICAgIGNvbW1hbmQ6IC9iaW4vdXBkYXRlLnNo"
+        overwrite:
+          type: boolean
+          description: Whether to overwrite existing playbook
+          default: false
+          example: true
+
+    PlaybookValidationResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                valid:
+                  type: boolean
+                  description: Whether the playbook syntax is valid
+                  example: true
+                message:
+                  type: string
+                  description: Validation result message
+                  example: "Playbook syntax is valid"
+                errors:
+                  type: array
+                  items:
+                    type: string
+                  description: Syntax errors if validation failed
+                  example: ["ERROR! 'hosts' is not a valid attribute for a Play"]
+                warnings:
+                  type: array
+                  items:
+                    type: string
+                  description: Syntax warnings
+                  example: ["[WARNING]: No inventory was parsed"]
+
+    PlaybookRunRequest:
+      type: object
+      required:
+        - playbook
+      properties:
+        playbook:
+          type: string
+          description: Name of the playbook to run
+          example: "site.yml"
+        inventory:
+          type: string
+          description: Inventory to use (name or content)
+          example: "production"
+        limit:
+          type: string
+          description: Limit execution to specific hosts/groups
+          example: "webservers"
+        tags:
+          type: array
+          items:
+            type: string
+          description: Run only tasks with these tags
+          example: ["deploy", "config"]
+        skip_tags:
+          type: array
+          items:
+            type: string
+          description: Skip tasks with these tags
+          example: ["test"]
+        extra_vars:
+          type: object
+          additionalProperties:
+            type: string
+          description: Extra variables to pass to playbook
+          example:
+            app_version: "1.2.3"
+            environment: "production"
+        check:
+          type: boolean
+          description: Run in check mode (dry run)
+          default: false
+          example: false
+        diff:
+          type: boolean
+          description: Show differences
+          default: false
+          example: true
+        verbose:
+          type: integer
+          description: Verbosity level (0-4)
+          minimum: 0
+          maximum: 4
+          default: 0
+          example: 2
+        become:
+          type: boolean
+          description: Run with become (sudo)
+          default: false
+          example: true
+        become_user:
+          type: string
+          description: User to become
+          example: "root"
+        private_key:
+          type: string
+          description: Path to SSH private key
+          example: "/home/user/.ssh/id_rsa"
+        timeout:
+          type: integer
+          description: Connection timeout in seconds
+          default: 10
+          example: 30
+        forks:
+          type: integer
+          description: Number of parallel processes
+          default: 5
+          example: 10
+
+    AdHocRequest:
+      type: object
+      required:
+        - hosts
+        - module
+      properties:
+        hosts:
+          type: string
+          description: Host pattern to run against
+          example: "all"
+        module:
+          type: string
+          description: Ansible module to run
+          example: "ping"
+        args:
+          type: string
+          description: Module arguments
+          example: "data=pong"
+        inventory:
+          type: string
+          description: Inventory to use
+          example: "production"
+        extra_vars:
+          type: object
+          additionalProperties:
+            type: string
+          description: Extra variables
+        become:
+          type: boolean
+          description: Run with become (sudo)
+          default: false
+        verbose:
+          type: integer
+          description: Verbosity level
+          minimum: 0
+          maximum: 4
+          default: 0
+        forks:
+          type: integer
+          description: Number of parallel processes
+          default: 5
+
+    ExecutionStartResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                execution_id:
+                  type: string
+                  description: Unique execution identifier
+                  example: "exec-a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                status:
+                  type: string
+                  description: Execution status
+                  enum: [starting, running, success, failed]
+                  example: "starting"
+                type:
+                  type: string
+                  description: Execution type
+                  enum: [playbook, adhoc]
+                  example: "playbook"
+                started_at:
+                  type: string
+                  format: date-time
+                  description: Execution start time
+                  example: "2025-01-15T10:30:00Z"
+                stream_url:
+                  type: string
+                  description: WebSocket URL for streaming output
+                  example: "/api/v1/ansible/executions/exec-a1b2c3d4/stream"
+
+    ExecutionsListResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                executions:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ExecutionSummary'
+                count:
+                  type: integer
+                  description: Total number of executions
+                  example: 25
+
+    ExecutionSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Execution ID
+          example: "exec-a1b2c3d4"
+        type:
+          type: string
+          description: Execution type
+          enum: [playbook, adhoc]
+          example: "playbook"
+        playbook:
+          type: string
+          description: Playbook name (if type is playbook)
+          example: "site.yml"
+        module:
+          type: string
+          description: Module name (if type is adhoc)
+          example: "ping"
+        status:
+          type: string
+          description: Execution status
+          enum: [running, success, failed, cancelled]
+          example: "success"
+        started_at:
+          type: string
+          format: date-time
+          example: "2025-01-15T10:30:00Z"
+        finished_at:
+          type: string
+          format: date-time
+          example: "2025-01-15T10:35:00Z"
+        duration:
+          type: integer
+          description: Duration in seconds
+          example: 300
+        hosts_summary:
+          type: object
+          properties:
+            ok:
+              type: integer
+              example: 10
+            changed:
+              type: integer
+              example: 5
+            unreachable:
+              type: integer
+              example: 0
+            failed:
+              type: integer
+              example: 1
+            skipped:
+              type: integer
+              example: 2
+            rescued:
+              type: integer
+              example: 0
+            ignored:
+              type: integer
+              example: 0
+
+    ExecutionDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                execution:
+                  $ref: '#/components/schemas/ExecutionDetail'
+
+    ExecutionDetail:
+      allOf:
+        - $ref: '#/components/schemas/ExecutionSummary'
+        - type: object
+          properties:
+            command:
+              type: string
+              description: Full ansible command executed
+              example: "ansible-playbook -i production site.yml"
+            parameters:
+              type: object
+              description: Execution parameters
+              additionalProperties: true
+            output:
+              type: string
+              description: Full execution output
+              example: "PLAY [Configure web servers] ***\n\nTASK [Gathering Facts] ***\nok: [web1]\n"
+            exit_code:
+              type: integer
+              description: Process exit code
+              example: 0
+            host_results:
+              type: array
+              items:
+                $ref: '#/components/schemas/HostResult'
+
+    HostResult:
+      type: object
+      properties:
+        host:
+          type: string
+          description: Host name
+          example: "web1.example.com"
+        ok:
+          type: integer
+          example: 10
+        changed:
+          type: integer
+          example: 3
+        unreachable:
+          type: boolean
+          example: false
+        failed:
+          type: boolean
+          example: false
+        skipped:
+          type: integer
+          example: 1
+        rescued:
+          type: integer
+          example: 0
+        ignored:
+          type: integer
+          example: 0
+
+    TemplatesListResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                templates:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/PlaybookTemplate'
+
+    PlaybookTemplate:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Template identifier
+          example: "nginx-setup"
+        name:
+          type: string
+          description: Template display name
+          example: "Nginx Web Server Setup"
+        description:
+          type: string
+          description: Template description
+          example: "Sets up Nginx with SSL and basic configuration"
+        category:
+          type: string
+          description: Template category
+          example: "Web Servers"
+        variables:
+          type: array
+          items:
+            $ref: '#/components/schemas/TemplateVariable'
+        tags:
+          type: array
+          items:
+            type: string
+          example: ["web", "nginx", "ssl"]
+
+    TemplateVariable:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Variable name
+          example: "domain_name"
+        description:
+          type: string
+          description: Variable description
+          example: "The domain name for the website"
+        type:
+          type: string
+          description: Variable type
+          enum: [string, integer, boolean, list, dict]
+          example: "string"
+        required:
+          type: boolean
+          description: Whether variable is required
+          example: true
+        default:
+          type: string
+          description: Default value
+          example: "example.com"
+        validation:
+          type: string
+          description: Validation regex pattern
+          example: "^[a-z0-9.-]+$"
+
+    CreateFromTemplateRequest:
+      type: object
+      required:
+        - template_id
+        - name
+      properties:
+        template_id:
+          type: string
+          description: Template identifier
+          example: "nginx-setup"
+        name:
+          type: string
+          description: Name for the new playbook
+          example: "production-nginx.yml"
+        variables:
+          type: object
+          additionalProperties:
+            type: string
+          description: Template variable values
+          example:
+            domain_name: "mysite.com"
+            ssl_enabled: "true"
+            worker_processes: "4"
+
+    GitSyncRequest:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          format: uri
+          description: Git repository URL
+          example: "https://github.com/myorg/ansible-playbooks.git"
+        branch:
+          type: string
+          description: Git branch to sync
+          default: "main"
+          example: "main"
+        path:
+          type: string
+          description: Path within repository
+          example: "playbooks/"
+        auth_token:
+          type: string
+          description: Authentication token for private repos
+          example: "ghp_xxxxxxxxxxxxxxxxxxxx"
+        ssh_key:
+          type: string
+          description: SSH private key for authentication
+        sync_as_symlink:
+          type: boolean
+          description: Create symlink instead of copying
+          default: false
+          example: false
+
+    GalaxyInstallRequest:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [role, collection]
+          description: Resource type to install
+          example: "collection"
+        name:
+          type: string
+          description: Name of role/collection
+          example: "community.general"
+        version:
+          type: string
+          description: Version to install
+          example: "5.0.0"
+        requirements_file:
+          type: string
+          description: Path to requirements file
+          example: "requirements.yml"
+        force:
+          type: boolean
+          description: Force reinstall
+          default: false
+          example: false
+
+    DynamicInventoryResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                inventory:
+                  $ref: '#/components/schemas/AnsibleInventory'
+
+    AnsibleInventory:
+      type: object
+      properties:
+        _meta:
+          type: object
+          properties:
+            hostvars:
+              type: object
+              additionalProperties:
+                type: object
+                additionalProperties:
+                  type: string
+          description: Host variables
+        all:
+          type: object
+          properties:
+            hosts:
+              type: array
+              items:
+                type: string
+              example: ["web1.example.com", "web2.example.com"]
+            children:
+              type: array
+              items:
+                type: string
+              example: ["webservers", "databases"]
+            vars:
+              type: object
+              additionalProperties:
+                type: string
+        webservers:
+          type: object
+          properties:
+            hosts:
+              type: array
+              items:
+                type: string
+              example: ["web1.example.com", "web2.example.com"]
+            vars:
+              type: object
+              additionalProperties:
+                type: string
+              example:
+                http_port: "80"
+                max_clients: "200"
+        databases:
+          type: object
+          properties:
+            hosts:
+              type: array
+              items:
+                type: string
+              example: ["db1.example.com"]
+            vars:
+              type: object
+              additionalProperties:
+                type: string
+
+    SaveInventoryRequest:
+      type: object
+      required:
+        - name
+        - content
+      properties:
+        name:
+          type: string
+          description: Inventory name
+          example: "production"
+        content:
+          type: string
+          description: Inventory content (INI or YAML format)
+          example: |
+            [webservers]
+            web1.example.com
+            web2.example.com
+            
+            [databases]
+            db1.example.com
+        format:
+          type: string
+          enum: [ini, yaml, json]
+          description: Inventory format
+          default: "ini"
+          example: "ini"
+
+    SchedulesListResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                schedules:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Schedule'
+                count:
+                  type: integer
+
+    Schedule:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Schedule ID
+          example: "sched-123456"
+        name:
+          type: string
+          description: Schedule name
+          example: "Daily backup"
+        playbook:
+          type: string
+          description: Playbook to run
+          example: "backup.yml"
+        cron:
+          type: string
+          description: Cron expression
+          example: "0 2 * * *"
+        enabled:
+          type: boolean
+          description: Whether schedule is enabled
+          example: true
+        last_run:
+          type: string
+          format: date-time
+          description: Last execution time
+          example: "2025-01-14T02:00:00Z"
+        next_run:
+          type: string
+          format: date-time
+          description: Next scheduled execution
+          example: "2025-01-15T02:00:00Z"
+        parameters:
+          type: object
+          description: Playbook parameters
+          additionalProperties: true
+
+    CreateScheduleRequest:
+      type: object
+      required:
+        - name
+        - playbook
+        - cron
+      properties:
+        name:
+          type: string
+          description: Schedule name
+          example: "Daily backup"
+        playbook:
+          type: string
+          description: Playbook to run
+          example: "backup.yml"
+        cron:
+          type: string
+          description: Cron expression
+          example: "0 2 * * *"
+        enabled:
+          type: boolean
+          description: Enable schedule immediately
+          default: true
+          example: true
+        parameters:
+          $ref: '#/components/schemas/PlaybookRunRequest'
+        timezone:
+          type: string
+          description: Timezone for schedule
+          default: "UTC"
+          example: "America/New_York"
