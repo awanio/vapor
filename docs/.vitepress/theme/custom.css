@@ -225,11 +225,6 @@ div[class*='language-'] {
   line-height: 0; /* Remove any line-height spacing */
 }
 
-.VPHero .image-container:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
 .VPHero .image {
   max-width: 100%;
   height: auto;
@@ -260,8 +255,4 @@ div[class*='language-'] {
 /* Ensure background layer doesn't block clicks */
 .VPHero .image-bg {
   pointer-events: none;
-}
-
-.dark .VPHero .image-container:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
