@@ -2878,7 +2878,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedError'
 
-  /kubernetes/crds:
+  /kubernetes/customresourcedefinitions:
     get:
       summary: List all Kubernetes Custom Resource Definitions
       tags:
