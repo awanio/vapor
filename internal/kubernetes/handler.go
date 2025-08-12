@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/awanio/vapor/internal/common"
+	"github.com/gin-gonic/gin"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"sigs.k8s.io/yaml"
@@ -132,7 +132,7 @@ func (h *Handler) GetPVCDetailGin(c *gin.Context) {
 	if err != nil {
 		// Log the error details
 		fmt.Printf("[ERROR] GetPVCDetailGin failed: namespace=%s, name=%s, error=%v\n", namespace, name, err)
-		
+
 		// Check if it's a not found error
 		if strings.Contains(err.Error(), "not found") {
 			common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "PVC not found", err.Error())
@@ -164,7 +164,7 @@ func (h *Handler) GetPVDetailGin(c *gin.Context) {
 	if err != nil {
 		// Log the error details
 		fmt.Printf("[ERROR] GetPVDetailGin failed: name=%s, error=%v\n", name, err)
-		
+
 		// Check if it's a not found error
 		if strings.Contains(err.Error(), "not found") {
 			common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "PV not found", err.Error())
@@ -372,7 +372,7 @@ func (h *Handler) ListCRDObjectsGin(c *gin.Context) {
 		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to list CRD objects", err.Error())
 		return
 	}
-	common.SendSuccess(c, gin.H{"crd_objects": crdObjects, "count": len(crdObjects)})
+	common.SendSuccess(c, gin.H{"instances": crdObjects, "count": len(crdObjects)})
 }
 
 func (h *Handler) GetCRDObjectDetailGin(c *gin.Context) {
@@ -385,7 +385,7 @@ func (h *Handler) GetCRDObjectDetailGin(c *gin.Context) {
 		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get CRD object details", err.Error())
 		return
 	}
-	common.SendSuccess(c, gin.H{"crd_object_detail": crdObjectDetail})
+	common.SendSuccess(c, gin.H{"instance_detail": crdObjectDetail})
 }
 
 func (h *Handler) GetClusterInfoGin(c *gin.Context) {
@@ -401,7 +401,7 @@ func (h *Handler) GetClusterInfoGin(c *gin.Context) {
 func (h *Handler) GetPodLogsGin(c *gin.Context) {
 	namespace := c.Param("namespace")
 	name := c.Param("name")
-	
+
 	// Parse query parameters
 	follow := c.DefaultQuery("follow", "false") == "true"
 	linesStr := c.DefaultQuery("lines", "100")
@@ -412,7 +412,7 @@ func (h *Handler) GetPodLogsGin(c *gin.Context) {
 			lines = &l
 		}
 	}
-	
+
 	logs, err := h.service.GetPodLogs(c.Request.Context(), namespace, name, follow, lines)
 	if err != nil {
 		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get pod logs", err.Error())
@@ -425,7 +425,7 @@ func (h *Handler) GetPodLogsGin(c *gin.Context) {
 func (h *Handler) DeletePodGin(c *gin.Context) {
 	namespace := c.Param("namespace")
 	name := c.Param("name")
-	
+
 	err := h.service.DeletePod(c.Request.Context(), namespace, name)
 	if err != nil {
 		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to delete pod", err.Error())
@@ -439,21 +439,21 @@ func (h *Handler) DeletePodGin(c *gin.Context) {
 func (h *Handler) ApplyPodGin(c *gin.Context) {
 	contentType := c.GetHeader("Content-Type")
 	contentType = strings.ToLower(strings.TrimSpace(contentType))
-	
+
 	// Read the raw body
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to read request body", err.Error())
 		return
 	}
-	
+
 	if len(body) == 0 {
 		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Request body is empty", "Please provide a valid Pod specification")
 		return
 	}
-	
+
 	var pod corev1.Pod
-	
+
 	// Parse based on content type
 	switch {
 	case strings.Contains(contentType, "application/yaml") || strings.Contains(contentType, "text/yaml"):
@@ -475,20 +475,20 @@ func (h *Handler) ApplyPodGin(c *gin.Context) {
 			}
 		}
 	default:
-		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, 
-			"Unsupported content type", 
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest,
+			"Unsupported content type",
 			"Content-Type must be 'application/json', 'application/yaml', or 'text/yaml'")
 		return
 	}
-	
+
 	// Validate that we have at least the required fields
 	if pod.Name == "" && pod.ObjectMeta.Name == "" {
-		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, 
-			"Invalid pod specification", 
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest,
+			"Invalid pod specification",
 			"Pod name is required in metadata.name")
 		return
 	}
-	
+
 	// Apply the pod
 	appliedPod, err := h.service.ApplyPod(c.Request.Context(), &pod)
 	if err != nil {
@@ -503,24 +503,24 @@ func (h *Handler) ApplyPodGin(c *gin.Context) {
 func (h *Handler) UpdatePodGin(c *gin.Context) {
 	namespace := c.Param("namespace")
 	name := c.Param("name")
-	
+
 	contentType := c.GetHeader("Content-Type")
 	contentType = strings.ToLower(strings.TrimSpace(contentType))
-	
+
 	// Read the raw body
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to read request body", err.Error())
 		return
 	}
-	
+
 	if len(body) == 0 {
 		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Request body is empty", "Please provide a valid Pod specification")
 		return
 	}
-	
+
 	var pod corev1.Pod
-	
+
 	// Parse based on content type
 	switch {
 	case strings.Contains(contentType, "application/yaml") || strings.Contains(contentType, "text/yaml"):
@@ -538,12 +538,12 @@ func (h *Handler) UpdatePodGin(c *gin.Context) {
 			return
 		}
 	default:
-		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, 
-			"Unsupported content type", 
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest,
+			"Unsupported content type",
 			"Content-Type must be 'application/json', 'application/yaml', or 'text/yaml'")
 		return
 	}
-	
+
 	// Update the pod
 	updatedPod, err := h.service.UpdatePod(c.Request.Context(), namespace, name, &pod)
 	if err != nil {
@@ -857,8 +857,8 @@ func (h *Handler) UpdateNetworkPolicyGin(c *gin.Context) {
 // NoKubernetesHandler returns a handler that responds with Kubernetes not installed error
 func NoKubernetesHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		common.SendError(c, http.StatusServiceUnavailable, common.ErrCodeNotImplemented, 
-			"Kubernetes is not installed on this system", 
+		common.SendError(c, http.StatusServiceUnavailable, common.ErrCodeNotImplemented,
+			"Kubernetes is not installed on this system",
 			"The kubelet service was not found on this system. Please install Kubernetes to use these features.")
 	}
 }
