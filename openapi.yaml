@@ -2897,7 +2897,7 @@ paths:
         '503':
           $ref: '#/components/responses/KubernetesNotInstalledError'
 
-  /kubernetes/crds/{name}:
+  /kubernetes/customresourcedefinitions/{name}:
     get:
       summary: Get detailed CRD information
       description: Get detailed information about a specific Custom Resource Definition
@@ -2930,7 +2930,7 @@ paths:
         '503':
           $ref: '#/components/responses/KubernetesNotInstalledError'
 
-  /kubernetes/crds/{name}/list:
+  /kubernetes/customresourcedefinitions/{name}/instances:
     get:
       summary: List all objects for a specific CRD
       description: List all Kubernetes objects for a specific Custom Resource Definition
@@ -2969,7 +2969,7 @@ paths:
         '503':
           $ref: '#/components/responses/KubernetesNotInstalledError'
 
-  /kubernetes/crds/{name}/detail/{namespace}/{object-name}:
+  /kubernetes/customresourcedefinitions/{name}/instances/{namespace}/{object-name}:
     get:
       summary: Get detailed CRD object information
       description: Get detailed information about a specific CRD object. For namespaced CRDs, provide the actual namespace. For cluster-scoped CRDs, use '-' as the namespace.
