@@ -1,6 +1,6 @@
-# Go System Management API
+# Vapor
 
-A RESTful API service for Linux system management, providing functionality similar to Cockpit Project but built in Go with JSON-based REST APIs.
+Vapor is a comprehensive Linux system management platform inspired by [Cockpit](https://cockpit-project.org/) designed to simplify server administration through a modern web interface. With its clean and intuitive design, Vapor brings together traditional system administration tools with container orchestration and Kubernetes management capabilities.
 
 ## Features
 
