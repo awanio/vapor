@@ -31,8 +31,8 @@ Authenticate and receive a JWT token.
 **Request Body:**
 ```json
 {
-  "username": "admin",
-  "password": "admin123"
+  "username": "your-username",
+  "password": "your-password"
 }
 ```
 
@@ -47,14 +47,9 @@ Authenticate and receive a JWT token.
 }
 ```
 
-**Authentication Methods:**
-1. **Built-in admin account** (development only):
-   - Username: `admin`
-   - Password: `admin123`
-   
-2. **Linux system users** (recommended for production):
-   - Any valid Linux user with system credentials
-   - Uses system authentication via `su` command
+**Authentication Method:**
+- **Linux system users**: Any valid Linux user with system credentials
+- Uses system authentication via `su` command for secure authentication
 
 ## API Endpoints
 
@@ -747,7 +742,7 @@ class VaporAPI:
 # Login
 curl -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123"}'
+  -d '{"username":"your-username","password":"your-password"}'
 
 # Get containers
 curl -X GET http://localhost:8080/api/v1/containers \

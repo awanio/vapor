@@ -1,0 +1,249 @@
+# Development Dockerfile with systemd and testing tools
+FROM ubuntu:22.04
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+ENV LANG=C.UTF-8
+
+# Install systemd and essential packages
+RUN apt-get update && apt-get install -y \
+    systemd \
+    systemd-sysv \
+    init \
+    dbus \
+    udev \
+    kmod \
+    iproute2 \
+    iputils-ping \
+    net-tools \
+    curl \
+    wget \
+    vim \
+    sudo \
+    ca-certificates \
+    gnupg \
+    lsb-release \
+    software-properties-common \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Go 1.21
+RUN wget -q https://go.dev/dl/go1.21.6.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf go1.21.6.linux-amd64.tar.gz && \
+    rm go1.21.6.linux-amd64.tar.gz
+
+ENV PATH=$PATH:/usr/local/go/bin
+ENV GOPATH=/go
+ENV PATH=$PATH:$GOPATH/bin
+
+# Install system management tools
+RUN apt-get update && apt-get install -y \
+    # Core utilities
+    util-linux \
+    e2fsprogs \
+    xfsprogs \
+    btrfs-progs \
+    dosfstools \
+    ntfs-3g \
+    # LVM tools
+    lvm2 \
+    thin-provisioning-tools \
+    # Network tools
+    bridge-utils \
+    vlan \
+    ethtool \
+    iptables \
+    nftables \
+    tcpdump \
+    traceroute \
+    nmap \
+    netcat \
+    # Storage tools
+    parted \
+    gdisk \
+    mdadm \
+    cryptsetup \
+    # iSCSI tools
+    open-iscsi \
+    targetcli-fb \
+    # Multipath tools
+    multipath-tools \
+    # NFS tools
+    nfs-common \
+    nfs-kernel-server \
+    # SMB/CIFS tools
+    cifs-utils \
+    smbclient \
+    # Container tools
+    docker.io \
+    containerd \
+    runc \
+    # Monitoring tools
+    htop \
+    iotop \
+    sysstat \
+    # Development tools
+    git \
+    make \
+    gcc \
+    build-essential \
+    strace \
+    gdb \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Air for hot reload
+RUN go install github.com/cosmtrek/air@latest
+
+# Install additional Go development tools
+RUN go install github.com/go-delve/delve/cmd/dlv@latest && \
+    go install golang.org/x/tools/gopls@latest && \
+    go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+# Create app directory
+WORKDIR /app
+
+# Copy go mod files first for better caching
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Create necessary directories
+RUN mkdir -p /var/log/journal && \
+    mkdir -p /run/systemd/journal && \
+    mkdir -p /etc/systemd/system && \
+    mkdir -p /mnt/test-storage && \
+    mkdir -p /etc/netns
+
+# Enable necessary systemd services
+RUN systemctl enable systemd-journald.service && \
+    systemctl enable systemd-networkd.service && \
+    systemctl enable systemd-resolved.service
+
+# Configure journald for persistent logging
+RUN mkdir -p /etc/systemd/journald.conf.d && \
+    echo "[Journal]\nStorage=persistent\nCompress=yes\nSyncIntervalSec=30\nSystemMaxUse=100M" > /etc/systemd/journald.conf.d/00-vapor.conf
+
+# Create a test user for authentication testing
+RUN useradd -m -s /bin/bash vapor && \
+    echo 'vapor:vapor123' | chpasswd && \
+    usermod -aG sudo vapor && \
+    echo 'vapor ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+# Create additional test users
+RUN useradd -m -s /bin/bash testuser1 && echo 'testuser1:test123' | chpasswd && \
+    useradd -m -s /bin/bash testuser2 && echo 'testuser2:test456' | chpasswd && \
+    useradd -m -s /bin/bash admin && echo 'admin:admin789' | chpasswd && \
+    usermod -aG sudo admin
+
+# Setup Docker daemon config
+RUN mkdir -p /etc/docker && \
+    echo '{\n  "storage-driver": "overlay2",\n  "log-driver": "json-file",\n  "log-opts": {\n    "max-size": "10m",\n    "max-file": "3"\n  }\n}' > /etc/docker/daemon.json
+
+# Create Air configuration for hot reload
+RUN echo 'root = "."\n\
+testdata_dir = "testdata"\n\
+tmp_dir = "tmp"\n\n\
+[build]\n\
+  args_bin = []\n\
+  bin = "./tmp/main"\n\
+  cmd = "go build -o ./tmp/main ./cmd/vapor"\n\
+  delay = 1000\n\
+  exclude_dir = ["assets", "tmp", "vendor", "testdata", "web/node_modules"]\n\
+  exclude_file = []\n\
+  exclude_regex = ["_test.go"]\n\
+  exclude_unchanged = false\n\
+  follow_symlink = false\n\
+  full_bin = ""\n\
+  include_dir = []\n\
+  include_ext = ["go", "tpl", "tmpl", "html"]\n\
+  include_file = []\n\
+  kill_delay = "0s"\n\
+  log = "build-errors.log"\n\
+  poll = false\n\
+  poll_interval = 0\n\
+  rerun = false\n\
+  rerun_delay = 500\n\
+  send_interrupt = false\n\
+  stop_on_error = false\n\n\
+[color]\n\
+  app = ""\n\
+  build = "yellow"\n\
+  main = "magenta"\n\
+  runner = "green"\n\
+  watcher = "cyan"\n\n\
+[log]\n\
+  main_only = false\n\
+  time = false\n\n\
+[misc]\n\
+  clean_on_exit = false\n\n\
+[screen]\n\
+  clear_on_rebuild = false\n\
+  keep_scroll = true' > /app/.air.toml
+
+# Create entrypoint script
+RUN echo '#!/bin/bash\n\
+set -e\n\n\
+# Start systemd services if not running\n\
+if ! systemctl is-active --quiet systemd-journald; then\n\
+    systemctl start systemd-journald\n\
+fi\n\n\
+if ! systemctl is-active --quiet systemd-networkd; then\n\
+    systemctl start systemd-networkd\n\
+fi\n\n\
+# Start Docker daemon if not running\n\
+if ! pgrep -x dockerd > /dev/null; then\n\
+    dockerd &\n\
+    sleep 5\n\
+fi\n\n\
+# Start iSCSI initiator\n\
+if ! systemctl is-active --quiet iscsid; then\n\
+    systemctl start iscsid || true\n\
+fi\n\n\
+# Load kernel modules for storage features\n\
+modprobe dm-multipath || true\n\
+modprobe target_core_mod || true\n\
+modprobe iscsi_target_mod || true\n\
+modprobe nfs || true\n\
+modprobe nfsd || true\n\n\
+# Create test loop devices for storage testing\n\
+for i in {0..7}; do\n\
+    if [ ! -e /dev/loop$i ]; then\n\
+        mknod /dev/loop$i b 7 $i || true\n\
+    fi\n\
+done\n\n\
+# Create test block devices\n\
+dd if=/dev/zero of=/mnt/test-storage/disk1.img bs=1M count=100 2>/dev/null || true\n\
+dd if=/dev/zero of=/mnt/test-storage/disk2.img bs=1M count=100 2>/dev/null || true\n\
+dd if=/dev/zero of=/mnt/test-storage/disk3.img bs=1M count=100 2>/dev/null || true\n\n\
+# Attach loop devices\n\
+losetup /dev/loop0 /mnt/test-storage/disk1.img 2>/dev/null || true\n\
+losetup /dev/loop1 /mnt/test-storage/disk2.img 2>/dev/null || true\n\
+losetup /dev/loop2 /mnt/test-storage/disk3.img 2>/dev/null || true\n\n\
+# Create test LVM setup\n\
+pvcreate /dev/loop0 2>/dev/null || true\n\
+vgcreate testvg /dev/loop0 2>/dev/null || true\n\
+lvcreate -L 50M -n testlv testvg 2>/dev/null || true\n\n\
+# Create test network bridges\n\
+ip link add br-test type bridge 2>/dev/null || true\n\
+ip link set br-test up 2>/dev/null || true\n\n\
+# Create test VLAN interfaces\n\
+ip link add link eth0 name eth0.100 type vlan id 100 2>/dev/null || true\n\
+ip link add link eth0 name eth0.200 type vlan id 200 2>/dev/null || true\n\n\
+# Run the application with hot reload\n\
+cd /app\n\
+if [ "$1" = "dev" ]; then\n\
+    echo "Starting Vapor API in development mode with hot reload..."\n\
+    exec air -c .air.toml\n\
+else\n\
+    echo "Starting Vapor API..."\n\
+    exec "$@"\n\
+fi' > /entrypoint.sh && chmod +x /entrypoint.sh
+
+# Expose ports
+EXPOSE 8080
+
+# Set environment variables
+ENV JWT_SECRET=development-secret
+ENV SERVER_ADDR=:8080
+
+# Use the entrypoint script
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["dev"]

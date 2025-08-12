@@ -31,8 +31,8 @@ Melakukan autentikasi dan menerima token JWT.
 **Request Body:**
 ```json
 {
-  "username": "admin",
-  "password": "admin123"
+  "username": "nama-pengguna-anda",
+  "password": "kata-sandi-anda"
 }
 ```
 
@@ -48,13 +48,8 @@ Melakukan autentikasi dan menerima token JWT.
 ```
 
 **Metode Autentikasi:**
-1. **Akun admin bawaan** (hanya untuk pengembangan):
-   - Username: `admin`
-   - Password: `admin123`
-   
-2. **Pengguna sistem Linux** (disarankan untuk produksi):
-   - Pengguna Linux yang valid dengan kredensial sistem
-   - Menggunakan autentikasi sistem melalui perintah `su`
+- **Pengguna sistem Linux**: Pengguna Linux yang valid dengan kredensial sistem
+- Menggunakan autentikasi sistem melalui perintah `su` untuk autentikasi yang aman
 
 ## Endpoint API
 
@@ -747,7 +742,7 @@ class VaporAPI:
 # Login
 curl -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123"}'
+  -d '{"username":"nama-pengguna-anda","password":"kata-sandi-anda"}'
 
 # Dapatkan container
 curl -X GET http://localhost:8080/api/v1/containers \

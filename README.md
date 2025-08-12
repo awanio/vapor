@@ -275,10 +275,9 @@ Once the server is running, you can access:
 The API provides WebSocket-based terminal access at `/api/v1/ws/terminal`. Key features:
 
 - **User-based sessions**: Terminal sessions run as the authenticated Linux user
-- **Special mapping**: The built-in `admin` user is mapped to `root` for administrative tasks
 - **Security**: Requires valid JWT authentication before establishing terminal session
 - **Audit logging**: All terminal sessions are logged with username and session details
-- **Platform support**: Full user switching on Linux; development mode on macOS/Windows
+- **User permissions**: Each user operates within their own Linux permissions
 
 #### Terminal WebSocket Protocol
 
@@ -355,14 +354,13 @@ make lint
 
 ## Security Considerations
 
-1. **Authentication**: Default credentials are for demo only. Change them in production.
+1. **Authentication**: Uses Linux system authentication - ensure strong user passwords.
 2. **Privileges**: The service requires root privileges for system operations.
 3. **JWT Secret**: Always use a strong, randomly generated secret in production.
 4. **HTTPS**: Use HTTPS in production environments.
 5. **Network**: Bind to localhost only or use proper firewall rules.
-6. **Terminal Access**: The WebSocket terminal feature provides full shell access as the authenticated user. On Linux systems:
-   - Users get their own shell sessions with their permissions
-   - The built-in `admin` user is mapped to `root` for administrative tasks
+6. **Terminal Access**: The WebSocket terminal feature provides full shell access as the authenticated user:
+   - Users get their own shell sessions with their Linux permissions
    - All terminal sessions are logged for audit purposes
    - Ensure proper authentication and network security when exposing this feature
 

@@ -1,0 +1,192 @@
+version: '3.8'
+
+services:
+  vapor-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: vapor-api-dev
+    hostname: vapor-dev
+    # Run with privileged mode to allow system management operations
+    privileged: true
+    # Required for systemd to work properly
+    cgroup: host
+    pid: host
+    ipc: host
+    network_mode: host
+    volumes:
+      # Mount source code for live development
+      - ./cmd:/app/cmd:ro
+      - ./internal:/app/internal:ro
+      - ./web:/app/web:ro
+      - ./go.mod:/app/go.mod:ro
+      - ./go.sum:/app/go.sum:ro
+      # Mount system directories for management
+      - /sys:/sys:rw
+      - /proc:/proc:rw
+      - /dev:/dev:rw
+      - /run:/run:rw
+      - /tmp:/tmp:rw
+      # LVM and storage management
+      - /etc/lvm:/etc/lvm:rw
+      - /var/lib/lvm:/var/lib/lvm:rw
+      # Persistent storage for testing
+      - storage-test:/mnt/test-storage
+      # Docker socket for container management
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+      # Systemd journal
+      - journal:/var/log/journal
+      # Network configuration
+      - /etc/netns:/etc/netns:rw
+      # iSCSI configuration
+      - /etc/iscsi:/etc/iscsi:rw
+      # Multipath configuration
+      - /etc/multipath:/etc/multipath:rw
+    environment:
+      - JWT_SECRET=development-secret-change-in-production
+      - SERVER_ADDR=:8080
+      - GO_ENV=development
+      # Enable debug logging
+      - DEBUG=true
+      # System user for testing (will be created in container)
+      - TEST_USER=vapor
+      - TEST_PASSWORD=vapor123
+    devices:
+      # Allow access to all devices for storage management
+      - /dev:/dev
+    cap_add:
+      # Add all capabilities for system management
+      - ALL
+    security_opt:
+      # Disable security options that might interfere with system management
+      - apparmor:unconfined
+      - seccomp:unconfined
+      - label:disable
+    tmpfs:
+      # Temporary filesystems for systemd
+      - /run/lock
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Test database for future features
+  postgres:
+    image: postgres:15-alpine
+    container_name: vapor-postgres-dev
+    environment:
+      POSTGRES_DB: vapor
+      POSTGRES_USER: vapor
+      POSTGRES_PASSWORD: vapor123
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  # Redis for caching/sessions (future feature)
+  redis:
+    image: redis:7-alpine
+    container_name: vapor-redis-dev
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  # Kubernetes API server simulator for testing K8s features
+  k3s:
+    image: rancher/k3s:latest
+    container_name: vapor-k3s-dev
+    privileged: true
+    environment:
+      - K3S_KUBECONFIG_MODE=666
+      - K3S_TOKEN=vapor-dev-token
+    volumes:
+      - k3s-data:/var/lib/rancher/k3s
+      - ./kubeconfig:/output
+    ports:
+      - "6443:6443"
+    command: server --disable-agent --no-deploy traefik
+    restart: unless-stopped
+
+  # iSCSI target for testing iSCSI features
+  iscsi-target:
+    image: davidecavestro/iscsi-target
+    container_name: vapor-iscsi-dev
+    privileged: true
+    volumes:
+      - iscsi-data:/iscsi
+    environment:
+      - TARGET_IQN=iqn.2024-01.io.vapor:storage.test
+      - TARGET_PORTAL=0.0.0.0:3260
+      - INITIATOR_USERID=vapor
+      - INITIATOR_PASSWORD=vapor123
+    ports:
+      - "3260:3260"
+    restart: unless-stopped
+
+  # NFS server for testing NFS mounts
+  nfs-server:
+    image: erichough/nfs-server
+    container_name: vapor-nfs-dev
+    privileged: true
+    volumes:
+      - nfs-data:/nfs-share
+    environment:
+      - NFS_EXPORT_0=/nfs-share *(rw,sync,no_subtree_check,no_root_squash)
+    ports:
+      - "2049:2049"
+      - "111:111/udp"
+      - "111:111/tcp"
+    restart: unless-stopped
+
+  # Samba server for testing SMB/CIFS mounts
+  samba:
+    image: dperson/samba
+    container_name: vapor-samba-dev
+    environment:
+      - USERID=1000
+      - GROUPID=1000
+      - TZ=UTC
+      - SHARE=vapor;/mount;yes;no;no;vapor
+      - USER=vapor;vapor123
+    volumes:
+      - samba-data:/mount
+    ports:
+      - "139:139"
+      - "445:445"
+    restart: unless-stopped
+
+volumes:
+  storage-test:
+    driver: local
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  k3s-data:
+    driver: local
+  iscsi-data:
+    driver: local
+  nfs-data:
+    driver: local
+  samba-data:
+    driver: local
+  journal:
+    driver: local
+
+networks:
+  default:
+    name: vapor-dev-network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+          gateway: 172.28.0.1

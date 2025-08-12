@@ -87,6 +87,51 @@ docker-run:
 	@echo "Running Docker container..."
 	docker run -p 8080:8080 --privileged $(DOCKER_IMAGE)
 
+# Development environment with docker-compose
+dev-up:
+	@echo "Starting development environment..."
+	docker-compose up -d
+	@echo "Development environment started!"
+	@echo "Vapor API: http://localhost:8080"
+	@echo "Postgres: localhost:5432"
+	@echo "Redis: localhost:6379"
+	@echo "K3s API: https://localhost:6443"
+	@echo ""
+	@echo "Test users:"
+	@echo "  vapor:vapor123 (sudo)"
+	@echo "  admin:admin789 (sudo)"
+	@echo "  testuser1:test123"
+	@echo "  testuser2:test456"
+
+# Stop development environment
+dev-down:
+	@echo "Stopping development environment..."
+	docker-compose down
+
+# Restart development environment
+dev-restart:
+	@echo "Restarting development environment..."
+	docker-compose restart vapor-api
+
+# View logs from development environment
+dev-logs:
+	docker-compose logs -f vapor-api
+
+# Execute commands in development container
+dev-exec:
+	docker-compose exec vapor-api bash
+
+# Run tests in development container
+dev-test:
+	@echo "Running tests in development container..."
+	docker-compose exec vapor-api go test -v ./...
+
+# Clean development environment
+dev-clean:
+	@echo "Cleaning development environment..."
+	docker-compose down -v
+	@echo "Removed all containers and volumes"
+
 # Generate OpenAPI documentation
 docs:
 	@echo "OpenAPI documentation is at openapi.yaml"
