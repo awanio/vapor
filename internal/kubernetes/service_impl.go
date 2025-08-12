@@ -13,29 +13,29 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
-	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 // Service represents the Kubernetes service implementation
 type Service struct {
-	client               kubernetes.Interface
-	apiExtensionsClient  apiextensionsclient.Interface
-	dynamicClient        dynamic.Interface
-	nodeName             string
-	isControlPlane       bool
+	client              kubernetes.Interface
+	apiExtensionsClient apiextensionsclient.Interface
+	dynamicClient       dynamic.Interface
+	nodeName            string
+	isControlPlane      bool
 }
 
 // NewService creates a new Kubernetes service
 func NewService() (*Service, error) {
 	fmt.Printf("[DEBUG] NewService: Starting Kubernetes service initialization\n")
-	
+
 	// First, check if Kubernetes is installed by looking for admin.conf
 	if _, err := os.Stat("/etc/kubernetes/admin.conf"); err == nil {
 		fmt.Printf("[DEBUG] NewService: Found /etc/kubernetes/admin.conf\n")
@@ -116,11 +116,11 @@ func NewService() (*Service, error) {
 	}
 
 	return &Service{
-		client:               clientset,
-		apiExtensionsClient:  apiExtensionsClient,
-		dynamicClient:        dynamicClient,
-		nodeName:             nodeName,
-		isControlPlane:       isControlPlane,
+		client:              clientset,
+		apiExtensionsClient: apiExtensionsClient,
+		dynamicClient:       dynamicClient,
+		nodeName:            nodeName,
+		isControlPlane:      isControlPlane,
 	}, nil
 }
 
@@ -374,15 +374,15 @@ func (s *Service) ListDaemonSets(ctx context.Context, opts interface{}) ([]Daemo
 	daemonSetList := make([]DaemonSetInfo, 0, len(daemonSets.Items))
 	for _, ds := range daemonSets.Items {
 		daemonSetList = append(daemonSetList, DaemonSetInfo{
-			Name:       ds.Name,
-			Namespace:  ds.Namespace,
-			Desired:    ds.Status.DesiredNumberScheduled,
-			Current:    ds.Status.CurrentNumberScheduled,
-			Ready:      ds.Status.NumberReady,
-			UpToDate:   ds.Status.UpdatedNumberScheduled,
-			Available:  ds.Status.NumberAvailable,
-			Age:        calculateAge(ds.CreationTimestamp.Time),
-			Labels:     ds.Labels,
+			Name:      ds.Name,
+			Namespace: ds.Namespace,
+			Desired:   ds.Status.DesiredNumberScheduled,
+			Current:   ds.Status.CurrentNumberScheduled,
+			Ready:     ds.Status.NumberReady,
+			UpToDate:  ds.Status.UpdatedNumberScheduled,
+			Available: ds.Status.NumberAvailable,
+			Age:       calculateAge(ds.CreationTimestamp.Time),
+			Labels:    ds.Labels,
 		})
 	}
 
@@ -503,17 +503,9 @@ func (s *Service) ListCRDObjects(ctx context.Context, crdName, namespace string)
 
 	// List objects using dynamic client
 	var unstructuredList *unstructured.UnstructuredList
-	if crd.Spec.Scope == "Namespaced" {
-		// For namespaced resources, use the provided namespace or default
-		targetNamespace := namespace
-		if targetNamespace == "" {
-			targetNamespace = "default"
-		}
-		unstructuredList, err = s.dynamicClient.Resource(gvr).Namespace(targetNamespace).List(ctx, metav1.ListOptions{})
-	} else {
-		// For cluster-scoped resources, ignore namespace parameter
-		unstructuredList, err = s.dynamicClient.Resource(gvr).List(ctx, metav1.ListOptions{})
-	}
+
+	// For cluster-scoped resources, ignore namespace parameter
+	unstructuredList, err = s.dynamicClient.Resource(gvr).List(ctx, metav1.ListOptions{})
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to list objects for CRD %s: %w", crdName, err)
@@ -651,13 +643,13 @@ func (s *Service) GetIngressDetail(ctx context.Context, namespace, name string) 
 // GetPVCDetail retrieves detailed information of a specific persistent volume claim
 func (s *Service) GetPVCDetail(ctx context.Context, namespace, name string) (*corev1.PersistentVolumeClaim, error) {
 	fmt.Printf("[DEBUG] GetPVCDetail called with namespace=%s, name=%s\n", namespace, name)
-	
+
 	pvc, err := s.client.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		fmt.Printf("[ERROR] Failed to get PVC details: namespace=%s, name=%s, error=%v\n", namespace, name, err)
 		return nil, fmt.Errorf("failed to get PVC details for %s/%s: %w", namespace, name, err)
 	}
-	
+
 	fmt.Printf("[DEBUG] Successfully retrieved PVC: namespace=%s, name=%s\n", namespace, name)
 	return pvc, nil
 }
@@ -665,13 +657,13 @@ func (s *Service) GetPVCDetail(ctx context.Context, namespace, name string) (*co
 // GetPVDetail retrieves detailed information of a specific persistent volume
 func (s *Service) GetPVDetail(ctx context.Context, name string) (*corev1.PersistentVolume, error) {
 	fmt.Printf("[DEBUG] GetPVDetail called with name=%s\n", name)
-	
+
 	pv, err := s.client.CoreV1().PersistentVolumes().Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		fmt.Printf("[ERROR] Failed to get PV details: name=%s, error=%v\n", name, err)
 		return nil, fmt.Errorf("failed to get PV details for %s: %w", name, err)
 	}
-	
+
 	fmt.Printf("[DEBUG] Successfully retrieved PV: name=%s\n", name)
 	return pv, nil
 }
@@ -786,14 +778,14 @@ func (s *Service) ListCRDs(ctx context.Context, opts interface{}) ([]CRDInfo, er
 		}
 
 		crdList = append(crdList, CRDInfo{
-			Name:        crd.Name,
-			Group:       crd.Spec.Group,
-			Version:     latestVersion,
-			Kind:        crd.Spec.Names.Kind,
-			Scope:       scope,
-			Names:       names,
-			Age:         calculateAge(crd.CreationTimestamp.Time),
-			Labels:      crd.Labels,
+			Name:    crd.Name,
+			Group:   crd.Spec.Group,
+			Version: latestVersion,
+			Kind:    crd.Spec.Names.Kind,
+			Scope:   scope,
+			Names:   names,
+			Age:     calculateAge(crd.CreationTimestamp.Time),
+			Labels:  crd.Labels,
 		})
 	}
 
@@ -852,7 +844,7 @@ func calculateAge(creationTime time.Time) string {
 // createServiceWithConfig creates a Service instance with the given config
 func createServiceWithConfig(config *rest.Config) (*Service, error) {
 	fmt.Printf("[DEBUG] Creating Kubernetes service with config\n")
-	
+
 	// Create the clientset
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
@@ -900,11 +892,11 @@ func createServiceWithConfig(config *rest.Config) (*Service, error) {
 	}
 
 	return &Service{
-		client:               clientset,
-		apiExtensionsClient:  apiExtensionsClient,
-		dynamicClient:        dynamicClient,
-		nodeName:             nodeName,
-		isControlPlane:       isControlPlane,
+		client:              clientset,
+		apiExtensionsClient: apiExtensionsClient,
+		dynamicClient:       dynamicClient,
+		nodeName:            nodeName,
+		isControlPlane:      isControlPlane,
 	}, nil
 }
 
@@ -948,19 +940,19 @@ func isKubernetesInstalled() bool {
 // GetPodLogs retrieves logs from a specific pod
 func (s *Service) GetPodLogs(ctx context.Context, namespace, name string, follow bool, lines *int64) (string, error) {
 	req := s.client.CoreV1().Pods(namespace).GetLogs(name, &corev1.PodLogOptions{
-		Follow: follow,
+		Follow:    follow,
 		TailLines: lines,
 	})
-	
+
 	logStream, err := req.Stream(ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed to get pod logs: %w", err)
 	}
 	defer logStream.Close()
-	
+
 	buf := make([]byte, 2048)
 	var logs string
-	
+
 	for {
 		n, err := logStream.Read(buf)
 		if err != nil {
@@ -976,7 +968,7 @@ func (s *Service) GetPodLogs(ctx context.Context, namespace, name string, follow
 			continue
 		}
 	}
-	
+
 	return logs, nil
 }
 
@@ -998,7 +990,7 @@ func (s *Service) ApplyPod(ctx context.Context, pod *corev1.Pod) (*corev1.Pod, e
 	if pod.Namespace == "" {
 		pod.Namespace = "default"
 	}
-	
+
 	// Try to get the existing pod first
 	_, err := s.client.CoreV1().Pods(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
 	if err != nil {
@@ -1009,13 +1001,13 @@ func (s *Service) ApplyPod(ctx context.Context, pod *corev1.Pod) (*corev1.Pod, e
 		}
 		return createdPod, nil
 	}
-	
+
 	// Pod exists, update it
 	updatedPod, err := s.client.CoreV1().Pods(pod.Namespace).Update(ctx, pod, metav1.UpdateOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to update pod: %w", err)
 	}
-	
+
 	return updatedPod, nil
 }
 
@@ -1028,27 +1020,27 @@ func (s *Service) UpdatePod(ctx context.Context, namespace, name string, pod *co
 	if pod.Namespace == "" {
 		pod.Namespace = namespace
 	}
-	
+
 	// Validate that the names match
 	if pod.Name != name || pod.Namespace != namespace {
 		return nil, fmt.Errorf("pod name or namespace in body does not match URL parameters")
 	}
-	
+
 	// Get the existing pod first to preserve any fields we're not updating
 	existingPod, err := s.client.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get existing pod: %w", err)
 	}
-	
+
 	// Preserve the resource version for update
 	pod.ResourceVersion = existingPod.ResourceVersion
-	
+
 	// Update the pod
 	updatedPod, err := s.client.CoreV1().Pods(namespace).Update(ctx, pod, metav1.UpdateOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to update pod: %w", err)
 	}
-	
+
 	return updatedPod, nil
 }
 
@@ -2106,4 +2098,3 @@ func (s *Service) UpdateCronJob(ctx context.Context, namespace, name string, cro
 
 	return updatedCronJob, nil
 }
-
