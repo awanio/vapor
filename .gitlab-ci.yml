@@ -27,13 +27,13 @@ build:
           sleep 1
         done
   script:
-    - echo "$ACR_PASSWORD" | docker login $ACR_HOST --username $ACR_USERNAME --password-stdin
     - >
       docker build 
       -t $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA 
       -f $CI_PROJECT_DIR/Dockerfile 
       $CI_PROJECT_DIR
-    - docker tag $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-latest
+    # - echo "$ACR_PASSWORD" | docker login $ACR_HOST --username $ACR_USERNAME --password-stdin
+    # - docker tag $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-latest
     # - docker push $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA 
     # - docker push $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-latest
   only:
@@ -75,23 +75,23 @@ build:docs:
   tags:
     - idch-bg-awid1
     
-# deploy:
-#   image: cimg/base:edge-22.04
-#   stage: deploy
-#   dependencies: []
-#   only:
-#     - main
-#   tags:
-#     # - awid3
-#     - idch-bg-awid1
-#   script:
-#     - base64 -d -i ${AWANIO_SSH_PRIVATE_KEY} > pem.key
-#     - chmod 600 pem.key
-#     - >
-#       ssh 
-#       -o "StrictHostKeyChecking no" 
-#       -p 3775
-#       -i pem.key 
-#       awanio@103.179.254.248 
-#       ssh ubuntu@192.168.1.172
-#       kubectl -n awanio set image deployment/ai1 web=$ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA
+deploy:docs:
+  image: cimg/base:edge-22.04
+  stage: deploy
+  dependencies: []
+  only:
+    - main
+  tags:
+    - idch-bg-awid1
+  script:
+    - export PATH_NAME="awanio/vapor-docs"
+    - base64 -d -i ${AWANIO_SSH_PRIVATE_KEY} > pem.key
+    - chmod 600 pem.key
+    - >
+      ssh 
+      -o "StrictHostKeyChecking no" 
+      -p 3775
+      -i pem.key 
+      awanio@103.179.254.248 
+      ssh ubuntu@172.16.1.6
+      kubectl -n vapor set image deployment/docs web=$ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA
