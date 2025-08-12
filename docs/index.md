@@ -14,7 +14,7 @@ hero:
       link: /en/01-introduction
     - theme: alt
       text: View on GitHub
-      link: https://github.com/your-org/vapor
+      link: https://github.com/awanio/vapor
 
 features:
   - icon: /assets/icons/docker.svg
