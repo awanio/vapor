@@ -129,6 +129,10 @@ export class SidebarTree extends I18nLitElement {
     .icon-crds::before { content: '📋'; }
     .icon-helm::before { content: '⛵'; }
     .icon-users::before { content: '👥'; }
+    .icon-ansible::before { content: '🔧'; }
+    .icon-playbooks::before { content: '📄'; }
+    .icon-inventory::before { content: '📋'; }
+    .icon-executions::before { content: '▶️'; }
 
     :host([collapsed]) .tree-item-label,
     :host([collapsed]) .tree-item-arrow,
@@ -322,6 +326,32 @@ export class SidebarTree extends I18nLitElement {
       ]
     },
     {
+      id: 'ansible',
+      label: 'nav.ansible',
+      icon: 'ansible',
+      route: 'ansible',
+      children: [
+        {
+          id: 'ansible-playbooks',
+          label: 'ansible.playbooks',
+          icon: 'playbooks',
+          route: 'ansible/playbooks'
+        },
+        {
+          id: 'ansible-inventory',
+          label: 'ansible.inventory',
+          icon: 'inventory',
+          route: 'ansible/inventory'
+        },
+        {
+          id: 'ansible-executions',
+          label: 'ansible.executions',
+          icon: 'executions',
+          route: 'ansible/executions'
+        }
+      ]
+    },
+    {
       id: 'logs',
       label: 'nav.logs',
       icon: 'logs',
@@ -439,6 +469,10 @@ export class SidebarTree extends I18nLitElement {
     // Ensure kubernetes is expanded by default
     if (!this.expandedItemsArray.includes('kubernetes')) {
       this.expandedItemsArray = [...this.expandedItemsArray, 'kubernetes'];
+    }
+    // Ensure ansible is expanded by default
+    if (!this.expandedItemsArray.includes('ansible')) {
+      this.expandedItemsArray = [...this.expandedItemsArray, 'ansible'];
     }
     
     // Set activeItemId from URL on component mount

@@ -107,12 +107,13 @@ type Executor struct {
 }
 
 // NewExecutor creates a new Ansible executor
-func NewExecutor(baseDir string) (*Executor, error) {
+// ansibleDir is the directory for Ansible files (playbooks, inventory, logs)
+func NewExecutor(ansibleDir string) (*Executor, error) {
 	e := &Executor{
-		baseDir:       baseDir,
-		playbookDir:   filepath.Join(baseDir, "playbooks"),
-		inventoryDir:  filepath.Join(baseDir, "inventory"),
-		logDir:        filepath.Join(baseDir, "logs"),
+		baseDir:       ansibleDir,
+		playbookDir:   filepath.Join(ansibleDir, "playbooks"),
+		inventoryDir:  filepath.Join(ansibleDir, "inventory"),
+		logDir:        filepath.Join(ansibleDir, "logs"),
 		outputStreams: make(map[string]chan string),
 	}
 
@@ -124,14 +125,14 @@ func NewExecutor(baseDir string) (*Executor, error) {
 		}
 	}
 
-	// Initialize the execution store
-	store, err := NewExecutionStore(baseDir)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize execution store: %w", err)
-	}
-	e.store = store
-
 	return e, nil
+}
+
+// SetStore sets the execution store for the executor
+func (e *Executor) SetStore(store *ExecutionStore) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.store = store
 }
 
 // RunPlaybook executes an Ansible playbook
@@ -642,7 +643,7 @@ func (e *Executor) StreamOutput(id string, writer io.Writer) error {
 	return nil
 }
 
-// Close closes the executor and its underlying store
+// Close closes the executor's resources
 func (e *Executor) Close() error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -652,9 +653,6 @@ func (e *Executor) Close() error {
 		close(stream)
 	}
 	
-	// Close the store
-	if e.store != nil {
-		return e.store.Close()
-	}
+	// Note: We don't close the store here as it uses a shared database connection
 	return nil
 }

@@ -1,0 +1,29 @@
+# Vapor Configuration File
+# 
+# This file configures the Vapor system management API server.
+# Settings can be overridden using environment variables or command-line flags.
+#
+# Environment variables:
+#   VAPOR_CONFIG - Path to this configuration file
+#   VAPOR_PORT   - Server port  
+#   VAPOR_APPDIR - Application data directory
+#
+# Command-line flags:
+#   --config <path>  - Path to configuration file
+#   --port <port>    - Server port
+#   --appdir <path>  - Application data directory
+
+# Server port (default: 8080)
+# Can be specified as:
+#   - Port number only: "8080"
+#   - With colon prefix: ":8080"
+#   - Full address: "0.0.0.0:8080" or "127.0.0.1:8080"
+port: "8080"
+
+# Application data directory (default: /var/lib/vapor)
+# This is where Vapor stores all its data including:
+#   - Ansible playbooks and inventory
+#   - Execution history database
+#   - Log files
+#   - Temporary files
+appdir: "/var/lib/vapor"

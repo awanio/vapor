@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -13,6 +15,8 @@ import (
 	"github.com/awanio/vapor/internal/ansible"
 	"github.com/awanio/vapor/internal/auth"
 	"github.com/awanio/vapor/internal/common"
+	"github.com/awanio/vapor/internal/config"
+	"github.com/awanio/vapor/internal/database"
 	"github.com/awanio/vapor/internal/docker"
 	"github.com/awanio/vapor/internal/logs"
 	"github.com/awanio/vapor/internal/network"
@@ -26,6 +30,49 @@ import (
 )
 
 func main() {
+	// Check for special flags first (before config.Load which calls flag.Parse)
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "--generate-config":
+			generateConfigCmd()
+			return
+		case "--help", "-h":
+			printHelp()
+			return
+		case "--version", "-v":
+			fmt.Println("Vapor System Management API v1.0.0")
+			return
+		}
+	}
+
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
+	}
+
+	// Print configuration if verbose mode
+	if os.Getenv("VAPOR_DEBUG") != "" {
+		cfg.Print()
+	}
+
+	// Initialize database
+	dbConfig := &database.Config{
+		AppDir: cfg.AppDir,
+	}
+	db, err := database.Initialize(dbConfig)
+	if err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
+	}
+	defer db.Close()
+
+	// Run migrations
+	allMigrations := []database.Migration{}
+	allMigrations = append(allMigrations, ansible.GetMigrations()...)
+	if err := db.Migrate(allMigrations); err != nil {
+		log.Fatalf("Failed to run database migrations: %v", err)
+	}
+
 	// Enforce Linux-only execution
 	if runtime.GOOS != "linux" {
 		log.Fatalf("Error: This application requires Linux. Current OS: %s/%s", runtime.GOOS, runtime.GOARCH)
@@ -90,17 +137,21 @@ func main() {
 		routes.SystemRoutes(api, systemService)
 
 		// Ansible integration endpoints
-		ansibleDir := "/var/lib/vapor/ansible"
-		if dir := os.Getenv("VAPOR_ANSIBLE_DIR"); dir != "" {
-			ansibleDir = dir
-		}
+		ansibleDir := cfg.GetAnsibleDir()
 		ansibleExec, err := ansible.NewExecutor(ansibleDir)
 		if err != nil {
 			log.Printf("Warning: Ansible integration disabled: %v", err)
 		} else {
-			log.Printf("Ansible integration initialized with base directory: %s", ansibleDir)
-			routes.AnsibleRoutes(api, ansibleExec)
-			defer ansibleExec.Close() // Close executor when server shuts down
+			// Initialize execution store with shared database
+			ansibleStore, err := ansible.NewExecutionStore(db)
+			if err != nil {
+				log.Printf("Warning: Failed to initialize Ansible execution store: %v", err)
+			} else {
+				ansibleExec.SetStore(ansibleStore)
+				log.Printf("Ansible integration initialized with base directory: %s", ansibleDir)
+				routes.AnsibleRoutes(api, ansibleExec)
+				defer ansibleExec.Close() // Close executor when server shuts down
+			}
 		}
 	}
 
@@ -217,7 +268,7 @@ func main() {
 
 	// Create HTTP server
 	srv := &http.Server{
-		Addr:    getServerAddr(),
+		Addr:    cfg.GetServerAddr(),
 		Handler: router,
 	}
 
@@ -262,12 +313,68 @@ func corsMiddleware() gin.HandlerFunc {
 	}
 }
 
-func getServerAddr() string {
-	if addr := os.Getenv("SERVER_ADDR"); addr != "" {
-		return addr
+func generateConfigCmd() {
+	var outputPath string
+	flagSet := flag.NewFlagSet("generate-config", flag.ExitOnError)
+	flagSet.StringVar(&outputPath, "output", "vapor.conf", "Output path for the configuration file")
+	
+	if len(os.Args) > 2 {
+		flagSet.Parse(os.Args[2:])
+	} else {
+		flagSet.Parse([]string{})
 	}
-	return ":8081"
+
+	if err := config.GenerateExample(outputPath); err != nil {
+		log.Fatalf("Failed to generate config file: %v", err)
+	}
+	fmt.Printf("Example configuration file generated at: %s\n", outputPath)
 }
+
+func printHelp() {
+	fmt.Println(`Vapor System Management API Server
+
+Usage:
+  vapor [options]
+  vapor --generate-config [--output <path>]
+
+Options:
+  --config <path>    Path to configuration file (default: search common locations)
+  --port <port>      Server port (default: 8080)
+  --appdir <path>    Application data directory (default: /var/lib/vapor)
+  --generate-config  Generate an example configuration file
+  --help, -h         Show this help message
+  --version, -v      Show version information
+
+Environment Variables:
+  VAPOR_CONFIG       Path to configuration file
+  VAPOR_PORT         Server port
+  VAPOR_APPDIR       Application data directory
+  VAPOR_DEBUG        Enable debug output
+  JWT_SECRET         JWT secret key for authentication
+
+Configuration File:
+  The server looks for vapor.conf in the following locations (in order):
+    1. Path specified by --config flag or VAPOR_CONFIG env var
+    2. ./vapor.conf (current directory)
+    3. ./config/vapor.conf
+    4. /etc/vapor/vapor.conf
+    5. /usr/local/etc/vapor/vapor.conf
+    6. $HOME/.config/vapor/vapor.conf
+    7. $HOME/.vapor.conf
+
+Examples:
+  # Run with default settings
+  vapor
+
+  # Run with custom config file
+  vapor --config /path/to/vapor.conf
+
+  # Run with custom port
+  vapor --port 9090
+
+  # Generate example config file
+  vapor --generate-config --output /etc/vapor/vapor.conf
+`)}
 
 func getJWTSecret() string {
 	if secret := os.Getenv("JWT_SECRET"); secret != "" {

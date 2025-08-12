@@ -35,6 +35,7 @@
     },
     "images": "Images",
     "kubernetes": "Kubernetes",
+    "ansible": "Ansible",
     "users": "Users"
   },
   "common": {
@@ -300,6 +301,41 @@
     "processes": "Processes",
     "volumes": "Volumes",
     "networks": "Networks"
+  },
+  "ansible": {
+    "playbooks": "Playbooks",
+    "templates": "Templates",
+    "executions": "Executions",
+    "playbooksTitle": "Ansible Playbooks",
+    "playbooksSubtitle": "Manage and run your Ansible playbooks and job templates.",
+    "createPlaybook": "Create Playbook",
+    "importPlaybook": "Import Playbook",
+    "createTemplate": "Create Template",
+    "searchPlaybooks": "Search playbooks...",
+    "searchTemplates": "Search templates...",
+    "noPlaybooks": "No playbooks found",
+    "noPlaybooksDesc": "Create a new playbook or import an existing one to get started.",
+    "noTemplates": "No templates found",
+    "noTemplatesDesc": "Create a new job template to run your playbooks.",
+    "status": {
+      "active": "Active",
+      "draft": "Draft",
+      "archived": "Archived",
+      "enabled": "Enabled",
+      "disabled": "Disabled"
+    },
+    "hosts": "Hosts",
+    "modified": "Last Modified",
+    "templateType": "Type",
+    "playbook": "Playbook",
+    "inventory": "Inventory",
+    "lastUsed": "Last Used",
+    "runTemplate": "Run Template",
+    "duplicate": "Duplicate",
+    "type": {
+      "job": "Job",
+      "workflow": "Workflow"
+    }
   },
   "kubernetes": {
     "title": "Kubernetes",

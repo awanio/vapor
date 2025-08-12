@@ -13,6 +13,7 @@ import './views/terminal-tab';
 import './views/users-tab';
 import './views/docker-tab';
 import './views/kubernetes-tab';
+import './views/ansible-tab';
 import './components/sidebar-tree';
 
 export class AppRoot extends LitElement {
@@ -449,6 +450,7 @@ export class AppRoot extends LitElement {
             ${this.activeView === 'terminal' ? html`<terminal-tab></terminal-tab>` : ''}
             ${this.activeView === 'users' ? html`<users-tab></users-tab>` : ''}
             ${this.activeView === 'kubernetes' ? html`<kubernetes-tab .subRoute=${this.subRoute}></kubernetes-tab>` : ''}
+            ${this.activeView === 'ansible' ? html`<ansible-tab .subRoute=${this.subRoute}></ansible-tab>` : ''}
             ${!this.isValidRoute(this.activeView) ? html`<div>404 - Page Not Found</div>` : ''}
           </div>
         </main>
@@ -472,7 +474,7 @@ export class AppRoot extends LitElement {
   }
   
   private isValidRoute(route: string): boolean {
-    const validRoutes = ['dashboard', 'network', 'storage', 'containers', 'logs', 'terminal', 'users', 'docker', 'kubernetes'];
+    const validRoutes = ['dashboard', 'network', 'storage', 'containers', 'logs', 'terminal', 'users', 'docker', 'kubernetes', 'ansible'];
     return validRoutes.includes(route);
   }
 }

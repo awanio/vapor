@@ -242,7 +242,7 @@ const T = l.getInstance();
 T.getTheme();
 w.isAuthenticated();
 u.init().then(() => {
-  console.log("i18n initialized, loading app..."), import("./app-root-CtTLNEsi.js"), console.log("Vapor Web UI initialized");
+  console.log("i18n initialized, loading app..."), import("./app-root-BddEAG7-.js"), console.log("Vapor Web UI initialized");
 }).catch((a) => {
   console.error("Failed to initialize i18n:", a);
 });

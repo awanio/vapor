@@ -1,50 +1,28 @@
 package ansible
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
-	"path/filepath"
 	"sync"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/awanio/vapor/internal/database"
 )
 
 // ExecutionStore manages persistent storage of execution history
 type ExecutionStore struct {
-	db           *sql.DB
-	dbPath       string
+	db           *database.DB
 	mu           sync.RWMutex
 	inMemCache   map[string]*ExecutionResult // Cache for recent/running executions
 	maxCacheSize int
 }
 
-// NewExecutionStore creates a new SQLite-based execution store
-func NewExecutionStore(baseDir string) (*ExecutionStore, error) {
-	dbPath := filepath.Join(baseDir, "vapor_executions.db")
-	
-	// Open SQLite database
-	db, err := sql.Open("sqlite3", dbPath+"?_journal_mode=WAL&_busy_timeout=5000")
-	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
-	}
-	
-	// Set connection pool settings
-	db.SetMaxOpenConns(1) // SQLite doesn't benefit from multiple connections
-	db.SetMaxIdleConns(1)
-	db.SetConnMaxLifetime(0)
-	
+// NewExecutionStore creates a new execution store using the shared database connection
+func NewExecutionStore(db *database.DB) (*ExecutionStore, error) {
 	store := &ExecutionStore{
 		db:           db,
-		dbPath:       dbPath,
 		inMemCache:   make(map[string]*ExecutionResult),
 		maxCacheSize: 100, // Keep last 100 executions in memory
-	}
-	
-	// Initialize database schema
-	if err := store.initSchema(); err != nil {
-		return nil, fmt.Errorf("failed to initialize schema: %w", err)
 	}
 	
 	// Load recent executions into cache
@@ -58,90 +36,6 @@ func NewExecutionStore(baseDir string) (*ExecutionStore, error) {
 	return store, nil
 }
 
-// initSchema creates the database tables if they don't exist
-func (es *ExecutionStore) initSchema() error {
-	schema := `
-	CREATE TABLE IF NOT EXISTS executions (
-		id TEXT PRIMARY KEY,
-		type TEXT NOT NULL,
-		status TEXT NOT NULL,
-		playbook TEXT,
-		inventory TEXT,
-		start_time DATETIME NOT NULL,
-		end_time DATETIME,
-		duration REAL,
-		exit_code INTEGER,
-		changed BOOLEAN DEFAULT 0,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-	);
-
-	CREATE INDEX IF NOT EXISTS idx_status ON executions(status);
-	CREATE INDEX IF NOT EXISTS idx_start_time ON executions(start_time DESC);
-	CREATE INDEX IF NOT EXISTS idx_playbook ON executions(playbook);
-	CREATE INDEX IF NOT EXISTS idx_type ON executions(type);
-
-	CREATE TABLE IF NOT EXISTS execution_output (
-		execution_id TEXT NOT NULL,
-		line_number INTEGER NOT NULL,
-		content TEXT NOT NULL,
-		timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-		PRIMARY KEY (execution_id, line_number),
-		FOREIGN KEY (execution_id) REFERENCES executions(id) ON DELETE CASCADE
-	);
-
-	CREATE TABLE IF NOT EXISTS execution_stats (
-		execution_id TEXT NOT NULL,
-		host TEXT NOT NULL,
-		ok INTEGER DEFAULT 0,
-		changed INTEGER DEFAULT 0,
-		unreachable INTEGER DEFAULT 0,
-		failed INTEGER DEFAULT 0,
-		skipped INTEGER DEFAULT 0,
-		rescued INTEGER DEFAULT 0,
-		ignored INTEGER DEFAULT 0,
-		PRIMARY KEY (execution_id, host),
-		FOREIGN KEY (execution_id) REFERENCES executions(id) ON DELETE CASCADE
-	);
-
-	CREATE TABLE IF NOT EXISTS execution_metadata (
-		execution_id TEXT PRIMARY KEY,
-		tags TEXT,           -- JSON array
-		skip_tags TEXT,      -- JSON array
-		limit_hosts TEXT,
-		extra_vars TEXT,     -- JSON object
-		forks INTEGER,
-		verbosity INTEGER,
-		check_mode BOOLEAN,
-		diff_mode BOOLEAN,
-		become BOOLEAN,
-		become_user TEXT,
-		timeout INTEGER,
-		FOREIGN KEY (execution_id) REFERENCES executions(id) ON DELETE CASCADE
-	);
-
-	-- Table for failed/unreachable hosts
-	CREATE TABLE IF NOT EXISTS execution_failures (
-		execution_id TEXT NOT NULL,
-		host TEXT NOT NULL,
-		failure_type TEXT NOT NULL, -- 'failed' or 'unreachable'
-		error_message TEXT,
-		task_name TEXT,
-		PRIMARY KEY (execution_id, host, failure_type),
-		FOREIGN KEY (execution_id) REFERENCES executions(id) ON DELETE CASCADE
-	);
-
-	-- Trigger to update updated_at timestamp
-	CREATE TRIGGER IF NOT EXISTS update_execution_timestamp 
-	AFTER UPDATE ON executions
-	BEGIN
-		UPDATE executions SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
-	END;
-	`
-	
-	_, err := es.db.Exec(schema)
-	return err
-}
 
 // GetExecution retrieves a single execution by ID
 func (es *ExecutionStore) GetExecution(id string) (*ExecutionResult, error) {
@@ -626,7 +520,7 @@ func (es *ExecutionStore) CleanupOldExecutions(retentionDays int) error {
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected > 0 {
 		// Vacuum to reclaim space
-		_, _ = es.db.Exec("VACUUM")
+		_ = es.db.Vacuum()
 	}
 	
 	return nil
@@ -688,30 +582,13 @@ func (es *ExecutionStore) startCleanupRoutine() {
 		_ = es.CleanupOldExecutions(30)
 		
 		// Optimize database
-		_, _ = es.db.Exec("PRAGMA optimize")
+		_ = es.db.Optimize()
 	}
 }
 
 // GetDatabaseSize returns the size of the database file
 func (es *ExecutionStore) GetDatabaseSize() (int64, error) {
-	var pageCount, pageSize int64
-	
-	err := es.db.QueryRow("PRAGMA page_count").Scan(&pageCount)
-	if err != nil {
-		return 0, err
-	}
-	
-	err = es.db.QueryRow("PRAGMA page_size").Scan(&pageSize)
-	if err != nil {
-		return 0, err
-	}
-	
-	return pageCount * pageSize, nil
-}
-
-// Close closes the database connection
-func (es *ExecutionStore) Close() error {
-	return es.db.Close()
+	return es.db.GetSize()
 }
 
 // ExecutionFilters for querying executions

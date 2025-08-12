@@ -80,7 +80,87 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     strace \
     gdb \
+    # Python and pip for Ansible
+    python3 \
+    python3-pip \
+    python3-dev \
+    python3-setuptools \
+    # SSH client for Ansible
+    openssh-client \
+    sshpass \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Ansible and related tools
+RUN pip3 install --upgrade pip && \
+    pip3 install \
+    ansible \
+    ansible-core \
+    ansible-lint \
+    molecule \
+    molecule-docker \
+    jmespath \
+    netaddr \
+    paramiko \
+    PyYAML \
+    jinja2 \
+    httplib2 \
+    requests \
+    boto3 \
+    google-auth \
+    kubernetes \
+    && rm -rf ~/.cache/pip
+
+# Install Ansible collections for common use cases
+RUN ansible-galaxy collection install \
+    ansible.posix \
+    community.general \
+    community.docker \
+    community.kubernetes \
+    community.aws \
+    community.postgresql \
+    community.mysql \
+    community.mongodb \
+    ansible.netcommon \
+    ansible.utils \
+    && rm -rf ~/.ansible/tmp
+
+# Create default Ansible configuration
+RUN echo '[defaults]\n\
+host_key_checking = False\n\
+retry_files_enabled = False\n\
+stdout_callback = yaml\n\
+callback_whitelist = profile_tasks, timer\n\
+gathering = smart\n\
+fact_caching = jsonfile\n\
+fact_caching_connection = /var/lib/vapor/ansible/tmp/facts_cache\n\
+fact_caching_timeout = 3600\n\
+roles_path = /var/lib/vapor/ansible/roles:/root/.ansible/roles\n\
+collections_path = /var/lib/vapor/ansible/collections:/root/.ansible/collections\n\
+ansible_managed = Ansible managed: {file} modified on %Y-%m-%d %H:%M:%S\n\
+remote_tmp = /tmp/.ansible-${USER}/tmp\n\
+local_tmp = /var/lib/vapor/ansible/tmp\n\
+pipelining = True\n\
+forks = 50\n\
+timeout = 30\n\
+poll_interval = 15\n\
+\n\
+[inventory]\n\
+enable_plugins = host_list, yaml, ini, toml, script\n\
+\n\
+[privilege_escalation]\n\
+become = False\n\
+become_method = sudo\n\
+become_user = root\n\
+become_ask_pass = False\n\
+\n\
+[paramiko_connection]\n\
+record_host_keys = False\n\
+\n\
+[ssh_connection]\n\
+ssh_args = -o ControlMaster=auto -o ControlPersist=60s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null\n\
+control_path_dir = /var/lib/vapor/ansible/tmp/.ansible-cp\n\
+control_path = %(directory)s/%%h-%%r\n\
+pipelining = True' > /etc/ansible/ansible.cfg
 
 # Install Air for hot reload
 RUN go install github.com/cosmtrek/air@latest
@@ -110,7 +190,16 @@ RUN mkdir -p /var/log/journal && \
     mkdir -p /dev/mapper && \
     mkdir -p /sys/class && \
     mkdir -p /sys/block && \
-    mkdir -p /certs/client
+    mkdir -p /certs/client && \
+    mkdir -p /etc/ansible && \
+    mkdir -p /var/lib/vapor/ansible/playbooks && \
+    mkdir -p /var/lib/vapor/ansible/inventory && \
+    mkdir -p /var/lib/vapor/ansible/roles && \
+    mkdir -p /var/lib/vapor/ansible/collections && \
+    mkdir -p /var/lib/vapor/ansible/tmp && \
+    mkdir -p /var/lib/vapor/ansible/logs && \
+    mkdir -p /root/.ansible/tmp && \
+    chmod -R 755 /var/lib/vapor/ansible
 
 # Enable necessary systemd services
 RUN systemctl enable systemd-journald.service && \
@@ -281,6 +370,18 @@ EXPOSE 8080
 # Set environment variables
 ENV JWT_SECRET=development-secret
 ENV SERVER_ADDR=:8080
+
+# Ansible environment variables
+ENV ANSIBLE_HOST_KEY_CHECKING=False
+ENV ANSIBLE_RETRY_FILES_ENABLED=False
+ENV ANSIBLE_STDOUT_CALLBACK=yaml
+ENV ANSIBLE_GATHERING=smart
+ENV ANSIBLE_CACHE_PLUGIN=jsonfile
+ENV ANSIBLE_CACHE_PLUGIN_CONNECTION=/var/lib/vapor/ansible/tmp/facts_cache
+ENV ANSIBLE_LOCAL_TEMP=/var/lib/vapor/ansible/tmp
+ENV ANSIBLE_REMOTE_TEMP=/tmp/.ansible-${USER}/tmp
+ENV ANSIBLE_COLLECTIONS_PATH=/var/lib/vapor/ansible/collections:/root/.ansible/collections
+ENV ANSIBLE_ROLES_PATH=/var/lib/vapor/ansible/roles:/root/.ansible/roles
 
 # Use the entrypoint script
 ENTRYPOINT ["/entrypoint.sh"]
