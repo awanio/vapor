@@ -1,0 +1,37 @@
+# Environment files (contain secrets)
+.env
+.env.local
+.env.*.local
+
+# Kubeconfig files
+kubeconfig
+*.kubeconfig
+
+# Docker/Container runtime data
+*.pid
+*.sock
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+.tmp/
+tmp/
+
+# IDE specific files
+.vscode/
+.idea/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Test data
+test-data/
+test-storage/

@@ -90,47 +90,73 @@ docker-run:
 # Development environment with docker-compose
 dev-up:
 	@echo "Starting development environment..."
-	docker-compose up -d
+	@cd development && ./compose.sh up -d
 	@echo "Development environment started!"
 	@echo "Vapor API: http://localhost:8080"
-	@echo "Postgres: localhost:5432"
-	@echo "Redis: localhost:6379"
 	@echo "K3s API: https://localhost:6443"
+	@echo "iSCSI Target: localhost:3260"
 	@echo ""
-	@echo "Test users:"
-	@echo "  vapor:vapor123 (sudo)"
-	@echo "  admin:admin789 (sudo)"
-	@echo "  testuser1:test123"
-	@echo "  testuser2:test456"
+	@echo "Default test user: vapor:vapor123"
+	@echo "See development/README.md for more details"
 
 # Stop development environment
 dev-down:
 	@echo "Stopping development environment..."
-	docker-compose down
+	@cd development && ./compose.sh down
 
 # Restart development environment
 dev-restart:
 	@echo "Restarting development environment..."
-	docker-compose restart vapor-api
+	@cd development && ./compose.sh restart vapor-api
 
 # View logs from development environment
 dev-logs:
-	docker-compose logs -f vapor-api
+	@cd development && ./compose.sh logs -f vapor-api
 
 # Execute commands in development container
 dev-exec:
-	docker-compose exec vapor-api bash
+	@cd development && ./compose.sh exec vapor-api bash
 
 # Run tests in development container
 dev-test:
 	@echo "Running tests in development container..."
-	docker-compose exec vapor-api go test -v ./...
+	@cd development && ./compose.sh exec vapor-api go test -v ./...
 
 # Clean development environment
 dev-clean:
 	@echo "Cleaning development environment..."
-	docker-compose down -v
+	@cd development && ./compose.sh down -v
 	@echo "Removed all containers and volumes"
+
+# Show development environment status
+dev-ps:
+	@cd development && ./compose.sh ps
+
+# Build development environment
+dev-build:
+	@echo "Building development environment..."
+	@cd development && ./compose.sh build
+
+# Pull latest images for development environment
+dev-pull:
+	@echo "Pulling latest images..."
+	@cd development && ./compose.sh pull
+
+# Show development environment help
+dev-help:
+	@echo "Vapor Development Environment Commands:"
+	@echo "  make dev-up      - Start development environment"
+	@echo "  make dev-down    - Stop development environment"
+	@echo "  make dev-ps      - Show container status"
+	@echo "  make dev-restart - Restart vapor-api container"
+	@echo "  make dev-logs    - View vapor-api logs"
+	@echo "  make dev-exec    - Open bash shell in container"
+	@echo "  make dev-test    - Run tests in container"
+	@echo "  make dev-build   - Rebuild development images"
+	@echo "  make dev-pull    - Pull latest base images"
+	@echo "  make dev-clean   - Remove all containers and volumes"
+	@echo ""
+	@echo "For more information, see development/README.md"
 
 # Generate OpenAPI documentation
 docs:

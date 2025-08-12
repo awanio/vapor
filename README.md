@@ -114,6 +114,33 @@ make build-linux
 make test
 ```
 
+### Development Environment
+
+For a complete development environment with all dependencies, use the provided Docker Compose setup:
+
+```bash
+# Quick start using Make commands
+make dev-up       # Start development environment
+make dev-ps       # Check container status
+make dev-exec     # Access container shell
+make dev-logs     # View logs
+make dev-down     # Stop environment
+make dev-help     # Show all dev commands
+
+# Or navigate to development folder for direct control
+cd development
+./compose.sh up -d
+```
+
+The development environment includes:
+- Full Linux system with systemd
+- Docker-in-Docker for container management
+- K3s for Kubernetes testing
+- iSCSI target for storage testing
+- All required system utilities pre-installed
+
+See [development/README.md](development/README.md) for detailed setup instructions.
+
 ### Deployment on Linux
 
 ```bash

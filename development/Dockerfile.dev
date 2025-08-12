@@ -67,16 +67,8 @@ RUN apt-get update && apt-get install -y \
     targetcli-fb \
     # Multipath tools
     multipath-tools \
-    # NFS tools
-    nfs-common \
-    nfs-kernel-server \
-    # SMB/CIFS tools
-    cifs-utils \
-    smbclient \
-    # Container tools
+    # Container tools (Docker CLI only, daemon will be in dind service)
     docker.io \
-    containerd \
-    runc \
     # Monitoring tools
     htop \
     iotop \
@@ -110,7 +102,15 @@ RUN mkdir -p /var/log/journal && \
     mkdir -p /run/systemd/journal && \
     mkdir -p /etc/systemd/system && \
     mkdir -p /mnt/test-storage && \
-    mkdir -p /etc/netns
+    mkdir -p /etc/netns && \
+    mkdir -p /etc/lvm && \
+    mkdir -p /var/lib/lvm && \
+    mkdir -p /etc/iscsi && \
+    mkdir -p /etc/multipath && \
+    mkdir -p /dev/mapper && \
+    mkdir -p /sys/class && \
+    mkdir -p /sys/block && \
+    mkdir -p /certs/client
 
 # Enable necessary systemd services
 RUN systemctl enable systemd-journald.service && \
@@ -181,6 +181,30 @@ tmp_dir = "tmp"\n\n\
 # Create entrypoint script
 RUN echo '#!/bin/bash\n\
 set -e\n\n\
+# Ensure /proc and /sys are mounted (required for container operations)\n\
+if [ ! -f /proc/cpuinfo ]; then\n\
+    mount -t proc proc /proc || true\n\
+fi\n\
+if [ ! -d /sys/kernel ]; then\n\
+    mount -t sysfs sys /sys || true\n\
+fi\n\n\
+# Mount devtmpfs if not already mounted\n\
+if [ ! -c /dev/null ]; then\n\
+    mount -t devtmpfs devtmpfs /dev || true\n\
+fi\n\n\
+# Create essential device nodes if they dont exist\n\
+if [ ! -c /dev/null ]; then\n\
+    mknod -m 666 /dev/null c 1 3\n\
+fi\n\
+if [ ! -c /dev/zero ]; then\n\
+    mknod -m 666 /dev/zero c 1 5\n\
+fi\n\
+if [ ! -c /dev/random ]; then\n\
+    mknod -m 444 /dev/random c 1 8\n\
+fi\n\
+if [ ! -c /dev/urandom ]; then\n\
+    mknod -m 444 /dev/urandom c 1 9\n\
+fi\n\n\
 # Start systemd services if not running\n\
 if ! systemctl is-active --quiet systemd-journald; then\n\
     systemctl start systemd-journald\n\
@@ -188,10 +212,20 @@ fi\n\n\
 if ! systemctl is-active --quiet systemd-networkd; then\n\
     systemctl start systemd-networkd\n\
 fi\n\n\
-# Start Docker daemon if not running\n\
-if ! pgrep -x dockerd > /dev/null; then\n\
-    dockerd &\n\
-    sleep 5\n\
+# Setup Docker client to connect to dind service\n\
+if [ -n "$DOCKER_HOST" ]; then\n\
+    echo "Using Docker-in-Docker at $DOCKER_HOST"\n\
+    # Wait for dind to be ready\n\
+    for i in {1..30}; do\n\
+        if docker version >/dev/null 2>&1; then\n\
+            echo "Docker daemon is ready"\n\
+            break\n\
+        fi\n\
+        echo "Waiting for Docker daemon..."\n\
+        sleep 2\n\
+    done\n\
+else\n\
+    echo "Warning: DOCKER_HOST not set, Docker features may not work"\n\
 fi\n\n\
 # Start iSCSI initiator\n\
 if ! systemctl is-active --quiet iscsid; then\n\
@@ -200,15 +234,19 @@ fi\n\n\
 # Load kernel modules for storage features\n\
 modprobe dm-multipath || true\n\
 modprobe target_core_mod || true\n\
-modprobe iscsi_target_mod || true\n\
-modprobe nfs || true\n\
-modprobe nfsd || true\n\n\
-# Create test loop devices for storage testing\n\
+modprobe iscsi_target_mod || true\n\n\
+# Create loop devices for storage testing\n\
 for i in {0..7}; do\n\
-    if [ ! -e /dev/loop$i ]; then\n\
+    if [ ! -b /dev/loop$i ]; then\n\
         mknod /dev/loop$i b 7 $i || true\n\
+        chmod 660 /dev/loop$i || true\n\
     fi\n\
 done\n\n\
+# Ensure device mapper control exists\n\
+if [ ! -c /dev/mapper/control ]; then\n\
+    mknod /dev/mapper/control c 10 236 || true\n\
+    chmod 600 /dev/mapper/control || true\n\
+fi\n\n\
 # Create test block devices\n\
 dd if=/dev/zero of=/mnt/test-storage/disk1.img bs=1M count=100 2>/dev/null || true\n\
 dd if=/dev/zero of=/mnt/test-storage/disk2.img bs=1M count=100 2>/dev/null || true\n\
