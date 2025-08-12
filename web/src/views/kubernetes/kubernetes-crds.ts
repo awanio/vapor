@@ -1,21 +1,52 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { Api } from '../../utils/api';
-import '../../components/tables/resource-table';
-import '../../components/ui/search-input';
-import '../../components/ui/loading-state';
-import '../../components/ui/empty-state';
-import '../../components/ui/notification-container';
-import '../../components/modals/delete-modal';
-import '../../components/drawers/detail-drawer';
+import { KubernetesApi } from '../../services/kubernetes-api.js';
+import type {
+  KubernetesCRD,
+  KubernetesResourceDetails
+} from '../../services/kubernetes-api.js';
+import '../../components/ui/search-input.js';
+import '../../components/ui/empty-state.js';
+import '../../components/ui/loading-state.js';
+import '../../components/tables/resource-table.js';
+import '../../components/drawers/detail-drawer.js';
+import '../../components/modals/delete-modal.js';
+import '../../components/kubernetes/resource-detail-view.js';
+import '../../components/kubernetes/crd-instances-drawer.js';
 import '../../components/drawers/create-resource-drawer';
+import '../../components/ui/notification-container';
+import type { Column } from '../../components/tables/resource-table.js';
+import type { ActionItem } from '../../components/ui/action-dropdown.js';
+import type { DeleteItem } from '../../components/modals/delete-modal.js';
 
 /**
  * Kubernetes CRDs (Custom Resource Definitions) view component
- * Manages custom resource definitions and their instances
+ * Manages custom resource definitions
  */
 @customElement('kubernetes-crds')
 export class KubernetesCRDs extends LitElement {
+  @property({ type: Array }) resources: KubernetesCRD[] = [];
+  @property({ type: String }) searchQuery = '';
+  @property({ type: Boolean }) loading = false;
+  @property({ type: String }) error: string | null = null;
+  
+  @state() private showDetails = false;
+  @state() private selectedItem: KubernetesCRD | null = null;
+  @state() private loadingDetails = false;
+  @state() private detailsData: KubernetesResourceDetails | null = null;
+  @state() private showDeleteModal = false;
+  @state() private itemToDelete: DeleteItem | null = null;
+  @state() private isDeleting = false;
+
+  // Create drawer state
+  @state() private showCreateDrawer = false;
+  @state() private createResourceValue = '';
+  @state() private isCreating = false;
+
+  // Instances drawer state
+  @state() private showInstancesDrawer = false;
+  @state() private selectedCRDForInstances: KubernetesCRD | null = null;
+
   static override styles = css`
     :host {
       display: block;
@@ -32,19 +63,16 @@ export class KubernetesCRDs extends LitElement {
     .header {
       display: flex;
       align-items: center;
-      justify-content: space-between;
       gap: 1rem;
+    }
+
+    search-input {
+      flex: 1;
     }
 
     .content {
       flex: 1;
       overflow-y: auto;
-    }
-
-    .controls {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
     }
 
     .btn-create {
@@ -66,170 +94,235 @@ export class KubernetesCRDs extends LitElement {
       background: var(--vscode-button-hoverBackground, #005a9e);
     }
 
-    .filters {
+    .controls {
       display: flex;
       align-items: center;
       gap: 1rem;
     }
-
-    .resource-count {
-      font-size: 13px;
-      color: var(--vscode-descriptionForeground, #cccccc80);
-      margin-left: auto;
-    }
-
-    /* Detail styles */
-    .detail-content {
-      padding: 1rem;
-    }
-
-    .detail-section {
-      margin-bottom: 1.5rem;
-    }
-
-    .detail-section h3 {
-      margin: 0 0 0.5rem 0;
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--vscode-foreground, #cccccc);
-    }
-
-    .detail-item {
-      margin-bottom: 0.5rem;
-      font-size: 13px;
-    }
-
-    .detail-key {
-      font-weight: 500;
-      color: var(--vscode-textLink-foreground, #3794ff);
-    }
-
-    .detail-value {
-      color: var(--vscode-foreground, #cccccc);
-      font-family: var(--vscode-editor-font-family, monospace);
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-
-    .version-item {
-      background: var(--vscode-editor-background, #1e1e1e);
-      border: 1px solid var(--vscode-widget-border, #303031);
-      border-radius: 4px;
-      padding: 0.75rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .version-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 0.5rem;
-    }
-
-    .version-name {
-      font-weight: 500;
-      color: var(--vscode-textLink-foreground, #3794ff);
-    }
-
-    .version-badges {
-      display: flex;
-      gap: 0.5rem;
-    }
-
-    .badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 11px;
-      font-weight: 500;
-      background: var(--vscode-badge-background, #007acc);
-      color: var(--vscode-badge-foreground, white);
-    }
-
-    .badge.served {
-      background: var(--vscode-notificationsInfoIcon-foreground, #3794ff);
-    }
-
-    .badge.storage {
-      background: var(--vscode-notificationsWarningIcon-foreground, #cca700);
-    }
-
-    .schema-section {
-      background: var(--vscode-editor-background, #1e1e1e);
-      border: 1px solid var(--vscode-widget-border, #303031);
-      border-radius: 4px;
-      padding: 1rem;
-      margin-top: 0.75rem;
-      font-family: var(--vscode-editor-font-family, monospace);
-      font-size: 12px;
-      white-space: pre-wrap;
-      max-height: 400px;
-      overflow-y: auto;
-    }
-
-    .instances-section {
-      margin-top: 1.5rem;
-    }
-
-    .instance-item {
-      background: var(--vscode-list-hoverBackground, #2a2a2a);
-      border-radius: 4px;
-      padding: 0.75rem;
-      margin-bottom: 0.5rem;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-
-    .instance-item:hover {
-      background: var(--vscode-list-activeSelectionBackground, #094771);
-    }
-
-    .instance-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .instance-name {
-      font-weight: 500;
-      color: var(--vscode-foreground, #cccccc);
-    }
-
-    .instance-namespace {
-      font-size: 12px;
-      color: var(--vscode-descriptionForeground, #cccccc80);
-    }
   `;
 
-  @property({ type: String }) searchQuery = '';
-  @property({ type: Boolean }) showInstances = false;
-  
-  @state() private loading = false;
-  @state() private crds: any[] = [];
-  @state() private selectedCRD: any = null;
-  @state() private crdInstances: any[] = [];
-  
-  // UI state
-  @state() private showDetailDrawer = false;
-  @state() private showDeleteModal = false;
-  @state() private showCreateDrawer = false;
-  @state() private selectedResource: any = null;
-  @state() private detailType = '';
+  private getColumns(): Column[] {
+    return [
+      { key: 'name', label: 'Name', type: 'link' },
+      { key: 'group', label: 'Group' },
+      { key: 'version', label: 'Version' },
+      { key: 'kind', label: 'Kind' },
+      { key: 'age', label: 'Age' }
+    ];
+  }
 
-  private api = new Api();
+  private getActions(_item: KubernetesCRD): ActionItem[] {
+    return [
+      { label: 'View Details', action: 'view' },
+      { label: 'View Instances', action: 'instances' },
+      { label: 'Delete', action: 'delete', danger: true }
+    ];
+  }
+
+  private getFilteredData(): any[] {
+    let data = this.resources;
+
+    if (this.searchQuery) {
+      data = data.filter(item => 
+        JSON.stringify(item).toLowerCase().includes(this.searchQuery.toLowerCase())
+      );
+    }
+
+    // Return data as-is, let custom renderers handle formatting
+    return data;
+  }
+
+  private handleSearchChange(event: CustomEvent) {
+    this.searchQuery = event.detail.value;
+  }
+
+  private handleCellClick(event: CustomEvent) {
+    const item = event.detail.item as KubernetesCRD;
+    this.viewDetails(item);
+  }
+
+  private handleAction(event: CustomEvent) {
+    const { action, item } = event.detail;
+    
+    switch (action) {
+      case 'view':
+        this.viewDetails(item);
+        break;
+      case 'instances':
+        this.viewInstances(item);
+        break;
+      case 'delete':
+        this.deleteItem(item);
+        break;
+    }
+  }
+
+  private async viewDetails(item: KubernetesCRD) {
+    this.selectedItem = item;
+    this.showDetails = true;
+    this.loadingDetails = true;
+    
+    try {
+      this.detailsData = await KubernetesApi.getResourceDetails('crd', item.name);
+    } catch (error) {
+      console.error('Failed to fetch CRD details:', error);
+      this.detailsData = null;
+    } finally {
+      this.loadingDetails = false;
+    }
+  }
+
+  private viewInstances(item: KubernetesCRD) {
+    this.selectedCRDForInstances = item;
+    this.showInstancesDrawer = true;
+  }
+
+  private deleteItem(item: KubernetesCRD) {
+    this.itemToDelete = {
+      type: 'CustomResourceDefinition',
+      name: item.name,
+      namespace: undefined
+    };
+    this.showDeleteModal = true;
+  }
+
+  private async handleConfirmDelete() {
+    if (!this.itemToDelete) return;
+
+    this.isDeleting = true;
+    
+    try {
+      await KubernetesApi.deleteResource('crd', this.itemToDelete.name);
+      
+      // Refresh data
+      await this.fetchData();
+      
+      // Close modal
+      this.showDeleteModal = false;
+      this.itemToDelete = null;
+
+      // Show success notification
+      const nc = this.shadowRoot?.querySelector('notification-container') as any;
+      if (nc && typeof nc.addNotification === 'function') {
+        nc.addNotification({ type: 'success', message: 'CRD deleted successfully' });
+      }
+    } catch (error) {
+      console.error('Failed to delete CRD:', error);
+      const nc = this.shadowRoot?.querySelector('notification-container') as any;
+      if (nc && typeof nc.addNotification === 'function') {
+        nc.addNotification({ type: 'error', message: 'Failed to delete CRD' });
+      }
+    } finally {
+      this.isDeleting = false;
+    }
+  }
+
+  private handleCancelDelete() {
+    this.showDeleteModal = false;
+    this.itemToDelete = null;
+  }
+
+  private handleCreate() {
+    this.createResourceValue = `apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: crontabs.example.com
+spec:
+  group: example.com
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              cronSpec:
+                type: string
+              image:
+                type: string
+              replicas:
+                type: integer
+  scope: Namespaced
+  names:
+    plural: crontabs
+    singular: crontab
+    kind: CronTab
+    shortNames:
+    - ct`;
+    this.showCreateDrawer = true;
+  }
+
+  private async handleCreateResource(event: CustomEvent) {
+    const { resource, format } = event.detail as { resource: any; format: 'yaml' | 'json' };
+    let content = '';
+    try {
+      content = format === 'json' ? JSON.stringify(resource) : (resource.yaml as string);
+      this.isCreating = true;
+      await KubernetesApi.createResource(content, format);
+      await this.fetchData();
+      this.showCreateDrawer = false;
+      this.createResourceValue = '';
+      const nc = this.shadowRoot?.querySelector('notification-container') as any;
+      if (nc && typeof nc.addNotification === 'function') {
+        nc.addNotification({ type: 'success', message: 'CRD created successfully' });
+      }
+    } catch (err: any) {
+      const nc = this.shadowRoot?.querySelector('notification-container') as any;
+      if (nc && typeof nc.addNotification === 'function') {
+        nc.addNotification({ type: 'error', message: `Failed to create CRD: ${err?.message || 'Unknown error'}` });
+      }
+    } finally {
+      this.isCreating = false;
+    }
+  }
+
+  private handleDetailsClose() {
+    this.showDetails = false;
+    this.selectedItem = null;
+    this.detailsData = null;
+  }
+
+  private handleInstancesDrawerClose() {
+    this.showInstancesDrawer = false;
+    this.selectedCRDForInstances = null;
+  }
+
+  async fetchData() {
+    this.loading = true;
+    this.error = null;
+    
+    try {
+      const crds = await KubernetesApi.getCRDs();
+      this.resources = crds;
+    } catch (error: any) {
+      console.error('Failed to fetch CRDs:', error);
+      this.error = error.message || 'Failed to fetch Custom Resource Definitions';
+    } finally {
+      this.loading = false;
+    }
+  }
 
   override connectedCallback() {
     super.connectedCallback();
-    this.fetchCRDs();
+    this.fetchData();
   }
 
   override render() {
     return html`
       <div class="container">
         <div class="header">
-          <h1>Custom Resource Definitions</h1>
+          <search-input
+            .value="${this.searchQuery}"
+            placeholder="Search CRDs..."
+            @search-change="${this.handleSearchChange}"
+          ></search-input>
+          
           <div class="controls">
-            <button class="btn-create" @click=${this.handleCreate}>
+            <button class="btn-create" @click="${this.handleCreate}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -240,448 +333,67 @@ export class KubernetesCRDs extends LitElement {
         </div>
 
         <div class="content">
-          <div class="filters">
-            <search-input
-              .value=${this.searchQuery}
-              placeholder="Search CRDs..."
-              @search-change=${this.handleSearch}
-            ></search-input>
-
-            <span class="resource-count">
-              ${this.getFilteredCRDs().length} CRDs
-            </span>
-          </div>
-
           ${this.loading ? html`
-            <loading-state message="Loading CRDs..."></loading-state>
-          ` : this.renderContent()}
+            <loading-state message="Loading Custom Resource Definitions..."></loading-state>
+          ` : this.error ? html`
+            <empty-state 
+              message="${this.error}" 
+              icon="⚠️"
+            ></empty-state>
+          ` : html`
+            <resource-table
+              .columns="${this.getColumns()}"
+              .data="${this.getFilteredData()}"
+              .getActions="${(item: KubernetesCRD) => this.getActions(item)}"
+              emptyMessage="No Custom Resource Definitions found"
+              @cell-click="${this.handleCellClick}"
+              @action="${this.handleAction}"
+            ></resource-table>
+          `}
         </div>
 
         <detail-drawer
-          .show=${this.showDetailDrawer}
-          .title=${this.getDetailTitle()}
-          .width="800px"
-          @close=${() => this.showDetailDrawer = false}
+          .show="${this.showDetails}"
+          .loading="${this.loadingDetails}"
+          title="${this.selectedItem?.name || ''} Details"
+          @close="${this.handleDetailsClose}"
         >
-          ${this.renderResourceDetail()}
+          ${this.detailsData ? html`
+            <resource-detail-view .resource="${this.detailsData}"></resource-detail-view>
+          ` : ''}
         </detail-drawer>
 
         <delete-modal
-          .show=${this.showDeleteModal}
-          .item=${this.selectedResource}
-          @confirm-delete=${this.handleDelete}
-          @cancel-delete=${this.handleCancelDelete}
+          .show="${this.showDeleteModal}"
+          .item="${this.itemToDelete}"
+          .loading="${this.isDeleting}"
+          @confirm-delete="${this.handleConfirmDelete}"
+          @cancel-delete="${this.handleCancelDelete}"
         ></delete-modal>
 
         <create-resource-drawer
-          .show=${this.showCreateDrawer}
+          .show="${this.showCreateDrawer}"
           .title="Create Custom Resource Definition"
-          @close=${() => this.showCreateDrawer = false}
-          @create=${this.handleCreateResource}
+          .value="${this.createResourceValue}"
+          .submitLabel="Apply"
+          .loading="${this.isCreating}"
+          @close="${() => { this.showCreateDrawer = false; }}"
+          @create="${this.handleCreateResource}"
         ></create-resource-drawer>
 
         <notification-container></notification-container>
       </div>
+
+      <crd-instances-drawer
+        .show="${this.showInstancesDrawer}"
+        .crdName="${this.selectedCRDForInstances?.name || ''}"
+        .crdKind="${this.selectedCRDForInstances?.kind || ''}"
+        .crdGroup="${this.selectedCRDForInstances?.group || ''}"
+        .crdVersion="${this.selectedCRDForInstances?.version || ''}"
+        .crdScope="${this.selectedCRDForInstances?.scope || 'Namespaced'}"
+        @close="${this.handleInstancesDrawerClose}"
+      ></crd-instances-drawer>
     `;
-  }
-
-  private renderContent() {
-    const crds = this.getFilteredCRDs();
-
-    if (crds.length === 0) {
-      return html`
-        <empty-state
-          message="No CRDs found"
-          icon="crds"
-        ></empty-state>
-      `;
-    }
-
-    return html`
-      <resource-table
-        .columns=${this.getColumns()}
-        .data=${crds}
-        .getActions=${(item: any) => this.getCRDActions(item)}
-        @cell-click=${this.handleCellClick}
-        @action=${this.handleAction}
-      ></resource-table>
-    `;
-  }
-
-  private getColumns() {
-    return [
-      { key: 'name', label: 'Name', type: 'link' },
-      { key: 'group', label: 'Group' },
-      { key: 'version', label: 'Version' },
-      { key: 'scope', label: 'Scope' },
-      { key: 'kind', label: 'Kind' },
-      { key: 'instances', label: 'Instances', type: 'custom' },
-      { key: 'age', label: 'Age' }
-    ];
-  }
-
-  private getFilteredCRDs() {
-    if (!this.searchQuery) {
-      return this.crds;
-    }
-
-    const query = this.searchQuery.toLowerCase();
-    return this.crds.filter(crd => 
-      crd.name.toLowerCase().includes(query) ||
-      crd.group.toLowerCase().includes(query) ||
-      crd.kind.toLowerCase().includes(query)
-    );
-  }
-
-  private getCRDActions(_crd: any) {
-    return [
-      { label: 'View Details', action: 'view' },
-      { label: 'View Instances', action: 'instances' },
-      { label: 'Create Instance', action: 'create-instance' },
-      { label: 'Delete', action: 'delete', danger: true }
-    ];
-  }
-
-  private async fetchCRDs() {
-    this.loading = true;
-    
-    try {
-      const response = await this.api.get('/kubernetes/customresourcedefinitions');
-      this.crds = await this.processCRDs(response.items || []);
-    } catch (error) {
-      console.error('Failed to fetch CRDs:', error);
-      this.showNotification('Failed to load CRDs', 'error');
-    } finally {
-      this.loading = false;
-    }
-  }
-
-  private async processCRDs(crds: any[]): Promise<any[]> {
-    const processed = await Promise.all(crds.map(async crd => {
-      const primaryVersion = crd.spec.versions.find((v: any) => v.storage) || crd.spec.versions[0];
-      
-      // Count instances for each CRD
-      let instanceCount = 0;
-      try {
-        const instances = await this.api.get(
-          `/apis/${crd.spec.group}/${primaryVersion.name}/${crd.spec.names.plural}`
-        );
-        instanceCount = instances.items?.length || 0;
-      } catch {
-        // Ignore errors when fetching instances
-      }
-      
-      return {
-        name: crd.metadata.name,
-        group: crd.spec.group,
-        version: primaryVersion.name,
-        scope: crd.spec.scope,
-        kind: crd.spec.names.kind,
-        instances: instanceCount,
-        age: this.getAge(crd.metadata.creationTimestamp),
-        raw: crd
-      };
-    }));
-    
-    return processed;
-  }
-
-  private getAge(timestamp: string): string {
-    const created = new Date(timestamp);
-    const now = new Date();
-    const diff = now.getTime() - created.getTime();
-    
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    
-    if (days > 0) return `${days}d`;
-    if (hours > 0) return `${hours}h`;
-    return '<1h';
-  }
-
-  private handleSearch(e: CustomEvent) {
-    this.searchQuery = e.detail.value;
-  }
-
-  private handleCellClick(e: CustomEvent) {
-    if (e.detail.column.type === 'link') {
-      this.showCRDDetail(e.detail.item);
-    }
-  }
-
-  private handleAction(e: CustomEvent) {
-    const { action, item } = e.detail;
-    
-    switch (action) {
-      case 'view':
-        this.showCRDDetail(item);
-        break;
-      case 'instances':
-        this.viewInstances(item);
-        break;
-      case 'create-instance':
-        this.createInstance(item);
-        break;
-      case 'delete':
-        this.confirmDelete(item);
-        break;
-    }
-  }
-
-  private showCRDDetail(crd: any) {
-    this.selectedResource = crd;
-    this.detailType = 'crd';
-    this.showDetailDrawer = true;
-  }
-
-  private async viewInstances(crd: any) {
-    this.selectedCRD = crd;
-    this.detailType = 'instances';
-    this.showDetailDrawer = true;
-    
-    // Fetch instances
-    try {
-      const primaryVersion = crd.raw.spec.versions.find((v: any) => v.storage) || crd.raw.spec.versions[0];
-      const response = await this.api.get(
-        `/apis/${crd.group}/${primaryVersion.name}/${crd.raw.spec.names.plural}`
-      );
-      this.crdInstances = response.items || [];
-    } catch (error) {
-      console.error('Failed to fetch CRD instances:', error);
-      this.crdInstances = [];
-    }
-  }
-
-  private createInstance(crd: any) {
-    this.selectedCRD = crd;
-    this.showCreateDrawer = true;
-  }
-
-  private confirmDelete(resource: any) {
-    this.selectedResource = resource;
-    this.showDeleteModal = true;
-  }
-
-  private handleCreate() {
-    this.showCreateDrawer = true;
-  }
-
-  private async handleCreateResource(e: CustomEvent) {
-    const { resource } = e.detail;
-    
-    try {
-      if (this.selectedCRD) {
-        // Create instance of CRD
-        const primaryVersion = this.selectedCRD.raw.spec.versions.find((v: any) => v.storage) || 
-                              this.selectedCRD.raw.spec.versions[0];
-        await this.api.post(
-          `/apis/${this.selectedCRD.group}/${primaryVersion.name}/${this.selectedCRD.raw.spec.names.plural}`,
-          resource
-        );
-        this.showNotification('Resource instance created successfully', 'success');
-      } else {
-        // Create new CRD
-        await this.api.post('/apis/apiextensions.k8s.io/v1/customresourcedefinitions', resource);
-        this.showNotification('CRD created successfully', 'success');
-      }
-      
-      this.showCreateDrawer = false;
-      this.fetchCRDs();
-    } catch (error) {
-      this.showNotification('Failed to create resource', 'error');
-    }
-  }
-
-  private async handleDelete() {
-    if (!this.selectedResource) return;
-    
-    try {
-      const name = this.selectedResource.name;
-      
-      await this.api.delete(`/apis/apiextensions.k8s.io/v1/customresourcedefinitions/${name}`);
-      this.showNotification(`${name} deleted successfully`, 'success');
-      this.showDeleteModal = false;
-      this.fetchCRDs();
-    } catch (error) {
-      this.showNotification('Failed to delete CRD', 'error');
-    }
-  }
-
-  private handleCancelDelete() {
-    this.showDeleteModal = false;
-    this.selectedResource = null;
-  }
-
-  private getDetailTitle(): string {
-    if (this.detailType === 'instances' && this.selectedCRD) {
-      return `${this.selectedCRD.kind} Instances`;
-    }
-    
-    return this.selectedResource ? `CRD Details: ${this.selectedResource.name}` : '';
-  }
-
-  private renderResourceDetail() {
-    if (this.detailType === 'instances') {
-      return this.renderInstancesList();
-    }
-    
-    if (!this.selectedResource) return html``;
-    
-    return this.renderCRDDetail();
-  }
-
-  private renderCRDDetail() {
-    const crd = this.selectedResource.raw;
-    const names = crd.spec.names;
-    const versions = crd.spec.versions || [];
-    
-    return html`
-      <div class="detail-content">
-        <h3>Basic Information</h3>
-        <div class="detail-item">
-          <span class="label">Name:</span>
-          <span class="value">${crd.metadata.name}</span>
-        </div>
-        <div class="detail-item">
-          <span class="label">Group:</span>
-          <span class="value">${crd.spec.group}</span>
-        </div>
-        <div class="detail-item">
-          <span class="label">Scope:</span>
-          <span class="value">${crd.spec.scope}</span>
-        </div>
-        <div class="detail-item">
-          <span class="label">Created:</span>
-          <span class="value">${new Date(crd.metadata.creationTimestamp).toLocaleString()}</span>
-        </div>
-        
-        <h3>Names</h3>
-        <div class="detail-item">
-          <span class="label">Kind:</span>
-          <span class="value">${names.kind}</span>
-        </div>
-        <div class="detail-item">
-          <span class="label">List Kind:</span>
-          <span class="value">${names.listKind}</span>
-        </div>
-        <div class="detail-item">
-          <span class="label">Plural:</span>
-          <span class="value">${names.plural}</span>
-        </div>
-        <div class="detail-item">
-          <span class="label">Singular:</span>
-          <span class="value">${names.singular}</span>
-        </div>
-        ${names.shortNames && names.shortNames.length > 0 ? html`
-          <div class="detail-item">
-            <span class="label">Short Names:</span>
-            <span class="value">${names.shortNames.join(', ')}</span>
-          </div>
-        ` : ''}
-        
-        <h3>Versions</h3>
-        ${versions.map((version: any) => html`
-          <div class="version-item">
-            <div class="version-header">
-              <span class="version-name">${version.name}</span>
-              <div class="version-badges">
-                ${version.served ? html`<span class="badge served">Served</span>` : ''}
-                ${version.storage ? html`<span class="badge storage">Storage</span>` : ''}
-              </div>
-            </div>
-            ${version.schema?.openAPIV3Schema ? html`
-              <div class="detail-item">
-                <span class="label">Schema:</span>
-                <span class="value">Defined</span>
-              </div>
-            ` : ''}
-            ${version.additionalPrinterColumns && version.additionalPrinterColumns.length > 0 ? html`
-              <div class="detail-item">
-                <span class="label">Additional Columns:</span>
-                <span class="value">
-                  ${version.additionalPrinterColumns.map((col: any) => col.name).join(', ')}
-                </span>
-              </div>
-            ` : ''}
-          </div>
-        `)}
-        
-        ${crd.spec.conversion && crd.spec.conversion.strategy !== 'None' ? html`
-          <h3>Conversion</h3>
-          <div class="detail-item">
-            <span class="label">Strategy:</span>
-            <span class="value">${crd.spec.conversion.strategy}</span>
-          </div>
-          ${crd.spec.conversion.webhook ? html`
-            <div class="detail-item">
-              <span class="label">Webhook Service:</span>
-              <span class="value">
-                ${crd.spec.conversion.webhook.clientConfig.service.namespace}/${crd.spec.conversion.webhook.clientConfig.service.name}
-              </span>
-            </div>
-          ` : ''}
-        ` : ''}
-        
-        ${crd.status && crd.status.conditions ? html`
-          <h3>Status</h3>
-          ${crd.status.conditions.map((condition: any) => html`
-            <div class="detail-item">
-              <span class="label">${condition.type}:</span>
-              <span class="value">${condition.status}</span>
-            </div>
-          `)}
-        ` : ''}
-        
-        ${crd.spec.versions[0]?.schema?.openAPIV3Schema ? html`
-          <h3>Schema (OpenAPI v3)</h3>
-          <div class="schema-section">
-            ${JSON.stringify(crd.spec.versions[0].schema.openAPIV3Schema, null, 2)}
-          </div>
-        ` : ''}
-      </div>
-    `;
-  }
-
-  private renderInstancesList() {
-    if (!this.selectedCRD) return html``;
-    
-    return html`
-      <div class="detail-content">
-        <h3>${this.selectedCRD.kind} Resources</h3>
-        
-        ${this.crdInstances.length === 0 ? html`
-          <p style="color: #999; margin: 20px 0;">No instances found</p>
-        ` : html`
-          <div class="instances-section">
-            ${this.crdInstances.map(instance => html`
-              <div class="instance-item" @click=${() => this.viewInstanceDetail(instance)}>
-                <div class="instance-header">
-                  <span class="instance-name">${instance.metadata.name}</span>
-                  ${instance.metadata.namespace ? html`
-                    <span class="instance-namespace">${instance.metadata.namespace}</span>
-                  ` : ''}
-                </div>
-                <div style="font-size: 12px; color: #999; margin-top: 4px;">
-                  Created: ${new Date(instance.metadata.creationTimestamp).toLocaleString()}
-                </div>
-              </div>
-            `)}
-          </div>
-        `}
-      </div>
-    `;
-  }
-
-  private viewInstanceDetail(_instance: any) {
-    // TODO: Implement instance detail view
-    this.showNotification('Instance detail view coming soon', 'info');
-  }
-
-  private showNotification(message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info') {
-    const container = this.shadowRoot?.querySelector('notification-container') as any;
-    if (container) {
-      container.addNotification({ type, message });
-    }
   }
 }
 

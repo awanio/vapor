@@ -89,6 +89,41 @@ export interface KubernetesIngress {
   age: string;
 }
 
+export interface KubernetesIngressClass {
+  name: string;
+  controller: string;
+  parameters?: {
+    apiGroup?: string;
+    kind?: string;
+    name?: string;
+  };
+  age: string;
+  labels?: { [key: string]: string };
+  annotations?: { [key: string]: string };
+}
+
+export interface KubernetesNetworkPolicy {
+  name: string;
+  namespace: string;
+  podSelector: { [key: string]: string };
+  policyTypes: string[];
+  age: string;
+  labels?: { [key: string]: string };
+  annotations?: { [key: string]: string };
+}
+
+export interface KubernetesCRD {
+  name: string;
+  group: string;
+  version: string;
+  kind: string;
+  scope: string;
+  names: string[];
+  age: string;
+  labels?: { [key: string]: string };
+  creationTimestamp?: string;
+}
+
 export interface KubernetesPersistentVolume {
   name: string;
   capacity: string;
@@ -229,6 +264,24 @@ export class KubernetesApi {
     return response.ingresses || [];
   }
 
+  static async getIngressClasses(): Promise<KubernetesIngressClass[]> {
+    const response = await Api.get<{ ingressClasses: KubernetesIngressClass[] }>('/kubernetes/ingressclasses');
+    return response.ingressClasses || [];
+  }
+
+  static async getNetworkPolicies(namespace?: string): Promise<KubernetesNetworkPolicy[]> {
+    const params = namespace && namespace !== 'all' ? { namespace } : {};
+    const response = await Api.get<{ networkPolicies: KubernetesNetworkPolicy[] }>('/kubernetes/networkpolicies', params);
+    return response.networkPolicies || [];
+  }
+
+  // CRDs
+  static async getCRDs(): Promise<KubernetesCRD[]> {
+    // Api.get returns data field directly, not the full response
+    const response = await Api.get<{ count: number; crds: KubernetesCRD[] }>('/kubernetes/customresourcedefinitions');
+    return response.crds || [];
+  }
+
   // Storage
   static async getPersistentVolumes(): Promise<KubernetesPersistentVolume[]> {
     const response = await Api.get<{ pvs: KubernetesPersistentVolume[] }>('/kubernetes/persistentvolumes');
@@ -304,6 +357,13 @@ export class KubernetesApi {
         return this.getServiceDetails(namespace!, name);
       case 'ingress':
         return this.getIngressDetails(namespace!, name);
+      case 'ingressclass':
+        return this.getIngressClassDetails(name);
+      case 'networkpolicy':
+        return this.getNetworkPolicyDetails(namespace!, name);
+      case 'crd':
+      case 'customresourcedefinition':
+        return this.getCRDDetails(name);
       case 'persistentvolumeclaim':
       case 'pvc':
         return this.getPVCDetails(namespace!, name);
@@ -360,6 +420,21 @@ export class KubernetesApi {
     return response.ingress_detail || response;
   }
 
+  static async getIngressClassDetails(name: string): Promise<KubernetesResourceDetails> {
+    const response = await Api.get<any>(`/kubernetes/ingressclasses/${name}`);
+    return response.ingressclass_detail || response;
+  }
+
+  static async getNetworkPolicyDetails(namespace: string, name: string): Promise<KubernetesResourceDetails> {
+    const response = await Api.get<any>(`/kubernetes/networkpolicies/${namespace}/${name}`);
+    return response.networkpolicy_detail || response;
+  }
+
+  static async getCRDDetails(name: string): Promise<KubernetesResourceDetails> {
+    const response = await Api.get<any>(`/kubernetes/customresourcedefinitions/${name}`);
+    return response.crd || response;
+  }
+
   static async getPVCDetails(namespace: string, name: string): Promise<KubernetesResourceDetails> {
     const response = await Api.get<any>(`/kubernetes/pvcs/${namespace}/${name}`);
     return response.pvc_detail || response;
@@ -410,6 +485,16 @@ export class KubernetesApi {
       case 'ingress':
         endpoint = `/kubernetes/ingresses/${namespace}/${name}`;
         break;
+      case 'ingressclass':
+        endpoint = `/kubernetes/ingressclasses/${name}`;
+        break;
+      case 'networkpolicy':
+        endpoint = `/kubernetes/networkpolicies/${namespace}/${name}`;
+        break;
+      case 'crd':
+      case 'customresourcedefinition':
+        endpoint = `/kubernetes/customresourcedefinitions/${name}`;
+        break;
       case 'persistentvolumeclaim':
       case 'pvc':
         endpoint = `/kubernetes/pvcs/${namespace}/${name}`;
@@ -457,5 +542,44 @@ export class KubernetesApi {
   // Exec into Pod
   static async execPod(name: string, namespace: string, container: string, command: string[]): Promise<any> {
     return Api.post(`/kubernetes/pods/${namespace}/${name}/exec`, { container, command });
+  }
+
+  // CRD Instances
+  static async getCRDInstances(crdName: string): Promise<any[]> {
+    const response = await Api.get<any>(`/kubernetes/customresourcedefinitions/${crdName}/instances`);
+    
+    // Handle different possible response formats
+    if (Array.isArray(response)) {
+      return response;
+    } else if (response && typeof response === 'object') {
+      // Check for common response patterns
+      if (Array.isArray(response.instances)) {
+        return response.instances;
+      } else if (Array.isArray(response.items)) {
+        return response.items;
+      } else if (Array.isArray(response.resources)) {
+        return response.resources;
+      }
+    }
+    
+    // If response is not in expected format, return empty array
+    return [];
+  }
+
+  static async getCRDInstanceDetails(crdName: string, instanceName: string, namespace?: string): Promise<any> {
+    const endpoint = namespace 
+      ? `/kubernetes/customresourcedefinitions/${crdName}/instances/${namespace}/${instanceName}`
+      : `/kubernetes/customresourcedefinitions/${crdName}/instances/-/${instanceName}`;
+    
+    const response = await Api.get<any>(endpoint);
+    return response.instance || response;
+  }
+
+  static async deleteCRDInstance(crdName: string, instanceName: string, namespace?: string): Promise<void> {
+    const endpoint = namespace 
+      ? `/kubernetes/customresourcedefinitions/${crdName}/instances/${namespace}/${instanceName}`
+      : `/kubernetes/customresourcedefinitions/${crdName}/instances/-/${instanceName}`;
+    
+    await Api.delete(endpoint);
   }
 }

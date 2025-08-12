@@ -5,6 +5,8 @@ import type {
   KubernetesNamespace,
   KubernetesService,
   KubernetesIngress,
+  KubernetesIngressClass,
+  KubernetesNetworkPolicy,
   KubernetesResourceDetails
 } from '../../services/kubernetes-api.js';
 import '../../components/ui/search-input.js';
@@ -23,7 +25,7 @@ import type { Column } from '../../components/tables/resource-table.js';
 import type { ActionItem } from '../../components/ui/action-dropdown.js';
 import type { DeleteItem } from '../../components/modals/delete-modal.js';
 
-type NetworkResource = KubernetesService | KubernetesIngress;
+type NetworkResource = KubernetesService | KubernetesIngress | KubernetesIngressClass | KubernetesNetworkPolicy;
 
 @customElement('kubernetes-networks')
 export class KubernetesNetworks extends LitElement {
@@ -119,7 +121,9 @@ export class KubernetesNetworks extends LitElement {
 
   private tabs: Tab[] = [
     { id: 'services', label: 'Services' },
-    { id: 'ingresses', label: 'Ingresses' }
+    { id: 'ingresses', label: 'Ingresses' },
+    { id: 'ingressclasses', label: 'IngressClasses' },
+    { id: 'networkpolicies', label: 'NetworkPolicies' }
   ];
 
   private getColumns(): Column[] {
@@ -132,13 +136,30 @@ export class KubernetesNetworks extends LitElement {
         { key: 'ports', label: 'Ports' },
         { key: 'age', label: 'Age' }
       ];
-    } else {
+    } else if (this.activeTab === 'ingresses') {
       return [
         { key: 'name', label: 'Name', type: 'link' },
         { key: 'namespace', label: 'Namespace' },
         { key: 'class', label: 'Class' },
         { key: 'hosts', label: 'Hosts' },
         { key: 'address', label: 'Address' },
+        { key: 'age', label: 'Age' }
+      ];
+    } else if (this.activeTab === 'ingressclasses') {
+      // IngressClasses columns
+      return [
+        { key: 'name', label: 'Name', type: 'link' },
+        { key: 'controller', label: 'Controller' },
+        { key: 'parameters', label: 'Parameters' },
+        { key: 'age', label: 'Age' }
+      ];
+    } else {
+      // NetworkPolicies columns
+      return [
+        { key: 'name', label: 'Name', type: 'link' },
+        { key: 'namespace', label: 'Namespace' },
+        { key: 'podSelector', label: 'Pod Selector' },
+        { key: 'policyTypes', label: 'Policy Types' },
         { key: 'age', label: 'Age' }
       ];
     }
@@ -155,6 +176,33 @@ export class KubernetesNetworks extends LitElement {
   private getFilteredData(): NetworkResource[] {
     let data = this.resources;
 
+    // For IngressClasses, format parameters for display
+    if (this.activeTab === 'ingressclasses') {
+      data = data.map(item => {
+        const ingressClass = item as KubernetesIngressClass;
+        return {
+          ...ingressClass,
+          parameters: ingressClass.parameters 
+            ? `${ingressClass.parameters.kind || '-'}/${ingressClass.parameters.name || '-'}`
+            : '-'
+        } as any;
+      });
+    }
+
+    // For NetworkPolicies, format pod selector and policy types for display
+    if (this.activeTab === 'networkpolicies') {
+      data = data.map(item => {
+        const policy = item as KubernetesNetworkPolicy;
+        return {
+          ...policy,
+          podSelector: policy.podSelector && Object.keys(policy.podSelector).length > 0
+            ? Object.entries(policy.podSelector).map(([k, v]) => `${k}=${v}`).join(', ')
+            : 'All Pods',
+          policyTypes: policy.policyTypes ? policy.policyTypes.join(', ') : '-'
+        } as any;
+      });
+    }
+
     if (this.searchQuery) {
       data = data.filter(item => 
         JSON.stringify(item).toLowerCase().includes(this.searchQuery.toLowerCase())
@@ -165,7 +213,10 @@ export class KubernetesNetworks extends LitElement {
   }
 
   private getResourceType(): string {
-    return this.activeTab === 'services' ? 'Service' : 'Ingress';
+    if (this.activeTab === 'services') return 'Service';
+    if (this.activeTab === 'ingresses') return 'Ingress';
+    if (this.activeTab === 'ingressclasses') return 'IngressClass';
+    return 'NetworkPolicy';
   }
 
   private async handleTabChange(event: CustomEvent) {
@@ -210,7 +261,9 @@ export class KubernetesNetworks extends LitElement {
     
     try {
       const resourceType = this.getResourceType();
-      this.detailsData = await KubernetesApi.getResourceDetails(resourceType, item.name, item.namespace);
+      // IngressClass doesn't have namespace
+      const namespace = 'namespace' in item ? item.namespace : undefined;
+      this.detailsData = await KubernetesApi.getResourceDetails(resourceType, item.name, namespace);
     } catch (error) {
       console.error('Failed to fetch details:', error);
       this.detailsData = null;
@@ -226,10 +279,12 @@ export class KubernetesNetworks extends LitElement {
 
   private deleteItem(item: NetworkResource) {
     const resourceType = this.getResourceType();
+    // IngressClass doesn't have namespace
+    const namespace = 'namespace' in item ? item.namespace : undefined;
     this.itemToDelete = {
       type: resourceType,
       name: item.name,
-      namespace: item.namespace
+      namespace: namespace
     };
     this.showDeleteModal = true;
   }
@@ -266,9 +321,17 @@ export class KubernetesNetworks extends LitElement {
       this.createDrawerTitle = 'Create Service';
       this.createResourceValue = `apiVersion: v1\nkind: Service\nmetadata:\n  name: my-service\n  namespace: ${ns}\nspec:\n  selector:\n    app: my-app\n  ports:\n    - protocol: TCP\n      port: 80\n      targetPort: 8080\n  type: ClusterIP`;
       this.showCreateDrawer = true;
-    } else {
+    } else if (this.activeTab === 'ingresses') {
       this.createDrawerTitle = 'Create Ingress';
       this.createResourceValue = `apiVersion: networking.k8s.io/v1\nkind: Ingress\nmetadata:\n  name: my-ingress\n  namespace: ${ns}\nspec:\n  rules:\n    - host: example.com\n      http:\n        paths:\n          - path: /\n            pathType: Prefix\n            backend:\n              service:\n                name: my-service\n                port:\n                  number: 80`;
+      this.showCreateDrawer = true;
+    } else if (this.activeTab === 'ingressclasses') {
+      this.createDrawerTitle = 'Create IngressClass';
+      this.createResourceValue = `apiVersion: networking.k8s.io/v1\nkind: IngressClass\nmetadata:\n  name: my-ingressclass\n  annotations:\n    ingressclass.kubernetes.io/is-default-class: "false"\nspec:\n  controller: example.com/ingress-controller`;
+      this.showCreateDrawer = true;
+    } else {
+      this.createDrawerTitle = 'Create NetworkPolicy';
+      this.createResourceValue = `apiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: my-network-policy\n  namespace: ${ns}\nspec:\n  podSelector:\n    matchLabels:\n      app: my-app\n  policyTypes:\n    - Ingress\n    - Egress\n  ingress:\n    - from:\n        - podSelector:\n            matchLabels:\n              app: allowed-app\n      ports:\n        - protocol: TCP\n          port: 80\n  egress:\n    - to:\n        - podSelector:\n            matchLabels:\n              app: database\n      ports:\n        - protocol: TCP\n          port: 5432`;
       this.showCreateDrawer = true;
     }
   }
@@ -320,9 +383,17 @@ export class KubernetesNetworks extends LitElement {
       if (this.activeTab === 'services') {
         const services = await KubernetesApi.getServices(namespace);
         this.resources = services;
-      } else {
+      } else if (this.activeTab === 'ingresses') {
         const ingresses = await KubernetesApi.getIngresses(namespace);
         this.resources = ingresses;
+      } else if (this.activeTab === 'ingressclasses') {
+        // IngressClasses are cluster-scoped, no namespace filter
+        const ingressClasses = await KubernetesApi.getIngressClasses();
+        this.resources = ingressClasses;
+      } else {
+        // NetworkPolicies are namespace-scoped
+        const networkPolicies = await KubernetesApi.getNetworkPolicies(namespace);
+        this.resources = networkPolicies;
       }
     } catch (error: any) {
       console.error('Failed to fetch network resources:', error);
@@ -347,13 +418,15 @@ export class KubernetesNetworks extends LitElement {
         ></tab-group>
 
         <div class="header">
-          <namespace-dropdown
-            .namespaces="${this.namespaces.map(ns => ({ name: ns.name }))}"
-            .selectedNamespace="${this.selectedNamespace}"
-            @namespace-change="${this.handleNamespaceChange}"
-            .loading="${this.loading}"
-            .includeAllOption="${true}"
-          ></namespace-dropdown>
+          ${this.activeTab !== 'ingressclasses' ? html`
+            <namespace-dropdown
+              .namespaces="${this.namespaces.map(ns => ({ name: ns.name }))}"
+              .selectedNamespace="${this.selectedNamespace}"
+              @namespace-change="${this.handleNamespaceChange}"
+              .loading="${this.loading}"
+              .includeAllOption="${true}"
+            ></namespace-dropdown>
+          ` : ''}
           
           <search-input
             .value="${this.searchQuery}"

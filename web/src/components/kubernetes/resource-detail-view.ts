@@ -417,7 +417,8 @@ export class ResourceDetailView extends LitElement {
 
   private renderObject(obj: any, isStatus = false): TemplateResult {
     if (!obj || typeof obj !== 'object') {
-      return this.renderValue(obj);
+      const rendered = this.renderValue(obj);
+      return typeof rendered === 'string' ? html`${rendered}` : rendered;
     }
 
     const entries = Object.entries(obj);

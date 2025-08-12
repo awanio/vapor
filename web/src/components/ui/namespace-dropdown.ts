@@ -48,7 +48,7 @@ export class NamespaceDropdown extends LitElement {
 
     .dropdown-toggle.open {
       background: var(--dropdown-active-bg, #3a3d4a);
-      border-color: var(--dropdown-active-border, #4a7c59);
+      border-color: var(--dropdown-active-border, var(--vscode-focusBorder, #007acc));
     }
 
     .dropdown-label {
@@ -98,7 +98,7 @@ export class NamespaceDropdown extends LitElement {
     }
 
     .search-input:focus {
-      border-color: var(--input-focus-border, #4a7c59);
+      border-color: var(--input-focus-border, var(--vscode-focusBorder, #007acc));
     }
 
     .search-input::placeholder {
@@ -125,8 +125,8 @@ export class NamespaceDropdown extends LitElement {
     }
 
     .namespace-option.selected {
-      background: var(--option-selected-bg, #4a7c59);
-      color: var(--option-selected-color, #fff);
+      background: var(--option-selected-bg, var(--vscode-list-activeSelectionBackground, #094771));
+      color: var(--option-selected-color, var(--vscode-list-activeSelectionForeground, #fff));
     }
 
     .namespace-icon {
