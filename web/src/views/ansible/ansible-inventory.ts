@@ -35,9 +35,6 @@ export class AnsibleInventory extends LitElement {
   @state()
   private typeFilter: 'all' | 'host' | 'group' = 'all';
 
-  @state()
-  private selectedItems: Set<string> = new Set();
-
   static override styles = css`
     :host {
       display: block;
@@ -412,121 +409,53 @@ export class AnsibleInventory extends LitElement {
 
   private getColumns(): Column[] {
     return [
-      {
-        key: 'name',
-        label: 'Name',
-        type: 'custom' as const,
-        render: (item: InventoryItem) => html`
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span class="status-indicator ${item.enabled ? 'enabled' : 'disabled'}"></span>
-            <div>
-              <div style="font-weight: 500;">${item.name}</div>
-              ${item.description ? html`
-                <div style="font-size: 11px; color: var(--vscode-descriptionForeground); margin-top: 2px;">
-                  ${item.description}
-                </div>
-              ` : ''}
-            </div>
-          </div>
-        `
-      },
-      {
-        key: 'type',
-        label: 'Type',
-        width: '100px',
-        type: 'custom' as const,
-        render: (item: InventoryItem) => html`
-          <span class="type-badge ${item.type}">
-            ${item.type === 'host' ? '🖥️' : '📁'} ${item.type}
-          </span>
-        `
-      },
-      {
-        key: 'groups',
-        label: 'Groups / Hosts',
-        width: '200px',
-        type: 'custom' as const,
-        render: (item: InventoryItem) => html`
-          ${item.type === 'host' && item.groups ? html`
-            <div class="groups-list">
-              ${item.groups.map(group => html`
-                <span class="group-tag">${group}</span>
-              `)}
-            </div>
-          ` : ''}
-          ${item.type === 'group' && item.hosts !== undefined ? html`
-            <div style="display: flex; align-items: center; gap: 4px;">
-              <span style="font-size: 13px;">🖥️</span>
-              <span>${item.hosts} hosts</span>
-            </div>
-          ` : ''}
-        `
-      },
-      {
-        key: 'variables',
-        label: 'Variables',
-        width: '120px',
-        type: 'custom' as const,
-        render: (item: InventoryItem) => html`
-          ${item.variables ? html`
-            <span class="variables-count">
-              ${Object.keys(item.variables).length} vars
-            </span>
-          ` : html`<span style="color: var(--vscode-descriptionForeground);">—</span>`}
-        `
-      },
-      {
-        key: 'source',
-        label: 'Source',
-        width: '100px',
-        type: 'custom' as const,
-        render: (item: InventoryItem) => html`
-          ${item.source ? html`
-            <span class="source-badge ${item.source}">
-              ${item.source === 'manual' ? '✏️' : ''}
-              ${item.source === 'dynamic' ? '🔄' : ''}
-              ${item.source === 'scm' ? '🔗' : ''}
-              ${item.source}
-            </span>
-          ` : ''}
-        `
-      },
-      {
-        key: 'lastSync',
-        label: 'Last Sync',
-        width: '150px',
-        type: 'custom' as const,
-        render: (item: InventoryItem) => html`
-          ${item.lastSync ? html`
-            <span style="font-size: 12px; color: var(--vscode-descriptionForeground);">
-              ${new Date(item.lastSync).toLocaleString()}
-            </span>
-          ` : html`<span style="color: var(--vscode-descriptionForeground);">—</span>`}
-        `
-      },
-      {
-        key: 'actions',
-        label: '',
-        width: '50px',
-        type: 'custom' as const,
-        render: (item: InventoryItem) => {
-          const actions: ActionItem[] = [
-            { action: 'edit', label: 'Edit', icon: '✏️' },
-            { action: 'duplicate', label: 'Duplicate', icon: '📋' },
-            { action: 'variables', label: 'Manage Variables', icon: '🔧' },
-            { action: 'disable', label: item.enabled ? 'Disable' : 'Enable', icon: '🔌' },
-            { action: 'delete', label: 'Delete', icon: '🗑️', danger: true }
-          ];
-
-          return html`
-            <action-dropdown
-              .items=${actions}
-              @action=${(e: CustomEvent) => this.handleAction(e.detail.action, item)}
-            ></action-dropdown>
-          `;
-        }
-      }
+      { key: 'nameDisplay', label: 'Name', type: 'link' },
+      { key: 'typeDisplay', label: 'Type', width: '100px' },
+      { key: 'groupsDisplay', label: 'Groups / Hosts', width: '200px' },
+      { key: 'variablesDisplay', label: 'Variables', width: '120px' },
+      { key: 'sourceDisplay', label: 'Source', width: '100px' },
+      { key: 'lastSyncDisplay', label: 'Last Sync', width: '150px' }
     ];
+  }
+
+  private getInventoryActions(item: InventoryItem): ActionItem[] {
+    return [
+      { action: 'edit', label: 'Edit', icon: '✏️' },
+      { action: 'duplicate', label: 'Duplicate', icon: '📋' },
+      { action: 'variables', label: 'Manage Variables', icon: '🔧' },
+      { action: 'disable', label: item.enabled ? 'Disable' : 'Enable', icon: '🔌' },
+      { action: 'delete', label: 'Delete', icon: '🗑️', danger: true }
+    ];
+  }
+
+  private prepareTableData() {
+    return this.filteredItems.map(item => ({
+      _original: item, // Store original item for actions
+      nameDisplay: `${item.enabled ? '🟢' : '🔴'} ${item.name}`,
+      typeDisplay: `${item.type === 'host' ? '🖥️' : '📁'} ${item.type}`,
+      groupsDisplay: item.type === 'host' && item.groups 
+        ? item.groups.join(', ') 
+        : item.type === 'group' && item.hosts !== undefined 
+        ? `${item.hosts} hosts`
+        : '-',
+      variablesDisplay: item.variables 
+        ? `${Object.keys(item.variables).length} vars`
+        : '-',
+      sourceDisplay: item.source 
+        ? `${item.source === 'manual' ? '✏️' : item.source === 'dynamic' ? '🔄' : '🔗'} ${item.source}`
+        : '-',
+      lastSyncDisplay: item.lastSync 
+        ? new Date(item.lastSync).toLocaleString()
+        : '-'
+    }));
+  }
+
+  private handleCellClick(e: CustomEvent) {
+    const { item, column } = e.detail;
+    if (column.key === 'nameDisplay' && item._original) {
+      console.log('View details for:', item._original);
+      // TODO: Open detail view
+    }
   }
 
   private handleAction(action: string, item: InventoryItem) {
@@ -635,12 +564,10 @@ export class AnsibleInventory extends LitElement {
           ` : html`
             <resource-table
               .columns=${this.getColumns()}
-              .data=${this.filteredItems}
-              .selectable=${true}
-              @selection-change=${(e: CustomEvent) => {
-                this.selectedItems = new Set(e.detail.selection);
-                console.log('Selected items:', this.selectedItems);
-              }}
+              .data=${this.prepareTableData()}
+              .getActions=${(item: any) => this.getInventoryActions(item._original)}
+              @action=${(e: CustomEvent) => this.handleAction(e.detail.action, e.detail.item._original)}
+              @cell-click=${(e: CustomEvent) => this.handleCellClick(e)}
             ></resource-table>
           `}
         </div>

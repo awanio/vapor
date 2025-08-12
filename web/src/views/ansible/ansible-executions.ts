@@ -41,11 +41,12 @@ export class AnsibleExecutions extends LitElement {
   @state()
   private statusFilter = 'all';
 
-  @state()
-  private showLogsDrawer = false;
+  // These will be used for future features
+  // @state()
+  // private showLogsDrawer = false;
 
-  @state()
-  private selectedExecution: Execution | null = null;
+  // @state()
+  // private selectedExecution: Execution | null = null;
 
   static override styles = css`
     :host {
@@ -529,8 +530,10 @@ export class AnsibleExecutions extends LitElement {
     
     switch (action) {
       case 'logs':
-        this.selectedExecution = item;
-        this.showLogsDrawer = true;
+        // TODO: Show logs drawer
+        // this.selectedExecution = item;
+        // this.showLogsDrawer = true;
+        console.log('Show logs for:', item);
         break;
       case 'details':
         // TODO: Show details drawer

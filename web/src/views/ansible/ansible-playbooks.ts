@@ -3,10 +3,8 @@ import { customElement, property, state } from 'lit/decorators.js';
 import '../../components/ui/search-input';
 import '../../components/ui/loading-state';
 import '../../components/ui/empty-state';
-import '../../components/tabs/tab-group';
 import '../../components/tables/resource-table';
 import '../../components/ui/action-dropdown';
-import type { Tab } from '../../components/tabs/tab-group';
 import type { Column } from '../../components/tables/resource-table';
 import type { ActionItem } from '../../components/ui/action-dropdown';
 
