@@ -138,6 +138,7 @@ kubectl --kubeconfig=../kubeconfig get nodes
 
 ## 📚 Additional Documentation
 
+- [Libvirt Setup Guide](LIBVIRT_SETUP.md) - Complete guide for libvirt/KVM development environment
 - [Container Runtime Support](CONTAINER_RUNTIMES.md) - Using with Colima, nerdctl, Podman
 - [Parent README](../README.md) - Main project documentation
 

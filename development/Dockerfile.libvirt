@@ -1,0 +1,295 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV LIBVIRT_DEFAULT_URI=qemu:///system
+
+# Install libvirt, QEMU, and all required dependencies
+RUN apt-get update && apt-get install -y \
+    # Libvirt and QEMU
+    libvirt-daemon-system \
+    libvirt-clients \
+    qemu-kvm \
+    qemu-utils \
+    qemu-block-extra \
+    qemu-system-x86 \
+    qemu-system-arm \
+    qemu-user-static \
+    # Libvirt development libraries
+    libvirt-dev \
+    libvirt0 \
+    # Storage backends
+    libvirt-daemon-driver-storage-rbd \
+    libvirt-daemon-driver-storage-gluster \
+    libvirt-daemon-driver-storage-iscsi-direct \
+    libvirt-daemon-driver-storage-zfs \
+    # Additional virtualization tools
+    virtinst \
+    virt-manager \
+    virt-viewer \
+    virt-top \
+    libguestfs-tools \
+    # Networking tools
+    bridge-utils \
+    dnsmasq \
+    iptables \
+    ebtables \
+    openvswitch-switch \
+    openvswitch-common \
+    # Storage tools
+    lvm2 \
+    thin-provisioning-tools \
+    nfs-common \
+    open-iscsi \
+    multipath-tools \
+    # Cloud-init for VM provisioning
+    cloud-image-utils \
+    cloud-init \
+    genisoimage \
+    # Console and remote access
+    novnc \
+    websockify \
+    spice-client-gtk \
+    tigervnc-standalone-server \
+    # System utilities
+    systemd \
+    systemd-sysv \
+    sudo \
+    curl \
+    wget \
+    net-tools \
+    iproute2 \
+    iputils-ping \
+    vim \
+    htop \
+    tmux \
+    socat \
+    netcat \
+    # Python for management scripts
+    python3 \
+    python3-pip \
+    python3-libvirt \
+    python3-lxml \
+    # Build tools (for compiling if needed)
+    build-essential \
+    pkg-config \
+    # Monitoring
+    sysstat \
+    iotop \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python packages for libvirt management
+RUN pip3 install --no-cache-dir \
+    libvirt-python \
+    lxml \
+    pyyaml \
+    jinja2 \
+    requests
+
+# Configure libvirt
+RUN mkdir -p /var/lib/libvirt/images \
+    /var/lib/libvirt/iso \
+    /var/lib/libvirt/backups \
+    /var/lib/libvirt/templates \
+    /var/log/libvirt/qemu \
+    /var/cache/libvirt \
+    /run/libvirt
+
+# Setup libvirt configuration
+COPY <<EOF /etc/libvirt/libvirtd.conf
+# Enable TCP listening
+listen_tls = 0
+listen_tcp = 1
+tcp_port = "16509"
+listen_addr = "0.0.0.0"
+
+# Authentication
+auth_tcp = "none"
+auth_tls = "none"
+
+# Logging
+log_level = 2
+log_outputs = "3:file:/var/log/libvirt/libvirtd.log"
+
+# Process limits
+max_clients = 20
+max_workers = 20
+max_requests = 20
+max_client_requests = 5
+
+# Keepalive settings
+keepalive_interval = 5
+keepalive_count = 5
+EOF
+
+COPY <<EOF /etc/libvirt/qemu.conf
+# VNC Configuration
+vnc_listen = "0.0.0.0"
+vnc_password = ""
+vnc_sasl = 0
+vnc_allow_host_audio = 0
+
+# SPICE Configuration
+spice_listen = "0.0.0.0"
+spice_tls = 0
+spice_password = ""
+
+# Security
+security_driver = "none"
+security_default_confined = 0
+security_require_confined = 0
+
+# User/Group
+user = "root"
+group = "root"
+dynamic_ownership = 1
+
+# Memory
+memory_backing_dir = "/var/lib/libvirt/qemu/ram"
+
+# Logging
+log_level = 2
+log_outputs = "3:file:/var/log/libvirt/qemu.log"
+
+# Features
+namespaces = []
+remember_owner = 0
+EOF
+
+# Create default network configuration
+COPY <<EOF /etc/libvirt/qemu/networks/default.xml
+<network>
+  <name>default</name>
+  <forward mode='nat'>
+    <nat>
+      <port start='1024' end='65535'/>
+    </nat>
+  </forward>
+  <bridge name='virbr0' stp='on' delay='0'/>
+  <ip address='192.168.122.1' netmask='255.255.255.0'>
+    <dhcp>
+      <range start='192.168.122.2' end='192.168.122.254'/>
+    </dhcp>
+  </ip>
+</network>
+EOF
+
+# Create default storage pool
+COPY <<EOF /etc/libvirt/storage/default.xml
+<pool type='dir'>
+  <name>default</name>
+  <target>
+    <path>/var/lib/libvirt/images</path>
+    <permissions>
+      <mode>0755</mode>
+      <owner>0</owner>
+      <group>0</group>
+    </permissions>
+  </target>
+</pool>
+EOF
+
+# Create ISO storage pool
+COPY <<EOF /etc/libvirt/storage/iso.xml
+<pool type='dir'>
+  <name>iso</name>
+  <target>
+    <path>/var/lib/libvirt/iso</path>
+    <permissions>
+      <mode>0755</mode>
+      <owner>0</owner>
+      <group>0</group>
+    </permissions>
+  </target>
+</pool>
+EOF
+
+# Create entrypoint script
+COPY <<'EOF' /entrypoint.sh
+#!/bin/bash
+set -e
+
+echo "Starting libvirt development environment..."
+
+# Start dbus if not running
+if ! pgrep -x "dbus-daemon" > /dev/null; then
+    mkdir -p /var/run/dbus
+    dbus-daemon --system --fork
+fi
+
+# Start virtlogd
+/usr/sbin/virtlogd -d
+
+# Start libvirtd
+/usr/sbin/libvirtd -d
+
+# Wait for libvirt to be ready
+echo "Waiting for libvirtd to start..."
+for i in {1..30}; do
+    if virsh list >/dev/null 2>&1; then
+        echo "Libvirtd is ready!"
+        break
+    fi
+    sleep 1
+done
+
+# Start default network if not already started
+virsh net-list --all | grep -q "default" || virsh net-define /etc/libvirt/qemu/networks/default.xml
+virsh net-list --all | grep "default" | grep -q "inactive" && virsh net-start default
+virsh net-autostart default
+
+# Define storage pools
+virsh pool-list --all | grep -q "default" || virsh pool-define /etc/libvirt/storage/default.xml
+virsh pool-list --all | grep "default" | grep -q "inactive" && virsh pool-start default
+virsh pool-autostart default
+
+virsh pool-list --all | grep -q "iso" || virsh pool-define /etc/libvirt/storage/iso.xml
+virsh pool-list --all | grep "iso" | grep -q "inactive" && virsh pool-start iso
+virsh pool-autostart iso
+
+# Start Open vSwitch if installed
+if command -v ovs-vswitchd >/dev/null 2>&1; then
+    echo "Starting Open vSwitch..."
+    mkdir -p /var/run/openvswitch
+    ovsdb-tool create /etc/openvswitch/conf.db /usr/share/openvswitch/vswitch.ovsschema 2>/dev/null || true
+    ovsdb-server --remote=punix:/var/run/openvswitch/db.sock \
+                 --remote=db:Open_vSwitch,Open_vSwitch,manager_options \
+                 --pidfile --detach --log-file
+    ovs-vsctl --no-wait init
+    ovs-vswitchd --pidfile --detach --log-file
+    
+    # Create OVS bridge for VMs
+    ovs-vsctl add-br br-vms || true
+fi
+
+# Download some lightweight OS images for testing (optional)
+if [ ! -f "/var/lib/libvirt/images/cirros.img" ]; then
+    echo "Downloading CirrOS test image..."
+    wget -q -O /var/lib/libvirt/images/cirros.img \
+        http://download.cirros-cloud.net/0.6.1/cirros-0.6.1-x86_64-disk.img || true
+fi
+
+echo "Libvirt environment is ready!"
+echo "Connection URI: qemu:///system"
+echo ""
+echo "Available commands:"
+echo "  virsh list --all          # List all VMs"
+echo "  virsh net-list --all      # List all networks"
+echo "  virsh pool-list --all     # List all storage pools"
+echo "  virt-install --help       # Create new VMs"
+echo ""
+
+# Keep container running
+exec tail -f /var/log/libvirt/libvirtd.log
+EOF
+
+RUN chmod +x /entrypoint.sh
+
+# Expose ports
+EXPOSE 16509 5900-5999 5930-5949
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD virsh list || exit 1
+
+ENTRYPOINT ["/entrypoint.sh"]

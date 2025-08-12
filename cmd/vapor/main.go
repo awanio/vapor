@@ -18,6 +18,7 @@ import (
 	"github.com/awanio/vapor/internal/config"
 	"github.com/awanio/vapor/internal/database"
 	"github.com/awanio/vapor/internal/docker"
+	"github.com/awanio/vapor/internal/libvirt"
 	"github.com/awanio/vapor/internal/logs"
 	"github.com/awanio/vapor/internal/network"
 	"github.com/awanio/vapor/internal/routes"
@@ -152,6 +153,17 @@ func main() {
 				routes.AnsibleRoutes(api, ansibleExec)
 				defer ansibleExec.Close() // Close executor when server shuts down
 			}
+		}
+
+		// Libvirt VM management endpoints
+		libvirtURI := cfg.GetLibvirtURI() // You'll need to add this to config
+		libvirtService, err := libvirt.NewService(libvirtURI)
+		if err != nil {
+			log.Printf("Warning: Libvirt integration disabled: %v", err)
+		} else {
+			log.Printf("Libvirt integration initialized with URI: %s", libvirtURI)
+			routes.LibvirtRoutes(api, libvirtService)
+			defer libvirtService.Close() // Close service when server shuts down
 		}
 	}
 

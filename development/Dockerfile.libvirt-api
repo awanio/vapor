@@ -1,0 +1,191 @@
+FROM golang:1.21-bullseye AS builder
+
+# Install libvirt development dependencies for building
+RUN apt-get update && apt-get install -y \
+    libvirt-dev \
+    pkg-config \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy go mod files
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build with libvirt support
+RUN CGO_ENABLED=1 GOOS=linux go build -tags libvirt -o vapor ./cmd/vapor
+
+# Runtime stage
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    # Libvirt client libraries
+    libvirt0 \
+    libvirt-clients \
+    # System tools
+    ca-certificates \
+    curl \
+    wget \
+    net-tools \
+    iproute2 \
+    iputils-ping \
+    dnsutils \
+    vim \
+    # Docker CLI for docker management
+    docker.io \
+    # Ansible for automation
+    ansible \
+    ansible-lint \
+    # Git for pulling playbooks
+    git \
+    # Process management
+    supervisor \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install additional Ansible collections
+RUN ansible-galaxy collection install \
+    community.general \
+    community.docker \
+    ansible.posix \
+    community.libvirt
+
+# Create app directory
+WORKDIR /app
+
+# Copy the binary from builder
+COPY --from=builder /app/vapor /app/vapor
+
+# Copy web assets if any
+COPY --from=builder /app/web /app/web
+
+# Create necessary directories
+RUN mkdir -p \
+    /var/lib/vapor \
+    /var/lib/vapor/ansible \
+    /var/lib/vapor/ansible/playbooks \
+    /var/lib/vapor/ansible/inventory \
+    /var/lib/vapor/ansible/roles \
+    /var/log/vapor \
+    /etc/vapor
+
+# Create config file
+COPY <<EOF /etc/vapor/vapor.conf
+port: 8080
+appdir: /var/lib/vapor
+libvirt_uri: qemu+unix:///system?socket=/var/run/libvirt/libvirt-sock
+EOF
+
+# Create supervisor config
+COPY <<EOF /etc/supervisor/conf.d/vapor.conf
+[supervisord]
+nodaemon=true
+logfile=/var/log/supervisor/supervisord.log
+pidfile=/var/run/supervisord.pid
+
+[program:vapor]
+command=/app/vapor --config /etc/vapor/vapor.conf
+directory=/app
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/vapor/error.log
+stdout_logfile=/var/log/vapor/access.log
+environment=PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+user=root
+EOF
+
+# Create entrypoint script
+COPY <<'EOF' /entrypoint.sh
+#!/bin/bash
+set -e
+
+echo "Starting Vapor API with libvirt support..."
+
+# Wait for libvirt socket to be available
+echo "Waiting for libvirt socket..."
+for i in {1..60}; do
+    if [ -S "/var/run/libvirt/libvirt-sock" ]; then
+        echo "Libvirt socket is ready!"
+        break
+    fi
+    echo "Waiting for libvirt socket... ($i/60)"
+    sleep 1
+done
+
+# Test libvirt connection
+if command -v virsh >/dev/null 2>&1; then
+    export LIBVIRT_DEFAULT_URI="qemu+unix:///system?socket=/var/run/libvirt/libvirt-sock"
+    if virsh list >/dev/null 2>&1; then
+        echo "Successfully connected to libvirt!"
+        virsh version
+    else
+        echo "Warning: Could not connect to libvirt"
+    fi
+fi
+
+# Create some sample Ansible playbooks
+cat > /var/lib/vapor/ansible/playbooks/create-vm.yml <<'PLAYBOOK'
+---
+- name: Create Virtual Machine
+  hosts: localhost
+  gather_facts: no
+  vars:
+    vm_name: "{{ vm_name | default('test-vm') }}"
+    vm_memory: "{{ vm_memory | default(2048) }}"
+    vm_vcpus: "{{ vm_vcpus | default(2) }}"
+    vm_disk_size: "{{ vm_disk_size | default('10G') }}"
+  tasks:
+    - name: Create VM
+      community.libvirt.virt:
+        name: "{{ vm_name }}"
+        command: define
+        xml: |
+          <domain type='kvm'>
+            <name>{{ vm_name }}</name>
+            <memory unit='MiB'>{{ vm_memory }}</memory>
+            <vcpu>{{ vm_vcpus }}</vcpu>
+            <os>
+              <type arch='x86_64'>hvm</type>
+              <boot dev='hd'/>
+            </os>
+            <devices>
+              <disk type='file' device='disk'>
+                <driver name='qemu' type='qcow2'/>
+                <source file='/var/lib/libvirt/images/{{ vm_name }}.qcow2'/>
+                <target dev='vda' bus='virtio'/>
+              </disk>
+              <interface type='network'>
+                <source network='default'/>
+                <model type='virtio'/>
+              </interface>
+              <console type='pty'/>
+              <graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0'/>
+            </devices>
+          </domain>
+        uri: "{{ libvirt_uri | default('qemu:///system') }}"
+PLAYBOOK
+
+echo "Sample Ansible playbooks created."
+
+# Start the application
+echo "Starting Vapor API..."
+exec /usr/bin/supervisord -c /etc/supervisor/conf.d/vapor.conf
+EOF
+
+RUN chmod +x /entrypoint.sh
+
+# Expose ports
+EXPOSE 8080 8081
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+ENTRYPOINT ["/entrypoint.sh"]

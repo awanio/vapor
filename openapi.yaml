@@ -1581,7 +1581,311 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /storage/iscsi/sessions:
+  /storage/pools:
+    get:
+      summary: List all storage pools
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: A list of storage pools
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StoragePool'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      summary: Create a new storage pool
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoragePoolCreateRequest'
+      responses:
+        '201':
+          description: Storage pool created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoragePool'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /storage/pools/{name}:
+    get:
+      summary: Get storage pool details
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Storage pool name
+      responses:
+        '200':
+          description: Storage pool details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoragePool'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      summary: Delete a storage pool
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Storage pool name
+        - name: delete_volumes
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Whether to delete associated volumes
+      responses:
+        '204':
+          description: Storage pool deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /storage/pools/{pool_name}/volumes:
+    get:
+      summary: List all volumes in a storage pool
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pool_name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Storage pool name
+      responses:
+        '200':
+          description: A list of storage volumes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StorageVolume'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      summary: Create a new volume in a storage pool
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pool_name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Storage pool name
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VolumeCreateRequest'
+      responses:
+        '201':
+          description: Storage volume created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageVolume'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /storage/pools/{pool_name}/volumes/{vol_name}:
+    get:
+      summary: Get storage volume details
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pool_name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Storage pool name
+        - name: vol_name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Storage volume name
+      responses:
+        '200':
+          description: Storage volume details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageVolume'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      summary: Delete a storage volume
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pool_name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Storage pool name
+        - name: vol_name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Storage volume name
+      responses:
+        '204':
+          description: Storage volume deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /networks:
+    get:
+      summary: List all virtual networks
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: A list of virtual networks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Network'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      summary: Create a new virtual network
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NetworkCreateRequest'
+      responses:
+        '201':
+          description: Virtual network created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Network'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /networks/{name}:
+    get:
+      summary: Get virtual network details
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Network name
+      responses:
+        '200':
+          description: Virtual network details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Network'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      summary: Delete a virtual network
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Network name
+      responses:
+        '204':
+          description: Virtual network deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
     get:
       summary: List iSCSI sessions
       tags:
@@ -2812,10 +3116,134 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedError'
   
-  /ws/terminal:
+  /virtualmachines:
     get:
-      summary: WebSocket endpoint for terminal session
-      description: |
+      summary: List all virtual machines
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: A list of virtual machines
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VM'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      summary: Create a new virtual machine
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VMCreateRequest'
+      responses:
+        '201':
+          description: Virtual machine created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VM'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /virtualmachines/{id}:
+    get:
+      summary: Get virtual machine details
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: VM name or UUID
+      responses:
+        '200':
+          description: Virtual machine details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VM'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    put:
+      summary: Update a virtual machine
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: VM name or UUID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VMUpdateRequest'
+      responses:
+        '200':
+          description: Virtual machine updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VM'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      summary: Delete a virtual machine
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: VM name or UUID
+        - name: remove_disks
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Whether to remove associated storage disks
+      responses:
+        '204':
+          description: Virtual machine deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
         Establish a WebSocket connection for an interactive terminal session.
         
         **WebSocket URL**: `ws://localhost:8080/ws/terminal`
@@ -10320,7 +10748,210 @@ components:
             - protocol: TCP
               port: 5432
 
-    # Ansible Schema Definitions
+    # Virtualization Schemas
+    VM:
+      type: object
+      properties:
+        uuid:
+          type: string
+        name:
+          type: string
+        state:
+          type: string
+        memory:
+          type: integer
+        max_memory:
+          type: integer
+        vcpus:
+          type: integer
+        autostart:
+          type: boolean
+        persistent:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        os:
+          $ref: '#/components/schemas/OSInfo'
+        disks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Disk'
+        networks:
+          type: array
+          items:
+            $ref: '#/components/schemas/NetworkInterface'
+
+    VMCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        memory:
+          type: integer
+        vcpus:
+          type: integer
+        disk_size:
+          type: integer
+        disk_path:
+          type: string
+        iso_path:
+          type: string
+        storage_pool:
+          type: string
+        network:
+          type: string
+        cloud_init:
+          $ref: '#/components/schemas/CloudInit'
+        autostart:
+          type: boolean
+
+    VMUpdateRequest:
+      type: object
+      properties:
+        memory:
+          type: integer
+        vcpus:
+          type: integer
+        autostart:
+          type: boolean
+
+    OSInfo:
+      type: object
+      properties:
+        type:
+          type: string
+        architecture:
+          type: string
+        machine:
+          type: string
+
+    NetworkInterface:
+      type: object
+      properties:
+        mac:
+          type: string
+        source:
+          type: string
+        model:
+          type: string
+
+    CloudInit:
+      type: object
+      properties:
+        user_data:
+          type: string
+        meta_data:
+          type: string
+
+    StoragePool:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        path:
+          type: string
+        state:
+          type: string
+        capacity:
+          type: integer
+        allocation:
+          type: integer
+        available:
+          type: integer
+        autostart:
+          type: boolean
+
+    StoragePoolCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        path:
+          type: string
+        autostart:
+          type: boolean
+
+    StorageVolume:
+      type: object
+      properties:
+        name:
+          type: string
+        pool:
+          type: string
+        path:
+          type: string
+        type:
+          type: string
+        capacity:
+          type: integer
+        allocation:
+          type: integer
+
+    VolumeCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        capacity:
+          type: integer
+        format:
+          type: string
+
+    Network:
+      type: object
+      properties:
+        name:
+          type: string
+        uuid:
+          type: string
+        bridge:
+          type: string
+        state:
+          type: string
+        autostart:
+          type: boolean
+        persistent:
+          type: boolean
+
+    NetworkCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        mode:
+          type: string
+        bridge:
+          type: string
+        ip_range:
+          $ref: '#/components/schemas/IPRange'
+        dhcp:
+          $ref: '#/components/schemas/DHCP'
+        autostart:
+          type: boolean
+
+    IPRange:
+      type: object
+      properties:
+        address:
+          type: string
+        netmask:
+          type: string
+
+    DHCP:
+      type: object
+      properties:
+        start:
+          type: string
+        end:
+          type: string
     PlaybooksListResponse:
       allOf:
         - $ref: '#/components/schemas/APIResponse'

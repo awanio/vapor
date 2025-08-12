@@ -1,0 +1,225 @@
+version: '3.8'
+
+services:
+  # Main libvirt/KVM host container
+  libvirt-host:
+    build:
+      context: .
+      dockerfile: Dockerfile.libvirt
+    container_name: vapor-libvirt-dev
+    hostname: libvirt-dev
+    privileged: true
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+    networks:
+      vapor-net:
+        ipv4_address: 172.30.0.10
+      default:
+    volumes:
+      # Libvirt storage pools
+      - libvirt-images:/var/lib/libvirt/images
+      - libvirt-iso:/var/lib/libvirt/iso
+      - libvirt-backups:/var/lib/libvirt/backups
+      # QEMU/KVM configuration
+      - libvirt-qemu:/etc/libvirt/qemu
+      - libvirt-storage:/etc/libvirt/storage
+      - libvirt-network:/etc/libvirt/qemu/networks
+      # Share with main app
+      - libvirt-sock:/var/run/libvirt
+      # Logs
+      - libvirt-logs:/var/log/libvirt
+      # For nested virtualization (if supported)
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      # OVS for advanced networking
+      - ovs-db:/var/lib/openvswitch
+      - ovs-run:/var/run/openvswitch
+    devices:
+      # Pass through KVM device if available (for nested virtualization)
+      - /dev/kvm:/dev/kvm
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - ALL
+    security_opt:
+      - apparmor:unconfined
+      - seccomp:unconfined
+      - label:disable
+    environment:
+      - LIBVIRT_DEFAULT_URI=qemu:///system
+      - VNC_PASSWORD=vapor123
+      - SPICE_PASSWORD=vapor123
+    ports:
+      # Libvirt API
+      - "16509:16509"
+      # VNC ports range
+      - "5900-5999:5900-5999"
+      # SPICE ports range  
+      - "5930-5949:5930-5949"
+      # Migration ports
+      - "49152-49215:49152-49215"
+    healthcheck:
+      test: ["CMD", "virsh", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Vapor API with libvirt integration
+  vapor-api-libvirt:
+    build:
+      context: ..
+      dockerfile: development/Dockerfile.libvirt-api
+    container_name: vapor-api-libvirt
+    hostname: vapor-libvirt
+    privileged: true
+    depends_on:
+      - libvirt-host
+      - dind
+    networks:
+      vapor-net:
+        ipv4_address: 172.30.0.20
+      default:
+    volumes:
+      # Mount source code for development
+      - ../cmd:/app/cmd:ro
+      - ../internal:/app/internal:ro
+      - ../web:/app/web:ro
+      - ../go.mod:/app/go.mod:ro
+      - ../go.sum:/app/go.sum:ro
+      # Share libvirt socket
+      - libvirt-sock:/var/run/libvirt
+      # Share libvirt storage
+      - libvirt-images:/var/lib/libvirt/images
+      # Docker certificates
+      - dind-certs-client:/certs/client:ro
+      # App data
+      - vapor-data:/var/lib/vapor
+    environment:
+      - LIBVIRT_URI=qemu+unix:///system?socket=/var/run/libvirt/libvirt-sock
+      - LIBVIRT_DEFAULT_URI=qemu+unix:///system?socket=/var/run/libvirt/libvirt-sock
+      - JWT_SECRET=development-secret-change-in-production
+      - VAPOR_PORT=8080
+      - VAPOR_DEBUG=true
+      - DOCKER_HOST=tcp://dind:2376
+      - DOCKER_TLS_VERIFY=1
+      - DOCKER_CERT_PATH=/certs/client
+    ports:
+      - "8080:8080"
+      # WebSocket for console
+      - "8081:8081"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # NoVNC for browser-based VNC access
+  novnc:
+    image: theasp/novnc:latest
+    container_name: vapor-novnc
+    networks:
+      vapor-net:
+        ipv4_address: 172.30.0.30
+    environment:
+      - DISPLAY_WIDTH=1024
+      - DISPLAY_HEIGHT=768
+      - RUN_XTERM=no
+    ports:
+      - "6080:8080"  # NoVNC web interface
+    depends_on:
+      - libvirt-host
+
+  # Virt-manager web interface
+  virt-manager-web:
+    build:
+      context: .
+      dockerfile: Dockerfile.virt-manager
+    container_name: vapor-virt-manager
+    networks:
+      vapor-net:
+        ipv4_address: 172.30.0.40
+    volumes:
+      - libvirt-sock:/var/run/libvirt:ro
+    environment:
+      - LIBVIRT_DEFAULT_URI=qemu+unix:///system?socket=/var/run/libvirt/libvirt-sock
+    ports:
+      - "8082:8080"
+    depends_on:
+      - libvirt-host
+
+  # Storage server for ISO and images
+  storage-server:
+    image: nginx:alpine
+    container_name: vapor-storage
+    networks:
+      vapor-net:
+        ipv4_address: 172.30.0.50
+    volumes:
+      - ./storage/iso:/usr/share/nginx/html/iso:ro
+      - ./storage/images:/usr/share/nginx/html/images:ro
+      - ./storage/templates:/usr/share/nginx/html/templates:ro
+    ports:
+      - "8083:80"
+
+  # Docker-in-Docker (reuse from main compose)
+  dind:
+    image: docker:24-dind
+    container_name: vapor-dind-libvirt
+    privileged: true
+    networks:
+      default:
+    environment:
+      - DOCKER_TLS_CERTDIR=/certs
+    volumes:
+      - dind-storage:/var/lib/docker
+      - dind-certs-ca:/certs/ca
+      - dind-certs-client:/certs/client
+    restart: unless-stopped
+
+volumes:
+  # Libvirt volumes
+  libvirt-images:
+    driver: local
+  libvirt-iso:
+    driver: local
+  libvirt-backups:
+    driver: local
+  libvirt-qemu:
+    driver: local
+  libvirt-storage:
+    driver: local
+  libvirt-network:
+    driver: local
+  libvirt-sock:
+    driver: local
+  libvirt-logs:
+    driver: local
+  
+  # OVS volumes
+  ovs-db:
+    driver: local
+  ovs-run:
+    driver: local
+  
+  # App volumes
+  vapor-data:
+    driver: local
+  
+  # Docker volumes
+  dind-storage:
+    driver: local
+  dind-certs-ca:
+    driver: local
+  dind-certs-client:
+    driver: local
+
+networks:
+  vapor-net:
+    name: vapor-libvirt-net
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+          gateway: 172.30.0.1
+  default:
+    name: vapor-dev-network
+    external: true

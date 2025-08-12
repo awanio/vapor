@@ -11,8 +11,9 @@ import (
 
 // Config represents the application configuration
 type Config struct {
-	Port   string `yaml:"port"`
-	AppDir string `yaml:"appdir"`
+	Port       string `yaml:"port"`
+	AppDir     string `yaml:"appdir"`
+	LibvirtURI string `yaml:"libvirt_uri,omitempty"`
 }
 
 // Default configuration values
@@ -173,6 +174,19 @@ func (c *Config) GetAnsibleDir() string {
 	return filepath.Join(c.AppDir, "ansible")
 }
 
+// GetLibvirtURI returns the libvirt connection URI
+func (c *Config) GetLibvirtURI() string {
+	if c.LibvirtURI != "" {
+		return c.LibvirtURI
+	}
+	// Check environment variable
+	if uri := os.Getenv("LIBVIRT_URI"); uri != "" {
+		return uri
+	}
+	// Default to local system connection
+	return "qemu:///system"
+}
+
 // Print prints the configuration to stdout (for debugging)
 func (c *Config) Print() {
 	fmt.Printf("Configuration:\n")
@@ -180,6 +194,7 @@ func (c *Config) Print() {
 	fmt.Printf("  AppDir: %s\n", c.AppDir)
 	fmt.Printf("  Server Address: %s\n", c.GetServerAddr())
 	fmt.Printf("  Ansible Directory: %s\n", c.GetAnsibleDir())
+	fmt.Printf("  Libvirt URI: %s\n", c.GetLibvirtURI())
 }
 
 // Save saves the configuration to a file
