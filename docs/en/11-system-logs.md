@@ -1,9 +1,5 @@
 # System Logs
 
-<p align="center">
-  <a href="../en/">English</a> | <a href="../id/11-log-sistem.md">Bahasa Indonesia</a>
-</p>
-
 ## Overview
 
 This section covers system logs in Vapor.

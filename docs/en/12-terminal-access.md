@@ -1,9 +1,5 @@
 # Terminal Access
 
-<p align="center">
-  <a href="../en/">English</a> | <a href="../id/12-akses-terminal.md">Bahasa Indonesia</a>
-</p>
-
 ## Overview
 
 This section covers terminal access in Vapor.

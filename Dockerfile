@@ -21,9 +21,8 @@ RUN mkdir -p internal/web/dist && \
         touch internal/web/dist/.keep; \
     fi
 
-# Build the binary specifically for Linux x86_64 with version injection
+# Build the binary specifically for Linux x86_64
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags "-X github.com/awanio/vapor/internal/auth.Version=$(git rev-parse --short HEAD 2>/dev/null || echo 'no-git')" \
     -a -installsuffix cgo -o vapor ./cmd/vapor
 
 # Final stage

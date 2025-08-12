@@ -2,7 +2,7 @@
 
 ## Apa itu Vapor?
 
-Vapor adalah platform manajemen sistem Linux yang komprehensif yang dirancang untuk menyederhanakan administrasi server melalui antarmuka web modern. Terinspirasi dari desain Visual Studio Code yang bersih dan intuitif, Vapor menggabungkan alat administrasi sistem tradisional dengan kemampuan orkestrasi kontainer dan manajemen Kubernetes.
+Vapor adalah platform manajemen sistem Linux yang komprehensif yang dirancang untuk menyederhanakan administrasi server melalui antarmuka web modern. Dengan desain yang bersih dan intuitif, Vapor menggabungkan alat administrasi sistem tradisional dengan kemampuan orkestrasi kontainer dan manajemen Kubernetes.
 
 ## Fitur Utama
 
@@ -60,7 +60,7 @@ Vapor adalah platform manajemen sistem Linux yang komprehensif yang dirancang un
 Vapor didistribusikan sebagai file executable tunggal yang mencakup API backend dan antarmuka web frontend. Tidak ada prosedur instalasi rumit atau dependensi yang harus dikelola.
 
 ### Antarmuka Pengguna Modern
-Antarmuka yang terinspirasi VS Code memberikan pengalaman yang familiar dan intuitif dengan:
+Antarmuka modern memberikan pengalaman yang familiar dan intuitif dengan:
 - Tema gelap dan terang
 - Desain responsif untuk perangkat mobile
 - Dukungan multi-bahasa (Inggris dan Indonesia)

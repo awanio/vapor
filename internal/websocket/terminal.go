@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"runtime"
 	"sync"
 
 	"github.com/creack/pty"
@@ -22,53 +21,28 @@ type PseudoTerminal struct {
 
 // startTerminal starts a new terminal session for the client
 func startTerminal(client *Client, username string) *PseudoTerminal {
-	// Check if we're on a supported platform
-	if runtime.GOOS == "windows" {
-		log.Printf("Terminal sessions are not supported on Windows")
-		return nil
-	}
-
-	// Map admin user to root
-	if username == "admin" {
-		username = "root"
-	}
-
 	log.Printf("Starting terminal session for user: %s", username)
 
 	// Get the shell to use
 	shell := os.Getenv("SHELL")
 	if shell == "" {
-		if runtime.GOOS == "darwin" {
-			shell = "/bin/zsh" // macOS default shell
-		} else {
-			shell = "/bin/bash"
-		}
+		shell = "/bin/bash"
 	}
 
-	var cmd *exec.Cmd
-	
-	// On Linux, use su to switch to the target user
-	if runtime.GOOS == "linux" {
-		// First check if the user exists
-		if _, err := exec.Command("id", username).Output(); err != nil {
-			log.Printf("ERROR: User '%s' does not exist on the system: %v", username, err)
-			client.sendError(fmt.Sprintf("User '%s' does not exist", username))
-			return nil
-		}
-		
-		// Use su to switch to the target user
-		// -l: login shell, -c: command to execute
-		cmd = exec.Command("su", "-l", username, "-c", shell)
-		
-		// Log terminal session start for audit purposes
-		log.Printf("AUDIT: Starting terminal session for user '%s' (authenticated as '%s') from client %s", 
-			username, client.username, client.id)
-	} else {
-		// On non-Linux systems (development), just run the shell
-		// but log a warning
-		log.Printf("WARNING: User switching not supported on %s, running as current user", runtime.GOOS)
-		cmd = exec.Command(shell)
+	// First check if the user exists
+	if _, err := exec.Command("id", username).Output(); err != nil {
+		log.Printf("ERROR: User '%s' does not exist on the system: %v", username, err)
+		client.sendError(fmt.Sprintf("User '%s' does not exist", username))
+		return nil
 	}
+	
+	// Use su to switch to the target user
+	// -l: login shell, -c: command to execute
+	cmd := exec.Command("su", "-l", username, "-c", shell)
+	
+	// Log terminal session start for audit purposes
+	log.Printf("AUDIT: Starting terminal session for user '%s' (authenticated as '%s') from client %s", 
+		username, client.username, client.id)
 	
 	// Set terminal environment
 	cmd.Env = append(os.Environ(), "TERM=xterm-256color")
@@ -116,7 +90,7 @@ func (pt *PseudoTerminal) Close() error {
 	defer pt.mu.Unlock()
 
 	// Log terminal session end for audit purposes
-	if runtime.GOOS == "linux" && pt.client != nil {
+	if pt.client != nil {
 		log.Printf("AUDIT: Ending terminal session for client %s (user: %s)", pt.client.id, pt.client.username)
 	}
 

@@ -2,7 +2,7 @@
 
 ## Gambaran Umum
 
-Vapor memiliki antarmuka modern dan intuitif yang terinspirasi dari Visual Studio Code. Panduan ini akan membantu Anda menavigasi dan menggunakan antarmuka secara efektif.
+Vapor memiliki antarmuka modern dan intuitif dengan desain yang bersih. Panduan ini akan membantu Anda menavigasi dan menggunakan antarmuka secara efektif.
 
 ## Tata Letak Antarmuka
 
@@ -82,7 +82,7 @@ Vapor
 - Mengurangi ketegangan mata
 - Lebih baik untuk sesi panjang
 - Kontras yang dioptimalkan
-- Warna terinspirasi VS Code
+- Skema warna modern
 
 ### Tema Terang
 - Lebih baik di lingkungan terang

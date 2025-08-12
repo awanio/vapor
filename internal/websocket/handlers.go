@@ -279,38 +279,12 @@ func tailLogs(client *Client, logService *logs.Service, msg Message) {
 		}
 	}
 
-	// For non-Linux systems or when journalctl is not available, send sample logs
-	if runtime.GOOS != "linux" || !isJournalctlAvailable() {
-		ticker := time.NewTicker(3 * time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-client.ctx.Done():
-				return
-			case <-ticker.C:
-				client.mu.RLock()
-				authenticated := client.authenticated
-				client.mu.RUnlock()
-
-				if !authenticated {
-					return
-				}
-
-				// Send sample log entry for non-Linux systems
-				logEntry := LogEntry{
-					Timestamp: time.Now(),
-					Level:     "info",
-					Unit:      filters.Unit,
-					Message:   fmt.Sprintf("Sample log message at %s (journalctl not available)", time.Now().Format(time.RFC3339)),
-				}
-
-				client.sendMessage(Message{
-					Type:    MessageTypeData,
-					Payload: logEntry,
-				})
-			}
-		}
+	// Check if journalctl is available
+	if !isJournalctlAvailable() {
+		client.sendMessage(Message{
+			Type:    MessageTypeError,
+			Payload: map[string]string{"error": "journalctl is not available on this system"},
+		})
 		return
 	}
 

@@ -1,9 +1,5 @@
 # Troubleshooting
 
-<p align="center">
-  <a href="../en/">English</a> | <a href="../id/15-pemecahan-masalah.md">Bahasa Indonesia</a>
-</p>
-
 ## Overview
 
 This section covers troubleshooting in Vapor.

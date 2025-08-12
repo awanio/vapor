@@ -1,9 +1,5 @@
 # Container Management
 
-<p align="center">
-  <a href="../en/">English</a> | <a href="../id/08-manajemen-kontainer.md">Bahasa Indonesia</a>
-</p>
-
 ## Overview
 
 This section covers container management in Vapor.

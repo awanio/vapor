@@ -2,7 +2,7 @@
 
 ## Welcome to Vapor
 
-Vapor is a comprehensive Linux system management platform that provides a modern, VS Code-inspired web interface for managing servers. It combines traditional system administration tools with container orchestration and Kubernetes management in a unified interface.
+Vapor is a comprehensive Linux system management platform that provides a modern web interface for managing servers. It combines traditional system administration tools with container orchestration and Kubernetes management in a unified interface.
 
 ## Documentation Contents
 

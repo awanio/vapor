@@ -1,6 +1,3 @@
-//go:build linux
-// +build linux
-
 package network
 
 // platformSpecificInit performs any Linux-specific initialization

@@ -1,9 +1,5 @@
 # Security Best Practices
 
-<p align="center">
-  <a href="../en/">English</a> | <a href="../id/14-keamanan.md">Bahasa Indonesia</a>
-</p>
-
 ## Overview
 
 This section covers security best practices in Vapor.

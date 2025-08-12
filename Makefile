@@ -7,12 +7,12 @@ DOCKER_IMAGE=vapor:latest
 
 # Build the binary
 build: embed-web
-	@echo "Building production binary with version $(shell git rev-parse --short HEAD)..."
-	go build -ldflags "-X github.com/awanio/vapor/internal/auth.Version=$(shell git rev-parse --short HEAD)" -o bin/$(BINARY_NAME) $(MAIN_PATH)
+	@echo "Building production binary..."
+	go build -o bin/$(BINARY_NAME) $(MAIN_PATH)
 
-# Build for development (without version injection)
+# Build for development
 build-dev: embed-web
-	@echo "Building development binary (admin credentials enabled)..."
+	@echo "Building development binary..."
 	go build -o bin/$(BINARY_NAME) $(MAIN_PATH)
 
 # Embed web UI assets
@@ -31,10 +31,10 @@ embed-web:
 		touch $(EMBED_DIR)/.keep; \
 	fi
 
-# Build for Linux x86_64
+# Build for Linux x86_64 (native build on Linux)
 build-linux: embed-web
 	@echo "Building for Linux x86_64..."
-	GOOS=linux GOARCH=amd64 go build -ldflags "-X github.com/awanio/vapor/internal/auth.Version=$(shell git rev-parse --short HEAD)" -o bin/$(BINARY_NAME)-linux-amd64 $(MAIN_PATH)
+	go build -o bin/$(BINARY_NAME)-linux-amd64 $(MAIN_PATH)
 
 # Run tests
 test:

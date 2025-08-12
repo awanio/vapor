@@ -28,15 +28,15 @@ import (
 )
 
 func main() {
-	// Check operating system
+	// Enforce Linux-only execution
 	if runtime.GOOS != "linux" {
-		log.Printf("Warning: This application is designed for Linux. Running on %s/%s may have limited functionality.", runtime.GOOS, runtime.GOARCH)
-	} else {
-		log.Printf("Running on %s/%s", runtime.GOOS, runtime.GOARCH)
+		log.Fatalf("Error: This application requires Linux. Current OS: %s/%s", runtime.GOOS, runtime.GOARCH)
 	}
 
-	// Check if running with appropriate privileges (only meaningful on Linux)
-	if runtime.GOOS == "linux" && os.Geteuid() != 0 {
+	log.Printf("Running on %s/%s", runtime.GOOS, runtime.GOARCH)
+
+	// Check if running with appropriate privileges
+	if os.Geteuid() != 0 {
 		log.Println("Warning: Running without root privileges. Some features may not work.")
 	}
 

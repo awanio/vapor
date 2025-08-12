@@ -2,7 +2,7 @@
 
 ## Overview
 
-Vapor features a modern, intuitive interface inspired by Visual Studio Code. This guide will help you navigate and use the interface effectively.
+Vapor features a modern, intuitive interface with a clean design. This guide will help you navigate and use the interface effectively.
 
 ## Interface Layout
 
@@ -82,7 +82,7 @@ Vapor
 - Reduced eye strain
 - Better for long sessions
 - Optimized contrast
-- VS Code inspired colors
+- Modern color scheme
 
 ### Light Theme
 - Better in bright environments

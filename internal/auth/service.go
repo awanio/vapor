@@ -8,12 +8,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/awanio/vapor/internal/common"
-	"golang.org/x/crypto/bcrypt"
 )
 
-// Version is injected at build time using -ldflags
-// Empty value means development mode, non-empty means production
-var Version string
 
 // Service handles authentication
 type Service struct {
@@ -54,8 +50,7 @@ func (s *Service) Login(c *gin.Context) {
 		return
 	}
 
-	// TODO: In production, fetch user from database
-	// For demo, using hardcoded admin user
+	// Validate against Linux system authentication
 	if !s.validateCredentials(req.Username, req.Password) {
 		common.SendError(c, http.StatusUnauthorized, common.ErrCodeUnauthorized, "Invalid credentials")
 		return
@@ -65,7 +60,7 @@ func (s *Service) Login(c *gin.Context) {
 	expirationTime := time.Now().Add(24 * time.Hour)
 	claims := &Claims{
 		Username: req.Username,
-		Role:     "admin", // TODO: Get role from database
+		Role:     "admin", // Default role for authenticated users
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -126,23 +121,10 @@ func (s *Service) AuthMiddleware() gin.HandlerFunc {
 	}
 }
 
-// validateCredentials validates username and password
+// validateCredentials validates username and password against Linux system
 func (s *Service) validateCredentials(username, password string) bool {
-	// Check if it's the admin user
-	if username == "admin" {
-		// Only allow hardcoded admin credentials in development mode (when Version is empty)
-		if Version != "" {
-			// Production mode - do not allow hardcoded admin
-			return false
-		}
-		// Hash for "admin123" - only available in development/testing mode
-		hashedPassword := "$2a$10$TfAKWyGmr368MNVwiu3kaugi2Tax5MhB0XhlJjJAHFi1EOSTr061G"
-		err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
-		return err == nil
-	} else {
-		// For non-admin users, validate against Linux system authentication
-		return authenticateLinuxUser(username, password)
-	}
+	// Validate against Linux system authentication
+	return authenticateLinuxUser(username, password)
 }
 
 // RequireRole checks if user has required role

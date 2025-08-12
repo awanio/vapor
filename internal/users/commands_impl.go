@@ -1,6 +1,3 @@
-//go:build linux
-// +build linux
-
 package users
 
 import "os/exec"

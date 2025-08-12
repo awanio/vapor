@@ -1,6 +1,3 @@
-//go:build linux
-// +build linux
-
 package storage
 
 // getPlatformSpecificMountOptions returns Linux-specific mount options

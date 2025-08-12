@@ -73,20 +73,19 @@ sudo pacman -S util-linux e2fsprogs xfsprogs btrfs-progs systemd lvm2 open-iscsi
 sudo apk add util-linux e2fsprogs xfsprogs btrfs-progs lvm2 open-iscsi multipath-tools
 ```
 
-## Platform Compatibility
+## Platform Requirements
 
-### Primary Target
-- **Linux x86_64**: Full functionality with all features supported
-- **Linux ARM64**: Should work but not extensively tested
+### Supported Platforms
+- **Linux x86_64**: Primary platform with full functionality
+- **Linux ARM64**: Supported but less extensively tested
 
-### Development Platforms
-- **macOS**: Can build and run with limited functionality (system info only)
-- **Windows**: Can build but most features will return "not implemented"
+### Operating System
+This application is **Linux-only** and will not run on macOS, Windows, or other operating systems. The application enforces this requirement at startup and will exit with an error if run on non-Linux systems.
 
-### Cross-Compilation
-The application can be built on any platform that supports Go 1.21+ and cross-compiled for Linux x86_64:
+### Build Requirements
+The application must be built on a Linux system or cross-compiled for Linux:
 ```bash
-# On macOS/Windows, build for Linux x86_64
+# Build for Linux x86_64 (native or cross-compilation)
 make build-linux
 ```
 
@@ -102,10 +101,10 @@ cd system-api
 # Install dependencies
 make install-deps
 
-# Build production binary (disables hardcoded admin credentials)
+# Build production binary
 make build
 
-# Build development binary (enables hardcoded admin credentials for testing)
+# Build development binary
 make build-dev
 
 # Build specifically for Linux x86_64 (cross-compilation)
@@ -156,30 +155,19 @@ The complete OpenAPI 3.1.0 specification is available in `openapi.yaml`.
 
 ### Authentication
 
-The API supports two authentication methods:
-
-1. **Built-in admin account** (development mode only):
-   - Username: `admin`
-   - Password: `admin123`
-   - **Security Note**: This account is only available in development builds. Production builds (using `make build` or Docker) automatically disable this account for security.
-
-2. **Linux system users** (recommended for production):
-   - Any valid Linux user can authenticate with their system credentials
-   - The API uses the system's authentication mechanism (via `su` command)
-   - User must exist in `/etc/passwd`
+The API uses **Linux system user authentication**:
+- Any valid Linux user can authenticate with their system credentials
+- The API uses the system's authentication mechanism (via `su` command)
+- User must exist in `/etc/passwd`
+- All authenticated users receive the "admin" role by default
 
 Obtain a JWT token:
 
 ```bash
-# Using built-in admin account
-curl -X POST http://localhost:8080/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "admin123"}'
-
 # Using Linux system user
 curl -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username": "john", "password": "johns_system_password"}'
+  -d '{"username": "your_linux_username", "password": "your_password"}'
 ```
 
 Use the token in subsequent requests:

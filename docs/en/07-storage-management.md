@@ -1,9 +1,5 @@
 # Storage Management
 
-<p align="center">
-  <a href="../en/">English</a> | <a href="../id/07-manajemen-penyimpanan.md">Bahasa Indonesia</a>
-</p>
-
 ## Overview
 
 This section covers storage management in Vapor.
