@@ -412,15 +412,19 @@ make lint
 
 ## Contributing
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on setting up your environment, coding standards, commit sign-off (DCO), and the PR process.
+
+## Code of Conduct
+
+Participation in this project is governed by our [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+
+## Security
+
+Please report vulnerabilities privately as described in our [SECURITY.md](SECURITY.md).
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the Apache License 2.0 — see the [LICENSE](LICENSE) file for details. Where required, third-party attributions are listed in the [NOTICE](NOTICE) file.
 
 ## Acknowledgments
 
