@@ -14,6 +14,7 @@ export class ActionDropdown extends LitElement {
   @property({ type: Array }) actions: ActionItem[] = [];
   @property({ type: String }) menuId: string = '';
   @state() private isOpen = false;
+  @state() private dropdownPosition = { top: 0, left: 0 };
 
   static override styles = css`
     :host {
@@ -38,16 +39,13 @@ export class ActionDropdown extends LitElement {
     }
 
     .action-dropdown {
-      position: absolute;
-      right: 0;
-      top: 100%;
-      margin-top: 4px;
+      position: fixed;
       background: var(--vscode-dropdown-background, var(--vscode-menu-background, var(--vscode-bg-light, #252526)));
       border: 1px solid var(--vscode-dropdown-border, var(--vscode-menu-border, var(--border-color, #454545)));
       border-radius: 4px;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
       min-width: 160px;
-      z-index: 1000;
+      z-index: 10000;
       display: none;
     }
 
@@ -91,11 +89,15 @@ export class ActionDropdown extends LitElement {
   override connectedCallback() {
     super.connectedCallback();
     document.addEventListener('click', this.handleOutsideClick);
+    window.addEventListener('scroll', this.handleScroll, true);
+    window.addEventListener('resize', this.handleResize);
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('click', this.handleOutsideClick);
+    window.removeEventListener('scroll', this.handleScroll, true);
+    window.removeEventListener('resize', this.handleResize);
   }
 
   private handleOutsideClick = (event: MouseEvent) => {
@@ -104,8 +106,54 @@ export class ActionDropdown extends LitElement {
     }
   };
 
+  private handleScroll = () => {
+    // Close dropdown on scroll to prevent position mismatch
+    if (this.isOpen) {
+      this.isOpen = false;
+    }
+  };
+
+  private handleResize = () => {
+    // Close dropdown on resize to prevent position mismatch
+    if (this.isOpen) {
+      this.isOpen = false;
+    }
+  };
+
   private toggleMenu(event: MouseEvent) {
     event.stopPropagation();
+    
+    if (!this.isOpen) {
+      // Calculate position for fixed dropdown
+      const button = event.currentTarget as HTMLElement;
+      const rect = button.getBoundingClientRect();
+      const dropdownWidth = 160; // min-width of dropdown
+      
+      // Calculate left position to align with right edge of button
+      let left = rect.right - dropdownWidth;
+      
+      // Ensure dropdown doesn't go off-screen on the left
+      if (left < 10) {
+        left = 10;
+      }
+      
+      // Ensure dropdown doesn't go off-screen on the right
+      if (rect.right > window.innerWidth - 10) {
+        left = window.innerWidth - dropdownWidth - 10;
+      }
+      
+      // Position dropdown below the button
+      let top = rect.bottom + 4;
+      
+      // If dropdown would go off-screen at bottom, position it above the button
+      const dropdownHeight = this.actions.length * 40; // Approximate height
+      if (top + dropdownHeight > window.innerHeight - 10) {
+        top = rect.top - dropdownHeight - 4;
+      }
+      
+      this.dropdownPosition = { top, left };
+    }
+    
     this.isOpen = !this.isOpen;
   }
 
@@ -122,9 +170,17 @@ export class ActionDropdown extends LitElement {
   }
 
   override render() {
+    const dropdownStyle = this.isOpen 
+      ? `top: ${this.dropdownPosition.top}px; left: ${this.dropdownPosition.left}px;` 
+      : '';
+    
     return html`
       <button class="action-dots" @click=${this.toggleMenu}>⋮</button>
-      <div class="action-dropdown ${this.isOpen ? 'show' : ''}" id="${this.menuId}">
+      <div 
+        class="action-dropdown ${this.isOpen ? 'show' : ''}" 
+        id="${this.menuId}"
+        style="${dropdownStyle}"
+      >
         ${this.actions.map(action => html`
           <button 
             class="${action.danger ? 'danger' : ''}"
