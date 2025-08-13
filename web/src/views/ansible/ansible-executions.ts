@@ -3,6 +3,7 @@ import { customElement, state } from 'lit/decorators.js';
 import '../../components/ui/search-input';
 import '../../components/ui/loading-state';
 import '../../components/ui/empty-state';
+import '../../components/ui/filter-dropdown';
 import '../../components/tables/resource-table';
 import '../../components/ui/action-dropdown';
 import type { Column } from '../../components/tables/resource-table';
@@ -119,35 +120,13 @@ export class AnsibleExecutions extends LitElement {
       max-width: 400px;
     }
 
+    filter-dropdown {
+      min-width: 140px;
+    }
+
     .content {
       flex: 1;
       overflow-y: auto;
-    }
-
-    .filter-buttons {
-      display: flex;
-      gap: 0.5rem;
-    }
-
-    .filter-btn {
-      padding: 6px 12px;
-      background: var(--vscode-button-secondaryBackground);
-      color: var(--vscode-button-secondaryForeground);
-      border: 1px solid var(--vscode-button-border);
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 13px;
-      transition: all 0.2s;
-    }
-
-    .filter-btn:hover {
-      background: var(--vscode-button-secondaryHoverBackground);
-    }
-
-    .filter-btn.active {
-      background: var(--vscode-button-background);
-      color: var(--vscode-button-foreground);
-      border-color: var(--vscode-focusBorder);
     }
 
     .status-badge {
@@ -254,9 +233,9 @@ export class AnsibleExecutions extends LitElement {
       {
         id: 'exec-001',
         jobId: 'job-001',
-        name: 'Deploy Web Application',
+        name: 'Deploy Keepalived',
         type: 'template',
-        playbook: 'deploy-webapp.yml',
+        playbook: 'deploy-keepalived.yml',
         status: 'successful',
         startTime: '2024-01-15T14:30:00Z',
         endTime: '2024-01-15T14:35:42Z',
@@ -271,9 +250,9 @@ export class AnsibleExecutions extends LitElement {
       {
         id: 'exec-002',
         jobId: 'job-002',
-        name: 'System Update',
+        name: 'Install KubeOVN',
         type: 'playbook',
-        playbook: 'update-system.yml',
+        playbook: 'install-kubeovn.yml',
         status: 'running',
         startTime: '2024-01-15T15:00:00Z',
         executedBy: 'operator',
@@ -287,7 +266,7 @@ export class AnsibleExecutions extends LitElement {
       {
         id: 'exec-003',
         jobId: 'job-003',
-        name: 'Database Backup',
+        name: 'Run apt-get update',
         type: 'template',
         playbook: 'backup-databases.yml',
         status: 'failed',
@@ -305,9 +284,9 @@ export class AnsibleExecutions extends LitElement {
       {
         id: 'exec-004',
         jobId: 'job-004',
-        name: 'Security Patches',
+        name: 'Install Containerd',
         type: 'playbook',
-        playbook: 'security-updates.yml',
+        playbook: 'containerd.yml',
         status: 'successful',
         startTime: '2024-01-14T22:00:00Z',
         endTime: '2024-01-14T22:45:30Z',
@@ -322,9 +301,9 @@ export class AnsibleExecutions extends LitElement {
       {
         id: 'exec-005',
         jobId: 'job-005',
-        name: 'Configuration Drift Check',
+        name: 'Configuration Keepalived',
         type: 'template',
-        playbook: 'check-config.yml',
+        playbook: 'check-keepalived.yml',
         status: 'canceled',
         startTime: '2024-01-14T18:30:00Z',
         endTime: '2024-01-14T18:31:15Z',
@@ -340,9 +319,9 @@ export class AnsibleExecutions extends LitElement {
       {
         id: 'exec-006',
         jobId: 'job-006',
-        name: 'Deploy Monitoring Agent',
+        name: 'Deploy RookCeph',
         type: 'playbook',
-        playbook: 'deploy-monitoring.yml',
+        playbook: 'deploy-rook-ceph.yml',
         status: 'pending',
         startTime: '2024-01-15T16:00:00Z',
         executedBy: 'monitoring-team',
@@ -362,8 +341,8 @@ export class AnsibleExecutions extends LitElement {
     this.searchQuery = e.detail.value;
   }
 
-  private handleStatusFilter(status: string) {
-    this.statusFilter = status;
+  private handleFilterChange(e: CustomEvent) {
+    this.statusFilter = e.detail.value;
   }
 
   private get filteredExecutions() {
@@ -554,37 +533,24 @@ export class AnsibleExecutions extends LitElement {
 
         <div class="controls">
           <div class="controls-left">
+            <filter-dropdown
+              .options=${[
+                { value: 'all', label: 'All' },
+                { value: 'running', label: 'Running' },
+                { value: 'successful', label: 'Successful' },
+                { value: 'failed', label: 'Failed' },
+                { value: 'canceled', label: 'Canceled' },
+                { value: 'pending', label: 'Pending' }
+              ]}
+              .selectedValue=${this.statusFilter}
+              .showStatusIndicators=${true}
+              @filter-change=${this.handleFilterChange}
+            ></filter-dropdown>
+            
             <search-input
               .placeholder=${'Search executions...'}
-              @search=${this.handleSearch}
+              @search-change=${this.handleSearch}
             ></search-input>
-            
-            <div class="filter-buttons">
-              <button 
-                class="filter-btn ${this.statusFilter === 'all' ? 'active' : ''}"
-                @click=${() => this.handleStatusFilter('all')}
-              >
-                All
-              </button>
-              <button 
-                class="filter-btn ${this.statusFilter === 'running' ? 'active' : ''}"
-                @click=${() => this.handleStatusFilter('running')}
-              >
-                Running
-              </button>
-              <button 
-                class="filter-btn ${this.statusFilter === 'successful' ? 'active' : ''}"
-                @click=${() => this.handleStatusFilter('successful')}
-              >
-                Successful
-              </button>
-              <button 
-                class="filter-btn ${this.statusFilter === 'failed' ? 'active' : ''}"
-                @click=${() => this.handleStatusFilter('failed')}
-              >
-                Failed
-              </button>
-            </div>
           </div>
 
           <div class="controls-right">

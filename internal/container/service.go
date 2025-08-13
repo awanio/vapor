@@ -61,6 +61,20 @@ func NewService() (*Service, error) {
 	}, nil
 }
 
+// NewServiceWithDockerClient creates a new container service with an existing Docker client
+func NewServiceWithDockerClient(dockerClient interface{}) (*Service, error) {
+	// We need to wrap the Docker client to implement RuntimeClient interface
+	// Assuming the dockerClient implements the necessary methods
+	wrappedClient, err := WrapDockerClient(dockerClient)
+	if err != nil {
+		return nil, fmt.Errorf("failed to wrap Docker client: %w", err)
+	}
+	
+	return &Service{
+		client: wrappedClient,
+	}, nil
+}
+
 // ListContainers handles the GET /containers endpoint
 func (s *Service) ListContainers(c *gin.Context) {
 	// Check if we have a runtime client

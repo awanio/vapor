@@ -61,8 +61,16 @@ func LibvirtRoutes(r *gin.RouterGroup, service *libvirt.Service) {
 		vmGroup.POST("/:id/pci-devices", attachPCIDevice(service)) // Attach PCI device to VM
 		vmGroup.DELETE("/:id/pci-devices/:device_id", detachPCIDevice(service)) // Detach PCI device from VM
 		
-		// Resource Hotplug
-		vmGroup.POST("/:id/hotplug", hotplugResource(service))     // Hotplug resources to VM
+	// Resource Hotplug
+	vmGroup.POST("/:id/hotplug", hotplugResource(service))     // Hotplug resources to VM
+
+	// Enhanced VM creation with multiple disks support
+	vmGroup.POST("/create-enhanced", createVMEnhanced(service)) // Create VM with enhanced options
+
+	// ISO Management
+	vmGroup.GET("/isos", listISOs(service))                    // List available ISOs
+	vmGroup.POST("/isos", uploadISO(service))                  // Upload/register ISO
+	vmGroup.DELETE("/isos/:id", deleteISO(service))            // Delete ISO
 	}
 
 	// Storage Management
@@ -836,5 +844,69 @@ func hotplugResource(service *libvirt.Service) gin.HandlerFunc {
 			"resource_type": req.ResourceType,
 			"action": req.Action,
 		})
+	}
+}
+
+// Enhanced VM Creation handler
+
+func createVMEnhanced(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req libvirt.VMCreateRequestEnhanced
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		vm, err := service.CreateVMEnhanced(c.Request.Context(), &req)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusCreated, vm)
+	}
+}
+
+// ISO Management handlers
+
+func listISOs(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		isos, err := service.ListISOs(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"isos": isos})
+	}
+}
+
+func uploadISO(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req libvirt.ISOUploadRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		iso, err := service.UploadISO(c.Request.Context(), &req)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusCreated, iso)
+	}
+}
+
+func deleteISO(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		err := service.DeleteISO(c.Request.Context(), id)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusNoContent, nil)
 	}
 }

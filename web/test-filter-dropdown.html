@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Filter Dropdown Comparison</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            padding: 40px;
+            background: #1e1e1e;
+            color: #cccccc;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #ffffff;
+            margin-bottom: 30px;
+        }
+        
+        h2 {
+            color: #e0e0e0;
+            margin-top: 40px;
+            margin-bottom: 20px;
+        }
+        
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+        
+        .section {
+            background: #252526;
+            border: 1px solid #3a3d4a;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
+        .section h3 {
+            color: #cccccc;
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+        
+        /* Before - Tab style buttons */
+        .controls-before {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .filter-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .filter-btn {
+            padding: 6px 12px;
+            background: #3c3c3c;
+            color: #cccccc;
+            border: 1px solid #474747;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        
+        .filter-btn:hover {
+            background: #474747;
+        }
+        
+        .filter-btn.active {
+            background: #007acc;
+            color: white;
+            border-color: #007acc;
+        }
+        
+        .search-input {
+            flex: 1;
+            max-width: 400px;
+            padding: 6px 12px;
+            background: #3c3c3c;
+            color: #cccccc;
+            border: 1px solid #474747;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        
+        /* After - Dropdown style */
+        .controls-after {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .filter-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .dropdown-toggle {
+            background: #3c3c3c;
+            color: #cccccc;
+            border: 1px solid #474747;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 140px;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        
+        .dropdown-toggle:hover {
+            background: #474747;
+        }
+        
+        .dropdown-label {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .filter-icon {
+            width: 14px;
+            height: 14px;
+            opacity: 0.8;
+        }
+        
+        .dropdown-arrow {
+            width: 12px;
+            height: 12px;
+        }
+        
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 4px;
+            background: #2d2d30;
+            border: 1px solid #474747;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            min-width: 150px;
+        }
+        
+        .dropdown-option {
+            padding: 8px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            transition: background-color 0.2s;
+        }
+        
+        .dropdown-option:hover {
+            background: #3a3a3a;
+        }
+        
+        .dropdown-option.selected {
+            background: #094771;
+            color: white;
+        }
+        
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        
+        .status-indicator.all { background: #888; }
+        .status-indicator.running { background: #1e88e5; }
+        .status-indicator.successful { background: #43a047; }
+        .status-indicator.failed { background: #e53935; }
+        
+        .description {
+            margin-top: 20px;
+            padding: 15px;
+            background: #1e1e1e;
+            border-radius: 4px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .benefits {
+            margin-top: 20px;
+            padding-left: 20px;
+        }
+        
+        .benefits li {
+            margin-bottom: 10px;
+            color: #a0a0a0;
+        }
+        
+        code {
+            background: #1e1e1e;
+            padding: 2px 4px;
+            border-radius: 3px;
+            color: #d4d4d4;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Ansible Executions - Filter UI Update</h1>
+        
+        <div class="comparison">
+            <div class="section">
+                <h3>BEFORE: Tab-style Filter Buttons</h3>
+                <div class="controls-before">
+                    <input class="search-input" type="text" placeholder="Search executions...">
+                    <div class="filter-buttons">
+                        <button class="filter-btn active">All</button>
+                        <button class="filter-btn">Running</button>
+                        <button class="filter-btn">Successful</button>
+                        <button class="filter-btn">Failed</button>
+                    </div>
+                </div>
+                <div class="description">
+                    The original implementation used horizontal filter buttons styled like tabs, placed after the search input.
+                </div>
+            </div>
+            
+            <div class="section">
+                <h3>AFTER: Dropdown Filter</h3>
+                <div class="controls-after">
+                    <div class="filter-dropdown">
+                        <button class="dropdown-toggle">
+                            <span class="dropdown-label">
+                                <svg class="filter-icon" viewBox="0 0 16 16" fill="currentColor">
+                                    <path d="M6 10.5a.5.5 0 01.5-.5h3a.5.5 0 010 1h-3a.5.5 0 01-.5-.5zm-2-3a.5.5 0 01.5-.5h7a.5.5 0 010 1h-7a.5.5 0 01-.5-.5zm-2-3a.5.5 0 01.5-.5h11a.5.5 0 010 1h-11a.5.5 0 01-.5-.5z"/>
+                                </svg>
+                                All
+                            </span>
+                            <svg class="dropdown-arrow" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M4 6l4 4 4-4z"/>
+                            </svg>
+                        </button>
+                        <div class="dropdown-menu" style="display: none;">
+                            <div class="dropdown-option selected">
+                                <span class="status-indicator all"></span>
+                                <span>All</span>
+                            </div>
+                            <div class="dropdown-option">
+                                <span class="status-indicator running"></span>
+                                <span>Running</span>
+                            </div>
+                            <div class="dropdown-option">
+                                <span class="status-indicator successful"></span>
+                                <span>Successful</span>
+                            </div>
+                            <div class="dropdown-option">
+                                <span class="status-indicator failed"></span>
+                                <span>Failed</span>
+                            </div>
+                            <div class="dropdown-option">
+                                <span class="status-indicator" style="background: #757575;"></span>
+                                <span>Canceled</span>
+                            </div>
+                            <div class="dropdown-option">
+                                <span class="status-indicator" style="background: #ffa726;"></span>
+                                <span>Pending</span>
+                            </div>
+                        </div>
+                    </div>
+                    <input class="search-input" type="text" placeholder="Search executions...">
+                </div>
+                <div class="description">
+                    The updated implementation uses a dropdown component placed before the search input, with status indicators for each option.
+                </div>
+            </div>
+        </div>
+        
+        <h2>Implementation Details</h2>
+        
+        <div class="section">
+            <h3>Changes Made:</h3>
+            <ul class="benefits">
+                <li>Created a new reusable <code>filter-dropdown</code> component in <code>src/components/ui/filter-dropdown.ts</code></li>
+                <li>Updated <code>ansible-executions.ts</code> to import and use the new dropdown component</li>
+                <li>Replaced the filter buttons with a dropdown that includes all status options (All, Running, Successful, Failed, Canceled, Pending)</li>
+                <li>Positioned the dropdown before the search input for better visual hierarchy</li>
+                <li>Added status indicator dots to visually distinguish different statuses</li>
+                <li>Maintained the same filtering functionality with improved UI</li>
+            </ul>
+            
+            <h3>Benefits:</h3>
+            <ul class="benefits">
+                <li>More compact UI - saves horizontal space</li>
+                <li>Scalable - can easily add more filter options without cluttering the interface</li>
+                <li>Consistent with other dropdown patterns in the application</li>
+                <li>Visual status indicators make it easier to identify status types</li>
+                <li>Reusable component that can be used in other views</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        // Simple toggle functionality for demo
+        document.querySelector('.dropdown-toggle').addEventListener('click', function(e) {
+            e.stopPropagation();
+            const menu = document.querySelector('.dropdown-menu');
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        });
+        
+        document.addEventListener('click', function() {
+            document.querySelector('.dropdown-menu').style.display = 'none';
+        });
+        
+        document.querySelectorAll('.dropdown-option').forEach(option => {
+            option.addEventListener('click', function(e) {
+                e.stopPropagation();
+                document.querySelectorAll('.dropdown-option').forEach(o => o.classList.remove('selected'));
+                this.classList.add('selected');
+                const label = this.querySelector('span:last-child').textContent;
+                document.querySelector('.dropdown-label').innerHTML = `
+                    <svg class="filter-icon" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M6 10.5a.5.5 0 01.5-.5h3a.5.5 0 010 1h-3a.5.5 0 01-.5-.5zm-2-3a.5.5 0 01.5-.5h7a.5.5 0 010 1h-7a.5.5 0 01-.5-.5zm-2-3a.5.5 0 01.5-.5h11a.5.5 0 010 1h-11a.5.5 0 01-.5-.5z"/>
+                    </svg>
+                    ${label}
+                `;
+                document.querySelector('.dropdown-menu').style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html>

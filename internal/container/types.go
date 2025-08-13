@@ -55,6 +55,17 @@ type Port struct {
 	HostIP        string `json:"host_ip"`
 }
 
+// PortMapping represents a container port mapping (alias for Port)
+type PortMapping Port
+
+// ContainerNetwork represents container network information
+type ContainerNetwork struct {
+	NetworkName string `json:"network_name"`
+	IPAddress   string `json:"ip_address"`
+	Gateway     string `json:"gateway"`
+	MacAddress  string `json:"mac_address"`
+}
+
 // Network represents container network information
 type Network struct {
 	Name        string            `json:"name"`

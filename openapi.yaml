@@ -2,7 +2,115 @@ openapi: 3.1.0
 info:
   title: Go System API
   version: 1.0.0
-  description: RESTful API for Linux system management
+  description: |
+    RESTful API for Vapor a web console for modern Linux stacks.
+    
+    ### Key Features
+    - System management and monitoring
+    - Network configuration
+    - Storage management
+    - Virtual machine management
+    - Container and Kubernetes support
+    - Ansible automation
+    - Resumable file uploads using TUS protocol
+
+    ### TUS Protocol Support
+    
+    This API implements the **TUS Protocol v1.0.0** for resumable file uploads, specifically for:
+    - ISO images for virtual machines (`/virtualmachines/isos/upload/*`)
+    - Container images (`/containers/images/upload/*`)
+    - Docker images (`/docker/images/upload/*`)
+    
+    #### What is TUS?
+    
+    TUS is an open protocol for resumable file uploads via HTTP/1.1 and HTTP/2. It allows:
+    - **Resume interrupted uploads**: Network failures don't mean starting over
+    - **Upload large files reliably**: Perfect for multi-GB ISO and container images
+    - **Monitor progress**: Real-time upload progress tracking
+    - **Automatic retry**: Built-in resilience to network issues
+    
+    #### How to Use TUS Endpoints
+    
+    ##### 1. Create Upload Session
+    ```http
+    POST /api/v1/virtualmachines/isos/upload
+    Headers:
+      Upload-Length: 1474560000  # File size in bytes
+      Upload-Metadata: filename aXNvLXVidW50dS0yMi4wNC5pc28=  # Base64 encoded metadata
+    ```
+    Returns:
+    - `201 Created` with `Location` header containing upload URL
+    - Upload session ID in response body
+    
+    ##### 2. Upload File Chunks
+    ```http
+    PATCH /api/v1/virtualmachines/isos/upload/{upload_id}
+    Headers:
+      Upload-Offset: 0  # Starting byte position
+      Content-Type: application/offset+octet-stream
+    Body: [binary data chunk]
+    ```
+    - Chunk size: 1MB - 50MB recommended
+    - Returns new offset after successful upload
+    
+    ##### 3. Resume Interrupted Upload
+    ```http
+    HEAD /api/v1/virtualmachines/isos/upload/{upload_id}
+    ```
+    Returns current `Upload-Offset` to resume from
+    
+    ##### 4. Complete Upload
+    ```http
+    POST /api/v1/virtualmachines/isos/upload/{upload_id}/complete
+    ```
+    Finalizes upload and registers the file in the system
+    
+    #### Frontend Implementation
+    
+    For frontend applications, we recommend using:
+    - **tus-js-client**: Official JavaScript client library
+    - **Uppy**: Modern file upload library with TUS support
+    - **Fine Uploader**: Enterprise-grade upload solution
+    
+    Example with tus-js-client:
+    ```javascript
+    import * as tus from 'tus-js-client';
+    
+    const upload = new tus.Upload(file, {
+      endpoint: '/api/v1/virtualmachines/isos/upload',
+      headers: {
+        'Authorization': 'Bearer ' + token
+      },
+      chunkSize: 10 * 1024 * 1024, // 10MB chunks
+      metadata: {
+        filename: file.name,
+        filetype: file.type
+      },
+      onError: (error) => console.error('Upload failed:', error),
+      onProgress: (bytesUploaded, bytesTotal) => {
+        const percentage = (bytesUploaded / bytesTotal * 100).toFixed(2);
+        console.log(percentage + '% uploaded');
+      },
+      onSuccess: () => {
+        console.log('Upload complete');
+        // Call complete endpoint to finalize
+        fetch(`/api/v1/virtualmachines/isos/upload/${upload.url.split('/').pop()}/complete`, {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+      }
+    });
+    
+    upload.start();
+    ```
+    
+    ### Benefits for Large Files
+    
+    - **Reliability**: Automatic resume on network failures
+    - **Efficiency**: Only retransmit failed chunks
+    - **User Experience**: Show accurate progress, pause/resume capability
+    - **Bandwidth Optimization**: Configurable chunk sizes
+    - **Server Resources**: Reduced memory usage with streaming uploads
 servers:
   - url: http://localhost:8080/api/v1
     description: Local development server
@@ -14,12 +122,8 @@ paths:
         Authenticate a user and receive a JWT token.
         
         **Authentication Methods:**
-        1. Built-in admin account (development builds only):
-           - Username: admin
-           - Password: admin123
-           - Note: Disabled in production builds for security
         
-        2. Linux system users (recommended for production):
+        Use Linux system users:
            - Any valid Linux user with their system credentials
            - Uses system authentication via 'su' command
       tags:
@@ -971,7 +1075,7 @@ paths:
                   code: NO_RUNTIME_AVAILABLE
                   message: No container runtime found
 
-  /images:
+  /containers/images:
     get:
       summary: List images
       tags:
@@ -1046,7 +1150,7 @@ paths:
                         type: string
                         example: "No container runtime found. Tried CRI sockets ([/run/containerd/containerd.sock /var/run/crio/crio.sock]) and Docker. Last error: Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?"
 
-  /images/{id}:
+  /containers/images/{id}:
     get:
       summary: Get detailed image information
       tags:
@@ -1098,7 +1202,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /images/import:
+  /containers/images/import:
     post:
       summary: Import container image from tarball
       tags:
@@ -1149,6 +1253,404 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /containers/images/upload:
+    post:
+      summary: Create resumable upload session
+      description: |
+        Alternative path for creating resumable upload session for container images using TUS protocol.
+        ```
+      tags:
+        - Container
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: Upload-Length
+          in: header
+          required: true
+          description: Total size of the file to upload
+          schema:
+            type: integer
+            format: int64
+        - name: Upload-Metadata
+          in: header
+          required: false
+          description: Metadata about the upload (filename, etc.)
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Upload session created successfully
+          headers:
+            Location:
+              description: URL for the upload session
+              schema:
+                type: string
+            Upload-Offset:
+              description: Current upload offset (starts at 0)
+              schema:
+                type: integer
+            Tus-Resumable:
+              description: TUS protocol version
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  upload_id:
+                    type: string
+                    example: "abc123-def456-ghi789"
+                  upload_url:
+                    type: string
+                    example: "/containers/images/upload/abc123-def456-ghi789"
+                  expires_at:
+                    type: string
+                    format: date-time
+                    example: "2025-08-06T15:38:32Z"
+        '400':
+          description: Invalid upload request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: File too large
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: No container runtime available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: List active upload sessions
+      description: |
+        
+        This endpoint lists all active TUS upload sessions for container images,
+        allowing you to:
+        - Monitor multiple concurrent uploads
+        - Resume interrupted uploads
+        - Clean up stale upload sessions
+        
+        Upload sessions expire after 24 hours of inactivity.
+      tags:
+        - Container
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Upload sessions listed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      uploads:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            upload_id:
+                              type: string
+                            total_size:
+                              type: integer
+                            uploaded_size:
+                              type: integer
+                            progress:
+                              type: number
+                              format: float
+                            status:
+                              type: string
+                              enum: [created, in_progress, completed, failed, cancelled]
+                            created_at:
+                              type: string
+                              format: date-time
+                            updated_at:
+                              type: string
+                              format: date-time
+                            filename:
+                              type: string
+                      count:
+                        type: integer
+
+  /containers/images/upload/{id}:
+    head:
+      summary: Get upload session info
+      description: Get information about a resumable upload session for container images
+      tags:
+        - Container
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Upload session ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Upload session info retrieved successfully
+          headers:
+            Upload-Offset:
+              description: Current upload offset
+              schema:
+                type: integer
+            Upload-Length:
+              description: Total upload length
+              schema:
+                type: integer
+            Tus-Resumable:
+              description: TUS protocol version
+              schema:
+                type: string
+            Cache-Control:
+              description: Cache control header
+              schema:
+                type: string
+        '404':
+          description: Upload session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    patch:
+      summary: Upload chunk
+      description: Upload a chunk of data to a resumable upload session for container images
+      tags:
+        - Container
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Upload session ID
+          schema:
+            type: string
+        - name: Upload-Offset
+          in: header
+          required: true
+          description: Current upload offset
+          schema:
+            type: integer
+        - name: Content-Type
+          in: header
+          required: true
+          description: Must be application/offset+octet-stream
+          schema:
+            type: string
+            enum: [application/offset+octet-stream]
+      requestBody:
+        required: true
+        content:
+          application/offset+octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '204':
+          description: Chunk uploaded successfully
+          headers:
+            Upload-Offset:
+              description: New upload offset after this chunk
+              schema:
+                type: integer
+            Tus-Resumable:
+              description: TUS protocol version
+              schema:
+                type: string
+        '400':
+          description: Invalid chunk or headers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Upload session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Offset mismatch or upload already completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '410':
+          description: Upload session expired or cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: Get upload status
+      description: Get detailed status of a resumable upload session for container images
+      tags:
+        - Container
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Upload session ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Upload status retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      upload:
+                        type: object
+                        properties:
+                          upload_id:
+                            type: string
+                          total_size:
+                            type: integer
+                          uploaded_size:
+                            type: integer
+                          progress:
+                            type: number
+                            format: float
+                          status:
+                            type: string
+                            enum: [created, in_progress, completed, failed, cancelled]
+                          created_at:
+                            type: string
+                            format: date-time
+                          updated_at:
+                            type: string
+                            format: date-time
+                          filename:
+                            type: string
+                          metadata:
+                            type: object
+                            additionalProperties: true
+        '404':
+          description: Upload session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Cancel upload session
+      description: Cancel and delete a resumable upload session for container images
+      tags:
+        - Container
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Upload session ID
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Upload session cancelled successfully
+          headers:
+            Tus-Resumable:
+              description: TUS protocol version
+              schema:
+                type: string
+        '404':
+          description: Upload session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /containers/images/upload/{id}/complete:
+    post:
+      summary: Complete upload and import image
+      description: Complete the upload session and import the container image
+      tags:
+        - Container
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Upload session ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Upload completed and image imported successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      upload_id:
+                        type: string
+                      import_result:
+                        $ref: '#/components/schemas/ImageImportResult'
+                      runtime:
+                        type: string
+                        example: containerd
+                      filename:
+                        type: string
+        '400':
+          description: Upload not complete or invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Upload session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Failed to import image
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: No container runtime available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /docker/images/import:
     post:
       summary: Import Docker image from tarball
@@ -3945,6 +4447,586 @@ paths:
           description: Backup deleted successfully
         '404':
           description: Backup not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /virtualmachines/create-enhanced:
+    post:
+      summary: Create VM with enhanced configuration
+      description: |
+        Create a new virtual machine with enhanced disk and device configuration options.
+        
+        **Key Features:**
+        - Multiple disk support (new, existing, or cloned)
+        - Flexible ISO management
+        - Advanced network and graphics configuration
+        - Cloud-init support
+        - Template-based creation
+        
+        **Disk Configuration Options:**
+        - Create new disks with custom sizes and formats
+        - Attach existing disk images
+        - Clone from existing disks
+        
+        **ISO Management:**
+        - Reference ISOs by ID, name, or path
+        - Automatic ISO resolution from multiple sources
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VMCreateRequestEnhanced'
+      responses:
+        '201':
+          description: Virtual machine created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VMCreateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /virtualmachines/isos:
+    get:
+      summary: List available ISO images
+      description: |
+        List all available ISO images from the system.
+        
+        **Sources:**
+        - Database-managed ISOs
+        - ISOs in /var/lib/libvirt/images/iso
+        - ISOs in /var/lib/vapor/iso
+        - ISOs in /usr/share/iso
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: ISO images listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ISOImagesResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    
+    post:
+      summary: Upload ISO image
+      description: |
+        Upload a new ISO image to the system.
+        
+        **Options:**
+        - Direct file upload
+        - Download from URL
+        - Copy from existing path
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: ISO file to upload
+                name:
+                  type: string
+                  description: Name for the ISO
+                description:
+                  type: string
+                  description: Description of the ISO
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                  description: URL to download ISO from
+                path:
+                  type: string
+                  description: Local path to copy ISO from
+                name:
+                  type: string
+                  description: Name for the ISO
+                description:
+                  type: string
+                  description: Description of the ISO
+      responses:
+        '201':
+          description: ISO uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ISOUploadResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /virtualmachines/isos/{id}:
+    delete:
+      summary: Delete ISO image
+      description: Delete an ISO image from the system
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ISO ID or filename
+      responses:
+        '204':
+          description: ISO deleted successfully
+        '404':
+          description: ISO not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /virtualmachines/isos/upload:
+    post:
+      summary: Create resumable ISO upload session
+      description: |
+        Create a new resumable upload session for ISO images using TUS protocol.
+        
+        **TUS Protocol Benefits:**
+        - Resume interrupted uploads
+        - Upload large ISO files reliably
+        - Monitor upload progress
+        - Automatic retry on network failures
+        
+        **Workflow:**
+        1. Create upload session with this endpoint
+        2. Upload file chunks using PATCH to the returned upload URL
+        3. Complete the upload to register the ISO
+        
+        **File Size Limits:**
+        - Maximum file size: 50GB
+        - Minimum chunk size: 1MB
+        - Maximum chunk size: 50MB
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: Upload-Length
+          in: header
+          required: true
+          description: Total size of the ISO file in bytes
+          schema:
+            type: integer
+            format: int64
+            example: 1474560000
+        - name: Upload-Metadata
+          in: header
+          required: false
+          description: |
+            Base64-encoded metadata about the upload.
+            Format: key1 base64Value1,key2 base64Value2
+            Supported keys: filename, description, os_type, os_variant
+          schema:
+            type: string
+            example: "filename aXNvLXVidW50dS0yMi4wNC5pc28=,os_type bGludXg="
+        - name: Tus-Resumable
+          in: header
+          required: false
+          description: TUS protocol version (should be 1.0.0)
+          schema:
+            type: string
+            default: "1.0.0"
+      responses:
+        '201':
+          description: Upload session created successfully
+          headers:
+            Location:
+              description: URL for the upload session
+              schema:
+                type: string
+                example: "/api/v1/virtualmachines/isos/upload/550e8400-e29b-41d4-a716-446655440000"
+            Upload-Offset:
+              description: Current upload offset (starts at 0)
+              schema:
+                type: integer
+                example: 0
+            Tus-Resumable:
+              description: TUS protocol version
+              schema:
+                type: string
+                example: "1.0.0"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ISOUploadSessionResponse'
+        '400':
+          description: Invalid upload request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: File too large (exceeds 50GB limit)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    get:
+      summary: List active ISO upload sessions
+      description: List all active resumable ISO upload sessions for the current user
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Upload sessions listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ISOUploadSessionsListResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /virtualmachines/isos/upload/{upload_id}:
+    head:
+      summary: Get ISO upload session info
+      description: |
+        Get information about a resumable upload session.
+        Used by TUS clients to resume interrupted uploads.
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: upload_id
+          in: path
+          required: true
+          description: Upload session ID
+          schema:
+            type: string
+            example: "550e8400-e29b-41d4-a716-446655440000"
+        - name: Tus-Resumable
+          in: header
+          required: false
+          description: TUS protocol version
+          schema:
+            type: string
+            default: "1.0.0"
+      responses:
+        '200':
+          description: Upload session info retrieved successfully
+          headers:
+            Upload-Offset:
+              description: Current upload offset in bytes
+              schema:
+                type: integer
+                example: 524288000
+            Upload-Length:
+              description: Total file size in bytes
+              schema:
+                type: integer
+                example: 1474560000
+            Tus-Resumable:
+              description: TUS protocol version
+              schema:
+                type: string
+                example: "1.0.0"
+            Upload-Metadata:
+              description: Base64-encoded metadata
+              schema:
+                type: string
+            Cache-Control:
+              description: Cache control header
+              schema:
+                type: string
+                example: "no-cache"
+        '404':
+          description: Upload session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '410':
+          description: Upload session expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    patch:
+      summary: Upload ISO chunk
+      description: |
+        Upload a chunk of the ISO file to a resumable upload session.
+        
+        **Chunk Requirements:**
+        - Minimum chunk size: 1MB (except for final chunk)
+        - Maximum chunk size: 50MB
+        - Chunks must be uploaded sequentially
+        - Upload-Offset must match server's expected offset
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: upload_id
+          in: path
+          required: true
+          description: Upload session ID
+          schema:
+            type: string
+            example: "550e8400-e29b-41d4-a716-446655440000"
+        - name: Upload-Offset
+          in: header
+          required: true
+          description: Byte offset where this chunk starts
+          schema:
+            type: integer
+            format: int64
+            example: 524288000
+        - name: Content-Type
+          in: header
+          required: true
+          description: Must be application/offset+octet-stream
+          schema:
+            type: string
+            enum: ["application/offset+octet-stream"]
+        - name: Tus-Resumable
+          in: header
+          required: false
+          description: TUS protocol version
+          schema:
+            type: string
+            default: "1.0.0"
+      requestBody:
+        required: true
+        content:
+          application/offset+octet-stream:
+            schema:
+              type: string
+              format: binary
+              description: Binary chunk data
+      responses:
+        '204':
+          description: Chunk uploaded successfully
+          headers:
+            Upload-Offset:
+              description: New upload offset after this chunk
+              schema:
+                type: integer
+                example: 575668224
+            Tus-Resumable:
+              description: TUS protocol version
+              schema:
+                type: string
+                example: "1.0.0"
+            Upload-Expires:
+              description: When the upload session expires
+              schema:
+                type: string
+                example: "Wed, 15 Jan 2025 16:00:00 GMT"
+        '400':
+          description: Invalid chunk upload request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Upload session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: |
+            Conflict - offset mismatch or upload already completed.
+            Check Upload-Offset header in response for correct offset.
+          headers:
+            Upload-Offset:
+              description: Expected upload offset
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '410':
+          description: Upload session expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    get:
+      summary: Get ISO upload status
+      description: Get detailed status of a resumable ISO upload session
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: upload_id
+          in: path
+          required: true
+          description: Upload session ID
+          schema:
+            type: string
+            example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Upload status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ISOUploadStatusResponse'
+        '404':
+          description: Upload session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '410':
+          description: Upload session expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      summary: Cancel ISO upload session
+      description: |
+        Cancel and delete a resumable upload session.
+        This will clean up any partially uploaded data.
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: upload_id
+          in: path
+          required: true
+          description: Upload session ID
+          schema:
+            type: string
+            example: "550e8400-e29b-41d4-a716-446655440000"
+        - name: Tus-Resumable
+          in: header
+          required: false
+          description: TUS protocol version
+          schema:
+            type: string
+            default: "1.0.0"
+      responses:
+        '204':
+          description: Upload session cancelled successfully
+          headers:
+            Tus-Resumable:
+              description: TUS protocol version
+              schema:
+                type: string
+                example: "1.0.0"
+        '404':
+          description: Upload session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /virtualmachines/isos/upload/{upload_id}/complete:
+    post:
+      summary: Complete ISO upload and register
+      description: |
+        Complete a resumable upload session and register the ISO in the system.
+        
+        **Prerequisites:**
+        - Upload must be 100% complete
+        - All chunks must be uploaded successfully
+        
+        **Actions performed:**
+        1. Verify upload integrity
+        2. Calculate SHA256 checksum
+        3. Detect OS type and variant (if possible)
+        4. Move file to ISO storage location
+        5. Register ISO in database
+        6. Clean up upload session
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: upload_id
+          in: path
+          required: true
+          description: Upload session ID
+          schema:
+            type: string
+            example: "550e8400-e29b-41d4-a716-446655440000"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ISOCompleteUploadRequest'
+      responses:
+        '200':
+          description: Upload completed and ISO registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ISOCompleteUploadResponse'
+        '400':
+          description: Upload not complete or validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Upload session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: ISO with same name already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '410':
+          description: Upload session expired
           content:
             application/json:
               schema:
@@ -13577,3 +14659,468 @@ components:
           type: string
           description: Path to snapshot file (for external snapshots)
           example: "/var/lib/libvirt/images/web-server-01.vda.before-upgrade.qcow2"
+
+    # Enhanced VM Creation Schemas
+    VMCreateRequestEnhanced:
+      type: object
+      required:
+        - name
+        - memory
+        - vcpus
+      properties:
+        name:
+          type: string
+          description: Name of the virtual machine
+          example: "web-server-01"
+        memory:
+          type: integer
+          description: Memory size in MB
+          minimum: 256
+          example: 4096
+        vcpus:
+          type: integer
+          description: Number of virtual CPUs
+          minimum: 1
+          maximum: 256
+          example: 2
+        disks:
+          type: array
+          description: Disk configurations
+          items:
+            $ref: '#/components/schemas/DiskCreateConfig'
+        iso_path:
+          type: string
+          description: ISO image path, name, or ID
+          example: "ubuntu-22.04.iso"
+        storage_pool:
+          type: string
+          description: Storage pool name
+          default: "default"
+          example: "default"
+        networks:
+          type: array
+          description: Network configurations
+          items:
+            $ref: '#/components/schemas/NetworkCreateConfig'
+        graphics:
+          type: array
+          description: Graphics device configurations
+          items:
+            $ref: '#/components/schemas/GraphicsConfig'
+        cloud_init:
+          $ref: '#/components/schemas/CloudInit'
+        autostart:
+          type: boolean
+          description: Start VM automatically on host boot
+          default: false
+          example: true
+        template:
+          type: string
+          description: Template name to base VM on
+          example: "ubuntu-server-template"
+        custom_xml:
+          type: string
+          description: Custom libvirt XML snippet to merge
+        metadata:
+          type: object
+          description: Custom metadata key-value pairs
+          additionalProperties:
+            type: string
+
+    DiskCreateConfig:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          type: string
+          description: Disk action type
+          enum: [create, existing, clone]
+          example: "create"
+        size:
+          type: integer
+          description: Disk size in GB (for create action)
+          minimum: 1
+          example: 20
+        path:
+          type: string
+          description: Path to existing disk image (for existing action)
+          example: "/var/lib/libvirt/images/disk.qcow2"
+        source_path:
+          type: string
+          description: Source disk path to clone from (for clone action)
+          example: "/var/lib/libvirt/images/template.qcow2"
+        format:
+          type: string
+          description: Disk format
+          enum: [qcow2, raw, vmdk, vdi]
+          default: "qcow2"
+          example: "qcow2"
+        bus:
+          type: string
+          description: Disk bus type
+          enum: [virtio, ide, scsi, sata]
+          default: "virtio"
+          example: "virtio"
+        cache:
+          type: string
+          description: Cache mode
+          enum: [none, writethrough, writeback, directsync, unsafe]
+          default: "none"
+          example: "writeback"
+        target:
+          type: string
+          description: Target device name (e.g., vda, sda)
+          example: "vda"
+
+    NetworkCreateConfig:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          description: Network type
+          enum: [network, bridge, direct, user]
+          example: "network"
+        source:
+          type: string
+          description: Network source (network name, bridge name, or interface)
+          example: "default"
+        model:
+          type: string
+          description: Network device model
+          enum: [virtio, e1000, rtl8139]
+          default: "virtio"
+          example: "virtio"
+        mac:
+          type: string
+          description: MAC address (auto-generated if not specified)
+          pattern: "^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$"
+          example: "52:54:00:12:34:56"
+
+    GraphicsConfig:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          description: Graphics type
+          enum: [vnc, spice, none]
+          example: "vnc"
+        port:
+          type: integer
+          description: Port number (-1 for auto-assign)
+          default: -1
+          example: 5900
+        listen:
+          type: string
+          description: Listen address
+          default: "127.0.0.1"
+          example: "0.0.0.0"
+        password:
+          type: string
+          description: Access password
+          example: "secret123"
+        autoport:
+          type: boolean
+          description: Automatically assign port
+          default: true
+          example: true
+
+    ISOImage:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ISO unique identifier
+          example: "iso-123e4567-e89b-12d3-a456-426614174000"
+        name:
+          type: string
+          description: ISO name
+          example: "ubuntu-22.04-live-server-amd64.iso"
+        path:
+          type: string
+          description: Full path to ISO file
+          example: "/var/lib/libvirt/images/iso/ubuntu-22.04-live-server-amd64.iso"
+        size:
+          type: integer
+          format: int64
+          description: File size in bytes
+          example: 1474560000
+        checksum:
+          type: string
+          description: SHA256 checksum
+          example: "5e38b55d57d94ff029719342357325ed3bda38fa80054f9330dc789cd2d43931"
+        os_type:
+          type: string
+          description: Operating system type
+          example: "linux"
+        os_variant:
+          type: string
+          description: Operating system variant
+          example: "ubuntu22.04"
+        description:
+          type: string
+          description: ISO description
+          example: "Ubuntu 22.04 LTS Server Installation Media"
+        created_at:
+          type: string
+          format: date-time
+          description: When the ISO was added
+          example: "2025-01-15T10:00:00Z"
+        last_used:
+          type: string
+          format: date-time
+          description: Last time the ISO was used
+          example: "2025-01-15T14:30:00Z"
+        source:
+          type: string
+          description: Source of the ISO
+          enum: [uploaded, downloaded, system]
+          example: "uploaded"
+        metadata:
+          type: object
+          description: Additional metadata
+          additionalProperties:
+            type: string
+
+    ISOImagesResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                isos:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ISOImage'
+
+    ISOUploadResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                iso:
+                  $ref: '#/components/schemas/ISOImage'
+
+    ISOUploadSessionResponse:
+      type: object
+      properties:
+        upload_id:
+          type: string
+          description: Unique upload session identifier
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        upload_url:
+          type: string
+          description: URL for uploading chunks
+          example: "/api/v1/virtualmachines/isos/upload/550e8400-e29b-41d4-a716-446655440000"
+        expires_at:
+          type: string
+          format: date-time
+          description: When the upload session expires
+          example: "2025-08-06T15:38:32Z"
+        total_size:
+          type: integer
+          format: int64
+          description: Total file size in bytes
+          example: 1474560000
+        uploaded_size:
+          type: integer
+          format: int64
+          description: Bytes uploaded so far
+          example: 0
+
+    ISOUploadSessionsListResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                uploads:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ISOUploadSession'
+                count:
+                  type: integer
+                  description: Total number of active upload sessions
+                  example: 3
+
+    ISOUploadSession:
+      type: object
+      properties:
+        upload_id:
+          type: string
+          description: Unique upload session identifier
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        filename:
+          type: string
+          description: Name of the ISO file being uploaded
+          example: "ubuntu-22.04-server-amd64.iso"
+        total_size:
+          type: integer
+          format: int64
+          description: Total file size in bytes
+          example: 1474560000
+        uploaded_size:
+          type: integer
+          format: int64
+          description: Bytes uploaded so far
+          example: 737280000
+        progress:
+          type: number
+          format: float
+          description: Upload progress percentage
+          minimum: 0
+          maximum: 100
+          example: 50.0
+        status:
+          type: string
+          description: Upload session status
+          enum: [created, uploading, completed, failed, expired]
+          example: "uploading"
+        created_at:
+          type: string
+          format: date-time
+          description: When the upload session was created
+          example: "2025-01-15T10:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update time
+          example: "2025-01-15T10:15:00Z"
+        expires_at:
+          type: string
+          format: date-time
+          description: When the upload session expires
+          example: "2025-01-16T10:00:00Z"
+
+    ISOUploadStatusResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                upload:
+                  $ref: '#/components/schemas/ISOUploadStatus'
+
+    ISOUploadStatus:
+      type: object
+      properties:
+        upload_id:
+          type: string
+          description: Unique upload session identifier
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        filename:
+          type: string
+          description: Name of the ISO file
+          example: "ubuntu-22.04-server-amd64.iso"
+        total_size:
+          type: integer
+          format: int64
+          description: Total file size in bytes
+          example: 1474560000
+        uploaded_size:
+          type: integer
+          format: int64
+          description: Bytes uploaded so far
+          example: 1474560000
+        progress:
+          type: number
+          format: float
+          description: Upload progress percentage
+          minimum: 0
+          maximum: 100
+          example: 100.0
+        status:
+          type: string
+          description: Upload session status
+          enum: [created, uploading, completed, failed, expired, cancelled]
+          example: "completed"
+        chunk_size:
+          type: integer
+          description: Chunk size being used
+          example: 10485760
+        created_at:
+          type: string
+          format: date-time
+          description: When the upload session was created
+          example: "2025-01-15T10:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update time
+          example: "2025-01-15T10:30:00Z"
+        completed_at:
+          type: string
+          format: date-time
+          description: When the upload completed (if applicable)
+          example: "2025-01-15T10:30:00Z"
+        expires_at:
+          type: string
+          format: date-time
+          description: When the upload session expires
+          example: "2025-01-16T10:00:00Z"
+        metadata:
+          type: object
+          description: Additional metadata from upload
+          additionalProperties:
+            type: string
+          example:
+            os_type: "linux"
+            os_variant: "ubuntu22.04"
+            description: "Ubuntu 22.04 LTS Server"
+
+    ISOCompleteUploadRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Optional custom name for the ISO
+          example: "ubuntu-22.04-custom.iso"
+        description:
+          type: string
+          description: Optional description for the ISO
+          example: "Ubuntu 22.04 LTS Server with custom packages"
+        os_type:
+          type: string
+          description: Operating system type
+          example: "linux"
+        os_variant:
+          type: string
+          description: Operating system variant
+          example: "ubuntu22.04"
+        metadata:
+          type: object
+          description: Additional metadata to store with the ISO
+          additionalProperties:
+            type: string
+
+    ISOCompleteUploadResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                iso:
+                  $ref: '#/components/schemas/ISOImage'
+                upload_id:
+                  type: string
+                  description: Completed upload session ID
+                  example: "550e8400-e29b-41d4-a716-446655440000"
+                message:
+                  type: string
+                  description: Success message
+                  example: "ISO upload completed and registered successfully"

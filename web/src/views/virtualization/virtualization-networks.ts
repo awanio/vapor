@@ -75,38 +75,12 @@ export class VirtualizationNetworks extends LitElement {
       justify-content: space-between;
       align-items: center;
       margin-bottom: 1rem;
+      gap: 1rem;
     }
 
-    .search-container {
-      position: relative;
+    search-input {
       flex: 1;
       max-width: 400px;
-    }
-
-    .search-icon {
-      position: absolute;
-      left: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 16px;
-      height: 16px;
-      color: var(--vscode-input-placeholderForeground);
-      pointer-events: none;
-    }
-
-    .search-input {
-      width: 100%;
-      padding: 8px 12px 8px 36px;
-      background: var(--vscode-input-background);
-      color: var(--vscode-input-foreground);
-      border: 1px solid var(--vscode-input-border);
-      border-radius: 4px;
-      font-size: 13px;
-      outline: none;
-    }
-
-    .search-input:focus {
-      border-color: var(--vscode-focusBorder);
     }
 
     .content {
@@ -420,23 +394,21 @@ export class VirtualizationNetworks extends LitElement {
       apiVersion: 'v1',
       kind: 'VirtualNetwork',
       metadata: {
-        name: 'new-network'
+        name: 'new-network',
+        namespace: 'default'
       },
       spec: {
         type: 'nat',
-        bridge: 'virbr10',
-        ipRange: '192.168.200.0/24',
-        dhcp: {
-          enabled: true,
-          range: {
-            start: '192.168.200.2',
-            end: '192.168.200.254'
-          }
-        },
-        autostart: true
+        bridge: 'virbr99',
+        ipRange: '192.168.99.0/24',
+        dhcp: true
       }
     }, null, 2);
     this.showCreateDrawer = true;
+  }
+
+  private handleSearchChange(e: CustomEvent) {
+    this.searchQuery = e.detail.value;
   }
 
   private async handleCreateResource(event: CustomEvent) {
@@ -494,19 +466,11 @@ export class VirtualizationNetworks extends LitElement {
         ></tab-group>
 
         <div class="controls">
-          <div class="search-container">
-            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8"></circle>
-              <path d="m21 21-4.35-4.35"></path>
-            </svg>
-            <input 
-              class="search-input"
-              type="text"
-              placeholder="Search networks..."
-              .value=${this.searchQuery}
-              @input=${(e: Event) => this.searchQuery = (e.target as HTMLInputElement).value}
-            />
-          </div>
+          <search-input
+            .placeholder=${'Search networks...'}
+            .value=${this.searchQuery}
+            @search-change=${this.handleSearchChange}
+          ></search-input>
           <button class="btn-create" @click=${this.handleCreateNew}>
             <span>+ New Network</span>
           </button>
