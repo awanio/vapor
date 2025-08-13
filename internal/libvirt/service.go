@@ -21,11 +21,12 @@ import (
 
 // Service provides libvirt VM management functionality
 type Service struct {
-	conn        *libvirt.Connect
-	mu          sync.RWMutex
-	metricsStop chan struct{}
-	templates   map[string]*Template
-	db          *sql.DB // Optional database for tracking
+	conn            *libvirt.Connect
+	mu              sync.RWMutex
+	metricsStop     chan struct{}
+	templates       map[string]*Template
+	db              *sql.DB // Optional database for tracking
+	TemplateService *VMTemplateService
 }
 
 // NewService creates a new libvirt service
@@ -79,6 +80,10 @@ func (s *Service) SetDatabase(db *sql.DB) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.db = db
+	// Initialize TemplateService with database
+	if db != nil {
+		s.TemplateService = NewVMTemplateService(db)
+	}
 }
 
 // CreateBackup creates a backup of a VM.
@@ -545,6 +550,19 @@ func (s *Service) CreateVM(ctx context.Context, req *VMCreateRequest) (*VM, erro
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	// Apply template settings if template is specified
+	if req.Template != "" && s.TemplateService != nil {
+		template, err := s.TemplateService.GetTemplateByName(ctx, req.Template)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get template '%s': %w", req.Template, err)
+		}
+
+		// Apply template settings (only if not explicitly set in request)
+		if err := s.applyTemplateToRequest(req, template); err != nil {
+			return nil, fmt.Errorf("failed to apply template settings: %w", err)
+		}
+	}
+
 	// Generate domain XML
 	domainXML, err := s.generateDomainXML(req)
 	if err != nil {
@@ -925,6 +943,11 @@ func (s *Service) CloneVM(ctx context.Context, req *VMCloneRequest) (*VM, error)
 	}
 
 	return s.CreateVM(ctx, createReq)
+}
+
+// ApplyTemplateToRequest applies template settings to a VM creation request
+func (s *Service) ApplyTemplateToRequest(req *VMCreateRequest, template *VMTemplate) error {
+	return s.applyTemplateToRequest(req, template)
 }
 
 // GetVMMetrics returns current metrics for a VM

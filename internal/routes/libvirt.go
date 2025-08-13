@@ -5,6 +5,8 @@ package routes
 
 import (
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -15,91 +17,112 @@ import (
 
 // LibvirtRoutes sets up libvirt VM management routes
 func LibvirtRoutes(r *gin.RouterGroup, service *libvirt.Service) {
-	vmGroup := r.Group("/virtualmachines")
+	vmGroup := r.Group("/virtualization/virtualmachines")
 	{
 		// VM Management
-		vmGroup.GET("", listVMs(service))                           // List all VMs
-		vmGroup.GET("/:id", getVM(service))                        // Get VM details
-		vmGroup.POST("", createVM(service))                        // Create new VM
-		vmGroup.PUT("/:id", updateVM(service))                     // Update VM config
-		vmGroup.DELETE("/:id", deleteVM(service))                  // Delete VM
-		vmGroup.POST("/:id/action", vmAction(service))             // VM actions (start, stop, etc.)
-		
+		vmGroup.GET("", listVMs(service))              // List all VMs
+		vmGroup.GET("/:id", getVM(service))            // Get VM details
+		vmGroup.POST("", createVM(service))            // Create new VM
+		vmGroup.PUT("/:id", updateVM(service))         // Update VM config
+		vmGroup.DELETE("/:id", deleteVM(service))      // Delete VM
+		vmGroup.POST("/:id/action", vmAction(service)) // VM actions (start, stop, etc.)
+
 		// Snapshots
-		vmGroup.GET("/:id/snapshots", listSnapshots(service))      // List VM snapshots
-		vmGroup.POST("/:id/snapshots", createSnapshot(service))    // Create snapshot
+		vmGroup.GET("/:id/snapshots", listSnapshots(service))                    // List VM snapshots
+		vmGroup.POST("/:id/snapshots", createSnapshot(service))                  // Create snapshot
 		vmGroup.POST("/:id/snapshots/:snapshot/revert", revertSnapshot(service)) // Revert to snapshot
 		vmGroup.DELETE("/:id/snapshots/:snapshot", deleteSnapshot(service))      // Delete snapshot
-		
+
 		// Backups
-		vmGroup.GET("/:id/backups", listBackups(service))          // List VM backups
-		vmGroup.POST("/:id/backups", createBackup(service))        // Create backup
-		vmGroup.POST("/restore", restoreBackup(service))           // Restore from backup
+		vmGroup.GET("/:id/backups", listBackups(service))            // List VM backups
+		vmGroup.POST("/:id/backups", createBackup(service))          // Create backup
+		vmGroup.POST("/restore", restoreBackup(service))             // Restore from backup
 		vmGroup.DELETE("/backups/:backup_id", deleteBackup(service)) // Delete backup
-		
+
 		// Cloning
-		vmGroup.POST("/clone", cloneVM(service))                   // Clone VM
-		
+		vmGroup.POST("/clone", cloneVM(service)) // Clone VM
+
 		// Metrics & Monitoring
-		vmGroup.GET("/:id/metrics", getVMMetrics(service))         // Get VM metrics
+		vmGroup.GET("/:id/metrics", getVMMetrics(service))           // Get VM metrics
 		vmGroup.GET("/:id/metrics/stream", streamVMMetrics(service)) // Stream metrics via WebSocket
-		
+
 		// Console Access
-		vmGroup.GET("/:id/console", getConsole(service))           // Get console connection info
+		vmGroup.GET("/:id/console", getConsole(service))            // Get console connection info
 		vmGroup.GET("/:id/console/ws", vmConsoleWebSocket(service)) // WebSocket console
-		
-		// Templates
-		vmGroup.GET("/templates", listTemplates(service))          // List VM templates
-		vmGroup.POST("/from-template", createFromTemplate(service)) // Create VM from template
-		
+
+	// Templates
+	vmGroup.GET("/templates", listTemplates(service))           // List VM templates
+	vmGroup.GET("/templates/:id", getTemplate(service))         // Get template details
+	vmGroup.POST("/templates", createTemplate(service))         // Create new template
+	vmGroup.PUT("/templates/:id", updateTemplate(service))      // Update template
+	vmGroup.DELETE("/templates/:id", deleteTemplate(service))   // Delete template
+	vmGroup.POST("/from-template", createFromTemplate(service)) // Create VM from template
+
 		// Migration
-		vmGroup.POST("/:id/migrate", migrateVM(service))           // Migrate VM to another host
+		vmGroup.POST("/:id/migrate", migrateVM(service))                  // Migrate VM to another host
 		vmGroup.GET("/:id/migration/status", getMigrationStatus(service)) // Get migration status
-		
+
 		// PCI Passthrough
-		vmGroup.GET("/pci-devices", listPCIDevices(service))       // List available PCI devices
-		vmGroup.POST("/:id/pci-devices", attachPCIDevice(service)) // Attach PCI device to VM
+		vmGroup.GET("/pci-devices", listPCIDevices(service))                    // List available PCI devices
+		vmGroup.POST("/:id/pci-devices", attachPCIDevice(service))              // Attach PCI device to VM
 		vmGroup.DELETE("/:id/pci-devices/:device_id", detachPCIDevice(service)) // Detach PCI device from VM
-		
-	// Resource Hotplug
-	vmGroup.POST("/:id/hotplug", hotplugResource(service))     // Hotplug resources to VM
 
-	// Enhanced VM creation with multiple disks support
-	vmGroup.POST("/create-enhanced", createVMEnhanced(service)) // Create VM with enhanced options
+		// Resource Hotplug
+		vmGroup.POST("/:id/hotplug", hotplugResource(service)) // Hotplug resources to VM
 
-	// ISO Management
-	vmGroup.GET("/isos", listISOs(service))                    // List available ISOs
-	vmGroup.POST("/isos", uploadISO(service))                  // Upload/register ISO
-	vmGroup.DELETE("/isos/:id", deleteISO(service))            // Delete ISO
+		// Enhanced VM creation with multiple disks support
+		vmGroup.POST("/create-enhanced", createVMEnhanced(service)) // Create VM with enhanced options
+
+		// ISO Management
+		vmGroup.GET("/isos", listISOs(service))         // List available ISOs
+		vmGroup.POST("/isos", uploadISO(service))       // Upload/register ISO
+		vmGroup.DELETE("/isos/:id", deleteISO(service)) // Delete ISO
 	}
 
 	// Storage Management
-	storageGroup := r.Group("/storage")
+	storageGroup := r.Group("/virtualization/storages")
 	{
 		poolsGroup := storageGroup.Group("/pools")
 		{
-			poolsGroup.GET("", listStoragePools(service))                      // List storage pools
-			poolsGroup.POST("", createStoragePool(service))                    // Create storage pool
-			poolsGroup.GET("/:name", getStoragePool(service))                  // Get pool details
-			poolsGroup.DELETE("/:name", deleteStoragePool(service))             // Delete pool
+			poolsGroup.GET("", listStoragePools(service))           // List storage pools
+			poolsGroup.POST("", createStoragePool(service))         // Create storage pool
+			poolsGroup.GET("/:name", getStoragePool(service))       // Get pool details
+			poolsGroup.DELETE("/:name", deleteStoragePool(service)) // Delete pool
 
 			volumesGroup := poolsGroup.Group("/:pool_name/volumes")
 			{
-				volumesGroup.GET("", listVolumesInPool(service))       // List volumes in a pool
-				volumesGroup.POST("", createVolumeInPool(service))    // Create a volume in a pool
+				volumesGroup.GET("", listVolumesInPool(service))         // List volumes in a pool
+				volumesGroup.POST("", createVolumeInPool(service))       // Create a volume in a pool
 				volumesGroup.GET("/:vol_name", getVolume(service))       // Get volume details
 				volumesGroup.DELETE("/:vol_name", deleteVolume(service)) // Delete a volume
 			}
 		}
+
+		// ISO Management with resumable uploads
+		isosGroup := storageGroup.Group("/isos")
+		{
+			// Setup resumable upload handler for ISO images using TUS protocol
+			uploadDir := filepath.Join(os.TempDir(), "vapor-uploads", "isos")
+			isoUploadHandler := libvirt.NewISOResumableUploadHandler(service, uploadDir)
+
+			// TUS protocol endpoints for ISO uploads
+			isosGroup.POST("/upload", isoUploadHandler.CreateUpload)                  // Create new upload session
+			isosGroup.GET("/upload", isoUploadHandler.ListUploads)                    // List active upload sessions
+			isosGroup.HEAD("/upload/:id", isoUploadHandler.GetUploadInfo)            // Get upload session info (HEAD request for TUS)
+			isosGroup.PATCH("/upload/:id", isoUploadHandler.UploadChunk)             // Upload chunk (PATCH request for TUS)
+			isosGroup.GET("/upload/:id", isoUploadHandler.GetUploadStatus)           // Get upload status
+			isosGroup.POST("/upload/:id/complete", isoUploadHandler.CompleteUpload)  // Complete upload and register ISO
+			isosGroup.DELETE("/upload/:id", isoUploadHandler.CancelUpload)           // Cancel/delete upload session
+		}
 	}
 
 	// Network Management
-	networkGroup := r.Group("/networks")
+	networkGroup := r.Group("/virtualization/networks")
 	{
-		networkGroup.GET("", listNetworks(service))                // List virtual networks
-		networkGroup.GET("/:name", getNetwork(service))            // Get network details
-		networkGroup.POST("", createNetwork(service))              // Create network
-		networkGroup.DELETE("/:name", deleteNetwork(service))      // Delete network
+		networkGroup.GET("", listNetworks(service))           // List virtual networks
+		networkGroup.GET("/:name", getNetwork(service))       // Get network details
+		networkGroup.POST("", createNetwork(service))         // Create network
+		networkGroup.DELETE("/:name", deleteNetwork(service)) // Delete network
 	}
 }
 
@@ -168,7 +191,7 @@ func updateVM(service *libvirt.Service) gin.HandlerFunc {
 func deleteVM(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
-		
+
 		// Check if we should remove disks too
 		removeDisks := c.Query("remove_disks") == "true"
 
@@ -371,7 +394,7 @@ func streamVMMetrics(service *libvirt.Service) gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 		id := c.Param("id")
-		
+
 		// Get interval from query params (default 5 seconds)
 		interval := 5
 		if i := c.Query("interval"); i != "" {
@@ -391,7 +414,7 @@ func streamVMMetrics(service *libvirt.Service) gin.HandlerFunc {
 		defer ticker.Stop()
 
 		done := make(chan struct{})
-		
+
 		// Read messages from client (for ping/pong)
 		go func() {
 			for {
@@ -411,7 +434,7 @@ func streamVMMetrics(service *libvirt.Service) gin.HandlerFunc {
 					ws.WriteJSON(gin.H{"error": err.Error()})
 					return
 				}
-				
+
 				if err := ws.WriteJSON(metrics); err != nil {
 					return
 				}
@@ -449,7 +472,7 @@ func vmConsoleWebSocket(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
 		token := c.Query("token")
-		
+
 		// Validate token (simplified - implement proper validation)
 		if token == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "missing token"})
@@ -466,9 +489,9 @@ func vmConsoleWebSocket(service *libvirt.Service) gin.HandlerFunc {
 		// Here you would implement the actual VNC/SPICE proxy
 		// This requires connecting to the VM's VNC/SPICE port and proxying the data
 		// For now, this is a placeholder
-		
+
 		ws.WriteJSON(gin.H{
-			"type": "info",
+			"type":    "info",
 			"message": "Console connection established for VM: " + id,
 		})
 
@@ -486,52 +509,169 @@ func vmConsoleWebSocket(service *libvirt.Service) gin.HandlerFunc {
 
 func listTemplates(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// This would list available VM templates
-		// For now, return a static list
-		templates := []gin.H{
-			{
-				"name": "ubuntu-22.04",
-				"description": "Ubuntu 22.04 LTS Server",
-				"min_memory": 2048,
-				"min_vcpus": 2,
-				"min_disk": 20,
-			},
-			{
-				"name": "centos-9",
-				"description": "CentOS Stream 9",
-				"min_memory": 2048,
-				"min_vcpus": 2,
-				"min_disk": 20,
-			},
+		templates, err := service.TemplateService.ListTemplates(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
 		}
 		c.JSON(http.StatusOK, gin.H{"templates": templates})
+	}
+}
+
+func getTemplate(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		idStr := c.Param("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid template ID"})
+			return
+		}
+
+		template, err := service.TemplateService.GetTemplate(c.Request.Context(), id)
+		if err != nil {
+			if err.Error() == "template not found" {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, template)
+	}
+}
+
+func createTemplate(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req libvirt.VMTemplateCreateRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		template, err := service.TemplateService.CreateTemplate(c.Request.Context(), &req)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusCreated, template)
+	}
+}
+
+func updateTemplate(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		idStr := c.Param("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid template ID"})
+			return
+		}
+
+		var req libvirt.VMTemplateUpdateRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		template, err := service.TemplateService.UpdateTemplate(c.Request.Context(), id, &req)
+		if err != nil {
+			if err.Error() == "template not found" {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, template)
+	}
+}
+
+func deleteTemplate(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		idStr := c.Param("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid template ID"})
+			return
+		}
+
+		err = service.TemplateService.DeleteTemplate(c.Request.Context(), id)
+		if err != nil {
+			if err.Error() == "template not found" {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusNoContent, nil)
 	}
 }
 
 func createFromTemplate(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			Template string `json:"template" binding:"required"`
-			Name     string `json:"name" binding:"required"`
-			Memory   uint64 `json:"memory"`
-			VCPUs    uint   `json:"vcpus"`
-			DiskSize uint64 `json:"disk_size"`
+			TemplateID int    `json:"template_id" binding:"required"`
+			Name       string `json:"name" binding:"required"`
+			Memory     uint64 `json:"memory,omitempty"`
+			VCPUs      uint   `json:"vcpus,omitempty"`
+			DiskSize   uint64 `json:"disk_size,omitempty"`
+			Network    *libvirt.NetworkConfig `json:"network,omitempty"`
+			Graphics   *libvirt.GraphicsConfig `json:"graphics,omitempty"`
+			CloudInit  *libvirt.CloudInitConfig `json:"cloud_init,omitempty"`
+			Metadata   map[string]string `json:"metadata,omitempty"`
 		}
-		
+
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
-		// Create VM from template
+		// Get the template
+		template, err := service.TemplateService.GetTemplate(c.Request.Context(), req.TemplateID)
+		if err != nil {
+			if err.Error() == "template not found" {
+				c.JSON(http.StatusNotFound, gin.H{"error": "template not found"})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Create VM request with user-provided values
 		createReq := &libvirt.VMCreateRequest{
 			Name:     req.Name,
 			Memory:   req.Memory,
 			VCPUs:    req.VCPUs,
 			DiskSize: req.DiskSize,
-			Template: req.Template,
+			Metadata: req.Metadata,
 		}
 
+		// Apply network config if provided
+		if req.Network != nil {
+			createReq.Network = *req.Network
+		}
+
+		// Apply graphics config if provided
+		if req.Graphics != nil {
+			createReq.Graphics = *req.Graphics
+		}
+
+		// Apply cloud-init config if provided
+		if req.CloudInit != nil {
+			createReq.CloudInit = req.CloudInit
+		}
+
+		// Apply template settings to the request
+		// This will fill in any missing values with template defaults
+		if err := service.ApplyTemplateToRequest(createReq, template); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Create the VM with the composed request
 		vm, err := service.CreateVM(c.Request.Context(), createReq)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -735,9 +875,9 @@ func migrateVM(service *libvirt.Service) gin.HandlerFunc {
 			"status": "success",
 			"data": gin.H{
 				"migration_id": migrationID,
-				"message": "Migration started",
-				"vm_id": id,
-				"destination": req.DestHost,
+				"message":      "Migration started",
+				"vm_id":        id,
+				"destination":  req.DestHost,
 			},
 		})
 	}
@@ -747,7 +887,7 @@ func getMigrationStatus(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
 		migrationID := c.Query("migration_id")
-		
+
 		status, err := service.GetMigrationStatus(c.Request.Context(), id, migrationID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -756,7 +896,7 @@ func getMigrationStatus(service *libvirt.Service) gin.HandlerFunc {
 
 		c.JSON(http.StatusOK, gin.H{
 			"status": "success",
-			"data": status,
+			"data":   status,
 		})
 	}
 }
@@ -791,8 +931,8 @@ func attachPCIDevice(service *libvirt.Service) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"message": "PCI device attached successfully",
-			"vm_id": id,
+			"message":   "PCI device attached successfully",
+			"vm_id":     id,
 			"device_id": req.DeviceID,
 		})
 	}
@@ -802,7 +942,7 @@ func detachPCIDevice(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
 		deviceID := c.Param("device_id")
-		
+
 		req := libvirt.PCIDetachRequest{
 			DeviceID: deviceID,
 		}
@@ -814,8 +954,8 @@ func detachPCIDevice(service *libvirt.Service) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"message": "PCI device detached successfully",
-			"vm_id": id,
+			"message":   "PCI device detached successfully",
+			"vm_id":     id,
 			"device_id": deviceID,
 		})
 	}
@@ -839,10 +979,10 @@ func hotplugResource(service *libvirt.Service) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"message": "Resource hotplug operation completed successfully",
-			"vm_id": id,
+			"message":       "Resource hotplug operation completed successfully",
+			"vm_id":         id,
 			"resource_type": req.ResourceType,
-			"action": req.Action,
+			"action":        req.Action,
 		})
 	}
 }

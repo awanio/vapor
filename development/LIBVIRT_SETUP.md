@@ -18,6 +18,12 @@ The Vapor API provides a RESTful interface for managing virtualization infrastru
 
 ### Step 1: Install libvirt and QEMU
 
+#### macOS M Series (only for development)
+```bash
+brew install libvirt
+brew services start libvirt
+```
+
 #### Ubuntu/Debian
 ```bash
 sudo apt-get update
@@ -64,13 +70,13 @@ go mod download
 
 ```bash
 # Build with libvirt tag
-go build -tags "linux,libvirt" -o vapor-api ./cmd/server
+go build -tags "linux,libvirt" -o ./bin/vapor ./cmd/server
 
 # Or use the Makefile
 make build-libvirt
 
 # Verify build
-./vapor-api --version
+./bin/vapor --version
 ```
 
 ## ⚙️ Configuration

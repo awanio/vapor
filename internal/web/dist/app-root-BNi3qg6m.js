@@ -1,7 +1,7 @@
 var su = Object.defineProperty;
 var iu = (s, e, t) => e in s ? su(s, e, { enumerable: !0, configurable: !0, writable: !0, value: t }) : s[e] = t;
 var K = (s, e, t) => iu(s, typeof e != "symbol" ? e + "" : e, t);
-import { i as zi, a as ls, g as rl, t as L, b as ol } from "./index-CokGpkeA.js";
+import { i as zi, a as ls, g as rl, t as L, b as ol } from "./index-CuM5We6G.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -36604,10 +36604,10 @@ Je.styles = ie`
     }
 
     .header h1 {
-      margin: 0 0 1rem 0;
+      margin: 0 0 24px 0;
       font-size: 24px;
-      font-weight: 500;
-      color: var(--vscode-foreground);
+      font-weight: 300;
+      flex-shrink: 0;
     }
 
     .controls {
@@ -37032,10 +37032,10 @@ Ze.styles = ie`
     }
 
     .header h1 {
-      margin: 0 0 1rem 0;
+      margin: 0 0 24px 0;
       font-size: 24px;
-      font-weight: 500;
-      color: var(--vscode-foreground);
+      font-weight: 300;
+      flex-shrink: 0;
     }
 
     .controls {
@@ -37505,10 +37505,10 @@ et.styles = ie`
     }
 
     .header h1 {
-      margin: 0 0 1rem 0;
+      margin: 0 0 24px 0;
       font-size: 24px;
-      font-weight: 500;
-      color: var(--vscode-foreground);
+      font-weight: 300;
+      flex-shrink: 0;
     }
 
     .controls {
@@ -37924,6 +37924,7 @@ let Ft = class extends oe {
   render() {
     return D`
       <div class="container">
+        <h1>${this.activeTab === "playbooks" ? "Playbooks" : "Templates"}</h1>
         <div class="tab-header">
           <a 
             href="/ansible/playbooks"
@@ -37991,6 +37992,13 @@ Ft.styles = ie`
       flex-direction: column;
       height: 100%;
       gap: 1rem;
+    }
+
+    h1 {
+      margin: 0 0 24px 0;
+      font-size: 24px;
+      font-weight: 300;
+      flex-shrink: 0;
     }
 
     .header {
@@ -38345,7 +38353,7 @@ let Ws = class extends oe {
     return D`
       <div class="container">
         <div class="header">
-          <h2 class="title">Inventory</h2>
+          <h1>Inventory</h1>
         </div>
         
         <div class="controls">
@@ -38434,10 +38442,11 @@ Ws.styles = ie`
       border-bottom: 1px solid var(--vscode-panel-border);
     }
 
-    .title {
-      font-size: 1.5rem;
-      font-weight: 600;
-      color: var(--vscode-foreground);
+    h1 {
+      margin: 0 0 24px 0;
+      font-size: 24px;
+      font-weight: 300;
+      flex-shrink: 0;
     }
 
     .controls {
@@ -39147,7 +39156,7 @@ let qs = class extends oe {
     return D`
       <div class="container">
         <div class="header">
-          <h1 class="title">Job Executions</h1>
+          <h1>Job Executions</h1>
         </div>
 
         <div class="controls">
@@ -39228,10 +39237,11 @@ qs.styles = ie`
       border-bottom: 1px solid var(--vscode-panel-border);
     }
 
-    .title {
-      font-size: 1.5rem;
-      font-weight: 600;
-      color: var(--vscode-foreground);
+    h1 {
+      margin: 0 0 24px 0;
+      font-size: 24px;
+      font-weight: 300;
+      flex-shrink: 0;
     }
 
     .controls {

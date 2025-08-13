@@ -3,6 +3,7 @@ FROM --platform=linux/amd64 golang:1.24-alpine AS builder
 
 # Install build dependencies (git is needed for version injection)
 RUN apk add --no-cache git
+RUN apk add libvirt libvirt-dev
 
 WORKDIR /app
 
@@ -22,8 +23,7 @@ RUN mkdir -p internal/web/dist && \
     fi
 
 # Build the binary specifically for Linux x86_64
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -a -installsuffix cgo -o vapor ./cmd/vapor
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build  -tags "linux,libvirt" -a -installsuffix cgo -o vapor ./cmd/vapor
 
 # Final stage
 FROM --platform=linux/amd64 alpine:latest

@@ -265,6 +265,60 @@ func (s *Service) UploadISO(ctx context.Context, req *ISOUploadRequest) (*ISOIma
 	return iso, nil
 }
 
+// RegisterISO registers an ISO that has been uploaded via resumable upload
+func (s *Service) RegisterISO(ctx context.Context, req *ISOUploadRequest) (*ISOImage, error) {
+	var size int64
+	
+	// Validate the file exists
+	if req.Path == "" {
+		return nil, fmt.Errorf("ISO path is required")
+	}
+	
+	info, err := os.Stat(req.Path)
+	if err != nil {
+		return nil, fmt.Errorf("ISO file not found at %s: %w", req.Path, err)
+	}
+	size = info.Size()
+	
+	// Calculate hashes
+	md5Hash, sha256Hash, err := s.calculateFileHashes(req.Path)
+	if err != nil {
+		fmt.Printf("Warning: failed to calculate hashes: %v\n", err)
+	}
+	
+	iso := &ISOImage{
+		ID:           generateRandomID(8),
+		Name:         req.Name,
+		Path:         req.Path,
+		Size:         size,
+		OSType:       req.OSType,
+		OSVariant:    req.OSVariant,
+		Architecture: req.Architecture,
+		Description:  req.Description,
+		UploadedAt:   time.Now(),
+		MD5Hash:      md5Hash,
+		SHA256Hash:   sha256Hash,
+		Tags:         req.Tags,
+	}
+	
+	// Store in database if available
+	if s.db != nil {
+		_, err = s.db.ExecContext(ctx, `
+			INSERT INTO iso_images (
+				id, name, path, size_bytes, os_type, os_variant, 
+				architecture, description, md5_hash, sha256_hash, uploaded_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`, iso.ID, iso.Name, iso.Path, iso.Size, iso.OSType,
+			iso.OSVariant, iso.Architecture, iso.Description,
+			iso.MD5Hash, iso.SHA256Hash, iso.UploadedAt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to store ISO in database: %w", err)
+		}
+	}
+	
+	return iso, nil
+}
+
 // DeleteISO removes an ISO from the library
 func (s *Service) DeleteISO(ctx context.Context, isoID string) error {
 	if s.db == nil {

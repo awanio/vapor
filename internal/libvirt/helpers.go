@@ -224,6 +224,102 @@ func (s *Service) attachDisk(domain *libvirt.Domain, diskPath, target string) er
 	return domain.AttachDeviceFlags(diskXML, libvirt.DOMAIN_DEVICE_MODIFY_CONFIG)
 }
 
+// applyTemplateToRequest applies template settings to a VM creation request
+func (s *Service) applyTemplateToRequest(req *VMCreateRequest, template *VMTemplate) error {
+	// Apply template OS settings if not set
+	if req.OSType == "" {
+		req.OSType = template.OSType
+	}
+	if req.Architecture == "" {
+		req.Architecture = "x86_64" // Default architecture
+	}
+
+	// Apply memory settings (use template recommended if not specified)
+	if req.Memory == 0 {
+		if template.RecommendedMemory > 0 {
+			req.Memory = template.RecommendedMemory
+		} else {
+			req.Memory = template.MinMemory
+		}
+	} else {
+		// Validate against minimum requirements
+		if req.Memory < template.MinMemory {
+			return fmt.Errorf("memory %dMB is below template minimum of %dMB", req.Memory, template.MinMemory)
+		}
+	}
+
+	// Apply vCPU settings
+	if req.VCPUs == 0 {
+		if template.RecommendedVCPUs > 0 {
+			req.VCPUs = template.RecommendedVCPUs
+		} else {
+			req.VCPUs = template.MinVCPUs
+		}
+	} else {
+		// Validate against minimum requirements
+		if req.VCPUs < template.MinVCPUs {
+			return fmt.Errorf("vCPUs %d is below template minimum of %d", req.VCPUs, template.MinVCPUs)
+		}
+	}
+
+	// Apply disk settings if creating new disk
+	if req.DiskSize == 0 && req.DiskPath == "" {
+		if template.RecommendedDisk > 0 {
+			req.DiskSize = template.RecommendedDisk
+		} else {
+			req.DiskSize = template.MinDisk
+		}
+	} else if req.DiskSize > 0 {
+		// Validate against minimum requirements
+		if req.DiskSize < template.MinDisk {
+			return fmt.Errorf("disk size %dGB is below template minimum of %dGB", req.DiskSize, template.MinDisk)
+		}
+	}
+
+	// Apply network settings if not specified
+	if req.Network.Model == "" {
+		req.Network.Model = template.NetworkModel
+	}
+	if req.Network.Type == "" {
+		req.Network.Type = NetworkTypeBridge // Default to bridge
+	}
+	if req.Network.Source == "" {
+		req.Network.Source = "virbr0" // Default bridge
+	}
+
+	// Apply graphics settings if not specified
+	if req.Graphics.Type == "" {
+		req.Graphics.Type = template.GraphicsType
+	}
+	if req.Graphics.Port == 0 {
+		req.Graphics.Port = -1 // Auto-assign
+	}
+
+	// Apply cloud-init setting if template supports it and not already set
+	if template.CloudInit && req.CloudInit == nil {
+		// Set up basic cloud-init configuration
+		req.CloudInit = &CloudInitConfig{
+			Users: []CloudInitUser{
+				{
+					Name: template.DefaultUser,
+					Sudo: "ALL=(ALL) NOPASSWD:ALL",
+					Groups: "sudo",
+					Shell: "/bin/bash",
+				},
+			},
+		}
+	}
+
+	// Store template metadata for reference
+	if req.Metadata == nil {
+		req.Metadata = make(map[string]string)
+	}
+	req.Metadata["template"] = template.Name
+	req.Metadata["template_id"] = fmt.Sprintf("%d", template.ID)
+
+	return nil
+}
+
 // generateDomainXML generates libvirt domain XML from a creation request
 func (s *Service) generateDomainXML(req *VMCreateRequest) (string, error) {
 	// Generate a UUID for the VM
