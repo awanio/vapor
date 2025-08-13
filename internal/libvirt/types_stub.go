@@ -42,12 +42,17 @@ type VMSnapshotRequest struct {
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
 	Memory      bool   `json:"memory"`
+	Quiesce     bool   `json:"quiesce"`
+	External    bool   `json:"external"`
 }
 
 // VMSnapshot represents a VM snapshot (stub)
 type VMSnapshot struct {
-	Name      string    `json:"name"`
-	CreatedAt time.Time `json:"created_at"`
+	Name        string    `json:"name"`
+	Type        string    `json:"type,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
+	DiskFormats []string  `json:"disk_formats,omitempty"`
+	Warnings    []string  `json:"warnings,omitempty"`
 }
 
 // VMCloneRequest for cloning VMs (stub)
@@ -72,4 +77,35 @@ type ConsoleResponse struct {
 	Type string `json:"type"`
 	Host string `json:"host"`
 	Port int    `json:"port"`
+}
+
+// DiskFormat represents the format of a disk image (stub)
+type DiskFormat string
+
+// SnapshotCapability describes what snapshot operations are supported (stub)
+type SnapshotCapability struct {
+	InternalSnapshots bool     `json:"internal_snapshots"`
+	ExternalSnapshots bool     `json:"external_snapshots"`
+	MemorySnapshots   bool     `json:"memory_snapshots"`
+	LiveSnapshots     bool     `json:"live_snapshots"`
+	Limitations       []string `json:"limitations,omitempty"`
+}
+
+// DiskInfo contains information about a VM disk (stub)
+type DiskInfo struct {
+	Device      string     `json:"device"`
+	Path        string     `json:"path"`
+	Format      DiskFormat `json:"format"`
+	Type        string     `json:"type"`
+	Size        int64      `json:"size"`
+	BackingFile string     `json:"backing_file,omitempty"`
+}
+
+// VMSnapshotCapabilities describes snapshot capabilities for a VM (stub)
+type VMSnapshotCapabilities struct {
+	VMName              string                        `json:"vm_name"`
+	Disks               []DiskInfo                    `json:"disks"`
+	OverallCapabilities SnapshotCapability            `json:"overall_capabilities"`
+	DiskCapabilities    map[string]SnapshotCapability `json:"disk_capabilities"`
+	Recommendations     []string                      `json:"recommendations,omitempty"`
 }

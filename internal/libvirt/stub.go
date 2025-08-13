@@ -23,6 +23,11 @@ func (s *Service) Close() error {
 	return nil
 }
 
+// SetDatabase sets the database connection for the service (stub)
+func (s *Service) SetDatabase(db interface{}) {
+	// Stub - no operation
+}
+
 // ListVMs returns all VMs (stub)
 func (s *Service) ListVMs(ctx context.Context) ([]VM, error) {
 	return nil, fmt.Errorf("libvirt support is not available")
@@ -86,4 +91,19 @@ func (s *Service) GetVMMetrics(ctx context.Context, nameOrUUID string) (*VMMetri
 // GetConsole returns console access information (stub)
 func (s *Service) GetConsole(ctx context.Context, nameOrUUID string, consoleType string) (*ConsoleResponse, error) {
 	return nil, fmt.Errorf("libvirt support is not available")
+}
+
+// GetSnapshotCapabilities analyzes a VM's disks and returns snapshot capabilities (stub)
+func (s *Service) GetSnapshotCapabilities(ctx context.Context, nameOrUUID string) (*VMSnapshotCapabilities, error) {
+	return nil, fmt.Errorf("libvirt support is not available")
+}
+
+// CreateSnapshotEnhanced creates a VM snapshot with format-aware handling (stub)
+func (s *Service) CreateSnapshotEnhanced(ctx context.Context, nameOrUUID string, req *VMSnapshotRequest) (*VMSnapshot, error) {
+	return nil, fmt.Errorf("libvirt support is not available")
+}
+
+// ValidateSnapshotRequest validates if a snapshot request is feasible (stub)
+func (s *Service) ValidateSnapshotRequest(ctx context.Context, nameOrUUID string, req *VMSnapshotRequest) error {
+	return fmt.Errorf("libvirt support is not available")
 }

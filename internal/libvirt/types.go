@@ -159,6 +159,86 @@ type CloudInitUser struct {
 	Password          string   `json:"password,omitempty"`
 }
 
+// BackupType represents the type of backup
+type BackupType string
+
+const (
+	BackupTypeFull        BackupType = "full"
+	BackupTypeIncremental BackupType = "incremental"
+	BackupTypeDifferential BackupType = "differential"
+)
+
+// BackupStatus represents the status of a backup
+type BackupStatus string
+
+const (
+	BackupStatusPending   BackupStatus = "pending"
+	BackupStatusRunning   BackupStatus = "running"
+	BackupStatusCompleted BackupStatus = "completed"
+	BackupStatusFailed    BackupStatus = "failed"
+	BackupStatusDeleted   BackupStatus = "deleted"
+)
+
+// BackupCompressionType represents compression type
+type BackupCompressionType string
+
+const (
+	BackupCompressionNone BackupCompressionType = "none"
+	BackupCompressionGzip BackupCompressionType = "gzip"
+	BackupCompressionBzip2 BackupCompressionType = "bzip2"
+	BackupCompressionXz   BackupCompressionType = "xz"
+	BackupCompressionZstd BackupCompressionType = "zstd"
+)
+
+// BackupEncryptionType represents encryption type
+type BackupEncryptionType string
+
+const (
+	BackupEncryptionNone BackupEncryptionType = "none"
+	BackupEncryptionAES256 BackupEncryptionType = "aes256"
+	BackupEncryptionAES128 BackupEncryptionType = "aes128"
+)
+
+// VMBackup represents a VM backup
+type VMBackup struct {
+	ID              string                `json:"id"`
+	VMUUID          string                `json:"vm_uuid"`
+	VMName          string                `json:"vm_name"`
+	Type            BackupType            `json:"type"`
+	Status          BackupStatus          `json:"status"`
+	SourcePath      string                `json:"source_path,omitempty"`
+	DestinationPath string                `json:"destination_path"`
+	SizeBytes       int64                 `json:"size_bytes,omitempty"`
+	Compression     BackupCompressionType `json:"compression"`
+	Encryption      BackupEncryptionType  `json:"encryption"`
+	ParentBackupID  string                `json:"parent_backup_id,omitempty"` // For incremental backups
+	StartedAt       time.Time             `json:"started_at"`
+	CompletedAt     *time.Time            `json:"completed_at,omitempty"`
+	ErrorMessage    string                `json:"error_message,omitempty"`
+	Metadata        map[string]string     `json:"metadata,omitempty"`
+	Retention       int                   `json:"retention_days,omitempty"` // Days to retain backup
+}
+
+// VMBackupRequest represents a request to create a backup
+type VMBackupRequest struct {
+	Type            BackupType            `json:"type" binding:"required,oneof=full incremental differential"`
+	DestinationPath string                `json:"destination_path,omitempty"` // Optional, will use default if not specified
+	Compression     BackupCompressionType `json:"compression,omitempty"`
+	Encryption      BackupEncryptionType  `json:"encryption,omitempty"`
+	EncryptionKey   string                `json:"encryption_key,omitempty"`
+	Description     string                `json:"description,omitempty"`
+	RetentionDays   int                   `json:"retention_days,omitempty"`
+	IncludeMemory   bool                  `json:"include_memory"`
+}
+
+// VMRestoreRequest represents a request to restore from backup
+type VMRestoreRequest struct {
+	BackupID      string `json:"backup_id" binding:"required"`
+	NewVMName     string `json:"new_vm_name,omitempty"` // Optional, for restore as new VM
+	DecryptionKey string `json:"decryption_key,omitempty"`
+	Overwrite     bool   `json:"overwrite"` // Overwrite existing VM
+}
+
 // VMUpdateRequest for updating VM configuration
 type VMUpdateRequest struct {
 	Memory    *uint64 `json:"memory,omitempty"`     // in MB
@@ -177,7 +257,9 @@ type VMActionRequest struct {
 type VMSnapshotRequest struct {
 	Name        string `json:"name" binding:"required"`
 	Description string `json:"description,omitempty"`
-	Memory      bool   `json:"memory"`  // include memory state
+	Memory      bool   `json:"memory"`      // include memory state
+	Quiesce     bool   `json:"quiesce"`     // quiesce filesystem (requires guest agent)
+	External    bool   `json:"external"`    // force external snapshot
 }
 
 // VMSnapshot represents a VM snapshot
@@ -185,10 +267,13 @@ type VMSnapshot struct {
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
 	State       VMState   `json:"state"`
+	Type        string    `json:"type,omitempty"`         // "internal", "external", "internal-memory"
 	CreatedAt   time.Time `json:"created_at"`
 	Parent      string    `json:"parent,omitempty"`
 	Current     bool      `json:"current"`
 	Memory      bool      `json:"memory"`
+	DiskFormats []string  `json:"disk_formats,omitempty"` // Formats of disks in snapshot
+	Warnings    []string  `json:"warnings,omitempty"`     // Any warnings during creation
 }
 
 // VMCloneRequest for cloning VMs
@@ -289,12 +374,16 @@ type ConsoleResponse struct {
 
 // MigrationRequest for VM migration
 type MigrationRequest struct {
-	DestHost   string `json:"dest_host" binding:"required"`
-	Live       bool   `json:"live"`         // live migration
-	Persistent bool   `json:"persistent"`   // persist on destination
-	Offline    bool   `json:"offline"`      // offline migration
-	Compressed bool   `json:"compressed"`   // compress during transfer
-	Port       int    `json:"port,omitempty"`
+	DestinationHost  string `json:"destination_host" binding:"required"`
+	DestinationURI   string `json:"destination_uri,omitempty"`
+	Live             bool   `json:"live"`           // live migration
+	Tunneled         bool   `json:"tunneled"`       // tunneled migration
+	Compressed       bool   `json:"compressed"`     // compress during transfer
+	AutoConverge     bool   `json:"auto_converge"`  // auto-converge CPU throttling
+	AllowUnsafe      bool   `json:"allow_unsafe"`   // allow unsafe migration
+	MaxBandwidth     uint64 `json:"max_bandwidth"`  // max bandwidth in MB/s (0 = unlimited)
+	MaxDowntime      uint64 `json:"max_downtime"`   // max downtime in milliseconds
+	CopyStorage      string `json:"copy_storage"`   // storage migration mode: none, all, inc
 }
 
 // BackupRequest for VM backup
@@ -347,4 +436,147 @@ type NetworkCreateRequest struct {
 	IPRange   *NetworkIPRange `json:"ip_range,omitempty"`
 	DHCP      *DHCPConfig     `json:"dhcp,omitempty"`
 	AutoStart bool            `json:"autostart"`
+}
+
+// MigrationResponse for VM migration initiation
+type MigrationResponse struct {
+	MigrationID string    `json:"migration_id"`
+	Status      string    `json:"status"`
+	SourceHost  string    `json:"source_host"`
+	DestHost    string    `json:"dest_host"`
+	StartedAt   time.Time `json:"started_at"`
+	Message     string    `json:"message,omitempty"`
+}
+
+// MigrationStatusResponse for migration status queries
+type MigrationStatusResponse struct {
+	MigrationID   string    `json:"migration_id"`
+	VMName        string    `json:"vm_name,omitempty"`
+	Status        string    `json:"status"`
+	Progress      int       `json:"progress"`      // 0-100 percentage
+	SourceHost    string    `json:"source_host,omitempty"`
+	DestHost      string    `json:"dest_host,omitempty"`
+	DataProcessed uint64    `json:"data_processed"` // bytes
+	DataRemaining uint64    `json:"data_remaining"` // bytes
+	MemProcessed  uint64    `json:"mem_processed"`  // bytes
+	MemRemaining  uint64    `json:"mem_remaining"`  // bytes
+	StartedAt     time.Time `json:"started_at"`
+	CompletedAt   time.Time `json:"completed_at,omitempty"`
+	ErrorMessage  string    `json:"error_message,omitempty"`
+}
+
+// PCIDeviceType represents the type of PCI device
+type PCIDeviceType string
+
+const (
+	PCIDeviceTypeGPU     PCIDeviceType = "gpu"
+	PCIDeviceTypeNetwork PCIDeviceType = "network"
+	PCIDeviceTypeStorage PCIDeviceType = "storage"
+	PCIDeviceTypeUSB     PCIDeviceType = "usb"
+	PCIDeviceTypeOther   PCIDeviceType = "other"
+)
+
+// PCIDevice represents a PCI device available for passthrough
+type PCIDevice struct {
+	DeviceID     string            `json:"device_id"`
+	VendorID     string            `json:"vendor_id"`
+	ProductID    string            `json:"product_id"`
+	VendorName   string            `json:"vendor_name"`
+	ProductName  string            `json:"product_name"`
+	DeviceType   PCIDeviceType     `json:"device_type"`
+	PCIAddress   string            `json:"pci_address"` // e.g., "0000:01:00.0"
+	IOMMUGroup   int               `json:"iommu_group"`
+	Driver       string            `json:"driver"`
+	IsAvailable  bool              `json:"is_available"`
+	AssignedToVM string            `json:"assigned_to_vm,omitempty"`
+	Capabilities map[string]string `json:"capabilities,omitempty"`
+	LastSeen     time.Time         `json:"last_seen"`
+}
+
+// PCIPassthroughRequest represents a request to attach a PCI device to a VM
+type PCIPassthroughRequest struct {
+	DeviceID   string `json:"device_id" binding:"required"`
+	PCIAddress string `json:"pci_address,omitempty"`
+	Managed    bool   `json:"managed"` // Let libvirt manage driver binding
+}
+
+// PCIDetachRequest represents a request to detach a PCI device from a VM
+type PCIDetachRequest struct {
+	DeviceID   string `json:"device_id" binding:"required"`
+	PCIAddress string `json:"pci_address,omitempty"`
+}
+
+// HotplugRequest represents a request for resource hot-plugging
+type HotplugRequest struct {
+	ResourceType string      `json:"resource_type" binding:"required,oneof=cpu memory disk network usb"`
+	Action       string      `json:"action" binding:"required,oneof=add remove update"`
+	Config       interface{} `json:"config"`
+}
+
+// HotplugCPUConfig for CPU hot-plugging
+type HotplugCPUConfig struct {
+	VCPUs uint `json:"vcpus" binding:"required"`
+}
+
+// HotplugMemoryConfig for memory hot-plugging
+type HotplugMemoryConfig struct {
+	Memory uint64 `json:"memory" binding:"required"` // in MB
+}
+
+// HotplugDiskConfig for disk hot-plugging
+type HotplugDiskConfig struct {
+	Source   string  `json:"source" binding:"required"`
+	Target   string  `json:"target,omitempty"` // auto-generate if empty
+	Bus      DiskBus `json:"bus,omitempty"`
+	ReadOnly bool    `json:"readonly"`
+}
+
+// HotplugNetworkConfig for network hot-plugging
+type HotplugNetworkConfig struct {
+	Type   NetworkType `json:"type" binding:"required"`
+	Source string      `json:"source" binding:"required"`
+	Model  string      `json:"model,omitempty"`
+	MAC    string      `json:"mac,omitempty"` // auto-generate if empty
+}
+
+// HotplugUSBConfig for USB device hot-plugging
+type HotplugUSBConfig struct {
+	VendorID  string `json:"vendor_id"`
+	ProductID string `json:"product_id"`
+	Bus       int    `json:"bus,omitempty"`
+	Device    int    `json:"device,omitempty"`
+}
+
+// ISOImage represents an ISO image available for VM installation
+type ISOImage struct {
+	ImageID       string    `json:"image_id"`
+	Filename      string    `json:"filename"`
+	Path          string    `json:"path"`
+	SizeBytes     int64     `json:"size_bytes"`
+	MD5Hash       string    `json:"md5_hash,omitempty"`
+	SHA256Hash    string    `json:"sha256_hash,omitempty"`
+	OSType        string    `json:"os_type,omitempty"`
+	OSVersion     string    `json:"os_version,omitempty"`
+	Architecture  string    `json:"architecture,omitempty"`
+	Description   string    `json:"description,omitempty"`
+	IsPublic      bool      `json:"is_public"`
+	UploadedBy    string    `json:"uploaded_by"`
+	UploadStatus  string    `json:"upload_status"`
+	UploadProgress int      `json:"upload_progress"`
+	CreatedAt     time.Time `json:"created_at"`
+	Metadata      map[string]string `json:"metadata,omitempty"`
+}
+
+// ISOUploadSession represents an active ISO upload session
+type ISOUploadSession struct {
+	SessionID     string    `json:"session_id"`
+	ImageID       string    `json:"image_id"`
+	Filename      string    `json:"filename"`
+	TotalSize     int64     `json:"total_size"`
+	UploadedSize  int64     `json:"uploaded_size"`
+	ChunkSize     int64     `json:"chunk_size"`
+	Status        string    `json:"status"` // active, paused, completed, expired
+	ExpiresAt     time.Time `json:"expires_at"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }

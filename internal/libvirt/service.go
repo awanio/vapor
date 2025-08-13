@@ -6,9 +6,12 @@ package libvirt
 import (
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/hex"
 	"encoding/xml"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -22,6 +25,7 @@ type Service struct {
 	mu          sync.RWMutex
 	metricsStop chan struct{}
 	templates   map[string]*Template
+	db          *sql.DB // Optional database for tracking
 }
 
 // NewService creates a new libvirt service
@@ -68,6 +72,435 @@ func (s *Service) Close() error {
 		return err
 	}
 	return nil
+}
+
+// SetDatabase sets the database connection for the service
+func (s *Service) SetDatabase(db *sql.DB) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.db = db
+}
+
+// CreateBackup creates a backup of a VM.
+func (s *Service) CreateBackup(ctx context.Context, nameOrUUID string, req *VMBackupRequest) (*VMBackup, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	domain, err := s.lookupDomain(nameOrUUID)
+	if err != nil {
+		return nil, err
+	}
+	defer domain.Free()
+
+	vm, err := s.domainToVM(domain)
+	if err != nil {
+		return nil, err
+	}
+
+	// Generate a unique backup ID
+	backupID, err := generateRandomID(16)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate backup ID: %w", err)
+	}
+
+	destPath := req.DestinationPath
+	if destPath == "" {
+		destPath = filepath.Join("/var/lib/libvirt/vapor-backups", vm.Name)
+		if err := os.MkdirAll(destPath, 0755); err != nil {
+			return nil, fmt.Errorf("failed to create default backup directory: %w", err)
+		}
+	}
+
+	backup := &VMBackup{
+		ID:              backupID,
+		VMUUID:          vm.UUID,
+		VMName:          vm.Name,
+		Type:            req.Type,
+		Status:          BackupStatusRunning,
+		DestinationPath: destPath,
+		Compression:     req.Compression,
+		Encryption:      req.Encryption,
+		StartedAt:       time.Now(),
+	}
+
+	// Store initial backup record in DB
+	if s.db != nil {
+		if err := s.saveBackupRecord(backup); err != nil {
+			return nil, fmt.Errorf("failed to create initial backup record: %w", err)
+		}
+	}
+
+	// Run backup asynchronously
+	go s.runBackupJob(domain, backup, req)
+
+	return backup, nil
+}
+
+// ListBackups lists all backups for a specific VM.
+func (s *Service) ListBackups(ctx context.Context, nameOrUUID string) ([]VMBackup, error) {
+	if s.db == nil {
+		return nil, fmt.Errorf("database is not configured")
+	}
+
+	vm, err := s.GetVM(ctx, nameOrUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := s.db.QueryContext(ctx, "SELECT id, vm_uuid, vm_name, type, status, destination_path, size_bytes, compression, encryption, parent_backup_id, started_at, completed_at, error_message, retention_days FROM vm_backups WHERE vm_uuid = ? ORDER BY started_at DESC", vm.UUID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query backups: %w", err)
+	}
+	defer rows.Close()
+
+	backups := []VMBackup{}
+	for rows.Next() {
+		var b VMBackup
+		var completedAt sql.NullTime
+		var parentID sql.NullString
+		var errMsg sql.NullString
+		if err := rows.Scan(&b.ID, &b.VMUUID, &b.VMName, &b.Type, &b.Status, &b.DestinationPath, &b.SizeBytes, &b.Compression, &b.Encryption, &parentID, &b.StartedAt, &completedAt, &errMsg, &b.Retention); err != nil {
+			return nil, fmt.Errorf("failed to scan backup row: %w", err)
+		}
+		if completedAt.Valid {
+			b.CompletedAt = &completedAt.Time
+		}
+		if parentID.Valid {
+			b.ParentBackupID = parentID.String
+		}
+		if errMsg.Valid {
+			b.ErrorMessage = errMsg.String
+		}
+		backups = append(backups, b)
+	}
+
+	return backups, nil
+}
+
+func (s *Service) runBackupJob(domain *libvirt.Domain, backup *VMBackup, req *VMBackupRequest) {
+	backupXML, err := s.generateBackupXML(domain, backup, req)
+	if err != nil {
+		backup.Status = BackupStatusFailed
+		backup.ErrorMessage = fmt.Sprintf("failed to generate backup XML: %v", err)
+		s.saveBackupRecord(backup)
+		return
+	}
+
+	// Execute the backup
+	if err := domain.BackupBegin(backupXML, 0); err != nil {
+		backup.Status = BackupStatusFailed
+		backup.ErrorMessage = fmt.Sprintf("backup operation failed: %v", err)
+	} else {
+		backup.Status = BackupStatusCompleted
+	}
+
+	now := time.Now()
+	backup.CompletedAt = &now
+
+	// In a real implementation, we would get the actual size
+	backup.SizeBytes = 0 // Placeholder
+
+	// Update the database record
+	if s.db != nil {
+		s.saveBackupRecord(backup)
+	}
+}
+
+// ListPCIDevices lists all PCI devices available for passthrough
+func (s *Service) ListPCIDevices(ctx context.Context) ([]PCIDevice, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	devices := []PCIDevice{}
+
+	// Get node device list
+	deviceNames, err := s.conn.ListAllNodeDevices(libvirt.CONNECT_LIST_NODE_DEVICES_CAP_PCI_DEV)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list PCI devices: %w", err)
+	}
+
+	for _, dev := range deviceNames {
+		device, err := s.pciDeviceToType(dev)
+		if err != nil {
+			continue // Skip devices we can't parse
+		}
+		devices = append(devices, *device)
+		dev.Free()
+	}
+
+	// Update database with discovered devices if available
+	if s.db != nil {
+		s.updatePCIDevicesInDB(ctx, devices)
+	}
+
+	return devices, nil
+}
+
+// AttachPCIDevice attaches a PCI device to a VM
+func (s *Service) AttachPCIDevice(ctx context.Context, vmName string, req *PCIPassthroughRequest) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	domain, err := s.lookupDomain(vmName)
+	if err != nil {
+		return fmt.Errorf("VM not found: %w", err)
+	}
+	defer domain.Free()
+
+	// Check if device is available
+	if s.db != nil {
+		var isAvailable bool
+		err := s.db.QueryRowContext(ctx, "SELECT is_available FROM pci_devices WHERE device_id = ?", req.DeviceID).Scan(&isAvailable)
+		if err != nil {
+			return fmt.Errorf("device not found: %w", err)
+		}
+		if !isAvailable {
+			return fmt.Errorf("device is already assigned to another VM")
+		}
+	}
+
+	// Parse PCI address if not provided
+	pciAddr := req.PCIAddress
+	if pciAddr == "" {
+		// Get PCI address from device ID in database
+		if s.db != nil {
+			err := s.db.QueryRowContext(ctx, "SELECT pci_address FROM pci_devices WHERE device_id = ?", req.DeviceID).Scan(&pciAddr)
+			if err != nil {
+				return fmt.Errorf("failed to get PCI address: %w", err)
+			}
+		}
+	}
+
+	// Parse PCI address (format: 0000:01:00.0)
+	parts := strings.Split(pciAddr, ":")
+	if len(parts) != 3 {
+		return fmt.Errorf("invalid PCI address format: %s", pciAddr)
+	}
+	funcParts := strings.Split(parts[2], ".")
+	if len(funcParts) != 2 {
+		return fmt.Errorf("invalid PCI address format: %s", pciAddr)
+	}
+
+	// Generate PCI passthrough XML
+	pciXML := fmt.Sprintf(`
+		<hostdev mode='subsystem' type='pci' managed='%s'>
+			<source>
+				<address domain='0x%s' bus='0x%s' slot='0x%s' function='0x%s'/>
+			</source>
+		</hostdev>
+	`, boolToYesNo(req.Managed), parts[0], parts[1], funcParts[0], funcParts[1])
+
+	// Attach the device
+	if err := domain.AttachDevice(pciXML); err != nil {
+		return fmt.Errorf("failed to attach PCI device: %w", err)
+	}
+
+	// Update database
+	if s.db != nil {
+		uuid, _ := domain.GetUUIDString()
+		_, err = s.db.ExecContext(ctx, 
+			"UPDATE pci_devices SET is_available = 0, assigned_to_vm = ? WHERE device_id = ?",
+			uuid, req.DeviceID)
+		if err != nil {
+			fmt.Printf("Warning: failed to update PCI device assignment in DB: %v\n", err)
+		}
+	}
+
+	return nil
+}
+
+// DetachPCIDevice detaches a PCI device from a VM
+func (s *Service) DetachPCIDevice(ctx context.Context, vmName string, req *PCIDetachRequest) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	domain, err := s.lookupDomain(vmName)
+	if err != nil {
+		return fmt.Errorf("VM not found: %w", err)
+	}
+	defer domain.Free()
+
+	// Parse PCI address if not provided
+	pciAddr := req.PCIAddress
+	if pciAddr == "" {
+		// Get PCI address from device ID in database
+		if s.db != nil {
+			err := s.db.QueryRowContext(ctx, "SELECT pci_address FROM pci_devices WHERE device_id = ?", req.DeviceID).Scan(&pciAddr)
+			if err != nil {
+				return fmt.Errorf("failed to get PCI address: %w", err)
+			}
+		}
+	}
+
+	// Parse PCI address (format: 0000:01:00.0)
+	parts := strings.Split(pciAddr, ":")
+	if len(parts) != 3 {
+		return fmt.Errorf("invalid PCI address format: %s", pciAddr)
+	}
+	funcParts := strings.Split(parts[2], ".")
+	if len(funcParts) != 2 {
+		return fmt.Errorf("invalid PCI address format: %s", pciAddr)
+	}
+
+	// Generate PCI detach XML
+	pciXML := fmt.Sprintf(`
+		<hostdev mode='subsystem' type='pci'>
+			<source>
+				<address domain='0x%s' bus='0x%s' slot='0x%s' function='0x%s'/>
+			</source>
+		</hostdev>
+	`, parts[0], parts[1], funcParts[0], funcParts[1])
+
+	// Detach the device
+	if err := domain.DetachDevice(pciXML); err != nil {
+		return fmt.Errorf("failed to detach PCI device: %w", err)
+	}
+
+	// Update database
+	if s.db != nil {
+		_, err = s.db.ExecContext(ctx, 
+			"UPDATE pci_devices SET is_available = 1, assigned_to_vm = NULL WHERE device_id = ?",
+			req.DeviceID)
+		if err != nil {
+			fmt.Printf("Warning: failed to update PCI device release in DB: %v\n", err)
+		}
+	}
+
+	return nil
+}
+
+// HotplugResource performs hot-plug operations on VM resources
+func (s *Service) HotplugResource(ctx context.Context, vmName string, req *HotplugRequest) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	domain, err := s.lookupDomain(vmName)
+	if err != nil {
+		return fmt.Errorf("VM not found: %w", err)
+	}
+	defer domain.Free()
+
+	// Check if VM is running
+	state, _, err := domain.GetState()
+	if err != nil {
+		return fmt.Errorf("failed to get VM state: %w", err)
+	}
+	if state != libvirt.DOMAIN_RUNNING {
+		return fmt.Errorf("VM must be running for hot-plug operations")
+	}
+
+	switch req.ResourceType {
+	case "cpu":
+		return s.hotplugCPU(domain, req.Action, req.Config)
+	case "memory":
+		return s.hotplugMemory(domain, req.Action, req.Config)
+	case "disk":
+		return s.hotplugDisk(domain, req.Action, req.Config)
+	case "network":
+		return s.hotplugNetwork(domain, req.Action, req.Config)
+	case "usb":
+		return s.hotplugUSB(domain, req.Action, req.Config)
+	default:
+		return fmt.Errorf("unsupported resource type: %s", req.ResourceType)
+	}
+}
+
+func (s *Service) saveBackupRecord(backup *VMBackup) error {
+	if s.db == nil {
+		return nil
+	}
+
+	var completedAt *time.Time
+	if backup.CompletedAt != nil {
+		completedAt = backup.CompletedAt
+	}
+
+	_, err := s.db.Exec(`
+		INSERT OR REPLACE INTO vm_backups (
+			backup_id, vm_uuid, vm_name, backup_type, status, 
+			destination_path, size_bytes, compressed, encryption_type, 
+			parent_backup_id, started_at, completed_at, error_message
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, backup.ID, backup.VMUUID, backup.VMName, backup.Type, backup.Status,
+		backup.DestinationPath, backup.SizeBytes, backup.Compressed, backup.Encryption,
+		backup.ParentBackupID, backup.StartedAt, completedAt, backup.ErrorMessage)
+
+	return err
+}
+
+// generateBackupXML generates the XML for the backup operation
+func (s *Service) generateBackupXML(domain *libvirt.Domain, backup *VMBackup, req *VMBackupRequest) (string, error) {
+	// Get domain info
+	name, err := domain.GetName()
+	if err != nil {
+		return "", fmt.Errorf("failed to get domain name: %w", err)
+	}
+
+	// Build backup XML
+	backupXML := fmt.Sprintf(`
+		<domainbackup mode='push'>
+			<incremental>%s</incremental>
+			<server transport='unix' socket='/var/run/libvirt/backup-%s.sock'/>
+			<disks>
+				<disk name='vda' backup='yes' type='file'>
+					<target file='%s/%s-%s.qcow2'/>
+					<driver type='qcow2'/>
+				</disk>
+			</disks>
+		</domainbackup>
+	`, backup.ParentBackupID, backup.ID, backup.DestinationPath, name, backup.ID)
+
+	return backupXML, nil
+}
+
+// RestoreVMBackup restores a VM from a backup
+func (s *Service) RestoreVMBackup(ctx context.Context, backupID string) (*VM, error) {
+	if s.db == nil {
+		return nil, fmt.Errorf("database is not configured")
+	}
+
+	// Get backup info from database
+	var backup VMBackup
+	err := s.db.QueryRowContext(ctx, 
+		"SELECT backup_id, vm_uuid, vm_name, destination_path FROM vm_backups WHERE backup_id = ?",
+		backupID).Scan(&backup.ID, &backup.VMUUID, &backup.VMName, &backup.DestinationPath)
+	if err != nil {
+		return nil, fmt.Errorf("backup not found: %w", err)
+	}
+
+	// Create a new VM from the backup
+	// This is a simplified implementation
+	createReq := &VMCreateRequest{
+		Name:     backup.VMName + "-restored",
+		Memory:   2048, // Default values, should be read from backup metadata
+		VCPUs:    2,
+		DiskPath: fmt.Sprintf("%s/%s-%s.qcow2", backup.DestinationPath, backup.VMName, backup.ID),
+	}
+
+	return s.CreateVM(ctx, createReq)
+        ON CONFLICT(id) DO UPDATE SET
+            status = excluded.status,
+            completed_at = excluded.completed_at,
+            error_message = excluded.error_message,
+            size_bytes = excluded.size_bytes
+    `, backup.ID, backup.VMUUID, backup.VMName, backup.Type, backup.Status, backup.DestinationPath, backup.SizeBytes, backup.Compression, backup.Encryption, backup.ParentBackupID, backup.StartedAt, backup.CompletedAt, backup.ErrorMessage, backup.Retention)
+
+	return err
+}
+
+func (s *Service) generateBackupXML(domain *libvirt.Domain, backup *VMBackup, req *VMBackupRequest) (string, error) {
+	// This is a simplified example. A real implementation would be more complex,
+	// handling disk lists, incremental points, etc.
+	backupXML := fmt.Sprintf(`
+		<domainbackup mode='%s'>
+			<disks>
+				<disk name='vda' type='file' backup='yes'>
+					<target file='%s/%s.qcow2'/>
+				</disk>
+			</disks>
+		</domainbackup>`, req.Type, backup.DestinationPath, backup.ID)
+
+	return backupXML, nil
 }
 
 // ListVMs returns all VMs
@@ -320,6 +753,10 @@ func (s *Service) CreateSnapshot(ctx context.Context, nameOrUUID string, req *VM
 	}
 	defer domain.Free()
 
+	// Get VM UUID and name for database tracking
+	vmUUID, _ := domain.GetUUIDString()
+	vmName, _ := domain.GetName()
+
 	// Generate snapshot XML
 	snapshotXML := fmt.Sprintf(`
 		<domainsnapshot>
@@ -341,7 +778,27 @@ func (s *Service) CreateSnapshot(ctx context.Context, nameOrUUID string, req *VM
 	}
 	defer snapshot.Free()
 
-	return s.snapshotToVMSnapshot(snapshot)
+	vmSnapshot, err := s.snapshotToVMSnapshot(snapshot)
+	if err != nil {
+		return nil, err
+	}
+
+	// Track in database if available
+	if s.db != nil {
+		_, dbErr := s.db.Exec(`
+			INSERT INTO vm_snapshots (vm_uuid, vm_name, snapshot_name, description, memory_included, state)
+			VALUES (?, ?, ?, ?, ?, ?)
+			ON CONFLICT(vm_uuid, snapshot_name) DO UPDATE SET
+				description = excluded.description,
+				memory_included = excluded.memory_included
+		`, vmUUID, vmName, req.Name, req.Description, req.Memory, string(vmSnapshot.State))
+		if dbErr != nil {
+			// Log but don't fail the operation
+			fmt.Printf("Warning: failed to track snapshot in database: %v\n", dbErr)
+		}
+	}
+
+	return vmSnapshot, nil
 }
 
 // ListSnapshots lists all snapshots for a VM
@@ -1138,6 +1595,251 @@ func (s *Service) DeleteNetwork(ctx context.Context, name string) error {
 	}
 
 	return nil
+}
+
+// MigrateVM initiates a live migration of a VM to another host
+func (s *Service) MigrateVM(ctx context.Context, nameOrUUID string, req *MigrationRequest) (*MigrationResponse, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	domain, err := s.lookupDomain(nameOrUUID)
+	if err != nil {
+		return nil, err
+	}
+	defer domain.Free()
+
+	// Generate migration ID
+	migrationID := generateMigrationID()
+
+	// Validate destination host
+	if req.DestinationHost == "" {
+		return nil, fmt.Errorf("destination host is required")
+	}
+
+	// Build destination URI
+	destURI := fmt.Sprintf("qemu+ssh://%s/system", req.DestinationHost)
+	if req.DestinationURI != "" {
+		destURI = req.DestinationURI
+	}
+
+	// Connect to destination
+	destConn, err := libvirt.NewConnect(destURI)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to destination host: %w", err)
+	}
+	defer destConn.Close()
+
+	// Prepare migration flags
+	flags := libvirt.MIGRATE_PERSIST_DEST | libvirt.MIGRATE_UNDEFINE_SOURCE
+	if req.Live {
+		flags |= libvirt.MIGRATE_LIVE
+	}
+	if req.Tunneled {
+		flags |= libvirt.MIGRATE_TUNNELLED
+	}
+	if req.Compressed {
+		flags |= libvirt.MIGRATE_COMPRESSED
+	}
+	if req.AutoConverge {
+		flags |= libvirt.MIGRATE_AUTO_CONVERGE
+	}
+	if req.AllowUnsafe {
+		flags |= libvirt.MIGRATE_UNSAFE
+	}
+	
+	// Handle storage migration based on copy_storage parameter
+	switch req.CopyStorage {
+	case "all":
+		// Copy all storage (full disk copy)
+		flags |= libvirt.MIGRATE_NON_SHARED_DISK
+	case "inc":
+		// Copy incremental storage changes
+		flags |= libvirt.MIGRATE_NON_SHARED_INC
+	case "none", "":
+		// Default: no storage migration (requires shared storage)
+		// No additional flags needed
+	default:
+		return nil, fmt.Errorf("invalid copy_storage mode: %s (valid: none, all, inc)", req.CopyStorage)
+	}
+
+	// Set bandwidth limit if specified
+	if req.MaxBandwidth > 0 {
+		if err := domain.MigrateSetMaxSpeed(req.MaxBandwidth, 0); err != nil {
+			// Non-fatal: log warning but continue
+			fmt.Printf("Warning: failed to set migration bandwidth: %v\n", err)
+		}
+	}
+
+	// Set downtime limit if specified
+	if req.MaxDowntime > 0 {
+		if err := domain.MigrateSetMaxDowntime(req.MaxDowntime, 0); err != nil {
+			// Non-fatal: log warning but continue
+			fmt.Printf("Warning: failed to set migration downtime: %v\n", err)
+		}
+	}
+
+	// Store migration info for status tracking
+	vmName, _ := domain.GetName()
+	s.storeMigrationInfo(migrationID, vmName, req.DestinationHost, "initiating")
+
+	// Start migration in background
+	go func() {
+		// Update status to migrating
+		s.updateMigrationStatus(migrationID, "migrating", 0)
+
+		// Perform migration
+		_, err := domain.Migrate(destConn, flags, "", "", 0)
+		if err != nil {
+			s.updateMigrationStatus(migrationID, "failed", 100)
+			fmt.Printf("Migration failed: %v\n", err)
+		} else {
+			s.updateMigrationStatus(migrationID, "completed", 100)
+		}
+	}()
+
+	return &MigrationResponse{
+		MigrationID: migrationID,
+		Status:      "initiated",
+		SourceHost:  getHostname(),
+		DestHost:    req.DestinationHost,
+		StartedAt:   time.Now(),
+	}, nil
+}
+
+// GetMigrationStatus returns the status of an ongoing or completed migration
+func (s *Service) GetMigrationStatus(ctx context.Context, nameOrUUID string, migrationID string) (*MigrationStatusResponse, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	// Get migration info from storage
+	migrationInfo := s.getMigrationInfo(migrationID)
+	if migrationInfo == nil {
+		// If no migration ID provided, try to find active migration for VM
+		if migrationID == "" {
+			domain, err := s.lookupDomain(nameOrUUID)
+			if err != nil {
+				return nil, err
+			}
+			defer domain.Free()
+
+			// Check if domain is being migrated
+			jobInfo, err := domain.GetJobInfo()
+			if err == nil && jobInfo.Type != libvirt.DOMAIN_JOB_NONE {
+				return &MigrationStatusResponse{
+					MigrationID: "current",
+					Status:      domainJobTypeToStatus(jobInfo.Type),
+					Progress:    calculateProgress(jobInfo),
+					DataRemaining: jobInfo.DataRemaining,
+					DataProcessed: jobInfo.DataProcessed,
+					MemProcessed:  jobInfo.MemProcessed,
+					MemRemaining:  jobInfo.MemRemaining,
+				}, nil
+			}
+		}
+		return nil, fmt.Errorf("migration not found")
+	}
+
+	return migrationInfo, nil
+}
+
+// CancelMigration cancels an ongoing migration
+func (s *Service) CancelMigration(ctx context.Context, nameOrUUID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	domain, err := s.lookupDomain(nameOrUUID)
+	if err != nil {
+		return err
+	}
+	defer domain.Free()
+
+	// Abort the migration job
+	if err := domain.AbortJob(); err != nil {
+		return fmt.Errorf("failed to cancel migration: %w", err)
+	}
+
+	return nil
+}
+
+// Migration helper functions
+
+var migrationStore = make(map[string]*MigrationStatusResponse)
+var migrationStoreMutex sync.RWMutex
+
+func (s *Service) storeMigrationInfo(id, vmName, destHost, status string) {
+	migrationStoreMutex.Lock()
+	defer migrationStoreMutex.Unlock()
+	
+	migrationStore[id] = &MigrationStatusResponse{
+		MigrationID: id,
+		VMName:      vmName,
+		Status:      status,
+		DestHost:    destHost,
+		StartedAt:   time.Now(),
+	}
+}
+
+func (s *Service) updateMigrationStatus(id, status string, progress int) {
+	migrationStoreMutex.Lock()
+	defer migrationStoreMutex.Unlock()
+	
+	if info, exists := migrationStore[id]; exists {
+		info.Status = status
+		info.Progress = progress
+		if status == "completed" || status == "failed" {
+			info.CompletedAt = time.Now()
+		}
+	}
+}
+
+func (s *Service) getMigrationInfo(id string) *MigrationStatusResponse {
+	migrationStoreMutex.RLock()
+	defer migrationStoreMutex.RUnlock()
+	
+	if info, exists := migrationStore[id]; exists {
+		return info
+	}
+	return nil
+}
+
+func generateMigrationID() string {
+	b := make([]byte, 16)
+	rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
+func getHostname() string {
+	if hostname, err := libvirt.GetHostname(); err == nil {
+		return hostname
+	}
+	return "localhost"
+}
+
+func domainJobTypeToStatus(jobType libvirt.DomainJobType) string {
+	switch jobType {
+	case libvirt.DOMAIN_JOB_BOUNDED:
+		return "migrating"
+	case libvirt.DOMAIN_JOB_UNBOUNDED:
+		return "migrating"
+	case libvirt.DOMAIN_JOB_COMPLETED:
+		return "completed"
+	case libvirt.DOMAIN_JOB_FAILED:
+		return "failed"
+	case libvirt.DOMAIN_JOB_CANCELLED:
+		return "cancelled"
+	default:
+		return "unknown"
+	}
+}
+
+func calculateProgress(jobInfo libvirt.DomainJobInfo) int {
+	if jobInfo.DataTotal > 0 {
+		return int((jobInfo.DataProcessed * 100) / jobInfo.DataTotal)
+	}
+	if jobInfo.MemTotal > 0 {
+		return int((jobInfo.MemProcessed * 100) / jobInfo.MemTotal)
+	}
+	return 0
 }
 
 // Helper conversion functions

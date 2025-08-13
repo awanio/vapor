@@ -69,6 +69,7 @@ func main() {
 
 	// Run migrations
 	allMigrations := []database.Migration{}
+	allMigrations = append(allMigrations, database.GetMigrations()...)
 	allMigrations = append(allMigrations, ansible.GetMigrations()...)
 	if err := db.Migrate(allMigrations); err != nil {
 		log.Fatalf("Failed to run database migrations: %v", err)
@@ -161,6 +162,8 @@ func main() {
 		if err != nil {
 			log.Printf("Warning: Libvirt integration disabled: %v", err)
 		} else {
+			// Set database for backup tracking
+			libvirtService.SetDatabase(db)
 			log.Printf("Libvirt integration initialized with URI: %s", libvirtURI)
 			routes.LibvirtRoutes(api, libvirtService)
 			defer libvirtService.Close() // Close service when server shuts down

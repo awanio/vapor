@@ -133,6 +133,10 @@ export class SidebarTree extends I18nLitElement {
     .icon-playbooks::before { content: '📄'; }
     .icon-inventory::before { content: '📋'; }
     .icon-executions::before { content: '▶️'; }
+    .icon-virtualization::before { content: '🖥️'; }
+    .icon-vms::before { content: '💻'; }
+    .icon-storage-pools::before { content: '🗄️'; }
+    .icon-virt-networks::before { content: '🔗'; }
 
     :host([collapsed]) .tree-item-label,
     :host([collapsed]) .tree-item-arrow,
@@ -322,6 +326,32 @@ export class SidebarTree extends I18nLitElement {
           label: 'kubernetes.helms',
           icon: 'helm',
           route: 'kubernetes/helm'
+        }
+      ]
+    },
+    {
+      id: 'virtualization',
+      label: 'nav.virtualization',
+      icon: 'virtualization',
+      route: 'virtualization',
+      children: [
+        {
+          id: 'virtualization-vms',
+          label: 'virtualization.vms',
+          icon: 'vms',
+          route: 'virtualization/vms'
+        },
+        {
+          id: 'virtualization-storage-pools',
+          label: 'virtualization.storage-pools',
+          icon: 'storage-pools',
+          route: 'virtualization/storage-pools'
+        },
+        {
+          id: 'virtualization-networks',
+          label: 'virtualization.networks',
+          icon: 'virt-networks',
+          route: 'virtualization/networks'
         }
       ]
     },

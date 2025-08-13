@@ -237,31 +237,6 @@ export class AnsibleExecutions extends LitElement {
       background: var(--vscode-button-secondaryHoverBackground);
     }
 
-    .stats-summary {
-      display: flex;
-      gap: 2rem;
-      padding: 1rem;
-      background: var(--vscode-editor-background);
-      border-radius: 4px;
-      margin-bottom: 1rem;
-    }
-
-    .stat-card {
-      flex: 1;
-      text-align: center;
-    }
-
-    .stat-value {
-      font-size: 2rem;
-      font-weight: 600;
-      color: var(--vscode-foreground);
-    }
-
-    .stat-label {
-      font-size: 0.875rem;
-      color: var(--vscode-descriptionForeground);
-      margin-top: 0.25rem;
-    }
   `;
 
   override connectedCallback() {
@@ -556,35 +531,6 @@ export class AnsibleExecutions extends LitElement {
     // TODO: Open run dialog/drawer to select playbook/template and parameters
   }
 
-  private renderStatsSummary() {
-    const stats = {
-      total: this.executions.length,
-      running: this.executions.filter(e => e.status === 'running').length,
-      successful: this.executions.filter(e => e.status === 'successful').length,
-      failed: this.executions.filter(e => e.status === 'failed').length
-    };
-
-    return html`
-      <div class="stats-summary">
-        <div class="stat-card">
-          <div class="stat-value">${stats.total}</div>
-          <div class="stat-label">Total Executions</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" style="color: #1e88e5;">${stats.running}</div>
-          <div class="stat-label">Running</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" style="color: #43a047;">${stats.successful}</div>
-          <div class="stat-label">Successful</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" style="color: #e53935;">${stats.failed}</div>
-          <div class="stat-label">Failed</div>
-        </div>
-      </div>
-    `;
-  }
 
   override render() {
     if (this.loading) {
@@ -605,8 +551,6 @@ export class AnsibleExecutions extends LitElement {
         <div class="header">
           <h1 class="title">Job Executions</h1>
         </div>
-
-        ${this.renderStatsSummary()}
 
         <div class="controls">
           <div class="controls-left">

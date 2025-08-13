@@ -31,6 +31,12 @@ func LibvirtRoutes(r *gin.RouterGroup, service *libvirt.Service) {
 		vmGroup.POST("/:id/snapshots/:snapshot/revert", revertSnapshot(service)) // Revert to snapshot
 		vmGroup.DELETE("/:id/snapshots/:snapshot", deleteSnapshot(service))      // Delete snapshot
 		
+		// Backups
+		vmGroup.GET("/:id/backups", listBackups(service))          // List VM backups
+		vmGroup.POST("/:id/backups", createBackup(service))        // Create backup
+		vmGroup.POST("/restore", restoreBackup(service))           // Restore from backup
+		vmGroup.DELETE("/backups/:backup_id", deleteBackup(service)) // Delete backup
+		
 		// Cloning
 		vmGroup.POST("/clone", cloneVM(service))                   // Clone VM
 		
@@ -45,6 +51,18 @@ func LibvirtRoutes(r *gin.RouterGroup, service *libvirt.Service) {
 		// Templates
 		vmGroup.GET("/templates", listTemplates(service))          // List VM templates
 		vmGroup.POST("/from-template", createFromTemplate(service)) // Create VM from template
+		
+		// Migration
+		vmGroup.POST("/:id/migrate", migrateVM(service))           // Migrate VM to another host
+		vmGroup.GET("/:id/migration/status", getMigrationStatus(service)) // Get migration status
+		
+		// PCI Passthrough
+		vmGroup.GET("/pci-devices", listPCIDevices(service))       // List available PCI devices
+		vmGroup.POST("/:id/pci-devices", attachPCIDevice(service)) // Attach PCI device to VM
+		vmGroup.DELETE("/:id/pci-devices/:device_id", detachPCIDevice(service)) // Detach PCI device from VM
+		
+		// Resource Hotplug
+		vmGroup.POST("/:id/hotplug", hotplugResource(service))     // Hotplug resources to VM
 	}
 
 	// Storage Management
@@ -229,6 +247,70 @@ func deleteSnapshot(service *libvirt.Service) gin.HandlerFunc {
 		snapshotName := c.Param("snapshot")
 
 		err := service.DeleteSnapshot(c.Request.Context(), id, snapshotName)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusNoContent, nil)
+	}
+}
+
+// Backup handlers
+
+func listBackups(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		backups, err := service.ListBackups(c.Request.Context(), id)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"backups": backups})
+	}
+}
+
+func createBackup(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		var req libvirt.VMBackupRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		backup, err := service.CreateBackup(c.Request.Context(), id, &req)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusAccepted, backup)
+	}
+}
+
+func restoreBackup(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req libvirt.VMRestoreRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		vm, err := service.RestoreBackup(c.Request.Context(), &req)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, vm)
+	}
+}
+
+func deleteBackup(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		backupID := c.Param("backup_id")
+		err := service.DeleteBackup(c.Request.Context(), backupID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -621,5 +703,138 @@ func deleteNetwork(service *libvirt.Service) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusNoContent, nil)
+	}
+}
+
+// Migration handlers
+
+func migrateVM(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		var req libvirt.MigrationRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		migrationID, err := service.MigrateVM(c.Request.Context(), id, &req)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusAccepted, gin.H{
+			"status": "success",
+			"data": gin.H{
+				"migration_id": migrationID,
+				"message": "Migration started",
+				"vm_id": id,
+				"destination": req.DestHost,
+			},
+		})
+	}
+}
+
+func getMigrationStatus(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		migrationID := c.Query("migration_id")
+		
+		status, err := service.GetMigrationStatus(c.Request.Context(), id, migrationID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data": status,
+		})
+	}
+}
+
+// PCI Passthrough handlers
+
+func listPCIDevices(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		deviceType := c.Query("type")
+		devices, err := service.ListPCIDevices(c.Request.Context(), deviceType)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"devices": devices})
+	}
+}
+
+func attachPCIDevice(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		var req libvirt.PCIPassthroughRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		err := service.AttachPCIDevice(c.Request.Context(), id, &req)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "PCI device attached successfully",
+			"vm_id": id,
+			"device_id": req.DeviceID,
+		})
+	}
+}
+
+func detachPCIDevice(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		deviceID := c.Param("device_id")
+		
+		req := libvirt.PCIDetachRequest{
+			DeviceID: deviceID,
+		}
+
+		err := service.DetachPCIDevice(c.Request.Context(), id, &req)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "PCI device detached successfully",
+			"vm_id": id,
+			"device_id": deviceID,
+		})
+	}
+}
+
+// Resource Hotplug handler
+
+func hotplugResource(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		var req libvirt.HotplugRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		err := service.HotplugResource(c.Request.Context(), id, &req)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Resource hotplug operation completed successfully",
+			"vm_id": id,
+			"resource_type": req.ResourceType,
+			"action": req.Action,
+		})
 	}
 }
