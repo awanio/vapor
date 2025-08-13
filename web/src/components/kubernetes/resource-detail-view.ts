@@ -15,25 +15,44 @@ export class ResourceDetailView extends LitElement {
       display: block;
       font-family: var(--vscode-font-family, system-ui, -apple-system, sans-serif);
       font-size: 13px;
-      color: var(--vscode-foreground, #cccccc);
+      color: var(--vscode-foreground);
+    }
+
+    .pod-details-content {
+      font-size: 0.875rem;
+    }
+
+    .detail-sections {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
     }
 
     .detail-section {
       margin-bottom: 24px;
-      border-bottom: 1px solid var(--vscode-widget-border, #303031);
-      padding-bottom: 16px;
+      position: relative;
     }
 
     .detail-section:last-child {
-      border-bottom: none;
-      margin-bottom: 0;
+      margin-bottom: 40px; /* Extra space for last section */
+    }
+
+    .detail-section h3 {
+      margin: 0px 0px 16px;
+      padding: 0px 0px 6px;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--vscode-foreground);
+      border-bottom: 2px solid var(--vscode-focusBorder, var(--vscode-accent, #007acc));
     }
 
     .section-title {
-      font-size: 14px;
+      margin: 0px 0px 16px;
+      padding: 0px 0px 6px;
+      font-size: 16px;
       font-weight: 600;
-      color: var(--vscode-foreground, #cccccc);
-      margin-bottom: 12px;
+      color: var(--vscode-foreground);
+      border-bottom: 2px solid var(--vscode-focusBorder, var(--vscode-accent, #007acc));
       text-transform: capitalize;
       display: flex;
       align-items: center;
@@ -48,23 +67,39 @@ export class ResourceDetailView extends LitElement {
 
     .detail-item {
       margin-bottom: 8px;
+      padding: 4px 0px;
+      border-bottom: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.2));
       display: flex;
       align-items: flex-start;
       gap: 8px;
       line-height: 1.5;
     }
 
+    .detail-item.nested {
+      border-left: 3px solid var(--vscode-focusBorder, var(--vscode-accent, #007acc));
+      margin-left: 0px;
+      background: var(--vscode-list-hoverBackground, rgba(0, 122, 204, 0.05));
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 12px;
+      flex-direction: column;
+      align-items: stretch;
+      border-bottom: none;
+    }
+
     .detail-key {
-      font-weight: 500;
-      color: var(--vscode-textLink-foreground, #3794ff);
+      font-weight: 600;
+      display: inline-block;
       min-width: 140px;
       flex-shrink: 0;
+      color: var(--vscode-symbolIcon-variableForeground, var(--vscode-foreground));
     }
 
     .detail-value {
       flex: 1;
-      color: var(--vscode-foreground, #cccccc);
+      color: var(--vscode-foreground);
       word-break: break-word;
+      display: inline;
     }
 
     .detail-value.mono {
@@ -76,12 +111,16 @@ export class ResourceDetailView extends LitElement {
     .nested-object {
       margin-top: 8px;
       padding-left: 16px;
-      border-left: 2px solid var(--vscode-widget-border, #303031);
+      border-left: 2px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.35));
+    }
+
+    .nested-content {
+      margin-top: 4px;
     }
 
     .nested-title {
       font-weight: 500;
-      color: var(--vscode-textLink-foreground, #3794ff);
+      color: var(--vscode-textLink-foreground);
       margin-bottom: 8px;
       font-size: 12px;
       text-transform: capitalize;
@@ -93,8 +132,8 @@ export class ResourceDetailView extends LitElement {
     }
 
     .array-item {
-      background: var(--vscode-editor-background, #1e1e1e);
-      border: 1px solid var(--vscode-widget-border, #303031);
+      background: var(--vscode-list-inactiveSelectionBackground, var(--vscode-editor-background, #f3f3f3));
+      border: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.35));
       border-radius: 4px;
       padding: 12px;
       margin-bottom: 8px;
@@ -110,28 +149,30 @@ export class ResourceDetailView extends LitElement {
       top: 4px;
       right: 8px;
       font-size: 11px;
-      color: var(--vscode-descriptionForeground, #cccccc80);
+      color: var(--vscode-badge-foreground, white);
       background: var(--vscode-badge-background, #007acc);
       padding: 2px 6px;
       border-radius: 10px;
     }
 
     /* Special value styles */
-    .value-null {
-      color: var(--vscode-debugTokenExpression-error, #f48771);
+    .value-null,
+    .detail-value.null {
+      color: var(--vscode-descriptionForeground);
       font-style: italic;
+      opacity: 0.7;
     }
 
     .value-boolean {
-      color: var(--vscode-debugTokenExpression-boolean, #4e94ce);
+      color: var(--vscode-debugTokenExpression-boolean);
     }
 
     .value-number {
-      color: var(--vscode-debugTokenExpression-number, #b5cea8);
+      color: var(--vscode-debugTokenExpression-number);
     }
 
     .value-string {
-      color: var(--vscode-debugTokenExpression-string, #ce9178);
+      color: var(--vscode-debugTokenExpression-string);
     }
 
     /* Labels and annotations */
@@ -156,8 +197,9 @@ export class ResourceDetailView extends LitElement {
     }
 
     .annotation-item {
-      background: var(--vscode-textBlockQuote-background, #7f7f7f1a);
-      color: var(--vscode-foreground, #cccccc);
+      background: var(--vscode-textBlockQuote-background, rgba(127, 127, 127, 0.1));
+      color: var(--vscode-foreground);
+      border: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.2));
     }
 
     .label-key,
@@ -178,32 +220,34 @@ export class ResourceDetailView extends LitElement {
     .status-badge.active,
     .status-badge.true {
       background: var(--vscode-testing-iconPassed, #73c991);
-      color: var(--vscode-editor-background, #1e1e1e);
+      color: var(--vscode-badge-foreground, white);
     }
 
     .status-badge.pending,
     .status-badge.progressing {
       background: var(--vscode-testing-iconQueued, #cca700);
-      color: var(--vscode-editor-background, #1e1e1e);
+      color: var(--vscode-badge-foreground, white);
     }
 
     .status-badge.failed,
     .status-badge.error,
     .status-badge.false {
       background: var(--vscode-testing-iconFailed, #f14c4c);
-      color: white;
+      color: var(--vscode-badge-foreground, white);
     }
 
     /* Timestamp */
     .timestamp {
-      color: var(--vscode-descriptionForeground, #cccccc80);
+      color: var(--vscode-descriptionForeground);
       font-size: 12px;
+      opacity: 0.8;
     }
 
     /* Code block */
-    .code-block {
-      background: var(--vscode-textCodeBlock-background, #0a0a0a);
-      border: 1px solid var(--vscode-widget-border, #303031);
+    .code-block,
+    .raw-data {
+      background: var(--vscode-textCodeBlock-background, var(--vscode-editor-background, #f5f5f5));
+      border: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.35));
       border-radius: 4px;
       padding: 12px;
       margin-top: 8px;
@@ -211,6 +255,55 @@ export class ResourceDetailView extends LitElement {
       font-size: 12px;
       overflow-x: auto;
       white-space: pre-wrap;
+      max-height: 600px;
+      overflow-y: auto;
+      color: var(--vscode-editor-foreground, var(--vscode-foreground));
+    }
+
+    details {
+      margin-top: 8px;
+      position: relative;
+      z-index: 1;
+    }
+
+    details summary {
+      cursor: pointer;
+      padding: 8px 12px;
+      background: var(--vscode-button-background, #007acc);
+      color: var(--vscode-button-foreground, white);
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      user-select: none;
+      transition: all 0.2s;
+      display: block;
+      outline: none;
+      border: 1px solid transparent;
+    }
+
+    details summary::-webkit-details-marker {
+      display: none;
+    }
+
+    details summary::before {
+      content: '▶';
+      display: inline-block;
+      margin-right: 8px;
+      transition: transform 0.2s;
+    }
+
+    details[open] summary::before {
+      transform: rotate(90deg);
+    }
+
+    details summary:hover {
+      background: var(--vscode-button-hoverBackground, #0062a3);
+      border-color: var(--vscode-button-border, transparent);
+    }
+
+    details[open] summary {
+      margin-bottom: 12px;
+      border-radius: 4px 4px 0 0;
     }
 
     /* Collapsible sections */
@@ -241,8 +334,9 @@ export class ResourceDetailView extends LitElement {
 
     /* Empty state */
     .empty-value {
-      color: var(--vscode-descriptionForeground, #cccccc80);
+      color: var(--vscode-descriptionForeground);
       font-style: italic;
+      opacity: 0.7;
     }
   `;
 
@@ -251,12 +345,26 @@ export class ResourceDetailView extends LitElement {
       return html`<div class="empty-value">No data available</div>`;
     }
 
+    // Check if this is a Pod resource
+    const isPod = this.resource.kind === 'Pod' || 
+                  (this.resource.metadata && this.resource.spec && this.resource.status && 
+                   'containers' in (this.resource.spec || {}));
+
+    if (isPod) {
+      return this.renderPodDetails();
+    }
+
+    // Use the same styled layout for all resources
     return html`
-      ${this.renderMetadata()}
-      ${this.renderSpec()}
-      ${this.renderStatus()}
-      ${this.renderData()}
-      ${this.renderAdditionalSections()}
+      <div class="pod-details-content">
+        <div class="detail-sections">
+          ${this.renderMetadata()}
+          ${this.renderSpec()}
+          ${this.renderStatus()}
+          ${this.renderData()}
+          ${this.renderAdditionalSections()}
+        </div>
+      </div>
     `;
   }
 
@@ -264,83 +372,43 @@ export class ResourceDetailView extends LitElement {
     const metadata = this.resource.metadata;
     if (!metadata) return null;
 
+    // Separate labels and annotations for better organization
+    const hasLabels = metadata.labels && Object.keys(metadata.labels).length > 0;
+    const hasAnnotations = metadata.annotations && Object.keys(metadata.annotations).length > 0;
+
     return html`
+      <!-- Basic Metadata -->
       <div class="detail-section">
-        <h3 class="section-title">
-          <svg class="section-icon" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M8 1a7 7 0 100 14A7 7 0 008 1zM3 8a5 5 0 1110 0A5 5 0 013 8z"/>
-            <path d="M8 4a.5.5 0 01.5.5v3h3a.5.5 0 010 1h-3.5a.5.5 0 01-.5-.5v-3.5A.5.5 0 018 4z"/>
-          </svg>
-          Metadata
-        </h3>
-        
-        <div class="detail-item">
-          <span class="detail-key">Name:</span>
-          <span class="detail-value mono">${metadata.name}</span>
-        </div>
-        
-        ${metadata.namespace ? html`
-          <div class="detail-item">
-            <span class="detail-key">Namespace:</span>
-            <span class="detail-value mono">${metadata.namespace}</span>
-          </div>
-        ` : ''}
-        
-        ${metadata.uid ? html`
-          <div class="detail-item">
-            <span class="detail-key">UID:</span>
-            <span class="detail-value mono">${metadata.uid}</span>
-          </div>
-        ` : ''}
-        
-        ${metadata.resourceVersion ? html`
-          <div class="detail-item">
-            <span class="detail-key">Resource Version:</span>
-            <span class="detail-value mono">${metadata.resourceVersion}</span>
-          </div>
-        ` : ''}
-        
-        ${metadata.creationTimestamp ? html`
-          <div class="detail-item">
-            <span class="detail-key">Created:</span>
-            <span class="detail-value timestamp">
-              ${this.formatTimestamp(metadata.creationTimestamp)}
-            </span>
-          </div>
-        ` : ''}
-        
-        ${metadata.labels && Object.keys(metadata.labels).length > 0 ? html`
-          <div class="detail-item">
-            <span class="detail-key">Labels:</span>
-            <div class="detail-value">
-              <div class="label-container">
-                ${Object.entries(metadata.labels).map(([key, value]) => html`
-                  <span class="label-item">
-                    <span class="label-key">${key}:</span>
-                    ${value}
-                  </span>
-                `)}
-              </div>
-            </div>
-          </div>
-        ` : ''}
-        
-        ${metadata.annotations && Object.keys(metadata.annotations).length > 0 ? html`
-          <div class="detail-item">
-            <span class="detail-key">Annotations:</span>
-            <div class="detail-value">
-              <div class="annotation-container">
-                ${Object.entries(metadata.annotations).map(([key, value]) => html`
-                  <span class="annotation-item" title="${value}">
-                    <span class="annotation-key">${key}:</span>
-                    ${this.truncateString(value as string, 50)}
-                  </span>
-                `)}
-              </div>
-            </div>
-          </div>
-        ` : ''}
+        <h3>Basic Information</h3>
+        ${this.renderDetailItem('Name', metadata.name)}
+        ${metadata.namespace ? this.renderDetailItem('Namespace', metadata.namespace) : ''}
+        ${metadata.uid ? this.renderDetailItem('UID', metadata.uid) : ''}
+        ${metadata.resourceVersion ? this.renderDetailItem('Resource Version', metadata.resourceVersion) : ''}
+        ${metadata.creationTimestamp ? 
+          this.renderDetailItem('Creation Timestamp', this.formatTimestamp(metadata.creationTimestamp)) : ''}
+        ${metadata.creationTimestamp ? 
+          this.renderDetailItem('Age', this.formatTimestamp(metadata.creationTimestamp)) : ''}
       </div>
+
+      <!-- Labels -->
+      ${hasLabels ? html`
+        <div class="detail-section">
+          <h3>Labels</h3>
+          ${Object.entries(metadata.labels).map(([key, value]) => 
+            this.renderDetailItem(key, value as string)
+          )}
+        </div>
+      ` : ''}
+
+      <!-- Annotations -->
+      ${hasAnnotations ? html`
+        <div class="detail-section">
+          <h3>Annotations</h3>
+          ${Object.entries(metadata.annotations).map(([key, value]) => 
+            this.renderDetailItem(key, value as string)
+          )}
+        </div>
+      ` : ''}
     `;
   }
 
@@ -350,13 +418,8 @@ export class ResourceDetailView extends LitElement {
 
     return html`
       <div class="detail-section">
-        <h3 class="section-title">
-          <svg class="section-icon" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 01-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 01.872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 012.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 012.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 01.872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 01-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 01-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 100-5.86 2.929 2.929 0 000 5.858z"/>
-          </svg>
-          Specification
-        </h3>
-        ${this.renderObject(spec)}
+        <h3>Specification</h3>
+        ${this.renderObjectAsDetailItems(spec)}
       </div>
     `;
   }
@@ -365,16 +428,25 @@ export class ResourceDetailView extends LitElement {
     const status = this.resource.status;
     if (!status || Object.keys(status).length === 0) return null;
 
+    // Special handling for conditions if present
+    const conditions = status.conditions;
+    const statusWithoutConditions = { ...status };
+    delete statusWithoutConditions.conditions;
+
     return html`
       <div class="detail-section">
-        <h3 class="section-title">
-          <svg class="section-icon" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M8 16A8 8 0 108 0a8 8 0 000 16zm.93-9.412l-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 110-2 1 1 0 010 2z"/>
-          </svg>
-          Status
-        </h3>
-        ${this.renderObject(status, true)}
+        <h3>Status</h3>
+        ${this.renderObjectAsDetailItems(statusWithoutConditions, true)}
       </div>
+      
+      ${conditions && conditions.length > 0 ? html`
+        <div class="detail-section">
+          <h3>Conditions</h3>
+          ${conditions.map((condition: any) => 
+            this.renderConditionDetails(condition)
+          )}
+        </div>
+      ` : ''}
     `;
   }
 
@@ -384,14 +456,8 @@ export class ResourceDetailView extends LitElement {
 
     return html`
       <div class="detail-section">
-        <h3 class="section-title">
-          <svg class="section-icon" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M14 4.5V14a2 2 0 01-2 2H4a2 2 0 01-2-2V2a2 2 0 012-2h5.5L14 4.5zm-3 0A1.5 1.5 0 019.5 3V1H4a1 1 0 00-1 1v12a1 1 0 001 1h8a1 1 0 001-1V4.5h-2z"/>
-            <path d="M4.5 12.5A.5.5 0 015 12h3a.5.5 0 010 1H5a.5.5 0 01-.5-.5zm0-2A.5.5 0 015 10h6a.5.5 0 010 1H5a.5.5 0 01-.5-.5zm0-2A.5.5 0 015 8h6a.5.5 0 010 1H5a.5.5 0 01-.5-.5zm0-2A.5.5 0 015 6h3a.5.5 0 010 1H5a.5.5 0 01-.5-.5z"/>
-          </svg>
-          Data
-        </h3>
-        ${this.renderObject(data)}
+        <h3>Data</h3>
+        ${this.renderObjectAsDetailItems(data)}
       </div>
     `;
   }
@@ -405,12 +471,23 @@ export class ResourceDetailView extends LitElement {
       if (!excludedKeys.includes(key) && value && typeof value === 'object') {
         additionalSections.push(html`
           <div class="detail-section">
-            <h3 class="section-title">${this.formatKey(key)}</h3>
-            ${this.renderObject(value)}
+            <h3>${this.formatKey(key)}</h3>
+            ${this.renderObjectAsDetailItems(value)}
           </div>
         `);
       }
     });
+
+    // Add Raw Data section at the end
+    additionalSections.push(html`
+      <div class="detail-section">
+        <h3>Raw Data</h3>
+        <details>
+          <summary>View raw resource data</summary>
+          <pre class="raw-data">${JSON.stringify(this.resource, null, 2)}</pre>
+        </details>
+      </div>
+    `);
 
     return additionalSections;
   }
@@ -615,9 +692,226 @@ export class ResourceDetailView extends LitElement {
     return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value);
   }
 
-  private truncateString(str: string, maxLength: number): string {
-    if (str.length <= maxLength) return str;
-    return str.substring(0, maxLength) + '...';
+  private renderObjectAsDetailItems(obj: any, isStatus = false): TemplateResult[] {
+    const results: TemplateResult[] = [];
+    
+    Object.entries(obj).forEach(([key, value]) => {
+      if (value === null || value === undefined) {
+        results.push(this.renderDetailItem(this.formatKey(key), null));
+      } else if (Array.isArray(value)) {
+        if (value.length === 0) {
+          results.push(this.renderDetailItem(this.formatKey(key), 'Empty array'));
+        } else if (typeof value[0] === 'object') {
+          // For array of objects, render as nested items
+          results.push(html`
+            <div class="detail-item nested">
+              <strong class="detail-key">${this.formatKey(key)}:</strong>
+              <div class="nested-content">
+                ${value.map((item, index) => html`
+                  <div class="detail-item nested">
+                    <strong class="detail-key">Item ${index + 1}:</strong>
+                    <div class="nested-content">
+                      ${this.renderObjectAsDetailItems(item)}
+                    </div>
+                  </div>
+                `)}
+              </div>
+            </div>
+          `);
+        } else {
+          // For simple arrays, render as comma-separated list
+          results.push(this.renderDetailItem(this.formatKey(key), value.join(', ')));
+        }
+      } else if (typeof value === 'object') {
+        // For nested objects, use the nested style
+        results.push(this.renderNestedObject(this.formatKey(key), value));
+      } else {
+        // For simple values
+        if (isStatus && (key === 'phase' || key === 'state' || key === 'status')) {
+          results.push(html`
+            <div class="detail-item">
+              <strong class="detail-key">${this.formatKey(key)}:</strong>
+              <span class="detail-value">
+                <span class="status-badge ${value.toString().toLowerCase()}">${value}</span>
+              </span>
+            </div>
+          `);
+        } else {
+          results.push(this.renderDetailItem(this.formatKey(key), value));
+        }
+      }
+    });
+    
+    return results;
+  }
+
+  private renderPodDetails() {
+    const metadata = this.resource.metadata || {};
+    const spec = this.resource.spec || {};
+    const status = this.resource.status || {};
+
+    return html`
+      <div class="pod-details-content">
+        <div class="detail-sections">
+          <!-- Basic Information -->
+          <div class="detail-section">
+            <h3>Basic Information</h3>
+            ${this.renderDetailItem('Name', metadata.name)}
+            ${this.renderDetailItem('Namespace', metadata.namespace)}
+            ${this.renderDetailItem('UID', metadata.uid)}
+            ${this.renderDetailItem('Resource Version', metadata.resourceVersion)}
+            ${this.renderDetailItem('Creation Timestamp', metadata.creationTimestamp ? this.formatTimestamp(metadata.creationTimestamp) : null)}
+            ${this.renderDetailItem('Age', metadata.creationTimestamp ? this.formatTimestamp(metadata.creationTimestamp) : null)}
+          </div>
+
+          <!-- Status Information -->
+          <div class="detail-section">
+            <h3>Status</h3>
+            ${this.renderDetailItem('Phase', status.phase)}
+            ${this.renderDetailItem('QoS Class', status.qosClass)}
+            ${this.renderDetailItem('Start Time', status.startTime ? this.formatTimestamp(status.startTime) : null)}
+          </div>
+
+          <!-- Network Information -->
+          <div class="detail-section">
+            <h3>Network</h3>
+            ${this.renderDetailItem('Pod IP', status.podIP)}
+            ${this.renderDetailItem('Host IP', status.hostIP)}
+            ${spec.nodeName ? this.renderDetailItem('Node', spec.nodeName) : ''}
+          </div>
+
+          <!-- Configuration -->
+          <div class="detail-section">
+            <h3>Configuration</h3>
+            ${this.renderDetailItem('Restart Policy', spec.restartPolicy)}
+            ${this.renderDetailItem('DNS Policy', spec.dnsPolicy)}
+            ${this.renderDetailItem('Service Account', spec.serviceAccount || spec.serviceAccountName || 'default')}
+            ${spec.nodeSelector && Object.keys(spec.nodeSelector).length > 0 ? 
+              this.renderNestedObject('Node Selector', spec.nodeSelector) : ''}
+          </div>
+
+          <!-- Labels -->
+          ${metadata.labels && Object.keys(metadata.labels).length > 0 ? html`
+            <div class="detail-section">
+              <h3>Labels</h3>
+              ${Object.entries(metadata.labels).map(([key, value]) => 
+                this.renderDetailItem(key, value as string)
+              )}
+            </div>
+          ` : ''}
+
+          <!-- Annotations -->
+          ${metadata.annotations && Object.keys(metadata.annotations).length > 0 ? html`
+            <div class="detail-section">
+              <h3>Annotations</h3>
+              ${Object.entries(metadata.annotations).map(([key, value]) => 
+                this.renderDetailItem(key, value as string)
+              )}
+            </div>
+          ` : ''}
+
+          <!-- Containers -->
+          ${spec.containers && spec.containers.length > 0 ? html`
+            <div class="detail-section">
+              <h3>Containers</h3>
+              ${spec.containers.map((container: any, index: number) => 
+                this.renderContainerDetails(container, index + 1, status.containerStatuses)
+              )}
+            </div>
+          ` : ''}
+
+          <!-- Conditions -->
+          ${status.conditions && status.conditions.length > 0 ? html`
+            <div class="detail-section">
+              <h3>Conditions</h3>
+              ${status.conditions.map((condition: any) => 
+                this.renderConditionDetails(condition)
+              )}
+            </div>
+          ` : ''}
+
+          <!-- Raw Data -->
+          <div class="detail-section">
+            <h3>Raw Data</h3>
+            <details>
+              <summary>View raw pod data</summary>
+              <pre class="raw-data">${JSON.stringify(this.resource, null, 2)}</pre>
+            </details>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  private renderDetailItem(key: string, value: any) {
+    if (value === null || value === undefined) {
+      return html`
+        <div class="detail-item">
+          <strong class="detail-key">${key}:</strong>
+          <span class="detail-value null">null</span>
+        </div>
+      `;
+    }
+    return html`
+      <div class="detail-item">
+        <strong class="detail-key">${key}:</strong>
+        <span class="detail-value">${value}</span>
+      </div>
+    `;
+  }
+
+  private renderNestedObject(title: string, obj: any) {
+    return html`
+      <div class="detail-item nested">
+        <strong class="detail-key">${title}:</strong>
+        <div class="nested-content">
+          ${Object.entries(obj).map(([key, value]) => html`
+            <div class="detail-item">
+              <strong class="detail-key">${key}:</strong>
+              <span class="detail-value">${value}</span>
+            </div>
+          `)}
+        </div>
+      </div>
+    `;
+  }
+
+  private renderContainerDetails(container: any, index: number, containerStatuses: any[] = []) {
+    const containerStatus = containerStatuses?.find(cs => cs.name === container.name);
+    
+    return html`
+      <div class="detail-item nested">
+        <strong class="detail-key">Container ${index}:</strong>
+        <div class="nested-content">
+          ${this.renderDetailItem('Name', container.name)}
+          ${this.renderDetailItem('Image', container.image)}
+          ${containerStatus ? html`
+            ${this.renderDetailItem('Ready', containerStatus.ready)}
+            ${this.renderDetailItem('Restart Count', containerStatus.restartCount)}
+            ${containerStatus.state ? this.renderDetailItem('State', Object.keys(containerStatus.state)[0]) : ''}
+          ` : html`
+            ${this.renderDetailItem('Ready', null)}
+            ${this.renderDetailItem('Restart Count', null)}
+            ${this.renderDetailItem('State', null)}
+          `}
+        </div>
+      </div>
+    `;
+  }
+
+  private renderConditionDetails(condition: any) {
+    return html`
+      <div class="detail-item nested">
+        <strong class="detail-key">${condition.type}:</strong>
+        <div class="nested-content">
+          ${this.renderDetailItem('Status', condition.status)}
+          ${condition.lastProbeTime ? this.renderDetailItem('Last Probe Time', this.formatTimestamp(condition.lastProbeTime)) : ''}
+          ${this.renderDetailItem('Last Transition Time', condition.lastTransitionTime ? this.formatTimestamp(condition.lastTransitionTime) : null)}
+          ${this.renderDetailItem('Reason', condition.reason || null)}
+          ${this.renderDetailItem('Message', condition.message || null)}
+        </div>
+      </div>
+    `;
   }
 }
 

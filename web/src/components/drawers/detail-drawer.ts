@@ -8,6 +8,12 @@ export class DetailDrawer extends LitElement {
   @property({ type: Boolean }) loading = false;
   @property({ type: Number }) width = 600;
 
+  private handleKeyDown = (event: KeyboardEvent) => {
+    if (event.key === 'Escape' && this.show) {
+      this.handleClose();
+    }
+  };
+
   static override styles = css`
     .drawer {
       position: fixed;
@@ -18,8 +24,8 @@ export class DetailDrawer extends LitElement {
       border-left: 0.5px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
       z-index: 1001;
-      overflow-y: auto;
-      padding: 20px;
+      display: flex;
+      flex-direction: column;
       animation: slideIn 0.3s ease-out;
     }
 
@@ -50,8 +56,14 @@ export class DetailDrawer extends LitElement {
       background-color: var(--hover-bg);
     }
 
+    .drawer-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      flex-shrink: 0;
+    }
+
     h2 {
-      margin: 0 0 20px 0;
+      margin: 0;
       padding: 0;
       font-size: 18px;
       font-weight: 600;
@@ -60,6 +72,10 @@ export class DetailDrawer extends LitElement {
 
     .drawer-content {
       font-size: 0.875rem;
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      padding-bottom: 40px; /* Extra padding at bottom to ensure last content is visible */
     }
   `;
 
@@ -70,6 +86,16 @@ export class DetailDrawer extends LitElement {
     }));
   }
 
+  override connectedCallback() {
+    super.connectedCallback();
+    window.addEventListener('keydown', this.handleKeyDown);
+  }
+
+  override disconnectedCallback() {
+    super.disconnectedCallback();
+    window.removeEventListener('keydown', this.handleKeyDown);
+  }
+
   override render() {
     if (!this.show) {
       return null;
@@ -77,8 +103,10 @@ export class DetailDrawer extends LitElement {
 
     return html`
       <div class="drawer" style="width: ${this.width}px">
-        <button class="close-button" @click=${this.handleClose}>×</button>
-        <h2>${this.title}</h2>
+        <div class="drawer-header">
+          <button class="close-button" @click=${this.handleClose}>×</button>
+          <h2>${this.title}</h2>
+        </div>
         <div class="drawer-content">
           ${this.loading ? html`
             <loading-state message="Loading details..."></loading-state>
