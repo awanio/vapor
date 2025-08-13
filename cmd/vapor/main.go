@@ -17,6 +17,7 @@ import (
 	"github.com/awanio/vapor/internal/common"
 	"github.com/awanio/vapor/internal/config"
 	"github.com/awanio/vapor/internal/database"
+	"github.com/awanio/vapor/internal/database/migrations"
 	"github.com/awanio/vapor/internal/docker"
 	"github.com/awanio/vapor/internal/libvirt"
 	"github.com/awanio/vapor/internal/logs"
@@ -67,10 +68,8 @@ func main() {
 	}
 	defer db.Close()
 
-	// Run migrations
-	allMigrations := []database.Migration{}
-	allMigrations = append(allMigrations, database.GetMigrations()...)
-	allMigrations = append(allMigrations, ansible.GetMigrations()...)
+	// Run all migrations from centralized location
+	allMigrations := migrations.GetAllMigrations()
 	if err := db.Migrate(allMigrations); err != nil {
 		log.Fatalf("Failed to run database migrations: %v", err)
 	}
