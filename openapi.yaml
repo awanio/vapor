@@ -2083,7 +2083,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /storage/pools:
+  /virtualization/storages/pools:
     get:
       summary: List all storage pools
       tags:
@@ -2124,7 +2124,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /storage/pools/{name}:
+  /virtualization/storages/pools/{name}:
     get:
       summary: Get storage pool details
       tags:
@@ -2177,7 +2177,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /storage/pools/{pool_name}/volumes:
+  /virtualization/storages/pools/{pool_name}/volumes:
     get:
       summary: List all volumes in a storage pool
       tags:
@@ -2236,7 +2236,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /storage/pools/{pool_name}/volumes/{vol_name}:
+  /virtualization/storages/pools/{pool_name}/volumes/{vol_name}:
     get:
       summary: Get storage volume details
       tags:
@@ -2295,27 +2295,459 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /networks:
-    get:
-      summary: List all virtual networks
+  /virtualization/storages/isos/upload:
+    post:
+      summary: Create ISO upload session (TUS)
+      description: |
+        Create a new resumable upload session for ISO images using TUS protocol.
+        
+        This endpoint follows TUS protocol v1.0.0 for resumable uploads.
+        
+        Required headers:
+        - Upload-Length: Total size of the ISO file in bytes
+        - Upload-Metadata: Base64-encoded metadata (filename, os_type, os_variant, architecture, description, tags)
+        
+        Example Upload-Metadata header:
+        ```
+        Upload-Metadata: filename dWJ1bnR1LTIyLjA0LWRlc2t0b3AtYW1kNjQuaXNv,os_type bGludXg=,os_variant dWJ1bnR1MjIuMDQ=
+        ```
       tags:
-        - Virtualization
+        - Virtualization/Storage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: Upload-Length
+          in: header
+          required: true
+          description: Total size of the ISO file in bytes
+          schema:
+            type: integer
+        - name: Upload-Metadata
+          in: header
+          required: false
+          description: Base64-encoded metadata about the ISO
+          schema:
+            type: string
+        - name: Tus-Resumable
+          in: header
+          required: false
+          description: TUS protocol version (1.0.0)
+          schema:
+            type: string
+            default: "1.0.0"
+      responses:
+        '201':
+          description: Upload session created successfully
+          headers:
+            Location:
+              description: URL of the created upload session
+              schema:
+                type: string
+            Upload-Offset:
+              description: Current upload offset (0 for new upload)
+              schema:
+                type: string
+            Tus-Resumable:
+              description: TUS protocol version
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  upload_id:
+                    type: string
+                    description: Unique identifier for the upload session
+                  upload_url:
+                    type: string
+                    description: URL to upload chunks to
+                  expires_at:
+                    type: string
+                    format: date-time
+                    description: When the upload session expires
+                  metadata:
+                    type: object
+                    properties:
+                      filename:
+                        type: string
+                      size:
+                        type: integer
+                      os_type:
+                        type: string
+                      os_variant:
+                        type: string
+                      architecture:
+                        type: string
+                      description:
+                        type: string
+        '400':
+          description: Invalid request (missing headers or invalid metadata)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: File size exceeds maximum allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: List active ISO upload sessions
+      description: Get a list of all active ISO upload sessions for the current user
+      tags:
+        - Virtualization/Storage
       security:
         - bearerAuth: []
       responses:
         '200':
-          description: A list of virtual networks
+          description: Upload sessions listed successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/VirtualNetworksResponse'
+                type: object
+                properties:
+                  uploads:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        upload_id:
+                          type: string
+                        filename:
+                          type: string
+                        status:
+                          type: string
+                          enum: [created, in_progress, completed, failed, cancelled]
+                        progress:
+                          type: string
+                          example: "45.50%"
+                        total_size:
+                          type: integer
+                        uploaded_size:
+                          type: integer
+                        created_at:
+                          type: string
+                          format: date-time
+                        expires_at:
+                          type: string
+                          format: date-time
+                  count:
+                    type: integer
+                    description: Total number of active uploads
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /virtualization/storages/isos/upload/{id}:
+    head:
+      summary: Get upload session info (TUS)
+      description: |
+        Get information about a resumable upload session for ISO images.
+        This follows TUS protocol for HEAD requests.
+      tags:
+        - Virtualization/Storage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Upload session ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Upload session info retrieved
+          headers:
+            Upload-Offset:
+              description: Current upload offset in bytes
+              schema:
+                type: string
+            Upload-Length:
+              description: Total size of the file in bytes
+              schema:
+                type: string
+            Cache-Control:
+              description: Cache control header
+              schema:
+                type: string
+                default: no-store
+            Tus-Resumable:
+              description: TUS protocol version
+              schema:
+                type: string
+        '404':
+          description: Upload session not found
+
+    patch:
+      summary: Upload ISO chunk (TUS)
+      description: |
+        Upload a chunk of data for an ISO file using TUS protocol.
+        
+        Required headers:
+        - Upload-Offset: Current offset in bytes
+        - Content-Type: Must be "application/offset+octet-stream"
+        
+        The request body should contain the raw binary data of the chunk.
+      tags:
+        - Virtualization/Storage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Upload session ID
+          schema:
+            type: string
+        - name: Upload-Offset
+          in: header
+          required: true
+          description: Current offset in bytes
+          schema:
+            type: integer
+        - name: Content-Type
+          in: header
+          required: true
+          description: Must be application/offset+octet-stream
+          schema:
+            type: string
+            enum: [application/offset+octet-stream]
+        - name: Tus-Resumable
+          in: header
+          required: false
+          description: TUS protocol version
+          schema:
+            type: string
+            default: "1.0.0"
+      requestBody:
+        required: true
+        content:
+          application/offset+octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '204':
+          description: Chunk uploaded successfully
+          headers:
+            Upload-Offset:
+              description: New upload offset after this chunk
+              schema:
+                type: string
+            Tus-Resumable:
+              description: TUS protocol version
+              schema:
+                type: string
+        '400':
+          description: Invalid chunk or headers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Upload session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Offset mismatch or upload already completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '410':
+          description: Upload session expired or cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: Get ISO upload status
+      description: Get detailed status of an ISO upload session
+      tags:
+        - Virtualization/Storage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Upload session ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Upload status retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  upload_id:
+                    type: string
+                  status:
+                    type: string
+                    enum: [created, in_progress, completed, failed, cancelled]
+                  total_size:
+                    type: integer
+                  uploaded_size:
+                    type: integer
+                  progress:
+                    type: string
+                    example: "75.25%"
+                  metadata:
+                    type: object
+                    properties:
+                      filename:
+                        type: string
+                      os_type:
+                        type: string
+                      os_variant:
+                        type: string
+                      architecture:
+                        type: string
+                      description:
+                        type: string
+                      tags:
+                        type: string
+                  created_at:
+                    type: string
+                    format: date-time
+                  updated_at:
+                    type: string
+                    format: date-time
+                  expires_at:
+                    type: string
+                    format: date-time
+        '404':
+          description: Upload session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Cancel ISO upload session
+      description: Cancel and delete an ISO upload session, removing any uploaded data
+      tags:
+        - Virtualization/Storage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Upload session ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Upload session cancelled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Upload cancelled successfully"
+                  upload_id:
+                    type: string
+        '404':
+          description: Upload session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /virtualization/storages/isos/upload/{id}/complete:
+    post:
+      summary: Complete ISO upload and register
+      description: |
+        Complete the upload session and register the ISO in the system.
+        This will move the ISO to the final storage location and make it available for VM creation.
+      tags:
+        - Virtualization/Storage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Upload session ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Upload completed and ISO registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      upload_id:
+                        type: string
+                      iso:
+                        $ref: '#/components/schemas/ISOImage'
+                      message:
+                        type: string
+                        example: "ISO uploaded and registered successfully"
+        '400':
+          description: Upload not complete or invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Upload session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Failed to register ISO
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /virtualization/networks:
+    get:
+      summary: List all virtual networks
+      tags:
+        - Virtualization/Networks
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Networks listed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  networks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/VirtualNetwork'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    
     post:
       summary: Create a new virtual network
       tags:
-        - Virtualization
+        - Virtualization/Networks
       security:
         - bearerAuth: []
       requestBody:
@@ -2336,7 +2768,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /networks/{name}:
+  /virtualization/networks/{name}:
     get:
       summary: Get virtual network details
       tags:
@@ -3614,7 +4046,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedError'
   
-  /virtualmachines:
+  /virtualization/virtualmachines:
     get:
       summary: List all virtual machines
       tags:
@@ -3655,7 +4087,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualmachines/{id}:
+  /virtualization/virtualmachines/{id}:
     get:
       summary: Get virtual machine details
       tags:
@@ -3741,7 +4173,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualmachines/{id}/migrate:
+  /virtualization/virtualmachines/{id}/migrate:
     post:
       summary: Migrate VM to another host
       description: |
@@ -3813,7 +4245,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualmachines/{id}/migration/status:
+  /virtualization/virtualmachines/{id}/migration/status:
     get:
       summary: Get migration status
       description: Check the status of an ongoing VM migration
@@ -3846,7 +4278,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualmachines/pci-devices:
+  /virtualization/virtualmachines/pci-devices:
     get:
       summary: List available PCI devices
       description: |
@@ -3879,7 +4311,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualmachines/{id}/pci-devices:
+  /virtualization/virtualmachines/{id}/pci-devices:
     post:
       summary: Attach PCI device to VM
       description: |
@@ -3927,7 +4359,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualmachines/{id}/pci-devices/{device_id}:
+  /virtualization/virtualmachines/{id}/pci-devices/{device_id}:
     delete:
       summary: Detach PCI device from VM
       description: |
@@ -3965,7 +4397,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualmachines/{id}/hotplug:
+  /virtualization/virtualmachines/{id}/hotplug:
     post:
       summary: Hotplug resources to VM
       description: |
@@ -4019,7 +4451,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualmachines/{id}/snapshots/capabilities:
+  /virtualization/virtualmachines/{id}/snapshots/capabilities:
     get:
       summary: Check VM snapshot capabilities
       description: |
@@ -4053,7 +4485,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualmachines/{id}/snapshots:
+  /virtualization/virtualmachines/{id}/snapshots:
     get:
       summary: List VM snapshots
       description: Retrieve all snapshots for a specific virtual machine
@@ -4196,7 +4628,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualmachines/{id}/snapshots/{snapshot}:
+  /virtualization/virtualmachines/{id}/snapshots/{snapshot}:
     get:
       summary: Get snapshot details
       description: Retrieve details of a specific VM snapshot
@@ -4257,7 +4689,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualmachines/{id}/snapshots/{snapshot}/revert:
+  /virtualization/virtualmachines/{id}/snapshots/{snapshot}/revert:
     post:
       summary: Revert to snapshot
       description: |
@@ -4305,7 +4737,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualmachines/{id}/backups:
+  /virtualization/virtualmachines/{id}/backups:
     get:
       summary: List VM backups
       description: List all backups for a specific virtual machine
@@ -4383,7 +4815,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualmachines/restore:
+  /virtualization/virtualmachines/restore:
     post:
       summary: Restore VM from backup
       description: |
@@ -4427,7 +4859,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualmachines/backups/{backup_id}:
+  /virtualization/virtualmachines/backups/{backup_id}:
     delete:
       summary: Delete VM backup
       description: Delete a specific VM backup
@@ -4454,7 +4886,320 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualmachines/create-enhanced:
+  /virtualization/virtualmachines/templates:
+    get:
+      summary: List VM templates
+      description: |
+        List all available VM templates from the system.
+        
+        Templates provide pre-configured VM specifications that can be used
+        to quickly create new virtual machines with optimal settings for
+        specific operating systems and use cases.
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Templates listed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  templates:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/VMTemplate'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    
+    post:
+      summary: Create VM template
+      description: |
+        Create a new VM template with specific requirements and recommendations.
+        
+        Templates define minimum and recommended specifications for VMs,
+        including memory, CPU, disk, and optional features like UEFI boot,
+        Secure Boot, and TPM support.
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VMTemplateCreateRequest'
+      responses:
+        '201':
+          description: Template created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VMTemplate'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Template with same name already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /virtualization/virtualmachines/templates/{id}:
+    get:
+      summary: Get VM template details
+      description: Get detailed information about a specific VM template
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Template ID
+      responses:
+        '200':
+          description: Template details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VMTemplate'
+        '404':
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    
+    put:
+      summary: Update VM template
+      description: Update an existing VM template
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Template ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VMTemplateUpdateRequest'
+      responses:
+        '200':
+          description: Template updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VMTemplate'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    
+    delete:
+      summary: Delete VM template
+      description: Delete a VM template from the system
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Template ID
+      responses:
+        '204':
+          description: Template deleted successfully
+        '404':
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /virtualization/virtualmachines/from-template:
+    post:
+      summary: Create VM from template
+      description: |
+        Create a new virtual machine using a predefined template.
+        
+        The template provides base specifications including minimum and recommended
+        values for memory, vCPUs, and disk size. User-provided values will override
+        template recommendations but must meet minimum requirements.
+        
+        **Template Application:**
+        - If user values are not provided, template recommended values are used
+        - If template has no recommendation, minimum values are used
+        - User values are validated against template minimum requirements
+        - Template settings for OS, network, graphics, and cloud-init are applied
+      tags:
+        - Virtualization
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - template_id
+                - name
+              properties:
+                template_id:
+                  type: integer
+                  description: Template ID to use for VM creation
+                  example: 1
+                name:
+                  type: string
+                  description: Name for the new VM
+                  example: "my-ubuntu-vm"
+                memory:
+                  type: integer
+                  description: Memory in MB (overrides template recommendation, must meet minimum)
+                  example: 4096
+                vcpus:
+                  type: integer
+                  description: Number of vCPUs (overrides template recommendation, must meet minimum)
+                  example: 2
+                disk_size:
+                  type: integer
+                  description: Disk size in GB (overrides template recommendation, must meet minimum)
+                  example: 50
+                network:
+                  type: object
+                  description: Network configuration (overrides template defaults)
+                  properties:
+                    type:
+                      type: string
+                      enum: [bridge, nat, direct, user]
+                      description: Network type
+                    source:
+                      type: string
+                      description: Network source (bridge name, network name, etc.)
+                    model:
+                      type: string
+                      enum: [virtio, e1000, rtl8139]
+                      description: Network adapter model
+                    mac:
+                      type: string
+                      description: MAC address (auto-generated if not specified)
+                graphics:
+                  type: object
+                  description: Graphics configuration (overrides template defaults)
+                  properties:
+                    type:
+                      type: string
+                      enum: [vnc, spice, none]
+                      description: Graphics type
+                    port:
+                      type: integer
+                      description: Graphics port (auto-assigned if -1 or not specified)
+                    listen:
+                      type: string
+                      description: Listen address
+                      default: "0.0.0.0"
+                    password:
+                      type: string
+                      description: Graphics password for authentication
+                cloud_init:
+                  type: object
+                  description: Cloud-init configuration (if template supports cloud-init)
+                  properties:
+                    users:
+                      type: array
+                      description: Users to create
+                      items:
+                        type: object
+                        properties:
+                          name:
+                            type: string
+                          password:
+                            type: string
+                          ssh_keys:
+                            type: array
+                            items:
+                              type: string
+                          sudo:
+                            type: string
+                          groups:
+                            type: string
+                          shell:
+                            type: string
+                    hostname:
+                      type: string
+                      description: Hostname to set
+                    packages:
+                      type: array
+                      description: Packages to install
+                      items:
+                        type: string
+                    runcmd:
+                      type: array
+                      description: Commands to run on first boot
+                      items:
+                        type: string
+                metadata:
+                  type: object
+                  description: Additional metadata for the VM
+                  additionalProperties:
+                    type: string
+      responses:
+        '201':
+          description: VM created successfully from template
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VMCreateResponse'
+        '400':
+          description: |
+            Bad request - validation error.
+            This can occur when:
+            - Required fields are missing
+            - User values don't meet template minimum requirements
+            - Invalid configuration provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /virtualization/virtualmachines/create-enhanced:
     post:
       summary: Create VM with enhanced configuration
       description: |
@@ -4497,7 +5242,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualmachines/isos:
+  /virtualization/storages/isos:
     get:
       summary: List available ISO images
       description: |
@@ -4580,7 +5325,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualmachines/isos/{id}:
+  /virtualization/storages/isos/{id}:
     delete:
       summary: Delete ISO image
       description: Delete an ISO image from the system
@@ -4600,433 +5345,6 @@ paths:
           description: ISO deleted successfully
         '404':
           description: ISO not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-  /virtualmachines/isos/upload:
-    post:
-      summary: Create resumable ISO upload session
-      description: |
-        Create a new resumable upload session for ISO images using TUS protocol.
-        
-        **TUS Protocol Benefits:**
-        - Resume interrupted uploads
-        - Upload large ISO files reliably
-        - Monitor upload progress
-        - Automatic retry on network failures
-        
-        **Workflow:**
-        1. Create upload session with this endpoint
-        2. Upload file chunks using PATCH to the returned upload URL
-        3. Complete the upload to register the ISO
-        
-        **File Size Limits:**
-        - Maximum file size: 50GB
-        - Minimum chunk size: 1MB
-        - Maximum chunk size: 50MB
-      tags:
-        - Virtualization
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: Upload-Length
-          in: header
-          required: true
-          description: Total size of the ISO file in bytes
-          schema:
-            type: integer
-            format: int64
-            example: 1474560000
-        - name: Upload-Metadata
-          in: header
-          required: false
-          description: |
-            Base64-encoded metadata about the upload.
-            Format: key1 base64Value1,key2 base64Value2
-            Supported keys: filename, description, os_type, os_variant
-          schema:
-            type: string
-            example: "filename aXNvLXVidW50dS0yMi4wNC5pc28=,os_type bGludXg="
-        - name: Tus-Resumable
-          in: header
-          required: false
-          description: TUS protocol version (should be 1.0.0)
-          schema:
-            type: string
-            default: "1.0.0"
-      responses:
-        '201':
-          description: Upload session created successfully
-          headers:
-            Location:
-              description: URL for the upload session
-              schema:
-                type: string
-                example: "/api/v1/virtualmachines/isos/upload/550e8400-e29b-41d4-a716-446655440000"
-            Upload-Offset:
-              description: Current upload offset (starts at 0)
-              schema:
-                type: integer
-                example: 0
-            Tus-Resumable:
-              description: TUS protocol version
-              schema:
-                type: string
-                example: "1.0.0"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ISOUploadSessionResponse'
-        '400':
-          description: Invalid upload request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '413':
-          description: File too large (exceeds 50GB limit)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-    get:
-      summary: List active ISO upload sessions
-      description: List all active resumable ISO upload sessions for the current user
-      tags:
-        - Virtualization
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Upload sessions listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ISOUploadSessionsListResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-  /virtualmachines/isos/upload/{upload_id}:
-    head:
-      summary: Get ISO upload session info
-      description: |
-        Get information about a resumable upload session.
-        Used by TUS clients to resume interrupted uploads.
-      tags:
-        - Virtualization
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: upload_id
-          in: path
-          required: true
-          description: Upload session ID
-          schema:
-            type: string
-            example: "550e8400-e29b-41d4-a716-446655440000"
-        - name: Tus-Resumable
-          in: header
-          required: false
-          description: TUS protocol version
-          schema:
-            type: string
-            default: "1.0.0"
-      responses:
-        '200':
-          description: Upload session info retrieved successfully
-          headers:
-            Upload-Offset:
-              description: Current upload offset in bytes
-              schema:
-                type: integer
-                example: 524288000
-            Upload-Length:
-              description: Total file size in bytes
-              schema:
-                type: integer
-                example: 1474560000
-            Tus-Resumable:
-              description: TUS protocol version
-              schema:
-                type: string
-                example: "1.0.0"
-            Upload-Metadata:
-              description: Base64-encoded metadata
-              schema:
-                type: string
-            Cache-Control:
-              description: Cache control header
-              schema:
-                type: string
-                example: "no-cache"
-        '404':
-          description: Upload session not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '410':
-          description: Upload session expired
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-    patch:
-      summary: Upload ISO chunk
-      description: |
-        Upload a chunk of the ISO file to a resumable upload session.
-        
-        **Chunk Requirements:**
-        - Minimum chunk size: 1MB (except for final chunk)
-        - Maximum chunk size: 50MB
-        - Chunks must be uploaded sequentially
-        - Upload-Offset must match server's expected offset
-      tags:
-        - Virtualization
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: upload_id
-          in: path
-          required: true
-          description: Upload session ID
-          schema:
-            type: string
-            example: "550e8400-e29b-41d4-a716-446655440000"
-        - name: Upload-Offset
-          in: header
-          required: true
-          description: Byte offset where this chunk starts
-          schema:
-            type: integer
-            format: int64
-            example: 524288000
-        - name: Content-Type
-          in: header
-          required: true
-          description: Must be application/offset+octet-stream
-          schema:
-            type: string
-            enum: ["application/offset+octet-stream"]
-        - name: Tus-Resumable
-          in: header
-          required: false
-          description: TUS protocol version
-          schema:
-            type: string
-            default: "1.0.0"
-      requestBody:
-        required: true
-        content:
-          application/offset+octet-stream:
-            schema:
-              type: string
-              format: binary
-              description: Binary chunk data
-      responses:
-        '204':
-          description: Chunk uploaded successfully
-          headers:
-            Upload-Offset:
-              description: New upload offset after this chunk
-              schema:
-                type: integer
-                example: 575668224
-            Tus-Resumable:
-              description: TUS protocol version
-              schema:
-                type: string
-                example: "1.0.0"
-            Upload-Expires:
-              description: When the upload session expires
-              schema:
-                type: string
-                example: "Wed, 15 Jan 2025 16:00:00 GMT"
-        '400':
-          description: Invalid chunk upload request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Upload session not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
-          description: |
-            Conflict - offset mismatch or upload already completed.
-            Check Upload-Offset header in response for correct offset.
-          headers:
-            Upload-Offset:
-              description: Expected upload offset
-              schema:
-                type: integer
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '410':
-          description: Upload session expired
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-    get:
-      summary: Get ISO upload status
-      description: Get detailed status of a resumable ISO upload session
-      tags:
-        - Virtualization
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: upload_id
-          in: path
-          required: true
-          description: Upload session ID
-          schema:
-            type: string
-            example: "550e8400-e29b-41d4-a716-446655440000"
-      responses:
-        '200':
-          description: Upload status retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ISOUploadStatusResponse'
-        '404':
-          description: Upload session not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '410':
-          description: Upload session expired
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-    delete:
-      summary: Cancel ISO upload session
-      description: |
-        Cancel and delete a resumable upload session.
-        This will clean up any partially uploaded data.
-      tags:
-        - Virtualization
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: upload_id
-          in: path
-          required: true
-          description: Upload session ID
-          schema:
-            type: string
-            example: "550e8400-e29b-41d4-a716-446655440000"
-        - name: Tus-Resumable
-          in: header
-          required: false
-          description: TUS protocol version
-          schema:
-            type: string
-            default: "1.0.0"
-      responses:
-        '204':
-          description: Upload session cancelled successfully
-          headers:
-            Tus-Resumable:
-              description: TUS protocol version
-              schema:
-                type: string
-                example: "1.0.0"
-        '404':
-          description: Upload session not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-  /virtualmachines/isos/upload/{upload_id}/complete:
-    post:
-      summary: Complete ISO upload and register
-      description: |
-        Complete a resumable upload session and register the ISO in the system.
-        
-        **Prerequisites:**
-        - Upload must be 100% complete
-        - All chunks must be uploaded successfully
-        
-        **Actions performed:**
-        1. Verify upload integrity
-        2. Calculate SHA256 checksum
-        3. Detect OS type and variant (if possible)
-        4. Move file to ISO storage location
-        5. Register ISO in database
-        6. Clean up upload session
-      tags:
-        - Virtualization
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: upload_id
-          in: path
-          required: true
-          description: Upload session ID
-          schema:
-            type: string
-            example: "550e8400-e29b-41d4-a716-446655440000"
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ISOCompleteUploadRequest'
-      responses:
-        '200':
-          description: Upload completed and ISO registered successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ISOCompleteUploadResponse'
-        '400':
-          description: Upload not complete or validation failed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Upload session not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
-          description: ISO with same name already exists
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '410':
-          description: Upload session expired
           content:
             application/json:
               schema:
@@ -13795,99 +14113,109 @@ components:
           default: none
 
     MigrationResponse:
-      type: object
-      properties:
-        migration_id:
-          type: string
-          description: Unique migration identifier
-          example: "mig-a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-        status:
-          type: string
-          description: Current migration status
-          enum: [initiated, migrating, completed, failed, cancelled]
-          example: "initiated"
-        source_host:
-          type: string
-          description: Source host name
-          example: "host1.example.com"
-        dest_host:
-          type: string
-          description: Destination host name
-          example: "host2.example.com"
-        started_at:
-          type: string
-          format: date-time
-          description: Migration start time
-          example: "2025-01-15T10:30:00Z"
-        message:
-          type: string
-          description: Additional status message
-          example: "Migration initiated successfully"
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                migration_id:
+                  type: string
+                  description: Unique migration identifier
+                  example: "mig-a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                status:
+                  type: string
+                  description: Current migration status
+                  enum: [initiated, migrating, completed, failed, cancelled]
+                  example: "initiated"
+                source_host:
+                  type: string
+                  description: Source host name
+                  example: "host1.example.com"
+                dest_host:
+                  type: string
+                  description: Destination host name
+                  example: "host2.example.com"
+                started_at:
+                  type: string
+                  format: date-time
+                  description: Migration start time
+                  example: "2025-01-15T10:30:00Z"
+                message:
+                  type: string
+                  description: Additional status message
+                  example: "Migration initiated successfully"
 
     MigrationStatusResponse:
-      type: object
-      properties:
-        migration_id:
-          type: string
-          description: Unique migration identifier
-          example: "mig-a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-        vm_name:
-          type: string
-          description: Name of the VM being migrated
-          example: "web-server-01"
-        status:
-          type: string
-          description: Current migration status
-          enum: [initiating, migrating, completed, failed, cancelled]
-          example: "migrating"
-        progress:
-          type: integer
-          description: Migration progress percentage (0-100)
-          minimum: 0
-          maximum: 100
-          example: 45
-        source_host:
-          type: string
-          description: Source host name
-          example: "host1.example.com"
-        dest_host:
-          type: string
-          description: Destination host name
-          example: "host2.example.com"
-        data_processed:
-          type: integer
-          format: int64
-          description: Bytes of data processed
-          example: 1073741824
-        data_remaining:
-          type: integer
-          format: int64
-          description: Bytes of data remaining
-          example: 2147483648
-        mem_processed:
-          type: integer
-          format: int64
-          description: Memory bytes processed
-          example: 536870912
-        mem_remaining:
-          type: integer
-          format: int64
-          description: Memory bytes remaining
-          example: 1073741824
-        started_at:
-          type: string
-          format: date-time
-          description: Migration start time
-          example: "2025-01-15T10:30:00Z"
-        completed_at:
-          type: string
-          format: date-time
-          description: Migration completion time (if completed)
-          example: "2025-01-15T10:35:00Z"
-        error_message:
-          type: string
-          description: Error message if migration failed
-          example: "Connection to destination host lost"
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                migration_id:
+                  type: string
+                  description: Unique migration identifier
+                  example: "mig-a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                vm_name:
+                  type: string
+                  description: Name of the VM being migrated
+                  example: "web-server-01"
+                status:
+                  type: string
+                  description: Current migration status
+                  enum: [initiating, migrating, completed, failed, cancelled]
+                  example: "migrating"
+                progress:
+                  type: integer
+                  description: Migration progress percentage (0-100)
+                  minimum: 0
+                  maximum: 100
+                  example: 45
+                source_host:
+                  type: string
+                  description: Source host name
+                  example: "host1.example.com"
+                dest_host:
+                  type: string
+                  description: Destination host name
+                  example: "host2.example.com"
+                data_processed:
+                  type: integer
+                  format: int64
+                  description: Bytes of data processed
+                  example: 1073741824
+                data_remaining:
+                  type: integer
+                  format: int64
+                  description: Bytes of data remaining
+                  example: 2147483648
+                mem_processed:
+                  type: integer
+                  format: int64
+                  description: Memory bytes processed
+                  example: 536870912
+                mem_remaining:
+                  type: integer
+                  format: int64
+                  description: Memory bytes remaining
+                  example: 1073741824
+                started_at:
+                  type: string
+                  format: date-time
+                  description: Migration start time
+                  example: "2025-01-15T10:30:00Z"
+                completed_at:
+                  type: string
+                  format: date-time
+                  description: Migration completion time (if completed)
+                  example: "2025-01-15T10:35:00Z"
+                error_message:
+                  type: string
+                  description: Error message if migration failed
+                  example: "Connection to destination host lost"
 
     # VM Snapshot Schemas
     VMSnapshotRequest:
@@ -14235,6 +14563,351 @@ components:
               properties:
                 vm:
                   $ref: '#/components/schemas/VM'
+
+    # VM Template Schemas
+    VMTemplate:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Template unique identifier
+          example: 1
+        name:
+          type: string
+          description: Template name (unique)
+          example: "ubuntu-22.04"
+        display_name:
+          type: string
+          description: Display name for the template
+          example: "Ubuntu 22.04 LTS Server"
+        description:
+          type: string
+          description: Template description
+          example: "Ubuntu 22.04 LTS Server optimized for cloud deployments"
+        os_type:
+          type: string
+          description: Operating system type
+          enum: [linux, windows, bsd, other]
+          example: "linux"
+        os_variant:
+          type: string
+          description: OS variant identifier for libvirt
+          example: "ubuntu22.04"
+        min_memory:
+          type: integer
+          description: Minimum memory in MB
+          example: 512
+        recommended_memory:
+          type: integer
+          description: Recommended memory in MB
+          example: 2048
+        min_vcpus:
+          type: integer
+          description: Minimum vCPUs
+          example: 1
+        recommended_vcpus:
+          type: integer
+          description: Recommended vCPUs
+          example: 2
+        min_disk:
+          type: integer
+          description: Minimum disk size in GB
+          example: 10
+        recommended_disk:
+          type: integer
+          description: Recommended disk size in GB
+          example: 20
+        disk_bus:
+          type: string
+          description: Recommended disk bus type
+          enum: [virtio, ide, scsi, sata]
+          default: "virtio"
+          example: "virtio"
+        network_model:
+          type: string
+          description: Recommended network model
+          enum: [virtio, e1000, rtl8139]
+          default: "virtio"
+          example: "virtio"
+        features:
+          type: object
+          description: Required or recommended features
+          properties:
+            uefi:
+              type: boolean
+              description: Use UEFI boot
+              example: true
+            secure_boot:
+              type: boolean
+              description: Enable secure boot
+              example: false
+            tpm:
+              type: boolean
+              description: Add TPM device
+              example: false
+            virtio_drivers:
+              type: boolean
+              description: Requires VirtIO drivers
+              example: true
+        cloud_init_support:
+          type: boolean
+          description: Supports cloud-init
+          example: true
+        default_user:
+          type: string
+          description: Default username for the OS
+          example: "ubuntu"
+        icon:
+          type: string
+          description: Icon identifier or URL
+          example: "ubuntu"
+        tags:
+          type: array
+          items:
+            type: string
+          description: Template tags for categorization
+          example: ["server", "lts", "cloud"]
+        is_active:
+          type: boolean
+          description: Whether template is active
+          example: true
+        created_at:
+          type: string
+          format: date-time
+          description: When the template was created
+          example: "2025-01-15T10:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: When the template was last updated
+          example: "2025-01-15T10:00:00Z"
+
+    VMTemplateCreateRequest:
+      type: object
+      required:
+        - name
+        - display_name
+        - os_type
+        - os_variant
+      properties:
+        name:
+          type: string
+          description: Template name (must be unique)
+          example: "ubuntu-22.04"
+          pattern: "^[a-z0-9][a-z0-9-_.]*$"
+          minLength: 1
+          maxLength: 64
+        display_name:
+          type: string
+          description: Display name for the template
+          example: "Ubuntu 22.04 LTS Server"
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          description: Template description
+          example: "Ubuntu 22.04 LTS Server optimized for cloud deployments"
+          maxLength: 1024
+        os_type:
+          type: string
+          description: Operating system type
+          enum: [linux, windows, bsd, other]
+          example: "linux"
+        os_variant:
+          type: string
+          description: OS variant identifier for libvirt
+          example: "ubuntu22.04"
+        min_memory:
+          type: integer
+          description: Minimum memory in MB
+          minimum: 128
+          example: 512
+        recommended_memory:
+          type: integer
+          description: Recommended memory in MB
+          minimum: 256
+          example: 2048
+        min_vcpus:
+          type: integer
+          description: Minimum vCPUs
+          minimum: 1
+          maximum: 256
+          example: 1
+        recommended_vcpus:
+          type: integer
+          description: Recommended vCPUs
+          minimum: 1
+          maximum: 256
+          example: 2
+        min_disk:
+          type: integer
+          description: Minimum disk size in GB
+          minimum: 1
+          example: 10
+        recommended_disk:
+          type: integer
+          description: Recommended disk size in GB
+          minimum: 1
+          example: 20
+        disk_bus:
+          type: string
+          description: Recommended disk bus type
+          enum: [virtio, ide, scsi, sata]
+          default: "virtio"
+          example: "virtio"
+        network_model:
+          type: string
+          description: Recommended network model
+          enum: [virtio, e1000, rtl8139]
+          default: "virtio"
+          example: "virtio"
+        features:
+          type: object
+          description: Required or recommended features
+          properties:
+            uefi:
+              type: boolean
+              description: Use UEFI boot
+              default: false
+              example: true
+            secure_boot:
+              type: boolean
+              description: Enable secure boot
+              default: false
+              example: false
+            tpm:
+              type: boolean
+              description: Add TPM device
+              default: false
+              example: false
+            virtio_drivers:
+              type: boolean
+              description: Requires VirtIO drivers
+              default: true
+              example: true
+        cloud_init_support:
+          type: boolean
+          description: Supports cloud-init
+          default: false
+          example: true
+        default_user:
+          type: string
+          description: Default username for the OS
+          example: "ubuntu"
+        icon:
+          type: string
+          description: Icon identifier or URL
+          example: "ubuntu"
+        tags:
+          type: array
+          items:
+            type: string
+          description: Template tags for categorization
+          example: ["server", "lts", "cloud"]
+        is_active:
+          type: boolean
+          description: Whether template is active
+          default: true
+          example: true
+
+    VMTemplateUpdateRequest:
+      type: object
+      properties:
+        display_name:
+          type: string
+          description: Display name for the template
+          example: "Ubuntu 22.04 LTS Server Updated"
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          description: Template description
+          example: "Updated Ubuntu 22.04 LTS Server template"
+          maxLength: 1024
+        min_memory:
+          type: integer
+          description: Minimum memory in MB
+          minimum: 128
+          example: 512
+        recommended_memory:
+          type: integer
+          description: Recommended memory in MB
+          minimum: 256
+          example: 4096
+        min_vcpus:
+          type: integer
+          description: Minimum vCPUs
+          minimum: 1
+          maximum: 256
+          example: 1
+        recommended_vcpus:
+          type: integer
+          description: Recommended vCPUs
+          minimum: 1
+          maximum: 256
+          example: 4
+        min_disk:
+          type: integer
+          description: Minimum disk size in GB
+          minimum: 1
+          example: 10
+        recommended_disk:
+          type: integer
+          description: Recommended disk size in GB
+          minimum: 1
+          example: 30
+        disk_bus:
+          type: string
+          description: Recommended disk bus type
+          enum: [virtio, ide, scsi, sata]
+          example: "virtio"
+        network_model:
+          type: string
+          description: Recommended network model
+          enum: [virtio, e1000, rtl8139]
+          example: "virtio"
+        features:
+          type: object
+          description: Required or recommended features
+          properties:
+            uefi:
+              type: boolean
+              description: Use UEFI boot
+              example: true
+            secure_boot:
+              type: boolean
+              description: Enable secure boot
+              example: true
+            tpm:
+              type: boolean
+              description: Add TPM device
+              example: true
+            virtio_drivers:
+              type: boolean
+              description: Requires VirtIO drivers
+              example: true
+        cloud_init_support:
+          type: boolean
+          description: Supports cloud-init
+          example: true
+        default_user:
+          type: string
+          description: Default username for the OS
+          example: "ubuntu"
+        icon:
+          type: string
+          description: Icon identifier or URL
+          example: "ubuntu-new"
+        tags:
+          type: array
+          items:
+            type: string
+          description: Template tags for categorization
+          example: ["server", "lts", "cloud", "production"]
+        is_active:
+          type: boolean
+          description: Whether template is active
+          example: true
 
     # PCI Passthrough Schemas
     PCIDevicesResponse:
@@ -14911,31 +15584,36 @@ components:
                   $ref: '#/components/schemas/ISOImage'
 
     ISOUploadSessionResponse:
-      type: object
-      properties:
-        upload_id:
-          type: string
-          description: Unique upload session identifier
-          example: "550e8400-e29b-41d4-a716-446655440000"
-        upload_url:
-          type: string
-          description: URL for uploading chunks
-          example: "/api/v1/virtualmachines/isos/upload/550e8400-e29b-41d4-a716-446655440000"
-        expires_at:
-          type: string
-          format: date-time
-          description: When the upload session expires
-          example: "2025-08-06T15:38:32Z"
-        total_size:
-          type: integer
-          format: int64
-          description: Total file size in bytes
-          example: 1474560000
-        uploaded_size:
-          type: integer
-          format: int64
-          description: Bytes uploaded so far
-          example: 0
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                upload_id:
+                  type: string
+                  description: Unique upload session identifier
+                  example: "550e8400-e29b-41d4-a716-446655440000"
+                upload_url:
+                  type: string
+                  description: URL for uploading chunks
+                  example: "/api/v1/virtualmachines/isos/upload/550e8400-e29b-41d4-a716-446655440000"
+                expires_at:
+                  type: string
+                  format: date-time
+                  description: When the upload session expires
+                  example: "2025-08-06T15:38:32Z"
+                total_size:
+                  type: integer
+                  format: int64
+                  description: Total file size in bytes
+                  example: 1474560000
+                uploaded_size:
+                  type: integer
+                  format: int64
+                  description: Bytes uploaded so far
+                  example: 0
 
     ISOUploadSessionsListResponse:
       allOf:

@@ -70,10 +70,11 @@ export class AnsibleExecutions extends LitElement {
       border-bottom: 1px solid var(--vscode-panel-border);
     }
 
-    .title {
-      font-size: 1.5rem;
-      font-weight: 600;
-      color: var(--vscode-foreground);
+    h1 {
+      margin: 0 0 24px 0;
+      font-size: 24px;
+      font-weight: 300;
+      flex-shrink: 0;
     }
 
     .controls {
@@ -528,7 +529,7 @@ export class AnsibleExecutions extends LitElement {
     return html`
       <div class="container">
         <div class="header">
-          <h1 class="title">Job Executions</h1>
+          <h1>Job Executions</h1>
         </div>
 
         <div class="controls">

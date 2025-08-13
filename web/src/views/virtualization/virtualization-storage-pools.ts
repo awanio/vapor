@@ -64,10 +64,10 @@ export class VirtualizationStoragePools extends LitElement {
     }
 
     .header h1 {
-      margin: 0 0 1rem 0;
+      margin: 0 0 24px 0;
       font-size: 24px;
-      font-weight: 500;
-      color: var(--vscode-foreground);
+      font-weight: 300;
+      flex-shrink: 0;
     }
 
     .controls {

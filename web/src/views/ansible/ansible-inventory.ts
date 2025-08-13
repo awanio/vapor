@@ -56,10 +56,11 @@ export class AnsibleInventory extends LitElement {
       border-bottom: 1px solid var(--vscode-panel-border);
     }
 
-    .title {
-      font-size: 1.5rem;
-      font-weight: 600;
-      color: var(--vscode-foreground);
+    h1 {
+      margin: 0 0 24px 0;
+      font-size: 24px;
+      font-weight: 300;
+      flex-shrink: 0;
     }
 
     .controls {
@@ -505,7 +506,7 @@ export class AnsibleInventory extends LitElement {
     return html`
       <div class="container">
         <div class="header">
-          <h2 class="title">Inventory</h2>
+          <h1>Inventory</h1>
         </div>
         
         <div class="controls">

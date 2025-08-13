@@ -68,6 +68,13 @@ export class AnsiblePlaybooks extends LitElement {
       gap: 1rem;
     }
 
+    h1 {
+      margin: 0 0 24px 0;
+      font-size: 24px;
+      font-weight: 300;
+      flex-shrink: 0;
+    }
+
     .header {
       display: flex;
       align-items: center;
@@ -489,6 +496,7 @@ export class AnsiblePlaybooks extends LitElement {
   override render() {
     return html`
       <div class="container">
+        <h1>${this.activeTab === 'playbooks' ? 'Playbooks' : 'Templates'}</h1>
         <div class="tab-header">
           <a 
             href="/ansible/playbooks"
