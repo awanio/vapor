@@ -77,24 +77,7 @@ type DiskCreateConfig struct {
 	Target       string             `json:"target,omitempty"`               // vda, vdb, etc
 }
 
-// ISOImage represents an ISO image in the library
-type ISOImage struct {
-	ID           string             `json:"id"`
-	Name         string             `json:"name"`
-	Path         string             `json:"path"`
-	Size         int64              `json:"size"`                           // Size in bytes
-	OSType       string             `json:"os_type,omitempty"`             // linux, windows, etc
-	OSVariant    string             `json:"os_variant,omitempty"`          // ubuntu20.04, win10, etc
-	Architecture string             `json:"architecture,omitempty"`        // x86_64, arm64, etc
-	BootType     string             `json:"boot_type,omitempty"`           // bios, uefi, both
-	Description  string             `json:"description,omitempty"`
-	UploadedAt   time.Time          `json:"uploaded_at"`
-	LastUsed     *time.Time         `json:"last_used,omitempty"`
-	UseCount     int                `json:"use_count"`
-	MD5Hash      string             `json:"md5_hash,omitempty"`
-	SHA256Hash   string             `json:"sha256_hash,omitempty"`
-	Tags         []string           `json:"tags,omitempty"`                // Custom tags for filtering
-}
+// ISOImage type is defined in types.go
 
 // ISOUploadRequest represents a request to upload an ISO
 type ISOUploadRequest struct {

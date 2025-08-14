@@ -483,29 +483,6 @@ func (s *Service) RestoreVMBackup(ctx context.Context, backupID string) (*VM, er
 	}
 
 	return s.CreateVM(ctx, createReq)
-        ON CONFLICT(id) DO UPDATE SET
-            status = excluded.status,
-            completed_at = excluded.completed_at,
-            error_message = excluded.error_message,
-            size_bytes = excluded.size_bytes
-    `, backup.ID, backup.VMUUID, backup.VMName, backup.Type, backup.Status, backup.DestinationPath, backup.SizeBytes, backup.Compression, backup.Encryption, backup.ParentBackupID, backup.StartedAt, backup.CompletedAt, backup.ErrorMessage, backup.Retention)
-
-	return err
-}
-
-func (s *Service) generateBackupXML(domain *libvirt.Domain, backup *VMBackup, req *VMBackupRequest) (string, error) {
-	// This is a simplified example. A real implementation would be more complex,
-	// handling disk lists, incremental points, etc.
-	backupXML := fmt.Sprintf(`
-		<domainbackup mode='%s'>
-			<disks>
-				<disk name='vda' type='file' backup='yes'>
-					<target file='%s/%s.qcow2'/>
-				</disk>
-			</disks>
-		</domainbackup>`, req.Type, backup.DestinationPath, backup.ID)
-
-	return backupXML, nil
 }
 
 // ListVMs returns all VMs
@@ -1865,54 +1842,7 @@ func calculateProgress(jobInfo libvirt.DomainJobInfo) int {
 	return 0
 }
 
-// Helper conversion functions
-
-func (s *Service) storagePoolToType(pool *libvirt.StoragePool) (*StoragePool, error) {
-	name, _ := pool.GetName()
-	uuid, _ := pool.GetUUIDString()
-	info, _ := pool.GetInfo()
-	autostart, _ := pool.GetAutostart()
-
-	sp := &StoragePool{
-		Name:       name,
-		State:      storagePoolStateToString(info.State),
-		Capacity:   info.Capacity,
-		Allocation: info.Allocation,
-		Available:  info.Available,
-		AutoStart:  autostart,
-	}
-
-	// Get pool type from XML
-	xmlDesc, err := pool.GetXMLDesc(0)
-	if err == nil {
-		// Parse type from XML (simplified)
-		if strings.Contains(xmlDesc, "type='dir'") {
-			sp.Type = "dir"
-		} else if strings.Contains(xmlDesc, "type='logical'") {
-			sp.Type = "logical"
-		} else if strings.Contains(xmlDesc, "type='netfs'") {
-			sp.Type = "netfs"
-		}
-	}
-
-	return sp, nil
-}
-
-func (s *Service) storageVolumeToType(vol *libvirt.StorageVol) (*StorageVolume, error) {
-	name, _ := vol.GetName()
-	path, _ := vol.GetPath()
-	info, _ := vol.GetInfo()
-
-	sv := &StorageVolume{
-		Name:       name,
-		Path:       path,
-		Type:       storageVolumeTypeToString(info.Type),
-		Capacity:   info.Capacity,
-		Allocation: info.Allocation,
-	}
-
-	return sv, nil
-}
+// storagePoolToType and storageVolumeToType are already defined earlier in this file
 
 func (s *Service) networkToType(net *libvirt.Network) (*Network, error) {
 	name, _ := net.GetName()

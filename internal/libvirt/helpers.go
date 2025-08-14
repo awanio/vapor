@@ -110,12 +110,7 @@ func (s *Service) DeleteBackup(ctx context.Context, backupID string) error {
 	return nil
 }
 
-// SetDatabase sets the database connection for the service
-func (s *Service) SetDatabase(db *sql.DB) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.db = db
-}
+// SetDatabase is defined in service.go
 
 // GetVolume gets details of a specific volume in a pool
 func (s *Service) GetVolume(ctx context.Context, poolName, volumeName string) (*StorageVolume, error) {
