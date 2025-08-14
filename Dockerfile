@@ -3,7 +3,7 @@ FROM --platform=linux/amd64 golang:1.24-alpine AS builder
 
 # Install build dependencies (git is needed for version injection)
 RUN apk add --no-cache git
-RUN apk add libvirt libvirt-dev gcc pkg-config
+RUN apk add libvirt libvirt-dev gcc pkgconfig
 
 WORKDIR /app
 
