@@ -1,0 +1,64 @@
+# Build stage
+FROM golang:1.24-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache \
+    gcc \
+    musl-dev \
+    libvirt-dev \
+    pkgconfig \
+    make \
+    git
+
+# Set working directory
+WORKDIR /app
+
+# Copy go mod files
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Set CGO environment for libvirt
+ENV CGO_ENABLED=1
+
+# Build the application with libvirt support
+RUN go build -tags "libvirt,linux" -o ./bin/vapor ./cmd/vapor/main.go
+
+# Runtime stage
+FROM alpine:latest
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    libvirt-client \
+    libvirt-daemon \
+    qemu-system-x86_64 \
+    ca-certificates \
+    tzdata
+
+# Create vapor user
+RUN adduser -D -u 1000 vapor
+
+# Copy binary from builder
+COPY --from=builder /app/bin/vapor /usr/local/bin/vapor
+
+# Create necessary directories
+RUN mkdir -p /var/lib/vapor /etc/vapor /var/log/vapor && \
+    chown -R vapor:vapor /var/lib/vapor /etc/vapor /var/log/vapor
+
+# Switch to non-root user
+USER vapor
+
+# Expose port
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD ["/usr/local/bin/vapor", "health"] || exit 1
+
+# Run the application
+ENTRYPOINT ["/usr/local/bin/vapor"]
+CMD ["serve"]
