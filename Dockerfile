@@ -5,13 +5,6 @@ FROM --platform=linux/amd64 golang:1.24-alpine AS builder
 RUN apk add --no-cache git
 RUN apk add gcc musl-dev libvirt-dev pkgconfig
 
-RUN pkg-config --exists libvirt || { echo "libvirt not found. Please install: apk add libvirt-dev"; exit 1; }
-
-# Set CGO flags for libvirt
-ENV CGO_ENABLED=1
-ENV CGO_CFLAGS=$(pkg-config --cflags libvirt)
-ENV CGO_LDFLAGS=$(pkg-config --libs libvirt)
-
 WORKDIR /app
 
 # Copy go mod files
@@ -30,8 +23,11 @@ RUN mkdir -p internal/web/dist && \
     fi
 
 # Build the binary specifically for Linux x86_64
+
+RUN ./build-alpine.sh
+
 # RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build  -tags "linux,libvirt" -a -installsuffix cgo -o vapor ./cmd/vapor
-RUN go build -tags "libvirt,linux" -o ./bin/vapor ./cmd/vapor/main.go
+# RUN go build -tags "libvirt,linux" -o ./bin/vapor ./cmd/vapor/main.go
 # RUN CGO_ENABLED=1 GOOS=linux go build -tags libvirt -o vapor ./cmd/vapor
 
 # Final stage
