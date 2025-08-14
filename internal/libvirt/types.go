@@ -122,6 +122,7 @@ type VMCreateRequest struct {
 	Template     string             `json:"template,omitempty"`             // template name to use
 	StoragePool  string             `json:"storage_pool,omitempty"`         // storage pool for disk
 	AutoStart    bool               `json:"autostart"`
+	Metadata     map[string]string  `json:"metadata,omitempty"`             // metadata for the VM
 }
 
 // NetworkConfig for VM creation
@@ -210,6 +211,7 @@ type VMBackup struct {
 	DestinationPath string                `json:"destination_path"`
 	SizeBytes       int64                 `json:"size_bytes,omitempty"`
 	Compression     BackupCompressionType `json:"compression"`
+	Compressed      bool                  `json:"compressed"`  // For backward compatibility
 	Encryption      BackupEncryptionType  `json:"encryption"`
 	ParentBackupID  string                `json:"parent_backup_id,omitempty"` // For incremental backups
 	StartedAt       time.Time             `json:"started_at"`
@@ -395,19 +397,30 @@ type BackupRequest struct {
 	Disks       []string `json:"disks,omitempty"` // specific disks to backup
 }
 
-// Template represents a VM template
-type Template struct {
-	Name        string            `json:"name"`
-	Description string            `json:"description"`
-	OS          OSInfo            `json:"os"`
-	MinMemory   uint64            `json:"min_memory"`
-	MinVCPUs    uint              `json:"min_vcpus"`
-	MinDisk     uint64            `json:"min_disk"`
-	DiskFormat  string            `json:"disk_format"`
-	Source      string            `json:"source"`      // path to template disk
-	CloudInit   bool              `json:"cloud_init"`  // supports cloud-init
-	Variables   map[string]string `json:"variables,omitempty"`
-	CreatedAt   time.Time         `json:"created_at"`
+// VMTemplate represents a VM template with all fields
+type VMTemplate struct {
+	ID                 int               `json:"id"`
+	Name               string            `json:"name"`
+	Description        string            `json:"description"`
+	OSType             string            `json:"os_type"`
+	OSVariant          string            `json:"os_variant,omitempty"`
+	MinMemory          uint64            `json:"min_memory"`
+	RecommendedMemory  uint64            `json:"recommended_memory,omitempty"`
+	MinVCPUs           uint              `json:"min_vcpus"`
+	RecommendedVCPUs   uint              `json:"recommended_vcpus,omitempty"`
+	MinDisk            uint64            `json:"min_disk"`
+	RecommendedDisk    uint64            `json:"recommended_disk,omitempty"`
+	DiskFormat         string            `json:"disk_format"`
+	NetworkModel       string            `json:"network_model"`
+	GraphicsType       string            `json:"graphics_type"`
+	CloudInit          bool              `json:"cloud_init"`
+	UEFIBoot           bool              `json:"uefi_boot"`
+	SecureBoot         bool              `json:"secure_boot"`
+	TPM                bool              `json:"tpm"`
+	DefaultUser        string            `json:"default_user,omitempty"`
+	Metadata           map[string]string `json:"metadata,omitempty"`
+	CreatedAt          time.Time         `json:"created_at"`
+	UpdatedAt          time.Time         `json:"updated_at"`
 }
 
 // StoragePoolCreateRequest for creating storage pools

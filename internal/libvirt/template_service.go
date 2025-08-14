@@ -60,30 +60,7 @@ type VMTemplateUpdateRequest struct {
 	Metadata           map[string]string `json:"metadata,omitempty"`
 }
 
-// VMTemplate represents a VM template with all fields
-type VMTemplate struct {
-	ID                 int               `json:"id"`
-	Name               string            `json:"name"`
-	Description        string            `json:"description"`
-	OSType             string            `json:"os_type"`
-	OSVariant          string            `json:"os_variant,omitempty"`
-	MinMemory          uint64            `json:"min_memory"`
-	RecommendedMemory  uint64            `json:"recommended_memory,omitempty"`
-	MinVCPUs           uint              `json:"min_vcpus"`
-	RecommendedVCPUs   uint              `json:"recommended_vcpus,omitempty"`
-	MinDisk            uint64            `json:"min_disk"`
-	RecommendedDisk    uint64            `json:"recommended_disk,omitempty"`
-	DiskFormat         string            `json:"disk_format"`
-	NetworkModel       string            `json:"network_model"`
-	GraphicsType       string            `json:"graphics_type"`
-	CloudInit          bool              `json:"cloud_init"`
-	UEFIBoot           bool              `json:"uefi_boot"`
-	SecureBoot         bool              `json:"secure_boot"`
-	TPM                bool              `json:"tpm"`
-	Metadata           map[string]string `json:"metadata,omitempty"`
-	CreatedAt          time.Time         `json:"created_at"`
-	UpdatedAt          time.Time         `json:"updated_at"`
-}
+// Note: VMTemplate type is now defined in types.go to avoid duplication
 
 // ListTemplates retrieves all VM templates
 func (s *VMTemplateService) ListTemplates(ctx context.Context) ([]VMTemplate, error) {
