@@ -617,3 +617,29 @@ type ExecutionStatistics struct {
 	TopFailedHosts map[string]int
 	TopPlaybooks   map[string]int
 }
+
+// StoreExecution stores an execution result
+func (es *ExecutionStore) StoreExecution(result *ExecutionResult) {
+es.mu.Lock()
+defer es.mu.Unlock()
+
+es.inMemCache[result.ID] = result
+
+// Trim cache if it exceeds max size
+if len(es.inMemCache) > es.maxCacheSize {
+// Remove oldest entry
+var oldestID string
+var oldestTime time.Time
+for id, exec := range es.inMemCache {
+if oldestID == "" || exec.StartTime.Before(oldestTime) {
+oldestID = id
+oldestTime = exec.StartTime
+}
+}
+if oldestID != "" {
+delete(es.inMemCache, oldestID)
+}
+}
+}
+
+// ListExecutions returns a list of executions

@@ -104,6 +104,8 @@ type Executor struct {
 	store         *ExecutionStore
 	mu            sync.RWMutex
 	outputStreams map[string]chan string
+	results       map[string]*ExecutionResult
+	cancelFuncs   map[string]context.CancelFunc
 }
 
 // NewExecutor creates a new Ansible executor
@@ -115,6 +117,8 @@ func NewExecutor(ansibleDir string) (*Executor, error) {
 		inventoryDir:  filepath.Join(ansibleDir, "inventory"),
 		logDir:        filepath.Join(ansibleDir, "logs"),
 		outputStreams: make(map[string]chan string),
+		results:       make(map[string]*ExecutionResult),
+		cancelFuncs:   make(map[string]context.CancelFunc),
 	}
 
 	// Create necessary directories
@@ -655,4 +659,57 @@ func (e *Executor) Close() error {
 	
 	// Note: We don't close the store here as it uses a shared database connection
 	return nil
+}
+
+// CancelExecution cancels a running execution
+func (e *Executor) CancelExecution(id string) error {
+e.mu.Lock()
+defer e.mu.Unlock()
+
+if cancel, exists := e.cancelFuncs[id]; exists {
+cancel()
+delete(e.cancelFuncs, id)
+
+// Update execution status
+if result, ok := e.results[id]; ok {
+result.Status = "cancelled"
+now := time.Now()
+result.EndTime = &now
+result.Duration = now.Sub(result.StartTime).Seconds()
+}
+
+return nil
+}
+
+return fmt.Errorf("execution not found")
+}
+
+// GetInventory retrieves a saved inventory by name
+func (e *Executor) GetInventory(name string) (*DynamicInventory, error) {
+inventoryPath := filepath.Join(e.inventoryDir, name+".json")
+
+data, err := os.ReadFile(inventoryPath)
+if err != nil {
+return nil, err
+}
+
+var inventory DynamicInventory
+if err := json.Unmarshal(data, &inventory); err != nil {
+return nil, fmt.Errorf("failed to parse inventory: %w", err)
+}
+
+return &inventory, nil
+}
+
+// StoreExecution stores an execution result
+func (e *Executor) StoreExecution(result *ExecutionResult) {
+e.mu.Lock()
+defer e.mu.Unlock()
+
+e.results[result.ID] = result
+
+// Also store in the persistent store if available
+if e.store != nil {
+e.store.StoreExecution(result)
+}
 }

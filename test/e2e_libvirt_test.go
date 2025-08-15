@@ -5,7 +5,6 @@ package test
 
 import (
 "bytes"
-"context"
 "encoding/json"
 "fmt"
 "io"
@@ -14,7 +13,6 @@ import (
 "testing"
 "time"
 
-"github.com/awanio/vapor/internal/libvirt"
 "github.com/stretchr/testify/assert"
 "github.com/stretchr/testify/require"
 )

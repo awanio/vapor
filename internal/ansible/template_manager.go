@@ -735,3 +735,57 @@ func (tm *TemplateManager) getDefaultSystemTemplates() []*UserTemplate {
 		},
 	}
 }
+
+// SaveUserTemplate saves a user template
+func (tm *TemplateManager) SaveUserTemplate(template *UserTemplate) error {
+// Ensure directory exists
+if err := os.MkdirAll(tm.userTemplatesDir, 0755); err != nil {
+return fmt.Errorf("failed to create user templates directory: %w", err)
+}
+
+// Save template as JSON
+templatePath := filepath.Join(tm.userTemplatesDir, template.ID+".json")
+data, err := json.MarshalIndent(template, "", "  ")
+if err != nil {
+return fmt.Errorf("failed to marshal template: %w", err)
+}
+
+if err := os.WriteFile(templatePath, data, 0644); err != nil {
+return fmt.Errorf("failed to save template: %w", err)
+}
+
+return nil
+}
+
+// ListUserTemplates lists all user templates
+func (tm *TemplateManager) ListUserTemplates() ([]*UserTemplate, error) {
+templates := []*UserTemplate{}
+
+// Read user templates directory
+entries, err := os.ReadDir(tm.userTemplatesDir)
+if err != nil {
+if os.IsNotExist(err) {
+return templates, nil
+}
+return nil, fmt.Errorf("failed to read user templates: %w", err)
+}
+
+for _, entry := range entries {
+if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".json") {
+templatePath := filepath.Join(tm.userTemplatesDir, entry.Name())
+data, err := os.ReadFile(templatePath)
+if err != nil {
+continue
+}
+
+var template UserTemplate
+if err := json.Unmarshal(data, &template); err != nil {
+continue
+}
+
+templates = append(templates, &template)
+}
+}
+
+return templates, nil
+}

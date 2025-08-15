@@ -168,3 +168,43 @@ main() {
 
 # Run main
 main
+
+# Ansible Tests
+run_ansible_tests() {
+    log "Running Ansible tests..."
+    
+    # Ansible smoke tests
+    if [ -f ./test/smoke_test_ansible.sh ]; then
+        log "Running Ansible smoke tests..."
+        if ./test/smoke_test_ansible.sh >> $TEST_RESULTS 2>&1; then
+            echo -e "  ${GREEN}✓${NC} Ansible smoke tests passed"
+        else
+            echo -e "  ${RED}✗${NC} Ansible smoke tests failed"
+            FAILED_TESTS=$((FAILED_TESTS + 1))
+        fi
+    fi
+    
+    # Ansible E2E tests
+    if [ "$RUN_E2E" = "true" ]; then
+        log "Running Ansible E2E tests..."
+        if RUN_E2E_TESTS=true go test -v ./test -run TestE2EAnsible -tags e2e >> $TEST_RESULTS 2>&1; then
+            echo -e "  ${GREEN}✓${NC} Ansible E2E tests passed"
+        else
+            echo -e "  ${RED}✗${NC} Ansible E2E tests failed"
+            FAILED_TESTS=$((FAILED_TESTS + 1))
+        fi
+    fi
+    
+    # Ansible performance tests
+    if [ "$RUN_PERF" = "true" ] && [ -f ./test/performance_test_ansible.sh ]; then
+        log "Running Ansible performance tests..."
+        if ./test/performance_test_ansible.sh >> $TEST_RESULTS 2>&1; then
+            echo -e "  ${GREEN}✓${NC} Ansible performance tests passed"
+        else
+            echo -e "  ${RED}✗${NC} Ansible performance tests failed"
+            FAILED_TESTS=$((FAILED_TESTS + 1))
+        fi
+    fi
+}
+
+# Add to main test execution (call this function in the main test flow)
