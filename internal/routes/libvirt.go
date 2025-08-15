@@ -27,10 +27,10 @@ func LibvirtRoutes(r *gin.RouterGroup, service *libvirt.Service) {
 
 		// Snapshots
 		vmGroup.GET("/:id/snapshots/capabilities", getSnapshotCapabilities(service)) // Check snapshot capabilities
-		vmGroup.GET("/:id/snapshots", listSnapshots(service))                    // List VM snapshots
-		vmGroup.POST("/:id/snapshots", createSnapshot(service))                  // Create snapshot
-		vmGroup.POST("/:id/snapshots/:snapshot/revert", revertSnapshot(service)) // Revert to snapshot
-		vmGroup.DELETE("/:id/snapshots/:snapshot", deleteSnapshot(service))      // Delete snapshot
+		vmGroup.GET("/:id/snapshots", listSnapshots(service))                        // List VM snapshots
+		vmGroup.POST("/:id/snapshots", createSnapshot(service))                      // Create snapshot
+		vmGroup.POST("/:id/snapshots/:snapshot/revert", revertSnapshot(service))     // Revert to snapshot
+		vmGroup.DELETE("/:id/snapshots/:snapshot", deleteSnapshot(service))          // Delete snapshot
 
 		// Backups
 		vmGroup.GET("/:id/backups", listBackups(service))            // List VM backups
@@ -49,13 +49,13 @@ func LibvirtRoutes(r *gin.RouterGroup, service *libvirt.Service) {
 		vmGroup.GET("/:id/console", getConsole(service))            // Get console connection info
 		vmGroup.GET("/:id/console/ws", vmConsoleWebSocket(service)) // WebSocket console
 
-	// Templates
-	vmGroup.GET("/templates", listTemplates(service))           // List VM templates
-	vmGroup.GET("/templates/:id", getTemplate(service))         // Get template details
-	vmGroup.POST("/templates", createTemplate(service))         // Create new template
-	vmGroup.PUT("/templates/:id", updateTemplate(service))      // Update template
-	vmGroup.DELETE("/templates/:id", deleteTemplate(service))   // Delete template
-	vmGroup.POST("/from-template", createVMFromTemplate(service)) // Create VM from template
+		// Templates
+		vmGroup.GET("/templates", listTemplates(service))             // List VM templates
+		vmGroup.GET("/templates/:id", getTemplate(service))           // Get template details
+		vmGroup.POST("/templates", createTemplate(service))           // Create new template
+		vmGroup.PUT("/templates/:id", updateTemplate(service))        // Update template
+		vmGroup.DELETE("/templates/:id", deleteTemplate(service))     // Delete template
+		vmGroup.POST("/from-template", createVMFromTemplate(service)) // Create VM from template
 
 		// Migration
 		vmGroup.POST("/:id/migrate", migrateVM(service))                  // Migrate VM to another host
@@ -88,7 +88,7 @@ func LibvirtRoutes(r *gin.RouterGroup, service *libvirt.Service) {
 			poolsGroup.GET("/:name", getStoragePool(service))       // Get pool details
 			poolsGroup.DELETE("/:name", deleteStoragePool(service)) // Delete pool
 
-			volumesGroup := poolsGroup.Group("/:pool_name/volumes")
+			volumesGroup := poolsGroup.Group("/:name/volumes")
 			{
 				volumesGroup.GET("", listVolumesInPool(service))         // List volumes in a pool
 				volumesGroup.POST("", createVolumeInPool(service))       // Create a volume in a pool
@@ -105,13 +105,13 @@ func LibvirtRoutes(r *gin.RouterGroup, service *libvirt.Service) {
 			isoUploadHandler := libvirt.NewISOResumableUploadHandler(service, uploadDir)
 
 			// TUS protocol endpoints for ISO uploads
-			isosGroup.POST("/upload", isoUploadHandler.CreateUpload)                  // Create new upload session
-			isosGroup.GET("/upload", isoUploadHandler.ListUploads)                    // List active upload sessions
-			isosGroup.HEAD("/upload/:id", isoUploadHandler.GetUploadInfo)            // Get upload session info (HEAD request for TUS)
-			isosGroup.PATCH("/upload/:id", isoUploadHandler.UploadChunk)             // Upload chunk (PATCH request for TUS)
-			isosGroup.GET("/upload/:id", isoUploadHandler.GetUploadStatus)           // Get upload status
-			isosGroup.POST("/upload/:id/complete", isoUploadHandler.CompleteUpload)  // Complete upload and register ISO
-			isosGroup.DELETE("/upload/:id", isoUploadHandler.CancelUpload)           // Cancel/delete upload session
+			isosGroup.POST("/upload", isoUploadHandler.CreateUpload)                // Create new upload session
+			isosGroup.GET("/upload", isoUploadHandler.ListUploads)                  // List active upload sessions
+			isosGroup.HEAD("/upload/:id", isoUploadHandler.GetUploadInfo)           // Get upload session info (HEAD request for TUS)
+			isosGroup.PATCH("/upload/:id", isoUploadHandler.UploadChunk)            // Upload chunk (PATCH request for TUS)
+			isosGroup.GET("/upload/:id", isoUploadHandler.GetUploadStatus)          // Get upload status
+			isosGroup.POST("/upload/:id/complete", isoUploadHandler.CompleteUpload) // Complete upload and register ISO
+			isosGroup.DELETE("/upload/:id", isoUploadHandler.CancelUpload)          // Cancel/delete upload session
 		}
 	}
 
@@ -225,21 +225,20 @@ func vmAction(service *libvirt.Service) gin.HandlerFunc {
 
 // Snapshot handlers
 
-
 func getSnapshotCapabilities(service *libvirt.Service) gin.HandlerFunc {
-return func(c *gin.Context) {
-id := c.Param("id")
-capabilities, err := service.GetSnapshotCapabilities(c.Request.Context(), id)
-if err != nil {
-if strings.Contains(err.Error(), "not found") {
-c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-return
-}
-c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-return
-}
-c.JSON(http.StatusOK, capabilities)
-}
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		capabilities, err := service.GetSnapshotCapabilities(c.Request.Context(), id)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, capabilities)
+	}
 }
 func listSnapshots(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -628,15 +627,15 @@ func deleteTemplate(service *libvirt.Service) gin.HandlerFunc {
 func createVMFromTemplate(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			TemplateID int    `json:"template_id" binding:"required"`
-			Name       string `json:"name" binding:"required"`
-			Memory     uint64 `json:"memory,omitempty"`
-			VCPUs      uint   `json:"vcpus,omitempty"`
-			DiskSize   uint64 `json:"disk_size,omitempty"`
-			Network    *libvirt.NetworkConfig `json:"network,omitempty"`
-			Graphics   *libvirt.GraphicsConfig `json:"graphics,omitempty"`
+			TemplateID int                      `json:"template_id" binding:"required"`
+			Name       string                   `json:"name" binding:"required"`
+			Memory     uint64                   `json:"memory,omitempty"`
+			VCPUs      uint                     `json:"vcpus,omitempty"`
+			DiskSize   uint64                   `json:"disk_size,omitempty"`
+			Network    *libvirt.NetworkConfig   `json:"network,omitempty"`
+			Graphics   *libvirt.GraphicsConfig  `json:"graphics,omitempty"`
 			CloudInit  *libvirt.CloudInitConfig `json:"cloud_init,omitempty"`
-			Metadata   map[string]string `json:"metadata,omitempty"`
+			Metadata   map[string]string        `json:"metadata,omitempty"`
 		}
 
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -919,27 +918,27 @@ func getMigrationStatus(service *libvirt.Service) gin.HandlerFunc {
 // PCI Passthrough handlers
 
 func listPCIDevices(service *libvirt.Service) gin.HandlerFunc {
-return func(c *gin.Context) {
-deviceType := c.Query("type")
-devices, err := service.ListPCIDevices(c.Request.Context())
-if err != nil {
-c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-return
-}
+	return func(c *gin.Context) {
+		deviceType := c.Query("type")
+		devices, err := service.ListPCIDevices(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
 
-// Filter by type if specified
-if deviceType != "" {
-var filtered []libvirt.PCIDevice
-for _, device := range devices {
-if string(device.DeviceType) == deviceType {
-filtered = append(filtered, device)
-}
-}
-devices = filtered
-}
+		// Filter by type if specified
+		if deviceType != "" {
+			var filtered []libvirt.PCIDevice
+			for _, device := range devices {
+				if string(device.DeviceType) == deviceType {
+					filtered = append(filtered, device)
+				}
+			}
+			devices = filtered
+		}
 
-c.JSON(http.StatusOK, gin.H{"devices": devices})
-}
+		c.JSON(http.StatusOK, gin.H{"devices": devices})
+	}
 }
 
 func attachPCIDevice(service *libvirt.Service) gin.HandlerFunc {
