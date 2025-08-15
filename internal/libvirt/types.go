@@ -1,5 +1,3 @@
-//go:build linux && libvirt
-// +build linux,libvirt
 
 package libvirt
 
@@ -35,71 +33,71 @@ const (
 type NetworkType string
 
 const (
-	NetworkTypeBridge  NetworkType = "bridge"
-	NetworkTypeNAT     NetworkType = "nat"
-	NetworkTypeDirect  NetworkType = "direct"
-	NetworkTypeUser    NetworkType = "user"
-	NetworkTypeVirtio  NetworkType = "virtio"
+	NetworkTypeBridge NetworkType = "bridge"
+	NetworkTypeNAT    NetworkType = "nat"
+	NetworkTypeDirect NetworkType = "direct"
+	NetworkTypeUser   NetworkType = "user"
+	NetworkTypeVirtio NetworkType = "virtio"
 )
 
 // VM represents a virtual machine
 type VM struct {
-	UUID        string            `json:"uuid"`
-	Name        string            `json:"name"`
-	State       VMState           `json:"state"`
-	Memory      uint64            `json:"memory"`      // in KB
-	MaxMemory   uint64            `json:"max_memory"`  // in KB
-	VCPUs       uint              `json:"vcpus"`
-	MaxVCPUs    uint              `json:"max_vcpus"`
-	OS          OSInfo            `json:"os"`
-	Disks       []DiskAttachment  `json:"disks"`
-	Networks    []NetworkInterface `json:"networks"`
-	Graphics    []GraphicsDevice  `json:"graphics,omitempty"`
-	Metadata    map[string]string `json:"metadata,omitempty"`
-	CreatedAt   time.Time         `json:"created_at"`
-	UpdatedAt   time.Time         `json:"updated_at"`
-	AutoStart   bool              `json:"autostart"`
-	Persistent  bool              `json:"persistent"`
+	UUID       string             `json:"uuid"`
+	Name       string             `json:"name"`
+	State      VMState            `json:"state"`
+	Memory     uint64             `json:"memory"`     // in KB
+	MaxMemory  uint64             `json:"max_memory"` // in KB
+	VCPUs      uint               `json:"vcpus"`
+	MaxVCPUs   uint               `json:"max_vcpus"`
+	OS         OSInfo             `json:"os"`
+	Disks      []DiskAttachment   `json:"disks"`
+	Networks   []NetworkInterface `json:"networks"`
+	Graphics   []GraphicsDevice   `json:"graphics,omitempty"`
+	Metadata   map[string]string  `json:"metadata,omitempty"`
+	CreatedAt  time.Time          `json:"created_at"`
+	UpdatedAt  time.Time          `json:"updated_at"`
+	AutoStart  bool               `json:"autostart"`
+	Persistent bool               `json:"persistent"`
 }
 
 // OSInfo contains operating system information
 type OSInfo struct {
-	Type         string `json:"type"`         // hvm or linux
-	Architecture string `json:"architecture"` // x86_64, i686, aarch64
-	Machine      string `json:"machine"`      // pc, q35, virt
-	Boot         []string `json:"boot"`       // boot order: hd, cdrom, network
-	Kernel       string `json:"kernel,omitempty"`
-	Initrd       string `json:"initrd,omitempty"`
-	Cmdline      string `json:"cmdline,omitempty"`
+	Type         string   `json:"type"`         // hvm or linux
+	Architecture string   `json:"architecture"` // x86_64, i686, aarch64
+	Machine      string   `json:"machine"`      // pc, q35, virt
+	Boot         []string `json:"boot"`         // boot order: hd, cdrom, network
+	Kernel       string   `json:"kernel,omitempty"`
+	Initrd       string   `json:"initrd,omitempty"`
+	Cmdline      string   `json:"cmdline,omitempty"`
 }
 
 // DiskAttachment represents a disk attached to a VM
 type DiskAttachment struct {
-	Device     string  `json:"device"`      // disk, cdrom, floppy
-	Source     string  `json:"source"`      // path to disk image
-	Target     string  `json:"target"`      // target device name (vda, hda, etc)
-	Bus        DiskBus `json:"bus"`         // virtio, ide, scsi, sata
-	Format     string  `json:"format"`      // qcow2, raw, vmdk
-	Size       uint64  `json:"size"`        // size in bytes
-	ReadOnly   bool    `json:"readonly"`
-	Bootable   bool    `json:"bootable"`
-	Cache      string  `json:"cache,omitempty"`      // none, writethrough, writeback
-	IOMode     string  `json:"io_mode,omitempty"`    // native, threads
+	Device   string  `json:"device"` // disk, cdrom, floppy
+	Source   string  `json:"source"` // path to disk image
+	Target   string  `json:"target"` // target device name (vda, hda, etc)
+	Bus      DiskBus `json:"bus"`    // virtio, ide, scsi, sata
+	Format   string  `json:"format"` // qcow2, raw, vmdk
+	Size     uint64  `json:"size"`   // size in bytes
+	ReadOnly bool    `json:"readonly"`
+	Bootable bool    `json:"bootable"`
+	Cache    string  `json:"cache,omitempty"`   // none, writethrough, writeback
+	IOMode   string  `json:"io_mode,omitempty"` // native, threads
 }
 
 // NetworkInterface represents a network interface
 type NetworkInterface struct {
-	Type       NetworkType `json:"type"`
-	Source     string      `json:"source"`      // bridge name, network name
-	MAC        string      `json:"mac"`
-	Model      string      `json:"model"`       // virtio, e1000, rtl8139
-	Target     string      `json:"target,omitempty"`
-	IPAddress  string      `json:"ip_address,omitempty"`
+	Type      NetworkType `json:"type"`
+	Source    string      `json:"source"` // bridge name, network name
+	MAC       string      `json:"mac"`
+	Model     string      `json:"model"` // virtio, e1000, rtl8139
+	Target    string      `json:"target,omitempty"`
+	IPAddress string      `json:"ip_address,omitempty"`
 }
 
 // GraphicsDevice represents graphics/console configuration
 type GraphicsDevice struct {
-	Type     string `json:"type"`     // vnc, spice, rdp
+	Type     string `json:"type"` // vnc, spice, rdp
 	Port     int    `json:"port"`
 	Listen   string `json:"listen"`
 	Password string `json:"password,omitempty"`
@@ -108,46 +106,46 @@ type GraphicsDevice struct {
 
 // VMCreateRequest represents a request to create a new VM
 type VMCreateRequest struct {
-	Name         string             `json:"name" binding:"required"`
-	Memory       uint64             `json:"memory" binding:"required"`       // in MB
-	VCPUs        uint               `json:"vcpus" binding:"required"`
-	DiskSize     uint64             `json:"disk_size,omitempty"`            // in GB, for auto-creation
-	DiskPath     string             `json:"disk_path,omitempty"`            // existing disk path
-	OSType       string             `json:"os_type"`                        // linux, windows, etc
-	Architecture string             `json:"architecture"`                    // x86_64 by default
-	ISOPath      string             `json:"iso_path,omitempty"`             // installation ISO
-	Network      NetworkConfig      `json:"network"`
-	Graphics     GraphicsConfig     `json:"graphics"`
-	CloudInit    *CloudInitConfig   `json:"cloud_init,omitempty"`
-	Template     string             `json:"template,omitempty"`             // template name to use
-	StoragePool  string             `json:"storage_pool,omitempty"`         // storage pool for disk
-	AutoStart    bool               `json:"autostart"`
-	Metadata     map[string]string  `json:"metadata,omitempty"`             // metadata for the VM
+	Name         string            `json:"name" binding:"required"`
+	Memory       uint64            `json:"memory" binding:"required"` // in MB
+	VCPUs        uint              `json:"vcpus" binding:"required"`
+	DiskSize     uint64            `json:"disk_size,omitempty"` // in GB, for auto-creation
+	DiskPath     string            `json:"disk_path,omitempty"` // existing disk path
+	OSType       string            `json:"os_type"`             // linux, windows, etc
+	Architecture string            `json:"architecture"`        // x86_64 by default
+	ISOPath      string            `json:"iso_path,omitempty"`  // installation ISO
+	Network      NetworkConfig     `json:"network"`
+	Graphics     GraphicsConfig    `json:"graphics"`
+	CloudInit    *CloudInitConfig  `json:"cloud_init,omitempty"`
+	Template     string            `json:"template,omitempty"`     // template name to use
+	StoragePool  string            `json:"storage_pool,omitempty"` // storage pool for disk
+	AutoStart    bool              `json:"autostart"`
+	Metadata     map[string]string `json:"metadata,omitempty"` // metadata for the VM
 }
 
 // NetworkConfig for VM creation
 type NetworkConfig struct {
 	Type   NetworkType `json:"type"`
-	Source string      `json:"source"`  // bridge/network name
-	Model  string      `json:"model"`   // virtio by default
+	Source string      `json:"source"` // bridge/network name
+	Model  string      `json:"model"`  // virtio by default
 }
 
 // GraphicsConfig for VM creation
 type GraphicsConfig struct {
-	Type     string `json:"type"`     // vnc or spice
-	Port     int    `json:"port"`     // -1 for auto
+	Type     string `json:"type"` // vnc or spice
+	Port     int    `json:"port"` // -1 for auto
 	Password string `json:"password,omitempty"`
 }
 
 // CloudInitConfig for cloud-init based initialization
 type CloudInitConfig struct {
-	UserData    string            `json:"user_data,omitempty"`
-	MetaData    string            `json:"meta_data,omitempty"`
-	NetworkData string            `json:"network_data,omitempty"`
-	SSHKeys     []string          `json:"ssh_keys,omitempty"`
-	Users       []CloudInitUser   `json:"users,omitempty"`
-	Packages    []string          `json:"packages,omitempty"`
-	RunCmd      []string          `json:"runcmd,omitempty"`
+	UserData    string          `json:"user_data,omitempty"`
+	MetaData    string          `json:"meta_data,omitempty"`
+	NetworkData string          `json:"network_data,omitempty"`
+	SSHKeys     []string        `json:"ssh_keys,omitempty"`
+	Users       []CloudInitUser `json:"users,omitempty"`
+	Packages    []string        `json:"packages,omitempty"`
+	RunCmd      []string        `json:"runcmd,omitempty"`
 }
 
 // CloudInitUser represents a user to create via cloud-init
@@ -164,8 +162,8 @@ type CloudInitUser struct {
 type BackupType string
 
 const (
-	BackupTypeFull        BackupType = "full"
-	BackupTypeIncremental BackupType = "incremental"
+	BackupTypeFull         BackupType = "full"
+	BackupTypeIncremental  BackupType = "incremental"
 	BackupTypeDifferential BackupType = "differential"
 )
 
@@ -184,18 +182,18 @@ const (
 type BackupCompressionType string
 
 const (
-	BackupCompressionNone BackupCompressionType = "none"
-	BackupCompressionGzip BackupCompressionType = "gzip"
+	BackupCompressionNone  BackupCompressionType = "none"
+	BackupCompressionGzip  BackupCompressionType = "gzip"
 	BackupCompressionBzip2 BackupCompressionType = "bzip2"
-	BackupCompressionXz   BackupCompressionType = "xz"
-	BackupCompressionZstd BackupCompressionType = "zstd"
+	BackupCompressionXz    BackupCompressionType = "xz"
+	BackupCompressionZstd  BackupCompressionType = "zstd"
 )
 
 // BackupEncryptionType represents encryption type
 type BackupEncryptionType string
 
 const (
-	BackupEncryptionNone BackupEncryptionType = "none"
+	BackupEncryptionNone   BackupEncryptionType = "none"
 	BackupEncryptionAES256 BackupEncryptionType = "aes256"
 	BackupEncryptionAES128 BackupEncryptionType = "aes128"
 )
@@ -211,7 +209,7 @@ type VMBackup struct {
 	DestinationPath string                `json:"destination_path"`
 	SizeBytes       int64                 `json:"size_bytes,omitempty"`
 	Compression     BackupCompressionType `json:"compression"`
-	Compressed      bool                  `json:"compressed"`  // For backward compatibility
+	Compressed      bool                  `json:"compressed"` // For backward compatibility
 	Encryption      BackupEncryptionType  `json:"encryption"`
 	ParentBackupID  string                `json:"parent_backup_id,omitempty"` // For incremental backups
 	StartedAt       time.Time             `json:"started_at"`
@@ -243,7 +241,7 @@ type VMRestoreRequest struct {
 
 // VMUpdateRequest for updating VM configuration
 type VMUpdateRequest struct {
-	Memory    *uint64 `json:"memory,omitempty"`     // in MB
+	Memory    *uint64 `json:"memory,omitempty"` // in MB
 	VCPUs     *uint   `json:"vcpus,omitempty"`
 	AutoStart *bool   `json:"autostart,omitempty"`
 	// Note: Some changes require VM restart
@@ -259,9 +257,9 @@ type VMActionRequest struct {
 type VMSnapshotRequest struct {
 	Name        string `json:"name" binding:"required"`
 	Description string `json:"description,omitempty"`
-	Memory      bool   `json:"memory"`      // include memory state
-	Quiesce     bool   `json:"quiesce"`     // quiesce filesystem (requires guest agent)
-	External    bool   `json:"external"`    // force external snapshot
+	Memory      bool   `json:"memory"`   // include memory state
+	Quiesce     bool   `json:"quiesce"`  // quiesce filesystem (requires guest agent)
+	External    bool   `json:"external"` // force external snapshot
 }
 
 // VMSnapshot represents a VM snapshot
@@ -269,7 +267,7 @@ type VMSnapshot struct {
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
 	State       VMState   `json:"state"`
-	Type        string    `json:"type,omitempty"`         // "internal", "external", "internal-memory"
+	Type        string    `json:"type,omitempty"` // "internal", "external", "internal-memory"
 	CreatedAt   time.Time `json:"created_at"`
 	Parent      string    `json:"parent,omitempty"`
 	Current     bool      `json:"current"`
@@ -282,22 +280,22 @@ type VMSnapshot struct {
 type VMCloneRequest struct {
 	SourceVM    string `json:"source_vm" binding:"required"`
 	Name        string `json:"name" binding:"required"`
-	FullClone   bool   `json:"full_clone"`     // full clone vs linked clone
-	Snapshots   bool   `json:"snapshots"`      // clone snapshots too
+	FullClone   bool   `json:"full_clone"` // full clone vs linked clone
+	Snapshots   bool   `json:"snapshots"`  // clone snapshots too
 	StoragePool string `json:"storage_pool,omitempty"`
 }
 
 // StoragePool represents a storage pool
 type StoragePool struct {
-	Name       string            `json:"name"`
-	Type       string            `json:"type"`       // dir, fs, netfs, logical, disk, iscsi, rbd
-	State      string            `json:"state"`      // running, inactive
-	Capacity   uint64            `json:"capacity"`   // in bytes
-	Allocation uint64            `json:"allocation"` // in bytes
-	Available  uint64            `json:"available"`  // in bytes
-	Path       string            `json:"path"`
-	AutoStart  bool              `json:"autostart"`
-	Volumes    []StorageVolume   `json:"volumes,omitempty"`
+	Name       string          `json:"name"`
+	Type       string          `json:"type"`       // dir, fs, netfs, logical, disk, iscsi, rbd
+	State      string          `json:"state"`      // running, inactive
+	Capacity   uint64          `json:"capacity"`   // in bytes
+	Allocation uint64          `json:"allocation"` // in bytes
+	Available  uint64          `json:"available"`  // in bytes
+	Path       string          `json:"path"`
+	AutoStart  bool            `json:"autostart"`
+	Volumes    []StorageVolume `json:"volumes,omitempty"`
 }
 
 // StorageVolume represents a storage volume
@@ -307,20 +305,20 @@ type StorageVolume struct {
 	Capacity   uint64    `json:"capacity"`   // in bytes
 	Allocation uint64    `json:"allocation"` // in bytes
 	Path       string    `json:"path"`
-	Format     string    `json:"format"`     // qcow2, raw, vmdk
+	Format     string    `json:"format"` // qcow2, raw, vmdk
 	CreatedAt  time.Time `json:"created_at"`
 }
 
 // Network represents a virtual network
 type Network struct {
-	Name      string          `json:"name"`
-	UUID      string          `json:"uuid"`
-	State     string          `json:"state"`      // active, inactive
-	Bridge    string          `json:"bridge"`
-	Mode      string          `json:"mode"`       // nat, route, bridge, private
-	IPRange   NetworkIPRange  `json:"ip_range,omitempty"`
-	DHCP      *DHCPConfig     `json:"dhcp,omitempty"`
-	AutoStart bool            `json:"autostart"`
+	Name       string         `json:"name"`
+	UUID       string         `json:"uuid"`
+	State      string         `json:"state"` // active, inactive
+	Bridge     string         `json:"bridge"`
+	Mode       string         `json:"mode"` // nat, route, bridge, private
+	IPRange    NetworkIPRange `json:"ip_range,omitempty"`
+	DHCP       *DHCPConfig    `json:"dhcp,omitempty"`
+	AutoStart  bool           `json:"autostart"`
 	Persistent bool           `json:"persistent"`
 }
 
@@ -333,9 +331,9 @@ type NetworkIPRange struct {
 
 // DHCPConfig for network DHCP settings
 type DHCPConfig struct {
-	Start string         `json:"start"` // 192.168.122.2
-	End   string         `json:"end"`   // 192.168.122.254
-	Hosts []DHCPHost     `json:"hosts,omitempty"`
+	Start string     `json:"start"` // 192.168.122.2
+	End   string     `json:"end"`   // 192.168.122.254
+	Hosts []DHCPHost `json:"hosts,omitempty"`
 }
 
 // DHCPHost for static DHCP assignments
@@ -347,16 +345,16 @@ type DHCPHost struct {
 
 // VMMetrics represents performance metrics for a VM
 type VMMetrics struct {
-	UUID         string    `json:"uuid"`
-	Timestamp    time.Time `json:"timestamp"`
-	CPUTime      uint64    `json:"cpu_time"`      // nanoseconds
-	CPUUsage     float64   `json:"cpu_usage"`     // percentage
-	MemoryUsed   uint64    `json:"memory_used"`   // in KB
-	MemoryUsage  float64   `json:"memory_usage"`  // percentage
-	DiskRead     uint64    `json:"disk_read"`     // bytes
-	DiskWrite    uint64    `json:"disk_write"`    // bytes
-	NetworkRX    uint64    `json:"network_rx"`    // bytes
-	NetworkTX    uint64    `json:"network_tx"`    // bytes
+	UUID        string    `json:"uuid"`
+	Timestamp   time.Time `json:"timestamp"`
+	CPUTime     uint64    `json:"cpu_time"`     // nanoseconds
+	CPUUsage    float64   `json:"cpu_usage"`    // percentage
+	MemoryUsed  uint64    `json:"memory_used"`  // in KB
+	MemoryUsage float64   `json:"memory_usage"` // percentage
+	DiskRead    uint64    `json:"disk_read"`    // bytes
+	DiskWrite   uint64    `json:"disk_write"`   // bytes
+	NetworkRX   uint64    `json:"network_rx"`   // bytes
+	NetworkTX   uint64    `json:"network_tx"`   // bytes
 }
 
 // ConsoleRequest for console access
@@ -370,22 +368,22 @@ type ConsoleResponse struct {
 	Host     string `json:"host"`
 	Port     int    `json:"port"`
 	Password string `json:"password,omitempty"`
-	Token    string `json:"token,omitempty"`     // for websocket auth
-	WSPath   string `json:"ws_path,omitempty"`   // websocket path
+	Token    string `json:"token,omitempty"`   // for websocket auth
+	WSPath   string `json:"ws_path,omitempty"` // websocket path
 }
 
 // MigrationRequest for VM migration
 type MigrationRequest struct {
-	DestinationHost  string `json:"destination_host" binding:"required"`
-	DestinationURI   string `json:"destination_uri,omitempty"`
-	Live             bool   `json:"live"`           // live migration
-	Tunneled         bool   `json:"tunneled"`       // tunneled migration
-	Compressed       bool   `json:"compressed"`     // compress during transfer
-	AutoConverge     bool   `json:"auto_converge"`  // auto-converge CPU throttling
-	AllowUnsafe      bool   `json:"allow_unsafe"`   // allow unsafe migration
-	MaxBandwidth     uint64 `json:"max_bandwidth"`  // max bandwidth in MB/s (0 = unlimited)
-	MaxDowntime      uint64 `json:"max_downtime"`   // max downtime in milliseconds
-	CopyStorage      string `json:"copy_storage"`   // storage migration mode: none, all, inc
+	DestinationHost string `json:"destination_host" binding:"required"`
+	DestinationURI  string `json:"destination_uri,omitempty"`
+	Live            bool   `json:"live"`          // live migration
+	Tunneled        bool   `json:"tunneled"`      // tunneled migration
+	Compressed      bool   `json:"compressed"`    // compress during transfer
+	AutoConverge    bool   `json:"auto_converge"` // auto-converge CPU throttling
+	AllowUnsafe     bool   `json:"allow_unsafe"`  // allow unsafe migration
+	MaxBandwidth    uint64 `json:"max_bandwidth"` // max bandwidth in MB/s (0 = unlimited)
+	MaxDowntime     uint64 `json:"max_downtime"`  // max downtime in milliseconds
+	CopyStorage     string `json:"copy_storage"`  // storage migration mode: none, all, inc
 }
 
 // BackupRequest for VM backup
@@ -399,28 +397,28 @@ type BackupRequest struct {
 
 // VMTemplate represents a VM template with all fields
 type VMTemplate struct {
-	ID                 int               `json:"id"`
-	Name               string            `json:"name"`
-	Description        string            `json:"description"`
-	OSType             string            `json:"os_type"`
-	OSVariant          string            `json:"os_variant,omitempty"`
-	MinMemory          uint64            `json:"min_memory"`
-	RecommendedMemory  uint64            `json:"recommended_memory,omitempty"`
-	MinVCPUs           uint              `json:"min_vcpus"`
-	RecommendedVCPUs   uint              `json:"recommended_vcpus,omitempty"`
-	MinDisk            uint64            `json:"min_disk"`
-	RecommendedDisk    uint64            `json:"recommended_disk,omitempty"`
-	DiskFormat         string            `json:"disk_format"`
-	NetworkModel       string            `json:"network_model"`
-	GraphicsType       string            `json:"graphics_type"`
-	CloudInit          bool              `json:"cloud_init"`
-	UEFIBoot           bool              `json:"uefi_boot"`
-	SecureBoot         bool              `json:"secure_boot"`
-	TPM                bool              `json:"tpm"`
-	DefaultUser        string            `json:"default_user,omitempty"`
-	Metadata           map[string]string `json:"metadata,omitempty"`
-	CreatedAt          time.Time         `json:"created_at"`
-	UpdatedAt          time.Time         `json:"updated_at"`
+	ID                int               `json:"id"`
+	Name              string            `json:"name"`
+	Description       string            `json:"description"`
+	OSType            string            `json:"os_type"`
+	OSVariant         string            `json:"os_variant,omitempty"`
+	MinMemory         uint64            `json:"min_memory"`
+	RecommendedMemory uint64            `json:"recommended_memory,omitempty"`
+	MinVCPUs          uint              `json:"min_vcpus"`
+	RecommendedVCPUs  uint              `json:"recommended_vcpus,omitempty"`
+	MinDisk           uint64            `json:"min_disk"`
+	RecommendedDisk   uint64            `json:"recommended_disk,omitempty"`
+	DiskFormat        string            `json:"disk_format"`
+	NetworkModel      string            `json:"network_model"`
+	GraphicsType      string            `json:"graphics_type"`
+	CloudInit         bool              `json:"cloud_init"`
+	UEFIBoot          bool              `json:"uefi_boot"`
+	SecureBoot        bool              `json:"secure_boot"`
+	TPM               bool              `json:"tpm"`
+	DefaultUser       string            `json:"default_user,omitempty"`
+	Metadata          map[string]string `json:"metadata,omitempty"`
+	CreatedAt         time.Time         `json:"created_at"`
+	UpdatedAt         time.Time         `json:"updated_at"`
 }
 
 // StoragePoolCreateRequest for creating storage pools
@@ -438,7 +436,7 @@ type VolumeCreateRequest struct {
 	Name     string `json:"name" binding:"required"`
 	PoolName string `json:"pool_name" binding:"required"`
 	Capacity uint64 `json:"capacity" binding:"required"` // in bytes
-	Format   string `json:"format"`                       // qcow2, raw, vmdk
+	Format   string `json:"format"`                      // qcow2, raw, vmdk
 }
 
 // NetworkCreateRequest for creating networks
@@ -466,7 +464,7 @@ type MigrationStatusResponse struct {
 	MigrationID   string    `json:"migration_id"`
 	VMName        string    `json:"vm_name,omitempty"`
 	Status        string    `json:"status"`
-	Progress      int       `json:"progress"`      // 0-100 percentage
+	Progress      int       `json:"progress"` // 0-100 percentage
 	SourceHost    string    `json:"source_host,omitempty"`
 	DestHost      string    `json:"dest_host,omitempty"`
 	DataProcessed uint64    `json:"data_processed"` // bytes
@@ -562,34 +560,34 @@ type HotplugUSBConfig struct {
 
 // ISOImage represents an ISO image available for VM installation
 type ISOImage struct {
-	ImageID       string    `json:"image_id"`
-	Filename      string    `json:"filename"`
-	Path          string    `json:"path"`
-	SizeBytes     int64     `json:"size_bytes"`
-	MD5Hash       string    `json:"md5_hash,omitempty"`
-	SHA256Hash    string    `json:"sha256_hash,omitempty"`
-	OSType        string    `json:"os_type,omitempty"`
-	OSVersion     string    `json:"os_version,omitempty"`
-	Architecture  string    `json:"architecture,omitempty"`
-	Description   string    `json:"description,omitempty"`
-	IsPublic      bool      `json:"is_public"`
-	UploadedBy    string    `json:"uploaded_by"`
-	UploadStatus  string    `json:"upload_status"`
-	UploadProgress int      `json:"upload_progress"`
-	CreatedAt     time.Time `json:"created_at"`
-	Metadata      map[string]string `json:"metadata,omitempty"`
+	ImageID        string            `json:"image_id"`
+	Filename       string            `json:"filename"`
+	Path           string            `json:"path"`
+	SizeBytes      int64             `json:"size_bytes"`
+	MD5Hash        string            `json:"md5_hash,omitempty"`
+	SHA256Hash     string            `json:"sha256_hash,omitempty"`
+	OSType         string            `json:"os_type,omitempty"`
+	OSVersion      string            `json:"os_version,omitempty"`
+	Architecture   string            `json:"architecture,omitempty"`
+	Description    string            `json:"description,omitempty"`
+	IsPublic       bool              `json:"is_public"`
+	UploadedBy     string            `json:"uploaded_by"`
+	UploadStatus   string            `json:"upload_status"`
+	UploadProgress int               `json:"upload_progress"`
+	CreatedAt      time.Time         `json:"created_at"`
+	Metadata       map[string]string `json:"metadata,omitempty"`
 }
 
 // ISOUploadSession represents an active ISO upload session
 type ISOUploadSession struct {
-	SessionID     string    `json:"session_id"`
-	ImageID       string    `json:"image_id"`
-	Filename      string    `json:"filename"`
-	TotalSize     int64     `json:"total_size"`
-	UploadedSize  int64     `json:"uploaded_size"`
-	ChunkSize     int64     `json:"chunk_size"`
-	Status        string    `json:"status"` // active, paused, completed, expired
-	ExpiresAt     time.Time `json:"expires_at"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	SessionID    string    `json:"session_id"`
+	ImageID      string    `json:"image_id"`
+	Filename     string    `json:"filename"`
+	TotalSize    int64     `json:"total_size"`
+	UploadedSize int64     `json:"uploaded_size"`
+	ChunkSize    int64     `json:"chunk_size"`
+	Status       string    `json:"status"` // active, paused, completed, expired
+	ExpiresAt    time.Time `json:"expires_at"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }

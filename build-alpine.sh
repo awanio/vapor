@@ -23,7 +23,7 @@ echo "CGO_LDFLAGS: $CGO_LDFLAGS"
 
 # Build with proper tags
 echo "Building with libvirt support..."
-go build -tags "libvirt,linux" -o ./bin/vapor ./cmd/vapor/main.go
+go build -o ./bin/vapor ./cmd/vapor/main.go
 
 if [ $? -eq 0 ]; then
     echo "Build successful! Binary created at ./bin/vapor"

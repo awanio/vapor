@@ -1,6 +1,3 @@
-//go:build linux && libvirt
-// +build linux,libvirt
-
 package libvirt
 
 import (
@@ -344,7 +341,7 @@ func (h *ISOResumableUploadHandler) CompleteUpload(c *gin.Context) {
 	}
 
 	// Register the ISO using the service
-	iso, err := h.service.RegisterISO(c.Request.Context(), isoRequest)
+	iso, err := h.service.UploadISO(c.Request.Context(), isoRequest)
 	if err != nil {
 		// Clean up the file if registration fails
 		os.Remove(finalPath)

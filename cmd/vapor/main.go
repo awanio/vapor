@@ -162,7 +162,7 @@ func main() {
 			log.Printf("Warning: Libvirt integration disabled: %v", err)
 		} else {
 			// Set database for backup tracking
-			libvirtService.SetDatabase(db)
+			libvirtService.SetDatabase(db.DB)
 			log.Printf("Libvirt integration initialized with URI: %s", libvirtURI)
 			routes.LibvirtRoutes(api, libvirtService)
 			defer libvirtService.Close() // Close service when server shuts down

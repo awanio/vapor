@@ -1,21 +1,15 @@
-//go:build linux && libvirt
-// +build linux,libvirt
 
 package libvirt
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
-	"database/sql"
 	"encoding/hex"
 	"encoding/xml"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
-	"text/template"
 	"time"
 
 	"libvirt.org/go/libvirt"
@@ -296,10 +290,10 @@ func (s *Service) applyTemplateToRequest(req *VMCreateRequest, template *VMTempl
 		req.CloudInit = &CloudInitConfig{
 			Users: []CloudInitUser{
 				{
-					Name: template.DefaultUser,
-					Sudo: "ALL=(ALL) NOPASSWD:ALL",
+					Name:   template.DefaultUser,
+					Sudo:   "ALL=(ALL) NOPASSWD:ALL",
 					Groups: "sudo",
-					Shell: "/bin/bash",
+					Shell:  "/bin/bash",
 				},
 			},
 		}
@@ -473,7 +467,6 @@ func (s *Service) generateNetworkXML(req *NetworkCreateRequest) string {
 	return xml
 }
 
-
 // updatePCIDevicesInDB updates PCI device information in the database
 func (s *Service) updatePCIDevicesInDB(ctx context.Context, devices []PCIDevice) {
 	if s.db == nil {
@@ -489,8 +482,8 @@ func (s *Service) updatePCIDevicesInDB(ctx context.Context, devices []PCIDevice)
 				product_name = excluded.product_name,
 				driver = excluded.driver,
 				last_seen = excluded.last_seen
-		`, device.DeviceID, device.VendorID, device.ProductID, device.VendorName, device.ProductName, 
-		   device.DeviceType, device.PCIAddress, device.IOMMUGroup, device.Driver, device.IsAvailable, device.LastSeen)
+		`, device.DeviceID, device.VendorID, device.ProductID, device.VendorName, device.ProductName,
+			device.DeviceType, device.PCIAddress, device.IOMMUGroup, device.Driver, device.IsAvailable, device.LastSeen)
 		if err != nil {
 			fmt.Printf("Warning: failed to update PCI device %s in DB: %v\n", device.DeviceID, err)
 		}
@@ -645,9 +638,9 @@ func boolToYesNo(b bool) string {
 
 // PCI device XML structure
 type PCIDeviceXML struct {
-	XMLName   xml.Name `xml:"device"`
-	Name      string   `xml:"name"`
-	Parent    string   `xml:"parent"`
+	XMLName    xml.Name `xml:"device"`
+	Name       string   `xml:"name"`
+	Parent     string   `xml:"parent"`
 	IOMMUGroup struct {
 		Number int `xml:"number,attr"`
 	} `xml:"iommuGroup"`
@@ -657,7 +650,7 @@ type PCIDeviceXML struct {
 		Bus      int    `xml:"bus"`
 		Slot     int    `xml:"slot"`
 		Function int    `xml:"function"`
-		Product struct {
+		Product  struct {
 			ID   string `xml:"id,attr"`
 			Name string `xml:",chardata"`
 		} `xml:"product"`
@@ -684,17 +677,17 @@ func (s *Service) pciDeviceToType(dev libvirt.NodeDevice) (*PCIDevice, error) {
 	}
 
 	pciDevice := &PCIDevice{
-		DeviceID:      deviceXML.Name,
-		VendorName:    deviceXML.Capability.Vendor.Name,
-		ProductName:   deviceXML.Capability.Product.Name,
-		PCIAddress:    fmt.Sprintf("%04x:%02x:%02x.%x", deviceXML.Capability.Domain, deviceXML.Capability.Bus, deviceXML.Capability.Slot, deviceXML.Capability.Function),
-		IOMMUGroup:    deviceXML.IOMMUGroup.Number,
-		Driver:        deviceXML.Capability.Driver.Name,
-		IsAvailable:   true, // Assumes available until assigned
+		DeviceID:    deviceXML.Name,
+		VendorName:  deviceXML.Capability.Vendor.Name,
+		ProductName: deviceXML.Capability.Product.Name,
+		PCIAddress:  fmt.Sprintf("%04x:%02x:%02x.%x", deviceXML.Capability.Domain, deviceXML.Capability.Bus, deviceXML.Capability.Slot, deviceXML.Capability.Function),
+		IOMMUGroup:  deviceXML.IOMMUGroup.Number,
+		Driver:      deviceXML.Capability.Driver.Name,
+		IsAvailable: true, // Assumes available until assigned
 	}
 
 	// Determine device type
-	pciDevice.Type = determinePCIDeviceType(pciDevice.ProductName, pciDevice.VendorName)
+	pciDevice.DeviceType = determinePCIDeviceType(pciDevice.ProductName, pciDevice.VendorName)
 
 	return pciDevice, nil
 }
@@ -742,4 +735,114 @@ func getNetworkSourceAttr(netType NetworkType) string {
 	default:
 		return "network"
 	}
+}
+
+// guessOSFromFilename attempts to guess the OS type and version from an ISO filename
+func guessOSFromFilename(filename string) (osType string, osVersion string) {
+	lower := strings.ToLower(filename)
+
+	// Default values
+	osType = "unknown"
+	osVersion = ""
+
+	// Check for common OS patterns
+	switch {
+	case strings.Contains(lower, "ubuntu"):
+		osType = "linux"
+		// Try to extract version
+		if strings.Contains(lower, "22.04") || strings.Contains(lower, "2204") {
+			osVersion = "ubuntu22.04"
+		} else if strings.Contains(lower, "20.04") || strings.Contains(lower, "2004") {
+			osVersion = "ubuntu20.04"
+		} else if strings.Contains(lower, "18.04") || strings.Contains(lower, "1804") {
+			osVersion = "ubuntu18.04"
+		} else {
+			osVersion = "ubuntu"
+		}
+
+	case strings.Contains(lower, "centos"):
+		osType = "linux"
+		if strings.Contains(lower, "9") {
+			osVersion = "centos9"
+		} else if strings.Contains(lower, "8") {
+			osVersion = "centos8"
+		} else if strings.Contains(lower, "7") {
+			osVersion = "centos7"
+		} else {
+			osVersion = "centos"
+		}
+
+	case strings.Contains(lower, "rhel") || strings.Contains(lower, "redhat"):
+		osType = "linux"
+		if strings.Contains(lower, "9") {
+			osVersion = "rhel9"
+		} else if strings.Contains(lower, "8") {
+			osVersion = "rhel8"
+		} else if strings.Contains(lower, "7") {
+			osVersion = "rhel7"
+		} else {
+			osVersion = "rhel"
+		}
+
+	case strings.Contains(lower, "debian"):
+		osType = "linux"
+		if strings.Contains(lower, "12") {
+			osVersion = "debian12"
+		} else if strings.Contains(lower, "11") {
+			osVersion = "debian11"
+		} else if strings.Contains(lower, "10") {
+			osVersion = "debian10"
+		} else {
+			osVersion = "debian"
+		}
+
+	case strings.Contains(lower, "fedora"):
+		osType = "linux"
+		osVersion = "fedora"
+
+	case strings.Contains(lower, "suse") || strings.Contains(lower, "sles"):
+		osType = "linux"
+		osVersion = "sles"
+
+	case strings.Contains(lower, "windows"):
+		osType = "windows"
+		if strings.Contains(lower, "2022") {
+			osVersion = "win2k22"
+		} else if strings.Contains(lower, "2019") {
+			osVersion = "win2k19"
+		} else if strings.Contains(lower, "2016") {
+			osVersion = "win2k16"
+		} else if strings.Contains(lower, "11") {
+			osVersion = "win11"
+		} else if strings.Contains(lower, "10") {
+			osVersion = "win10"
+		} else {
+			osVersion = "windows"
+		}
+
+	case strings.Contains(lower, "freebsd"):
+		osType = "bsd"
+		osVersion = "freebsd"
+
+	case strings.Contains(lower, "openbsd"):
+		osType = "bsd"
+		osVersion = "openbsd"
+
+	case strings.Contains(lower, "arch"):
+		osType = "linux"
+		osVersion = "archlinux"
+
+	case strings.Contains(lower, "alpine"):
+		osType = "linux"
+		osVersion = "alpinelinux"
+
+	default:
+		// Generic Linux if contains common Linux indicators
+		if strings.Contains(lower, "linux") || strings.Contains(lower, ".iso") {
+			osType = "linux"
+			osVersion = "generic"
+		}
+	}
+
+	return osType, osVersion
 }

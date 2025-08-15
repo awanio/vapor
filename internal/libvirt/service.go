@@ -1,5 +1,3 @@
-//go:build linux && libvirt
-// +build linux,libvirt
 
 package libvirt
 
@@ -24,7 +22,7 @@ type Service struct {
 	conn            *libvirt.Connect
 	mu              sync.RWMutex
 	metricsStop     chan struct{}
-	templates       map[string]*Template
+	templates       map[string]*VMTemplate
 	db              *sql.DB // Optional database for tracking
 	TemplateService *VMTemplateService
 }
@@ -50,7 +48,7 @@ func NewService(uri string) (*Service, error) {
 	s := &Service{
 		conn:        conn,
 		metricsStop: make(chan struct{}),
-		templates:   make(map[string]*Template),
+		templates:   make(map[string]*VMTemplate),
 	}
 
 	// Load default templates
@@ -192,7 +190,7 @@ func (s *Service) runBackupJob(domain *libvirt.Domain, backup *VMBackup, req *VM
 	}
 
 	// Execute the backup
-	if err := domain.BackupBegin(backupXML, 0); err != nil {
+	if err := domain.BackupBegin(backupXML, "", 0); err != nil {
 		backup.Status = BackupStatusFailed
 		backup.ErrorMessage = fmt.Sprintf("backup operation failed: %v", err)
 	} else {
@@ -303,7 +301,7 @@ func (s *Service) AttachPCIDevice(ctx context.Context, vmName string, req *PCIPa
 	// Update database
 	if s.db != nil {
 		uuid, _ := domain.GetUUIDString()
-		_, err = s.db.ExecContext(ctx, 
+		_, err = s.db.ExecContext(ctx,
 			"UPDATE pci_devices SET is_available = 0, assigned_to_vm = ? WHERE device_id = ?",
 			uuid, req.DeviceID)
 		if err != nil {
@@ -363,7 +361,7 @@ func (s *Service) DetachPCIDevice(ctx context.Context, vmName string, req *PCIDe
 
 	// Update database
 	if s.db != nil {
-		_, err = s.db.ExecContext(ctx, 
+		_, err = s.db.ExecContext(ctx,
 			"UPDATE pci_devices SET is_available = 1, assigned_to_vm = NULL WHERE device_id = ?",
 			req.DeviceID)
 		if err != nil {
@@ -466,7 +464,7 @@ func (s *Service) RestoreVMBackup(ctx context.Context, backupID string) (*VM, er
 
 	// Get backup info from database
 	var backup VMBackup
-	err := s.db.QueryRowContext(ctx, 
+	err := s.db.QueryRowContext(ctx,
 		"SELECT backup_id, vm_uuid, vm_name, destination_path FROM vm_backups WHERE backup_id = ?",
 		backupID).Scan(&backup.ID, &backup.VMUUID, &backup.VMName, &backup.DestinationPath)
 	if err != nil {
@@ -567,14 +565,14 @@ func (s *Service) CreateVM(ctx context.Context, req *VMCreateRequest) (*VM, erro
 		if poolName == "" {
 			poolName = "default"
 		}
-		
+
 		diskPath, err := s.createDisk(poolName, req.Name, req.DiskSize)
 		if err != nil {
 			// Clean up domain definition
 			domain.Undefine()
 			return nil, fmt.Errorf("failed to create disk: %w", err)
 		}
-		
+
 		// Attach the disk
 		if err := s.attachDisk(domain, diskPath, "vda"); err != nil {
 			domain.Undefine()
@@ -621,7 +619,7 @@ func (s *Service) UpdateVM(ctx context.Context, nameOrUUID string, req *VMUpdate
 				return nil, fmt.Errorf("failed to update memory: %w", err)
 			}
 		} else {
-			if err := domain.SetMemoryFlags(memoryKB, libvirt.DOMAIN_AFFECT_CONFIG); err != nil {
+			if err := domain.SetMemoryFlags(memoryKB, libvirt.DomainMemoryModFlags(libvirt.DOMAIN_AFFECT_CONFIG)); err != nil {
 				return nil, fmt.Errorf("failed to update memory config: %w", err)
 			}
 		}
@@ -633,12 +631,12 @@ func (s *Service) UpdateVM(ctx context.Context, nameOrUUID string, req *VMUpdate
 			// Try hot-plug vCPUs
 			if err := domain.SetVcpus(*req.VCPUs); err != nil {
 				// If hot-plug fails, update config for next boot
-				if err := domain.SetVcpusFlags(*req.VCPUs, libvirt.DOMAIN_AFFECT_CONFIG); err != nil {
+				if err := domain.SetVcpusFlags(*req.VCPUs, libvirt.DomainVcpuFlags(libvirt.DOMAIN_AFFECT_CONFIG)); err != nil {
 					return nil, fmt.Errorf("failed to update vCPUs: %w", err)
 				}
 			}
 		} else {
-			if err := domain.SetVcpusFlags(*req.VCPUs, libvirt.DOMAIN_AFFECT_CONFIG); err != nil {
+			if err := domain.SetVcpusFlags(*req.VCPUs, libvirt.DomainVcpuFlags(libvirt.DOMAIN_AFFECT_CONFIG)); err != nil {
 				return nil, fmt.Errorf("failed to update vCPUs config: %w", err)
 			}
 		}
@@ -680,7 +678,7 @@ func (s *Service) DeleteVM(ctx context.Context, nameOrUUID string, removeDisks b
 	// Remove disks if requested
 	if removeDisks {
 		// Get domain XML to find disk paths
-		xmlDesc, err := domain.GetXMLDesc(0)
+		_, err := domain.GetXMLDesc(0)
 		if err == nil {
 			// Parse and remove disk files
 			// This would require XML parsing to extract disk paths
@@ -759,10 +757,10 @@ func (s *Service) CreateSnapshot(ctx context.Context, nameOrUUID string, req *VM
 			<description>%s</description>
 			<memory snapshot='%s'/>
 		</domainsnapshot>`,
-		req.Name, req.Description, 
+		req.Name, req.Description,
 		map[bool]string{true: "internal", false: "no"}[req.Memory])
 
-	flags := uint32(0)
+	flags := libvirt.DomainSnapshotCreateFlags(0)
 	if !req.Memory {
 		flags = libvirt.DOMAIN_SNAPSHOT_CREATE_DISK_ONLY
 	}
@@ -842,7 +840,7 @@ func (s *Service) RevertSnapshot(ctx context.Context, nameOrUUID string, snapsho
 	}
 	defer snapshot.Free()
 
-	return domain.RevertToSnapshot(&snapshot, 0)
+	return snapshot.RevertToSnapshot(0)
 }
 
 // DeleteSnapshot deletes a VM snapshot
@@ -878,7 +876,7 @@ func (s *Service) CloneVM(ctx context.Context, req *VMCloneRequest) (*VM, error)
 	defer sourceDomain.Free()
 
 	// Get source XML
-	sourceXML, err := sourceDomain.GetXMLDesc(0)
+	_, err = sourceDomain.GetXMLDesc(0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get source XML: %w", err)
 	}
@@ -886,7 +884,7 @@ func (s *Service) CloneVM(ctx context.Context, req *VMCloneRequest) (*VM, error)
 	// Modify XML for clone
 	// This is simplified - in production you'd parse and modify the XML properly
 	// For now, we'll create a new VM based on the source configuration
-	
+
 	// Parse source VM
 	sourceVM, err := s.domainToVM(sourceDomain)
 	if err != nil {
@@ -895,12 +893,12 @@ func (s *Service) CloneVM(ctx context.Context, req *VMCloneRequest) (*VM, error)
 
 	// Create clone request
 	createReq := &VMCreateRequest{
-		Name:        req.Name,
-		Memory:      sourceVM.Memory / 1024, // Convert from KB to MB
-		VCPUs:       sourceVM.VCPUs,
-		OSType:      sourceVM.OS.Type,
+		Name:         req.Name,
+		Memory:       sourceVM.Memory / 1024, // Convert from KB to MB
+		VCPUs:        sourceVM.VCPUs,
+		OSType:       sourceVM.OS.Type,
 		Architecture: sourceVM.OS.Architecture,
-		StoragePool: req.StoragePool,
+		StoragePool:  req.StoragePool,
 	}
 
 	// Handle disk cloning
@@ -911,7 +909,7 @@ func (s *Service) CloneVM(ctx context.Context, req *VMCloneRequest) (*VM, error)
 		if poolName == "" {
 			poolName = "default"
 		}
-		
+
 		clonedDiskPath, err := s.cloneDisk(poolName, sourceDisk.Source, req.Name)
 		if err != nil {
 			return nil, fmt.Errorf("failed to clone disk: %w", err)
@@ -982,9 +980,9 @@ func (s *Service) GetVMMetrics(ctx context.Context, nameOrUUID string) (*VMMetri
 	// Calculate memory usage
 	for _, stat := range memStats {
 		switch stat.Tag {
-		case libvirt.DOMAIN_MEMORY_STAT_ACTUAL_BALLOON:
+		case int32(libvirt.DOMAIN_MEMORY_STAT_ACTUAL_BALLOON):
 			metrics.MemoryUsed = stat.Val
-		case libvirt.DOMAIN_MEMORY_STAT_AVAILABLE:
+		case int32(libvirt.DOMAIN_MEMORY_STAT_AVAILABLE):
 			if stat.Val > 0 && metrics.MemoryUsed > 0 {
 				metrics.MemoryUsage = float64(metrics.MemoryUsed) / float64(stat.Val) * 100
 			}
@@ -1006,7 +1004,7 @@ func (s *Service) GetConsole(ctx context.Context, nameOrUUID string, consoleType
 	defer domain.Free()
 
 	// Get domain XML to parse console configuration
-	xmlDesc, err := domain.GetXMLDesc(0)
+	_, err = domain.GetXMLDesc(0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get domain XML: %w", err)
 	}
@@ -1098,7 +1096,7 @@ func (s *Service) domainToVM(domain *libvirt.Domain) (*VM, error) {
 	}
 
 	// Parse XML for additional details
-	xmlDesc, err := domain.GetXMLDesc(0)
+	_, err = domain.GetXMLDesc(0)
 	if err == nil {
 		// Parse OS, disks, networks, etc. from XML
 		// This would require proper XML parsing
@@ -1117,7 +1115,7 @@ func (s *Service) snapshotToVMSnapshot(snapshot *libvirt.DomainSnapshot) (*VMSna
 		return nil, err
 	}
 
-	xmlDesc, err := snapshot.GetXMLDesc(0)
+	_, err = snapshot.GetXMLDesc(0)
 	if err != nil {
 		return nil, err
 	}
@@ -1162,36 +1160,44 @@ func generateConsoleToken(vmID string) string {
 }
 
 func (s *Service) loadDefaultTemplates() {
-	// Load some default VM templates
-	s.templates["ubuntu-22.04"] = &Template{
-		Name:        "ubuntu-22.04",
-		Description: "Ubuntu 22.04 LTS Server",
-		OS: OSInfo{
-			Type:         "hvm",
-			Architecture: "x86_64",
-			Machine:      "q35",
-		},
-		MinMemory:  2048 * 1024,  // 2GB
-		MinVCPUs:   2,
-		MinDisk:    20 * 1024 * 1024 * 1024, // 20GB
-		DiskFormat: "qcow2",
-		CloudInit:  true,
-	}
+// Load some default VM templates
+s.templates["ubuntu-22.04"] = &VMTemplate{
+Name:              "ubuntu-22.04",
+Description:       "Ubuntu 22.04 LTS Server",
+OSType:            "linux",
+OSVariant:         "ubuntu22.04",
+MinMemory:         2048 * 1024 * 1024,     // 2GB in bytes
+RecommendedMemory: 4096 * 1024 * 1024,     // 4GB in bytes
+MinVCPUs:          2,
+RecommendedVCPUs:  4,
+MinDisk:           20 * 1024 * 1024 * 1024, // 20GB in bytes
+RecommendedDisk:   50 * 1024 * 1024 * 1024, // 50GB in bytes
+DiskFormat:        "qcow2",
+NetworkModel:      "virtio",
+GraphicsType:      "vnc",
+CloudInit:         true,
+UEFIBoot:          false,
+DefaultUser:       "ubuntu",
+}
 
-	s.templates["centos-9"] = &Template{
-		Name:        "centos-9",
-		Description: "CentOS Stream 9",
-		OS: OSInfo{
-			Type:         "hvm",
-			Architecture: "x86_64",
-			Machine:      "q35",
-		},
-		MinMemory:  2048 * 1024,
-		MinVCPUs:   2,
-		MinDisk:    20 * 1024 * 1024 * 1024,
-		DiskFormat: "qcow2",
-		CloudInit:  true,
-	}
+s.templates["centos-9"] = &VMTemplate{
+Name:              "centos-9",
+Description:       "CentOS Stream 9",
+OSType:            "linux",
+OSVariant:         "centos-stream9",
+MinMemory:         2048 * 1024 * 1024,     // 2GB in bytes
+RecommendedMemory: 4096 * 1024 * 1024,     // 4GB in bytes
+MinVCPUs:          2,
+RecommendedVCPUs:  4,
+MinDisk:           20 * 1024 * 1024 * 1024, // 20GB in bytes
+RecommendedDisk:   50 * 1024 * 1024 * 1024, // 50GB in bytes
+DiskFormat:        "qcow2",
+NetworkModel:      "virtio",
+GraphicsType:      "vnc",
+CloudInit:         true,
+UEFIBoot:          true,
+DefaultUser:       "centos",
+}
 }
 
 // Storage Pool Management
@@ -1226,9 +1232,9 @@ func (s *Service) storagePoolToType(pool *libvirt.StoragePool) (*StoragePool, er
 		return nil, err
 	}
 
-	uuid, err := pool.GetUUIDString()
+	_, err = pool.GetUUIDString()
 	if err != nil {
-		uuid = "" // Non-fatal
+		_ = "" // Non-fatal
 	}
 
 	info, err := pool.GetInfo()
@@ -1646,7 +1652,7 @@ func (s *Service) MigrateVM(ctx context.Context, nameOrUUID string, req *Migrati
 	if req.AllowUnsafe {
 		flags |= libvirt.MIGRATE_UNSAFE
 	}
-	
+
 	// Handle storage migration based on copy_storage parameter
 	switch req.CopyStorage {
 	case "all":
@@ -1726,9 +1732,9 @@ func (s *Service) GetMigrationStatus(ctx context.Context, nameOrUUID string, mig
 			jobInfo, err := domain.GetJobInfo()
 			if err == nil && jobInfo.Type != libvirt.DOMAIN_JOB_NONE {
 				return &MigrationStatusResponse{
-					MigrationID: "current",
-					Status:      domainJobTypeToStatus(jobInfo.Type),
-					Progress:    calculateProgress(jobInfo),
+					MigrationID:   "current",
+					Status:        domainJobTypeToStatus(jobInfo.Type),
+					Progress:      calculateProgress(*jobInfo),
 					DataRemaining: jobInfo.DataRemaining,
 					DataProcessed: jobInfo.DataProcessed,
 					MemProcessed:  jobInfo.MemProcessed,
@@ -1769,7 +1775,7 @@ var migrationStoreMutex sync.RWMutex
 func (s *Service) storeMigrationInfo(id, vmName, destHost, status string) {
 	migrationStoreMutex.Lock()
 	defer migrationStoreMutex.Unlock()
-	
+
 	migrationStore[id] = &MigrationStatusResponse{
 		MigrationID: id,
 		VMName:      vmName,
@@ -1782,7 +1788,7 @@ func (s *Service) storeMigrationInfo(id, vmName, destHost, status string) {
 func (s *Service) updateMigrationStatus(id, status string, progress int) {
 	migrationStoreMutex.Lock()
 	defer migrationStoreMutex.Unlock()
-	
+
 	if info, exists := migrationStore[id]; exists {
 		info.Status = status
 		info.Progress = progress
@@ -1795,7 +1801,7 @@ func (s *Service) updateMigrationStatus(id, status string, progress int) {
 func (s *Service) getMigrationInfo(id string) *MigrationStatusResponse {
 	migrationStoreMutex.RLock()
 	defer migrationStoreMutex.RUnlock()
-	
+
 	if info, exists := migrationStore[id]; exists {
 		return info
 	}
@@ -1809,7 +1815,7 @@ func generateMigrationID() string {
 }
 
 func getHostname() string {
-	if hostname, err := libvirt.GetHostname(); err == nil {
+	if hostname, err := os.Hostname(); err == nil {
 		return hostname
 	}
 	return "localhost"

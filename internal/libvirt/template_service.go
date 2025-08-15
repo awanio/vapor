@@ -1,5 +1,3 @@
-//go:build linux && libvirt
-// +build linux,libvirt
 
 package libvirt
 
@@ -8,7 +6,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"time"
 )
 
 // VMTemplateService handles VM template operations
@@ -23,41 +20,41 @@ func NewVMTemplateService(db *sql.DB) *VMTemplateService {
 
 // VMTemplateCreateRequest represents a request to create a VM template
 type VMTemplateCreateRequest struct {
-	Name               string            `json:"name" binding:"required"`
-	Description        string            `json:"description"`
-	OSType             string            `json:"os_type" binding:"required"`
-	OSVariant          string            `json:"os_variant,omitempty"`
-	MinMemory          uint64            `json:"min_memory" binding:"required"`       // in MB
-	RecommendedMemory  uint64            `json:"recommended_memory,omitempty"`
-	MinVCPUs           uint              `json:"min_vcpus" binding:"required"`
-	RecommendedVCPUs   uint              `json:"recommended_vcpus,omitempty"`
-	MinDisk            uint64            `json:"min_disk" binding:"required"`         // in GB
-	RecommendedDisk    uint64            `json:"recommended_disk,omitempty"`
-	DiskFormat         string            `json:"disk_format,omitempty"`
-	NetworkModel       string            `json:"network_model,omitempty"`
-	GraphicsType       string            `json:"graphics_type,omitempty"`
-	CloudInit          bool              `json:"cloud_init"`
-	UEFIBoot           bool              `json:"uefi_boot"`
-	SecureBoot         bool              `json:"secure_boot"`
-	TPM                bool              `json:"tpm"`
-	Metadata           map[string]string `json:"metadata,omitempty"`
+	Name              string            `json:"name" binding:"required"`
+	Description       string            `json:"description"`
+	OSType            string            `json:"os_type" binding:"required"`
+	OSVariant         string            `json:"os_variant,omitempty"`
+	MinMemory         uint64            `json:"min_memory" binding:"required"` // in MB
+	RecommendedMemory uint64            `json:"recommended_memory,omitempty"`
+	MinVCPUs          uint              `json:"min_vcpus" binding:"required"`
+	RecommendedVCPUs  uint              `json:"recommended_vcpus,omitempty"`
+	MinDisk           uint64            `json:"min_disk" binding:"required"` // in GB
+	RecommendedDisk   uint64            `json:"recommended_disk,omitempty"`
+	DiskFormat        string            `json:"disk_format,omitempty"`
+	NetworkModel      string            `json:"network_model,omitempty"`
+	GraphicsType      string            `json:"graphics_type,omitempty"`
+	CloudInit         bool              `json:"cloud_init"`
+	UEFIBoot          bool              `json:"uefi_boot"`
+	SecureBoot        bool              `json:"secure_boot"`
+	TPM               bool              `json:"tpm"`
+	Metadata          map[string]string `json:"metadata,omitempty"`
 }
 
 // VMTemplateUpdateRequest represents a request to update a VM template
 type VMTemplateUpdateRequest struct {
-	Description        *string           `json:"description,omitempty"`
-	OSVariant          *string           `json:"os_variant,omitempty"`
-	RecommendedMemory  *uint64           `json:"recommended_memory,omitempty"`
-	RecommendedVCPUs   *uint             `json:"recommended_vcpus,omitempty"`
-	RecommendedDisk    *uint64           `json:"recommended_disk,omitempty"`
-	DiskFormat         *string           `json:"disk_format,omitempty"`
-	NetworkModel       *string           `json:"network_model,omitempty"`
-	GraphicsType       *string           `json:"graphics_type,omitempty"`
-	CloudInit          *bool             `json:"cloud_init,omitempty"`
-	UEFIBoot           *bool             `json:"uefi_boot,omitempty"`
-	SecureBoot         *bool             `json:"secure_boot,omitempty"`
-	TPM                *bool             `json:"tpm,omitempty"`
-	Metadata           map[string]string `json:"metadata,omitempty"`
+	Description       *string           `json:"description,omitempty"`
+	OSVariant         *string           `json:"os_variant,omitempty"`
+	RecommendedMemory *uint64           `json:"recommended_memory,omitempty"`
+	RecommendedVCPUs  *uint             `json:"recommended_vcpus,omitempty"`
+	RecommendedDisk   *uint64           `json:"recommended_disk,omitempty"`
+	DiskFormat        *string           `json:"disk_format,omitempty"`
+	NetworkModel      *string           `json:"network_model,omitempty"`
+	GraphicsType      *string           `json:"graphics_type,omitempty"`
+	CloudInit         *bool             `json:"cloud_init,omitempty"`
+	UEFIBoot          *bool             `json:"uefi_boot,omitempty"`
+	SecureBoot        *bool             `json:"secure_boot,omitempty"`
+	TPM               *bool             `json:"tpm,omitempty"`
+	Metadata          map[string]string `json:"metadata,omitempty"`
 }
 
 // Note: VMTemplate type is now defined in types.go to avoid duplication

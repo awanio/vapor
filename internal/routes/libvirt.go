@@ -1,6 +1,3 @@
-//go:build linux && libvirt
-// +build linux,libvirt
-
 package routes
 
 import (
@@ -8,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/awanio/vapor/internal/libvirt"
@@ -28,6 +26,7 @@ func LibvirtRoutes(r *gin.RouterGroup, service *libvirt.Service) {
 		vmGroup.POST("/:id/action", vmAction(service)) // VM actions (start, stop, etc.)
 
 		// Snapshots
+		vmGroup.GET("/:id/snapshots/capabilities", getSnapshotCapabilities(service)) // Check snapshot capabilities
 		vmGroup.GET("/:id/snapshots", listSnapshots(service))                    // List VM snapshots
 		vmGroup.POST("/:id/snapshots", createSnapshot(service))                  // Create snapshot
 		vmGroup.POST("/:id/snapshots/:snapshot/revert", revertSnapshot(service)) // Revert to snapshot
@@ -56,7 +55,7 @@ func LibvirtRoutes(r *gin.RouterGroup, service *libvirt.Service) {
 	vmGroup.POST("/templates", createTemplate(service))         // Create new template
 	vmGroup.PUT("/templates/:id", updateTemplate(service))      // Update template
 	vmGroup.DELETE("/templates/:id", deleteTemplate(service))   // Delete template
-	vmGroup.POST("/from-template", createFromTemplate(service)) // Create VM from template
+	vmGroup.POST("/from-template", createVMFromTemplate(service)) // Create VM from template
 
 		// Migration
 		vmGroup.POST("/:id/migrate", migrateVM(service))                  // Migrate VM to another host
@@ -226,6 +225,22 @@ func vmAction(service *libvirt.Service) gin.HandlerFunc {
 
 // Snapshot handlers
 
+
+func getSnapshotCapabilities(service *libvirt.Service) gin.HandlerFunc {
+return func(c *gin.Context) {
+id := c.Param("id")
+capabilities, err := service.GetSnapshotCapabilities(c.Request.Context(), id)
+if err != nil {
+if strings.Contains(err.Error(), "not found") {
+c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+return
+}
+c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+return
+}
+c.JSON(http.StatusOK, capabilities)
+}
+}
 func listSnapshots(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
@@ -610,7 +625,7 @@ func deleteTemplate(service *libvirt.Service) gin.HandlerFunc {
 	}
 }
 
-func createFromTemplate(service *libvirt.Service) gin.HandlerFunc {
+func createVMFromTemplate(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
 			TemplateID int    `json:"template_id" binding:"required"`
@@ -877,7 +892,7 @@ func migrateVM(service *libvirt.Service) gin.HandlerFunc {
 				"migration_id": migrationID,
 				"message":      "Migration started",
 				"vm_id":        id,
-				"destination":  req.DestHost,
+				"destination":  req.DestinationHost,
 			},
 		})
 	}
@@ -904,15 +919,27 @@ func getMigrationStatus(service *libvirt.Service) gin.HandlerFunc {
 // PCI Passthrough handlers
 
 func listPCIDevices(service *libvirt.Service) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		deviceType := c.Query("type")
-		devices, err := service.ListPCIDevices(c.Request.Context(), deviceType)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"devices": devices})
-	}
+return func(c *gin.Context) {
+deviceType := c.Query("type")
+devices, err := service.ListPCIDevices(c.Request.Context())
+if err != nil {
+c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+return
+}
+
+// Filter by type if specified
+if deviceType != "" {
+var filtered []libvirt.PCIDevice
+for _, device := range devices {
+if string(device.DeviceType) == deviceType {
+filtered = append(filtered, device)
+}
+}
+devices = filtered
+}
+
+c.JSON(http.StatusOK, gin.H{"devices": devices})
+}
 }
 
 func attachPCIDevice(service *libvirt.Service) gin.HandlerFunc {
