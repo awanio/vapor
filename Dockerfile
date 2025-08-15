@@ -41,7 +41,7 @@ RUN apk --no-cache add ca-certificates \
 WORKDIR /root/
 
 # Copy the binary from builder
-COPY --from=builder /app/vapor .
+COPY --from=builder /app/bin/vapor .
 COPY --from=builder /app/openapi.yaml .
 
 # Create docs directory
