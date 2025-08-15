@@ -23,12 +23,7 @@ RUN mkdir -p internal/web/dist && \
     fi
 
 # Build the binary specifically for Linux x86_64
-
-RUN ./build-alpine.sh
-
-# RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build  -tags "linux,libvirt" -a -installsuffix cgo -o vapor ./cmd/vapor
-# RUN go build -tags "libvirt,linux" -o ./bin/vapor ./cmd/vapor/main.go
-# RUN CGO_ENABLED=1 GOOS=linux go build -tags libvirt -o vapor ./cmd/vapor
+RUN go build -o ./bin/vapor ./cmd/vapor/main.go
 
 # Final stage
 FROM --platform=linux/amd64 alpine:latest
