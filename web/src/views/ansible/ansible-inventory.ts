@@ -5,15 +5,17 @@ import '../../components/ui/loading-state';
 import '../../components/ui/empty-state';
 import '../../components/tables/resource-table';
 import '../../components/ui/action-dropdown';
+import { AnsibleService } from '../../services/ansible';
 import type { Column } from '../../components/tables/resource-table';
 import type { ActionItem } from '../../components/ui/action-dropdown';
+import type { AnsibleInventory, DynamicInventoryResponse } from '../../types/ansible';
 
 interface InventoryItem {
   id: string;
   name: string;
   type: 'host' | 'group';
   description?: string;
-  hosts?: number; // For groups
+  hosts?: string[]; // For groups
   groups?: string[]; // Groups this host/group belongs to
   variables?: Record<string, any>;
   enabled: boolean;
@@ -34,6 +36,21 @@ export class AnsibleInventory extends LitElement {
 
   @state()
   private typeFilter: 'all' | 'host' | 'group' = 'all';
+
+  @state()
+  private inventory?: AnsibleInventory;
+
+  @state()
+  private error?: string;
+
+  @state()
+  private showSaveDialog = false;
+
+  @state()
+  private showEditVariablesDialog = false;
+
+  @state()
+  private selectedItem?: InventoryItem;
 
   static override styles = css`
     :host {
@@ -252,11 +269,21 @@ export class AnsibleInventory extends LitElement {
 
   private async loadInventory() {
     this.loading = true;
+    this.error = undefined;
     
-    // Simulate loading with dummy data
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    this.inventoryItems = [
+    try {
+      // Fetch dynamic inventory from the system
+      const response = await AnsibleService.getDynamicInventory();
+      this.inventory = response.inventory;
+      
+      // Convert inventory to display items
+      this.inventoryItems = this.convertInventoryToItems(response.inventory);
+    } catch (error) {
+      console.error('Failed to load inventory:', error);
+      this.error = error instanceof Error ? error.message : 'Failed to load inventory';
+      
+      // Fallback to empty or sample data for development
+      this.inventoryItems = [
       {
         id: '1',
         name: 'web-server-01',
@@ -374,9 +401,74 @@ export class AnsibleInventory extends LitElement {
         lastSync: '2024-01-15T10:30:00Z',
         source: 'scm'
       }
-    ];
+      ];
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  private convertInventoryToItems(inventory: AnsibleInventory): InventoryItem[] {
+    const items: InventoryItem[] = [];
+    let itemId = 1;
     
-    this.loading = false;
+    // Add all hosts
+    if (inventory.all?.hosts) {
+      for (const hostname of inventory.all.hosts) {
+        const hostVars = inventory._meta?.hostvars?.[hostname] || {};
+        items.push({
+          id: String(itemId++),
+          name: hostname,
+          type: 'host',
+          description: hostVars.description || '',
+          groups: this.getHostGroups(hostname, inventory),
+          variables: hostVars,
+          enabled: true,
+          lastSync: new Date().toISOString(),
+          source: 'dynamic'
+        });
+      }
+    }
+    
+    // Add all groups
+    for (const [groupName, groupData] of Object.entries(inventory)) {
+      if (groupName === '_meta' || groupName === 'all') continue;
+      
+      if (typeof groupData === 'object' && groupData !== null) {
+        const groupHosts = (groupData as any).hosts || [];
+        const groupVars = (groupData as any).vars || {};
+        
+        items.push({
+          id: String(itemId++),
+          name: groupName,
+          type: 'group',
+          description: groupVars.description || '',
+          hosts: groupHosts,
+          variables: groupVars,
+          enabled: true,
+          lastSync: new Date().toISOString(),
+          source: 'dynamic'
+        });
+      }
+    }
+    
+    return items;
+  }
+
+  private getHostGroups(hostname: string, inventory: AnsibleInventory): string[] {
+    const groups: string[] = [];
+    
+    for (const [groupName, groupData] of Object.entries(inventory)) {
+      if (groupName === '_meta' || groupName === 'all') continue;
+      
+      if (typeof groupData === 'object' && groupData !== null) {
+        const groupHosts = (groupData as any).hosts || [];
+        if (groupHosts.includes(hostname)) {
+          groups.push(groupName);
+        }
+      }
+    }
+    
+    return groups;
   }
 
   private handleSearch(event: CustomEvent) {
@@ -436,8 +528,8 @@ export class AnsibleInventory extends LitElement {
       typeDisplay: `${item.type === 'host' ? '🖥️' : '📁'} ${item.type}`,
       groupsDisplay: item.type === 'host' && item.groups 
         ? item.groups.join(', ') 
-        : item.type === 'group' && item.hosts !== undefined 
-        ? `${item.hosts} hosts`
+        : item.type === 'group' && item.hosts 
+        ? `${item.hosts.length} hosts`
         : '-',
       variablesDisplay: item.variables 
         ? `${Object.keys(item.variables).length} vars`
@@ -486,20 +578,107 @@ export class AnsibleInventory extends LitElement {
     }
   }
 
-  private handleAddHost() {
-    console.log('Add new host');
-    // Open add host dialog
+  private async handleAddHost() {
+    const hostname = prompt('Enter hostname:');
+    if (!hostname) return;
+    
+    const hostIp = prompt('Enter host IP address:');
+    if (!hostIp) return;
+    
+    // Create a new inventory item
+    const newHost: InventoryItem = {
+      id: String(Date.now()),
+      name: hostname,
+      type: 'host',
+      description: 'Manually added host',
+      groups: [],
+      variables: {
+        ansible_host: hostIp,
+        ansible_user: 'root'
+      },
+      enabled: true,
+      lastSync: new Date().toISOString(),
+      source: 'manual'
+    };
+    
+    this.inventoryItems = [...this.inventoryItems, newHost];
+    await this.saveInventory();
   }
 
-  private handleAddGroup() {
-    console.log('Add new group');
-    // Open add group dialog
+  private async handleAddGroup() {
+    const groupName = prompt('Enter group name:');
+    if (!groupName) return;
+    
+    const newGroup: InventoryItem = {
+      id: String(Date.now()),
+      name: groupName,
+      type: 'group',
+      description: 'Manually added group',
+      hosts: [],
+      variables: {},
+      enabled: true,
+      lastSync: new Date().toISOString(),
+      source: 'manual'
+    };
+    
+    this.inventoryItems = [...this.inventoryItems, newGroup];
+    await this.saveInventory();
   }
 
-  private handleSync() {
-    console.log('Sync inventory');
-    // Sync inventory from sources
-    this.loadInventory();
+  private async handleSync() {
+    await this.loadInventory();
+  }
+
+  private async saveInventory() {
+    try {
+      // Convert items back to Ansible inventory format
+      const inventory = this.convertItemsToInventory(this.inventoryItems);
+      
+      // Save the inventory
+      await AnsibleService.saveInventory({
+        name: 'main',
+        format: 'json',
+        content: JSON.stringify(inventory)
+      });
+      
+      console.log('Inventory saved successfully');
+    } catch (error) {
+      console.error('Failed to save inventory:', error);
+      alert(`Failed to save inventory: ${error}`);
+    }
+  }
+
+  private convertItemsToInventory(items: InventoryItem[]): AnsibleInventory {
+    const inventory: AnsibleInventory = {
+      _meta: {
+        hostvars: {}
+      },
+      all: {
+        hosts: [],
+        children: []
+      }
+    };
+    
+    // Process hosts
+    const hosts = items.filter(item => item.type === 'host');
+    for (const host of hosts) {
+      inventory.all.hosts.push(host.name);
+      if (host.variables) {
+        inventory._meta.hostvars[host.name] = host.variables;
+      }
+    }
+    
+    // Process groups
+    const groups = items.filter(item => item.type === 'group');
+    for (const group of groups) {
+      inventory[group.name] = {
+        hosts: group.hosts || [],
+        vars: group.variables || {}
+      };
+      inventory.all.children?.push(group.name);
+    }
+    
+    return inventory;
   }
 
   override render() {

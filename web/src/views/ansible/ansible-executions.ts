@@ -6,27 +6,12 @@ import '../../components/ui/empty-state';
 import '../../components/ui/filter-dropdown';
 import '../../components/tables/resource-table';
 import '../../components/ui/action-dropdown';
+import '../../components/drawers/ansible-execution-drawer';
+import { AnsibleService } from '../../services/ansible';
 import type { Column } from '../../components/tables/resource-table';
 import type { ActionItem } from '../../components/ui/action-dropdown';
+import type { ExecutionSummary } from '../../types/ansible';
 
-interface Execution {
-  id: string;
-  jobId: string;
-  name: string;
-  type: 'playbook' | 'template';
-  playbook: string;
-  status: 'running' | 'successful' | 'failed' | 'canceled' | 'pending';
-  startTime: string;
-  endTime?: string;
-  duration?: number;
-  executedBy: string;
-  hosts: string[];
-  hostsSucceeded: number;
-  hostsFailed: number;
-  hostsUnreachable: number;
-  hostsSkipped: number;
-  message?: string;
-}
 
 @customElement('ansible-executions')
 export class AnsibleExecutions extends LitElement {
@@ -37,10 +22,25 @@ export class AnsibleExecutions extends LitElement {
   private searchQuery = '';
 
   @state()
-  private executions: Execution[] = [];
+  private executions: ExecutionSummary[] = [];
 
   @state()
-  private statusFilter = 'all';
+  private statusFilter: 'all' | 'running' | 'success' | 'failed' = 'all';
+
+  @state()
+  private typeFilter: 'all' | 'playbook' | 'adhoc' = 'all';
+
+  @state()
+  private showExecutionDrawer = false;
+
+  @state()
+  private selectedExecutionId?: string;
+
+  @state()
+  private error?: string;
+
+  @state()
+  private refreshInterval?: number;
 
   // These will be used for future features
   // @state()
@@ -222,120 +222,68 @@ export class AnsibleExecutions extends LitElement {
   override connectedCallback() {
     super.connectedCallback();
     this.loadData();
+    // Set up auto-refresh for running executions
+    this.startAutoRefresh();
+  }
+
+  override disconnectedCallback() {
+    super.disconnectedCallback();
+    this.stopAutoRefresh();
+  }
+
+  private startAutoRefresh() {
+    // Refresh every 5 seconds if there are running executions
+    this.refreshInterval = window.setInterval(() => {
+      if (this.executions.some(e => e.status === 'running')) {
+        this.loadData();
+      }
+    }, 5000);
+  }
+
+  private stopAutoRefresh() {
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
+      this.refreshInterval = undefined;
+    }
   }
 
   private async loadData() {
     this.loading = true;
+    this.error = undefined;
     
-    // Simulate loading with dummy data
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    this.executions = [
-      {
-        id: 'exec-001',
-        jobId: 'job-001',
-        name: 'Deploy Keepalived',
-        type: 'template',
-        playbook: 'deploy-keepalived.yml',
-        status: 'successful',
-        startTime: '2024-01-15T14:30:00Z',
-        endTime: '2024-01-15T14:35:42Z',
-        duration: 342,
-        executedBy: 'admin',
-        hosts: ['web-server-01', 'web-server-02', 'web-server-03'],
-        hostsSucceeded: 3,
-        hostsFailed: 0,
-        hostsUnreachable: 0,
-        hostsSkipped: 0
-      },
-      {
-        id: 'exec-002',
-        jobId: 'job-002',
-        name: 'Install KubeOVN',
-        type: 'playbook',
-        playbook: 'install-kubeovn.yml',
-        status: 'running',
-        startTime: '2024-01-15T15:00:00Z',
-        executedBy: 'operator',
-        hosts: ['app-server-01', 'app-server-02', 'db-server-01', 'db-server-02'],
-        hostsSucceeded: 2,
-        hostsFailed: 0,
-        hostsUnreachable: 0,
-        hostsSkipped: 0,
-        message: 'Updating packages on db-server-01...'
-      },
-      {
-        id: 'exec-003',
-        jobId: 'job-003',
-        name: 'Run apt-get update',
-        type: 'template',
-        playbook: 'backup-databases.yml',
-        status: 'failed',
-        startTime: '2024-01-15T03:00:00Z',
-        endTime: '2024-01-15T03:15:23Z',
-        duration: 923,
-        executedBy: 'system',
-        hosts: ['db-server-01', 'db-server-02'],
-        hostsSucceeded: 1,
-        hostsFailed: 1,
-        hostsUnreachable: 0,
-        hostsSkipped: 0,
-        message: 'Failed to connect to db-server-02'
-      },
-      {
-        id: 'exec-004',
-        jobId: 'job-004',
-        name: 'Install Containerd',
-        type: 'playbook',
-        playbook: 'containerd.yml',
-        status: 'successful',
-        startTime: '2024-01-14T22:00:00Z',
-        endTime: '2024-01-14T22:45:30Z',
-        duration: 2730,
-        executedBy: 'security-team',
-        hosts: ['web-server-01', 'web-server-02', 'app-server-01', 'app-server-02'],
-        hostsSucceeded: 4,
-        hostsFailed: 0,
-        hostsUnreachable: 0,
-        hostsSkipped: 0
-      },
-      {
-        id: 'exec-005',
-        jobId: 'job-005',
-        name: 'Configuration Keepalived',
-        type: 'template',
-        playbook: 'check-keepalived.yml',
-        status: 'canceled',
-        startTime: '2024-01-14T18:30:00Z',
-        endTime: '2024-01-14T18:31:15Z',
-        duration: 75,
-        executedBy: 'admin',
-        hosts: ['web-server-01', 'web-server-02'],
-        hostsSucceeded: 0,
-        hostsFailed: 0,
-        hostsUnreachable: 0,
-        hostsSkipped: 2,
-        message: 'Canceled by user'
-      },
-      {
-        id: 'exec-006',
-        jobId: 'job-006',
-        name: 'Deploy RookCeph',
-        type: 'playbook',
-        playbook: 'deploy-rook-ceph.yml',
-        status: 'pending',
-        startTime: '2024-01-15T16:00:00Z',
-        executedBy: 'monitoring-team',
-        hosts: ['new-server-01', 'new-server-02'],
-        hostsSucceeded: 0,
-        hostsFailed: 0,
-        hostsUnreachable: 0,
-        hostsSkipped: 0,
-        message: 'Waiting in queue...'
-      }
-    ];
-
-    this.loading = false;
+    try {
+      // Apply filters to API call
+      const statusFilter = this.statusFilter === 'all' ? undefined : this.statusFilter;
+      const typeFilter = this.typeFilter === 'all' ? undefined : this.typeFilter;
+      
+      const response = await AnsibleService.listExecutions(statusFilter, typeFilter, 100);
+      this.executions = response.executions || [];
+    } catch (error) {
+      console.error('Failed to load executions:', error);
+      this.error = error instanceof Error ? error.message : 'Failed to load executions';
+      this.executions = [
+        {
+          id: 'exec-001',
+          type: 'playbook',
+          playbook: 'deploy-keepalived.yml',
+          status: 'success',
+          started_at: '2024-01-15T14:30:00Z',
+          finished_at: '2024-01-15T14:35:42Z',
+          duration: 342,
+          hosts_summary: {
+            ok: 3,
+            changed: 2,
+            unreachable: 0,
+            failed: 0,
+            skipped: 0,
+            rescued: 0,
+            ignored: 0
+          }
+        }
+      ];
+    } finally {
+      this.loading = false;
+    }
   }
 
   private handleSearch(e: CustomEvent) {
@@ -344,6 +292,12 @@ export class AnsibleExecutions extends LitElement {
 
   private handleFilterChange(e: CustomEvent) {
     this.statusFilter = e.detail.value;
+    this.loadData(); // Reload with new filter
+  }
+
+  private handleTypeFilterChange(e: CustomEvent) {
+    this.typeFilter = e.detail.value;
+    this.loadData(); // Reload with new filter
   }
 
   private get filteredExecutions() {
@@ -357,28 +311,24 @@ export class AnsibleExecutions extends LitElement {
     // Apply search filter
     if (this.searchQuery) {
       const query = this.searchQuery.toLowerCase();
-      filtered = filtered.filter(e => 
-        e.name.toLowerCase().includes(query) ||
-        e.playbook.toLowerCase().includes(query) ||
-        e.executedBy.toLowerCase().includes(query) ||
-        e.status.toLowerCase().includes(query)
-      );
+      filtered = filtered.filter(e => {
+        const nameMatch = e.playbook?.toLowerCase().includes(query) || false;
+        const moduleMatch = e.module?.toLowerCase().includes(query) || false;
+        const statusMatch = e.status.toLowerCase().includes(query);
+        const idMatch = e.id.toLowerCase().includes(query);
+        return nameMatch || moduleMatch || statusMatch || idMatch;
+      });
     }
 
     return filtered;
   }
 
   private formatDuration(seconds?: number): string {
-    if (!seconds) return '-';
-    const minutes = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    if (minutes > 0) {
-      return `${minutes}m ${secs}s`;
-    }
-    return `${secs}s`;
+    return AnsibleService.formatDuration(seconds);
   }
 
-  private formatDate(dateStr: string): string {
+  private formatDate(dateStr?: string): string {
+    if (!dateStr) return '-';
     const date = new Date(dateStr);
     const now = new Date();
     const diff = now.getTime() - date.getTime();
@@ -397,25 +347,25 @@ export class AnsibleExecutions extends LitElement {
   private getExecutionColumns(): Column[] {
     return [
       { key: 'status', label: 'Status', width: '100px' },
-      { key: 'name', label: 'Job Name', type: 'link' },
-      { key: 'playbook', label: 'Playbook' },
+      { key: 'id', label: 'ID' },
+      { key: 'type', label: 'Type' },
+      { key: 'playbook', label: 'Playbook/Module' },
       { key: 'hosts', label: 'Hosts' },
-      { key: 'executedBy', label: 'Executed By' },
-      { key: 'startTime', label: 'Started' },
+      { key: 'started_at', label: 'Started' },
       { key: 'duration', label: 'Duration' }
     ];
   }
 
-  private getExecutionActions(item: Execution): ActionItem[] {
+  private getExecutionActions(item: ExecutionSummary): ActionItem[] {
     const actions: ActionItem[] = [
-      { label: 'View Output', action: 'logs' },
-      { label: 'View Details', action: 'details' }
+      { label: 'View Output', action: 'view' },
+      { label: 'Download Log', action: 'download' }
     ];
 
     if (item.status === 'running') {
       actions.push({ label: 'Cancel', action: 'cancel', danger: true });
-    } else if (item.status === 'failed' || item.status === 'canceled') {
-      actions.push({ label: 'Retry', action: 'retry' });
+    } else if (item.status === 'failed' || item.status === 'cancelled') {
+      actions.push({ label: 'Re-run', action: 'rerun' });
     }
 
     return actions;
@@ -423,82 +373,116 @@ export class AnsibleExecutions extends LitElement {
 
   private renderStatusBadge(status: string) {
     let icon = '';
+    let displayStatus = status;
+    
     switch (status) {
       case 'running':
         icon = '⏳';
         break;
-      case 'successful':
+      case 'success':
         icon = '✅';
+        displayStatus = 'successful';
         break;
       case 'failed':
         icon = '❌';
         break;
-      case 'canceled':
+      case 'cancelled':
         icon = '⏹️';
+        displayStatus = 'canceled';
         break;
-      case 'pending':
+      default:
         icon = '⏸️';
         break;
     }
 
     return html`
-      <span class="status-badge ${status}">
-        ${icon} ${status.charAt(0).toUpperCase() + status.slice(1)}
+      <span class="status-badge ${displayStatus}">
+        ${icon} ${displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1)}
       </span>
     `;
   }
 
-  private renderHostStats(execution: Execution) {
+  private renderHostStats(execution: ExecutionSummary) {
+    if (!execution.hosts_summary) return html`<span>-</span>`;
+    
+    const summary = execution.hosts_summary;
     return html`
       <div class="host-stats">
-        ${execution.hostsSucceeded > 0 ? html`
+        ${summary.ok > 0 ? html`
           <span class="stat-item">
             <span class="stat-icon success"></span>
-            ${execution.hostsSucceeded}
+            ${summary.ok}
           </span>
         ` : ''}
-        ${execution.hostsFailed > 0 ? html`
+        ${summary.failed > 0 ? html`
           <span class="stat-item">
             <span class="stat-icon failed"></span>
-            ${execution.hostsFailed}
+            ${summary.failed}
           </span>
         ` : ''}
-        ${execution.hostsUnreachable > 0 ? html`
+        ${summary.unreachable > 0 ? html`
           <span class="stat-item">
             <span class="stat-icon unreachable"></span>
-            ${execution.hostsUnreachable}
+            ${summary.unreachable}
           </span>
         ` : ''}
-        ${execution.hostsSkipped > 0 ? html`
+        ${summary.skipped > 0 ? html`
           <span class="stat-item">
             <span class="stat-icon skipped"></span>
-            ${execution.hostsSkipped}
+            ${summary.skipped}
           </span>
         ` : ''}
       </div>
     `;
   }
 
-  private handleExecutionAction(e: CustomEvent) {
+  private async handleExecutionAction(e: CustomEvent) {
     const { action, item } = e.detail;
-    console.log('Execution action:', action, item);
     
     switch (action) {
-      case 'logs':
-        // TODO: Show logs drawer
-        // this.selectedExecution = item;
-        // this.showLogsDrawer = true;
-        console.log('Show logs for:', item);
+      case 'view':
+        this.selectedExecutionId = item.id;
+        this.showExecutionDrawer = true;
         break;
-      case 'details':
-        // TODO: Show details drawer
+      case 'download':
+        await this.downloadExecutionLog(item.id);
         break;
       case 'cancel':
-        // TODO: Cancel execution
+        if (confirm('Are you sure you want to cancel this execution?')) {
+          await this.cancelExecution(item.id);
+        }
         break;
-      case 'retry':
-        // TODO: Retry execution
+      case 'rerun':
+        // TODO: Re-run execution with same parameters
+        console.log('Re-run execution:', item);
         break;
+    }
+  }
+
+  private async downloadExecutionLog(id: string) {
+    try {
+      const response = await AnsibleService.getExecution(id);
+      const content = response.execution.output || 'No output available';
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `execution-${id}.log`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download log:', error);
+      alert(`Failed to download log: ${error}`);
+    }
+  }
+
+  private async cancelExecution(id: string) {
+    try {
+      await AnsibleService.cancelExecution(id);
+      await this.loadData();
+    } catch (error) {
+      console.error('Failed to cancel execution:', error);
+      alert(`Failed to cancel execution: ${error}`);
     }
   }
 
@@ -507,8 +491,13 @@ export class AnsibleExecutions extends LitElement {
   }
 
   private handleRunClick() {
-    console.log('Run button clicked');
-    // TODO: Open run dialog/drawer to select playbook/template and parameters
+    // Navigate to playbooks tab to run a playbook
+    window.location.href = '/ansible/playbooks';
+  }
+
+  private handleDrawerClose() {
+    this.showExecutionDrawer = false;
+    this.selectedExecutionId = undefined;
   }
 
 
@@ -521,8 +510,9 @@ export class AnsibleExecutions extends LitElement {
     const data = this.filteredExecutions.map(execution => ({
       ...execution,
       status: this.renderStatusBadge(execution.status),
+      playbook: execution.playbook || execution.module || '-',
       hosts: this.renderHostStats(execution),
-      startTime: this.formatDate(execution.startTime),
+      started_at: this.formatDate(execution.started_at),
       duration: this.formatDuration(execution.duration)
     }));
 
@@ -586,6 +576,14 @@ export class AnsibleExecutions extends LitElement {
           `}
         </div>
       </div>
+
+      ${this.showExecutionDrawer ? html`
+        <ansible-execution-drawer
+          .executionId=${this.selectedExecutionId}
+          .open=${this.showExecutionDrawer}
+          @close=${this.handleDrawerClose}
+        ></ansible-execution-drawer>
+      ` : ''}
     `;
   }
 }

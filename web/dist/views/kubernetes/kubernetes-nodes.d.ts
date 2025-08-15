@@ -1,0 +1,45 @@
+import { LitElement } from 'lit';
+import type { KubernetesNode } from '../../services/kubernetes-api.js';
+import '../../components/ui/search-input.js';
+import '../../components/ui/empty-state.js';
+import '../../components/ui/loading-state.js';
+import '../../components/tables/resource-table.js';
+import '../../components/drawers/detail-drawer.js';
+import '../../components/modals/delete-modal.js';
+import '../../components/ui/notification-container.js';
+export declare class KubernetesNodes extends LitElement {
+    nodes: KubernetesNode[];
+    searchQuery: string;
+    loading: boolean;
+    error: string | null;
+    private showDetails;
+    private selectedNode;
+    private loadingDetails;
+    private nodeDetails;
+    static styles: import("lit").CSSResult;
+    connectedCallback(): void;
+    render(): import("lit-html").TemplateResult<1>;
+    private renderContent;
+    private getColumns;
+    private getFilteredNodes;
+    private getNodeActions;
+    private fetchNodes;
+    private fetchNodeDetails;
+    private handleSearchChange;
+    private handleCellClick;
+    private handleAction;
+    private viewNodeDetails;
+    private cordonNode;
+    private uncordonNode;
+    private drainNode;
+    private renderNodeDetail;
+    private renderNodeInfo;
+    private renderSystemInfo;
+    private renderResourceMetrics;
+    private renderConditions;
+    private renderTaints;
+    private renderActionButtons;
+    private formatMemory;
+    private showNotification;
+}
+//# sourceMappingURL=kubernetes-nodes.d.ts.map

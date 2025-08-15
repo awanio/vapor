@@ -5,32 +5,14 @@ import '../../components/ui/loading-state';
 import '../../components/ui/empty-state';
 import '../../components/tables/resource-table';
 import '../../components/ui/action-dropdown';
+import '../../components/modals/playbook-editor-modal';
+import '../../components/modals/playbook-run-modal';
+import '../../components/drawers/playbook-import-drawer';
+import { AnsibleService } from '../../services/ansible';
 import type { Column } from '../../components/tables/resource-table';
 import type { ActionItem } from '../../components/ui/action-dropdown';
+import type { PlaybookInfo, PlaybookTemplate } from '../../types/ansible';
 
-interface Playbook {
-  id: string;
-  name: string;
-  description: string;
-  path: string;
-  hosts: string;
-  tags: string[];
-  lastModified: string;
-  status: 'active' | 'draft' | 'archived';
-}
-
-interface Template {
-  id: string;
-  name: string;
-  description: string;
-  type: 'job' | 'workflow';
-  playbook: string;
-  inventory: string;
-  credentials: string[];
-  variables: Record<string, any>;
-  lastUsed: string;
-  status: 'enabled' | 'disabled';
-}
 
 @customElement('ansible-playbooks')
 export class AnsiblePlaybooks extends LitElement {
@@ -47,13 +29,37 @@ export class AnsiblePlaybooks extends LitElement {
   private searchQuery = '';
 
   @state()
-  private playbooks: Playbook[] = [];
+  private playbooks: PlaybookInfo[] = [];
 
   @state()
-  private templates: Template[] = [];
+  private templates: PlaybookTemplate[] = [];
+
+  @state()
+  private showEditorModal = false;
+
+  @state()
+  private showRunModal = false;
+
+  @state()
+  private selectedPlaybook?: string;
+
+  @state()
+  private editorMode: 'create' | 'edit' = 'create';
+
+  @state()
+  private error?: string;
+
+  // Add dummy data fields for UI purposes
+  private playbookExtended = new Map<string, {description: string, tags: string[], hosts: string, status: string}>();
 
   @state()
   private showCreateDropdown = false;
+
+  @state()
+  private showImportDrawer = false;
+
+  @state()
+  private importType: 'upload' | 'template' | 'git' | 'url' | 'galaxy' = 'upload';
 
   static override styles = css`
     :host {
@@ -225,83 +231,51 @@ export class AnsiblePlaybooks extends LitElement {
 
   private async loadData() {
     this.loading = true;
+    this.error = undefined;
     
-    // Simulate loading with dummy data
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    this.playbooks = [
-      {
-        id: '1',
-        name: 'deploy-webapp.yml',
-        description: 'Deploy web application to production servers',
-        path: '/ansible/playbooks/deploy-webapp.yml',
-        hosts: 'webservers',
-        tags: ['deployment', 'webapp', 'production'],
-        lastModified: '2024-01-15T10:30:00Z',
-        status: 'active'
-      },
-      {
-        id: '2',
-        name: 'update-system.yml',
-        description: 'System update and security patches for all servers',
-        path: '/ansible/playbooks/update-system.yml',
-        hosts: 'all',
-        tags: ['maintenance', 'security', 'updates'],
-        lastModified: '2024-01-14T15:45:00Z',
-        status: 'active'
-      },
-      {
-        id: '3',
-        name: 'backup-databases.yml',
-        description: 'Automated database backup for MySQL and PostgreSQL',
-        path: '/ansible/playbooks/backup-databases.yml',
-        hosts: 'dbservers',
-        tags: ['backup', 'database', 'scheduled'],
-        lastModified: '2024-01-13T08:00:00Z',
-        status: 'draft'
+    try {
+      // Load playbooks and templates in parallel
+      const [playbooksResponse, templatesResponse] = await Promise.all([
+        AnsibleService.listPlaybooks().catch((error) => {
+          console.error('Failed to load playbooks:', error);
+          return { playbooks: [], count: 0 };
+        }),
+        AnsibleService.listTemplates().catch((error) => {
+          console.error('Failed to load templates:', error);
+          return { templates: [] };
+        })
+      ]);
+      
+      // Handle the response safely
+      if (playbooksResponse && typeof playbooksResponse === 'object') {
+        this.playbooks = Array.isArray(playbooksResponse.playbooks) ? playbooksResponse.playbooks : [];
+      } else {
+        this.playbooks = [];
       }
-    ];
-
-    this.templates = [
-      {
-        id: '1',
-        name: 'Deploy Production App',
-        description: 'Template for deploying applications to production environment',
-        type: 'job',
-        playbook: 'deploy-webapp.yml',
-        inventory: 'production',
-        credentials: ['ssh-prod', 'vault-prod'],
-        variables: { version: 'latest', environment: 'production' },
-        lastUsed: '2024-01-15T14:30:00Z',
-        status: 'enabled'
-      },
-      {
-        id: '2',
-        name: 'System Maintenance Workflow',
-        description: 'Complete system maintenance workflow including updates and cleanup',
-        type: 'workflow',
-        playbook: 'update-system.yml',
-        inventory: 'all-servers',
-        credentials: ['ssh-admin'],
-        variables: { reboot: true, cleanup: true },
-        lastUsed: '2024-01-14T20:00:00Z',
-        status: 'enabled'
-      },
-      {
-        id: '3',
-        name: 'Database Backup Job',
-        description: 'Scheduled database backup job template',
-        type: 'job',
-        playbook: 'backup-databases.yml',
-        inventory: 'database-servers',
-        credentials: ['ssh-db', 'backup-storage'],
-        variables: { compression: 'gzip', retention_days: 30 },
-        lastUsed: '2024-01-13T03:00:00Z',
-        status: 'disabled'
+      
+      if (templatesResponse && typeof templatesResponse === 'object') {
+        this.templates = Array.isArray(templatesResponse.templates) ? templatesResponse.templates : [];
+      } else {
+        this.templates = [];
       }
-    ];
-
-    this.loading = false;
+      
+      // Set some dummy extended data for playbooks
+      this.playbooks.forEach(playbook => {
+        this.playbookExtended.set(playbook.name, {
+          description: `Playbook for ${playbook.name}`,
+          tags: ['ansible', 'automation'],
+          hosts: 'all',
+          status: 'Ready'
+        });
+      });
+    } catch (error) {
+      console.error('Failed to load data:', error);
+      this.error = error instanceof Error ? error.message : 'Failed to load playbooks';
+      this.playbooks = [];
+      this.templates = [];
+    } finally {
+      this.loading = false;
+    }
   }
 
   private handleTabClick(event: MouseEvent, tab: string) {
@@ -322,8 +296,7 @@ export class AnsiblePlaybooks extends LitElement {
     const query = this.searchQuery.toLowerCase();
     return this.playbooks.filter(p => 
       p.name.toLowerCase().includes(query) ||
-      p.description.toLowerCase().includes(query) ||
-      p.tags.some(tag => tag.toLowerCase().includes(query))
+      p.path.toLowerCase().includes(query)
     );
   }
 
@@ -333,7 +306,7 @@ export class AnsiblePlaybooks extends LitElement {
     return this.templates.filter(t => 
       t.name.toLowerCase().includes(query) ||
       t.description.toLowerCase().includes(query) ||
-      t.playbook.toLowerCase().includes(query)
+      t.category.toLowerCase().includes(query)
     );
   }
 
@@ -372,21 +345,21 @@ export class AnsiblePlaybooks extends LitElement {
     ];
   }
 
-  private getPlaybookActions(_item: Playbook): ActionItem[] {
+  private getPlaybookActions(_item: PlaybookInfo): ActionItem[] {
     return [
       { label: 'Run', action: 'run' },
       { label: 'Edit', action: 'edit' },
-      { label: 'Duplicate', action: 'duplicate' },
+      { label: 'Validate', action: 'validate' },
+      { label: 'Download', action: 'download' },
       { label: 'Delete', action: 'delete', danger: true }
     ];
   }
 
-  private getTemplateActions(_item: Template): ActionItem[] {
+  private getTemplateActions(_item: PlaybookTemplate): ActionItem[] {
     return [
-      { label: 'Run Template', action: 'run' },
-      { label: 'Edit', action: 'edit' },
-      { label: 'Duplicate', action: 'duplicate' },
-      { label: 'Delete', action: 'delete', danger: true }
+      { label: 'Use Template', action: 'use' },
+      { label: 'View Details', action: 'view' },
+      { label: 'Clone', action: 'clone' }
     ];
   }
 
@@ -406,11 +379,21 @@ export class AnsiblePlaybooks extends LitElement {
     }
 
     const columns = this.getPlaybooksColumns();
-    const data = playbooks.map(playbook => ({
-      ...playbook,
-      tags: playbook.tags.join(', '),
-      lastModified: this.formatDate(playbook.lastModified)
-    }));
+    const data = playbooks.map(playbook => {
+      const extended = this.playbookExtended.get(playbook.name) || {
+        description: '',
+        tags: [],
+        hosts: 'all',
+        status: 'Ready'
+      };
+      return {
+        ...playbook,
+        hosts: extended.hosts,
+        status: extended.status,
+        tags: extended.tags.join(', '),
+        lastModified: this.formatDate(playbook.modified)
+      };
+    });
 
     return html`
       <resource-table
@@ -440,7 +423,11 @@ export class AnsiblePlaybooks extends LitElement {
     const columns = this.getTemplatesColumns();
     const data = templates.map(template => ({
       ...template,
-      lastUsed: this.formatDate(template.lastUsed)
+      type: template.category,
+      playbook: template.name,
+      inventory: 'default',
+      status: 'Active',
+      lastUsed: this.formatDate(new Date().toISOString())
     }));
 
     return html`
@@ -453,16 +440,90 @@ export class AnsiblePlaybooks extends LitElement {
     `;
   }
 
-  private handlePlaybookAction(e: CustomEvent) {
+  private async handlePlaybookAction(e: CustomEvent) {
     const { action, item } = e.detail;
-    console.log('Playbook action:', action, item);
-    // TODO: Handle playbook actions
+    
+    switch (action) {
+      case 'run':
+        this.selectedPlaybook = item.name;
+        this.showRunModal = true;
+        break;
+      case 'edit':
+        this.selectedPlaybook = item.name;
+        this.editorMode = 'edit';
+        this.showEditorModal = true;
+        break;
+      case 'validate':
+        await this.validatePlaybook(item.name);
+        break;
+      case 'download':
+        await this.downloadPlaybook(item.name);
+        break;
+      case 'delete':
+        if (confirm(`Are you sure you want to delete ${item.name}?`)) {
+          await this.deletePlaybook(item.name);
+        }
+        break;
+    }
   }
 
-  private handleTemplateAction(e: CustomEvent) {
+  private async handleTemplateAction(e: CustomEvent) {
     const { action, item } = e.detail;
-    console.log('Template action:', action, item);
-    // TODO: Handle template actions
+    
+    switch (action) {
+      case 'use':
+        // TODO: Open template creation dialog
+        console.log('Use template:', item);
+        break;
+      case 'view':
+        // TODO: Show template details
+        console.log('View template:', item);
+        break;
+      case 'clone':
+        // TODO: Clone template
+        console.log('Clone template:', item);
+        break;
+    }
+  }
+
+  private async validatePlaybook(name: string) {
+    try {
+      const result = await AnsibleService.validatePlaybook(name);
+      if (result.valid) {
+        alert(`✅ Playbook ${name} is valid`);
+      } else {
+        alert(`❌ Validation failed:\n${result.errors?.join('\n') || result.message}`);
+      }
+    } catch (error) {
+      console.error('Validation failed:', error);
+      alert(`Failed to validate playbook: ${error}`);
+    }
+  }
+
+  private async downloadPlaybook(name: string) {
+    try {
+      const response = await AnsibleService.getPlaybook(name);
+      const blob = new Blob([response.playbook.content], { type: 'text/yaml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Download failed:', error);
+      alert(`Failed to download playbook: ${error}`);
+    }
+  }
+
+  private async deletePlaybook(name: string) {
+    try {
+      await AnsibleService.deletePlaybook(name);
+      await this.loadData(); // Reload the list
+    } catch (error) {
+      console.error('Delete failed:', error);
+      alert(`Failed to delete playbook: ${error}`);
+    }
   }
 
   private toggleCreateDropdown(event: Event) {
@@ -472,25 +533,50 @@ export class AnsiblePlaybooks extends LitElement {
 
   private handleCreateAction(action: string) {
     this.showCreateDropdown = false;
-    console.log('Create action:', action);
-    // TODO: Handle different create actions
+    
     switch (action) {
+      case 'create':
+        this.selectedPlaybook = undefined;
+        this.editorMode = 'create';
+        this.showEditorModal = true;
+        break;
       case 'upload':
-        // Handle upload
+        this.importType = 'upload';
+        this.showImportDrawer = true;
         break;
       case 'template':
-        // Handle create from template
+        this.importType = 'template';
+        this.showImportDrawer = true;
         break;
       case 'git':
-        // Handle import from Git
+        this.importType = 'git';
+        this.showImportDrawer = true;
         break;
       case 'url':
-        // Handle import from URL
+        this.importType = 'url';
+        this.showImportDrawer = true;
         break;
       case 'galaxy':
-        // Handle import from Ansible Galaxy
+        this.importType = 'galaxy';
+        this.showImportDrawer = true;
         break;
     }
+  }
+
+  private handleImportComplete() {
+    this.showImportDrawer = false;
+    this.loadData(); // Reload the list
+  }
+
+  private handleEditorSave() {
+    this.showEditorModal = false;
+    this.loadData(); // Reload the list
+  }
+
+  private handleRunComplete(e: CustomEvent) {
+    const { executionId } = e.detail;
+    // Navigate to executions tab with the execution ID
+    window.location.href = `/ansible/executions?id=${executionId}`;
   }
 
   override render() {
@@ -531,11 +617,12 @@ export class AnsiblePlaybooks extends LitElement {
                 Add Playbook
               </button>
               <div class="action-dropdown ${this.showCreateDropdown ? 'show' : ''}">
-                <button @click=${() => this.handleCreateAction('upload')}>Upload</button>
-                <button @click=${() => this.handleCreateAction('template')}>Template</button>
-                <button @click=${() => this.handleCreateAction('git')}>Git</button>
-                <button @click=${() => this.handleCreateAction('url')}>URL</button>
-                <button @click=${() => this.handleCreateAction('galaxy')}>Ansible Galaxy</button>
+                <button @click=${() => this.handleCreateAction('create')}>Create New</button>
+                <button @click=${() => this.handleCreateAction('upload')}>Upload File</button>
+                <button @click=${() => this.handleCreateAction('template')}>From Template</button>
+                <button @click=${() => this.handleCreateAction('git')}>From Git</button>
+                <button @click=${() => this.handleCreateAction('url')}>From URL</button>
+                <button @click=${() => this.handleCreateAction('galaxy')}>From Ansible Galaxy</button>
               </div>
             </div>
           ` : html`
@@ -554,6 +641,35 @@ export class AnsiblePlaybooks extends LitElement {
             : this.renderTemplates()}
         </div>
       </div>
+
+      <!-- Import Drawer -->
+      <playbook-import-drawer
+        .show=${this.showImportDrawer}
+        .importType=${this.importType}
+        @close=${() => this.showImportDrawer = false}
+        @import-complete=${this.handleImportComplete}
+      ></playbook-import-drawer>
+
+      <!-- Editor Modal -->
+      ${this.showEditorModal ? html`
+        <playbook-editor-modal
+          .open=${this.showEditorModal}
+          .mode=${this.editorMode}
+          .playbook=${this.selectedPlaybook}
+          @close=${() => this.showEditorModal = false}
+          @save=${this.handleEditorSave}
+        ></playbook-editor-modal>
+      ` : ''}
+
+      <!-- Run Modal -->
+      ${this.showRunModal ? html`
+        <playbook-run-modal
+          .open=${this.showRunModal}
+          .playbook=${this.selectedPlaybook}
+          @close=${() => this.showRunModal = false}
+          @run-complete=${this.handleRunComplete}
+        ></playbook-run-modal>
+      ` : ''}
     `;
   }
 }
