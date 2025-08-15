@@ -1,13 +1,14 @@
 package auth
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/awanio/vapor/internal/common"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/awanio/vapor/internal/common"
 )
 
 
@@ -31,6 +32,12 @@ type LoginRequest struct {
 
 // LoginResponse represents the login response
 type LoginResponse struct {
+	Token     string `json:"token"`
+	ExpiresAt int64  `json:"expires_at"`
+}
+
+// RefreshResponse represents the token refresh response
+type RefreshResponse struct {
 	Token     string `json:"token"`
 	ExpiresAt int64  `json:"expires_at"`
 }
@@ -125,6 +132,102 @@ func (s *Service) AuthMiddleware() gin.HandlerFunc {
 func (s *Service) validateCredentials(username, password string) bool {
 	// Validate against Linux system authentication
 	return authenticateLinuxUser(username, password)
+}
+
+// RefreshToken handles JWT token refresh
+func (s *Service) RefreshToken(c *gin.Context) {
+	// Get token from header
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		common.SendError(c, http.StatusUnauthorized, common.ErrCodeUnauthorized, "Missing authorization header")
+		return
+	}
+
+	// Extract token
+	parts := strings.Split(authHeader, " ")
+	if len(parts) != 2 || parts[0] != "Bearer" {
+		common.SendError(c, http.StatusUnauthorized, common.ErrCodeUnauthorized, "Invalid authorization header format")
+		return
+	}
+
+	tokenString := parts[1]
+
+	// Parse and validate token
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return s.jwtSecret, nil
+	})
+
+	if err != nil {
+		// Check if token is expired but was valid
+		// In JWT v5, we check if the error contains the expired token error
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			// Token is expired, but we can still extract claims to check if it was recently expired
+			if claims.ExpiresAt != nil {
+				expiredTime := claims.ExpiresAt.Time
+				// Allow refresh if token expired within the last 7 days
+				if time.Since(expiredTime) <= 7*24*time.Hour {
+					// Create new token with same claims but new expiration
+					newExpirationTime := time.Now().Add(24 * time.Hour)
+					newClaims := &Claims{
+						Username: claims.Username,
+						Role:     claims.Role,
+						RegisteredClaims: jwt.RegisteredClaims{
+							ExpiresAt: jwt.NewNumericDate(newExpirationTime),
+							IssuedAt:  jwt.NewNumericDate(time.Now()),
+							Issuer:    claims.Issuer,
+						},
+					}
+
+					newToken := jwt.NewWithClaims(jwt.SigningMethodHS256, newClaims)
+					newTokenString, err := newToken.SignedString(s.jwtSecret)
+					if err != nil {
+						common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to generate new token")
+						return
+					}
+
+					common.SendSuccess(c, RefreshResponse{
+						Token:     newTokenString,
+						ExpiresAt: newExpirationTime.Unix(),
+					})
+					return
+				}
+			}
+			common.SendError(c, http.StatusUnauthorized, common.ErrCodeUnauthorized, "Token expired beyond refresh window")
+			return
+		}
+		common.SendError(c, http.StatusUnauthorized, common.ErrCodeUnauthorized, "Invalid token")
+		return
+	}
+
+	if !token.Valid {
+		common.SendError(c, http.StatusUnauthorized, common.ErrCodeUnauthorized, "Invalid token")
+		return
+	}
+
+	// Token is still valid, issue a new one with extended expiration
+	newExpirationTime := time.Now().Add(24 * time.Hour)
+	newClaims := &Claims{
+		Username: claims.Username,
+		Role:     claims.Role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(newExpirationTime),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Issuer:    claims.Issuer,
+		},
+	}
+
+	newToken := jwt.NewWithClaims(jwt.SigningMethodHS256, newClaims)
+	newTokenString, err := newToken.SignedString(s.jwtSecret)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to generate new token")
+		return
+	}
+
+	common.SendSuccess(c, RefreshResponse{
+		Token:     newTokenString,
+		ExpiresAt: newExpirationTime.Unix(),
+	})
 }
 
 // RequireRole checks if user has required role
