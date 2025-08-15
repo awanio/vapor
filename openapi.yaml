@@ -122,10 +122,10 @@ paths:
         Authenticate a user and receive a JWT token.
         
         **Authentication Methods:**
+        - **Password**: Use Linux system user credentials
+        - **SSH Key**: Use SSH private key for authentication
         
-        Use Linux system users:
-           - Any valid Linux user with their system credentials
-           - Uses system authentication via 'su' command
+        The `auth_type` field determines the authentication method.
       tags:
         - Auth
       security: []  # No authentication required for login endpoint
@@ -134,16 +134,134 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoginRequest'
+              $ref: '#/components/schemas/EnhancedLoginRequest'
       responses:
         '200':
           description: Successful authentication
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoginResponse'
+                $ref: '#/components/schemas/EnhancedLoginResponse'
         '401':
           description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
+  /auth/refresh:
+    post:
+      summary: Refresh JWT token
+      description: |
+        Refresh an existing JWT token. Supports refreshing expired tokens
+        within a 7-day grace period.
+      tags:
+        - Auth
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnhancedLoginResponse'
+        '401':
+          description: Invalid or expired token beyond refresh window
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
+  /auth/challenge:
+    post:
+      summary: Create SSH authentication challenge
+      description: |
+        Create a challenge for SSH key-based authentication.
+        The challenge must be signed with the user's private key.
+      tags:
+        - Auth
+      security: []  # No authentication required
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChallengeRequest'
+      responses:
+        '200':
+          description: Challenge created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChallengeResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
+  /auth/challenge/verify:
+    post:
+      summary: Verify SSH challenge signature
+      description: |
+        Verify a signed SSH challenge to complete authentication.
+        Returns a JWT token upon successful verification.
+      tags:
+        - Auth
+      security: []  # No authentication required
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyRequest'
+      responses:
+        '200':
+          description: Challenge verified successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnhancedLoginResponse'
+        '401':
+          description: Invalid signature or expired challenge
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Challenge not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
+  /auth/users/{username}/keys:
+    get:
+      summary: Get user's SSH public keys
+      description: |
+        Retrieve the authorized SSH public keys for a specific user.
+        Reads from the user's ~/.ssh/authorized_keys file.
+      tags:
+        - Auth
+      security: []  # Public endpoint for key discovery
+      parameters:
+        - name: username
+          in: path
+          required: true
+          description: Username to get keys for
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of SSH public keys
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SSHKeysResponse'
+        '404':
+          description: User not found
           content:
             application/json:
               schema:
@@ -8816,6 +8934,145 @@ components:
                   type: string
                 expires_at:
                   type: integer
+    
+    EnhancedLoginRequest:
+      type: object
+      required:
+        - username
+      properties:
+        username:
+          type: string
+          description: Username for authentication
+        password:
+          type: string
+          description: User password (required for password auth)
+        auth_type:
+          type: string
+          description: Authentication type
+          enum: [password, ssh_key]
+          default: password
+        ssh_signature:
+          type: string
+          description: SSH signature for key-based auth
+        challenge:
+          type: string
+          description: Challenge string for SSH key auth
+    
+    EnhancedLoginResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                token:
+                  type: string
+                  description: JWT authentication token
+                expires_at:
+                  type: integer
+                  description: Token expiration timestamp
+                refresh_token:
+                  type: string
+                  description: Refresh token for token renewal
+                token_type:
+                  type: string
+                  description: Token type
+                  default: Bearer
+                user:
+                  type: object
+                  properties:
+                    username:
+                      type: string
+                    uid:
+                      type: string
+                    groups:
+                      type: array
+                      items:
+                        type: string
+    
+    ChallengeRequest:
+      type: object
+      required:
+        - username
+      properties:
+        username:
+          type: string
+          description: Username requesting the challenge
+        key_fingerprint:
+          type: string
+          description: Optional SSH key fingerprint to use
+    
+    ChallengeResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                challenge:
+                  type: string
+                  description: Challenge string to be signed
+                expires_at:
+                  type: integer
+                  description: Challenge expiration timestamp
+                username:
+                  type: string
+                  description: Username for this challenge
+    
+    VerifyRequest:
+      type: object
+      required:
+        - username
+        - challenge
+        - signature
+      properties:
+        username:
+          type: string
+          description: Username
+        challenge:
+          type: string
+          description: Original challenge string
+        signature:
+          type: string
+          description: Base64-encoded signature of the challenge
+        key_type:
+          type: string
+          description: SSH key type
+          enum: [rsa, ed25519, ecdsa]
+    
+    SSHKeysResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                username:
+                  type: string
+                  description: Username
+                keys:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/SSHKey'
+    
+    SSHKey:
+      type: object
+      properties:
+        key:
+          type: string
+          description: Full SSH public key string
+        type:
+          type: string
+          description: Key type (ssh-rsa, ssh-ed25519, etc.)
+        fingerprint:
+          type: string
+          description: Key fingerprint
+        comment:
+          type: string
+          description: Key comment/label
     
     MessageResponse:
       allOf:
