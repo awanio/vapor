@@ -2205,7 +2205,7 @@ paths:
     get:
       summary: List all storage pools
       tags:
-        - Virtualization
+        - Virtualization Storage
       security:
         - bearerAuth: []
       responses:
@@ -2221,7 +2221,7 @@ paths:
     post:
       summary: Create a new storage pool
       tags:
-        - Virtualization
+        - Virtualization Storage
       security:
         - bearerAuth: []
       requestBody:
@@ -2246,7 +2246,7 @@ paths:
     get:
       summary: Get storage pool details
       tags:
-        - Virtualization
+        - Virtualization Storage
       security:
         - bearerAuth: []
       parameters:
@@ -2271,7 +2271,7 @@ paths:
     delete:
       summary: Delete a storage pool
       tags:
-        - Virtualization
+        - Virtualization Storage
       security:
         - bearerAuth: []
       parameters:
@@ -2299,7 +2299,7 @@ paths:
     get:
       summary: List all volumes in a storage pool
       tags:
-        - Virtualization
+        - Virtualization Storage
       security:
         - bearerAuth: []
       parameters:
@@ -2324,7 +2324,7 @@ paths:
     post:
       summary: Create a new volume in a storage pool
       tags:
-        - Virtualization
+        - Virtualization Storage
       security:
         - bearerAuth: []
       parameters:
@@ -2358,7 +2358,7 @@ paths:
     get:
       summary: Get storage volume details
       tags:
-        - Virtualization
+        - Virtualization Storage
       security:
         - bearerAuth: []
       parameters:
@@ -2389,7 +2389,7 @@ paths:
     delete:
       summary: Delete a storage volume
       tags:
-        - Virtualization
+        - Virtualization Storage
       security:
         - bearerAuth: []
       parameters:
@@ -2430,7 +2430,7 @@ paths:
         Upload-Metadata: filename dWJ1bnR1LTIyLjA0LWRlc2t0b3AtYW1kNjQuaXNv,os_type bGludXg=,os_variant dWJ1bnR1MjIuMDQ=
         ```
       tags:
-        - Virtualization/Storage
+        - Virtualization Storage
       security:
         - bearerAuth: []
       parameters:
@@ -2516,7 +2516,7 @@ paths:
       summary: List active ISO upload sessions
       description: Get a list of all active ISO upload sessions for the current user
       tags:
-        - Virtualization/Storage
+        - Virtualization Storage
       security:
         - bearerAuth: []
       responses:
@@ -2565,7 +2565,7 @@ paths:
         Get information about a resumable upload session for ISO images.
         This follows TUS protocol for HEAD requests.
       tags:
-        - Virtualization/Storage
+        - Virtualization Storage
       security:
         - bearerAuth: []
       parameters:
@@ -2610,7 +2610,7 @@ paths:
         
         The request body should contain the raw binary data of the chunk.
       tags:
-        - Virtualization/Storage
+        - Virtualization Storage
       security:
         - bearerAuth: []
       parameters:
@@ -2688,7 +2688,7 @@ paths:
       summary: Get ISO upload status
       description: Get detailed status of an ISO upload session
       tags:
-        - Virtualization/Storage
+        - Virtualization Storage
       security:
         - bearerAuth: []
       parameters:
@@ -2753,7 +2753,7 @@ paths:
       summary: Cancel ISO upload session
       description: Cancel and delete an ISO upload session, removing any uploaded data
       tags:
-        - Virtualization/Storage
+        - Virtualization Storage
       security:
         - bearerAuth: []
       parameters:
@@ -2790,7 +2790,7 @@ paths:
         Complete the upload session and register the ISO in the system.
         This will move the ISO to the final storage location and make it available for VM creation.
       tags:
-        - Virtualization/Storage
+        - Virtualization Storage
       security:
         - bearerAuth: []
       parameters:
@@ -2844,7 +2844,7 @@ paths:
     get:
       summary: List all virtual networks
       tags:
-        - Virtualization/Networks
+        - Virtualization Networks
       security:
         - bearerAuth: []
       responses:
@@ -2865,7 +2865,7 @@ paths:
     post:
       summary: Create a new virtual network
       tags:
-        - Virtualization/Networks
+        - Virtualization Networks
       security:
         - bearerAuth: []
       requestBody:
@@ -2890,7 +2890,7 @@ paths:
     get:
       summary: Get virtual network details
       tags:
-        - Virtualization
+        - Virtualization Networks
       security:
         - bearerAuth: []
       parameters:
@@ -2915,7 +2915,7 @@ paths:
     delete:
       summary: Delete a virtual network
       tags:
-        - Virtualization
+        - Virtualization Networks
       security:
         - bearerAuth: []
       parameters:
@@ -4168,7 +4168,7 @@ paths:
     get:
       summary: List all virtual machines
       tags:
-        - Virtualization
+        - Virtualization Compute
       security:
         - bearerAuth: []
       responses:
@@ -4184,7 +4184,7 @@ paths:
     post:
       summary: Create a new virtual machine
       tags:
-        - Virtualization
+        - Virtualization Compute
       security:
         - bearerAuth: []
       requestBody:
@@ -4209,7 +4209,7 @@ paths:
     get:
       summary: Get virtual machine details
       tags:
-        - Virtualization
+        - Virtualization Compute
       security:
         - bearerAuth: []
       parameters:
@@ -4333,7 +4333,7 @@ paths:
            - Consider TLS for production environments
            - Ensure firewall rules allow migration traffic
       tags:
-        - Virtualization
+        - Virtualization Compute
       security:
         - bearerAuth: []
       parameters:
@@ -4368,7 +4368,7 @@ paths:
       summary: Get migration status
       description: Check the status of an ongoing VM migration
       tags:
-        - Virtualization
+        - Virtualization Compute
       security:
         - bearerAuth: []
       parameters:
@@ -4408,7 +4408,7 @@ paths:
         - Devices must be in separate IOMMU groups for passthrough
         - vfio-pci driver must be loaded
       tags:
-        - Virtualization
+        - Virtualization Compute
       security:
         - bearerAuth: []
       parameters:
@@ -4441,7 +4441,7 @@ paths:
         - Device will be unbound from host driver and bound to vfio-pci
         - For GPUs, consider passing through audio device as well
       tags:
-        - Virtualization
+        - Virtualization Compute
       security:
         - bearerAuth: []
       parameters:
@@ -4487,7 +4487,7 @@ paths:
         - VM should be powered off for safe removal
         - Device will be unbound from vfio-pci and may rebind to original driver
       tags:
-        - Virtualization
+        - Virtualization Compute
       security:
         - bearerAuth: []
       parameters:
@@ -4533,7 +4533,7 @@ paths:
         - Guest OS must support hotplug for the resource type
         - ACPI hotplug must be enabled in VM configuration
       tags:
-        - Virtualization
+        - Virtualization Compute
       security:
         - bearerAuth: []
       parameters:
@@ -4581,7 +4581,7 @@ paths:
         - Whether memory snapshots are supported (requires qcow2 for all disks)
         - Disk format limitations and recommendations
       tags:
-        - Virtualization
+        - Virtualization Compute
       security:
         - bearerAuth: []
       parameters:
@@ -4608,7 +4608,7 @@ paths:
       summary: List VM snapshots
       description: Retrieve all snapshots for a specific virtual machine
       tags:
-        - Virtualization
+        - Virtualization Compute
       security:
         - bearerAuth: []
       parameters:
@@ -4666,7 +4666,7 @@ paths:
         - Monitor storage space before creating snapshots
         - Test snapshot restoration in non-production first
       tags:
-        - Virtualization
+        - Virtualization Compute
       security:
         - bearerAuth: []
       parameters:
@@ -4751,7 +4751,7 @@ paths:
       summary: Get snapshot details
       description: Retrieve details of a specific VM snapshot
       tags:
-        - Virtualization
+        - Virtualization Compute
       security:
         - bearerAuth: []
       parameters:
@@ -4783,7 +4783,7 @@ paths:
       summary: Delete VM snapshot
       description: Delete a specific snapshot of a virtual machine
       tags:
-        - Virtualization
+        - Virtualization Compute
       security:
         - bearerAuth: []
       parameters:
@@ -4821,7 +4821,7 @@ paths:
         **Note:** If the snapshot includes memory state, the VM will resume
         from the exact running state. Otherwise, the VM will be in a stopped state.
       tags:
-        - Virtualization
+        - Virtualization Compute
       security:
         - bearerAuth: []
       parameters:
@@ -4860,7 +4860,7 @@ paths:
       summary: List VM backups
       description: List all backups for a specific virtual machine
       tags:
-        - Virtualization
+        - Virtualization Compute
       security:
         - bearerAuth: []
       parameters:
@@ -4903,7 +4903,7 @@ paths:
         - Include memory state
         - Custom retention period
       tags:
-        - Virtualization
+        - Virtualization Compute
       security:
         - bearerAuth: []
       parameters:
@@ -4944,7 +4944,7 @@ paths:
         - Overwrite existing VM
         - Decrypt encrypted backups
       tags:
-        - Virtualization
+        - Virtualization Compute
       security:
         - bearerAuth: []
       requestBody:
@@ -4982,7 +4982,7 @@ paths:
       summary: Delete VM backup
       description: Delete a specific VM backup
       tags:
-        - Virtualization
+        - Virtualization Compute
       security:
         - bearerAuth: []
       parameters:
@@ -5014,7 +5014,7 @@ paths:
         to quickly create new virtual machines with optimal settings for
         specific operating systems and use cases.
       tags:
-        - Virtualization
+        - Virtualization Compute
       security:
         - bearerAuth: []
       responses:
@@ -5041,7 +5041,7 @@ paths:
         including memory, CPU, disk, and optional features like UEFI boot,
         Secure Boot, and TPM support.
       tags:
-        - Virtualization
+        - Virtualization Compute
       security:
         - bearerAuth: []
       requestBody:
@@ -5073,7 +5073,7 @@ paths:
       summary: Get VM template details
       description: Get detailed information about a specific VM template
       tags:
-        - Virtualization
+        - Virtualization Compute
       security:
         - bearerAuth: []
       parameters:
@@ -5103,7 +5103,7 @@ paths:
       summary: Update VM template
       description: Update an existing VM template
       tags:
-        - Virtualization
+        - Virtualization Compute
       security:
         - bearerAuth: []
       parameters:
@@ -5141,7 +5141,7 @@ paths:
       summary: Delete VM template
       description: Delete a VM template from the system
       tags:
-        - Virtualization
+        - Virtualization Compute
       security:
         - bearerAuth: []
       parameters:
@@ -5179,7 +5179,7 @@ paths:
         - User values are validated against template minimum requirements
         - Template settings for OS, network, graphics, and cloud-init are applied
       tags:
-        - Virtualization
+        - Virtualization Compute
       security:
         - bearerAuth: []
       requestBody:
@@ -5339,7 +5339,7 @@ paths:
         - Reference ISOs by ID, name, or path
         - Automatic ISO resolution from multiple sources
       tags:
-        - Virtualization
+        - Virtualization Compute
       security:
         - bearerAuth: []
       requestBody:
@@ -5372,7 +5372,7 @@ paths:
         - ISOs in /var/lib/vapor/iso
         - ISOs in /usr/share/iso
       tags:
-        - Virtualization
+        - Virtualization Storage
       security:
         - bearerAuth: []
       responses:
@@ -5388,14 +5388,14 @@ paths:
     post:
       summary: Upload ISO image
       description: |
-        Upload a new ISO image to the system.
+        Upload (non resumable) a new ISO image to the system.
         
         **Options:**
         - Direct file upload
         - Download from URL
         - Copy from existing path
       tags:
-        - Virtualization
+        - Virtualization Storage
       security:
         - bearerAuth: []
       requestBody:
@@ -5448,7 +5448,7 @@ paths:
       summary: Delete ISO image
       description: Delete an ISO image from the system
       tags:
-        - Virtualization
+        - Virtualization Storage
       security:
         - bearerAuth: []
       parameters:
