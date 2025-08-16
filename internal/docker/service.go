@@ -19,12 +19,32 @@ import (
 
 // Service represents the Docker service
 type Service struct {
-	client Client
+	client        Client
+	runtimeClient *RuntimeClient
 }
 
 // NewService creates a new Docker service
 func NewService(client Client) *Service {
 	return &Service{client: client}
+}
+
+// NewServiceWithRuntimeClient creates a new Docker service with runtime client support
+// This is used for unified container management endpoints
+func NewServiceWithRuntimeClient(dockerClient Client) (*Service, error) {
+	runtimeClient, err := NewRuntimeClientFromExisting(dockerClient)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create runtime client: %w", err)
+	}
+	
+	return &Service{
+		client:        dockerClient,
+		runtimeClient: runtimeClient,
+	}, nil
+}
+
+// GetRuntimeClient returns the runtime client if available
+func (s *Service) GetRuntimeClient() *RuntimeClient {
+	return s.runtimeClient
 }
 
 // RegisterRoutes registers Docker routes with the router

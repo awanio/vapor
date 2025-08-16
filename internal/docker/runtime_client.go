@@ -1,4 +1,4 @@
-package container
+package docker
 
 import (
 	"context"
@@ -8,18 +8,19 @@ import (
 	"strings"
 	"time"
 
+	"github.com/awanio/vapor/internal/common"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 )
 
-// DockerClient implements RuntimeClient for Docker
-type DockerClient struct {
+// RuntimeClient implements common.RuntimeClient for Docker
+type RuntimeClient struct {
 	client *client.Client
 }
 
-// NewDockerClient creates a new Docker client
-func NewDockerClient() (*DockerClient, error) {
+// NewRuntimeClient creates a new Docker runtime client
+func NewRuntimeClient() (*RuntimeClient, error) {
 	// Create a new Docker client with default options
 	// This will use DOCKER_HOST env var or default to /var/run/docker.sock
 	cli, err := client.NewClientWithOpts(
@@ -40,13 +41,25 @@ func NewDockerClient() (*DockerClient, error) {
 		return nil, fmt.Errorf("failed to ping Docker daemon: %w", err)
 	}
 
-	return &DockerClient{
+	return &RuntimeClient{
 		client: cli,
 	}, nil
 }
 
+// NewRuntimeClientFromExisting creates a runtime client from an existing Docker client
+func NewRuntimeClientFromExisting(dockerClient Client) (*RuntimeClient, error) {
+	// We need to access the underlying Docker SDK client
+	// Since we control the creation of the Client interface, we know it's our implementation
+	// For now, create a new runtime client instead
+	runtimeClient, err := NewRuntimeClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create runtime client: %w", err)
+	}
+	return runtimeClient, nil
+}
+
 // ListContainers lists all containers
-func (d *DockerClient) ListContainers() ([]Container, error) {
+func (d *RuntimeClient) ListContainers() ([]common.Container, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -60,7 +73,7 @@ func (d *DockerClient) ListContainers() ([]Container, error) {
 		return nil, fmt.Errorf("failed to list containers: %w", err)
 	}
 
-	containers := make([]Container, 0, len(dockerContainers))
+	containers := make([]common.Container, 0, len(dockerContainers))
 	for _, dc := range dockerContainers {
 		// Docker returns names with leading slash, remove it
 		name := ""
@@ -71,7 +84,7 @@ func (d *DockerClient) ListContainers() ([]Container, error) {
 			}
 		}
 
-		container := Container{
+		container := common.Container{
 			ID:        dc.ID[:12], // Docker typically shows 12 chars
 			Name:      name,
 			Image:     dc.Image,
@@ -87,46 +100,8 @@ func (d *DockerClient) ListContainers() ([]Container, error) {
 	return containers, nil
 }
 
-// ListImages lists all images
-func (d *DockerClient) ListImages() ([]Image, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	options := image.ListOptions{
-		All: true,
-	}
-
-	dockerImages, err := d.client.ImageList(ctx, options)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list images: %w", err)
-	}
-
-	images := make([]Image, 0, len(dockerImages))
-	for _, di := range dockerImages {
-		image := Image{
-			ID:          di.ID,
-			RepoTags:    di.RepoTags,
-			RepoDigests: di.RepoDigests,
-			Size:        di.Size,
-			CreatedAt:   time.Unix(di.Created, 0),
-			Runtime:     "docker",
-		}
-
-		// Handle case where ID has sha256: prefix
-		if len(image.ID) > 7 && image.ID[:7] == "sha256:" {
-			image.ID = image.ID[7:19] // Take 12 chars after sha256:
-		} else if len(image.ID) > 12 {
-			image.ID = image.ID[:12]
-		}
-
-		images = append(images, image)
-	}
-
-	return images, nil
-}
-
 // GetContainer gets detailed information about a specific container
-func (d *DockerClient) GetContainer(id string) (*ContainerDetail, error) {
+func (d *RuntimeClient) GetContainer(id string) (*common.ContainerDetail, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -136,26 +111,14 @@ func (d *DockerClient) GetContainer(id string) (*ContainerDetail, error) {
 		return nil, fmt.Errorf("failed to inspect container: %w", err)
 	}
 
-	// Get container stats for resource usage (only for running containers)
-	// Stats are not available for stopped/exited containers
-if containerJSON.State.Running {
-		stats, err := d.client.ContainerStatsOneShot(ctx, id)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get container stats: %w", err)
-		}
-		defer stats.Body.Close()
-		// Process stats here if needed
-	}
-
 	// Build detailed container info
-	detail := &ContainerDetail{
-		Container: Container{
-			ID:     containerJSON.ID[:12],
-			Name:   strings.TrimPrefix(containerJSON.Name, "/"),
-			Image:  containerJSON.Config.Image,
-			State:  containerJSON.State.Status,
-			Status: containerJSON.State.Status,
-			// Parse the created time string
+	detail := &common.ContainerDetail{
+		Container: common.Container{
+			ID:        containerJSON.ID[:12],
+			Name:      strings.TrimPrefix(containerJSON.Name, "/"),
+			Image:     containerJSON.Config.Image,
+			State:     containerJSON.State.Status,
+			Status:    containerJSON.State.Status,
 			CreatedAt: parseDockerTime(containerJSON.Created),
 			Labels:    containerJSON.Config.Labels,
 			Runtime:   "docker",
@@ -189,7 +152,7 @@ if containerJSON.State.Running {
 
 	// Convert mounts
 	for _, mount := range containerJSON.Mounts {
-		detail.Mounts = append(detail.Mounts, Mount{
+		detail.Mounts = append(detail.Mounts, common.Mount{
 			Source:      mount.Source,
 			Destination: mount.Destination,
 			Mode:        mount.Mode,
@@ -206,7 +169,7 @@ if containerJSON.State.Running {
 			if binding.HostPort != "" {
 				fmt.Sscanf(binding.HostPort, "%d", &hostPort)
 			}
-			detail.Ports = append(detail.Ports, Port{
+			detail.Ports = append(detail.Ports, common.Port{
 				ContainerPort: containerPort,
 				HostPort:      hostPort,
 				Protocol:      port.Proto(),
@@ -217,7 +180,7 @@ if containerJSON.State.Running {
 
 	// Convert networks
 	for netName, netInfo := range containerJSON.NetworkSettings.Networks {
-		network := Network{
+		network := common.Network{
 			Name:        netName,
 			ID:          netInfo.NetworkID,
 			IPAddress:   netInfo.IPAddress,
@@ -235,7 +198,7 @@ if containerJSON.State.Running {
 	}
 
 	// Set resource limits and usage
-	detail.Resources = Resources{
+	detail.Resources = common.Resources{
 		CPUShares:         containerJSON.HostConfig.CPUShares,
 		CPUQuota:          containerJSON.HostConfig.CPUQuota,
 		CPUPeriod:         containerJSON.HostConfig.CPUPeriod,
@@ -248,13 +211,11 @@ if containerJSON.State.Running {
 		BlkioWeight:       containerJSON.HostConfig.BlkioWeight,
 	}
 
-	// TODO: Parse stats.Body to get actual resource usage if needed
-
 	return detail, nil
 }
 
 // GetContainerLogs gets logs of a specific container
-func (d *DockerClient) GetContainerLogs(id string) (string, error) {
+func (d *RuntimeClient) GetContainerLogs(id string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -294,8 +255,46 @@ func (d *DockerClient) GetContainerLogs(id string) (string, error) {
 	return buf.String(), nil
 }
 
+// ListImages lists all images
+func (d *RuntimeClient) ListImages() ([]common.Image, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	options := image.ListOptions{
+		All: true,
+	}
+
+	dockerImages, err := d.client.ImageList(ctx, options)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list images: %w", err)
+	}
+
+	images := make([]common.Image, 0, len(dockerImages))
+	for _, di := range dockerImages {
+		img := common.Image{
+			ID:          di.ID,
+			RepoTags:    di.RepoTags,
+			RepoDigests: di.RepoDigests,
+			Size:        di.Size,
+			CreatedAt:   time.Unix(di.Created, 0),
+			Runtime:     "docker",
+		}
+
+		// Handle case where ID has sha256: prefix
+		if len(img.ID) > 7 && img.ID[:7] == "sha256:" {
+			img.ID = img.ID[7:19] // Take 12 chars after sha256:
+		} else if len(img.ID) > 12 {
+			img.ID = img.ID[:12]
+		}
+
+		images = append(images, img)
+	}
+
+	return images, nil
+}
+
 // GetImage gets detailed information about a specific image
-func (d *DockerClient) GetImage(id string) (*ImageDetail, error) {
+func (d *RuntimeClient) GetImage(id string) (*common.ImageDetail, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -312,8 +311,8 @@ func (d *DockerClient) GetImage(id string) (*ImageDetail, error) {
 	}
 
 	// Build detailed image info
-	detail := &ImageDetail{
-		Image: Image{
+	detail := &common.ImageDetail{
+		Image: common.Image{
 			ID:          imageInspect.ID,
 			RepoTags:    imageInspect.RepoTags,
 			RepoDigests: imageInspect.RepoDigests,
@@ -337,7 +336,7 @@ func (d *DockerClient) GetImage(id string) (*ImageDetail, error) {
 
 	// Convert config
 	if imageInspect.Config != nil {
-		detail.Config = ImageConfig{
+		detail.Config = common.ImageConfig{
 			User:       imageInspect.Config.User,
 			Env:        imageInspect.Config.Env,
 			Cmd:        imageInspect.Config.Cmd,
@@ -365,7 +364,7 @@ func (d *DockerClient) GetImage(id string) (*ImageDetail, error) {
 
 	// Convert layers from history
 	for _, h := range history {
-		layer := Layer{
+		layer := common.Layer{
 			ID:        h.ID,
 			Size:      h.Size,
 			CreatedAt: time.Unix(h.Created, 0),
@@ -378,21 +377,8 @@ func (d *DockerClient) GetImage(id string) (*ImageDetail, error) {
 	return detail, nil
 }
 
-// GetRuntimeName returns the runtime name
-func (d *DockerClient) GetRuntimeName() string {
-	return "docker"
-}
-
-// Close closes the connection
-func (d *DockerClient) Close() error {
-	if d.client != nil {
-		return d.client.Close()
-	}
-	return nil
-}
-
 // ImportImage imports a Docker image from a tar.gz file
-func (d *DockerClient) ImportImage(filePath string) (*ImageImportResult, error) {
+func (d *RuntimeClient) ImportImage(filePath string) (*common.ImageImportResult, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute) // Set a timeout for large operations
 	defer cancel()
 
@@ -402,30 +388,73 @@ func (d *DockerClient) ImportImage(filePath string) (*ImageImportResult, error) 
 	}
 	defer file.Close()
 
-	// Import the image
-	imageCreateResponse, err := d.client.ImageLoad(ctx, file, false)
+	// Load the image using Docker SDK
+	imageLoadResponse, err := d.client.ImageLoad(ctx, file, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load image: %w", err)
 	}
-	defer imageCreateResponse.Body.Close()
+	defer imageLoadResponse.Body.Close()
 
-	// Read the body to fetch response info
-	respContent, err := io.ReadAll(imageCreateResponse.Body)
+	// Read the load response to get information
+	respContent, err := io.ReadAll(imageLoadResponse.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
+		return nil, fmt.Errorf("failed to read image load response: %w", err)
 	}
 
-	importResult := &ImageImportResult{
-		ImageID:    "",
-		RepoTags:   []string{},
+	responseText := string(respContent)
+	
+	// Parse the response to extract image information
+	// Docker load response typically contains "Loaded image: name:tag" or "Loaded image ID: sha256:..."
+	imageID := ""
+	repoTags := []string{}
+	size := int64(0)
+
+	// Try to get the most recent image (the one we just loaded)
+	images, err := d.client.ImageList(ctx, image.ListOptions{})
+	if err == nil && len(images) > 0 {
+		// Sort by created time and get the most recent
+		var newestImage image.Summary
+		newestTime := time.Unix(0, 0)
+		for _, img := range images {
+			created := time.Unix(img.Created, 0)
+			if created.After(newestTime) {
+				newestTime = created
+				newestImage = img
+			}
+		}
+		
+		if newestImage.ID != "" {
+			imageID = newestImage.ID
+			repoTags = newestImage.RepoTags
+			size = newestImage.Size
+		}
+	}
+
+	return &common.ImageImportResult{
+		ImageID:    imageID,
+		RepoTags:   repoTags,
+		Size:       size,
 		ImportedAt: time.Now(),
 		Runtime:    "docker",
 		Status:     "success",
-		Message:    string(respContent),
-	}
-
-	return importResult, nil
+		Message:    responseText,
+	}, nil
 }
+
+// GetRuntimeName returns the runtime name
+func (d *RuntimeClient) GetRuntimeName() string {
+	return "docker"
+}
+
+// Close closes the connection
+func (d *RuntimeClient) Close() error {
+	if d.client != nil {
+		return d.client.Close()
+	}
+	return nil
+}
+
+// Helper functions
 
 // parseDockerTime parses Docker time strings to time.Time
 func parseDockerTime(timeStr string) time.Time {

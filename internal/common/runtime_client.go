@@ -1,6 +1,24 @@
-package container
+package common
 
 import "time"
+
+// RuntimeClient defines the interface for container runtime operations
+// This interface is implemented by both Docker and CRI clients
+type RuntimeClient interface {
+	// Container operations
+	ListContainers() ([]Container, error)
+	GetContainer(id string) (*ContainerDetail, error)
+	GetContainerLogs(id string) (string, error)
+	
+	// Image operations
+	ListImages() ([]Image, error)
+	GetImage(id string) (*ImageDetail, error)
+	ImportImage(imagePath string) (*ImageImportResult, error)
+	
+	// Runtime info
+	GetRuntimeName() string
+	Close() error
+}
 
 // Container represents a container with unified fields
 type Container struct {
@@ -53,17 +71,6 @@ type Port struct {
 	HostPort      int32  `json:"host_port"`
 	Protocol      string `json:"protocol"`
 	HostIP        string `json:"host_ip"`
-}
-
-// PortMapping represents a container port mapping (alias for Port)
-type PortMapping Port
-
-// ContainerNetwork represents container network information
-type ContainerNetwork struct {
-	NetworkName string `json:"network_name"`
-	IPAddress   string `json:"ip_address"`
-	Gateway     string `json:"gateway"`
-	MacAddress  string `json:"mac_address"`
 }
 
 // Network represents container network information
@@ -151,23 +158,11 @@ type Layer struct {
 
 // ImageImportResult represents the result of importing an image
 type ImageImportResult struct {
-	ImageID    string   `json:"image_id"`
-	RepoTags   []string `json:"repo_tags"`
-	Size       int64    `json:"size"`
+	ImageID    string    `json:"image_id"`
+	RepoTags   []string  `json:"repo_tags"`
+	Size       int64     `json:"size"`
 	ImportedAt time.Time `json:"imported_at"`
-	Runtime    string   `json:"runtime"`
-	Status     string   `json:"status"`
-	Message    string   `json:"message,omitempty"`
-}
-
-// RuntimeClient defines the interface for container runtime operations
-type RuntimeClient interface {
-	ListContainers() ([]Container, error)
-	GetContainer(id string) (*ContainerDetail, error)
-	ListImages() ([]Image, error)
-	GetImage(id string) (*ImageDetail, error)
-	GetContainerLogs(id string) (string, error)
-	ImportImage(imagePath string) (*ImageImportResult, error)
-	GetRuntimeName() string
-	Close() error
+	Runtime    string    `json:"runtime"`
+	Status     string    `json:"status"`
+	Message    string    `json:"message,omitempty"`
 }

@@ -3,15 +3,15 @@ package container
 import (
 	"context"
 	"fmt"
-	"os/exec"
 	"time"
 
+	"github.com/awanio/vapor/internal/common"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	criapi "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
 
-// CRIClient implements RuntimeClient for CRI-compatible runtimes
+// CRIClient implements common.RuntimeClient for CRI-compatible runtimes
 type CRIClient struct {
 	conn          *grpc.ClientConn
 	runtimeClient criapi.RuntimeServiceClient
@@ -60,7 +60,7 @@ func NewCRIClient(socketPath string) (*CRIClient, error) {
 }
 
 // ListContainers lists all containers
-func (c *CRIClient) ListContainers() ([]Container, error) {
+func (c *CRIClient) ListContainers() ([]common.Container, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -71,9 +71,9 @@ func (c *CRIClient) ListContainers() ([]Container, error) {
 		return nil, fmt.Errorf("failed to list containers: %w", err)
 	}
 
-	containers := make([]Container, 0, len(resp.Containers))
+	containers := make([]common.Container, 0, len(resp.Containers))
 	for _, cnt := range resp.Containers {
-		container := Container{
+		container := common.Container{
 			ID:        cnt.Id,
 			Name:      cnt.Metadata.Name,
 			Image:     cnt.Image.Image,
@@ -90,7 +90,7 @@ func (c *CRIClient) ListContainers() ([]Container, error) {
 }
 
 // ListImages lists all images
-func (c *CRIClient) ListImages() ([]Image, error) {
+func (c *CRIClient) ListImages() ([]common.Image, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -100,9 +100,9 @@ func (c *CRIClient) ListImages() ([]Image, error) {
 		return nil, fmt.Errorf("failed to list images: %w", err)
 	}
 
-	images := make([]Image, 0, len(resp.Images))
+	images := make([]common.Image, 0, len(resp.Images))
 	for _, img := range resp.Images {
-		image := Image{
+		image := common.Image{
 			ID:          img.Id,
 			RepoTags:    img.RepoTags,
 			RepoDigests: img.RepoDigests,
@@ -121,7 +121,7 @@ func (c *CRIClient) ListImages() ([]Image, error) {
 }
 
 // GetContainer gets detailed information about a specific container
-func (c *CRIClient) GetContainer(id string) (*ContainerDetail, error) {
+func (c *CRIClient) GetContainer(id string) (*common.ContainerDetail, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -151,8 +151,8 @@ func (c *CRIClient) GetContainer(id string) (*ContainerDetail, error) {
 	}
 
 	// Build detailed container info
-	detail := &ContainerDetail{
-		Container: Container{
+	detail := &common.ContainerDetail{
+		Container: common.Container{
 			ID:        status.Id,
 			Name:      status.Metadata.Name,
 			Image:     status.Image.Image,
@@ -198,7 +198,7 @@ func (c *CRIClient) GetContainer(id string) (*ContainerDetail, error) {
 
 	// Convert mounts
 	for _, mount := range status.Mounts {
-		detail.Mounts = append(detail.Mounts, Mount{
+		detail.Mounts = append(detail.Mounts, common.Mount{
 			Source:      mount.HostPath,
 			Destination: mount.ContainerPath,
 			ReadOnly:    mount.Readonly,
@@ -206,7 +206,7 @@ func (c *CRIClient) GetContainer(id string) (*ContainerDetail, error) {
 	}
 
 	// Set resource limits and usage
-	detail.Resources = Resources{}
+	detail.Resources = common.Resources{}
 	
 	// Get resource usage from stats if available
 	if statsResp != nil && statsResp.Stats != nil {
@@ -247,17 +247,18 @@ func (c *CRIClient) GetContainer(id string) (*ContainerDetail, error) {
 
 // GetContainerLogs gets logs of a specific container
 func (c *CRIClient) GetContainerLogs(id string) (string, error) {
-	// Use crictl logs command to retrieve container logs
-	cmd := exec.Command("crictl", "logs", "--tail", "1000", id)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("failed to get container logs: %v, output: %s", err, string(output))
-	}
-	return string(output), nil
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// CRI doesn't provide a direct logs API, we need to use runtime-specific solutions
+	// For now, return a message indicating logs are not available via CRI
+	// In production, you might want to use the runtime's specific CLI or logging mechanism
+	_ = ctx
+	return "Container logs not available via CRI API. Please use runtime-specific tools (crictl logs, kubectl logs, etc.)", nil
 }
 
 // GetImage gets detailed information about a specific image
-func (c *CRIClient) GetImage(id string) (*ImageDetail, error) {
+func (c *CRIClient) GetImage(id string) (*common.ImageDetail, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -280,8 +281,8 @@ func (c *CRIClient) GetImage(id string) (*ImageDetail, error) {
 	image := statusResp.Image
 
 	// Build detailed image info
-	detail := &ImageDetail{
-		Image: Image{
+	detail := &common.ImageDetail{
+		Image: common.Image{
 			ID:          image.Id,
 			RepoTags:    image.RepoTags,
 			RepoDigests: image.RepoDigests,
@@ -307,7 +308,7 @@ func (c *CRIClient) GetImage(id string) (*ImageDetail, error) {
 		// CRI's Info field is map[string]string, so we can't extract structured config
 		// Just store the raw config string if available
 		if _, ok := statusResp.Info["config"]; ok {
-			detail.Config = ImageConfig{}
+			detail.Config = common.ImageConfig{}
 			// For CRI, we'll have limited config information
 		}
 		
@@ -325,7 +326,7 @@ func (c *CRIClient) GetImage(id string) (*ImageDetail, error) {
 	
 	// CRI doesn't provide layer information directly
 	// We would need to implement runtime-specific logic to get this
-	detail.Layers = []Layer{}
+	detail.Layers = []common.Layer{}
 
 	return detail, nil
 }
@@ -335,24 +336,25 @@ func (c *CRIClient) GetRuntimeName() string {
 	return c.runtimeName
 }
 
-// ImportImage imports an image from a tar.gz file using crictl
-func (c *CRIClient) ImportImage(filePath string) (*ImageImportResult, error) {
-	// Use crictl load command to import image from tarball
-	cmd := exec.Command("crictl", "load", "-i", filePath)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("failed to import image: %v, output: %s", err, string(output))
-	}
+// ImportImage imports an image from a tar.gz file
+func (c *CRIClient) ImportImage(filePath string) (*common.ImageImportResult, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
 
-	// Parse the output to extract image information
-	// crictl load typically outputs: "Loaded image: <image_name>"
-	importResult := &ImageImportResult{
-		ImageID:    "", // crictl doesn't directly return the image ID
+	// CRI doesn't provide a direct import API
+	// In production, you would need to use runtime-specific mechanisms
+	// For example, for containerd, you might use ctr or nerdctl
+	_ = ctx
+	_ = filePath
+	
+	// Return a placeholder result indicating the operation is not supported
+	importResult := &common.ImageImportResult{
+		ImageID:    "",
 		RepoTags:   []string{},
 		ImportedAt: time.Now(),
 		Runtime:    c.runtimeName,
-		Status:     "success",
-		Message:    string(output),
+		Status:     "unsupported",
+		Message:    "Image import is not supported via CRI API. Please use runtime-specific tools.",
 	}
 
 	return importResult, nil

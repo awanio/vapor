@@ -11,15 +11,15 @@ import (
 	"github.com/awanio/vapor/internal/common"
 )
 
-// Service manages container operations
+// Service manages CRI container operations
 type Service struct {
-	client RuntimeClient
+	client common.RuntimeClient
 	errorMessage string
 }
 
-// NewService creates a new container service by attempting connections in order
+// NewService creates a new CRI container service
 func NewService() (*Service, error) {
-	// Try CRI connections first
+	// Try CRI connections only
 	criSockets := []string{
 		"/run/containerd/containerd.sock",
 		"/var/run/crio/crio.sock",
@@ -40,38 +40,14 @@ func NewService() (*Service, error) {
 		}
 	}
 
-	// Try Docker connection
-	log.Println("Attempting Docker connection...")
-	dockerClient, err := NewDockerClient()
-	if err == nil {
-		log.Println("Successfully connected to Docker engine")
-		return &Service{client: dockerClient}, nil
-	}
-	lastError = err
-	log.Printf("Failed to connect to Docker: %v", err)
-
-	// All connections failed - return a service that will show errors
-	errorMsg := fmt.Sprintf("No container runtime found. Tried CRI sockets (%v) and Docker. Last error: %v", criSockets, lastError)
+	// All CRI connections failed - return a service that will show errors
+	errorMsg := fmt.Sprintf("No CRI runtime found. Tried sockets: %v. Last error: %v", criSockets, lastError)
 	log.Printf("Warning: %s", errorMsg)
 	
 	// Return a service with no client but with error message
 	return &Service{
 		client:       nil,
 		errorMessage: errorMsg,
-	}, nil
-}
-
-// NewServiceWithDockerClient creates a new container service with an existing Docker client
-func NewServiceWithDockerClient(dockerClient interface{}) (*Service, error) {
-	// We need to wrap the Docker client to implement RuntimeClient interface
-	// Assuming the dockerClient implements the necessary methods
-	wrappedClient, err := WrapDockerClient(dockerClient)
-	if err != nil {
-		return nil, fmt.Errorf("failed to wrap Docker client: %w", err)
-	}
-	
-	return &Service{
-		client: wrappedClient,
 	}, nil
 }
 
