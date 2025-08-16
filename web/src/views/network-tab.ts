@@ -450,6 +450,97 @@ export class NetworkTab extends I18nLitElement {
       padding-left: 35px !important;
       width: 100%;
     }
+
+    .ip-addresses-cell {
+      position: relative;
+    }
+
+    .ip-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .ip-address {
+      font-size: 0.85rem;
+    }
+
+    .ip-more-indicator {
+      font-size: 0.85rem;
+      color: var(--primary);
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .ip-addresses-cell:hover .ip-list-collapsed {
+      display: none;
+    }
+
+    .ip-addresses-cell:hover .ip-list-expanded {
+      display: flex;
+    }
+
+    .ip-list-expanded {
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+      position: absolute;
+      top: 0;
+      left: 0;
+      background: var(--surface-1);
+      padding: 12px 16px;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      z-index: 100;
+      min-width: 200px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .ip-list-collapsed {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .filter-container {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .type-filter-select {
+      padding: 0.5rem 2.5rem 0.5rem 0.75rem;
+      background-color: var(--surface-0);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      color: var(--text-primary);
+      font-size: 0.875rem;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.75rem center;
+      min-width: 150px;
+    }
+
+    .type-filter-select:hover {
+      border-color: var(--primary);
+    }
+
+    .type-filter-select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.2);
+    }
+
+    .filter-label {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
   `;
 
   @state()
@@ -501,6 +592,9 @@ export class NetworkTab extends I18nLitElement {
 
   @state()
   private searchQuery = '';
+
+  @state()
+  private selectedType = 'all';
 
   @state()
   private bridgeSearchQuery = '';
@@ -980,13 +1074,53 @@ export class NetworkTab extends I18nLitElement {
     }
   }
 
+  private getUniqueInterfaceTypes(): string[] {
+    const types = new Set<string>();
+    this.interfaces.forEach(iface => {
+      if (iface.type) {
+        types.add(iface.type);
+      }
+    });
+    return Array.from(types).sort();
+  }
+
+  private filterInterfaces() {
+    let filtered = this.interfaces;
+    
+    // Apply type filter
+    if (this.selectedType !== 'all') {
+      filtered = filtered.filter(iface => iface.type === this.selectedType);
+    }
+    
+    // Apply search filter
+    if (this.searchQuery) {
+      filtered = filtered.filter(iface => 
+        iface.name.toLowerCase().includes(this.searchQuery.toLowerCase())
+      );
+    }
+    
+    return filtered;
+  }
+
   override render() {
     return html`
       <div class="tab-container">
         <h1>${this.getPageTitle()}</h1>
         <div class="tab-content">
           ${this.activeTab === 'interfaces' ? html`
-            <div class="interface-search" style="display: flex; justify-content: flex-start; margin-bottom: 12px;">
+            <div class="filter-container">
+              <span class="filter-label">Type:</span>
+              <select 
+                class="type-filter-select"
+                .value=${this.selectedType}
+                @change=${(e: Event) => this.selectedType = (e.target as HTMLSelectElement).value}
+              >
+                <option value="all">All Types</option>
+                ${this.getUniqueInterfaceTypes().map(type => html`
+                  <option value="${type}">${type}</option>
+                `)}
+              </select>
+              
               <div class="search-container">
                 <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <circle cx="11" cy="11" r="8"></circle>
@@ -1007,19 +1141,46 @@ ${this.interfaces.length > 0 ? html`
                   <tr>
                     <th>${t('common.name')}</th>
                     <th>${t('common.state')}</th>
+                    <th>IPs</th>
                     <th>${t('network.rxBytes')}</th>
                     <th>${t('network.txBytes')}</th>
                     <th>${t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  ${this.interfaces.filter(iface => iface.name.toLowerCase().includes(this.searchQuery.toLowerCase())).map((iface, index) => html`
+                  ${this.filterInterfaces().map((iface, index) => html`
                     <tr>
                       <td>${iface.name}</td>
                       <td>
                         <div class="status-indicator">
                           <span class="status-icon ${iface.state === 'up' ? 'up' : 'down'}" data-tooltip="${iface.state === 'up' ? 'Up' : 'Down'}"></span>
                         </div>
+                      </td>
+                      <td class="ip-addresses-cell">
+                        ${iface.addresses && iface.addresses.length > 0 
+                          ? iface.addresses.length <= 3
+                            ? html`
+                                <div class="ip-list">
+                                  ${iface.addresses.map(addr => html`
+                                    <div class="ip-address">${addr}</div>
+                                  `)}
+                                </div>
+                              `
+                            : html`
+                                <div class="ip-list-collapsed">
+                                  ${iface.addresses.slice(0, 2).map(addr => html`
+                                    <div class="ip-address">${addr}</div>
+                                  `)}
+                                  <div class="ip-more-indicator">+${iface.addresses.length - 2} more...</div>
+                                </div>
+                                <div class="ip-list-expanded">
+                                  ${iface.addresses.map(addr => html`
+                                    <div class="ip-address">${addr}</div>
+                                  `)}
+                                </div>
+                              `
+                          : html`<span style="color: var(--text-secondary); font-size: 0.85rem;">-</span>`
+                        }
                       </td>
                       <td>${iface.statistics.rx_bytes}</td>
                       <td>${iface.statistics.tx_bytes}</td>
