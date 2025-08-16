@@ -541,6 +541,180 @@ export class NetworkTab extends I18nLitElement {
       color: var(--text-secondary);
       font-weight: 500;
     }
+
+    .interface-name-link {
+      color: var(--primary);
+      cursor: pointer;
+      text-decoration: none;
+      transition: opacity 0.2s;
+    }
+
+    .interface-name-link:hover {
+      opacity: 0.8;
+      text-decoration: underline;
+    }
+
+    .details-table {
+      width: 100%;
+      border-collapse: collapse;
+      background-color: var(--surface-0);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 1rem;
+    }
+
+    .details-table thead {
+      background-color: var(--surface-1);
+    }
+
+    .details-table th {
+      text-align: left;
+      padding: 10px 12px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .details-table td {
+      padding: 10px 12px;
+      font-size: 0.85rem;
+      color: var(--text-primary);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .details-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .details-table tbody tr:hover {
+      background-color: var(--surface-1);
+    }
+
+    .ip-edit-input {
+      padding: 0.25rem 0.5rem;
+      background-color: var(--surface-0);
+      border: 1px solid var(--primary);
+      border-radius: 3px;
+      color: var(--text-primary);
+      font-size: 0.85rem;
+      width: 100%;
+    }
+
+    .ip-actions {
+      display: flex;
+      gap: 4px;
+    }
+
+    .ip-action-btn {
+      padding: 4px 8px;
+      background: none;
+      border: 1px solid transparent;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s;
+    }
+
+    .ip-action-btn:hover {
+      background-color: var(--surface-2);
+      border-color: var(--border-color);
+    }
+
+    .ip-action-btn.edit {
+      color: var(--primary);
+    }
+
+    .ip-action-btn.delete {
+      color: var(--error);
+    }
+
+    .ip-action-btn.save {
+      background-color: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .ip-action-btn.save:hover {
+      background-color: var(--primary-hover);
+    }
+
+    .add-ip-form {
+      margin-top: 1rem;
+      padding: 1rem;
+      background-color: var(--surface-0);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+    }
+
+    .add-ip-form .form-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .add-ip-form .form-row input {
+      flex: 1;
+    }
+
+    .interface-info-section {
+      margin-bottom: 1.5rem;
+    }
+
+    .interface-info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: 0.5rem;
+    }
+
+    .info-item {
+      padding: 0.75rem;
+      background-color: var(--surface-0);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+    }
+
+    .info-label {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.25rem;
+    }
+
+    .info-value {
+      font-size: 0.9rem;
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .add-btn {
+      padding: 0.4rem 0.8rem;
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: background-color 0.2s;
+    }
+
+    .add-btn:hover {
+      background-color: var(--primary-hover);
+    }
   `;
 
   @state()
@@ -560,6 +734,45 @@ export class NetworkTab extends I18nLitElement {
 
   @state()
   private showConfigureDrawer = false;
+
+  @state()
+  private showDetailsDrawer = false;
+
+  @state()
+  private selectedInterface: NetworkInterface | null = null;
+
+  @state()
+  private editingIpIndex: number | null = null;
+
+  @state()
+  private editingIpValue = '';
+
+  @state()
+  private showAddIpModal = false;
+
+  @state()
+  private showEditIpModal = false;
+
+  @state()
+  private editIpAddress = '';
+
+  @state()
+  private editIpNetmask = 24;
+
+  @state()
+  private editIpGateway = '';
+
+  @state()
+  private originalIpAddress = '';
+
+  @state()
+  private newIpAddress = '';
+
+  @state()
+  private newIpNetmask = 24;
+
+  @state()
+  private newIpGateway = '';
 
   @state()
   private showBridgeDrawer = false;
@@ -693,6 +906,9 @@ export class NetworkTab extends I18nLitElement {
       this.closeAllMenus();
       
       // Then close drawers if they're open
+      if (this.showDetailsDrawer) {
+        this.closeDetailsDrawer();
+      }
       if (this.showConfigureDrawer) {
         this.closeConfigureDrawer();
       }
@@ -930,6 +1146,147 @@ export class NetworkTab extends I18nLitElement {
     };
   }
 
+  openDetailsDrawer(iface: NetworkInterface) {
+    this.selectedInterface = iface;
+    this.showDetailsDrawer = true;
+    this.editingIpIndex = null;
+    this.newIpAddress = '';
+    this.newIpNetmask = 24;
+    this.newIpGateway = '';
+  }
+
+  closeDetailsDrawer() {
+    this.showDetailsDrawer = false;
+    this.selectedInterface = null;
+    this.editingIpIndex = null;
+    this.editingIpValue = '';
+    this.newIpAddress = '';
+    this.newIpNetmask = 24;
+    this.newIpGateway = '';
+    this.showEditIpModal = false;
+  }
+
+  openEditIpModal(index: number, currentIp: string) {
+    this.editingIpIndex = index;
+    this.originalIpAddress = currentIp;
+    
+    // Parse the IP address and netmask
+    const [ip, netmaskStr] = currentIp.split('/');
+    this.editIpAddress = ip || currentIp;
+    this.editIpNetmask = parseInt(netmaskStr) || 24;
+    this.editIpGateway = ''; // Gateway is not stored with the IP, so leave empty
+    
+    this.showEditIpModal = true;
+  }
+
+  closeEditIpModal() {
+    this.showEditIpModal = false;
+    this.editingIpIndex = null;
+    this.editIpAddress = '';
+    this.editIpNetmask = 24;
+    this.editIpGateway = '';
+    this.originalIpAddress = '';
+  }
+
+  async saveEditedIp() {
+    if (!this.selectedInterface || this.editingIpIndex === null || !this.editIpAddress) {
+      return;
+    }
+
+    const oldAddress = this.selectedInterface.addresses?.[this.editingIpIndex];
+    if (!oldAddress) return;
+
+    try {
+      // First delete the old address
+      await api.delete(`/network/interfaces/${this.selectedInterface.name}/address?address=${encodeURIComponent(oldAddress)}`);
+      
+      // Then add the new address
+      const request: AddressRequest = {
+        address: this.editIpAddress,
+        netmask: this.editIpNetmask,
+        gateway: this.editIpGateway || undefined
+      };
+      await api.post(`/network/interfaces/${this.selectedInterface.name}/address`, request);
+      
+      // Refresh interfaces and update selected interface
+      await this.fetchInterfaces();
+      const updatedInterface = this.interfaces.find(i => i.name === this.selectedInterface?.name);
+      if (updatedInterface) {
+        this.selectedInterface = updatedInterface;
+      }
+      
+      // Close the modal
+      this.closeEditIpModal();
+    } catch (error) {
+      console.error('Error updating IP address:', error);
+    }
+  }
+
+  async deleteIpAddress(address: string) {
+    if (!this.selectedInterface) return;
+
+    this.showConfirmDialog(
+      t('network.deleteIpAddress'),
+      t('network.confirmDeleteIp', { address }),
+      async () => {
+        try {
+          await api.delete(`/network/interfaces/${this.selectedInterface!.name}/address?address=${encodeURIComponent(address)}`);
+          
+          // Refresh interfaces and update selected interface
+          await this.fetchInterfaces();
+          const updatedInterface = this.interfaces.find(i => i.name === this.selectedInterface?.name);
+          if (updatedInterface) {
+            this.selectedInterface = updatedInterface;
+          }
+        } catch (error) {
+          console.error('Error deleting IP address:', error);
+        }
+      }
+    );
+  }
+
+  openAddIpModal() {
+    this.showAddIpModal = true;
+    this.newIpAddress = '';
+    this.newIpNetmask = 24;
+    this.newIpGateway = '';
+  }
+
+  closeAddIpModal() {
+    this.showAddIpModal = false;
+    this.newIpAddress = '';
+    this.newIpNetmask = 24;
+    this.newIpGateway = '';
+  }
+
+  async addNewIpAddress() {
+    if (!this.selectedInterface || !this.newIpAddress) {
+      return;
+    }
+
+    const request: AddressRequest = {
+      address: this.newIpAddress,
+      netmask: this.newIpNetmask,
+      gateway: this.newIpGateway || undefined
+    };
+
+    try {
+      await api.post(`/network/interfaces/${this.selectedInterface.name}/address`, request);
+      
+      // Refresh interfaces and update selected interface
+      await this.fetchInterfaces();
+      const updatedInterface = this.interfaces.find(i => i.name === this.selectedInterface?.name);
+      if (updatedInterface) {
+        this.selectedInterface = updatedInterface;
+      }
+      
+      // Reset form and close modal
+      this.closeAddIpModal();
+    } catch (error) {
+      console.error('Error adding IP address:', error);
+    }
+  }
+
   openBridgeDrawer() {
     this.showBridgeDrawer = true;
     this.bridgeFormData = {
@@ -1150,7 +1507,11 @@ ${this.interfaces.length > 0 ? html`
                 <tbody>
                   ${this.filterInterfaces().map((iface, index) => html`
                     <tr>
-                      <td>${iface.name}</td>
+                      <td>
+                        <span class="interface-name-link" @click=${() => this.openDetailsDrawer(iface)}>
+                          ${iface.name}
+                        </span>
+                      </td>
                       <td>
                         <div class="status-indicator">
                           <span class="status-icon ${iface.state === 'up' ? 'up' : 'down'}" data-tooltip="${iface.state === 'up' ? 'Up' : 'Down'}"></span>
@@ -1193,6 +1554,9 @@ ${this.interfaces.length > 0 ? html`
                             </button>
                             <button @click=${() => { this.closeAllMenus(); this.handleConfigureAddress(iface); }}>
                               ${t('network.configure')}
+                            </button>
+                            <button @click=${() => { this.closeAllMenus(); this.openDetailsDrawer(iface); }}>
+                              View Details
                             </button>
                           </div>
                         </div>
@@ -1636,6 +2000,244 @@ ${this.interfaces.length > 0 ? html`
           </div>
         </div>
       ` : null}
+
+      ${this.showDetailsDrawer && this.selectedInterface ? html`
+        <div class="drawer">
+          <button class="close-btn" @click="${() => this.closeDetailsDrawer()}">×</button>
+          <div class="drawer-content">
+            <h2>Interface Details: ${this.selectedInterface.name}</h2>
+            
+            <!-- Interface Information Section -->
+            <div class="interface-info-section">
+              <div class="interface-info-grid">
+                <div class="info-item">
+                  <div class="info-label">Status</div>
+                  <div class="info-value">
+                    <span class="interface-state ${this.selectedInterface.state === 'up' ? 'state-up' : 'state-down'}">
+                      ${this.selectedInterface.state}
+                    </span>
+                  </div>
+                </div>
+                <div class="info-item">
+                  <div class="info-label">Type</div>
+                  <div class="info-value">${this.selectedInterface.type || 'Unknown'}</div>
+                </div>
+                <div class="info-item">
+                  <div class="info-label">MAC Address</div>
+                  <div class="info-value">${this.selectedInterface.mac || 'N/A'}</div>
+                </div>
+                <div class="info-item">
+                  <div class="info-label">MTU</div>
+                  <div class="info-value">${this.selectedInterface.mtu || 'N/A'}</div>
+                </div>
+                <div class="info-item">
+                  <div class="info-label">RX Bytes</div>
+                  <div class="info-value">${this.selectedInterface.statistics.rx_bytes}</div>
+                </div>
+                <div class="info-item">
+                  <div class="info-label">TX Bytes</div>
+                  <div class="info-value">${this.selectedInterface.statistics.tx_bytes}</div>
+                </div>
+                <div class="info-item">
+                  <div class="info-label">RX Packets</div>
+                  <div class="info-value">${this.selectedInterface.statistics.rx_packets}</div>
+                </div>
+                <div class="info-item">
+                  <div class="info-label">TX Packets</div>
+                  <div class="info-value">${this.selectedInterface.statistics.tx_packets}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- IP Addresses Section -->
+            <div class="section-header">
+              <h3 class="section-title">IP Addresses</h3>
+              <button class="add-btn" @click="${() => this.openAddIpModal()}">
+                + Add IP
+              </button>
+            </div>
+
+            <!-- IP Addresses Table -->
+            ${this.selectedInterface.addresses && this.selectedInterface.addresses.length > 0 ? html`
+              <table class="details-table">
+                <thead>
+                  <tr>
+                    <th>IP Address</th>
+                    <th style="text-align: right;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${this.selectedInterface.addresses.map((address, index) => html`
+                    <tr>
+                      <td>${address}</td>
+                      <td style="text-align: right;">
+                        <div class="action-menu">
+                          <button class="action-dots" @click=${(e: Event) => this.toggleActionMenu(e, `ip-${index}`)}>
+                            ⋮
+                          </button>
+                          <div class="action-dropdown" id="ip-${index}">
+                            <button @click=${() => { this.closeAllMenus(); this.openEditIpModal(index, address); }}>
+                              Edit
+                            </button>
+                            <button class="danger" @click=${() => { this.closeAllMenus(); this.deleteIpAddress(address); }}>
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  `)}
+                </tbody>
+              </table>
+            ` : html`
+              <div class="empty-state" style="padding: 2rem; text-align: center;">
+                <p style="color: var(--text-secondary); margin-bottom: 1rem;">No IP addresses configured</p>
+                <button class="action-button primary" @click="${() => this.openAddIpModal()}">
+                  Add First IP Address
+                </button>
+              </div>
+            `}
+
+            <!-- Interface Actions -->
+            <div class="form-actions" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+              <button class="action-button" @click="${() => this.closeDetailsDrawer()}">
+                Close
+              </button>
+              <button class="action-button ${this.selectedInterface.state === 'up' ? '' : 'primary'}" 
+                      @click="${() => { this.toggleInterfaceState(this.selectedInterface!); this.closeDetailsDrawer(); }}">
+                ${this.selectedInterface.state === 'up' ? 'Bring Down' : 'Bring Up'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ` : null}
+
+      <!-- Add IP Modal -->
+      <modal-dialog
+        ?open=${this.showAddIpModal}
+        .title="Add IP Address"
+        size="medium"
+        .showFooter=${false}
+        @modal-close=${() => this.closeAddIpModal()}
+      >
+        <form @submit=${(e: Event) => { e.preventDefault(); this.addNewIpAddress(); }}>
+          <div class="form-group">
+            <label class="form-label" for="modal-ip-address">IP Address *</label>
+            <input 
+              id="modal-ip-address"
+              class="form-input" 
+              type="text" 
+              placeholder="192.168.1.100"
+              .value=${this.newIpAddress}
+              @input=${(e: Event) => this.newIpAddress = (e.target as HTMLInputElement).value}
+              required
+              autofocus
+            />
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="modal-netmask">Netmask (CIDR) *</label>
+            <input 
+              id="modal-netmask"
+              class="form-input" 
+              type="number" 
+              min="0" 
+              max="32" 
+              placeholder="24"
+              .value=${this.newIpNetmask}
+              @input=${(e: Event) => this.newIpNetmask = parseInt((e.target as HTMLInputElement).value) || 24}
+              required
+            />
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="modal-gateway">Gateway (Optional)</label>
+            <input 
+              id="modal-gateway"
+              class="form-input" 
+              type="text" 
+              placeholder="192.168.1.1"
+              .value=${this.newIpGateway}
+              @input=${(e: Event) => this.newIpGateway = (e.target as HTMLInputElement).value}
+            />
+          </div>
+          
+          <div slot="footer" style="display: flex; gap: 8px; justify-content: flex-end;">
+            <button type="button" class="action-button" @click=${() => this.closeAddIpModal()}>
+              ${t('common.cancel')}
+            </button>
+            <button type="submit" class="action-button primary">
+              Add IP Address
+            </button>
+          </div>
+        </form>
+      </modal-dialog>
+
+      <!-- Edit IP Modal -->
+      <modal-dialog
+        ?open=${this.showEditIpModal}
+        .title="Edit IP Address"
+        size="medium"
+        .showFooter=${false}
+        @modal-close=${() => this.closeEditIpModal()}
+      >
+        <form @submit=${(e: Event) => { e.preventDefault(); this.saveEditedIp(); }}>
+          <div class="form-group">
+            <label class="form-label" for="edit-ip-address">IP Address *</label>
+            <input 
+              id="edit-ip-address"
+              class="form-input" 
+              type="text" 
+              placeholder="192.168.1.100"
+              .value=${this.editIpAddress}
+              @input=${(e: Event) => this.editIpAddress = (e.target as HTMLInputElement).value}
+              required
+              autofocus
+            />
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="edit-netmask">Netmask (CIDR) *</label>
+            <input 
+              id="edit-netmask"
+              class="form-input" 
+              type="number" 
+              min="0" 
+              max="32" 
+              placeholder="24"
+              .value=${this.editIpNetmask}
+              @input=${(e: Event) => this.editIpNetmask = parseInt((e.target as HTMLInputElement).value) || 24}
+              required
+            />
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="edit-gateway">Gateway (Optional)</label>
+            <input 
+              id="edit-gateway"
+              class="form-input" 
+              type="text" 
+              placeholder="192.168.1.1"
+              .value=${this.editIpGateway}
+              @input=${(e: Event) => this.editIpGateway = (e.target as HTMLInputElement).value}
+            />
+          </div>
+
+          <div class="form-group" style="background-color: var(--surface-0); padding: 0.75rem; border-radius: 4px; border: 1px solid var(--border-color);">
+            <div class="info-label" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Original IP Address</div>
+            <div class="info-value" style="font-size: 0.9rem; color: var(--text-primary);">${this.originalIpAddress}</div>
+          </div>
+          
+          <div slot="footer" style="display: flex; gap: 8px; justify-content: flex-end;">
+            <button type="button" class="action-button" @click=${() => this.closeEditIpModal()}>
+              ${t('common.cancel')}
+            </button>
+            <button type="submit" class="action-button primary">
+              Save Changes
+            </button>
+          </div>
+        </form>
+      </modal-dialog>
     `;
   }
 }
