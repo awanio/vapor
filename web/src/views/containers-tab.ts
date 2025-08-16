@@ -972,7 +972,7 @@ export class ContainersTab extends LitElement {
 
   handleLocationChange = () => {
     const path = window.location.pathname;
-    if (path.endsWith('/images')) {
+    if (path.endsWith('/containers/images')) {
       this.activeTab = 'images';
     } else {
       this.activeTab = 'containers';
@@ -1029,7 +1029,7 @@ export class ContainersTab extends LitElement {
 async fetchImageDetails(id: string) {
     try {
       this.detailError = null;
-      const response = await api.get<any>(`/images/${id}`);
+      const response = await api.get<any>(`/containers/images/${id}`);
       console.log('Full image details response:', response);
       
       // Try different response structures
@@ -1078,7 +1078,7 @@ async fetchImageDetails(id: string) {
 
   async fetchImages() {
     try {
-      const data = await api.get<ImagesResponse>('/images');
+      const data = await api.get<ImagesResponse>('/containers/images');
       this.images = data.images || [];
       this.runtime = data.runtime || null;
       this.error = null;
@@ -1176,7 +1176,7 @@ async fetchImageDetails(id: string) {
       `Are you sure you want to remove image "${tag || id}"? This action cannot be undone.`,
       async () => {
         try {
-          await api.delete(`/images/${id}`);
+          await api.delete(`/containers/images/${id}`);
           this.fetchImages();
         } catch (error) {
           console.error('Error removing image:', error);
