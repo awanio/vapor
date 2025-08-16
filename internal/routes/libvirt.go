@@ -756,7 +756,7 @@ func deleteStoragePool(service *libvirt.Service) gin.HandlerFunc {
 
 func listVolumesInPool(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		poolName := c.Param("pool_name")
+		poolName := c.Param("name")
 		volumes, err := service.ListVolumes(c.Request.Context(), poolName)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -774,7 +774,7 @@ func createVolumeInPool(service *libvirt.Service) gin.HandlerFunc {
 			return
 		}
 
-		req.PoolName = c.Param("pool_name")
+		req.PoolName = c.Param("name")
 		volume, err := service.CreateVolume(c.Request.Context(), &req)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -787,7 +787,7 @@ func createVolumeInPool(service *libvirt.Service) gin.HandlerFunc {
 
 func getVolume(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		poolName := c.Param("pool_name")
+		poolName := c.Param("name")
 		volName := c.Param("vol_name")
 		volume, err := service.GetVolume(c.Request.Context(), poolName, volName)
 		if err != nil {
@@ -800,7 +800,7 @@ func getVolume(service *libvirt.Service) gin.HandlerFunc {
 
 func deleteVolume(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		poolName := c.Param("pool_name")
+		poolName := c.Param("name")
 		volName := c.Param("vol_name")
 		err := service.DeleteVolume(c.Request.Context(), poolName, volName)
 		if err != nil {
