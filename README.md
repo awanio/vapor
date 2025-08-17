@@ -40,6 +40,7 @@ The application requires the following system utilities to be installed on Linux
   - `mount`, `umount` - For filesystem mounting operations
   - `lsblk` - For listing block devices
   - `useradd`, `usermod`, `userdel` - For user management
+  - `ansible` - For otomation tasks
 
 - **Filesystem tools** (install based on your needs):
   - `e2fsprogs` - For ext2/ext3/ext4 filesystem support (provides mkfs.ext2, mkfs.ext3, mkfs.ext4)
@@ -83,7 +84,6 @@ sudo apk add util-linux e2fsprogs xfsprogs btrfs-progs lvm2 open-iscsi multipath
 
 ### Supported Platforms
 - **Linux x86_64**: Primary platform with full functionality
-- **Linux ARM64**: Supported but less extensively tested
 
 ### Operating System
 This application is **Linux-only** and will not run on macOS, Windows, or other operating systems. The application enforces this requirement at startup and will exit with an error if run on non-Linux systems.
@@ -101,8 +101,8 @@ make build-linux
 
 ```bash
 # Clone the repository
-git clone https://github.com/vapor/system-api.git
-cd system-api
+git clone https://github.com/awanio/vapor.git
+cd vapor
 
 # Install dependencies
 make install-deps
@@ -179,8 +179,8 @@ sudo systemctl start system-api
 
 The application can be configured using environment variables:
 
-- `JWT_SECRET`: Secret key for JWT token signing (required for production)
-- `SERVER_ADDR`: Server address and port (default: `:8080`)
+- `VAPOR_JWT_SECRET`: Secret key for JWT token signing (required for production)
+- `VAPOR_PORT`: Server address and port (default: `:7770`)
 
 ## API Documentation
 
@@ -193,98 +193,6 @@ The API uses **Linux system user authentication**:
 - The API uses the system's authentication mechanism (via `su` command)
 - User must exist in `/etc/passwd`
 - All authenticated users receive the "admin" role by default
-
-Obtain a JWT token:
-
-```bash
-# Using Linux system user
-curl -X POST http://localhost:8080/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username": "your_linux_username", "password": "your_password"}'
-```
-
-Use the token in subsequent requests:
-
-```bash
-curl -H "Authorization: Bearer <token>" http://localhost:8080/api/v1/system/summary
-```
-
-### Example Endpoints
-
-#### Network Management
-- `GET /api/v1/network/interfaces` - List all network interfaces
-- `PUT /api/v1/network/interfaces/{name}/up` - Bring interface up
-- `PUT /api/v1/network/interfaces/{name}/down` - Bring interface down
-- `POST /api/v1/network/interfaces/{name}/address` - Configure IP address
-- `PUT /api/v1/network/interfaces/{name}/address` - Update IP address
-- `DELETE /api/v1/network/interfaces/{name}/address?address=x.x.x.x` - Delete IP address
-- `POST /api/v1/network/bridge` - Create network bridge
-- `PUT /api/v1/network/bridge/{name}` - Update network bridge
-- `DELETE /api/v1/network/bridge/{name}` - Delete network bridge
-- `POST /api/v1/network/bond` - Create network bond
-- `PUT /api/v1/network/bond/{name}` - Update network bond
-- `DELETE /api/v1/network/bond/{name}` - Delete network bond
-- `POST /api/v1/network/vlan` - Create VLAN
-- `PUT /api/v1/network/vlan/{name}` - Update VLAN
-- `DELETE /api/v1/network/vlan/{name}` - Delete VLAN
-
-#### Storage Management
-- `GET /api/v1/storage/disks` - List all disks
-- `POST /api/v1/storage/mount` - Mount filesystem
-- `POST /api/v1/storage/unmount` - Unmount filesystem
-- `POST /api/v1/storage/format` - Format disk
-
-##### LVM Operations
-- `GET /api/v1/storage/lvm/vgs` - List volume groups
-- `GET /api/v1/storage/lvm/lvs` - List logical volumes  
-- `GET /api/v1/storage/lvm/pvs` - List physical volumes
-- `POST /api/v1/storage/lvm/vg` - Create volume group
-- `POST /api/v1/storage/lvm/lv` - Create logical volume
-
-##### iSCSI Operations
-- `POST /api/v1/storage/iscsi/discover` - Discover iSCSI targets
-- `GET /api/v1/storage/iscsi/sessions` - List active sessions
-- `POST /api/v1/storage/iscsi/login` - Login to target
-- `POST /api/v1/storage/iscsi/logout` - Logout from target
-
-##### Multipath Operations
-- `GET /api/v1/storage/multipath/devices` - List multipath devices
-- `GET /api/v1/storage/multipath/paths` - List multipath paths
-
-##### BTRFS Operations  
-- `GET /api/v1/storage/btrfs/subvolumes` - List subvolumes
-- `POST /api/v1/storage/btrfs/subvolume` - Create subvolume
-- `DELETE /api/v1/storage/btrfs/subvolume` - Delete subvolume
-- `POST /api/v1/storage/btrfs/snapshot` - Create snapshot
-
-#### User Management
-- `GET /api/v1/users` - List all users
-- `POST /api/v1/users` - Create user
-- `PUT /api/v1/users/{username}` - Update user
-- `DELETE /api/v1/users/{username}` - Delete user
-
-#### System Information
-- `GET /api/v1/system/summary` - Get system summary
-- `GET /api/v1/system/hardware` - Get hardware information
-- `GET /api/v1/system/memory` - Get memory information
-- `GET /api/v1/system/cpu` - Get CPU information
-
-#### Container Management
-- `GET /api/v1/containers` - List containers (requires Docker or CRI runtime)
-- `GET /api/v1/images` - List container images (requires Docker or CRI runtime)
-
-#### Logs
-- `GET /api/v1/logs` - Query system logs with filtering
-
-#### Ansible Automation
-- `POST /api/v1/ansible/playbooks/run` - Execute Ansible playbook
-- `POST /api/v1/ansible/adhoc` - Run ad-hoc command
-- `GET /api/v1/ansible/executions` - List all executions
-- `GET /api/v1/ansible/executions/{id}` - Get execution details
-- `WS /api/v1/ansible/executions/{id}/stream` - Stream execution output
-- `GET /api/v1/ansible/inventory/dynamic` - Generate dynamic inventory
-- `POST /api/v1/ansible/playbooks` - Save playbook
-- `POST /api/v1/ansible/playbooks/validate` - Validate playbook syntax
 
 ## Web UI
 
@@ -407,24 +315,6 @@ make lint
    - All terminal sessions are logged for audit purposes
    - Ensure proper authentication and network security when exposing this feature
 
-## Project Structure
-
-```
-.
-├── cmd/system-api/        # Application entry point
-├── internal/              # Internal packages
-│   ├── auth/             # Authentication service
-│   ├── common/           # Common utilities and types
-│   ├── container/        # Container management service
-│   ├── logs/             # Log management service
-│   ├── network/          # Network management service
-│   ├── storage/          # Storage management service
-│   ├── system/           # System information service
-│   └── users/            # User management service
-├── openapi.yaml          # OpenAPI specification
-├── system-api.service    # systemd unit file
-└── Makefile             # Build automation
-```
 
 ## Contributing
 
@@ -448,3 +338,4 @@ This project is licensed under the Apache License 2.0 — see the [LICENSE](LICE
 - Built with Gin Web Framework
 - Uses gopsutil for system metrics
 - netlink for network management
+- Ansible for automation tasks
