@@ -42,7 +42,7 @@ func main() {
 			printHelp()
 			return
 		case "--version", "-v":
-			fmt.Println("Vapor System Management API v1.0.0")
+			fmt.Println("Vapor API v1.0.0")
 			return
 		}
 	}
@@ -338,7 +338,7 @@ func generateConfigCmd() {
 	var outputPath string
 	flagSet := flag.NewFlagSet("generate-config", flag.ExitOnError)
 	flagSet.StringVar(&outputPath, "output", "vapor.conf", "Output path for the configuration file")
-	
+
 	if len(os.Args) > 2 {
 		flagSet.Parse(os.Args[2:])
 	} else {
@@ -352,7 +352,7 @@ func generateConfigCmd() {
 }
 
 func printHelp() {
-	fmt.Println(`Vapor System Management API Server
+	fmt.Print(`Vapor System Management API Server
 
 Usage:
   vapor [options]
@@ -395,7 +395,8 @@ Examples:
 
   # Generate example config file
   vapor --generate-config --output /etc/vapor/vapor.conf
-`)}
+`)
+}
 
 func getJWTSecret() string {
 	if secret := os.Getenv("JWT_SECRET"); secret != "" {

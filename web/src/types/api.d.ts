@@ -83,6 +83,7 @@ export interface APIError {
 export interface LoginRequest {
   username: string;
   password: string;
+  auth_type: string;
 }
 
 export interface LoginResponse {

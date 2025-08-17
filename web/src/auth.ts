@@ -91,12 +91,13 @@ export class AuthManager {
 
   async login(username: string, password: string): Promise<boolean> {
     try {
+      const auth_type:string = "password"
       const response = await fetch(getApiUrl('/auth/login'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, password } as LoginRequest),
+        body: JSON.stringify({ username, password,auth_type } as LoginRequest),
       });
 
       const data: APIResponse<LoginResponse> = await response.json();
