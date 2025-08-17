@@ -59,16 +59,7 @@ build:docs:
           sleep 1
         done
   script:
-    - echo "$ACR_PASSWORD" | docker login $ACR_HOST --username $ACR_USERNAME --password-stdin
-    - export PATH_NAME="awanio/vapor-docs"
-    - >
-      docker build 
-      -t $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA 
-      -f $CI_PROJECT_DIR/docs/Dockerfile 
-      $CI_PROJECT_DIR/docs
-    - docker tag $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-latest
-    - docker push $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA 
-    - docker push $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-latest
+    - bash ${CONTAINER_BUILD_N_PUSH}
   only:
     - dev
     - main
@@ -84,14 +75,4 @@ deploy:docs:
   tags:
     - idch-bg-awid1
   script:
-    - export PATH_NAME="awanio/vapor-docs"
-    - base64 -d -i ${AWANIO_SSH_PRIVATE_KEY} > pem.key
-    - chmod 600 pem.key
-    - >
-      ssh 
-      -o "StrictHostKeyChecking no" 
-      -p 3775
-      -i pem.key 
-      awanio@103.179.254.248 
-      ssh ubuntu@172.16.1.6
-      kubectl -n vapor set image deployment/docs web=$ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA
+    - bash ${DEPLOY_DOCS_WEB}
