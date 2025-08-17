@@ -54,10 +54,6 @@ type VMSnapshotCapabilities struct {
 }
 
 // Domain XML parsing structures
-type DomainXML struct {
-	XMLName xml.Name   `xml:"domain"`
-	Devices DevicesXML `xml:"devices"`
-}
 
 type DevicesXML struct {
 	Disks []DiskXML `xml:"disk"`

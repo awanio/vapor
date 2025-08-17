@@ -476,52 +476,64 @@ func getConsole(service *libvirt.Service) gin.HandlerFunc {
 	}
 }
 
+
 func vmConsoleWebSocket(service *libvirt.Service) gin.HandlerFunc {
-	upgrader := websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool {
-			return true // Allow all origins in development
-		},
-	}
+return func(c *gin.Context) {
+		// id parameter not used in WebSocket connection
+token := c.Query("token")
 
-	return func(c *gin.Context) {
-		id := c.Param("id")
-		token := c.Query("token")
-
-		// Validate token (simplified - implement proper validation)
-		if token == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "missing token"})
-			return
-		}
-
-		ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to upgrade connection"})
-			return
-		}
-		defer ws.Close()
-
-		// Here you would implement the actual VNC/SPICE proxy
-		// This requires connecting to the VM's VNC/SPICE port and proxying the data
-		// For now, this is a placeholder
-
-		ws.WriteJSON(gin.H{
-			"type":    "info",
-			"message": "Console connection established for VM: " + id,
-		})
-
-		// Keep connection alive
-		for {
-			_, _, err := ws.ReadMessage()
-			if err != nil {
-				break
-			}
-		}
-	}
+// Validate token is provided
+if token == "" {
+c.JSON(http.StatusUnauthorized, gin.H{
+"error": "missing token",
+"code":  "MISSING_TOKEN",
+})
+return
 }
 
-// Template handlers
+// Get console proxy from service
+consoleProxy := service.GetConsoleProxy()
+if consoleProxy == nil {
+c.JSON(http.StatusInternalServerError, gin.H{
+"error": "console proxy not initialized",
+"code":  "PROXY_UNAVAILABLE",
+})
+return
+}
+
+// Upgrade to WebSocket
+ws, err := consoleProxy.WebSocketUpgrader().Upgrade(c.Writer, c.Request, nil)
+if err != nil {
+c.JSON(http.StatusBadRequest, gin.H{
+"error": "failed to upgrade to WebSocket",
+"code":  "UPGRADE_FAILED",
+})
+return
+}
+defer ws.Close()
+
+// Handle the WebSocket connection through the console proxy
+if err := consoleProxy.HandleWebSocket(ws, token); err != nil {
+// Send error to client before closing
+if consoleErr, ok := err.(*libvirt.ConsoleError); ok {
+ws.WriteJSON(gin.H{
+"type":  "error",
+"code":  consoleErr.Code,
+"error": consoleErr.Message,
+})
+} else {
+ws.WriteJSON(gin.H{
+"type":  "error",
+"error": err.Error(),
+})
+}
+return
+}
+}
+}
 
 func listTemplates(service *libvirt.Service) gin.HandlerFunc {
+
 	return func(c *gin.Context) {
 		templates, err := service.TemplateService.ListTemplates(c.Request.Context())
 		if err != nil {

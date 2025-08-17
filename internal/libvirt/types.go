@@ -96,13 +96,6 @@ type NetworkInterface struct {
 }
 
 // GraphicsDevice represents graphics/console configuration
-type GraphicsDevice struct {
-	Type     string `json:"type"` // vnc, spice, rdp
-	Port     int    `json:"port"`
-	Listen   string `json:"listen"`
-	Password string `json:"password,omitempty"`
-	Keymap   string `json:"keymap,omitempty"`
-}
 
 // VMCreateRequest represents a request to create a new VM
 type VMCreateRequest struct {
@@ -370,6 +363,7 @@ type ConsoleResponse struct {
 	Password string `json:"password,omitempty"`
 	Token    string `json:"token,omitempty"`   // for websocket auth
 	WSPath   string `json:"ws_path,omitempty"` // websocket path
+	TLSPort  int    `json:"tls_port,omitempty"`
 }
 
 // MigrationRequest for VM migration

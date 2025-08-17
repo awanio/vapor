@@ -4396,6 +4396,165 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+
+  /virtualization/virtualmachines/{id}/console:
+    get:
+      summary: Get VM console information
+      description: |
+        Retrieves console connection information for a virtual machine and generates a secure access token.
+        The token is valid for a limited time (default 5 minutes) and can only be used once.
+      tags:
+        - Virtualization - VMs
+      operationId: getVMConsole
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: VM ID (name or UUID)
+          schema:
+            type: string
+        - name: type
+          in: query
+          required: false
+          description: Console type preference
+          schema:
+            type: string
+            enum: [vnc, spice]
+            default: vnc
+      responses:
+        '200':
+          description: Console information retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsoleInfo'
+              example:
+                type: vnc
+                host: localhost
+                port: 5901
+                token: "a1b2c3d4e5f6789..."
+                ws_path: "/api/v1/virtualization/virtualmachines/vm-123/console/ws"
+                expires_at: "2024-01-15T10:30:00Z"
+                tls_enabled: false
+                password: "********"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      security:
+        - bearerAuth: []
+
+  /virtualization/virtualmachines/{id}/console/ws:
+    get:
+      summary: WebSocket console connection
+      description: |
+        Establishes a WebSocket connection for VM console access. This endpoint upgrades the HTTP connection
+        to a WebSocket connection and proxies data between the client and the VM's VNC/SPICE server.
+        
+        **Protocol**: WebSocket (ws:// or wss://)
+        
+        **Data Flow**: Binary frames containing VNC/SPICE protocol data
+        
+        **Error Messages**: JSON messages for errors and status updates
+      tags:
+        - Virtualization - VMs
+      operationId: vmConsoleWebSocket
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: VM ID (name or UUID)
+          schema:
+            type: string
+        - name: token
+          in: query
+          required: true
+          description: Access token from console information endpoint
+          schema:
+            type: string
+      responses:
+        '101':
+          description: Switching Protocols - WebSocket connection established
+        '400':
+          description: Bad Request - Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsoleError'
+        '503':
+          description: Service Unavailable - Console proxy not available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - bearerAuth: []
+
+  /virtualization/virtualmachines/{id}/console/stats:
+    get:
+      summary: Get console connection statistics
+      description: |
+        Retrieves statistics about active console connections for monitoring and debugging purposes.
+      tags:
+        - Virtualization - VMs
+      operationId: getVMConsoleStats
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: VM ID (name or UUID)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Console statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  active_connections:
+                    type: integer
+                    description: Number of active console connections for this VM
+                  total_bytes_sent:
+                    type: integer
+                    format: int64
+                    description: Total bytes sent to clients
+                  total_bytes_received:
+                    type: integer
+                    format: int64
+                    description: Total bytes received from clients
+                  connections:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        established:
+                          type: string
+                          format: date-time
+                        last_activity:
+                          type: string
+                          format: date-time
+                        bytes_sent:
+                          type: integer
+                          format: int64
+                        bytes_received:
+                          type: integer
+                          format: int64
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      security:
+        - bearerAuth: []
   /virtualization/virtualmachines/pci-devices:
     get:
       summary: List available PCI devices
@@ -5319,9 +5478,15 @@ paths:
 
   /virtualization/virtualmachines/create-enhanced:
     post:
-      summary: Create VM with enhanced configuration
+      summary: Create VM with enhanced configuration (v2)
       description: |
         Create a new virtual machine with enhanced disk and device configuration options.
+        
+        **BREAKING CHANGE (v2):**
+        - Storage configuration now nested under "storage" object
+        - "storage_pool", "iso_path", and "disks" at root level removed
+        - PCI device passthrough support added
+        - Required fields: name, memory, vcpus, storage
         
         **Key Features:**
         - Multiple disk support (new, existing, or cloned)
@@ -5347,7 +5512,57 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/VMCreateRequestEnhanced'
+              $ref: "#/components/schemas/VMCreateRequestEnhancedV2"
+            examples:
+              simple_vm:
+                summary: Simple VM with boot ISO
+                value:
+                  name: "ubuntu-vm"
+                  memory: 2048
+                  vcpus: 2
+                  storage:
+                    default_pool: "default"
+                    boot_iso: "ubuntu-22.04.iso"
+                    disks:
+                      - action: "create"
+                        size: 20
+              gpu_passthrough:
+                summary: VM with GPU passthrough
+                value:
+                  name: "gpu-workstation"
+                  memory: 32768
+                  vcpus: 16
+                  storage:
+                    default_pool: "fast-nvme"
+                    boot_iso: "ubuntu-desktop.iso"
+                    disks:
+                      - action: "create"
+                        size: 100
+                        format: "qcow2"
+                  pci_devices:
+                    - host_address: "0000:01:00.0"
+                      rom_file: "/usr/share/vgabios/rtx3080.rom"
+                      primary_gpu: true
+                    - host_address: "0000:01:00.1"
+                  graphics:
+                    - type: "none"
+              multi_disk_vm:
+                summary: VM with multiple disks from different pools
+                value:
+                  name: "database-server"
+                  memory: 16384
+                  vcpus: 8
+                  storage:
+                    default_pool: "fast-nvme"
+                    disks:
+                      - action: "create"
+                        size: 50
+                        format: "qcow2"
+                      - action: "create"
+                        size: 500
+                        storage_pool: "bulk-storage"
+                      - action: "attach"
+                        path: "/mnt/shared/data.qcow2"
       responses:
         '201':
           description: Virtual machine created successfully
@@ -16059,3 +16274,394 @@ components:
                   type: string
                   description: Success message
                   example: "ISO upload completed and registered successfully"
+
+    ConsoleInfo:
+      type: object
+      description: VM console connection information
+      required:
+        - type
+        - host
+        - port
+        - token
+        - ws_path
+        - expires_at
+      properties:
+        type:
+          type: string
+          enum: [vnc, spice]
+          description: Console protocol type
+        host:
+          type: string
+          description: Console server host address
+        port:
+          type: integer
+          description: Console server port
+        password:
+          type: string
+          description: Console password (masked for security)
+        token:
+          type: string
+          description: Secure access token for WebSocket connection
+        ws_path:
+          type: string
+          description: WebSocket endpoint path
+        expires_at:
+          type: string
+          format: date-time
+          description: Token expiration time
+        tls_enabled:
+          type: boolean
+          description: Whether TLS is enabled for console connection
+        tls_port:
+          type: integer
+          description: TLS port if TLS is enabled
+
+    ConsoleError:
+      type: object
+      description: Console-specific error response
+      required:
+        - code
+        - error
+      properties:
+        type:
+          type: string
+          enum: [error]
+          default: error
+        code:
+          type: string
+          enum:
+            - INVALID_TOKEN
+            - TOKEN_EXPIRED
+            - TOKEN_ALREADY_USED
+            - VM_NOT_FOUND
+            - NO_CONSOLE_AVAILABLE
+            - CONNECTION_FAILED
+            - MAX_CONNECTIONS_REACHED
+            - UNAUTHORIZED
+            - INTERNAL_ERROR
+          description: Error code for console operations
+        error:
+          type: string
+          description: Human-readable error message
+
+    ConsoleConfig:
+      type: object
+      description: Console proxy configuration
+      properties:
+        max_connections_per_vm:
+          type: integer
+          description: Maximum concurrent connections per VM
+          default: 5
+        max_total_connections:
+          type: integer
+          description: Maximum total concurrent connections
+          default: 100
+        token_ttl:
+          type: string
+          description: Token expiration time (e.g., "5m")
+          default: "5m"
+        connection_timeout:
+          type: string
+          description: Connection establishment timeout
+          default: "30s"
+        idle_timeout:
+          type: string
+          description: Idle connection timeout
+          default: "10m"
+        allowed_hosts:
+          type: array
+          items:
+            type: string
+          description: List of allowed console server hosts
+          default: ["localhost", "127.0.0.1", "::1"]
+        enable_tls:
+          type: boolean
+          description: Enable TLS for console connections
+          default: false
+        buffer_size:
+          type: integer
+          description: Buffer size in KB for data transfer
+          default: 32
+        cleanup_interval:
+          type: string
+          description: Interval for cleaning up expired tokens and connections
+          default: "1m"
+
+    ConsoleStats:
+      type: object
+      description: Console connection statistics
+      properties:
+        total_connections:
+          type: integer
+          description: Total number of active connections
+        total_tokens:
+          type: integer
+          description: Total number of active tokens
+        connections_per_vm:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Number of connections per VM
+        connections:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConsoleConnection'
+
+    ConsoleConnection:
+      type: object
+      description: Active console connection details
+      properties:
+        id:
+          type: string
+          description: Connection ID
+        vm_name:
+          type: string
+          description: VM name
+        vm_uuid:
+          type: string
+          description: VM UUID
+        type:
+          type: string
+          enum: [vnc, spice]
+          description: Console type
+        established:
+          type: string
+          format: date-time
+          description: Connection establishment time
+        last_activity:
+          type: string
+          format: date-time
+          description: Last activity timestamp
+        bytes_sent:
+          type: integer
+          format: int64
+          description: Bytes sent to client
+        bytes_received:
+          type: integer
+          format: int64
+          description: Bytes received from client
+
+    # Updated schemas for VM creation with new structure
+    VMCreateRequestEnhancedV2:
+      type: object
+      required:
+        - name
+        - memory
+        - vcpus
+        - storage
+      properties:
+        name:
+          type: string
+          description: Name of the virtual machine
+          example: "web-server-01"
+        memory:
+          type: integer
+          description: Memory size in MB
+          minimum: 256
+          example: 4096
+        vcpus:
+          type: integer
+          description: Number of virtual CPUs
+          minimum: 1
+          maximum: 256
+          example: 2
+        storage:
+          $ref: '#/components/schemas/StorageConfig'
+        os_type:
+          type: string
+          description: Operating system type
+          example: "linux"
+        os_variant:
+          type: string
+          description: Operating system variant
+          example: "ubuntu20.04"
+        architecture:
+          type: string
+          description: System architecture
+          default: "x86_64"
+          example: "x86_64"
+        uefi:
+          type: boolean
+          description: Use UEFI boot
+          default: false
+        secure_boot:
+          type: boolean
+          description: Enable secure boot
+          default: false
+        tpm:
+          type: boolean
+          description: Add TPM device
+          default: false
+        networks:
+          type: array
+          description: Network configurations
+          items:
+            $ref: '#/components/schemas/NetworkCreateConfig'
+        graphics:
+          type: array
+          description: Graphics device configurations
+          items:
+            $ref: '#/components/schemas/EnhancedGraphicsConfig'
+        pci_devices:
+          type: array
+          description: PCI devices for passthrough
+          items:
+            $ref: '#/components/schemas/PCIDeviceConfig'
+        cloud_init:
+          $ref: '#/components/schemas/CloudInit'
+        template:
+          type: string
+          description: Template name to base VM on
+          example: "ubuntu-server-template"
+        autostart:
+          type: boolean
+          description: Start VM automatically on host boot
+          default: false
+        custom_xml:
+          type: string
+          description: Custom libvirt XML snippet to merge
+        metadata:
+          type: object
+          description: Custom metadata key-value pairs
+          additionalProperties:
+            type: string
+
+    StorageConfig:
+      type: object
+      required:
+        - default_pool
+        - disks
+      properties:
+        default_pool:
+          type: string
+          description: Default storage pool for relative paths
+          example: "default"
+        boot_iso:
+          type: string
+          description: Optional boot ISO path or name
+          example: "ubuntu-22.04.iso"
+        disks:
+          type: array
+          description: Array of disk configurations
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/DiskCreateConfigV2'
+
+    DiskCreateConfigV2:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          type: string
+          description: Disk action type
+          enum: [create, attach, clone]
+          example: "create"
+        size:
+          type: integer
+          description: Disk size in GB (required for create action)
+          minimum: 1
+          example: 20
+        format:
+          type: string
+          description: Disk format
+          enum: [qcow2, raw, vmdk, vdi]
+          default: "qcow2"
+        path:
+          type: string
+          description: Path to disk (for attach action, or relative path for any action)
+          example: "existing-disk.qcow2"
+        storage_pool:
+          type: string
+          description: Override storage pool for this disk
+          example: "fast-ssd"
+        clone_from:
+          type: string
+          description: Source disk path to clone from (required for clone action)
+          example: "template-disk.qcow2"
+        bus:
+          type: string
+          description: Disk bus type
+          enum: [virtio, sata, scsi, ide, usb]
+          default: "virtio"
+        boot_order:
+          type: integer
+          description: Boot priority (1 = first)
+          minimum: 1
+        cache:
+          type: string
+          description: Cache mode
+          enum: [none, writethrough, writeback]
+        io_mode:
+          type: string
+          description: I/O mode
+          enum: [native, threads]
+        readonly:
+          type: boolean
+          description: Read-only disk
+          default: false
+        device:
+          type: string
+          description: Device type
+          enum: [disk, cdrom, floppy]
+          default: "disk"
+        target:
+          type: string
+          description: Target device name (auto-generated if not specified)
+          example: "vda"
+
+    PCIDeviceConfig:
+      type: object
+      required:
+        - host_address
+      properties:
+        host_address:
+          type: string
+          description: PCI address on host
+          pattern: '^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-7]$'
+          example: "0000:01:00.0"
+        guest_address:
+          type: string
+          description: PCI address in guest (auto-assigned if omitted)
+          pattern: '^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-7]$'
+          example: "0000:05:00.0"
+        rom_file:
+          type: string
+          description: Path to ROM file (for GPU passthrough)
+          example: "/usr/share/vgabios/rtx3080.rom"
+        multifunction:
+          type: boolean
+          description: Enable multifunction
+          default: false
+        primary_gpu:
+          type: boolean
+          description: Set as primary GPU
+          default: false
+
+    EnhancedGraphicsConfig:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          description: Graphics type
+          enum: [vnc, spice, egl-headless, none]
+          example: "vnc"
+        port:
+          type: integer
+          description: Port number (-1 for auto)
+          default: -1
+        autoport:
+          type: boolean
+          description: Auto-assign port
+          default: true
+        listen:
+          type: string
+          description: Listen address
+          default: "127.0.0.1"
+          example: "0.0.0.0"
+        password:
+          type: string
+          description: Console password
+          format: password

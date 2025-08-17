@@ -25,6 +25,7 @@ type Service struct {
 	templates       map[string]*VMTemplate
 	db              *sql.DB // Optional database for tracking
 	TemplateService *VMTemplateService
+	consoleProxy    *ConsoleProxy
 }
 
 // NewService creates a new libvirt service
@@ -52,6 +53,9 @@ func NewService(uri string) (*Service, error) {
 	}
 
 	// Load default templates
+
+	// Initialize console proxy
+	s.consoleProxy = NewConsoleProxy(s, nil)
 	s.loadDefaultTemplates()
 
 	return s, nil
@@ -993,64 +997,7 @@ func (s *Service) GetVMMetrics(ctx context.Context, nameOrUUID string) (*VMMetri
 }
 
 // GetConsole returns console access information
-func (s *Service) GetConsole(ctx context.Context, nameOrUUID string, consoleType string) (*ConsoleResponse, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	domain, err := s.lookupDomain(nameOrUUID)
-	if err != nil {
-		return nil, err
-	}
-	defer domain.Free()
-
-	// Get domain XML to parse console configuration
-	_, err = domain.GetXMLDesc(0)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get domain XML: %w", err)
-	}
-
-	// Parse XML to find graphics device
-	// This is simplified - in production you'd properly parse the XML
-	response := &ConsoleResponse{
-		Type: consoleType,
-		Host: "0.0.0.0",
-	}
-
-	// Generate a unique token for WebSocket authentication
-	response.Token = generateConsoleToken(nameOrUUID)
-	response.WSPath = fmt.Sprintf("/ws/vm/console/%s", response.Token)
-
-	// Default ports based on type
-	switch consoleType {
-	case "vnc":
-		response.Port = 5900 // Would be parsed from XML
-	case "spice":
-		response.Port = 5930 // Would be parsed from XML
-	case "serial":
-		response.Port = 0 // Serial over WebSocket only
-	}
-
-	return response, nil
-}
-
-// Helper functions
-
-func (s *Service) lookupDomain(nameOrUUID string) (*libvirt.Domain, error) {
-	// Try by name first
-	domain, err := s.conn.LookupDomainByName(nameOrUUID)
-	if err == nil {
-		return domain, nil
-	}
-
-	// Try by UUID
-	domain, err = s.conn.LookupDomainByUUIDString(nameOrUUID)
-	if err == nil {
-		return domain, nil
-	}
-
-	return nil, fmt.Errorf("domain not found: %s", nameOrUUID)
-}
-
+// GetConsole returns console connection information for a VM
 func (s *Service) domainToVM(domain *libvirt.Domain) (*VM, error) {
 	name, err := domain.GetName()
 	if err != nil {
@@ -1899,4 +1846,21 @@ func storageVolumeTypeToString(volType libvirt.StorageVolType) string {
 	default:
 		return "unknown"
 	}
+}
+
+// lookupDomain looks up a domain by name or UUID
+func (s *Service) lookupDomain(nameOrUUID string) (*libvirt.Domain, error) {
+// Try by UUID first
+domain, err := s.conn.LookupDomainByUUIDString(nameOrUUID)
+if err == nil {
+return domain, nil
+}
+
+// Try by name
+domain, err = s.conn.LookupDomainByName(nameOrUUID)
+if err != nil {
+return nil, fmt.Errorf("domain not found: %w", err)
+}
+
+return domain, nil
 }

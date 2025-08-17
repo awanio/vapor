@@ -7,6 +7,9 @@ import (
 	"path/filepath"
 
 	"gopkg.in/yaml.v3"
+	"time"
+	
+	"github.com/awanio/vapor/internal/libvirt"
 )
 
 // Config represents the application configuration
@@ -14,6 +17,7 @@ type Config struct {
 	Port       string `yaml:"port"`
 	AppDir     string `yaml:"appdir"`
 	LibvirtURI string `yaml:"libvirt_uri,omitempty"`
+	Console    ConsoleSettings `yaml:"console,omitempty"`
 }
 
 // Default configuration values
@@ -262,4 +266,66 @@ func GenerateExample(path string) error {
 	}
 
 	return nil
+}
+
+// ConsoleSettings represents console proxy configuration
+type ConsoleSettings struct {
+MaxConnectionsPerVM int      `yaml:"max_connections_per_vm,omitempty"`
+MaxTotalConnections int      `yaml:"max_total_connections,omitempty"`
+TokenTTL            string   `yaml:"token_ttl,omitempty"`           // e.g., "5m"
+ConnectionTimeout   string   `yaml:"connection_timeout,omitempty"`  // e.g., "30s"
+IdleTimeout         string   `yaml:"idle_timeout,omitempty"`        // e.g., "10m"
+AllowedHosts        []string `yaml:"allowed_hosts,omitempty"`
+EnableTLS           bool     `yaml:"enable_tls,omitempty"`
+BufferSize          int      `yaml:"buffer_size,omitempty"`         // in KB
+CleanupInterval     string   `yaml:"cleanup_interval,omitempty"`    // e.g., "1m"
+}
+
+// GetConsoleConfig converts ConsoleSettings to libvirt.ConsoleConfig
+func (c *Config) GetConsoleConfig() (*libvirt.ConsoleConfig, error) {
+config := libvirt.DefaultConsoleConfig()
+
+if c.Console.MaxConnectionsPerVM > 0 {
+config.MaxConnectionsPerVM = c.Console.MaxConnectionsPerVM
+}
+if c.Console.MaxTotalConnections > 0 {
+config.MaxTotalConnections = c.Console.MaxTotalConnections
+}
+if c.Console.TokenTTL != "" {
+duration, err := time.ParseDuration(c.Console.TokenTTL)
+if err != nil {
+return nil, fmt.Errorf("invalid token_ttl: %w", err)
+}
+config.TokenTTL = duration
+}
+if c.Console.ConnectionTimeout != "" {
+duration, err := time.ParseDuration(c.Console.ConnectionTimeout)
+if err != nil {
+return nil, fmt.Errorf("invalid connection_timeout: %w", err)
+}
+config.ConnectionTimeout = duration
+}
+if c.Console.IdleTimeout != "" {
+duration, err := time.ParseDuration(c.Console.IdleTimeout)
+if err != nil {
+return nil, fmt.Errorf("invalid idle_timeout: %w", err)
+}
+config.IdleTimeout = duration
+}
+if len(c.Console.AllowedHosts) > 0 {
+config.AllowedHosts = c.Console.AllowedHosts
+}
+config.EnableTLS = c.Console.EnableTLS
+if c.Console.BufferSize > 0 {
+config.BufferSize = c.Console.BufferSize * 1024 // Convert KB to bytes
+}
+if c.Console.CleanupInterval != "" {
+duration, err := time.ParseDuration(c.Console.CleanupInterval)
+if err != nil {
+return nil, fmt.Errorf("invalid cleanup_interval: %w", err)
+}
+config.CleanupInterval = duration
+}
+
+return config, nil
 }
