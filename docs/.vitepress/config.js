@@ -43,18 +43,22 @@ export default defineConfig({
           items: [
             { text: 'User Interface', link: '/en/04-user-interface' },
             { text: 'Dashboard', link: '/en/05-dashboard' },
-            { text: 'Network Management', link: '/en/06-network-management' },
-            { text: 'Storage Management', link: '/en/07-storage-management' },
-            { text: 'Container Management', link: '/en/08-container-management' },
-            { text: 'Kubernetes Management', link: '/en/09-kubernetes-management' }
+            { text: 'Network Management', link: '/en/06.1-network-management' },
+            { text: 'Storage Management', link: '/en/07.1-storage-management' },
+            { text: 'Container Management - Docker', link: '/en/08.1-container-management-docker' },
+            { text: 'Container Management - CRI', link: '/en/08.2-container-management-cri' },
+            { text: 'Kubernetes Management', link: '/en/09-kubernetes-management' },
+            { text: 'Kubernetes - Helm', link: '/en/09.1-kubernetes-helm' },
+            { text: 'Virtualization', link: '/en/10.1-virtualization' },
+            { text: 'Ansible Integration', link: '/en/10.2-ansible' }
           ]
         },
         {
           text: 'Administration',
           items: [
-            { text: 'User Management', link: '/en/10-user-management' },
-            { text: 'System Logs', link: '/en/11-system-logs' },
-            { text: 'Terminal Access', link: '/en/12-terminal-access' }
+            { text: 'User Management', link: '/en/12.1-user-management' },
+            { text: 'System Logs', link: '/en/11.1-logs' },
+            { text: 'Web Terminal', link: '/en/12.2-web-terminal' }
           ]
         },
         {
@@ -80,18 +84,22 @@ export default defineConfig({
           items: [
             { text: 'Antarmuka Pengguna', link: '/id/04-user-interface' },
             { text: 'Dashboard', link: '/id/05-dashboard' },
-            { text: 'Manajemen Jaringan', link: '/id/06-network-management' },
-            { text: 'Manajemen Penyimpanan', link: '/id/07-storage-management' },
-            { text: 'Manajemen Container', link: '/id/08-container-management' },
-            { text: 'Manajemen Kubernetes', link: '/id/09-kubernetes-management' }
+            { text: 'Manajemen Jaringan', link: '/id/06.1-network-management' },
+            { text: 'Manajemen Penyimpanan', link: '/id/07.1-storage-management' },
+            { text: 'Manajemen Container - Docker', link: '/id/08.1-container-management-docker' },
+            { text: 'Manajemen Container - CRI', link: '/id/08.2-container-management-cri' },
+            { text: 'Manajemen Kubernetes', link: '/id/09-kubernetes-management' },
+            { text: 'Kubernetes - Helm', link: '/id/09.1-kubernetes-helm' },
+            { text: 'Virtualisasi', link: '/id/10.1-virtualization' },
+            { text: 'Integrasi Ansible', link: '/id/10.2-ansible' }
           ]
         },
         {
           text: 'Administrasi',
           items: [
-            { text: 'Manajemen Pengguna', link: '/id/10-user-management' },
-            { text: 'Log Sistem', link: '/id/11-system-logs' },
-            { text: 'Akses Terminal', link: '/id/12-terminal-access' }
+            { text: 'Manajemen Pengguna', link: '/id/12.1-user-management' },
+            { text: 'Log Sistem', link: '/id/11.1-logs' },
+            { text: 'Terminal Web', link: '/id/12.2-web-terminal' }
           ]
         },
         {
