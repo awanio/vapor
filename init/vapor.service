@@ -12,8 +12,9 @@ Restart=on-failure
 RestartSec=5
 
 # Environment variables
-Environment="JWT_SECRET=change-this-in-production"
-Environment="SERVER_ADDR=:8080"
+Environment="VAPOR_JWT_SECRET=change-this-in-production"
+Environment="VAPOR_PORT=:7770"
+Environment="VAPOR_APPDIR=/var/lib/vapor"
 
 # Security settings
 NoNewPrivileges=true
