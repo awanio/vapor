@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Deployment script for System Management API
+# Deployment script for Vapor
 # This script should be run on the target Linux x86_64 system
 
 set -e
@@ -12,13 +12,14 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configuration
-BINARY_NAME="system-api"
-SERVICE_NAME="system-api.service"
+BINARY_NAME="vapor"
+SERVICE_NAME="vapor.service"
 INSTALL_DIR="/usr/local/bin"
-CONFIG_DIR="/etc/system-api"
-LOG_DIR="/var/log/system-api"
+CONFIG_DIR="/etc/vapor"
+LOG_DIR="/var/log/vapor"
+APP_DIR="/var/lib/vapor
 
-echo -e "${GREEN}System Management API Deployment Script${NC}"
+echo -e "${GREEN}Vapor Deployment Script${NC}"
 echo "========================================"
 
 # Check if running on Linux
@@ -47,8 +48,8 @@ fi
 
 # Check for required commands
 echo "Checking system requirements..."
-REQUIRED_COMMANDS="lsblk mount umount journalctl useradd usermod userdel"
-OPTIONAL_COMMANDS="vgs lvs pvs iscsiadm multipath btrfs"
+REQUIRED_COMMANDS="lsblk mount umount journalctl useradd usermod userdel ansible"
+OPTIONAL_COMMANDS="vgs lvs pvs iscsiadm multipath btrfs docker libvirt kubelet kubeadm kubectl nerdctl"
 MISSING_COMMANDS=""
 MISSING_OPTIONAL=""
 
@@ -79,6 +80,7 @@ fi
 echo "Creating directories..."
 mkdir -p "$CONFIG_DIR"
 mkdir -p "$LOG_DIR"
+mkdir -p "$APP_DIR"
 
 # Copy binary
 if [ -f "bin/${BINARY_NAME}-linux-amd64" ]; then
@@ -103,26 +105,34 @@ fi
 # Create environment file
 echo "Creating environment configuration..."
 cat > "$CONFIG_DIR/environment" << EOF
-# System API Configuration
-JWT_SECRET=$(openssl rand -base64 32)
-SERVER_ADDR=:8080
-LOG_LEVEL=info
+# Vapor Configuration
+# VAPOR_DEBUG=true
 EOF
 chmod 600 "$CONFIG_DIR/environment"
+
+# Create configuration file
+echo "Creating configuration file..."
+cat > "$CONFIG_DIR/vapor.conf" << EOF
+# Vapor Configuration
+JWT_SECRET=$(openssl rand -base64 32)
+port: "7770"
+appdir: /var/lib/vapor
+EOF
+chmod 600 "$CONFIG_DIR/vapor.conf"
 
 # Install systemd service
 echo "Installing systemd service..."
 cat > "/etc/systemd/system/$SERVICE_NAME" << EOF
 [Unit]
-Description=System Management API Service
-Documentation=https://github.com/vapor/system-api
+Description=Vapor
+Documentation=https://github.com/awanio/vapor
 After=network.target
 
 [Service]
 Type=simple
 User=root
 Group=root
-ExecStart=$INSTALL_DIR/$BINARY_NAME
+ExecStart=$INSTALL_DIR/$BINARY_NAME --config $CONFIG_DIR/vapor.conf
 Restart=on-failure
 RestartSec=5
 EnvironmentFile=$CONFIG_DIR/environment
@@ -168,12 +178,11 @@ echo ""
 echo "Service Status:"
 systemctl status $SERVICE_NAME --no-pager
 echo ""
-echo "Access the API at: http://localhost:8080"
+echo "Access the API at: http://localhost:7770"
 echo "View logs with: journalctl -u $SERVICE_NAME -f"
 echo ""
 echo "Default credentials:"
-echo "  Username: admin"
-echo "  Password: admin123"
+echo "  Username: YOUR-LINUX-USER"
+echo "  Password: YOUR-LINUX-PASSWORD"
 echo ""
-echo -e "${YELLOW}⚠️  Important: Change the default credentials and JWT_SECRET in production!${NC}"
-echo "Configuration file: $CONFIG_DIR/environment"
+echo "Configuration file: $CONFIG_DIR/vapor.conf"

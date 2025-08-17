@@ -16,6 +16,7 @@ import (
 type Config struct {
 	Port       string `yaml:"port"`
 	AppDir     string `yaml:"appdir"`
+	JWTToken   string `yaml:"jwtToken"`
 	LibvirtURI string `yaml:"libvirt_uri,omitempty"`
 	Console    ConsoleSettings `yaml:"console,omitempty"`
 }
@@ -111,17 +112,17 @@ func findConfigFile() string {
 	// Search paths in order of priority
 	searchPaths := []string{
 		"./vapor.conf",                    // Current directory
-		"./config/vapor.conf",              // Config subdirectory
-		"/etc/vapor/vapor.conf",            // System config directory
+		"./config/vapor.conf",             // Config subdirectory
+		"/etc/vapor/vapor.conf",           // System config directory
 		"/usr/local/etc/vapor/vapor.conf", // Alternative system config
 		"$HOME/.config/vapor/vapor.conf",  // User config directory
-		"$HOME/.vapor.conf",                // User home directory
+		"$HOME/.vapor.conf",               // User home directory
 	}
 
 	for _, path := range searchPaths {
 		// Expand environment variables
 		expandedPath := os.ExpandEnv(path)
-		
+
 		// Check if file exists and is readable
 		if info, err := os.Stat(expandedPath); err == nil && !info.IsDir() {
 			return expandedPath
@@ -161,14 +162,14 @@ func (c *Config) GetServerAddr() string {
 	if len(c.Port) > 0 && c.Port[0] == ':' {
 		return c.Port
 	}
-	
+
 	// Check if it's a full address with host
 	for _, ch := range c.Port {
 		if ch == ':' {
 			return c.Port
 		}
 	}
-	
+
 	// Otherwise, prepend colon for port-only format
 	return ":" + c.Port
 }
@@ -189,6 +190,19 @@ func (c *Config) GetLibvirtURI() string {
 	}
 	// Default to local system connection
 	return "qemu:///system"
+}
+
+func (c *Config) GetJWTSecret() string {
+
+	if c.JWTToken != "" {
+		return c.LibvirtURI
+	}
+
+	if secret := os.Getenv("VAPOR_JWT_SECRET"); secret != "" {
+		return secret
+	}
+	// In production, this should be a secure, randomly generated secret
+	return "default-secret-change-in-production"
 }
 
 // Print prints the configuration to stdout (for debugging)
@@ -226,8 +240,9 @@ func (c *Config) Save(path string) error {
 // GenerateExample generates an example configuration file
 func GenerateExample(path string) error {
 	exampleConfig := &Config{
-		Port:   "8080",
-		AppDir: "/var/lib/vapor",
+		Port:     "7770",
+		AppDir:   "/var/lib/vapor",
+		JWTToken: "default-secret-change-in-production",
 	}
 
 	// Add header comment

@@ -26,4 +26,6 @@ port: "8080"
 #   - Execution history database
 #   - Log files
 #   - Temporary files
+JWT_SECRET=xxx-xxx-xxx-xxx-xxx
+port: "7770"
 appdir: "/var/lib/vapor"

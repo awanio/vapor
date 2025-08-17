@@ -95,7 +95,7 @@ func main() {
 
 	// Add JWT authentication middleware
 	// Use EnhancedService for multi-method authentication (password + SSH keys)
-	authService := auth.NewEnhancedService(getJWTSecret())
+	authService := auth.NewEnhancedService(cfg.GetJWTSecret())
 
 	// Public routes
 	router.POST("/api/v1/auth/login", authService.EnhancedLogin)
@@ -197,9 +197,9 @@ func main() {
 	go terminalHub.Run()
 
 	// WebSocket routes
-	router.GET("/ws/metrics", websocket.ServeMetricsWebSocket(metricsHub, getJWTSecret()))
-	router.GET("/ws/logs", websocket.ServeLogsWebSocket(logsHub, getJWTSecret()))
-	router.GET("/ws/terminal", websocket.ServeTerminalWebSocket(terminalHub, getJWTSecret()))
+	router.GET("/ws/metrics", websocket.ServeMetricsWebSocket(metricsHub, cfg.GetJWTSecret()))
+	router.GET("/ws/logs", websocket.ServeLogsWebSocket(logsHub, cfg.GetJWTSecret()))
+	router.GET("/ws/terminal", websocket.ServeTerminalWebSocket(terminalHub, cfg.GetJWTSecret()))
 
 	// Serve embedded web UI
 	if web.HasWebUI() {
@@ -396,12 +396,4 @@ Examples:
   # Generate example config file
   vapor --generate-config --output /etc/vapor/vapor.conf
 `)
-}
-
-func getJWTSecret() string {
-	if secret := os.Getenv("JWT_SECRET"); secret != "" {
-		return secret
-	}
-	// In production, this should be a secure, randomly generated secret
-	return "default-secret-change-in-production"
 }

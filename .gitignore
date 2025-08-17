@@ -51,3 +51,4 @@ system-api
 vapor
 vapor-api
 local-vapor
+vapor.conf
