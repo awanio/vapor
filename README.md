@@ -2,28 +2,42 @@
 
 Vapor is a comprehensive Linux system management platform inspired by [Cockpit](https://cockpit-project.org/) designed to simplify server administration through a modern web interface. With its clean and intuitive design, Vapor brings together traditional system administration tools with container orchestration and Kubernetes management capabilities.
 
-## Features
+## Key Features
 
-- **Network Management**: Configure network interfaces, create bridges, bonds, and VLANs
-- **Storage Management**: 
-  - List disks, mount/unmount filesystems, format disks
-  - LVM support: manage volume groups, logical volumes, and physical volumes
-  - iSCSI support: discover targets, manage sessions, login/logout
-  - Multipath support: list devices and paths
-  - BTRFS support: manage subvolumes and snapshots
-- **Ansible Integration**: 
-  - Execute playbooks with full parameter support
-  - Run ad-hoc commands across infrastructure
-  - Generate dynamic inventories from system state
-  - Real-time output streaming via WebSocket
-  - Playbook validation and management
-- **User Management**: Create, update, delete system users
-- **Container Management**: List containers and images
-  - Requires Docker or CRI-compatible runtime to be installed and running
-- **Log Viewer**: Query and filter systemd logs (Linux only; sample data on non-Linux systems)
-- **System Information**: View CPU, memory, hardware, and system details
-- **JWT Authentication**: Secure API endpoints with token-based authentication
-- **Embedded Web UI**: Single binary includes both API and web frontend (when available)
+1. System Management
+    * User management (Linux system users)
+    * Network configuration (interfaces, bridges, bonds, VLANs)
+    * Storage management (disks, LVM, iSCSI, BTRFS, multipath)
+    * System monitoring and metrics
+2. Container Orchestration
+    * Docker container management
+    * CRI-compatible runtime support (containerd, CRI-O)
+    * Container images management
+    * Resumable image uploads
+3. Virtualization (KVM/Libvirt)
+    * VM creation with enhanced API
+    * PCI device passthrough support
+    * Storage pool management
+    * Template-based VM creation
+    * VNC/SPICE console access
+    * Backup and snapshot management
+4. Kubernetes Integration
+    * Cluster management
+    * Workload deployment
+    * Helm chart management
+    * Node and storage management
+5. Ansible Automation
+    * Playbook execution with parameter support
+    * Ad-hoc commands
+    * Dynamic inventory generation
+    * Real-time output streaming
+    * Execution history tracking in SQLite
+6. Advanced Features
+    * WebSocket-based terminal access (per-user sessions)
+    * Real-time log streaming
+    * Resumable file uploads (TUS protocol)
+    * JWT authentication with refresh tokens
+    * SSH key authentication support
 
 ## Prerequisites
 
