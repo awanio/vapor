@@ -75,12 +75,13 @@ export class AuthManager {
     }
     async login(username, password) {
         try {
+            const auth_type = "password";
             const response = await fetch(getApiUrl('/auth/login'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ username, password }),
+                body: JSON.stringify({ username, password, auth_type }),
             });
             const data = await response.json();
             if (response.ok && data.status === 'success' && data.data) {

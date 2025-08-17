@@ -10,6 +10,19 @@ export declare class NetworkTab extends I18nLitElement {
     private bonds;
     private vlans;
     private showConfigureDrawer;
+    private showDetailsDrawer;
+    private selectedInterface;
+    private editingIpIndex;
+    private editingIpValue;
+    private showAddIpModal;
+    private showEditIpModal;
+    private editIpAddress;
+    private editIpNetmask;
+    private editIpGateway;
+    private originalIpAddress;
+    private newIpAddress;
+    private newIpNetmask;
+    private newIpGateway;
     private showBridgeDrawer;
     private bridgeFormData;
     private showBondDrawer;
@@ -17,6 +30,7 @@ export declare class NetworkTab extends I18nLitElement {
     private vlanFormData;
     private showVLANDrawer;
     private searchQuery;
+    private selectedType;
     private bridgeSearchQuery;
     private bondSearchQuery;
     private vlanSearchQuery;
@@ -53,6 +67,15 @@ export declare class NetworkTab extends I18nLitElement {
     handleConfigureAddress(iface: NetworkInterface): void;
     submitConfigureAddress(): Promise<void>;
     closeConfigureDrawer(): void;
+    openDetailsDrawer(iface: NetworkInterface): void;
+    closeDetailsDrawer(): void;
+    openEditIpModal(index: number, currentIp: string): void;
+    closeEditIpModal(): void;
+    saveEditedIp(): Promise<void>;
+    deleteIpAddress(address: string): Promise<void>;
+    openAddIpModal(): void;
+    closeAddIpModal(): void;
+    addNewIpAddress(): Promise<void>;
     openBridgeDrawer(): void;
     closeBridgeDrawer(): void;
     openBondDrawer(): void;
@@ -62,6 +85,8 @@ export declare class NetworkTab extends I18nLitElement {
     handleCreateVLANInterface(): Promise<void>;
     renderInterface(iface: NetworkInterface): import("lit-html").TemplateResult<1>;
     private getPageTitle;
+    private getUniqueInterfaceTypes;
+    private filterInterfaces;
     render(): import("lit-html").TemplateResult<1>;
 }
 //# sourceMappingURL=network-tab.d.ts.map

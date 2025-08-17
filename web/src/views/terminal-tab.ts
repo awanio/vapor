@@ -1,4 +1,5 @@
-import { LitElement, html, css, unsafeCSS } from 'lit';
+import { LitElement, html, css, unsafeCSS, PropertyValues } from 'lit';
+import { state } from 'lit/decorators.js';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import { WebLinksAddon } from 'xterm-addon-web-links';
@@ -8,7 +9,192 @@ import { WebSocketManager } from '../api';
 import { t } from '../i18n';
 import type { WSTerminalInputMessage, WSMessage } from '../types/api';
 
+// Terminal Session class to encapsulate each terminal instance
+class TerminalSession {
+  id: string;
+  name: string;
+  terminal: Terminal | null = null;
+  fitAddon: FitAddon | null = null;
+  searchAddon: SearchAddon | null = null;
+  webLinksAddon: WebLinksAddon | null = null;
+  wsManager: WebSocketManager | null = null;
+  connectionStatus: 'connecting' | 'connected' | 'disconnected' = 'disconnected';
+  element: HTMLElement | null = null;
+
+  constructor(id: string, name: string) {
+    this.id = id;
+    this.name = name;
+  }
+
+  async initialize(container: HTMLElement, onDataCallback: (data: string) => void) {
+    this.element = container;
+    
+    // Create terminal instance
+    this.terminal = new Terminal({
+      cursorBlink: true,
+      fontSize: 14,
+      fontFamily: 'Consolas, "Courier New", monospace',
+      scrollback: 10000,
+      convertEol: true,
+      screenReaderMode: false,
+      theme: {
+        background: '#1e1e1e',
+        foreground: '#cccccc',
+        cursor: '#ffffff',
+        black: '#000000',
+        red: '#cd3131',
+        green: '#0dbc79',
+        yellow: '#e5e510',
+        blue: '#2472c8',
+        magenta: '#bc3fbc',
+        cyan: '#11a8cd',
+        white: '#e5e5e5',
+        brightBlack: '#666666',
+        brightRed: '#f14c4c',
+        brightGreen: '#23d18b',
+        brightYellow: '#f5f543',
+        brightBlue: '#3b8eea',
+        brightMagenta: '#d670d6',
+        brightCyan: '#29b8db',
+        brightWhite: '#e5e5e5'
+      }
+    });
+
+    // Initialize addons
+    this.fitAddon = new FitAddon();
+    this.searchAddon = new SearchAddon();
+    this.webLinksAddon = new WebLinksAddon();
+
+    this.terminal.loadAddon(this.fitAddon);
+    this.terminal.loadAddon(this.searchAddon);
+    this.terminal.loadAddon(this.webLinksAddon);
+
+    // Open terminal in container
+    this.terminal.open(container);
+    
+    // Initial fit
+    setTimeout(() => {
+      this.fitAddon?.fit();
+    }, 100);
+
+    // Handle terminal input
+    this.terminal.onData((data) => {
+      if (this.wsManager && this.connectionStatus === 'connected') {
+        const message: WSTerminalInputMessage = {
+          type: 'input',
+          data: data
+        };
+        this.wsManager.send(message);
+      }
+      onDataCallback(data);
+    });
+
+    // Handle resize
+    this.terminal.onResize((size) => {
+      if (this.wsManager && this.connectionStatus === 'connected') {
+        const message = {
+          type: 'resize',
+          payload: {
+            cols: size.cols,
+            rows: size.rows
+          }
+        };
+        this.wsManager.send(message);
+      }
+    });
+  }
+
+  async connect() {
+    if (this.wsManager) {
+      this.wsManager.disconnect();
+    }
+
+    this.connectionStatus = 'connecting';
+
+    try {
+      this.wsManager = new WebSocketManager('/ws/terminal');
+      
+      // Handle output messages
+      this.wsManager.on('output', (message: WSMessage) => {
+        if (this.terminal && message.payload?.data) {
+          this.terminal.write(message.payload.data);
+        }
+      });
+
+      // Handle error messages
+      this.wsManager.on('error', (message) => {
+        console.error('Terminal error:', message.error);
+        this.connectionStatus = 'disconnected';
+      });
+
+      await this.wsManager.connect();
+
+      // Send terminal spec to subscribe
+      const subscribeMessage: WSMessage = {
+        type: 'subscribe',
+        payload: {
+          cols: this.terminal?.cols || 80,
+          rows: this.terminal?.rows || 24,
+          shell: '/bin/bash'
+        }
+      };
+      this.wsManager.send(subscribeMessage);
+
+      this.connectionStatus = 'connected';
+    } catch (error) {
+      console.error('Failed to connect to terminal:', error);
+      this.connectionStatus = 'disconnected';
+    }
+  }
+
+  disconnect() {
+    if (this.wsManager) {
+      this.wsManager.disconnect();
+      this.wsManager = null;
+    }
+    this.connectionStatus = 'disconnected';
+  }
+
+  fit() {
+    if (this.fitAddon) {
+      this.fitAddon.fit();
+    }
+  }
+
+  focus() {
+    if (this.terminal) {
+      this.terminal.focus();
+    }
+  }
+
+  clear() {
+    if (this.terminal) {
+      this.terminal.clear();
+    }
+  }
+
+  dispose() {
+    this.disconnect();
+    if (this.terminal) {
+      this.terminal.dispose();
+      this.terminal = null;
+    }
+    this.fitAddon = null;
+    this.searchAddon = null;
+    this.webLinksAddon = null;
+  }
+}
+
 export class TerminalTab extends LitElement {
+  @state()
+  private sessions: TerminalSession[] = [];
+  
+  @state()
+  private activeSessionId: string = '';
+  
+  private sessionCounter = 0;
+  private resizeObserver: ResizeObserver | null = null;
+
   static override styles = [
     unsafeCSS(xtermStyles),
     css`
@@ -23,14 +209,108 @@ export class TerminalTab extends LitElement {
 
     .terminal-header {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 16px;
+      flex-direction: column;
       background-color: var(--vscode-bg-lighter);
       border-bottom: 1px solid var(--vscode-border);
     }
 
-    .terminal-header h3 {
+    .terminal-tabs {
+      display: flex;
+      align-items: center;
+      background-color: var(--vscode-bg);
+      border-bottom: 1px solid var(--vscode-border);
+      min-height: 35px;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+
+    .terminal-tab {
+      display: flex;
+      align-items: center;
+      padding: 6px 12px;
+      background-color: transparent;
+      border: none;
+      border-right: 1px solid var(--vscode-border);
+      color: var(--vscode-text-dim);
+      cursor: pointer;
+      font-size: 13px;
+      min-width: 100px;
+      max-width: 200px;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .terminal-tab:hover {
+      background-color: var(--vscode-bg-light);
+    }
+
+    .terminal-tab.active {
+      background-color: var(--vscode-bg-lighter);
+      color: var(--vscode-text);
+      border-bottom: 2px solid var(--vscode-primary);
+    }
+
+    .terminal-tab-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-right: 8px;
+    }
+
+    .terminal-tab-close {
+      display: none;
+      width: 16px;
+      height: 16px;
+      border: none;
+      background: transparent;
+      color: var(--vscode-text-dim);
+      cursor: pointer;
+      padding: 0;
+      margin: 0;
+      line-height: 1;
+      font-size: 16px;
+      border-radius: 3px;
+    }
+
+    .terminal-tab:hover .terminal-tab-close {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .terminal-tab-close:hover {
+      background-color: var(--vscode-bg-light);
+      color: var(--vscode-text);
+    }
+
+    .add-terminal-btn {
+      padding: 6px 12px;
+      background: transparent;
+      border: none;
+      color: var(--vscode-text-dim);
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 35px;
+      transition: all 0.2s;
+    }
+
+    .add-terminal-btn:hover {
+      background-color: var(--vscode-bg-light);
+      color: var(--vscode-text);
+    }
+
+    .terminal-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 16px;
+    }
+
+    .terminal-controls h3 {
       margin: 0;
       font-size: 14px;
       font-weight: normal;
@@ -62,6 +342,22 @@ export class TerminalTab extends LitElement {
       flex: 1;
       overflow: hidden;
       padding: 8px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .terminal-session {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: none;
+      padding: 8px;
+    }
+
+    .terminal-session.active {
       display: flex;
       flex-direction: column;
     }
@@ -176,20 +472,11 @@ export class TerminalTab extends LitElement {
   `
   ];
 
-  private terminal: Terminal | null = null;
-  private fitAddon: FitAddon | null = null;
-  private searchAddon: SearchAddon | null = null;
-  private webLinksAddon: WebLinksAddon | null = null;
-  private wsManager: WebSocketManager | null = null;
-  private terminalConnected = false;
-  private connectionStatus: 'connecting' | 'connected' | 'disconnected' = 'disconnected';
-  private resizeObserver: ResizeObserver | null = null;
-
   override connectedCallback() {
     super.connectedCallback();
-    // Initialize terminal after component is connected
+    // Initialize first terminal session after component is connected
     this.updateComplete.then(() => {
-      this.initializeTerminal();
+      this.createNewSession();
     });
   }
 
@@ -198,93 +485,8 @@ export class TerminalTab extends LitElement {
     this.cleanup();
   }
 
-  private initializeTerminal() {
-    const wrapper = this.shadowRoot?.querySelector('.terminal-wrapper') as HTMLElement;
-    if (!wrapper) return;
-
-    // Create terminal instance
-    this.terminal = new Terminal({
-      cursorBlink: true,
-      fontSize: 14,
-      fontFamily: 'Consolas, "Courier New", monospace',
-      scrollback: 10000,  // Allow 10000 lines of scrollback
-      convertEol: true,
-      screenReaderMode: false,
-      theme: {
-        background: '#1e1e1e',
-        foreground: '#cccccc',
-        cursor: '#ffffff',
-        black: '#000000',
-        red: '#cd3131',
-        green: '#0dbc79',
-        yellow: '#e5e510',
-        blue: '#2472c8',
-        magenta: '#bc3fbc',
-        cyan: '#11a8cd',
-        white: '#e5e5e5',
-        brightBlack: '#666666',
-        brightRed: '#f14c4c',
-        brightGreen: '#23d18b',
-        brightYellow: '#f5f543',
-        brightBlue: '#3b8eea',
-        brightMagenta: '#d670d6',
-        brightCyan: '#29b8db',
-        brightWhite: '#e5e5e5'
-      }
-    });
-
-    // Initialize addons
-    this.fitAddon = new FitAddon();
-    this.searchAddon = new SearchAddon();
-    this.webLinksAddon = new WebLinksAddon();
-
-    this.terminal.loadAddon(this.fitAddon);
-    this.terminal.loadAddon(this.searchAddon);
-    this.terminal.loadAddon(this.webLinksAddon);
-
-    // Open terminal in wrapper
-    this.terminal.open(wrapper);
-    
-    // Set up resize observer
-    this.setupResizeObserver(wrapper);
-    
-    // Initial fit
-    setTimeout(() => {
-      this.fitAddon?.fit();
-    }, 100);
-
-    // Hide the char measure element
-    this.hideCharMeasureElement();
-
-    // Handle terminal input
-    this.terminal.onData((data) => {
-      if (this.wsManager && this.terminalConnected) {
-        const message: WSTerminalInputMessage = {
-          type: 'input',
-          data: data
-        };
-        this.wsManager.send(message);
-      }
-    });
-
-    // Add keyboard shortcuts for scrolling
-    this.setupScrollingShortcuts();
-
-    // Handle resize
-    this.terminal.onResize((size) => {
-      if (this.wsManager && this.terminalConnected) {
-        const message = {
-          type: 'resize',
-          payload: {
-            cols: size.cols,
-            rows: size.rows
-          }
-        };
-        this.wsManager.send(message);
-      }
-    });
-
-    // Handle window resize
+  override firstUpdated() {
+    // Set up window resize listener
     window.addEventListener('resize', this.handleWindowResize);
     
     // Handle fullscreen changes
@@ -292,14 +494,91 @@ export class TerminalTab extends LitElement {
     document.addEventListener('webkitfullscreenchange', this.handleFullscreenChange);
     document.addEventListener('mozfullscreenchange', this.handleFullscreenChange);
     document.addEventListener('MSFullscreenChange', this.handleFullscreenChange);
+  }
 
-    // Connect to WebSocket
-    this.connect();
+  override updated(changedProperties: PropertyValues) {
+    super.updated(changedProperties);
+    
+    // When active session changes, focus the terminal
+    if (changedProperties.has('activeSessionId')) {
+      const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
+      if (activeSession) {
+        setTimeout(() => {
+          activeSession.focus();
+          activeSession.fit();
+        }, 50);
+      }
+    }
+  }
+
+  private async createNewSession() {
+    this.sessionCounter++;
+    const sessionId = `session-${this.sessionCounter}`;
+    const sessionName = `Terminal ${this.sessionCounter}`;
+    
+    const session = new TerminalSession(sessionId, sessionName);
+    this.sessions = [...this.sessions, session];
+    this.activeSessionId = sessionId;
+    
+    // Wait for the DOM to update
+    await this.updateComplete;
+    
+    // Initialize the terminal session
+    const wrapper = this.shadowRoot?.querySelector(`#${sessionId} .terminal-wrapper`) as HTMLElement;
+    if (wrapper) {
+      await session.initialize(wrapper, () => {
+        // Callback for terminal data (could be used for activity tracking)
+      });
+      
+      // Set up resize observer for this session
+      this.setupResizeObserver(wrapper, session);
+      
+      // Connect the session
+      await session.connect();
+      
+      // Hide helper elements
+      this.hideCharMeasureElement(wrapper);
+      
+      // Set up scrolling shortcuts for this session
+      this.setupScrollingShortcuts(wrapper, session);
+    }
+    
+    this.requestUpdate();
+  }
+
+  private closeSession(sessionId: string) {
+    // Don't allow closing the first/only session
+    if (this.sessions.length <= 1) return;
+    
+    const sessionIndex = this.sessions.findIndex(s => s.id === sessionId);
+    if (sessionIndex === -1) return;
+    
+    const session = this.sessions[sessionIndex];
+    session.dispose();
+    
+    // Remove from sessions array
+    this.sessions = this.sessions.filter(s => s.id !== sessionId);
+    
+    // If this was the active session, switch to another
+    if (this.activeSessionId === sessionId) {
+      // Switch to the previous tab, or the next if this was the first
+      const newIndex = sessionIndex > 0 ? sessionIndex - 1 : 0;
+      this.activeSessionId = this.sessions[newIndex].id;
+    }
+    
+    this.requestUpdate();
+  }
+
+  private switchToSession(sessionId: string) {
+    this.activeSessionId = sessionId;
+    this.requestUpdate();
   }
 
   private handleWindowResize = () => {
-    if (this.fitAddon) {
-      this.fitAddon.fit();
+    // Resize the active session
+    const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
+    if (activeSession) {
+      activeSession.fit();
     }
   };
   
@@ -318,144 +597,100 @@ export class TerminalTab extends LitElement {
     this.updateComplete.then(() => {
       // Wait for browser to complete fullscreen transition
       setTimeout(() => {
-        if (!this.terminal || !this.fitAddon) return;
+        const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
+        if (!activeSession || !activeSession.terminal) return;
         
-        const wrapper = this.shadowRoot?.querySelector('.terminal-wrapper') as HTMLElement;
+        const wrapper = this.shadowRoot?.querySelector(`#${this.activeSessionId} .terminal-wrapper`) as HTMLElement;
         if (!wrapper) return;
         
-        // Save terminal content before any operations
-        const buffer = this.terminal.buffer.active;
-        const savedContent: string[] = [];
-        for (let i = 0; i < buffer.length; i++) {
-          const line = buffer.getLine(i);
-          if (line) {
-            savedContent.push(line.translateToString());
-          }
-        }
-        const cursorY = buffer.cursorY;
-        const cursorX = buffer.cursorX;
-        
         if (isFullscreen) {
-          // Re-create the terminal in fullscreen mode
-          // First, clear the wrapper
-          wrapper.innerHTML = '';
-          
           // Force wrapper styles
           wrapper.style.width = '100%';
           wrapper.style.height = '100%';
           wrapper.style.display = 'block';
           wrapper.style.backgroundColor = '#1e1e1e';
-          
-          // Re-open the terminal
-          this.terminal.open(wrapper);
-          
-          // Restore content
-          for (const line of savedContent) {
-            if (line.trim()) {
-              this.terminal.writeln(line);
-            }
-          }
-          
-          // Restore cursor position
-          this.terminal.write(`\x1b[${cursorY + 1};${cursorX + 1}H`);
         }
         
         // Fit the terminal to the new size
-        this.fitAddon.fit();
-        this.terminal.focus();
+        activeSession.fit();
+        activeSession.focus();
         
         // Force refresh
-        this.terminal.refresh(0, this.terminal.rows - 1);
-
-
-        // Force focus on wrapper and terminal
-        wrapper.focus();
-        this.terminal.focus();
-        
-        // Force redraw of terminal by resizing
-        this.terminal.resize(this.terminal.cols, this.terminal.rows);
-        this.terminal.refresh(0, this.terminal.rows - 1);
+        if (activeSession.terminal) {
+          activeSession.terminal.refresh(0, activeSession.terminal.rows - 1);
+        }
       }, 500);
     });
   };
 
-  private setupResizeObserver(element: HTMLElement) {
-    if (this.resizeObserver) {
-      this.resizeObserver.disconnect();
-    }
-    
-    this.resizeObserver = new ResizeObserver(() => {
-      if (this.fitAddon && this.terminal) {
+  private setupResizeObserver(element: HTMLElement, session: TerminalSession) {
+    const observer = new ResizeObserver(() => {
+      if (session.fitAddon && session.terminal) {
         // Use requestAnimationFrame to debounce resize events
         requestAnimationFrame(() => {
-          this.fitAddon?.fit();
+          session.fit();
         });
       }
     });
     
-    this.resizeObserver.observe(element);
+    observer.observe(element);
   }
 
-  private setupScrollingShortcuts() {
-    if (!this.terminal) return;
+  private setupScrollingShortcuts(element: HTMLElement, session: TerminalSession) {
+    if (!session.terminal) return;
 
-    // Add keyboard event listener to the terminal element
-    const terminalElement = this.shadowRoot?.querySelector('.terminal-wrapper');
-    if (terminalElement) {
-      terminalElement.addEventListener('keydown', (event) => {
-        if (!this.terminal) return;
-        const keyboardEvent = event as KeyboardEvent;
+    element.addEventListener('keydown', (event) => {
+      if (!session.terminal) return;
+      const keyboardEvent = event as KeyboardEvent;
 
-        // Page Up - scroll up one page
-        if (keyboardEvent.key === 'PageUp') {
-          keyboardEvent.preventDefault();
-          this.terminal.scrollPages(-1);
-        }
-        // Page Down - scroll down one page
-        else if (keyboardEvent.key === 'PageDown') {
-          keyboardEvent.preventDefault();
-          this.terminal.scrollPages(1);
-        }
-        // Ctrl+Home - scroll to top
-        else if (keyboardEvent.ctrlKey && keyboardEvent.key === 'Home') {
-          keyboardEvent.preventDefault();
-          this.terminal.scrollToTop();
-        }
-        // Ctrl+End - scroll to bottom
-        else if (keyboardEvent.ctrlKey && keyboardEvent.key === 'End') {
-          keyboardEvent.preventDefault();
-          this.terminal.scrollToBottom();
-        }
-        // Shift+PageUp - scroll up half page
-        else if (keyboardEvent.shiftKey && keyboardEvent.key === 'PageUp') {
-          keyboardEvent.preventDefault();
-          const pageSize = this.terminal.rows;
-          this.terminal.scrollLines(-Math.floor(pageSize / 2));
-        }
-        // Shift+PageDown - scroll down half page
-        else if (keyboardEvent.shiftKey && keyboardEvent.key === 'PageDown') {
-          keyboardEvent.preventDefault();
-          const pageSize = this.terminal.rows;
-          this.terminal.scrollLines(Math.floor(pageSize / 2));
-        }
-      });
-    }
+      // Page Up - scroll up one page
+      if (keyboardEvent.key === 'PageUp') {
+        keyboardEvent.preventDefault();
+        session.terminal.scrollPages(-1);
+      }
+      // Page Down - scroll down one page
+      else if (keyboardEvent.key === 'PageDown') {
+        keyboardEvent.preventDefault();
+        session.terminal.scrollPages(1);
+      }
+      // Ctrl+Home - scroll to top
+      else if (keyboardEvent.ctrlKey && keyboardEvent.key === 'Home') {
+        keyboardEvent.preventDefault();
+        session.terminal.scrollToTop();
+      }
+      // Ctrl+End - scroll to bottom
+      else if (keyboardEvent.ctrlKey && keyboardEvent.key === 'End') {
+        keyboardEvent.preventDefault();
+        session.terminal.scrollToBottom();
+      }
+      // Shift+PageUp - scroll up half page
+      else if (keyboardEvent.shiftKey && keyboardEvent.key === 'PageUp') {
+        keyboardEvent.preventDefault();
+        const pageSize = session.terminal.rows;
+        session.terminal.scrollLines(-Math.floor(pageSize / 2));
+      }
+      // Shift+PageDown - scroll down half page
+      else if (keyboardEvent.shiftKey && keyboardEvent.key === 'PageDown') {
+        keyboardEvent.preventDefault();
+        const pageSize = session.terminal.rows;
+        session.terminal.scrollLines(Math.floor(pageSize / 2));
+      }
+    });
 
     // Also handle mouse wheel scrolling (xterm handles this by default, but we can customize)
-    this.terminal.onScroll((_position) => {
+    session.terminal.onScroll((_position) => {
       // You can add custom scroll handling here if needed
       // For example, showing a scroll indicator
     });
   }
 
-  private hideCharMeasureElement() {
+  private hideCharMeasureElement(wrapper: HTMLElement) {
     // Add styles to hide xterm helper elements
-    const container = this.shadowRoot?.querySelector('.terminal-container') as HTMLElement;
-    if (container) {
+    if (wrapper) {
       // Use setTimeout to ensure elements are created
       setTimeout(() => {
         // Find and hide the char measure element
-        const charMeasureElement = container.querySelector('.xterm-char-measure-element') as HTMLElement;
+        const charMeasureElement = wrapper.querySelector('.xterm-char-measure-element') as HTMLElement;
         if (charMeasureElement) {
           charMeasureElement.style.position = 'absolute';
           charMeasureElement.style.top = '0';
@@ -464,7 +699,7 @@ export class TerminalTab extends LitElement {
         }
         
         // Find and hide the helper textarea
-        const helperTextarea = container.querySelector('.xterm-helper-textarea') as HTMLElement;
+        const helperTextarea = wrapper.querySelector('.xterm-helper-textarea') as HTMLElement;
         if (helperTextarea) {
           helperTextarea.style.position = 'absolute';
           helperTextarea.style.left = '-9999px';
@@ -540,90 +775,35 @@ export class TerminalTab extends LitElement {
           background-color: #1e1e1e;
         }
       `;
-      container.appendChild(styleElement);
+      wrapper.appendChild(styleElement);
     }
-  }
-
-  private async connect() {
-    if (this.wsManager) {
-      this.wsManager.disconnect();
-    }
-
-    this.connectionStatus = 'connecting';
-    this.requestUpdate();
-
-    try {
-      this.wsManager = new WebSocketManager('/ws/terminal');
-      
-      // Handle output messages
-      this.wsManager.on('output', (message: WSMessage) => {
-        if (this.terminal && message.payload?.data) {
-          this.terminal.write(message.payload.data);
-        }
-      });
-
-      // Handle error messages
-      this.wsManager.on('error', (message) => {
-        console.error('Terminal error:', message.error);
-        this.terminalConnected = false;
-        this.connectionStatus = 'disconnected';
-        this.requestUpdate();
-      });
-
-      await this.wsManager.connect();
-
-      // Send terminal spec to subscribe
-      const subscribeMessage: WSMessage = {
-        type: 'subscribe',
-        payload: {
-          cols: this.terminal?.cols || 80,
-          rows: this.terminal?.rows || 24,
-          shell: '/bin/bash'
-        }
-      };
-      this.wsManager.send(subscribeMessage);
-
-      this.terminalConnected = true;
-      this.connectionStatus = 'connected';
-      this.requestUpdate();
-    } catch (error) {
-      console.error('Failed to connect to terminal:', error);
-      this.connectionStatus = 'disconnected';
-      this.requestUpdate();
-    }
-  }
-
-  private disconnect() {
-    if (this.wsManager) {
-      this.wsManager.disconnect();
-      this.wsManager = null;
-    }
-    this.terminalConnected = false;
-    this.connectionStatus = 'disconnected';
-    this.requestUpdate();
   }
 
   private clearTerminal() {
-    if (this.terminal) {
-      this.terminal.clear();
+    const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
+    if (activeSession) {
+      activeSession.clear();
     }
   }
 
   private scrollToTop() {
-    if (this.terminal) {
-      this.terminal.scrollToTop();
+    const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
+    if (activeSession && activeSession.terminal) {
+      activeSession.terminal.scrollToTop();
     }
   }
 
   private scrollToBottom() {
-    if (this.terminal) {
-      this.terminal.scrollToBottom();
+    const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
+    if (activeSession && activeSession.terminal) {
+      activeSession.terminal.scrollToBottom();
     }
   }
 
   private async copySelection() {
-    if (this.terminal && this.terminal.hasSelection()) {
-      const selection = this.terminal.getSelection();
+    const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
+    if (activeSession && activeSession.terminal && activeSession.terminal.hasSelection()) {
+      const selection = activeSession.terminal.getSelection();
       try {
         await navigator.clipboard.writeText(selection);
       } catch (error) {
@@ -633,14 +813,17 @@ export class TerminalTab extends LitElement {
   }
 
   private async pasteFromClipboard() {
+    const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
+    if (!activeSession || !activeSession.wsManager || activeSession.connectionStatus !== 'connected') return;
+    
     try {
       const text = await navigator.clipboard.readText();
-      if (text && this.wsManager && this.terminalConnected) {
+      if (text) {
         const message: WSTerminalInputMessage = {
           type: 'input',
           data: text
         };
-        this.wsManager.send(message);
+        activeSession.wsManager.send(message);
       }
     } catch (error) {
       console.error('Failed to paste from clipboard:', error);
@@ -665,15 +848,10 @@ export class TerminalTab extends LitElement {
           
           // Give the browser time to complete the fullscreen transition
           setTimeout(() => {
-            this.fitAddon?.fit();
-            // Force terminal to refocus
-            this.terminal?.focus();
-            
-            // Ensure terminal is visible
-            const wrapper = this.shadowRoot?.querySelector('.terminal-wrapper') as HTMLElement;
-            if (wrapper) {
-              wrapper.style.opacity = '1';
-              wrapper.style.visibility = 'visible';
+            const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
+            if (activeSession) {
+              activeSession.fit();
+              activeSession.focus();
             }
           }, 300);
         }).catch((err) => {
@@ -684,8 +862,11 @@ export class TerminalTab extends LitElement {
       document.exitFullscreen().then(() => {
         this.requestUpdate();
         setTimeout(() => {
-          this.fitAddon?.fit();
-          this.terminal?.focus();
+          const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
+          if (activeSession) {
+            activeSession.fit();
+            activeSession.focus();
+          }
         }, 300);
       }).catch((err) => {
         console.error('Failed to exit fullscreen:', err);
@@ -700,76 +881,99 @@ export class TerminalTab extends LitElement {
     document.removeEventListener('mozfullscreenchange', this.handleFullscreenChange);
     document.removeEventListener('MSFullscreenChange', this.handleFullscreenChange);
     
-    if (this.resizeObserver) {
-      this.resizeObserver.disconnect();
-      this.resizeObserver = null;
+    // Dispose all sessions
+    for (const session of this.sessions) {
+      session.dispose();
     }
-    
-    if (this.wsManager) {
-      this.wsManager.disconnect();
-      this.wsManager = null;
-    }
-
-    if (this.terminal) {
-      this.terminal.dispose();
-      this.terminal = null;
-    }
-
-    this.fitAddon = null;
-    this.searchAddon = null;
-    this.webLinksAddon = null;
+    this.sessions = [];
   }
 
   override render() {
+    const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
     let statusClass = 'status-bar';
     let statusText = '';
 
-    switch (this.connectionStatus) {
-      case 'connecting':
-        statusClass += ' status-connecting';
-        statusText = t('terminal.connecting');
-        break;
-      case 'connected':
-        statusClass += ' status-connected';
-        statusText = t('terminal.connected');
-        break;
-      case 'disconnected':
-        statusClass += ' status-disconnected';
-        statusText = t('terminal.disconnected');
-        break;
+    if (activeSession) {
+      switch (activeSession.connectionStatus) {
+        case 'connecting':
+          statusClass += ' status-connecting';
+          statusText = t('terminal.connecting');
+          break;
+        case 'connected':
+          statusClass += ' status-connected';
+          statusText = t('terminal.connected');
+          break;
+        case 'disconnected':
+          statusClass += ' status-disconnected';
+          statusText = t('terminal.disconnected');
+          break;
+      }
     }
 
     return html`
       <div class="terminal-header">
-        <h3>${t('terminal.title')}</h3>
-        <div class="terminal-actions">
-          <button class="terminal-action" @click=${this.clearTerminal} title="${t('terminal.clear')}">
-            ${t('terminal.clear')}
+        <div class="terminal-tabs">
+          ${this.sessions.map(session => html`
+            <button 
+              class="terminal-tab ${session.id === this.activeSessionId ? 'active' : ''}"
+              @click=${() => this.switchToSession(session.id)}
+            >
+              <span class="terminal-tab-name">${session.name}</span>
+              ${this.sessions.length > 1 ? html`
+                <button 
+                  class="terminal-tab-close" 
+                  @click=${(e: Event) => {
+                    e.stopPropagation();
+                    this.closeSession(session.id);
+                  }}
+                  title="${t('terminal.closeTab')}"
+                >
+                  ×
+                </button>
+              ` : ''}
+            </button>
+          `)}
+          <button 
+            class="add-terminal-btn" 
+            @click=${() => this.createNewSession()}
+            title="${t('terminal.newTab')}"
+          >
+            +
           </button>
-          <button class="terminal-action" @click=${this.copySelection} title="${t('terminal.copy')}">
-            ${t('terminal.copy')}
-          </button>
-          <button class="terminal-action" @click=${this.pasteFromClipboard} title="${t('terminal.paste')}">
-            ${t('terminal.paste')}
-          </button>
-          <button class="terminal-action" @click=${this.toggleFullscreen} title="${t('terminal.fullscreen')}">
-            ${t('terminal.fullscreen')}
-          </button>
-          <button class="terminal-action" @click=${this.scrollToTop} title="Scroll to Top">
-            ↑ Top
-          </button>
-          <button class="terminal-action" @click=${this.scrollToBottom} title="Scroll to Bottom">
-            ↓ Bottom
-          </button>
-          ${this.connectionStatus === 'disconnected' 
-            ? html`<button class="terminal-action" @click=${this.connect}>Connect</button>`
-            : this.connectionStatus === 'connected'
-            ? html`<button class="terminal-action" @click=${this.disconnect}>Disconnect</button>`
-            : ''}
+        </div>
+        <div class="terminal-controls">
+          <h3>${t('terminal.title')}</h3>
+          <div class="terminal-actions">
+            <button class="terminal-action" @click=${this.clearTerminal} title="${t('terminal.clear')}">
+              ${t('terminal.clear')}
+            </button>
+            <button class="terminal-action" @click=${this.copySelection} title="${t('terminal.copy')}">
+              ${t('terminal.copy')}
+            </button>
+            <button class="terminal-action" @click=${this.pasteFromClipboard} title="${t('terminal.paste')}">
+              ${t('terminal.paste')}
+            </button>
+            <button class="terminal-action" @click=${this.toggleFullscreen} title="${t('terminal.fullscreen')}">
+              ${t('terminal.fullscreen')}
+            </button>
+            <button class="terminal-action" @click=${this.scrollToTop} title="Scroll to Top">
+              ↑ Top
+            </button>
+            <button class="terminal-action" @click=${this.scrollToBottom} title="Scroll to Bottom">
+              ↓ Bottom
+            </button>
+          </div>
         </div>
       </div>
       <div class="terminal-container">
-        <div class="terminal-wrapper"></div>
+        ${this.sessions.map(session => html`
+          <div 
+            id="${session.id}" 
+            class="terminal-session ${session.id === this.activeSessionId ? 'active' : ''}"
+          >
+            <div class="terminal-wrapper"></div>
+          </div>
+        `)}
       </div>
       <div class="${statusClass}">${statusText}</div>
     `;

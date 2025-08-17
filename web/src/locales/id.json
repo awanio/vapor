@@ -390,7 +390,9 @@
     "fullscreen": "Layar Penuh",
     "settings": "Pengaturan Terminal",
     "fontSize": "Ukuran Font",
-    "theme": "Tema Terminal"
+    "theme": "Tema Terminal",
+    "newTab": "Tab Baru",
+    "closeTab": "Tutup Tab"
   },
   "errors": {
     "networkError": "Terjadi kesalahan jaringan",

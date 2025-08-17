@@ -1,4 +1,11 @@
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
 import { LitElement, html, css, unsafeCSS } from 'lit';
+import { state } from 'lit/decorators.js';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import { WebLinksAddon } from 'xterm-addon-web-links';
@@ -6,85 +13,20 @@ import { SearchAddon } from 'xterm-addon-search';
 import xtermStyles from 'xterm/css/xterm.css?inline';
 import { WebSocketManager } from '../api';
 import { t } from '../i18n';
-export class TerminalTab extends LitElement {
-    constructor() {
-        super(...arguments);
+class TerminalSession {
+    constructor(id, name) {
         this.terminal = null;
         this.fitAddon = null;
         this.searchAddon = null;
         this.webLinksAddon = null;
         this.wsManager = null;
-        this.terminalConnected = false;
         this.connectionStatus = 'disconnected';
-        this.resizeObserver = null;
-        this.handleWindowResize = () => {
-            if (this.fitAddon) {
-                this.fitAddon.fit();
-            }
-        };
-        this.handleFullscreenChange = () => {
-            const isFullscreen = !!(document.fullscreenElement ||
-                document.webkitFullscreenElement ||
-                document.mozFullScreenElement ||
-                document.msFullscreenElement);
-            console.log('Fullscreen change detected:', isFullscreen);
-            this.requestUpdate();
-            this.updateComplete.then(() => {
-                setTimeout(() => {
-                    if (!this.terminal || !this.fitAddon)
-                        return;
-                    const wrapper = this.shadowRoot?.querySelector('.terminal-wrapper');
-                    if (!wrapper)
-                        return;
-                    const buffer = this.terminal.buffer.active;
-                    const savedContent = [];
-                    for (let i = 0; i < buffer.length; i++) {
-                        const line = buffer.getLine(i);
-                        if (line) {
-                            savedContent.push(line.translateToString());
-                        }
-                    }
-                    const cursorY = buffer.cursorY;
-                    const cursorX = buffer.cursorX;
-                    if (isFullscreen) {
-                        wrapper.innerHTML = '';
-                        wrapper.style.width = '100%';
-                        wrapper.style.height = '100%';
-                        wrapper.style.display = 'block';
-                        wrapper.style.backgroundColor = '#1e1e1e';
-                        this.terminal.open(wrapper);
-                        for (const line of savedContent) {
-                            if (line.trim()) {
-                                this.terminal.writeln(line);
-                            }
-                        }
-                        this.terminal.write(`\x1b[${cursorY + 1};${cursorX + 1}H`);
-                    }
-                    this.fitAddon.fit();
-                    this.terminal.focus();
-                    this.terminal.refresh(0, this.terminal.rows - 1);
-                    wrapper.focus();
-                    this.terminal.focus();
-                    this.terminal.resize(this.terminal.cols, this.terminal.rows);
-                    this.terminal.refresh(0, this.terminal.rows - 1);
-                }, 500);
-            });
-        };
+        this.element = null;
+        this.id = id;
+        this.name = name;
     }
-    connectedCallback() {
-        super.connectedCallback();
-        this.updateComplete.then(() => {
-            this.initializeTerminal();
-        });
-    }
-    disconnectedCallback() {
-        super.disconnectedCallback();
-        this.cleanup();
-    }
-    initializeTerminal() {
-        const wrapper = this.shadowRoot?.querySelector('.terminal-wrapper');
-        if (!wrapper)
-            return;
+    async initialize(container, onDataCallback) {
+        this.element = container;
         this.terminal = new Terminal({
             cursorBlink: true,
             fontSize: 14,
@@ -120,24 +62,22 @@ export class TerminalTab extends LitElement {
         this.terminal.loadAddon(this.fitAddon);
         this.terminal.loadAddon(this.searchAddon);
         this.terminal.loadAddon(this.webLinksAddon);
-        this.terminal.open(wrapper);
-        this.setupResizeObserver(wrapper);
+        this.terminal.open(container);
         setTimeout(() => {
             this.fitAddon?.fit();
         }, 100);
-        this.hideCharMeasureElement();
         this.terminal.onData((data) => {
-            if (this.wsManager && this.terminalConnected) {
+            if (this.wsManager && this.connectionStatus === 'connected') {
                 const message = {
                     type: 'input',
                     data: data
                 };
                 this.wsManager.send(message);
             }
+            onDataCallback(data);
         });
-        this.setupScrollingShortcuts();
         this.terminal.onResize((size) => {
-            if (this.wsManager && this.terminalConnected) {
+            if (this.wsManager && this.connectionStatus === 'connected') {
                 const message = {
                     type: 'resize',
                     payload: {
@@ -148,78 +88,241 @@ export class TerminalTab extends LitElement {
                 this.wsManager.send(message);
             }
         });
+    }
+    async connect() {
+        if (this.wsManager) {
+            this.wsManager.disconnect();
+        }
+        this.connectionStatus = 'connecting';
+        try {
+            this.wsManager = new WebSocketManager('/ws/terminal');
+            this.wsManager.on('output', (message) => {
+                if (this.terminal && message.payload?.data) {
+                    this.terminal.write(message.payload.data);
+                }
+            });
+            this.wsManager.on('error', (message) => {
+                console.error('Terminal error:', message.error);
+                this.connectionStatus = 'disconnected';
+            });
+            await this.wsManager.connect();
+            const subscribeMessage = {
+                type: 'subscribe',
+                payload: {
+                    cols: this.terminal?.cols || 80,
+                    rows: this.terminal?.rows || 24,
+                    shell: '/bin/bash'
+                }
+            };
+            this.wsManager.send(subscribeMessage);
+            this.connectionStatus = 'connected';
+        }
+        catch (error) {
+            console.error('Failed to connect to terminal:', error);
+            this.connectionStatus = 'disconnected';
+        }
+    }
+    disconnect() {
+        if (this.wsManager) {
+            this.wsManager.disconnect();
+            this.wsManager = null;
+        }
+        this.connectionStatus = 'disconnected';
+    }
+    fit() {
+        if (this.fitAddon) {
+            this.fitAddon.fit();
+        }
+    }
+    focus() {
+        if (this.terminal) {
+            this.terminal.focus();
+        }
+    }
+    clear() {
+        if (this.terminal) {
+            this.terminal.clear();
+        }
+    }
+    dispose() {
+        this.disconnect();
+        if (this.terminal) {
+            this.terminal.dispose();
+            this.terminal = null;
+        }
+        this.fitAddon = null;
+        this.searchAddon = null;
+        this.webLinksAddon = null;
+    }
+}
+export class TerminalTab extends LitElement {
+    constructor() {
+        super(...arguments);
+        this.sessions = [];
+        this.activeSessionId = '';
+        this.sessionCounter = 0;
+        this.resizeObserver = null;
+        this.handleWindowResize = () => {
+            const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
+            if (activeSession) {
+                activeSession.fit();
+            }
+        };
+        this.handleFullscreenChange = () => {
+            const isFullscreen = !!(document.fullscreenElement ||
+                document.webkitFullscreenElement ||
+                document.mozFullScreenElement ||
+                document.msFullscreenElement);
+            console.log('Fullscreen change detected:', isFullscreen);
+            this.requestUpdate();
+            this.updateComplete.then(() => {
+                setTimeout(() => {
+                    const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
+                    if (!activeSession || !activeSession.terminal)
+                        return;
+                    const wrapper = this.shadowRoot?.querySelector(`#${this.activeSessionId} .terminal-wrapper`);
+                    if (!wrapper)
+                        return;
+                    if (isFullscreen) {
+                        wrapper.style.width = '100%';
+                        wrapper.style.height = '100%';
+                        wrapper.style.display = 'block';
+                        wrapper.style.backgroundColor = '#1e1e1e';
+                    }
+                    activeSession.fit();
+                    activeSession.focus();
+                    if (activeSession.terminal) {
+                        activeSession.terminal.refresh(0, activeSession.terminal.rows - 1);
+                    }
+                }, 500);
+            });
+        };
+    }
+    connectedCallback() {
+        super.connectedCallback();
+        this.updateComplete.then(() => {
+            this.createNewSession();
+        });
+    }
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        this.cleanup();
+    }
+    firstUpdated() {
         window.addEventListener('resize', this.handleWindowResize);
         document.addEventListener('fullscreenchange', this.handleFullscreenChange);
         document.addEventListener('webkitfullscreenchange', this.handleFullscreenChange);
         document.addEventListener('mozfullscreenchange', this.handleFullscreenChange);
         document.addEventListener('MSFullscreenChange', this.handleFullscreenChange);
-        this.connect();
     }
-    setupResizeObserver(element) {
-        if (this.resizeObserver) {
-            this.resizeObserver.disconnect();
+    updated(changedProperties) {
+        super.updated(changedProperties);
+        if (changedProperties.has('activeSessionId')) {
+            const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
+            if (activeSession) {
+                setTimeout(() => {
+                    activeSession.focus();
+                    activeSession.fit();
+                }, 50);
+            }
         }
-        this.resizeObserver = new ResizeObserver(() => {
-            if (this.fitAddon && this.terminal) {
+    }
+    async createNewSession() {
+        this.sessionCounter++;
+        const sessionId = `session-${this.sessionCounter}`;
+        const sessionName = `Terminal ${this.sessionCounter}`;
+        const session = new TerminalSession(sessionId, sessionName);
+        this.sessions = [...this.sessions, session];
+        this.activeSessionId = sessionId;
+        await this.updateComplete;
+        const wrapper = this.shadowRoot?.querySelector(`#${sessionId} .terminal-wrapper`);
+        if (wrapper) {
+            await session.initialize(wrapper, () => {
+            });
+            this.setupResizeObserver(wrapper, session);
+            await session.connect();
+            this.hideCharMeasureElement(wrapper);
+            this.setupScrollingShortcuts(wrapper, session);
+        }
+        this.requestUpdate();
+    }
+    closeSession(sessionId) {
+        if (this.sessions.length <= 1)
+            return;
+        const sessionIndex = this.sessions.findIndex(s => s.id === sessionId);
+        if (sessionIndex === -1)
+            return;
+        const session = this.sessions[sessionIndex];
+        session.dispose();
+        this.sessions = this.sessions.filter(s => s.id !== sessionId);
+        if (this.activeSessionId === sessionId) {
+            const newIndex = sessionIndex > 0 ? sessionIndex - 1 : 0;
+            this.activeSessionId = this.sessions[newIndex].id;
+        }
+        this.requestUpdate();
+    }
+    switchToSession(sessionId) {
+        this.activeSessionId = sessionId;
+        this.requestUpdate();
+    }
+    setupResizeObserver(element, session) {
+        const observer = new ResizeObserver(() => {
+            if (session.fitAddon && session.terminal) {
                 requestAnimationFrame(() => {
-                    this.fitAddon?.fit();
+                    session.fit();
                 });
             }
         });
-        this.resizeObserver.observe(element);
+        observer.observe(element);
     }
-    setupScrollingShortcuts() {
-        if (!this.terminal)
+    setupScrollingShortcuts(element, session) {
+        if (!session.terminal)
             return;
-        const terminalElement = this.shadowRoot?.querySelector('.terminal-wrapper');
-        if (terminalElement) {
-            terminalElement.addEventListener('keydown', (event) => {
-                if (!this.terminal)
-                    return;
-                const keyboardEvent = event;
-                if (keyboardEvent.key === 'PageUp') {
-                    keyboardEvent.preventDefault();
-                    this.terminal.scrollPages(-1);
-                }
-                else if (keyboardEvent.key === 'PageDown') {
-                    keyboardEvent.preventDefault();
-                    this.terminal.scrollPages(1);
-                }
-                else if (keyboardEvent.ctrlKey && keyboardEvent.key === 'Home') {
-                    keyboardEvent.preventDefault();
-                    this.terminal.scrollToTop();
-                }
-                else if (keyboardEvent.ctrlKey && keyboardEvent.key === 'End') {
-                    keyboardEvent.preventDefault();
-                    this.terminal.scrollToBottom();
-                }
-                else if (keyboardEvent.shiftKey && keyboardEvent.key === 'PageUp') {
-                    keyboardEvent.preventDefault();
-                    const pageSize = this.terminal.rows;
-                    this.terminal.scrollLines(-Math.floor(pageSize / 2));
-                }
-                else if (keyboardEvent.shiftKey && keyboardEvent.key === 'PageDown') {
-                    keyboardEvent.preventDefault();
-                    const pageSize = this.terminal.rows;
-                    this.terminal.scrollLines(Math.floor(pageSize / 2));
-                }
-            });
-        }
-        this.terminal.onScroll((_position) => {
+        element.addEventListener('keydown', (event) => {
+            if (!session.terminal)
+                return;
+            const keyboardEvent = event;
+            if (keyboardEvent.key === 'PageUp') {
+                keyboardEvent.preventDefault();
+                session.terminal.scrollPages(-1);
+            }
+            else if (keyboardEvent.key === 'PageDown') {
+                keyboardEvent.preventDefault();
+                session.terminal.scrollPages(1);
+            }
+            else if (keyboardEvent.ctrlKey && keyboardEvent.key === 'Home') {
+                keyboardEvent.preventDefault();
+                session.terminal.scrollToTop();
+            }
+            else if (keyboardEvent.ctrlKey && keyboardEvent.key === 'End') {
+                keyboardEvent.preventDefault();
+                session.terminal.scrollToBottom();
+            }
+            else if (keyboardEvent.shiftKey && keyboardEvent.key === 'PageUp') {
+                keyboardEvent.preventDefault();
+                const pageSize = session.terminal.rows;
+                session.terminal.scrollLines(-Math.floor(pageSize / 2));
+            }
+            else if (keyboardEvent.shiftKey && keyboardEvent.key === 'PageDown') {
+                keyboardEvent.preventDefault();
+                const pageSize = session.terminal.rows;
+                session.terminal.scrollLines(Math.floor(pageSize / 2));
+            }
+        });
+        session.terminal.onScroll((_position) => {
         });
     }
-    hideCharMeasureElement() {
-        const container = this.shadowRoot?.querySelector('.terminal-container');
-        if (container) {
+    hideCharMeasureElement(wrapper) {
+        if (wrapper) {
             setTimeout(() => {
-                const charMeasureElement = container.querySelector('.xterm-char-measure-element');
+                const charMeasureElement = wrapper.querySelector('.xterm-char-measure-element');
                 if (charMeasureElement) {
                     charMeasureElement.style.position = 'absolute';
                     charMeasureElement.style.top = '0';
                     charMeasureElement.style.left = '0';
                     charMeasureElement.style.visibility = 'hidden';
                 }
-                const helperTextarea = container.querySelector('.xterm-helper-textarea');
+                const helperTextarea = wrapper.querySelector('.xterm-helper-textarea');
                 if (helperTextarea) {
                     helperTextarea.style.position = 'absolute';
                     helperTextarea.style.left = '-9999px';
@@ -293,75 +396,31 @@ export class TerminalTab extends LitElement {
           background-color: #1e1e1e;
         }
       `;
-            container.appendChild(styleElement);
+            wrapper.appendChild(styleElement);
         }
-    }
-    async connect() {
-        if (this.wsManager) {
-            this.wsManager.disconnect();
-        }
-        this.connectionStatus = 'connecting';
-        this.requestUpdate();
-        try {
-            this.wsManager = new WebSocketManager('/ws/terminal');
-            this.wsManager.on('output', (message) => {
-                if (this.terminal && message.payload?.data) {
-                    this.terminal.write(message.payload.data);
-                }
-            });
-            this.wsManager.on('error', (message) => {
-                console.error('Terminal error:', message.error);
-                this.terminalConnected = false;
-                this.connectionStatus = 'disconnected';
-                this.requestUpdate();
-            });
-            await this.wsManager.connect();
-            const subscribeMessage = {
-                type: 'subscribe',
-                payload: {
-                    cols: this.terminal?.cols || 80,
-                    rows: this.terminal?.rows || 24,
-                    shell: '/bin/bash'
-                }
-            };
-            this.wsManager.send(subscribeMessage);
-            this.terminalConnected = true;
-            this.connectionStatus = 'connected';
-            this.requestUpdate();
-        }
-        catch (error) {
-            console.error('Failed to connect to terminal:', error);
-            this.connectionStatus = 'disconnected';
-            this.requestUpdate();
-        }
-    }
-    disconnect() {
-        if (this.wsManager) {
-            this.wsManager.disconnect();
-            this.wsManager = null;
-        }
-        this.terminalConnected = false;
-        this.connectionStatus = 'disconnected';
-        this.requestUpdate();
     }
     clearTerminal() {
-        if (this.terminal) {
-            this.terminal.clear();
+        const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
+        if (activeSession) {
+            activeSession.clear();
         }
     }
     scrollToTop() {
-        if (this.terminal) {
-            this.terminal.scrollToTop();
+        const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
+        if (activeSession && activeSession.terminal) {
+            activeSession.terminal.scrollToTop();
         }
     }
     scrollToBottom() {
-        if (this.terminal) {
-            this.terminal.scrollToBottom();
+        const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
+        if (activeSession && activeSession.terminal) {
+            activeSession.terminal.scrollToBottom();
         }
     }
     async copySelection() {
-        if (this.terminal && this.terminal.hasSelection()) {
-            const selection = this.terminal.getSelection();
+        const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
+        if (activeSession && activeSession.terminal && activeSession.terminal.hasSelection()) {
+            const selection = activeSession.terminal.getSelection();
             try {
                 await navigator.clipboard.writeText(selection);
             }
@@ -371,14 +430,17 @@ export class TerminalTab extends LitElement {
         }
     }
     async pasteFromClipboard() {
+        const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
+        if (!activeSession || !activeSession.wsManager || activeSession.connectionStatus !== 'connected')
+            return;
         try {
             const text = await navigator.clipboard.readText();
-            if (text && this.wsManager && this.terminalConnected) {
+            if (text) {
                 const message = {
                     type: 'input',
                     data: text
                 };
-                this.wsManager.send(message);
+                activeSession.wsManager.send(message);
             }
         }
         catch (error) {
@@ -396,12 +458,10 @@ export class TerminalTab extends LitElement {
                 requestFullscreen.call(hostElement).then(() => {
                     this.requestUpdate();
                     setTimeout(() => {
-                        this.fitAddon?.fit();
-                        this.terminal?.focus();
-                        const wrapper = this.shadowRoot?.querySelector('.terminal-wrapper');
-                        if (wrapper) {
-                            wrapper.style.opacity = '1';
-                            wrapper.style.visibility = 'visible';
+                        const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
+                        if (activeSession) {
+                            activeSession.fit();
+                            activeSession.focus();
                         }
                     }, 300);
                 }).catch((err) => {
@@ -413,8 +473,11 @@ export class TerminalTab extends LitElement {
             document.exitFullscreen().then(() => {
                 this.requestUpdate();
                 setTimeout(() => {
-                    this.fitAddon?.fit();
-                    this.terminal?.focus();
+                    const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
+                    if (activeSession) {
+                        activeSession.fit();
+                        activeSession.focus();
+                    }
                 }, 300);
             }).catch((err) => {
                 console.error('Failed to exit fullscreen:', err);
@@ -427,70 +490,95 @@ export class TerminalTab extends LitElement {
         document.removeEventListener('webkitfullscreenchange', this.handleFullscreenChange);
         document.removeEventListener('mozfullscreenchange', this.handleFullscreenChange);
         document.removeEventListener('MSFullscreenChange', this.handleFullscreenChange);
-        if (this.resizeObserver) {
-            this.resizeObserver.disconnect();
-            this.resizeObserver = null;
+        for (const session of this.sessions) {
+            session.dispose();
         }
-        if (this.wsManager) {
-            this.wsManager.disconnect();
-            this.wsManager = null;
-        }
-        if (this.terminal) {
-            this.terminal.dispose();
-            this.terminal = null;
-        }
-        this.fitAddon = null;
-        this.searchAddon = null;
-        this.webLinksAddon = null;
+        this.sessions = [];
     }
     render() {
+        const activeSession = this.sessions.find(s => s.id === this.activeSessionId);
         let statusClass = 'status-bar';
         let statusText = '';
-        switch (this.connectionStatus) {
-            case 'connecting':
-                statusClass += ' status-connecting';
-                statusText = t('terminal.connecting');
-                break;
-            case 'connected':
-                statusClass += ' status-connected';
-                statusText = t('terminal.connected');
-                break;
-            case 'disconnected':
-                statusClass += ' status-disconnected';
-                statusText = t('terminal.disconnected');
-                break;
+        if (activeSession) {
+            switch (activeSession.connectionStatus) {
+                case 'connecting':
+                    statusClass += ' status-connecting';
+                    statusText = t('terminal.connecting');
+                    break;
+                case 'connected':
+                    statusClass += ' status-connected';
+                    statusText = t('terminal.connected');
+                    break;
+                case 'disconnected':
+                    statusClass += ' status-disconnected';
+                    statusText = t('terminal.disconnected');
+                    break;
+            }
         }
         return html `
       <div class="terminal-header">
-        <h3>${t('terminal.title')}</h3>
-        <div class="terminal-actions">
-          <button class="terminal-action" @click=${this.clearTerminal} title="${t('terminal.clear')}">
-            ${t('terminal.clear')}
+        <div class="terminal-tabs">
+          ${this.sessions.map(session => html `
+            <button 
+              class="terminal-tab ${session.id === this.activeSessionId ? 'active' : ''}"
+              @click=${() => this.switchToSession(session.id)}
+            >
+              <span class="terminal-tab-name">${session.name}</span>
+              ${this.sessions.length > 1 ? html `
+                <button 
+                  class="terminal-tab-close" 
+                  @click=${(e) => {
+            e.stopPropagation();
+            this.closeSession(session.id);
+        }}
+                  title="${t('terminal.closeTab')}"
+                >
+                  ×
+                </button>
+              ` : ''}
+            </button>
+          `)}
+          <button 
+            class="add-terminal-btn" 
+            @click=${() => this.createNewSession()}
+            title="${t('terminal.newTab')}"
+          >
+            +
           </button>
-          <button class="terminal-action" @click=${this.copySelection} title="${t('terminal.copy')}">
-            ${t('terminal.copy')}
-          </button>
-          <button class="terminal-action" @click=${this.pasteFromClipboard} title="${t('terminal.paste')}">
-            ${t('terminal.paste')}
-          </button>
-          <button class="terminal-action" @click=${this.toggleFullscreen} title="${t('terminal.fullscreen')}">
-            ${t('terminal.fullscreen')}
-          </button>
-          <button class="terminal-action" @click=${this.scrollToTop} title="Scroll to Top">
-            ↑ Top
-          </button>
-          <button class="terminal-action" @click=${this.scrollToBottom} title="Scroll to Bottom">
-            ↓ Bottom
-          </button>
-          ${this.connectionStatus === 'disconnected'
-            ? html `<button class="terminal-action" @click=${this.connect}>Connect</button>`
-            : this.connectionStatus === 'connected'
-                ? html `<button class="terminal-action" @click=${this.disconnect}>Disconnect</button>`
-                : ''}
+        </div>
+        <div class="terminal-controls">
+          <h3>${t('terminal.title')}</h3>
+          <div class="terminal-actions">
+            <button class="terminal-action" @click=${this.clearTerminal} title="${t('terminal.clear')}">
+              ${t('terminal.clear')}
+            </button>
+            <button class="terminal-action" @click=${this.copySelection} title="${t('terminal.copy')}">
+              ${t('terminal.copy')}
+            </button>
+            <button class="terminal-action" @click=${this.pasteFromClipboard} title="${t('terminal.paste')}">
+              ${t('terminal.paste')}
+            </button>
+            <button class="terminal-action" @click=${this.toggleFullscreen} title="${t('terminal.fullscreen')}">
+              ${t('terminal.fullscreen')}
+            </button>
+            <button class="terminal-action" @click=${this.scrollToTop} title="Scroll to Top">
+              ↑ Top
+            </button>
+            <button class="terminal-action" @click=${this.scrollToBottom} title="Scroll to Bottom">
+              ↓ Bottom
+            </button>
+          </div>
         </div>
       </div>
       <div class="terminal-container">
-        <div class="terminal-wrapper"></div>
+        ${this.sessions.map(session => html `
+          <div 
+            id="${session.id}" 
+            class="terminal-session ${session.id === this.activeSessionId ? 'active' : ''}"
+          >
+            <div class="terminal-wrapper"></div>
+          </div>
+        `)}
       </div>
       <div class="${statusClass}">${statusText}</div>
     `;
@@ -510,14 +598,108 @@ TerminalTab.styles = [
 
     .terminal-header {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 16px;
+      flex-direction: column;
       background-color: var(--vscode-bg-lighter);
       border-bottom: 1px solid var(--vscode-border);
     }
 
-    .terminal-header h3 {
+    .terminal-tabs {
+      display: flex;
+      align-items: center;
+      background-color: var(--vscode-bg);
+      border-bottom: 1px solid var(--vscode-border);
+      min-height: 35px;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+
+    .terminal-tab {
+      display: flex;
+      align-items: center;
+      padding: 6px 12px;
+      background-color: transparent;
+      border: none;
+      border-right: 1px solid var(--vscode-border);
+      color: var(--vscode-text-dim);
+      cursor: pointer;
+      font-size: 13px;
+      min-width: 100px;
+      max-width: 200px;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .terminal-tab:hover {
+      background-color: var(--vscode-bg-light);
+    }
+
+    .terminal-tab.active {
+      background-color: var(--vscode-bg-lighter);
+      color: var(--vscode-text);
+      border-bottom: 2px solid var(--vscode-primary);
+    }
+
+    .terminal-tab-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-right: 8px;
+    }
+
+    .terminal-tab-close {
+      display: none;
+      width: 16px;
+      height: 16px;
+      border: none;
+      background: transparent;
+      color: var(--vscode-text-dim);
+      cursor: pointer;
+      padding: 0;
+      margin: 0;
+      line-height: 1;
+      font-size: 16px;
+      border-radius: 3px;
+    }
+
+    .terminal-tab:hover .terminal-tab-close {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .terminal-tab-close:hover {
+      background-color: var(--vscode-bg-light);
+      color: var(--vscode-text);
+    }
+
+    .add-terminal-btn {
+      padding: 6px 12px;
+      background: transparent;
+      border: none;
+      color: var(--vscode-text-dim);
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 35px;
+      transition: all 0.2s;
+    }
+
+    .add-terminal-btn:hover {
+      background-color: var(--vscode-bg-light);
+      color: var(--vscode-text);
+    }
+
+    .terminal-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 16px;
+    }
+
+    .terminal-controls h3 {
       margin: 0;
       font-size: 14px;
       font-weight: normal;
@@ -549,6 +731,22 @@ TerminalTab.styles = [
       flex: 1;
       overflow: hidden;
       padding: 8px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .terminal-session {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: none;
+      padding: 8px;
+    }
+
+    .terminal-session.active {
       display: flex;
       flex-direction: column;
     }
@@ -662,5 +860,11 @@ TerminalTab.styles = [
     }
   `
 ];
+__decorate([
+    state()
+], TerminalTab.prototype, "sessions", void 0);
+__decorate([
+    state()
+], TerminalTab.prototype, "activeSessionId", void 0);
 customElements.define('terminal-tab', TerminalTab);
 //# sourceMappingURL=terminal-tab.js.map

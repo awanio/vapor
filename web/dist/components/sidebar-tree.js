@@ -303,6 +303,46 @@ export class SidebarTree extends I18nLitElement {
         const hasChildren = item.children && item.children.length > 0;
         const isExpanded = this.expandedItems.has(item.id);
         const isActive = this.isItemActive(item);
+        const renderIcon = () => {
+            if (item.icon === 'kubernetes') {
+                return html `
+          <span class="tree-item-icon">
+            <img src="/icons/tech/kubernetes.svg" alt="Kubernetes" width="16" height="16" />
+          </span>
+        `;
+            }
+            else if (item.icon === 'ansible') {
+                return html `
+          <span class="tree-item-icon">
+            <img src="/icons/tech/ansible.svg" alt="Ansible" width="16" height="16" />
+          </span>
+        `;
+            }
+            else if (item.icon === 'docker') {
+                return html `
+          <span class="tree-item-icon">
+            <img src="/icons/tech/docker.svg" alt="Docker" width="16" height="16" />
+          </span>
+        `;
+            }
+            else if (item.icon === 'dashboard') {
+                return html `
+          <span class="tree-item-icon">
+            <img src="/icons/tech/dashboard.svg" alt="Dashboard" width="16" height="16" />
+          </span>
+        `;
+            }
+            else if (item.icon === 'helm') {
+                return html `
+          <span class="tree-item-icon">
+            <img src="/icons/tech/helm.svg" alt="Helm" width="16" height="16" />
+          </span>
+        `;
+            }
+            else {
+                return html `<span class="tree-item-icon icon-${item.icon}"></span>`;
+            }
+        };
         return html `
       <li>
         <div
@@ -322,7 +362,7 @@ export class SidebarTree extends I18nLitElement {
               </svg>
             </span>
           ` : html `<span class="tree-item-arrow"></span>`}
-          <span class="tree-item-icon icon-${item.icon}"></span>
+          ${renderIcon()}
           <span class="tree-item-label">${t(item.label)}</span>
         </div>
         ${hasChildren && isExpanded && !this.collapsed ? html `
@@ -447,6 +487,20 @@ SidebarTree.styles = css `
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
+    }
+
+    .tree-item-icon img {
+      width: 16px;
+      height: 16px;
+      filter: brightness(0.9);
+    }
+
+    .tree-item:hover .tree-item-icon img {
+      filter: brightness(1.1);
+    }
+
+    .tree-item.active .tree-item-icon img {
+      filter: brightness(1.2) saturate(1.5);
     }
 
     .tree-item-label {

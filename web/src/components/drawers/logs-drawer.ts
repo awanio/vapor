@@ -25,17 +25,23 @@ export class LogsDrawer extends LitElement {
       width: 600px;
       height: 100vh;
       z-index: 1000;
+      pointer-events: none;
+    }
+
+    :host([show]) {
+      pointer-events: auto;
     }
 
     .drawer {
       width: 100%;
       height: 100%;
-      background: var(--drawer-bg, #1a1d23);
-      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.3);
+      background: var(--vscode-editor-background, var(--vscode-bg-light, #252526));
+      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
       display: flex;
       flex-direction: column;
       transform: translateX(100%);
       transition: transform 0.3s ease;
+      border-left: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
     }
 
     :host([show]) .drawer {
@@ -44,8 +50,8 @@ export class LogsDrawer extends LitElement {
 
     .drawer-header {
       padding: 20px;
-      background: var(--header-bg, #2c2f3a);
-      border-bottom: 1px solid var(--header-border, #3a3d4a);
+      background: var(--vscode-sideBar-background, var(--vscode-bg-light, #252526));
+      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -54,23 +60,23 @@ export class LogsDrawer extends LitElement {
 
     .header-title {
       font-size: 18px;
-      font-weight: 500;
-      color: var(--title-color, #e0e0e0);
+      font-weight: 600;
+      color: var(--vscode-foreground, var(--vscode-text, #cccccc));
       display: flex;
       align-items: center;
       gap: 12px;
     }
 
     .header-subtitle {
-      font-size: 14px;
-      color: var(--subtitle-color, #999);
+      font-size: 13px;
+      color: var(--vscode-descriptionForeground, var(--vscode-text-dim, #9d9d9d));
       margin-top: 4px;
     }
 
     .close-button {
       background: none;
       border: none;
-      color: var(--close-color, #999);
+      color: var(--vscode-icon-foreground, var(--vscode-text-dim, #9d9d9d));
       cursor: pointer;
       padding: 8px;
       border-radius: 4px;
@@ -78,14 +84,14 @@ export class LogsDrawer extends LitElement {
     }
 
     .close-button:hover {
-      background: var(--close-hover-bg, rgba(255, 255, 255, 0.1));
-      color: var(--close-hover-color, #e0e0e0);
+      background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
+      color: var(--vscode-foreground, var(--vscode-text, #cccccc));
     }
 
     .controls {
       padding: 16px 20px;
-      background: var(--controls-bg, #2c2f3a);
-      border-bottom: 1px solid var(--controls-border, #3a3d4a);
+      background: var(--vscode-editor-background, var(--vscode-bg-light, #252526));
+      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
       display: flex;
       gap: 12px;
       align-items: center;
@@ -100,16 +106,16 @@ export class LogsDrawer extends LitElement {
     .search-input {
       width: 100%;
       padding: 8px 12px 8px 36px;
-      background: var(--input-bg, #1a1d23);
-      color: var(--input-color, #e0e0e0);
-      border: 1px solid var(--input-border, #3a3d4a);
+      background: var(--vscode-input-background, #3c3c3c);
+      color: var(--vscode-input-foreground, var(--vscode-text, #cccccc));
+      border: 1px solid var(--vscode-input-border, transparent);
       border-radius: 4px;
-      font-size: 14px;
+      font-size: 13px;
       outline: none;
     }
 
     .search-input:focus {
-      border-color: var(--input-focus-border, #4a7c59);
+      border-color: var(--vscode-focusBorder, #007acc);
     }
 
     .search-icon {
@@ -119,17 +125,17 @@ export class LogsDrawer extends LitElement {
       transform: translateY(-50%);
       width: 16px;
       height: 16px;
-      color: var(--search-icon-color, #999);
+      color: var(--vscode-icon-foreground, var(--vscode-text-dim, #9d9d9d));
     }
 
     .control-button {
-      background: var(--button-bg, #3a3d4a);
-      color: var(--button-color, #e0e0e0);
-      border: 1px solid var(--button-border, #4a4d5a);
-      padding: 8px 16px;
+      background: var(--vscode-button-secondaryBackground, transparent);
+      color: var(--vscode-button-secondaryForeground, var(--vscode-text, #cccccc));
+      border: 1px solid var(--vscode-button-border, var(--vscode-panel-border, #454545));
+      padding: 6px 14px;
       border-radius: 4px;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 13px;
       display: flex;
       align-items: center;
       gap: 6px;
@@ -138,8 +144,8 @@ export class LogsDrawer extends LitElement {
     }
 
     .control-button:hover {
-      background: var(--button-hover-bg, #4a4d5a);
-      border-color: var(--button-hover-border, #5a5d6a);
+      background: var(--vscode-button-secondaryHoverBackground, rgba(90, 93, 94, 0.31));
+      border-color: var(--vscode-button-border, var(--vscode-panel-border, #454545));
     }
 
     .control-button:disabled {
@@ -148,19 +154,20 @@ export class LogsDrawer extends LitElement {
     }
 
     .control-button.active {
-      background: var(--button-active-bg, #4a7c59);
-      border-color: var(--button-active-border, #5a8c69);
+      background: var(--vscode-button-background, #007acc);
+      color: var(--vscode-button-foreground, white);
+      border-color: var(--vscode-button-background, #007acc);
     }
 
     .content {
       flex: 1;
       overflow-y: auto;
       padding: 20px;
-      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      font-family: var(--vscode-editor-font-family, 'Consolas', 'Monaco', 'Courier New', monospace);
       font-size: 13px;
       line-height: 1.6;
-      color: var(--log-color, #e0e0e0);
-      background: var(--log-bg, #0d0f12);
+      color: var(--vscode-foreground, var(--vscode-text, #cccccc));
+      background: var(--vscode-editor-background, #1e1e1e);
     }
 
     .log-line {
@@ -171,17 +178,17 @@ export class LogsDrawer extends LitElement {
     }
 
     .log-line:hover {
-      background: var(--log-hover-bg, rgba(255, 255, 255, 0.05));
+      background: var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.31));
     }
 
     .log-line.highlighted {
-      background: var(--log-highlight-bg, rgba(74, 124, 89, 0.3));
-      border-left: 3px solid var(--log-highlight-border, #4a7c59);
+      background: var(--vscode-editor-findMatchHighlightBackground, rgba(234, 92, 0, 0.33));
+      border-left: 3px solid var(--vscode-editorWarning-foreground, #cca700);
       padding-left: 8px;
     }
 
     .log-timestamp {
-      color: var(--timestamp-color, #666);
+      color: var(--vscode-descriptionForeground, var(--vscode-text-dim, #9d9d9d));
       margin-right: 8px;
     }
 
@@ -191,19 +198,19 @@ export class LogsDrawer extends LitElement {
     }
 
     .log-level.error {
-      color: var(--level-error, #f44336);
+      color: var(--vscode-errorForeground, #f14c4c);
     }
 
     .log-level.warn {
-      color: var(--level-warn, #ff9800);
+      color: var(--vscode-editorWarning-foreground, #cca700);
     }
 
     .log-level.info {
-      color: var(--level-info, #2196f3);
+      color: var(--vscode-editorInfo-foreground, #3794ff);
     }
 
     .log-level.debug {
-      color: var(--level-debug, #9e9e9e);
+      color: var(--vscode-descriptionForeground, var(--vscode-text-dim, #9d9d9d));
     }
 
     .loading {
@@ -211,37 +218,37 @@ export class LogsDrawer extends LitElement {
       align-items: center;
       justify-content: center;
       height: 200px;
-      color: var(--loading-color, #999);
+      color: var(--vscode-descriptionForeground, var(--vscode-text-dim, #9d9d9d));
     }
 
     .error {
       padding: 40px;
       text-align: center;
-      color: var(--error-color, #f44336);
+      color: var(--vscode-errorForeground, #f14c4c);
     }
 
     .no-logs {
       padding: 40px;
       text-align: center;
-      color: var(--no-logs-color, #999);
+      color: var(--vscode-descriptionForeground, var(--vscode-text-dim, #9d9d9d));
     }
 
     /* Scrollbar styling */
     .content::-webkit-scrollbar {
-      width: 8px;
+      width: 10px;
     }
 
     .content::-webkit-scrollbar-track {
-      background: var(--scrollbar-track, #1a1d23);
+      background: var(--vscode-scrollbarSlider-background, transparent);
     }
 
     .content::-webkit-scrollbar-thumb {
-      background: var(--scrollbar-thumb, #4a4d5a);
+      background: var(--vscode-scrollbarSlider-background, rgba(121, 121, 121, 0.4));
       border-radius: 4px;
     }
 
     .content::-webkit-scrollbar-thumb:hover {
-      background: var(--scrollbar-thumb-hover, #5a5d6a);
+      background: var(--vscode-scrollbarSlider-hoverBackground, rgba(100, 100, 100, 0.7));
     }
   `;
 
@@ -259,6 +266,10 @@ export class LogsDrawer extends LitElement {
   @state() private isFollowing = true;
 
   override render() {
+    if (!this.show) {
+      return null;
+    }
+
     return html`
       <div class="drawer" part="drawer">
         <div class="drawer-header" part="header">

@@ -14,6 +14,7 @@ import '../../components/ui/namespace-dropdown.js';
 import '../../components/tabs/tab-group.js';
 import '../../components/tables/resource-table.js';
 import '../../components/drawers/detail-drawer.js';
+import '../../components/drawers/logs-drawer.js';
 import '../../components/modals/delete-modal.js';
 import '../../components/kubernetes/resource-detail-view.js';
 import '../../components/drawers/create-resource-drawer';
@@ -39,6 +40,12 @@ let KubernetesWorkloads = class KubernetesWorkloads extends LitElement {
         this.createResourceValue = '';
         this.createDrawerTitle = 'Create Resource';
         this.isCreating = false;
+        this.showLogsDrawer = false;
+        this.logsData = '';
+        this.logsLoading = false;
+        this.logsError = '';
+        this.logsPodName = '';
+        this.logsNamespace = '';
         this.tabs = [
             { id: 'pods', label: 'Pods' },
             { id: 'deployments', label: 'Deployments' },
@@ -143,8 +150,25 @@ let KubernetesWorkloads = class KubernetesWorkloads extends LitElement {
             this.loadingDetails = false;
         }
     }
-    viewLogs(item) {
-        console.log('View logs for:', item);
+    async viewLogs(item) {
+        if (item.type !== 'Pod')
+            return;
+        this.logsPodName = item.name;
+        this.logsNamespace = item.namespace;
+        this.showLogsDrawer = true;
+        this.logsLoading = true;
+        this.logsError = '';
+        try {
+            const logs = await KubernetesApi.getPodLogs(item.name, item.namespace);
+            this.logsData = logs;
+        }
+        catch (error) {
+            console.error('Failed to fetch pod logs:', error);
+            this.logsError = error.message || 'Failed to fetch logs';
+        }
+        finally {
+            this.logsLoading = false;
+        }
     }
     editItem(item) {
         console.log('Edit item:', item);
@@ -249,6 +273,28 @@ let KubernetesWorkloads = class KubernetesWorkloads extends LitElement {
         this.showDetails = false;
         this.selectedItem = null;
         this.detailsData = null;
+    }
+    handleLogsClose() {
+        this.showLogsDrawer = false;
+        this.logsData = '';
+        this.logsError = '';
+    }
+    async handleLogsRefresh() {
+        if (!this.logsPodName || !this.logsNamespace)
+            return;
+        this.logsLoading = true;
+        this.logsError = '';
+        try {
+            const logs = await KubernetesApi.getPodLogs(this.logsPodName, this.logsNamespace);
+            this.logsData = logs;
+        }
+        catch (error) {
+            console.error('Failed to refresh pod logs:', error);
+            this.logsError = error.message || 'Failed to refresh logs';
+        }
+        finally {
+            this.logsLoading = false;
+        }
     }
     async fetchData() {
         this.loading = true;
@@ -381,6 +427,17 @@ let KubernetesWorkloads = class KubernetesWorkloads extends LitElement {
           @create="${this.handleCreateResource}"
         ></create-resource-drawer>
 
+        <logs-drawer
+          .show="${this.showLogsDrawer}"
+          title="Pod Logs"
+          .subtitle="${this.logsPodName} (${this.logsNamespace})"
+          .logs="${this.logsData}"
+          .loading="${this.logsLoading}"
+          .error="${this.logsError}"
+          @close="${this.handleLogsClose}"
+          @refresh="${this.handleLogsRefresh}"
+        ></logs-drawer>
+
         <notification-container></notification-container>
       </div>
     `;
@@ -507,6 +564,24 @@ __decorate([
 __decorate([
     state()
 ], KubernetesWorkloads.prototype, "isCreating", void 0);
+__decorate([
+    state()
+], KubernetesWorkloads.prototype, "showLogsDrawer", void 0);
+__decorate([
+    state()
+], KubernetesWorkloads.prototype, "logsData", void 0);
+__decorate([
+    state()
+], KubernetesWorkloads.prototype, "logsLoading", void 0);
+__decorate([
+    state()
+], KubernetesWorkloads.prototype, "logsError", void 0);
+__decorate([
+    state()
+], KubernetesWorkloads.prototype, "logsPodName", void 0);
+__decorate([
+    state()
+], KubernetesWorkloads.prototype, "logsNamespace", void 0);
 KubernetesWorkloads = __decorate([
     customElement('kubernetes-workloads')
 ], KubernetesWorkloads);

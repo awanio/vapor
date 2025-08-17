@@ -18,6 +18,7 @@ import '../../components/ui/namespace-dropdown.js';
 import '../../components/tabs/tab-group.js';
 import '../../components/tables/resource-table.js';
 import '../../components/drawers/detail-drawer.js';
+import '../../components/drawers/logs-drawer.js';
 import '../../components/modals/delete-modal.js';
 import '../../components/kubernetes/resource-detail-view.js';
 import '../../components/drawers/create-resource-drawer';
@@ -50,6 +51,12 @@ export class KubernetesWorkloads extends LitElement {
   @state() private createResourceValue = '';
   @state() private createDrawerTitle = 'Create Resource';
   @state() private isCreating = false;
+  @state() private showLogsDrawer = false;
+  @state() private logsData = '';
+  @state() private logsLoading = false;
+  @state() private logsError = '';
+  @state() private logsPodName = '';
+  @state() private logsNamespace = '';
 
   static override styles = css`
     :host {
@@ -245,9 +252,24 @@ export class KubernetesWorkloads extends LitElement {
   }
 
 
-  private viewLogs(item: WorkloadResource) {
-    console.log('View logs for:', item);
-    // Implement logs viewer
+  private async viewLogs(item: WorkloadResource) {
+    if (item.type !== 'Pod') return;
+    
+    this.logsPodName = item.name;
+    this.logsNamespace = item.namespace;
+    this.showLogsDrawer = true;
+    this.logsLoading = true;
+    this.logsError = '';
+    
+    try {
+      const logs = await KubernetesApi.getPodLogs(item.name, item.namespace);
+      this.logsData = logs;
+    } catch (error: any) {
+      console.error('Failed to fetch pod logs:', error);
+      this.logsError = error.message || 'Failed to fetch logs';
+    } finally {
+      this.logsLoading = false;
+    }
   }
 
   private editItem(item: WorkloadResource) {
@@ -364,6 +386,29 @@ export class KubernetesWorkloads extends LitElement {
     this.showDetails = false;
     this.selectedItem = null;
     this.detailsData = null;
+  }
+
+  private handleLogsClose() {
+    this.showLogsDrawer = false;
+    this.logsData = '';
+    this.logsError = '';
+  }
+
+  private async handleLogsRefresh() {
+    if (!this.logsPodName || !this.logsNamespace) return;
+    
+    this.logsLoading = true;
+    this.logsError = '';
+    
+    try {
+      const logs = await KubernetesApi.getPodLogs(this.logsPodName, this.logsNamespace);
+      this.logsData = logs;
+    } catch (error: any) {
+      console.error('Failed to refresh pod logs:', error);
+      this.logsError = error.message || 'Failed to refresh logs';
+    } finally {
+      this.logsLoading = false;
+    }
   }
 
   async fetchData() {
@@ -502,6 +547,17 @@ export class KubernetesWorkloads extends LitElement {
           @close="${() => { this.showCreateDrawer = false; }}"
           @create="${this.handleCreateResource}"
         ></create-resource-drawer>
+
+        <logs-drawer
+          .show="${this.showLogsDrawer}"
+          title="Pod Logs"
+          .subtitle="${this.logsPodName} (${this.logsNamespace})"
+          .logs="${this.logsData}"
+          .loading="${this.logsLoading}"
+          .error="${this.logsError}"
+          @close="${this.handleLogsClose}"
+          @refresh="${this.handleLogsRefresh}"
+        ></logs-drawer>
 
         <notification-container></notification-container>
       </div>

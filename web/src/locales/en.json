@@ -416,7 +416,9 @@
     "fullscreen": "Fullscreen",
     "settings": "Terminal Settings",
     "fontSize": "Font Size",
-    "theme": "Terminal Theme"
+    "theme": "Terminal Theme",
+    "newTab": "New Tab",
+    "closeTab": "Close Tab"
   },
   "errors": {
     "networkError": "Network error occurred",
