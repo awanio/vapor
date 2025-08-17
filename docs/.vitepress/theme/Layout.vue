@@ -6,7 +6,7 @@
   
     <!-- Inject modal at the very bottom of layout so it always renders -->
     <template #layout-bottom>
-      <VideoModal ref="videoModal" video-id="9GeE7BVDTto" />
+      <VideoModal ref="videoModal" video-id="8MZk5s8x8FY" />
     </template>
   </Layout>
 </template>
