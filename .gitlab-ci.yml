@@ -10,12 +10,7 @@ variables:
   DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
   GIT_DEPTH: 1
 
-build:
-  stage: build
-  image:
-    name: docker:19.03.12
-  services:
-    - name: docker:20.10-dind
+default:
   before_script:
     - |-
         timeout=60
@@ -26,12 +21,27 @@ build:
           passed=`expr $passed + 1`
           sleep 1
         done
+
+build:
+  stage: build
+  image:
+    name: docker:19.03.12
+  services:
+    - name: docker:20.10-dind
   script:
     - >
       docker build 
       -t $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA 
       -f $CI_PROJECT_DIR/Dockerfile 
       $CI_PROJECT_DIR 
+    - mkdir ~/bin
+    - >
+      docker run -it -v ~/bin:/build 
+      --name vapor 
+      --rm 
+      $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA 
+      sh -c "cp /root/vapor /build/"
+    - ls -lah ~/bin
   only:
     - dev
     - main
@@ -44,16 +54,6 @@ build:docs:
     name: docker:19.03.12
   services:
     - name: docker:20.10-dind
-  before_script:
-    - |-
-        timeout=60
-        passed=0
-        echo "Waiting for docker daemon to be fully started"
-        until [ -f "${DOCKER_CERT_PATH}/ca.pem" ] || [ ${timeout} -lt ${passed} ]; do
-          echo -n "."
-          passed=`expr $passed + 1`
-          sleep 1
-        done
   script:
     - cat ${CONTAINER_BUILD_N_PUSH} > build.sh
     - chmod +x ./build.sh
