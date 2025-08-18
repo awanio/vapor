@@ -36,7 +36,7 @@ build:
       $CI_PROJECT_DIR 
     - mkdir ~/bin
     - >
-      docker run -it -v ~/bin:/build 
+      docker run -v ~/bin:/build 
       --name vapor 
       --rm 
       $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA 
