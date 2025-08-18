@@ -31,11 +31,7 @@ build:
       docker build 
       -t $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA 
       -f $CI_PROJECT_DIR/Dockerfile 
-      $CI_PROJECT_DIR
-    # - echo "$ACR_PASSWORD" | docker login $ACR_HOST --username $ACR_USERNAME --password-stdin
-    # - docker tag $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-latest
-    # - docker push $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA 
-    # - docker push $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-latest
+      $CI_PROJECT_DIR 
   only:
     - dev
     - main
@@ -59,7 +55,9 @@ build:docs:
           sleep 1
         done
   script:
-    - bash ${CONTAINER_BUILD_N_PUSH}
+    - cat ${CONTAINER_BUILD_N_PUSH} > build.sh
+    - chmod +x ./build.sh
+    - ./build.sh
   only:
     - dev
     - main
@@ -75,4 +73,6 @@ deploy:docs:
   tags:
     - idch-bg-awid1
   script:
-    - bash ${DEPLOY_DOCS_WEB}
+    - cat ${DEPLOY_DOCS_WEB} > deploy.sh
+    - chmod +x ./deploy.sh
+    - ./deploy.sh
