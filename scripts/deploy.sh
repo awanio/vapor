@@ -48,7 +48,7 @@ fi
 
 # Check for required commands
 echo "Checking system requirements..."
-REQUIRED_COMMANDS="lsblk mount umount journalctl useradd usermod userdel ansible"
+REQUIRED_COMMANDS="lsblk mount umount journalctl useradd usermod userdel ansible curl"
 OPTIONAL_COMMANDS="vgs lvs pvs iscsiadm multipath btrfs docker libvirt kubelet kubeadm kubectl nerdctl"
 MISSING_COMMANDS=""
 MISSING_OPTIONAL=""
@@ -76,6 +76,9 @@ if [ -n "$MISSING_OPTIONAL" ]; then
     echo "Some advanced storage features (LVM, iSCSI, multipath, BTRFS) may not work."
 fi
 
+curl -fsSL -o /tmp/vapor-linux-amd64.tar.gz https://storage.awan.io/assets/vapor/latest/vapor-linux-amd64.tar.gz
+tar -xzvf /tmp/vapor-linux-amd64.tar.gz -C /tmp/vapor
+
 # Create directories
 echo "Creating directories..."
 mkdir -p "$CONFIG_DIR"
@@ -91,6 +94,10 @@ elif [ -f "$BINARY_NAME" ]; then
     echo "Installing binary..."
     cp "$BINARY_NAME" "$INSTALL_DIR/$BINARY_NAME"
     chmod +x "$INSTALL_DIR/$BINARY_NAME"
+elif [ -f "/tmp/vapor/build/$BINARY_NAME" ]; then
+    echo "Installing binary..."
+    cp "$BINARY_NAME" "$INSTALL_DIR/$BINARY_NAME"
+    chmod +x "$INSTALL_DIR/$BINARY_NAME"
 else
     echo -e "${RED}Error: Binary not found. Please build first with 'make build-linux'${NC}"
     exit 1
@@ -100,6 +107,18 @@ fi
 if [ -f "openapi.yaml" ]; then
     echo "Installing API documentation..."
     cp openapi.yaml "$CONFIG_DIR/"
+elif [ -f "/tmp/vapor/build/openapi.yaml" ]; then
+    echo "Installing API documentation..."
+    cp /tmp/vapor/build/openapi.yaml "$CONFIG_DIR/"
+fi
+
+# Copy Ansible Playbooks
+if [ -f "./ansible" ]; then
+    echo "Installing Ansible Playbooks..."
+    cp -r ./ansible "$APP_DIR/"
+elif [ -f "/tmp/vapor/build/ansible" ]; then
+    echo "Installing Ansible Playbooks..."
+    cp -r /tmp/vapor/build/ansible "$APP_DIR/"
 fi
 
 # Create environment file
