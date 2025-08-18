@@ -34,14 +34,22 @@ build:
       -t $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA 
       -f $CI_PROJECT_DIR/Dockerfile 
       $CI_PROJECT_DIR 
-    - mkdir ~/bin
+    - mkdir ~/build
     - >
-      docker run -v ~/bin:/build 
+      docker run -v ~/build:/build 
       --name vapor 
       --rm 
       $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA 
-      sh -c "cp /root/vapor /build/"
-    - ls -lah ~/bin
+      /bin/sh -c "tail -F /dev/null" 
+    - docker cp vapor:/root/vapor ~/build/
+    - docker stop vapor
+    - ls -lah ~/build
+    - chmod +x ~/build/vapor
+    - cp -r ./openapi.yaml ./ansible ~/build/ 
+    - tar -czvf vapor-linux-amd64.tar.gz ~/build
+    - cat $MC_CLIENT > mc-client.sh
+    - chmod +x ./mc-client.sh
+    - ./mc cp vapor-linux-amd64.tar.gz awid5/assets/vapor/latest
   only:
     - dev
     - main
