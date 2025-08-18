@@ -49,6 +49,7 @@ build:
     - tar -czvf vapor-linux-amd64.tar.gz ~/build
     - cat $MC_CLIENT > mc-client.sh
     - chmod +x ./mc-client.sh
+    - ./mc-client.sh
     - ./mc cp vapor-linux-amd64.tar.gz awid5/assets/vapor/latest
     - ./mc cp ./scriptss/deploy.sh awid5/assets/vapor/latest
   only:
