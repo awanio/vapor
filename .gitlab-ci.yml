@@ -36,7 +36,7 @@ build:
       $CI_PROJECT_DIR 
     - mkdir ~/build
     - >
-      docker run -v ~/build:/build 
+      docker run -d -v ~/build:/build 
       --name vapor 
       --rm 
       $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA 
@@ -50,6 +50,7 @@ build:
     - cat $MC_CLIENT > mc-client.sh
     - chmod +x ./mc-client.sh
     - ./mc cp vapor-linux-amd64.tar.gz awid5/assets/vapor/latest
+    - ./mc cp ./scriptss/deploy.sh awid5/assets/vapor/latest
   only:
     - dev
     - main
