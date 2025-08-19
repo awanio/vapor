@@ -9,7 +9,7 @@ import './views/network-tab';
 import './views/storage-tab';
 import './views/containers-tab';
 import './views/logs-tab';
-import './views/terminal-tab';
+import './views/terminal-tab-v2';
 import './views/users-tab';
 import './views/docker-tab';
 import './views/kubernetes-tab';
@@ -448,7 +448,7 @@ export class AppRoot extends LitElement {
             ${this.activeView === 'containers' ? html`<containers-tab></containers-tab>` : ''}
             ${this.activeView === 'docker' ? html`<docker-tab .subRoute=${this.subRoute}></docker-tab>` : ''}
             ${this.activeView === 'logs' ? html`<logs-tab></logs-tab>` : ''}
-            ${this.activeView === 'terminal' ? html`<terminal-tab></terminal-tab>` : ''}
+            ${this.activeView === 'terminal' ? html`<terminal-tab-v2></terminal-tab-v2>` : ''}
             ${this.activeView === 'users' ? html`<users-tab></users-tab>` : ''}
             ${this.activeView === 'kubernetes' ? html`<kubernetes-tab .subRoute=${this.subRoute}></kubernetes-tab>` : ''}
             ${this.activeView === 'virtualization' ? html`<virtualization-tab .subRoute=${this.subRoute}></virtualization-tab>` : ''}

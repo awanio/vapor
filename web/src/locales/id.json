@@ -388,11 +388,20 @@
     "copy": "Salin",
     "paste": "Tempel",
     "fullscreen": "Layar Penuh",
+    "exitFullscreen": "Keluar Layar Penuh",
     "settings": "Pengaturan Terminal",
     "fontSize": "Ukuran Font",
     "theme": "Tema Terminal",
     "newTab": "Tab Baru",
-    "closeTab": "Tutup Tab"
+    "closeTab": "Tutup Tab",
+    "sessions": "sesi",
+    "active": "aktif",
+    "noSessions": "Tidak Ada Sesi Terminal",
+    "createFirst": "Buat sesi terminal pertama Anda untuk memulai.",
+    "createNew": "Buat Sesi Baru",
+    "noActiveSession": "Tidak ada sesi aktif",
+    "sessionDisconnected": "Sesi terminal ini telah terputus.",
+    "reconnect": "Hubungkan Kembali"
   },
   "errors": {
     "networkError": "Terjadi kesalahan jaringan",

@@ -414,11 +414,20 @@
     "copy": "Copy",
     "paste": "Paste",
     "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit Fullscreen",
     "settings": "Terminal Settings",
     "fontSize": "Font Size",
     "theme": "Terminal Theme",
     "newTab": "New Tab",
-    "closeTab": "Close Tab"
+    "closeTab": "Close Tab",
+    "sessions": "sessions",
+    "active": "active",
+    "noSessions": "No Terminal Sessions",
+    "createFirst": "Create your first terminal session to get started.",
+    "createNew": "Create New Session",
+    "noActiveSession": "No active session",
+    "sessionDisconnected": "This terminal session has been disconnected.",
+    "reconnect": "Reconnect"
   },
   "errors": {
     "networkError": "Network error occurred",

@@ -186,6 +186,7 @@ export class WebSocketManager {
   private messageHandlers: Map<string, Set<(message: WSMessage) => void>> = new Map();
   private reconnectTimer: number | null = null;
   private authenticated: boolean = false;
+  private intentionalDisconnect: boolean = false;
 
   constructor(private path: string) {
     this.url = '';
@@ -194,6 +195,8 @@ export class WebSocketManager {
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
+        // Reset intentional disconnect flag when connecting
+        this.intentionalDisconnect = false;
         this.url = auth.getWebSocketUrl(this.path);
         this.ws = new WebSocket(this.url);
 
@@ -219,10 +222,16 @@ export class WebSocketManager {
           reject(error);
         };
 
-        this.ws.onclose = () => {
-          console.log('WebSocket closed');
+        this.ws.onclose = (event) => {
+          console.log('WebSocket closed', { code: event.code, reason: event.reason });
           this.authenticated = false;
-          this.scheduleReconnect();
+          
+          // Only reconnect if not intentionally disconnected and not a normal closure
+          if (!this.intentionalDisconnect && event.code !== 1000) {
+            this.scheduleReconnect();
+          } else {
+            console.log('WebSocket closed intentionally or normally, not reconnecting');
+          }
         };
       } catch (error) {
         reject(error);
@@ -325,13 +334,17 @@ export class WebSocketManager {
   }
 
   disconnect(): void {
+    // Mark as intentional disconnect to prevent reconnection
+    this.intentionalDisconnect = true;
+    
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
     
     if (this.ws) {
-      this.ws.close();
+      // Close with normal closure code to indicate intentional disconnect
+      this.ws.close(1000, 'Normal closure');
       this.ws = null;
     }
     

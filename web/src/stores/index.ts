@@ -40,6 +40,9 @@ export {
 // Export Metrics store
 export * from './shared/metrics';
 
+// Export Terminal store
+export * from './shared/terminal';
+
 // Re-export nanostores core functions for convenience
 export { atom, computed, map } from 'nanostores';
 export { persistentAtom, persistentMap } from '@nanostores/persistent';
