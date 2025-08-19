@@ -384,6 +384,15 @@ export function updateNetworkMetrics(data: NetworkMetricData): void {
  * Fetch initial system information
  */
 export async function fetchSystemInfo(): Promise<void> {
+  // Import auth here to avoid circular dependency
+  const { auth } = await import('../../auth');
+  
+  // Check if user is authenticated before making API calls
+  if (!auth.isAuthenticated()) {
+    console.log('[MetricsStore] User not authenticated, skipping system info fetch');
+    return;
+  }
+  
   try {
     const [summary, cpu, memory] = await Promise.all([
       Api.get<SystemSummary>('/system/summary'),
@@ -458,7 +467,16 @@ let unsubscribeMetrics: (() => void) | null = null;
 /**
  * Connect to metrics WebSocket
  */
-export function connectMetrics(): void {
+export async function connectMetrics(): Promise<void> {
+  // Import auth here to avoid circular dependency
+  const { auth } = await import('../../auth');
+  
+  // Check if user is authenticated before connecting
+  if (!auth.isAuthenticated()) {
+    console.log('[MetricsStore] User not authenticated, skipping WebSocket connection');
+    return;
+  }
+  
   if (unsubscribeMetrics) {
     console.log('[MetricsStore] Already connected to metrics WebSocket');
     return;
@@ -548,12 +566,39 @@ export function disconnectMetrics(): void {
 /**
  * Initialize metrics store
  */
-export function initializeMetrics(): void {
+export async function initializeMetrics(): Promise<void> {
+  // Import auth here to avoid circular dependency
+  const { auth } = await import('../../auth');
+  
+  // Only initialize if authenticated
+  if (!auth.isAuthenticated()) {
+    console.log('[MetricsStore] User not authenticated, skipping initialization');
+    return;
+  }
+  
+  console.log('[MetricsStore] Initializing metrics store');
+  
   // Fetch system info on init
-  fetchSystemInfo();
+  await fetchSystemInfo();
   
   // Connect to WebSocket
-  connectMetrics();
+  await connectMetrics();
+}
+
+/**
+ * Re-initialize metrics after login
+ */
+export async function reinitializeMetricsAfterLogin(): Promise<void> {
+  console.log('[MetricsStore] Re-initializing after login');
+  
+  // Disconnect any existing connection
+  disconnectMetrics();
+  
+  // Wait a moment for auth to stabilize
+  await new Promise(resolve => setTimeout(resolve, 100));
+  
+  // Initialize with fresh auth
+  await initializeMetrics();
 }
 
 /**

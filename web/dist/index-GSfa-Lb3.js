@@ -316,6 +316,11 @@ class AuthManager {
   }
 }
 const auth = AuthManager.getInstance();
+const auth$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  AuthManager,
+  auth
+}, Symbol.toStringTag, { value: "Module" }));
 class ThemeManager {
   constructor() {
     this.currentTheme = "dark";
@@ -366,7 +371,7 @@ theme.getTheme();
 auth.isAuthenticated();
 i18n.init().then(() => {
   console.log("i18n initialized, loading app...");
-  import("./app-root-B91NT6Eb.js");
+  import("./app-root-D5BLnIH6.js");
   console.log("Vapor Web UI initialized");
 }).catch((error) => {
   console.error("Failed to initialize i18n:", error);
@@ -375,6 +380,7 @@ export {
   auth as a,
   getApiUrl as b,
   theme as c,
+  auth$1 as d,
   getWsUrl as g,
   i18n as i,
   t

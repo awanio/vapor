@@ -2,7 +2,7 @@ var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 var _a;
-import { i as i18n, a as auth, g as getWsUrl, b as getApiUrl, t as t$5, c as theme } from "./index-BvHuJU99.js";
+import { i as i18n, a as auth, g as getWsUrl, b as getApiUrl, t as t$5, c as theme } from "./index-GSfa-Lb3.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -2582,11 +2582,11 @@ function setRenderOpts(ctx, opts) {
 }
 function decorateText(ctx, x2, y3, line, opts) {
   if (opts.strikethrough || opts.underline) {
-    const metrics = ctx.measureText(line);
-    const left = x2 - metrics.actualBoundingBoxLeft;
-    const right = x2 + metrics.actualBoundingBoxRight;
-    const top = y3 - metrics.actualBoundingBoxAscent;
-    const bottom = y3 + metrics.actualBoundingBoxDescent;
+    const metrics2 = ctx.measureText(line);
+    const left = x2 - metrics2.actualBoundingBoxLeft;
+    const right = x2 + metrics2.actualBoundingBoxRight;
+    const top = y3 - metrics2.actualBoundingBoxAscent;
+    const bottom = y3 + metrics2.actualBoundingBoxDescent;
     const yDecoration = opts.strikethrough ? (top + bottom) / 2 : bottom;
     ctx.strokeStyle = ctx.fillStyle;
     ctx.beginPath();
@@ -16759,6 +16759,11 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
+  const { auth: auth2 } = await import("./index-GSfa-Lb3.js").then((n3) => n3.d);
+  if (!auth2.isAuthenticated()) {
+    console.log("[MetricsStore] User not authenticated, skipping system info fetch");
+    return;
+  }
   try {
     const [summary, cpu, memory] = await Promise.all([
       Api.get("/system/summary"),
@@ -16798,7 +16803,12 @@ function calculateAverage(metric, periodMs = 6e4) {
   return recentPoints.reduce((sum, p2) => sum + p2.value, 0) / recentPoints.length;
 }
 let unsubscribeMetrics = null;
-function connectMetrics() {
+async function connectMetrics() {
+  const { auth: auth2 } = await import("./index-GSfa-Lb3.js").then((n3) => n3.d);
+  if (!auth2.isAuthenticated()) {
+    console.log("[MetricsStore] User not authenticated, skipping WebSocket connection");
+    return;
+  }
   if (unsubscribeMetrics) {
     console.log("[MetricsStore] Already connected to metrics WebSocket");
     return;
@@ -16861,9 +16871,21 @@ function disconnectMetrics() {
     $metricsConnected.set(false);
   }
 }
-function initializeMetrics() {
-  fetchSystemInfo();
-  connectMetrics();
+async function initializeMetrics() {
+  const { auth: auth2 } = await import("./index-GSfa-Lb3.js").then((n3) => n3.d);
+  if (!auth2.isAuthenticated()) {
+    console.log("[MetricsStore] User not authenticated, skipping initialization");
+    return;
+  }
+  console.log("[MetricsStore] Initializing metrics store");
+  await fetchSystemInfo();
+  await connectMetrics();
+}
+async function reinitializeMetricsAfterLogin() {
+  console.log("[MetricsStore] Re-initializing after login");
+  disconnectMetrics();
+  await new Promise((resolve2) => setTimeout(resolve2, 100));
+  await initializeMetrics();
 }
 function cleanupMetrics() {
   disconnectMetrics();
@@ -16893,6 +16915,42 @@ if (typeof window !== "undefined") {
   }
   window.addEventListener("beforeunload", cleanupMetrics);
 }
+const metrics = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  $cpuHistory,
+  $cpuInfo,
+  $cpuTrend,
+  $cpuUsage,
+  $currentCpu,
+  $currentDisk,
+  $currentMemory,
+  $currentNetwork,
+  $diskHistory,
+  $lastMetricUpdate,
+  $memoryHistory,
+  $memoryInfo,
+  $memoryTrend,
+  $memoryUsage,
+  $metricsAlerts,
+  $metricsConnected,
+  $metricsError,
+  $networkHistory,
+  $systemSummary,
+  calculateAverage,
+  cleanupMetrics,
+  connectMetrics,
+  disconnectMetrics,
+  fetchSystemInfo,
+  formatBytes,
+  formatUptime,
+  getMetricHistory,
+  initializeMetrics,
+  reinitializeMetricsAfterLogin,
+  updateCpuMetrics,
+  updateDiskMetrics,
+  updateMemoryMetrics,
+  updateNetworkMetrics
+}, Symbol.toStringTag, { value: "Module" }));
 var __getOwnPropDesc$B = Object.getOwnPropertyDescriptor;
 var __decorateClass$K = (decorators, target, key, kind) => {
   var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$B(target, key) : target;
@@ -56174,14 +56232,18 @@ const _AppRoot = class _AppRoot extends i$1 {
     this.languageMenuOpen = false;
     this.sidebarCollapsed = false;
     this.subRoute = null;
-    this.handleAuthLogin = () => {
+    this.handleAuthLogin = async () => {
       this.isAuthenticated = true;
+      const { reinitializeMetricsAfterLogin: reinitializeMetricsAfterLogin2 } = await Promise.resolve().then(() => metrics);
+      await reinitializeMetricsAfterLogin2();
     };
     this.handleAuthLogout = () => {
       this.isAuthenticated = false;
     };
-    this.handleLoginSuccess = () => {
+    this.handleLoginSuccess = async () => {
       this.isAuthenticated = true;
+      const { reinitializeMetricsAfterLogin: reinitializeMetricsAfterLogin2 } = await Promise.resolve().then(() => metrics);
+      await reinitializeMetricsAfterLogin2();
     };
     this.handleThemeChange = (e3) => {
       this.currentTheme = e3.detail.theme;

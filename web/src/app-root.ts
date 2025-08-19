@@ -326,16 +326,22 @@ export class AppRoot extends LitElement {
     window.removeEventListener('auth:logout', this.handleAuthLogout);
   }
   
-  private handleAuthLogin = () => {
+  private handleAuthLogin = async () => {
     this.isAuthenticated = true;
+    // Reinitialize metrics after login
+    const { reinitializeMetricsAfterLogin } = await import('./stores/shared/metrics');
+    await reinitializeMetricsAfterLogin();
   };
   
   private handleAuthLogout = () => {
     this.isAuthenticated = false;
   };
   
-  private handleLoginSuccess = () => {
+  private handleLoginSuccess = async () => {
     this.isAuthenticated = true;
+    // Reinitialize metrics after login success
+    const { reinitializeMetricsAfterLogin } = await import('./stores/shared/metrics');
+    await reinitializeMetricsAfterLogin();
   };
   
   private handleLogout() {
