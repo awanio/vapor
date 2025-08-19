@@ -25,7 +25,7 @@ default:
 build:
   stage: build
   image:
-    name: docker:19.03.12
+    name: cimg/base:edge-22.04
   services:
     - name: docker:20.10-dind
   script:
