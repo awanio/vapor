@@ -4,7 +4,7 @@ import { auth } from './auth';
 import { theme } from './theme';
 import { i18n, t, Locale } from './i18n';
 import './components/login-page';
-import './views/dashboard-tab';
+import './views/dashboard-tab-v2';
 import './views/network-tab';
 import './views/storage-tab';
 import './views/containers-tab';
@@ -442,7 +442,7 @@ export class AppRoot extends LitElement {
         <!-- Main Content -->
         <main class="main">
           <div class="tab-content">
-            ${this.activeView === 'dashboard' ? html`<dashboard-tab></dashboard-tab>` : ''}
+            ${this.activeView === 'dashboard' ? html`<dashboard-tab-v2></dashboard-tab-v2>` : ''}
             ${this.activeView === 'network' ? html`<network-tab .subRoute=${this.subRoute}></network-tab>` : ''}
             ${this.activeView === 'storage' ? html`<storage-tab .subRoute=${this.subRoute}></storage-tab>` : ''}
             ${this.activeView === 'containers' ? html`<containers-tab></containers-tab>` : ''}
