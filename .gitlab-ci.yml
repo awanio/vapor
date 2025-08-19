@@ -223,6 +223,11 @@ build:
     - ./mc-client.sh
     - ./mc cp vapor-linux-amd64.tar.gz awid5/assets/vapor/latest
     - ./mc cp ./scripts/install.sh awid5/assets/vapor/latest
+    - docker save $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA | gzip > vapor-image.tar.gz
+  artifacts:
+    paths:
+      - vapor-image.tar.gz
+    expire_in: 1 day
   only:
     - dev
     - main
@@ -258,6 +263,119 @@ build:docs:
   tags:
     - idch-bg-awid1
     
+# ====================
+# E2E TEST STAGE
+# ====================
+
+e2e:docker-compose:
+  stage: e2e-test
+  name: cimg/base:edge-22.04
+  services:
+    - name: docker:24-dind
+      alias: docker
+  variables:
+    DOCKER_DRIVER: overlay2
+    COMPOSE_PROJECT_NAME: vapor-e2e-$CI_PIPELINE_ID
+  before_script:
+    # Install docker-compose
+    - apk add --no-cache docker-compose bash curl jq
+    # Wait for Docker
+    - |-
+        timeout=60
+        until docker info >/dev/null 2>&1; do
+          if [ $timeout -le 0 ]; then
+            echo "Docker daemon failed to start"
+            exit 1
+          fi
+          echo "Waiting for Docker daemon..."
+          sleep 1
+          timeout=$((timeout - 1))
+        done
+  script:
+    - echo "Starting E2E test environment..."
+    - cd development
+    - docker-compose up -d
+    - echo "Waiting for services to be ready..."
+    - sleep 30
+    - docker-compose ps
+    - echo "Running E2E tests..."
+    - docker-compose exec -T vapor-api-dev bash -c "cd /app && chmod +x test/*.sh"
+    - docker-compose exec -T vapor-api-dev bash -c "cd /app && ./test/smoke_test.sh"
+    - docker-compose exec -T vapor-api-dev bash -c "cd /app && ./test/test_docker_endpoints.sh"
+    - docker-compose exec -T vapor-api-dev bash -c "cd /app && ./test/test_auth.sh"
+  after_script:
+    - cd development
+    - docker-compose logs vapor-api-dev > vapor-api.log || true
+    - docker-compose down -v || true
+  artifacts:
+    when: always
+    paths:
+      - development/vapor-api.log
+    expire_in: 1 week
+  when: manual
+  only:
+    - main
+    - dev
+  tags:
+    - idch-bg-awid1
+
+e2e:performance:
+  stage: e2e-test
+  name: cimg/base:edge-22.04
+  services:
+    - name: docker:24-dind
+      alias: docker
+  before_script:
+    - apk add --no-cache bash curl jq
+    # Load the Docker image from artifacts
+    - docker load -i vapor-image.tar.gz
+  script:
+    - echo "Starting Vapor container for performance testing..."
+    - docker run -d --name vapor-perf -p 8080:8080 --privileged $ACR_HOST/$PATH_NAME:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA
+    - sleep 10
+    - echo "Running performance tests..."
+    - chmod +x ./test/performance_test.sh
+    - ./test/performance_test.sh || true
+  after_script:
+    - docker logs vapor-perf > performance.log || true
+    - docker stop vapor-perf || true
+    - docker rm vapor-perf || true
+  artifacts:
+    when: always
+    paths:
+      - performance.log
+      - performance-results.json
+    expire_in: 1 week
+  when: manual
+  only:
+    - main
+    - dev
+  allow_failure: true
+  tags:
+    - idch-bg-awid1
+
+manual:full-test:
+  stage: e2e-test
+  image: golang:${GO_VERSION}
+  services:
+    - name: docker:24-dind
+      alias: docker
+  before_script:
+    - *go_before_script
+    - apt-get update
+    - apt-get install -y libvirt-dev pkg-config docker.io docker-compose
+    - go mod download
+  script:
+    - echo "Running all tests..."
+    - chmod +x ./test/run_all_tests.sh
+    - ./test/run_all_tests.sh
+  when: manual
+  only:
+    - main
+    - dev
+  tags:
+    - idch-bg-awid1
+
 deploy:docs:
   image: cimg/base:edge-22.04
   stage: deploy
