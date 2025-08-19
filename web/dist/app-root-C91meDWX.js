@@ -2,7 +2,7 @@ var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 var _a;
-import { i as i18n, a as auth, g as getWsUrl, b as getApiUrl, t as t$5, c as theme } from "./index-GSfa-Lb3.js";
+import { i as i18n, a as auth, g as getWsUrl, b as getApiUrl, t as t$5, c as theme } from "./index-aPANIioD.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -636,6 +636,7 @@ let LoginPage = class extends I18nLitElement {
     this.password = "";
     this.loading = false;
     this.error = "";
+    this.showPassword = false;
   }
   render() {
     return x`
@@ -664,15 +665,39 @@ let LoginPage = class extends I18nLitElement {
           
           <div class="form-group">
             <label for="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              .value=${this.password}
-              @input=${this.handlePasswordInput}
-              ?disabled=${this.loading}
-              required
-              autocomplete="current-password"
-            />
+            <div class="password-input-wrapper">
+              <input
+                id="password"
+                type=${this.showPassword ? "text" : "password"}
+                .value=${this.password}
+                @input=${this.handlePasswordInput}
+                ?disabled=${this.loading}
+                required
+                autocomplete="current-password"
+              />
+              <button
+                type="button"
+                class="password-toggle"
+                @click=${this.togglePasswordVisibility}
+                ?disabled=${this.loading}
+                title=${this.showPassword ? "Hide password" : "Show password"}
+                aria-label=${this.showPassword ? "Hide password" : "Show password"}
+              >
+                ${this.showPassword ? x`
+                  <!-- Eye Off Icon -->
+                  <svg viewBox="0 0 24 24">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                  </svg>
+                ` : x`
+                  <!-- Eye Icon -->
+                  <svg viewBox="0 0 24 24">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                `}
+              </button>
+            </div>
           </div>
           
           <button type="submit" ?disabled=${this.loading}>
@@ -693,6 +718,9 @@ let LoginPage = class extends I18nLitElement {
   handlePasswordInput(e3) {
     this.password = e3.target.value;
     this.error = "";
+  }
+  togglePasswordVisibility() {
+    this.showPassword = !this.showPassword;
   }
   async handleSubmit(e3) {
     e3.preventDefault();
@@ -773,6 +801,51 @@ LoginPage.styles = i$4`
       border-color: var(--primary);
     }
 
+    .password-input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .password-input-wrapper input {
+      padding-right: 2.5rem;
+    }
+
+    .password-toggle {
+      position: absolute;
+      right: 0.75rem;
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 0.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s;
+      width: 24px;
+      height: 24px;
+    }
+
+    .password-toggle:hover {
+      color: var(--text-primary);
+    }
+
+    .password-toggle:focus {
+      outline: none;
+      color: var(--primary);
+    }
+
+    .password-toggle svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
     button {
       width: 100%;
       padding: 0.75rem;
@@ -824,6 +897,9 @@ __decorateClass$L([
 __decorateClass$L([
   r$1()
 ], LoginPage.prototype, "error", 2);
+__decorateClass$L([
+  r$1()
+], LoginPage.prototype, "showPassword", 2);
 LoginPage = __decorateClass$L([
   t$2("login-page")
 ], LoginPage);
@@ -16759,7 +16835,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-GSfa-Lb3.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-aPANIioD.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -16804,7 +16880,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-GSfa-Lb3.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-aPANIioD.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping WebSocket connection");
     return;
@@ -16872,7 +16948,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-GSfa-Lb3.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-aPANIioD.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
