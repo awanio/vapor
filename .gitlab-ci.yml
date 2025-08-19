@@ -31,6 +31,10 @@ cache:
   - mkdir -p .go .go-cache
   - export PATH=$PATH:$GOPATH/bin
 
+# ====================
+# LINT STAGE
+# ====================
+
 lint:golangci:
   stage: lint
   image: golang:${GO_VERSION}-alpine
@@ -83,6 +87,10 @@ lint:fmt:
     - test -z "$(gofmt -l .)"
   only:
     - merge_requests
+
+# ====================
+# TEST STAGE
+# ====================
 
 test:unit:
   stage: test
@@ -178,6 +186,10 @@ test:integration:
     - merge_requests
     - main
     - dev
+
+# ====================
+# BUILD STAGE
+# ====================
 
 build:
   stage: build
@@ -374,6 +386,10 @@ manual:full-test:
     - dev
   tags:
     - idch-bg-awid1
+
+# ====================
+# DEPLOY STAGE
+# ====================
 
 deploy:docs:
   image: cimg/base:edge-22.04
