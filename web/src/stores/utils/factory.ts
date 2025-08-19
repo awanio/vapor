@@ -7,19 +7,21 @@ import { persistentAtom } from '@nanostores/persistent';
 import type {
   BaseEntity,
   CollectionState,
-  ResourceState,
+  // ResourceState,  // TODO: Use for resource state tracking in future
   StoreConfig,
   StoreError,
   CrudResult,
   BatchResult,
   QueryParams,
   OptimisticUpdate,
-  StoreEventType,
   StoreEvent,
   FilterConfig,
   SortConfig,
   PaginationConfig,
 } from '../types';
+
+// Import StoreEventType as a value, not just a type
+import { StoreEventType } from '../types';
 
 /**
  * Store factory options
@@ -310,7 +312,7 @@ export function createStore<T extends BaseEntity>(
 
       // Generate ID if not provided
       const id = item[idField] || crypto.randomUUID();
-      const newItem = { ...item, [idField]: id } as T;
+      const newItem = { ...item, [idField]: id } as unknown as T;
 
       // Update store
       const items = new Map($items.get());
@@ -333,7 +335,7 @@ export function createStore<T extends BaseEntity>(
       $error.set(storeError);
       emit({
         type: StoreEventType.ERROR,
-        payload: storeError,
+        payload: storeError as any,  // TODO: Fix type inference for error events
         timestamp: Date.now(),
       });
       return { success: false, error: storeError };
@@ -397,7 +399,7 @@ export function createStore<T extends BaseEntity>(
       $error.set(storeError);
       emit({
         type: StoreEventType.ERROR,
-        payload: storeError,
+        payload: storeError as any,  // TODO: Fix type inference for error events
         timestamp: Date.now(),
       });
       return { success: false, error: storeError };
@@ -422,7 +424,7 @@ export function createStore<T extends BaseEntity>(
 
       emit({
         type: StoreEventType.DELETED,
-        payload: deletedItem,
+        payload: deletedItem as any,  // TODO: Fix type inference for delete events
         timestamp: Date.now(),
       });
 
@@ -436,7 +438,7 @@ export function createStore<T extends BaseEntity>(
       $error.set(storeError);
       emit({
         type: StoreEventType.ERROR,
-        payload: storeError,
+        payload: storeError as any,  // TODO: Fix type inference for error events
         timestamp: Date.now(),
       });
       return { success: false, error: storeError };
@@ -482,7 +484,7 @@ export function createStore<T extends BaseEntity>(
 
     emit({
       type: StoreEventType.BATCH_UPDATED,
-      payload: succeeded,
+      payload: succeeded as any,  // TODO: Fix type inference for batch events
       timestamp: Date.now(),
     });
 

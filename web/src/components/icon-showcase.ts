@@ -4,11 +4,11 @@
 
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import { icon, renderInlineIcon, getAvailableIcons, IconSize } from '../utils/icons';
+import { icon, renderInlineIcon, IconSize } from '../utils/icons';
 
 @customElement('icon-showcase')
 export class IconShowcase extends LitElement {
-  static styles = css`
+  static override styles = css`
     :host {
       display: block;
       padding: 1rem;
@@ -54,7 +54,7 @@ export class IconShowcase extends LitElement {
   @state()
   private inlineIcons: Map<string, any> = new Map();
 
-  async connectedCallback() {
+  override async connectedCallback() {
     super.connectedCallback();
     // Load some inline icons for demonstration
     const iconNames = ['kubernetes', 'ansible', 'helm', 'docker'];
@@ -65,7 +65,7 @@ export class IconShowcase extends LitElement {
     this.requestUpdate();
   }
 
-  render() {
+  override render() {
     const sizes: IconSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
     
     return html`

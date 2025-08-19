@@ -5,7 +5,7 @@
 
 import { html, css, LitElement } from 'lit';
 import { customElement } from 'lit/decorators.js';
-import { StoreMixin } from '../stores';
+import { StoreMixin } from '../stores/utils/lit-mixin';
 import {
   $cpuUsage,
   $memoryUsage,
@@ -137,7 +137,7 @@ export class MetricsStatusBar extends StoreMixin(LitElement) {
   private metricsConnected = this.subscribeToStore($metricsConnected);
   private metricsAlerts = this.subscribeToStore($metricsAlerts);
 
-  private getValueClass(value: number, type: 'cpu' | 'memory'): string {
+  private getValueClass(value: number, _type: 'cpu' | 'memory'): string {
     if (value > 90) return 'critical';
     if (value > 75) return 'high';
     return 'good';
@@ -145,7 +145,7 @@ export class MetricsStatusBar extends StoreMixin(LitElement) {
 
   override render() {
     const hasAlerts = this.metricsAlerts.value && this.metricsAlerts.value.length > 0;
-    const hasCriticalAlerts = this.metricsAlerts.value?.some(a => a.type === 'error');
+    const hasCriticalAlerts = this.metricsAlerts.value?.some((a: any) => a.type === 'error');
 
     return html`
       <div class="status-bar">

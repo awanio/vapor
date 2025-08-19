@@ -36,8 +36,8 @@ export class AnsibleExecutions extends LitElement {
   @state()
   private selectedExecutionId?: string;
 
-  @state()
-  private error?: string;
+  // @state()
+  // private error?: string;  // TODO: Implement error handling UI
 
   @state()
   private refreshInterval?: number;
@@ -249,7 +249,7 @@ export class AnsibleExecutions extends LitElement {
 
   private async loadData() {
     this.loading = true;
-    this.error = undefined;
+    // this.error = undefined;
     
     try {
       // Apply filters to API call
@@ -260,7 +260,7 @@ export class AnsibleExecutions extends LitElement {
       this.executions = response.executions || [];
     } catch (error) {
       console.error('Failed to load executions:', error);
-      this.error = error instanceof Error ? error.message : 'Failed to load executions';
+      // this.error = error instanceof Error ? error.message : 'Failed to load executions';
       this.executions = [
         {
           id: 'exec-001',
@@ -295,10 +295,11 @@ export class AnsibleExecutions extends LitElement {
     this.loadData(); // Reload with new filter
   }
 
-  private handleTypeFilterChange(e: CustomEvent) {
-    this.typeFilter = e.detail.value;
-    this.loadData(); // Reload with new filter
-  }
+  // TODO: Implement type filter change handler
+  // private handleTypeFilterChange(e: CustomEvent) {
+  //   this.typeFilter = e.detail.value;
+  //   this.loadData(); // Reload with new filter
+  // }
 
   private get filteredExecutions() {
     let filtered = this.executions;

@@ -6,7 +6,8 @@
 import { LitElement, PropertyValueMap } from 'lit';
 import { StoreController } from '@nanostores/lit';
 import type { ReadableAtom, WritableAtom } from 'nanostores';
-import type { Constructor } from 'lit/decorators.js';
+// Define Constructor type locally since lit/decorators doesn't export it
+type Constructor<T = {}> = new (...args: any[]) => T;
 
 /**
  * Store subscription configuration
@@ -58,7 +59,8 @@ export interface StoreMixinConfig {
  */
 export class EnhancedStoreController<T> extends StoreController<T> {
   private subscription?: StoreSubscription<T>;
-  private unsubscribe?: () => void;
+  private _unsubscribe?: () => void;
+  private _store: ReadableAtom<T> | WritableAtom<T>;
   
   constructor(
     host: LitElement,
@@ -66,29 +68,30 @@ export class EnhancedStoreController<T> extends StoreController<T> {
     subscription?: StoreSubscription<T>
   ) {
     super(host, store);
+    this._store = store;
     this.subscription = subscription;
   }
   
-  hostConnected(): void {
+  override hostConnected(): void {
     super.hostConnected();
     
     if (this.subscription?.onChange) {
       // Subscribe to store changes
-      this.unsubscribe = (this.store as any).subscribe(this.subscription.onChange);
+      this._unsubscribe = (this._store as any).subscribe(this.subscription.onChange);
     }
   }
   
-  hostDisconnected(): void {
+  override hostDisconnected(): void {
     super.hostDisconnected();
     
     // Clean up subscription
-    if (this.unsubscribe) {
-      this.unsubscribe();
-      this.unsubscribe = undefined;
+    if (this._unsubscribe) {
+      this._unsubscribe();
+      this._unsubscribe = undefined;
     }
   }
   
-  get value(): T {
+  override get value(): T {
     const rawValue = super.value;
     
     // Apply transformation if provided
@@ -263,7 +266,7 @@ export function StoreMixin<T extends Constructor<LitElement>>(
     /**
      * Lifecycle: Connected callback
      */
-    connectedCallback(): void {
+    override connectedCallback(): void {
       super.connectedCallback();
       
       if (this._debug) {
@@ -274,7 +277,7 @@ export function StoreMixin<T extends Constructor<LitElement>>(
     /**
      * Lifecycle: Disconnected callback
      */
-    disconnectedCallback(): void {
+    override disconnectedCallback(): void {
       if (this._autoUnsubscribe) {
         this.cleanupStores();
       }
@@ -289,7 +292,7 @@ export function StoreMixin<T extends Constructor<LitElement>>(
     /**
      * Lifecycle: First update
      */
-    protected firstUpdated(changedProperties: PropertyValueMap<any> | Map<PropertyKey, unknown>): void {
+    protected override firstUpdated(changedProperties: PropertyValueMap<any> | Map<PropertyKey, unknown>): void {
       super.firstUpdated(changedProperties);
       
       if (this._debug) {

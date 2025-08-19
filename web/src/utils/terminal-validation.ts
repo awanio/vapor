@@ -5,7 +5,9 @@
  * to ensure they are properly closed when terminal tabs are closed.
  */
 
-import { terminalSessions, activeSessionId, sessionList } from '../stores/shared/terminal';
+import { terminalSessions } from '../stores/shared/terminal';
+// Unused imports - TODO: Use these for session management in future
+// import { activeSessionId, sessionList } from '../stores/shared/terminal';
 import type { TerminalSessionState } from '../stores/shared/terminal';
 
 export interface ConnectionValidationResult {
@@ -72,7 +74,7 @@ export class TerminalConnectionValidator {
       const ws = (session.wsManager as any).ws;
       if (ws && ws.readyState !== undefined) {
         wsReadyState = ws.readyState;
-        wsReadyStateText = WS_READY_STATES[wsReadyState] || 'UNKNOWN';
+        wsReadyStateText = wsReadyState !== undefined ? (WS_READY_STATES[wsReadyState] || 'UNKNOWN') : 'UNKNOWN';
         isWebSocketConnected = wsReadyState === WebSocket.OPEN;
       }
     }
@@ -273,8 +275,9 @@ export class TerminalConnectionValidator {
         if (inactiveTime > 600000) { // 10 minutes
           console.warn(`Removing long-inactive session ${sessionId}`);
           // Use the terminal store's closeSession method if available
-          if (window.terminalStore) {
-            window.terminalStore.closeSession(sessionId);
+          // TODO: Access terminalStore when it's properly exposed on window
+          if ((window as any).terminalStore) {
+            (window as any).terminalStore.closeSession(sessionId);
           }
           cleanedCount++;
         }

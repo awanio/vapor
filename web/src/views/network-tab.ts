@@ -745,7 +745,7 @@ export class NetworkTab extends I18nLitElement {
   private editingIpIndex: number | null = null;
 
   @state()
-  private editingIpValue = '';
+  // private editingIpValue = '';  // TODO: Use for IP editing feature
 
   @state()
   private showAddIpModal = false;
@@ -1159,7 +1159,7 @@ export class NetworkTab extends I18nLitElement {
     this.showDetailsDrawer = false;
     this.selectedInterface = null;
     this.editingIpIndex = null;
-    this.editingIpValue = '';
+    // this.editingIpValue = '';
     this.newIpAddress = '';
     this.newIpNetmask = 24;
     this.newIpGateway = '';
@@ -1173,7 +1173,7 @@ export class NetworkTab extends I18nLitElement {
     // Parse the IP address and netmask
     const [ip, netmaskStr] = currentIp.split('/');
     this.editIpAddress = ip || currentIp;
-    this.editIpNetmask = parseInt(netmaskStr) || 24;
+    this.editIpNetmask = netmaskStr ? parseInt(netmaskStr) : 24;
     this.editIpGateway = ''; // Gateway is not stored with the IP, so leave empty
     
     this.showEditIpModal = true;

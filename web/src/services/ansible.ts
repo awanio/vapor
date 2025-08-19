@@ -1,22 +1,23 @@
 import { Api } from '../api';
 import { WebSocketManager } from '../api';
+import type { WSMessage } from '../types/api';
 import type {
-  PlaybookInfo,
-  PlaybookDetail,
+  // PlaybookInfo,
+  // PlaybookDetail,
   PlaybookUploadRequest,
   PlaybookValidationResponse,
   PlaybookRunRequest,
   ExecutionStartResponse,
   ExecutionSummary,
-  ExecutionDetail,
+  // ExecutionDetail,
   AdHocRequest,
-  PlaybookTemplate,
+  // PlaybookTemplate,
   CreateFromTemplateRequest,
-  AnsibleInventory,
+  // AnsibleInventory,
   SaveInventoryRequest,
   GitSyncRequest,
   GalaxyInstallRequest,
-  ScheduleInfo,
+  // ScheduleInfo,
   CreateScheduleRequest,
   PlaybooksListResponse,
   PlaybookDetailResponse,
@@ -174,7 +175,7 @@ export class AnsibleService {
     const wsManager = new WebSocketManager(`/api/v1/ansible/executions/${executionId}/stream`);
     
     // Subscribe to messages
-    wsManager.subscribe('message', (rawMessage: any) => {
+    wsManager.on('message', (rawMessage: any) => {
       try {
         // Parse the message based on expected format
         if (typeof rawMessage === 'string') {
@@ -203,11 +204,11 @@ export class AnsibleService {
 
     // Subscribe to errors
     if (onError) {
-      wsManager.subscribe('error', onError);
+      wsManager.on('error', (error: WSMessage) => onError(error as unknown as Error));
     }
 
     // Subscribe to close event
-    wsManager.subscribe('close', () => {
+    wsManager.on('close', () => {
       if (onComplete) {
         onComplete();
       }

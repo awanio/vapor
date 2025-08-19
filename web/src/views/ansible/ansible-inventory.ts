@@ -8,7 +8,7 @@ import '../../components/ui/action-dropdown';
 import { AnsibleService } from '../../services/ansible';
 import type { Column } from '../../components/tables/resource-table';
 import type { ActionItem } from '../../components/ui/action-dropdown';
-import type { AnsibleInventory, DynamicInventoryResponse } from '../../types/ansible';
+import type { AnsibleInventory as AnsibleInventoryType } from '../../types/ansible';
 
 interface InventoryItem {
   id: string;
@@ -24,7 +24,7 @@ interface InventoryItem {
 }
 
 @customElement('ansible-inventory')
-export class AnsibleInventory extends LitElement {
+export class AnsibleInventoryView extends LitElement {
   @state()
   private loading = false;
 
@@ -37,20 +37,20 @@ export class AnsibleInventory extends LitElement {
   @state()
   private typeFilter: 'all' | 'host' | 'group' = 'all';
 
-  @state()
-  private inventory?: AnsibleInventory;
+  // @state()
+  // private inventory?: AnsibleInventoryType;  // TODO: Use for inventory state management
 
-  @state()
-  private error?: string;
+  // @state()
+  // private error?: string;
 
-  @state()
-  private showSaveDialog = false;
+  // @state()
+  // private showSaveDialog = false;
 
-  @state()
-  private showEditVariablesDialog = false;
+  // @state()
+  // private showEditVariablesDialog = false;
 
-  @state()
-  private selectedItem?: InventoryItem;
+  // @state()
+  // private selectedItem?: InventoryItem;
 
   static override styles = css`
     :host {
@@ -269,18 +269,19 @@ export class AnsibleInventory extends LitElement {
 
   private async loadInventory() {
     this.loading = true;
-    this.error = undefined;
+    // this.error = undefined;
     
     try {
       // Fetch dynamic inventory from the system
       const response = await AnsibleService.getDynamicInventory();
-      this.inventory = response.inventory;
+      // Store inventory for future use
+      // this.inventory = response.inventory;
       
       // Convert inventory to display items
       this.inventoryItems = this.convertInventoryToItems(response.inventory);
     } catch (error) {
       console.error('Failed to load inventory:', error);
-      this.error = error instanceof Error ? error.message : 'Failed to load inventory';
+      // this.error = error instanceof Error ? error.message : 'Failed to load inventory';
       
       // Fallback to empty or sample data for development
       this.inventoryItems = [
@@ -335,7 +336,7 @@ export class AnsibleInventory extends LitElement {
         name: 'webservers',
         type: 'group',
         description: 'All web servers',
-        hosts: 2,
+        hosts: ['web-server-01', 'web-server-02'],
         variables: {
           http_port: 80,
           https_port: 443,
@@ -349,7 +350,7 @@ export class AnsibleInventory extends LitElement {
         name: 'databases',
         type: 'group',
         description: 'All database servers',
-        hosts: 1,
+        hosts: ['db-server-01'],
         variables: {
           backup_schedule: '0 2 * * *',
           replication_enabled: true
@@ -362,7 +363,7 @@ export class AnsibleInventory extends LitElement {
         name: 'production',
         type: 'group',
         description: 'Production environment',
-        hosts: 3,
+        hosts: ['web-server-01', 'web-server-02', 'db-server-01'],
         variables: {
           environment: 'production',
           monitoring_enabled: true,
@@ -407,7 +408,7 @@ export class AnsibleInventory extends LitElement {
     }
   }
 
-  private convertInventoryToItems(inventory: AnsibleInventory): InventoryItem[] {
+  private convertInventoryToItems(inventory: AnsibleInventoryType): InventoryItem[] {
     const items: InventoryItem[] = [];
     let itemId = 1;
     
@@ -454,7 +455,7 @@ export class AnsibleInventory extends LitElement {
     return items;
   }
 
-  private getHostGroups(hostname: string, inventory: AnsibleInventory): string[] {
+  private getHostGroups(hostname: string, inventory: AnsibleInventoryType): string[] {
     const groups: string[] = [];
     
     for (const [groupName, groupData] of Object.entries(inventory)) {
@@ -648,8 +649,8 @@ export class AnsibleInventory extends LitElement {
     }
   }
 
-  private convertItemsToInventory(items: InventoryItem[]): AnsibleInventory {
-    const inventory: AnsibleInventory = {
+  private convertItemsToInventory(items: InventoryItem[]): AnsibleInventoryType {
+    const inventory: AnsibleInventoryType = {
       _meta: {
         hostvars: {}
       },

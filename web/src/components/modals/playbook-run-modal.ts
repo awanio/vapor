@@ -1,7 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { AnsibleService } from '../../services/ansible';
-import type { PlaybookRunRequest, ExecutionStartResponse } from '../../types/ansible';
+import type { PlaybookRunRequest } from '../../types/ansible';
 
 @customElement('playbook-run-modal')
 export class PlaybookRunModal extends LitElement {
@@ -350,7 +350,9 @@ export class PlaybookRunModal extends LitElement {
             const trimmed = line.trim();
             if (trimmed && trimmed.includes('=')) {
               const [key, ...valueParts] = trimmed.split('=');
-              extraVarsObj[key.trim()] = valueParts.join('=').trim();
+              if (key) {
+                extraVarsObj[key.trim()] = valueParts.join('=').trim();
+              }
             }
           }
         }

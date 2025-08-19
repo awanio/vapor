@@ -8,7 +8,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { terminalValidator, type ValidationSummary } from '../utils/terminal-validation';
-import { terminalStore, terminalSessions, activeSessionId } from '../stores/shared/terminal';
+import { terminalStore, terminalSessions } from '../stores/shared/terminal';
 
 @customElement('terminal-connection-test')
 export class TerminalConnectionTest extends LitElement {
@@ -24,7 +24,7 @@ export class TerminalConnectionTest extends LitElement {
   @state()
   private leakCheckResults: { hasLeaks: boolean; details: string[] } | null = null;
 
-  static styles = css`
+  static override styles = css`
     :host {
       display: block;
       padding: 16px;
@@ -229,13 +229,13 @@ export class TerminalConnectionTest extends LitElement {
     }
   `;
 
-  connectedCallback() {
+  override connectedCallback() {
     super.connectedCallback();
     // Initial validation
     this.runValidation();
   }
 
-  disconnectedCallback() {
+  override disconnectedCallback() {
     super.disconnectedCallback();
     // Stop monitoring when component is removed
     if (this.isMonitoring) {
@@ -280,7 +280,9 @@ export class TerminalConnectionTest extends LitElement {
     const sessionIds = Array.from(sessions.keys());
     if (sessionIds.length > 0) {
       const randomId = sessionIds[Math.floor(Math.random() * sessionIds.length)];
-      terminalStore.closeSession(randomId);
+      if (randomId) {
+        terminalStore.closeSession(randomId);
+      }
       console.log('Closed session:', randomId);
       this.runValidation();
     }
@@ -291,7 +293,9 @@ export class TerminalConnectionTest extends LitElement {
     const sessionIds = Array.from(sessions.keys());
     if (sessionIds.length > 0) {
       const randomId = sessionIds[Math.floor(Math.random() * sessionIds.length)];
-      terminalStore.disconnectSession(randomId);
+      if (randomId) {
+        terminalStore.disconnectSession(randomId);
+      }
       console.log('Disconnected session:', randomId);
       this.runValidation();
     }
@@ -304,7 +308,7 @@ export class TerminalConnectionTest extends LitElement {
     return 'error';
   }
 
-  render() {
+  override render() {
     const results = this.validationResults;
 
     return html`

@@ -9,9 +9,9 @@ import type { APIResponse } from '../../types/api';
 import type {
   StoreError,
   QueryParams,
-  FilterConfig,
-  SortConfig,
-  PaginationConfig,
+  // FilterConfig,  // TODO: Implement filtering support in future
+  // SortConfig,    // TODO: Implement sorting support in future  
+  // PaginationConfig,  // TODO: Implement pagination support in future
   CrudResult,
   BatchResult,
   BaseEntity,
@@ -302,7 +302,7 @@ export class StoreApiClient {
         }
         
         // Set retry function
-        lastError.retry = () => this.request<T>(path, options);
+        lastError.retry = () => this.request<T>(path, options) as Promise<void>;
         
         // Cleanup
         this.activeRequests.delete(requestId);

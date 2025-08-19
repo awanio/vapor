@@ -46,8 +46,8 @@ export class AnsiblePlaybooks extends LitElement {
   @state()
   private editorMode: 'create' | 'edit' = 'create';
 
-  @state()
-  private error?: string;
+  // @state()
+  // private error?: string;  // TODO: Implement error handling UI
 
   // Add dummy data fields for UI purposes
   private playbookExtended = new Map<string, {description: string, tags: string[], hosts: string, status: string}>();
@@ -231,7 +231,7 @@ export class AnsiblePlaybooks extends LitElement {
 
   private async loadData() {
     this.loading = true;
-    this.error = undefined;
+    // this.error = undefined;
     
     try {
       // Load playbooks and templates in parallel
@@ -270,7 +270,7 @@ export class AnsiblePlaybooks extends LitElement {
       });
     } catch (error) {
       console.error('Failed to load data:', error);
-      this.error = error instanceof Error ? error.message : 'Failed to load playbooks';
+      // this.error = error instanceof Error ? error.message : 'Failed to load playbooks';
       this.playbooks = [];
       this.templates = [];
     } finally {

@@ -1,1 +1,0 @@
-{"version":3,"file":"i18n-mixin.d.ts","sourceRoot":"","sources":["../src/i18n-mixin.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,UAAU,EAAE,MAAM,KAAK,CAAC;AAGjC,qBAAa,cAAe,SAAQ,UAAU;IAC5C,OAAO,CAAC,gBAAgB,CAAC,CAAa;IAE7B,iBAAiB;IASjB,oBAAoB;CAS9B"}

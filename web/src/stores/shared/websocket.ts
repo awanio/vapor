@@ -9,7 +9,6 @@ import { getWsUrl } from '../../config';
 import type {
   IWebSocketManager,
   ConnectionState,
-  ConnectionStatus,
   ReconnectStrategy,
   MessageRouter,
   QueuedMessage,
@@ -67,9 +66,15 @@ class WebSocketManager implements IWebSocketManager {
   
   private constructor() {
     // Set default reconnection strategies
-    this.reconnectStrategies.set('metrics', DEFAULT_RECONNECT_STRATEGIES.metrics);
-    this.reconnectStrategies.set('terminal', DEFAULT_RECONNECT_STRATEGIES.terminal);
-    this.reconnectStrategies.set('default', DEFAULT_RECONNECT_STRATEGIES.default);
+    if (DEFAULT_RECONNECT_STRATEGIES.metrics) {
+      this.reconnectStrategies.set('metrics', DEFAULT_RECONNECT_STRATEGIES.metrics);
+    }
+    if (DEFAULT_RECONNECT_STRATEGIES.terminal) {
+      this.reconnectStrategies.set('terminal', DEFAULT_RECONNECT_STRATEGIES.terminal);
+    }
+    if (DEFAULT_RECONNECT_STRATEGIES.default) {
+      this.reconnectStrategies.set('default', DEFAULT_RECONNECT_STRATEGIES.default);
+    }
     
     // Listen for auth events
     window.addEventListener('auth:logout', () => this.closeAll());
@@ -623,7 +628,9 @@ class WebSocketManager implements IWebSocketManager {
       this.createSharedConnection(type);
     } else if (connectionId.startsWith('isolated:')) {
       const [, type, id] = connectionId.split(':');
-      this.createIsolated(type as keyof typeof this.isolatedConnections, id);
+      if (type && id) {
+        this.createIsolated(type as keyof typeof this.isolatedConnections, id);
+      }
     }
   }
   
@@ -666,7 +673,10 @@ class WebSocketManager implements IWebSocketManager {
       return this.sharedConnections[type];
     } else if (connectionId.startsWith('isolated:')) {
       const [, type, id] = connectionId.split(':');
-      return this.isolatedConnections[type as keyof typeof this.isolatedConnections].get(id) || null;
+      if (type && id) {
+        return this.isolatedConnections[type as keyof typeof this.isolatedConnections]?.get(id) || null;
+      }
+      return null;
     }
     return null;
   }
@@ -692,11 +702,13 @@ class WebSocketManager implements IWebSocketManager {
    * Get reconnection strategy for connection type
    */
   private getReconnectStrategy(type: string): ReconnectStrategy {
-    return (
+    const strategy = 
       this.reconnectStrategies.get(type) ||
       this.reconnectStrategies.get('default') ||
-      DEFAULT_RECONNECT_STRATEGIES.default
-    );
+      DEFAULT_RECONNECT_STRATEGIES.default;
+    
+    // Ensure we always return a valid strategy
+    return strategy || DEFAULT_RECONNECT_STRATEGIES.default!;
   }
   
   /**

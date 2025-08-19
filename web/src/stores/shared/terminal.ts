@@ -3,7 +3,7 @@
  * Manages persistent terminal sessions with WebSocket connections
  */
 
-import { atom, computed, WritableAtom } from 'nanostores';
+import { atom, computed } from 'nanostores';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import { WebLinksAddon } from 'xterm-addon-web-links';
@@ -333,7 +333,10 @@ class TerminalStore {
     // If this was the active session, switch to another
     if (activeSessionId.get() === sessionId) {
       const remainingSessions = Array.from(sessions.keys());
-      activeSessionId.set(remainingSessions.length > 0 ? remainingSessions[0] : null);
+      const nextId = remainingSessions.length > 0 ? remainingSessions[0] : null;
+      if (nextId !== undefined) {
+        activeSessionId.set(nextId);
+      }
     }
   }
 

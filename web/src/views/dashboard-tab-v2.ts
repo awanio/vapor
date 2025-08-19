@@ -4,11 +4,11 @@
  */
 
 import { html, css } from 'lit';
-import { property, customElement } from 'lit/decorators.js';
+import { customElement } from 'lit/decorators.js';
 import { t } from '../i18n';
 import { I18nLitElement } from '../i18n-mixin';
 import Chart from 'chart.js/auto';
-import { StoreMixin } from '../stores';
+import { StoreMixin } from '../stores/utils/lit-mixin';
 import {
   // State atoms
   $systemSummary,
@@ -27,7 +27,7 @@ import {
   $metricsAlerts,
   // Actions
   connectMetrics,
-  disconnectMetrics,
+  // disconnectMetrics,  // Keeping for future use
   // Utilities
   formatBytes,
   formatUptime,
@@ -385,10 +385,10 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
     this.cpuChart = new Chart(cpuCtx, {
       type: 'line',
       data: {
-        labels: cpuHistoryData.map(p => p.label || ''),
+        labels: cpuHistoryData.map((p: any) => p.label || ''),
         datasets: [{
           label: t('dashboard.cpuUsage'),
-          data: cpuHistoryData.map(p => p.value),
+          data: cpuHistoryData.map((p: any) => p.value),
           borderColor: 'rgba(75, 192, 192, 1)',
           backgroundColor: 'rgba(75, 192, 192, 0.1)',
           tension: 0.1,
@@ -425,10 +425,10 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
     this.memoryChart = new Chart(memoryCtx, {
       type: 'line',
       data: {
-        labels: memoryHistoryData.map(p => p.label || ''),
+        labels: memoryHistoryData.map((p: any) => p.label || ''),
         datasets: [{
           label: t('dashboard.memoryUsage'),
-          data: memoryHistoryData.map(p => p.value),
+          data: memoryHistoryData.map((p: any) => p.value),
           borderColor: 'rgba(153, 102, 255, 1)',
           backgroundColor: 'rgba(153, 102, 255, 0.1)',
           tension: 0.1,
@@ -465,16 +465,20 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
     // Update CPU chart
     if (this.cpuChart && this.cpuHistory.value) {
       const data = this.cpuHistory.value;
-      this.cpuChart.data.labels = data.map(p => p.label || '');
-      this.cpuChart.data.datasets[0].data = data.map(p => p.value);
+      this.cpuChart.data.labels = data.map((p: any) => p.label || '');
+      if (this.cpuChart.data.datasets[0]) {
+        this.cpuChart.data.datasets[0].data = data.map((p: any) => p.value);
+      }
       this.cpuChart.update('none');
     }
 
     // Update Memory chart
     if (this.memoryChart && this.memoryHistory.value) {
       const data = this.memoryHistory.value;
-      this.memoryChart.data.labels = data.map(p => p.label || '');
-      this.memoryChart.data.datasets[0].data = data.map(p => p.value);
+      this.memoryChart.data.labels = data.map((p: any) => p.label || '');
+      if (this.memoryChart.data.datasets[0]) {
+        this.memoryChart.data.datasets[0].data = data.map((p: any) => p.value);
+      }
       this.memoryChart.update('none');
     }
   }
@@ -515,7 +519,7 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
         <!-- Alerts Section -->
         ${this.metricsAlerts.value && this.metricsAlerts.value.length > 0 ? html`
           <div class="alerts-section">
-            ${this.metricsAlerts.value.map(alert => html`
+            ${this.metricsAlerts.value.map((alert: any) => html`
               <div class="alert ${alert.type}">
                 <span class="alert-icon">⚠️</span>
                 ${alert.message}

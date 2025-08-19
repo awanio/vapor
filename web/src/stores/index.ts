@@ -11,13 +11,17 @@ export { createStore, type StoreFactoryOptions, type CrudStore } from './utils/f
 export { 
   createApiClient, 
   createCrudApi, 
-  pollingManager,
   ApiError,
   type ApiConfig,
   type ApiRequestOptions,
   type StoreApiClient,
   PollingManager,
 } from './utils/api';
+
+// Import pollingManager and wsManager for internal use
+import { pollingManager } from './utils/api';
+import { wsManager } from './shared/websocket';
+
 export {
   StoreMixin,
   storeSubscription,

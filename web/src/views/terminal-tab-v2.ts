@@ -12,7 +12,7 @@ import xtermStyles from 'xterm/css/xterm.css?inline';
 import { t } from '../i18n';
 import { 
   terminalStore, 
-  terminalSessions, 
+  // terminalSessions,  // Available for direct access if needed
   activeSessionId, 
   sessionList,
   activeSession,
@@ -24,7 +24,7 @@ import { StoreController } from '../stores/utils/lit-mixin';
 @customElement('terminal-tab-v2')
 export class TerminalTabV2 extends LitElement {
   // Store subscriptions
-  private sessionsController = new StoreController(this, terminalSessions);
+  // private sessionsController = new StoreController(this, terminalSessions);  // Available for future use
   private activeSessionController = new StoreController(this, activeSessionId);
   private sessionListController = new StoreController(this, sessionList);
   private activeSessionStateController = new StoreController(this, activeSession);

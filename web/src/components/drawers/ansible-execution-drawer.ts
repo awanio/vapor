@@ -28,7 +28,7 @@ export class AnsibleExecutionDrawer extends LitElement {
   private error?: string;
 
   private wsManager?: WebSocketManager;
-  private outputContainer?: HTMLElement;
+  // private outputContainer?: HTMLElement;
 
   static override styles = css`
     :host {
