@@ -1,4 +1,6 @@
 stages:
+  - lint
+  - test
   - build
   - deploy
 
@@ -9,25 +11,194 @@ variables:
   DOCKER_TLS_VERIFY: 1
   DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
   GIT_DEPTH: 1
+  GO_VERSION: "1.24"
+  GOLANGCI_LINT_VERSION: "v1.54.2"
+  # Cache paths
+  GOPATH: "$CI_PROJECT_DIR/.go"
+  GOCACHE: "$CI_PROJECT_DIR/.go-cache"
+  # Test variables
+  TEST_TIMEOUT: "10m"
+  COVERAGE_THRESHOLD: "60"
 
-default:
+cache:
+  key: "${CI_COMMIT_REF_SLUG}-go"
+  paths:
+    - .go/pkg/mod/
+    - .go-cache/
+
+.go_before_script: &go_before_script
+  - mkdir -p .go .go-cache
+  - export PATH=$PATH:$GOPATH/bin
+
+lint:golangci:
+  stage: lint
+  image: golang:${GO_VERSION}-alpine
   before_script:
-    - |-
-        timeout=60
-        passed=0
-        echo "Waiting for docker daemon to be fully started"
-        until [ -f "${DOCKER_CERT_PATH}/ca.pem" ] || [ ${timeout} -lt ${passed} ]; do
-          echo -n "."
-          passed=`expr $passed + 1`
-          sleep 1
-        done
+    - *go_before_script
+    - apk add --no-cache git gcc musl-dev
+    - wget -O- -nv https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s ${GOLANGCI_LINT_VERSION}
+  script:
+    - ./bin/golangci-lint run --timeout 5m --color always
+  allow_failure: true
+  only:
+    - merge_requests
+    - main
+    - dev
+  artifacts:
+    when: always
+    reports:
+      codequality: gl-code-quality-report.json
+    paths:
+      - gl-code-quality-report.json
+    expire_in: 1 week
+
+lint:security:
+  stage: lint
+  image: golang:${GO_VERSION}-alpine
+  before_script:
+    - *go_before_script
+    - apk add --no-cache git
+    - go install github.com/securego/gosec/v2/cmd/gosec@latest
+  script:
+    - gosec -fmt json -out gosec-report.json -stdout -verbose=text -severity medium ./...
+  allow_failure: true
+  only:
+    - merge_requests
+    - main
+    - dev
+  artifacts:
+    when: always
+    reports:
+      sast: gosec-report.json
+    paths:
+      - gosec-report.json
+    expire_in: 1 week
+
+lint:fmt:
+  stage: lint
+  image: golang:${GO_VERSION}-alpine
+  before_script:
+    - *go_before_script
+  script:
+    - gofmt -l -d .
+    - test -z "$(gofmt -l .)"
+  only:
+    - merge_requests
+
+test:unit:
+  stage: test
+  image: golang:${GO_VERSION}-alpine
+  services:
+    - name: docker:24-dind
+      alias: docker
+  before_script:
+    - *go_before_script
+    - apk add --no-cache git gcc musl-dev sqlite-dev libvirt-dev pkgconfig
+    - go mod download
+  script:
+    - echo "Running unit tests with coverage..."
+    - go test -v -race -coverprofile=coverage.out -covermode=atomic -timeout=${TEST_TIMEOUT} ./...
+    - go tool cover -func=coverage.out
+    - go tool cover -html=coverage.out -o coverage.html
+    # Check coverage threshold
+    - |
+      coverage=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+      echo "Total coverage: ${coverage}%"
+      if (( $(echo "$coverage < $COVERAGE_THRESHOLD" | bc -l) )); then
+        echo "Coverage ${coverage}% is below threshold ${COVERAGE_THRESHOLD}%"
+        exit 1
+      fi
+  coverage: '/total:\s+\(statements\)\s+(\d+\.\d+)%/'
+  artifacts:
+    when: always
+    reports:
+      junit: report.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+    paths:
+      - coverage.out
+      - coverage.html
+      - report.xml
+    expire_in: 1 week
+  only:
+    - merge_requests
+    - main
+    - dev
+
+test:integration:
+  stage: test
+  image: golang:${GO_VERSION}
+  services:
+    - name: docker:24-dind
+      alias: docker
+  variables:
+    # Docker-in-Docker variables
+    DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    - *go_before_script
+    # Install system dependencies
+    - apt-get update
+    - apt-get install -y 
+        libvirt-dev 
+        pkg-config 
+        sqlite3 
+        util-linux 
+        e2fsprogs 
+        xfsprogs 
+        btrfs-progs 
+        lvm2 
+        open-iscsi 
+        multipath-tools
+    - go mod download
+    # Wait for Docker to be ready
+    - |
+      timeout=60
+      until docker info >/dev/null 2>&1; do
+        if [ $timeout -le 0 ]; then
+          echo "Docker daemon failed to start"
+          exit 1
+        fi
+        echo "Waiting for Docker daemon..."
+        sleep 1
+        timeout=$((timeout - 1))
+      done
+  script:
+    - echo "Running integration tests..."
+    - go test -v -tags=integration -timeout=${TEST_TIMEOUT} ./internal/tests/...
+    - go test -v -tags=integration -timeout=${TEST_TIMEOUT} ./internal/*/integration_test.go
+  artifacts:
+    when: always
+    reports:
+      junit: integration-report.xml
+    paths:
+      - integration-report.xml
+    expire_in: 1 week
+  only:
+    - merge_requests
+    - main
+    - dev
 
 build:
   stage: build
   image:
     name: cimg/base:edge-22.04
   services:
-    - name: docker:20.10-dind
+    - name: docker:24-dind
+      alias: docker
+  before_script:
+    - |
+      timeout=60
+      until docker info >/dev/null 2>&1; do
+        if [ $timeout -le 0 ]; then
+          echo "Docker daemon failed to start"
+          exit 1
+        fi
+        echo "Waiting for Docker daemon..."
+        sleep 1
+        timeout=$((timeout - 1))
+      done
   script:
     - >
       docker build 
@@ -47,11 +218,11 @@ build:
     - chmod +x ~/build/vapor
     - cp -r ./openapi.yaml ./ansible ~/build/ 
     - tar -czvf vapor-linux-amd64.tar.gz ~/build
-    - curl -o mc https://$MINIO_HOST/assets/mc
-    - chmod +x ./mc
-    - ./mc alias set s3host https://$MINIO_HOST $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
-    - ./mc cp vapor-linux-amd64.tar.gz s3host/assets/vapor/latest
-    - ./mc cp ./scriptss/deploy.sh s3host/assets/vapor/latest
+    - cat $MC_CLIENT > mc-client.sh
+    - chmod +x ./mc-client.sh
+    - ./mc-client.sh
+    - ./mc cp vapor-linux-amd64.tar.gz awid5/assets/vapor/latest
+    - ./mc cp ./scripts/install.sh awid5/assets/vapor/latest
   only:
     - dev
     - main
@@ -61,9 +232,22 @@ build:
 build:docs:
   stage: build
   image:
-    name: docker:19.03.12
+    name: cimg/base:edge-22.04
   services:
-    - name: docker:20.10-dind
+    - name: docker:24-dind
+      alias: docker
+  before_script:
+    - |
+      timeout=60
+      until docker info >/dev/null 2>&1; do
+        if [ $timeout -le 0 ]; then
+          echo "Docker daemon failed to start"
+          exit 1
+        fi
+        echo "Waiting for Docker daemon..."
+        sleep 1
+        timeout=$((timeout - 1))
+      done
   script:
     - cat ${CONTAINER_BUILD_N_PUSH} > build.sh
     - chmod +x ./build.sh
