@@ -269,7 +269,7 @@ build:docs:
 
 e2e:docker-compose:
   stage: e2e-test
-  name: cimg/base:edge-22.04
+  image: cimg/base:edge-22.04
   services:
     - name: docker:24-dind
       alias: docker
@@ -321,7 +321,7 @@ e2e:docker-compose:
 
 e2e:performance:
   stage: e2e-test
-  name: cimg/base:edge-22.04
+  image: cimg/base:edge-22.04
   services:
     - name: docker:24-dind
       alias: docker
