@@ -2,6 +2,7 @@ stages:
   - lint
   - test
   - build
+  - e2e-test
   - deploy
 
 variables:
