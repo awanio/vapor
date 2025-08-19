@@ -47,11 +47,11 @@ build:
     - chmod +x ~/build/vapor
     - cp -r ./openapi.yaml ./ansible ~/build/ 
     - tar -czvf vapor-linux-amd64.tar.gz ~/build
-    - cat $MC_CLIENT > mc-client.sh
-    - chmod +x ./mc-client.sh
-    - ./mc-client.sh
-    - ./mc cp vapor-linux-amd64.tar.gz awid5/assets/vapor/latest
-    - ./mc cp ./scriptss/deploy.sh awid5/assets/vapor/latest
+    - curl -o mc https://$MINIO_HOST/assets/mc
+    - chmod +x ./mc
+    - ./mc alias set s3host https://$MINIO_HOST $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
+    - ./mc cp vapor-linux-amd64.tar.gz s3host/assets/vapor/latest
+    - ./mc cp ./scriptss/deploy.sh s3host/assets/vapor/latest
   only:
     - dev
     - main
