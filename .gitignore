@@ -35,6 +35,12 @@ Thumbs.db
 # Environment files
 .env
 .env.local
+.env.development
+.env.production
+.env.staging
+.env.*.local
+# Keep the example file
+!.env.example
 
 # Log files
 *.log

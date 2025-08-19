@@ -5,13 +5,19 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:staging": "vite --mode staging",
     "build": "tsc && vite build",
+    "build:dev": "tsc && vite build --mode development",
+    "build:staging": "tsc && vite build --mode staging",
+    "build:prod": "tsc && vite build --mode production",
     "preview": "vite preview",
+    "preview:prod": "vite preview --mode production",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "lint": "eslint src --ext .ts",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist node_modules/.vite"
   },
   "dependencies": {
     "@lit/localize": "^0.12.1",
