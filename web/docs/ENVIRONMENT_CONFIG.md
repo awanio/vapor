@@ -211,3 +211,20 @@ VITE_API_BASE_URL=http://192.168.1.100:8080
 ```
 
 This will override the settings in `.env.development` just for you.
+
+### "process is not defined" error in production?
+
+If you encounter an error like:
+```
+Uncaught ReferenceError: process is not defined
+```
+
+This is caused by some libraries (like nanostores) checking `process.env.NODE_ENV` which doesn't exist in the browser. The fix is already applied in `vite.config.ts`:
+
+```typescript
+define: {
+  'process.env.NODE_ENV': JSON.stringify(mode)
+}
+```
+
+This tells Vite to replace all occurrences of `process.env.NODE_ENV` with the appropriate value at build time.

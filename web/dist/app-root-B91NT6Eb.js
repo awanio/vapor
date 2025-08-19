@@ -2,7 +2,7 @@ var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 var _a;
-import { i as i18n, a as auth, g as getWsUrl, b as getApiUrl, t as t$5, c as theme } from "./index-BTe4Uesu.js";
+import { i as i18n, a as auth, g as getWsUrl, b as getApiUrl, t as t$5, c as theme } from "./index-BvHuJU99.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -15517,7 +15517,6 @@ function StoreMixin(Base, config) {
   }
   return StoreConnectedElement;
 }
-let clean = Symbol("clean");
 let listenerQueue = [];
 let lqIndex = 0;
 const QUEUE_ITEMS_PER_LISTENER = 4;
@@ -15585,13 +15584,6 @@ let atom = (initialValue) => {
     },
     value: initialValue
   };
-  if (process.env.NODE_ENV !== "production") {
-    $atom[clean] = () => {
-      listeners = [];
-      $atom.lc = 0;
-      $atom.off();
-    };
-  }
   return $atom;
 };
 const MOUNT = 5;
@@ -15647,15 +15639,6 @@ let onMount = ($store, initialize) => {
         }
       }, STORE_UNMOUNT_DELAY);
     };
-    if (process.env.NODE_ENV !== "production") {
-      let originClean = $store[clean];
-      $store[clean] = () => {
-        for (let destroy of $store.events[UNMOUNT]) destroy();
-        $store.events[UNMOUNT] = [];
-        $store.active = false;
-        originClean();
-      };
-    }
     return () => {
       $store.listen = originListen;
       $store.off = originOff;

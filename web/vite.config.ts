@@ -18,7 +18,10 @@ export default defineConfig(({ mode }) => {
     define: {
       '__APP_VERSION__': JSON.stringify(process.env.npm_package_version),
       '__BUILD_TIME__': JSON.stringify(new Date().toISOString()),
-      '__BUILD_MODE__': JSON.stringify(mode)
+      '__BUILD_MODE__': JSON.stringify(mode),
+      // Fix for libraries that check process.env.NODE_ENV (like nanostores)
+      // This is required for production builds to work correctly
+      'process.env.NODE_ENV': JSON.stringify(mode)
     },
     
     build: {
