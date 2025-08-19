@@ -1,0 +1,323 @@
+# golangci-lint configuration
+# See: https://golangci-lint.run/usage/configuration/
+
+run:
+  # Timeout for analysis
+  timeout: 5m
+  
+  # Which dirs to skip
+  skip-dirs:
+    - web
+    - docs
+    - test
+    - development
+    - vendor
+    - .git
+    
+  # Which files to skip
+  skip-files:
+    - ".*_test.go"
+    - "mock_.*\\.go"
+    
+  # Number of parallel runners
+  concurrency: 4
+  
+  # Include test files
+  tests: true
+  
+  # List of build tags
+  build-tags:
+    - integration
+
+output:
+  # Format of the output
+  format: colored-line-number
+  
+  # Print lines of code with issue
+  print-issued-lines: true
+  
+  # Print linter name in the end of issue text
+  print-linter-name: true
+  
+  # Make issues output unique by line
+  uniq-by-line: true
+  
+  # Sort results by: filepath, line and column
+  sort-results: true
+
+linters:
+  enable:
+    - bodyclose
+    - deadcode
+    - depguard
+    - dogsled
+    - dupl
+    - errcheck
+    - exhaustive
+    - gochecknoinits
+    - goconst
+    - gocritic
+    - gocyclo
+    - gofmt
+    - goimports
+    - gomnd
+    - goprintffuncname
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - lll
+    - misspell
+    - nakedret
+    - noctx
+    - nolintlint
+    - rowserrcheck
+    - staticcheck
+    - structcheck
+    - stylecheck
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - varcheck
+    - whitespace
+    - prealloc
+    - predeclared
+    - asciicheck
+    - errorlint
+    - exhaustivestruct
+    - forcetypeassert
+    - gochecknoglobals
+    - gocognit
+    - godot
+    - godox
+    - goerr113
+    - gofumpt
+    - goheader
+    - gomodguard
+    - importas
+    - makezero
+    - nestif
+    - nlreturn
+    - nolintlint
+    - paralleltest
+    - tparallel
+    - revive
+    - sqlclosecheck
+    - thelper
+    - wrapcheck
+    - wsl
+
+  disable:
+    - maligned
+    - interfacer
+    - scopelint
+    - golint
+    - funlen
+    - testpackage
+    - gomoddirectives
+    - forbidigo
+
+linters-settings:
+  dogsled:
+    # Checks assignments with too many blank identifiers
+    max-blank-identifiers: 3
+    
+  dupl:
+    # Tokens count to trigger issue
+    threshold: 100
+    
+  errcheck:
+    # Report about not checking of errors in type assertions
+    check-type-assertions: true
+    # Report about assignment of errors to blank identifier
+    check-blank: true
+    
+  exhaustive:
+    # Check switch statements in generated files also
+    check-generated: false
+    # Indicates that switch statements are to be considered exhaustive if a 'default' case is present
+    default-signifies-exhaustive: true
+    
+  gocognit:
+    # Minimal code complexity to report
+    min-complexity: 30
+    
+  goconst:
+    # Minimal length of string constant
+    min-len: 3
+    # Minimal occurrences count to trigger
+    min-occurrences: 3
+    
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+    disabled-checks:
+      - dupImport
+      - ifElseChain
+      - octalLiteral
+      - whyNoLint
+      - wrapperFunc
+      
+  gocyclo:
+    # Minimal code complexity to report
+    min-complexity: 15
+    
+  gofmt:
+    # Simplify code
+    simplify: true
+    
+  goimports:
+    # Put imports beginning with prefix after 3rd-party packages
+    local-prefixes: github.com/awanio/vapor
+    
+  gomnd:
+    settings:
+      mnd:
+        # Don't include the "operation" and "assign"
+        checks: argument,case,condition,return
+        
+  govet:
+    # Report about shadowed variables
+    check-shadowing: true
+    # Settings per analyzer
+    settings:
+      printf:
+        funcs:
+          - (github.com/sirupsen/logrus.FieldLogger).Infof
+          - (github.com/sirupsen/logrus.FieldLogger).Warnf
+          - (github.com/sirupsen/logrus.FieldLogger).Errorf
+          - (github.com/sirupsen/logrus.FieldLogger).Fatalf
+          
+  lll:
+    # Max line length
+    line-length: 140
+    
+  misspell:
+    # Locale to use when checking for misspellings
+    locale: US
+    
+  nakedret:
+    # Make an issue if func has more lines of code than this setting and it has naked returns
+    max-func-lines: 30
+    
+  nolintlint:
+    # Enable to ensure that nolint directives are all used
+    allow-unused: false
+    # Disable to ensure that nolint directives don't have a leading space
+    allow-leading-space: false
+    # Enable to require an explanation of nonzero length after each nolint directive
+    require-explanation: true
+    # Enable to require nolint directives to mention the specific linter being suppressed
+    require-specific: true
+    
+  prealloc:
+    # Report preallocation suggestions only on simple loops that have no returns/breaks/continues/gotos in them
+    simple: true
+    range-loops: true
+    for-loops: false
+    
+  revive:
+    # Sets the default severity to warning
+    severity: warning
+    
+  staticcheck:
+    # Go version to target
+    go: "1.24"
+    # SAxxxx checks to run
+    checks: [ "all" ]
+    
+  stylecheck:
+    # Go version to target
+    go: "1.24"
+    # STxxxx checks to run
+    checks: [ "all", "-ST1000", "-ST1003", "-ST1016", "-ST1020", "-ST1021", "-ST1022" ]
+    # Initialisms to use
+    initialisms: [ "ACL", "API", "ASCII", "CPU", "CSS", "DNS", "EOF", "GUID", "HTML", "HTTP", "HTTPS", "ID", "IP", "JSON", "JWT", "QPS", "RAM", "RPC", "SLA", "SMTP", "SQL", "SSH", "TCP", "TLS", "TTL", "UDP", "UI", "GID", "UID", "UUID", "URI", "URL", "UTF8", "VM", "XML", "XMPP", "XSRF", "XSS", "SIP", "RTP", "AMQP", "DB", "TS" ]
+    
+  unparam:
+    # Report unused function parameters
+    check-exported: false
+    
+  unused:
+    # Go version to target
+    go: "1.24"
+    
+  whitespace:
+    # Enforces newlines after multi-line if statements
+    multi-if: true
+    # Enforces newlines after multi-line functions
+    multi-func: true
+    
+issues:
+  # Maximum issues count per one linter
+  max-issues-per-linter: 50
+  
+  # Maximum count of issues with the same text
+  max-same-issues: 3
+  
+  # Show only new issues
+  new: false
+  
+  # Fix found issues (if it's supported by the linter)
+  fix: false
+  
+  exclude-rules:
+    # Exclude some linters from running on tests files
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+        - gomnd
+        
+    # Exclude known linters from partially hard-vendored code
+    - path: internal/vendor/
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+        - gomnd
+        
+    # Exclude some staticcheck messages
+    - linters:
+        - staticcheck
+      text: "SA1019:"
+      
+    # Exclude lll issues for long lines with go:generate
+    - linters:
+        - lll
+      source: "^//go:generate "
+      
+    # Temporarily exclude deprecation warnings
+    - linters:
+        - staticcheck
+      text: "SA1019: \"io/ioutil\" is deprecated"
+      
+    # Allow use of fmt.Sprintf in tests
+    - path: _test\.go
+      linters:
+        - forbidigo
+      text: "use of `fmt.Sprintf` forbidden"
+
+severity:
+  # Set the default severity for issues
+  default-severity: warning
+  
+  # If set to true severity-rules regular expressions become case sensitive
+  case-sensitive: false
+  
+  # Rules to set different severity levels for issues
+  rules:
+    - linters:
+        - gosec
+      severity: error
+    - linters:
+        - dupl
+      severity: info
