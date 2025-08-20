@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -39,7 +40,7 @@ func NewISOResumableUploadHandler(service *Service, uploadDir string) *ISOResuma
 		store:       resumable.NewMemoryStore(),
 		uploadDir:   uploadDir,
 		maxFileSize: 10 * 1024 * 1024 * 1024, // 10GB max for ISOs
-		chunkSize:   4 * 1024 * 1024,          // 4MB chunks
+		chunkSize:   4 * 1024 * 1024,         // 4MB chunks
 		service:     service,
 	}
 }
@@ -48,7 +49,7 @@ func NewISOResumableUploadHandler(service *Service, uploadDir string) *ISOResuma
 func (h *ISOResumableUploadHandler) CreateUpload(c *gin.Context) {
 	// Set TUS protocol headers for all responses
 	h.setTUSHeaders(c)
-	
+
 	// Parse TUS headers
 	uploadLength := c.GetHeader("Upload-Length")
 	if uploadLength == "" {
@@ -129,7 +130,7 @@ func (h *ISOResumableUploadHandler) CreateUpload(c *gin.Context) {
 	c.Header("Upload-Offset", "0")
 	c.Header("Location", fmt.Sprintf("/virtualization/storages/isos/upload/%s", uploadID))
 	c.Header("Tus-Resumable", "1.0.0")
-	
+
 	// Set expiration header
 	expiresAt := upload.CreatedAt.Add(24 * time.Hour)
 	c.Header("Upload-Expires", expiresAt.Format(time.RFC3339))
@@ -168,12 +169,12 @@ func (h *ISOResumableUploadHandler) GetUploadInfo(c *gin.Context) {
 
 	// Set TUS protocol headers
 	h.setTUSHeaders(c)
-	
+
 	// Set upload-specific headers
 	c.Header("Upload-Offset", strconv.FormatInt(upload.UploadedSize, 10))
 	c.Header("Upload-Length", strconv.FormatInt(upload.TotalSize, 10))
 	c.Header("Cache-Control", "no-store")
-	
+
 	// Set expiration header
 	expiresAt := upload.CreatedAt.Add(24 * time.Hour)
 	c.Header("Upload-Expires", expiresAt.Format(time.RFC3339))
@@ -190,7 +191,7 @@ func (h *ISOResumableUploadHandler) GetUploadInfo(c *gin.Context) {
 func (h *ISOResumableUploadHandler) UploadChunk(c *gin.Context) {
 	// Set TUS protocol headers
 	h.setTUSHeaders(c)
-	
+
 	uploadID := c.Param("id")
 	if uploadID == "" {
 		common.SendError(c, 400, "MISSING_UPLOAD_ID", "Upload ID is required")
@@ -285,7 +286,7 @@ func (h *ISOResumableUploadHandler) UploadChunk(c *gin.Context) {
 
 	// Set response headers
 	c.Header("Upload-Offset", strconv.FormatInt(upload.UploadedSize, 10))
-	
+
 	// Set expiration header if upload is not complete
 	if upload.Status != resumable.UploadStatusCompleted {
 		expiresAt := upload.CreatedAt.Add(24 * time.Hour)
@@ -305,6 +306,7 @@ func (h *ISOResumableUploadHandler) CompleteUpload(c *gin.Context) {
 
 	upload, err := h.store.Get(uploadID)
 	if err != nil {
+		log.Printf("%v", err)
 		common.SendError(c, 404, "UPLOAD_NOT_FOUND", "Upload session not found")
 		return
 	}
@@ -340,9 +342,12 @@ func (h *ISOResumableUploadHandler) CompleteUpload(c *gin.Context) {
 	if err != nil {
 		// Try copying if rename fails (might be across filesystems)
 		if err := h.copyFile(upload.FilePath, finalPath); err != nil {
+			log.Printf("%v", err)
 			common.SendError(c, 500, "FILE_MOVE_ERROR", "Failed to move ISO to final location: "+err.Error())
 			return
 		}
+
+		log.Printf("%v", err)
 		// Remove temp file after successful copy
 		os.Remove(upload.FilePath)
 	}
@@ -365,6 +370,7 @@ func (h *ISOResumableUploadHandler) CompleteUpload(c *gin.Context) {
 	iso, err := h.service.UploadISO(c.Request.Context(), isoRequest)
 	if err != nil {
 		// Clean up the file if registration fails
+		log.Printf("%v", err)
 		os.Remove(finalPath)
 		common.SendError(c, 500, "ISO_REGISTER_ERROR", "Failed to register ISO: "+err.Error())
 		return
@@ -538,10 +544,10 @@ func (h *ISOResumableUploadHandler) HandleOptions(c *gin.Context) {
 	c.Header("Tus-Version", "1.0.0")
 	c.Header("Tus-Max-Size", strconv.FormatInt(h.maxFileSize, 10))
 	c.Header("Tus-Extension", "creation,termination,expiration")
-	
+
 	// Set CORS headers for cross-origin support
 	h.setCORSHeaders(c)
-	
+
 	c.Status(http.StatusNoContent)
 }
 
