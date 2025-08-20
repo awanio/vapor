@@ -371,6 +371,12 @@ export class SidebarTree extends I18nLitElement {
           route: 'virtualization/storage-pools'
         },
         {
+          id: 'virtualization-iso-images',
+          label: 'virtualization.iso-images',
+          icon: 'images',
+          route: 'virtualization/iso-images'
+        },
+        {
           id: 'virtualization-networks',
           label: 'virtualization.networks',
           icon: 'virt-networks',

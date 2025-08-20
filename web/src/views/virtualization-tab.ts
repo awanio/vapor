@@ -1,8 +1,9 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import './virtualization/virtualization-vms';
+import './virtualization/virtualization-vms-enhanced';
 import './virtualization/virtualization-storage-pools';
 import './virtualization/virtualization-networks';
+import './virtualization/iso-management';
 
 /**
  * Virtualization Tab component that routes to specific Virtualization views
@@ -51,7 +52,7 @@ export class VirtualizationTab extends LitElement {
 
   private updateActiveView() {
     if (this.subRoute) {
-      const validViews = ['vms', 'storage-pools', 'networks'];
+      const validViews = ['vms', 'storage-pools', 'networks', 'iso-images'];
       if (validViews.includes(this.subRoute)) {
         this.activeView = this.subRoute;
       }
@@ -60,7 +61,7 @@ export class VirtualizationTab extends LitElement {
       const path = window.location.pathname;
       if (path.includes('/virtualization/')) {
         const view = path.split('/virtualization/')[1]?.split('/')[0];
-        if (view && ['vms', 'storage-pools', 'networks'].includes(view)) {
+        if (view && ['vms', 'storage-pools', 'networks', 'iso-images'].includes(view)) {
           this.activeView = view;
         }
       }
@@ -80,11 +81,13 @@ export class VirtualizationTab extends LitElement {
   private renderActiveView() {
     switch (this.activeView) {
       case 'vms':
-        return html`<virtualization-vms></virtualization-vms>`;
+        return html`<virtualization-vms-enhanced></virtualization-vms-enhanced>`;
       case 'storage-pools':
         return html`<virtualization-storage-pools></virtualization-storage-pools>`;
       case 'networks':
         return html`<virtualization-networks></virtualization-networks>`;
+      case 'iso-images':
+        return html`<iso-management></iso-management>`;
       default:
         return html`
           <div class="error-message">
