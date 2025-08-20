@@ -560,7 +560,7 @@ export class SidebarTree extends I18nLitElement {
     this.translationsLoaded = true;
     
     // Subscribe to store changes
-    const unsubscribeExpanded = $expandedItems.subscribe((expanded) => {
+    const unsubscribeExpanded = $expandedItems.subscribe(() => {
       this.expandedItemsArray = getExpandedItemsArray();
       this.requestUpdate();
     });

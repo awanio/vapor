@@ -2,7 +2,7 @@ var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 var _a;
-import { i as i18n, a as auth, g as getWsUrl, b as getApiUrl, t as t$5, c as theme } from "./index-CRa4CwSS.js";
+import { i as i18n, a as auth, g as getWsUrl, b as getApiUrl, t as t$5, c as theme } from "./index-C-REjVZF.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -1068,7 +1068,7 @@ function hslString(v2) {
   const l2 = n2p(a2[2]);
   return v2.a < 255 ? `hsla(${h3}, ${s2}%, ${l2}%, ${b2n(v2.a)})` : `hsl(${h3}, ${s2}%, ${l2}%)`;
 }
-const map$2 = {
+const map$3 = {
   x: "dark",
   Z: "light",
   Y: "re",
@@ -1250,13 +1250,13 @@ const names$1 = {
 function unpack() {
   const unpacked = {};
   const keys = Object.keys(names$1);
-  const tkeys = Object.keys(map$2);
+  const tkeys = Object.keys(map$3);
   let i3, j2, k2, ok, nk;
   for (i3 = 0; i3 < keys.length; i3++) {
     ok = nk = keys[i3];
     for (j2 = 0; j2 < tkeys.length; j2++) {
       k2 = tkeys[j2];
-      nk = nk.replace(k2, map$2[k2]);
+      nk = nk.replace(k2, map$3[k2]);
     }
     k2 = parseInt(names$1[ok], 16);
     unpacked[nk] = [k2 >> 16 & 255, k2 >> 8 & 255, k2 & 255];
@@ -12747,7 +12747,7 @@ var plugin_title = {
     _indexable: false
   }
 };
-const map$1 = /* @__PURE__ */ new WeakMap();
+const map$2 = /* @__PURE__ */ new WeakMap();
 var plugin_subtitle = {
   id: "subtitle",
   start(chart, _args, options) {
@@ -12758,14 +12758,14 @@ var plugin_subtitle = {
     });
     layouts.configure(chart, title, options);
     layouts.addBox(chart, title);
-    map$1.set(chart, title);
+    map$2.set(chart, title);
   },
   stop(chart) {
-    layouts.removeBox(chart, map$1.get(chart));
-    map$1.delete(chart);
+    layouts.removeBox(chart, map$2.get(chart));
+    map$2.delete(chart);
   },
   beforeUpdate(chart, _args, options) {
-    const title = map$1.get(chart);
+    const title = map$2.get(chart);
     layouts.configure(chart, title, options);
     title.options = options;
   },
@@ -15761,6 +15761,24 @@ let computedStore = (stores, cb, batched) => {
   return $computed;
 };
 let computed = (stores, fn) => computedStore(stores, fn);
+let map$1 = (initial = {}) => {
+  let $map = atom(initial);
+  $map.setKey = function(key, value) {
+    let oldMap = $map.value;
+    if (typeof value === "undefined" && key in $map.value) {
+      $map.value = { ...$map.value };
+      delete $map.value[key];
+      $map.notify(oldMap, key);
+    } else if ($map.value[key] !== value) {
+      $map.value = {
+        ...$map.value,
+        [key]: value
+      };
+      $map.notify(oldMap, key);
+    }
+  };
+  return $map;
+};
 let identity = (a2) => a2;
 let storageEngine = {};
 let eventsEngine = { addEventListener() {
@@ -15823,6 +15841,76 @@ function persistentAtom(name, initial = void 0, opts = {}) {
       eventsEngine.addEventListener(name, listener, restore);
       return () => {
         eventsEngine.removeEventListener(name, listener, restore);
+      };
+    }
+  });
+  return store;
+}
+function persistentMap(prefix, initial = {}, opts = {}) {
+  let encode = opts.encode || identity;
+  let decode = opts.decode || identity;
+  let store = map$1();
+  let setKey = store.setKey;
+  let storeKey = (key, newValue) => {
+    if (typeof newValue === "undefined") {
+      if (opts.listen !== false && eventsEngine.perKey) {
+        eventsEngine.removeEventListener(prefix + key, listener, restore);
+      }
+      delete storageEngine[prefix + key];
+    } else {
+      if (opts.listen !== false && eventsEngine.perKey && !(key in store.value)) {
+        eventsEngine.addEventListener(prefix + key, listener, restore);
+      }
+      storageEngine[prefix + key] = encode(newValue);
+    }
+  };
+  store.setKey = (key, newValue) => {
+    storeKey(key, newValue);
+    setKey(key, newValue);
+  };
+  let set2 = store.set;
+  store.set = function(newObject) {
+    for (let key in newObject) {
+      storeKey(key, newObject[key]);
+    }
+    for (let key in store.value) {
+      if (!(key in newObject)) {
+        storeKey(key, void 0);
+      }
+    }
+    set2(newObject);
+  };
+  function listener(e3) {
+    if (!e3.key) {
+      set2({});
+    } else if (e3.key.startsWith(prefix)) {
+      if (e3.newValue === null) {
+        setKey(e3.key.slice(prefix.length), void 0);
+      } else {
+        setKey(e3.key.slice(prefix.length), decode(e3.newValue));
+      }
+    }
+  }
+  function restore() {
+    let data = { ...initial };
+    for (let key in storageEngine) {
+      if (key.startsWith(prefix)) {
+        data[key.slice(prefix.length)] = decode(storageEngine[key]);
+      }
+    }
+    for (let key in data) {
+      store.setKey(key, data[key]);
+    }
+  }
+  onMount(store, () => {
+    restore();
+    if (opts.listen !== false) {
+      eventsEngine.addEventListener(prefix, listener, restore);
+      return () => {
+        eventsEngine.removeEventListener(prefix, listener, restore);
+        for (let key in store.value) {
+          eventsEngine.removeEventListener(prefix + key, listener, restore);
+        }
       };
     }
   });
@@ -16835,7 +16923,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-CRa4CwSS.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-C-REjVZF.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -16880,7 +16968,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-CRa4CwSS.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-C-REjVZF.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping WebSocket connection");
     return;
@@ -16948,7 +17036,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-CRa4CwSS.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-C-REjVZF.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -55681,6 +55769,44 @@ __decorateClass$2([
 AnsibleTab = __decorateClass$2([
   t$2("ansible-tab")
 ], AnsibleTab);
+const $expandedItems = persistentMap(
+  "sidebar:expanded",
+  {},
+  {
+    encode: JSON.stringify,
+    decode: JSON.parse
+  }
+);
+const $activeItem = persistentAtom(
+  "sidebar:active",
+  "dashboard",
+  {
+    encode: JSON.stringify,
+    decode: JSON.parse
+  }
+);
+persistentAtom(
+  "sidebar:collapsed",
+  false,
+  {
+    encode: JSON.stringify,
+    decode: JSON.parse
+  }
+);
+function toggleExpanded(itemId) {
+  const current = $expandedItems.get();
+  $expandedItems.setKey(itemId, !current[itemId]);
+}
+function isExpanded(itemId) {
+  return $expandedItems.get()[itemId] || false;
+}
+function setActiveItem(itemId) {
+  $activeItem.set(itemId);
+}
+function getExpandedItemsArray() {
+  const expanded = $expandedItems.get();
+  return Object.keys(expanded).filter((key) => expanded[key]);
+}
 var __defProp$1 = Object.defineProperty;
 var __decorateClass$1 = (decorators, target, key, kind) => {
   var result = void 0;
@@ -55695,8 +55821,9 @@ const _SidebarTree = class _SidebarTree extends I18nLitElement {
     super(...arguments);
     this.collapsed = false;
     this.activeItemId = "dashboard";
-    this.expandedItemsArray = ["network", "storage"];
+    this.expandedItemsArray = [];
     this.translationsLoaded = false;
+    this.storeUnsubscribers = [];
     this.navigationItems = [
       {
         id: "dashboard",
@@ -55932,24 +56059,12 @@ const _SidebarTree = class _SidebarTree extends I18nLitElement {
       }
     };
   }
-  get expandedItems() {
-    return new Set(this.expandedItemsArray);
-  }
-  set expandedItems(value) {
-    this.expandedItemsArray = Array.from(value);
-  }
   handleItemClick(item, event) {
     event.stopPropagation();
     if (item.children) {
-      const expanded = new Set(this.expandedItemsArray);
-      if (expanded.has(item.id)) {
-        expanded.delete(item.id);
-      } else {
-        expanded.add(item.id);
-      }
-      this.expandedItemsArray = Array.from(expanded);
+      toggleExpanded(item.id);
     } else if (item.route) {
-      this.activeItemId = item.id;
+      setActiveItem(item.id);
       const [path, queryString] = item.route.split("?");
       const queryParams = queryString ? new URLSearchParams(queryString) : null;
       const url = path === "dashboard" ? "/" : `/${item.route}`;
@@ -55959,7 +56074,6 @@ const _SidebarTree = class _SidebarTree extends I18nLitElement {
         bubbles: true,
         composed: true
       }));
-      this.requestUpdate();
     }
   }
   handleKeyDown(item, event) {
@@ -55987,7 +56101,7 @@ const _SidebarTree = class _SidebarTree extends I18nLitElement {
   }
   renderNavItem(item) {
     const hasChildren = item.children && item.children.length > 0;
-    const isExpanded = this.expandedItems.has(item.id);
+    const isExpanded$1 = isExpanded(item.id);
     const isActive = this.isItemActive(item);
     const renderIcon = () => {
       if (item.icon === "kubernetes") {
@@ -56033,11 +56147,11 @@ const _SidebarTree = class _SidebarTree extends I18nLitElement {
           title=${this.collapsed ? this.getTranslation(item.label) : ""}
           tabindex="0"
           role="treeitem"
-          aria-expanded=${hasChildren ? isExpanded : void 0}
+          aria-expanded=${hasChildren ? isExpanded$1 : void 0}
           aria-selected=${isActive}
         >
           ${hasChildren ? x`
-            <span class="tree-item-arrow ${isExpanded ? "expanded" : ""}">
+            <span class="tree-item-arrow ${isExpanded$1 ? "expanded" : ""}">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M6 4l4 4-4 4z"/>
               </svg>
@@ -56046,7 +56160,7 @@ const _SidebarTree = class _SidebarTree extends I18nLitElement {
           ${renderIcon()}
           <span class="tree-item-label">${this.getTranslation(item.label)}</span>
         </div>
-        ${hasChildren && isExpanded && !this.collapsed ? x`
+        ${hasChildren && isExpanded$1 && !this.collapsed ? x`
           <ul class="tree-children">
             ${item.children.map((child) => this.renderNavItem(child))}
           </ul>
@@ -56058,24 +56172,26 @@ const _SidebarTree = class _SidebarTree extends I18nLitElement {
     super.connectedCallback();
     await i18n.init();
     this.translationsLoaded = true;
-    if (!this.expandedItemsArray.includes("containers")) {
-      this.expandedItemsArray = [...this.expandedItemsArray, "containers"];
-    }
-    if (!this.expandedItemsArray.includes("kubernetes")) {
-      this.expandedItemsArray = [...this.expandedItemsArray, "kubernetes"];
-    }
-    if (!this.expandedItemsArray.includes("ansible")) {
-      this.expandedItemsArray = [...this.expandedItemsArray, "ansible"];
-    }
+    const unsubscribeExpanded = $expandedItems.subscribe(() => {
+      this.expandedItemsArray = getExpandedItemsArray();
+      this.requestUpdate();
+    });
+    const unsubscribeActive = $activeItem.subscribe((activeId) => {
+      this.activeItemId = activeId;
+      this.requestUpdate();
+    });
+    this.storeUnsubscribers.push(unsubscribeExpanded, unsubscribeActive);
+    this.expandedItemsArray = getExpandedItemsArray();
+    this.activeItemId = $activeItem.get();
     const path = window.location.pathname.slice(1);
     if (!path || path === "") {
-      this.activeItemId = "dashboard";
+      setActiveItem("dashboard");
     } else {
       const item = this.findNavItemByRoute(path);
       if (item) {
-        this.activeItemId = item.id;
+        setActiveItem(item.id);
       } else {
-        this.activeItemId = "";
+        setActiveItem("dashboard");
       }
     }
     window.addEventListener("popstate", this.handlePopState);
@@ -56083,6 +56199,8 @@ const _SidebarTree = class _SidebarTree extends I18nLitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     window.removeEventListener("popstate", this.handlePopState);
+    this.storeUnsubscribers.forEach((unsubscribe) => unsubscribe());
+    this.storeUnsubscribers = [];
   }
   findNavItemByRoute(route) {
     const findInItems = (items) => {
@@ -56296,10 +56414,10 @@ __decorateClass$1([
   n2({ type: Boolean })
 ], SidebarTree.prototype, "collapsed");
 __decorateClass$1([
-  n2({ type: String })
+  r$1()
 ], SidebarTree.prototype, "activeItemId");
 __decorateClass$1([
-  n2({ type: Array })
+  r$1()
 ], SidebarTree.prototype, "expandedItemsArray");
 __decorateClass$1([
   r$1()
