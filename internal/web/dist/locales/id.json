@@ -337,6 +337,7 @@
   "virtualization": {
     "vms": "Mesin Virtual",
     "storage-pools": "Pool Penyimpanan",
+    "iso-images": "ISO Images",
     "networks": "Jaringan"
   },
   "users": {
