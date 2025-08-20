@@ -115,10 +115,15 @@ const baseStoragePoolStore = createStore<StoragePool & { id: string }>({
   }),
 });
 
+// Transform function for storage pools
+const transformStoragePool = (data: any): StoragePool & { id: string } => ({
+  ...data,
+  id: data.name, // Use name as id to satisfy BaseEntity constraint
+});
+
 // Extend the storage pool store with proper fetch implementation
 export const storagePoolStore = {
   ...baseStoragePoolStore,
-  transform: baseStoragePoolStore.transform,
   async fetch(): Promise<void> {
     try {
       baseStoragePoolStore.$loading.set(true);
@@ -130,16 +135,14 @@ export const storagePoolStore = {
       // Transform and update the store with fetched data
       const items = new Map<string, StoragePool & { id: string }>();
       response.forEach(pool => {
-        const transformed = storagePoolStore.transform ? 
-          storagePoolStore.transform(pool) : 
-          { ...pool, id: pool.name };
+        const transformed = transformStoragePool(pool);
         items.set(pool.name, transformed);
       });
       baseStoragePoolStore.$items.set(items);
       
       baseStoragePoolStore.emit({
-        type: StoreEventType.FETCHED,
-        payload: response,
+        type: StoreEventType.BATCH_UPDATED,
+        payload: Array.from(items.values()) as any,
         timestamp: Date.now(),
       });
     } catch (error) {
@@ -229,8 +232,8 @@ export const isoStore = {
       baseIsoStore.$items.set(items);
       
       baseIsoStore.emit({
-        type: StoreEventType.FETCHED,
-        payload: isos,
+        type: StoreEventType.BATCH_UPDATED,
+        payload: isos as any,
         timestamp: Date.now(),
       });
     } catch (error) {

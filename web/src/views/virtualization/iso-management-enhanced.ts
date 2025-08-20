@@ -35,7 +35,7 @@ export class ISOManagementEnhanced extends LitElement {
   // Store controllers
   private isoStoreController = new StoreController(this, isoStore.$state);
   private availableISOsController = new StoreController(this, $availableISOs);
-  private _uploadStateController = new StoreController(this, $isoUploadState);
+  private uploadStateController = new StoreController(this, $isoUploadState);
 
   // Component state
   @state() private searchQuery = '';
@@ -59,6 +59,11 @@ export class ISOManagementEnhanced extends LitElement {
   @state() private uploadSpeed = 0;
   @state() private uploadStartTime = 0;
   @state() private isUploading = false;
+  
+  // Get upload state from store
+  private get uploadState() {
+    return this.uploadStateController.value;
+  }
 
   static override styles = css`
     :host {
@@ -1066,6 +1071,12 @@ export class ISOManagementEnhanced extends LitElement {
         </div>
         
         ${this.showUploadModal ? this.renderUploadModal() : ''}
+        
+        ${this.uploadState.error ? html`
+          <div class="upload-error-notification">
+            Upload Error: ${this.uploadState.error}
+          </div>
+        ` : ''}
         
         ${this.showDeleteModal && this.isoToDelete ? html`
           <delete-modal
