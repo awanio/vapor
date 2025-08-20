@@ -3,22 +3,28 @@ import { property, state } from 'lit/decorators.js';
 import { i18n, t } from '../i18n';
 import { I18nLitElement } from '../i18n-mixin';
 import type { NavItem } from '../types/system';
+import { 
+  $expandedItems,
+  $activeItem,
+  toggleExpanded,
+  setActiveItem,
+  isExpanded as isItemExpanded,
+  getExpandedItemsArray
+} from '../stores/shared/sidebar';
 
 export class SidebarTree extends I18nLitElement {
   @property({ type: Boolean }) collapsed = false;
-  @property({ type: String }) activeItemId = 'dashboard';
-  @property({ type: Array }) expandedItemsArray: string[] = ['network', 'storage'];
+  
+  @state()
+  private activeItemId = 'dashboard';
+  
+  @state()
+  private expandedItemsArray: string[] = [];
   
   @state()
   private translationsLoaded = false;
   
-  private get expandedItems(): Set<string> {
-    return new Set(this.expandedItemsArray);
-  }
-  
-  private set expandedItems(value: Set<string>) {
-    this.expandedItemsArray = Array.from(value);
-  }
+  private storeUnsubscribers: Array<() => void> = [];
 
   static override styles = css`
     :host {
@@ -422,17 +428,11 @@ export class SidebarTree extends I18nLitElement {
     event.stopPropagation();
 
     if (item.children) {
-      // Toggle expanded state
-      const expanded = new Set(this.expandedItemsArray);
-      if (expanded.has(item.id)) {
-        expanded.delete(item.id);
-      } else {
-        expanded.add(item.id);
-      }
-      this.expandedItemsArray = Array.from(expanded);
+      // Toggle expanded state in store
+      toggleExpanded(item.id);
     } else if (item.route) {
-      // Navigate to route
-      this.activeItemId = item.id;
+      // Update active item in store
+      setActiveItem(item.id);
 
       // Parse route and query params
       const [path, queryString] = item.route.split('?');
@@ -448,9 +448,6 @@ export class SidebarTree extends I18nLitElement {
         bubbles: true,
         composed: true
       }));
-      
-      // Trigger re-render to update aria-selected state
-      this.requestUpdate();
     }
   }
 
@@ -484,7 +481,7 @@ export class SidebarTree extends I18nLitElement {
 
   private renderNavItem(item: NavItem): any {
     const hasChildren = item.children && item.children.length > 0;
-    const isExpanded = this.expandedItems.has(item.id);
+    const isExpanded = isItemExpanded(item.id);
     const isActive = this.isItemActive(item);
 
     // Use custom SVG icons for specific menu items
@@ -562,30 +559,34 @@ export class SidebarTree extends I18nLitElement {
     await i18n.init();
     this.translationsLoaded = true;
     
-    // Ensure containers is expanded by default
-    if (!this.expandedItemsArray.includes('containers')) {
-      this.expandedItemsArray = [...this.expandedItemsArray, 'containers'];
-    }
-    // Ensure kubernetes is expanded by default
-    if (!this.expandedItemsArray.includes('kubernetes')) {
-      this.expandedItemsArray = [...this.expandedItemsArray, 'kubernetes'];
-    }
-    // Ensure ansible is expanded by default
-    if (!this.expandedItemsArray.includes('ansible')) {
-      this.expandedItemsArray = [...this.expandedItemsArray, 'ansible'];
-    }
+    // Subscribe to store changes
+    const unsubscribeExpanded = $expandedItems.subscribe((expanded) => {
+      this.expandedItemsArray = getExpandedItemsArray();
+      this.requestUpdate();
+    });
+    
+    const unsubscribeActive = $activeItem.subscribe((activeId) => {
+      this.activeItemId = activeId;
+      this.requestUpdate();
+    });
+    
+    this.storeUnsubscribers.push(unsubscribeExpanded, unsubscribeActive);
+    
+    // Initialize from store
+    this.expandedItemsArray = getExpandedItemsArray();
+    this.activeItemId = $activeItem.get();
     
     // Set activeItemId from URL on component mount
     const path = window.location.pathname.slice(1);
     if (!path || path === '') {
-      this.activeItemId = 'dashboard';
+      setActiveItem('dashboard');
     } else {
       const item = this.findNavItemByRoute(path);
       if (item) {
-        this.activeItemId = item.id;
+        setActiveItem(item.id);
       } else {
-        // Invalid route - no active item in sidebar
-        this.activeItemId = '';
+        // Invalid route - default to dashboard
+        setActiveItem('dashboard');
       }
     }
     
@@ -596,6 +597,10 @@ export class SidebarTree extends I18nLitElement {
   override disconnectedCallback() {
     super.disconnectedCallback();
     window.removeEventListener('popstate', this.handlePopState);
+    
+    // Unsubscribe from store updates
+    this.storeUnsubscribers.forEach(unsubscribe => unsubscribe());
+    this.storeUnsubscribers = [];
   }
   
   private findNavItemByRoute(route: string): NavItem | null {
