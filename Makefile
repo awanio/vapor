@@ -24,6 +24,7 @@ embed-web:
 	@if [ -d "$(DIST_DIR)" ] && [ "$(shell ls -A $(DIST_DIR) 2>/dev/null | grep -v '^\.')" ]; then \
 		echo "Embedding web UI assets..."; \
 		mkdir -p $(EMBED_DIR); \
+		rm -rf $(EMBED_DIR)/*; \
 		cp -R $(DIST_DIR)/* $(EMBED_DIR) 2>/dev/null || true; \
 	else \
 		echo "Warning: $(DIST_DIR) not found or empty, creating placeholder for build."; \

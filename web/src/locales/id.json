@@ -35,6 +35,8 @@
     },
     "images": "Image",
     "kubernetes": "Kubernetes",
+    "virtualization": "Virtualisasi",
+    "ansible": "Ansible",
     "users": "Pengguna"
   },
   "common": {
@@ -317,6 +319,11 @@
     "volumes": "Volume",
     "networks": "Jaringan"
   },
+  "ansible": {
+    "playbooks": "Playbook",
+    "inventory": "Inventori",
+    "executions": "Eksekusi"
+  },
   "kubernetes": {
     "title": "Kubernetes",
     "workloads": "Beban Kerja",
@@ -326,6 +333,11 @@
     "nodes": "Node",
     "crds": "CRD",
     "helms": "Grafik Helm"
+  },
+  "virtualization": {
+    "vms": "Mesin Virtual",
+    "storage-pools": "Pool Penyimpanan",
+    "networks": "Jaringan"
   },
   "users": {
     "title": "Manajemen Pengguna",

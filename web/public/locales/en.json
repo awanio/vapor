@@ -28,8 +28,15 @@
     "disks": "Disks",
     "lvm": "LVM",
     "raid": "RAID",
-    "containers": "Containers",
+    "containers": {
+      "title": "Containers",
+      "cri": "CRI",
+      "docker": "Docker"
+    },
     "images": "Images",
+    "kubernetes": "Kubernetes",
+    "virtualization": "Virtualization",
+    "ansible": "Ansible",
     "users": "Users"
   },
   "common": {
@@ -50,17 +57,13 @@
     "actions": "Actions",
     "name": "Name",
     "status": "Status",
+    "state": "State",
     "size": "Size",
     "type": "Type",
     "details": "Details",
     "yes": "Yes",
     "no": "No",
     "unknown": "Unknown",
-    "state": "State",
-    "image": "Image",
-    "runtime": "Runtime",
-    "created": "Created",
-    "tags": "Tags",
     "apply": "Apply",
     "reset": "Reset",
     "search": "Search",
@@ -68,7 +71,11 @@
     "export": "Export",
     "import": "Import",
     "connected": "Connected",
-    "disconnected": "Disconnected"
+    "disconnected": "Disconnected",
+    "image": "Image",
+    "created": "Created",
+    "tags": "Tags",
+    "runtime": "Runtime"
   },
   "dashboard": {
     "title": "System Dashboard",
@@ -97,30 +104,65 @@
     "minutes": "minutes"
   },
   "network": {
-    "interfaces": {
-      "title": "Network Interfaces",
-      "name": "Interface Name",
-      "state": "State",
-      "up": "Up",
-      "down": "Down",
-      "mac": "MAC Address",
-      "mtu": "MTU",
-      "addresses": "IP Addresses",
-      "statistics": "Statistics",
-      "rxBytes": "Received Bytes",
-      "txBytes": "Transmitted Bytes",
-      "rxPackets": "Received Packets",
-      "txPackets": "Transmitted Packets",
-      "rxErrors": "Receive Errors",
-      "txErrors": "Transmit Errors",
-      "bringUp": "Bring Up",
-      "bringDown": "Bring Down",
-      "configure": "Configure",
-      "configureAddress": "Configure IP Address",
-      "address": "IP Address",
-      "netmask": "Netmask",
-      "gateway": "Gateway"
-    },
+    "title": "Network",
+    "interfaces": "Interfaces",
+    "bridges": "Bridges",
+    "bonds": "Bonds",
+    "vlans": "VLANs",
+    "searchInterfaces": "Search interfaces...",
+    "searchBridges": "Search bridges",
+    "searchBonds": "Search bonds",
+    "searchVLANs": "Search VLANs",
+    "createBridge": "Create Bridge",
+    "createBond": "Create Bond",
+    "createVLAN": "Create VLAN",
+    "noBridges": "No bridges available",
+    "noBonds": "No bonds available",
+    "noVLANs": "No VLANs available",
+    "mode": "Mode",
+    "configureInterface": "Configure Network Interface",
+    "createBridgeTitle": "Create Bridge",
+    "createBondTitle": "Create Bond",
+    "createVlanTitle": "Create VLAN",
+    "interfaceName": "Interface Name",
+    "currentState": "Current State",
+    "ipAddress": "IP Address",
+    "ipAddressRequired": "IP Address *",
+    "netmaskCidr": "Netmask (CIDR)",
+    "netmaskCidrRequired": "Netmask (CIDR) *",
+    "gatewayOptional": "Gateway (Optional)",
+    "applyConfiguration": "Apply Configuration",
+    "bridgeName": "Bridge Name",
+    "bridgeNameRequired": "Bridge Name *",
+    "bondName": "Bond Name",
+    "bondNameRequired": "Bond Name *",
+    "interfacesRequired": "Interfaces *",
+    "modeRequired": "Mode *",
+    "baseInterface": "Base Interface",
+    "baseInterfaceRequired": "Base Interface *",
+    "vlanId": "VLAN ID",
+    "vlanIdRequired": "VLAN ID *",
+    "vlanNameOptional": "VLAN Name (Optional)",
+    "commaSeparatedInterfaces": "Comma-separated list of interfaces",
+    "vlanNameDefault": "If not specified, defaults to {interface}.{vlan_id}",
+    "up": "Up",
+    "down": "Down",
+    "bringUp": "Up",
+    "bringDown": "Down",
+    "upInterface": "Up Interface",
+    "downInterface": "Down Interface",
+    "confirmBringUp": "Are you sure you want to bring up the interface \"{name}\"?",
+    "confirmBringDown": "Are you sure you want to bring down the interface \"{name}\"?",
+    "deleteBridge": "Delete Bridge",
+    "confirmDeleteBridge": "Are you sure you want to delete bridge \"{name}\"?",
+    "deleteBond": "Delete Bond",
+    "confirmDeleteBond": "Are you sure you want to delete bond \"{name}\"?",
+    "deleteVlan": "Delete VLAN",
+    "confirmDeleteVlan": "Are you sure you want to delete VLAN {name}?",
+    "rxBytes": "RX Bytes",
+    "txBytes": "TX Bytes",
+    "configure": "Configure",
+    "noInterfaces": "No interfaces available",
     "bonding": {
       "title": "Network Bonding",
       "createBond": "Create Bond",
@@ -138,7 +180,7 @@
     }
   },
   "storage": {
-    "title": "Storage Management",
+    "title": "Storage",
     "disks": {
       "title": "Disks",
       "type": "Type",
@@ -154,7 +196,7 @@
       "mount": "Mount"
     },
     "lvm": {
-      "title": "LVM Management",
+      "title": "LVM",
       "volumeGroups": "Volume Groups",
       "createVG": "Create Volume Group",
       "logicalVolumes": "Logical Volumes",
@@ -171,7 +213,7 @@
       "noPhysicalVolumes": "No Physical Volumes Available"
     },
     "raid": {
-      "title": "RAID Management",
+      "title": "RAID",
       "devices": "RAID Devices",
       "device": "Device",
       "partition": "Partition",
@@ -188,7 +230,7 @@
       "noAvailableDisks": "No Available Disks for RAID"
     },
     "iscsi": {
-      "title": "iSCSI Management",
+      "title": "iSCSI",
       "sessions": "iSCSI Sessions",
       "target": "Target",
       "portal": "Portal",
@@ -201,7 +243,7 @@
       "logout": "Logout from iSCSI Target"
     },
     "multipath": {
-      "title": "Multipath Management",
+      "title": "Multipath",
       "devices": "Multipath Devices",
       "wwid": "WWID",
       "vendor": "Vendor",
@@ -213,7 +255,7 @@
       "noDevices": "No Multipath Devices Available"
     },
     "btrfs": {
-      "title": "BTRFS Management",
+      "title": "BTRFS",
       "subvolumes": "BTRFS Subvolumes",
       "createSubvolume": "Create Subvolume",
       "noSubvolumes": "No Subvolumes Available"
@@ -221,6 +263,9 @@
   },
   "containers": {
     "title": "Containers",
+    "searchContainers": "Search containers",
+    "searchImages": "Search images",
+    "searchLogs": "Search logs",
     "list": "Container List",
     "id": "Container ID",
     "name": "Name",
@@ -241,7 +286,6 @@
     "labels": "Labels",
     "stopTimeout": "Stop Timeout (seconds)",
     "removeConfirm": "Are you sure you want to remove this container?",
-    "removeImageConfirm": "Are you sure you want to remove this image?",
     "images": {
       "title": "Container Images",
       "id": "Image ID",
@@ -254,8 +298,65 @@
       "removeConfirm": "Are you sure you want to remove this image?"
     }
   },
+  "docker": {
+    "processes": "Processes",
+    "volumes": "Volumes",
+    "networks": "Networks"
+  },
+  "ansible": {
+    "playbooks": "Playbooks",
+    "templates": "Templates",
+    "executions": "Executions",
+    "inventory": "Inventory",
+    "playbooksTitle": "Ansible Playbooks",
+    "playbooksSubtitle": "Manage and run your Ansible playbooks and job templates.",
+    "createPlaybook": "Create Playbook",
+    "importPlaybook": "Import Playbook",
+    "createTemplate": "Create Template",
+    "searchPlaybooks": "Search playbooks...",
+    "searchTemplates": "Search templates...",
+    "noPlaybooks": "No playbooks found",
+    "noPlaybooksDesc": "Create a new playbook or import an existing one to get started.",
+    "noTemplates": "No templates found",
+    "noTemplatesDesc": "Create a new job template to run your playbooks.",
+    "status": {
+      "active": "Active",
+      "draft": "Draft",
+      "archived": "Archived",
+      "enabled": "Enabled",
+      "disabled": "Disabled"
+    },
+    "hosts": "Hosts",
+    "modified": "Last Modified",
+    "templateType": "Type",
+    "playbook": "Playbook",
+    "inventory": "Inventory",
+    "lastUsed": "Last Used",
+    "runTemplate": "Run Template",
+    "duplicate": "Duplicate",
+    "type": {
+      "job": "Job",
+      "workflow": "Workflow"
+    }
+  },
+  "kubernetes": {
+    "title": "Kubernetes",
+    "workloads": "Workloads",
+    "networks": "Networks",
+    "storages": "Storages",
+    "configurations": "Configurations",
+    "nodes": "Nodes",
+    "crds": "CRDs",
+    "helms": "Helm Charts"
+  },
+  "virtualization": {
+    "vms": "Virtual Machines",
+    "storage-pools": "Storage Pools",
+    "networks": "Networks"
+  },
   "users": {
     "title": "User Management",
+    "searchUsers": "Search users...",
     "username": "Username",
     "uid": "UID",
     "gid": "GID",
@@ -269,13 +370,14 @@
     "newPassword": "New Password",
     "confirmPassword": "Confirm Password",
     "passwordMismatch": "Passwords do not match",
-    "confirmDelete": "Delete User",
-    "confirmDeleteMessage": "Are you sure you want to delete user \"{{username}}\"? This action cannot be undone.",
     "deleteConfirm": "Are you sure you want to delete user {{username}}?",
+    "confirmDelete": "Delete User",
+    "confirmDeleteMessage": "Are you sure you want to delete user \"{username}}\"? This action cannot be undone.",
     "locked": "Locked",
     "unlocked": "Unlocked",
     "toggleLock": "Toggle Lock",
-    "resetPassword": "Reset Password"
+    "resetPassword": "Reset Password",
+    "resetPasswordSuccess": "Password reset successfully for {{username}}"
   },
   "logs": {
     "title": "System Logs",
@@ -313,9 +415,20 @@
     "copy": "Copy",
     "paste": "Paste",
     "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit Fullscreen",
     "settings": "Terminal Settings",
     "fontSize": "Font Size",
-    "theme": "Terminal Theme"
+    "theme": "Terminal Theme",
+    "newTab": "New Tab",
+    "closeTab": "Close Tab",
+    "sessions": "sessions",
+    "active": "active",
+    "noSessions": "No Terminal Sessions",
+    "createFirst": "Create your first terminal session to get started.",
+    "createNew": "Create New Session",
+    "noActiveSession": "No active session",
+    "sessionDisconnected": "This terminal session has been disconnected.",
+    "reconnect": "Reconnect"
   },
   "errors": {
     "networkError": "Network error occurred",

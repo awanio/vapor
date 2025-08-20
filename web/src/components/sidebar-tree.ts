@@ -1,6 +1,6 @@
 import { html, css } from 'lit';
-import { property } from 'lit/decorators.js';
-import { t } from '../i18n';
+import { property, state } from 'lit/decorators.js';
+import { i18n, t } from '../i18n';
 import { I18nLitElement } from '../i18n-mixin';
 import type { NavItem } from '../types/system';
 
@@ -8,6 +8,9 @@ export class SidebarTree extends I18nLitElement {
   @property({ type: Boolean }) collapsed = false;
   @property({ type: String }) activeItemId = 'dashboard';
   @property({ type: Array }) expandedItemsArray: string[] = ['network', 'storage'];
+  
+  @state()
+  private translationsLoaded = false;
   
   private get expandedItems(): Set<string> {
     return new Set(this.expandedItemsArray);
@@ -468,6 +471,17 @@ export class SidebarTree extends I18nLitElement {
     }
   }
 
+  private getTranslation(key: string): string {
+    // Safe translation that returns the key if translations aren't loaded
+    // This prevents showing [object Object] in production
+    if (!i18n.isInitialized()) {
+      // Return the last part of the key as a fallback
+      const parts = key.split('.');
+      return parts[parts.length - 1] || key;
+    }
+    return t(key) || key;
+  }
+
   private renderNavItem(item: NavItem): any {
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = this.expandedItems.has(item.id);
@@ -516,7 +530,7 @@ export class SidebarTree extends I18nLitElement {
           class="tree-item ${isActive ? 'active' : ''}"
           @click=${(e: Event) => this.handleItemClick(item, e)}
           @keydown=${(e: KeyboardEvent) => this.handleKeyDown(item, e)}
-          title=${this.collapsed ? t(item.label) : ''}
+          title=${this.collapsed ? this.getTranslation(item.label) : ''}
           tabindex="0"
           role="treeitem"
           aria-expanded=${hasChildren ? isExpanded : undefined}
@@ -530,7 +544,7 @@ export class SidebarTree extends I18nLitElement {
             </span>
           ` : html`<span class="tree-item-arrow"></span>`}
           ${renderIcon()}
-          <span class="tree-item-label">${t(item.label)}</span>
+          <span class="tree-item-label">${this.getTranslation(item.label)}</span>
         </div>
         ${hasChildren && isExpanded && !this.collapsed ? html`
           <ul class="tree-children">
@@ -541,8 +555,13 @@ export class SidebarTree extends I18nLitElement {
     `;
   }
 
-  override connectedCallback() {
+  override async connectedCallback() {
     super.connectedCallback();
+    
+    // Ensure translations are loaded before rendering
+    await i18n.init();
+    this.translationsLoaded = true;
+    
     // Ensure containers is expanded by default
     if (!this.expandedItemsArray.includes('containers')) {
       this.expandedItemsArray = [...this.expandedItemsArray, 'containers'];
@@ -623,6 +642,11 @@ export class SidebarTree extends I18nLitElement {
   };
 
   override render() {
+    // Wait for translations to load before rendering
+    if (!this.translationsLoaded) {
+      return html``;
+    }
+    
     return html`
       <ul class="tree" role="tree">
         ${this.navigationItems.map(item => this.renderNavItem(item))}

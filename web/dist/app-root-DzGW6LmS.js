@@ -2,7 +2,7 @@ var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 var _a;
-import { i as i18n, a as auth, g as getWsUrl, b as getApiUrl, t as t$5, c as theme } from "./index-aPANIioD.js";
+import { i as i18n, a as auth, g as getWsUrl, b as getApiUrl, t as t$5, c as theme } from "./index-CRa4CwSS.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -16835,7 +16835,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-aPANIioD.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-CRa4CwSS.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -16880,7 +16880,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-aPANIioD.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-CRa4CwSS.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping WebSocket connection");
     return;
@@ -16948,7 +16948,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-aPANIioD.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-CRa4CwSS.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -55696,6 +55696,7 @@ const _SidebarTree = class _SidebarTree extends I18nLitElement {
     this.collapsed = false;
     this.activeItemId = "dashboard";
     this.expandedItemsArray = ["network", "storage"];
+    this.translationsLoaded = false;
     this.navigationItems = [
       {
         id: "dashboard",
@@ -55977,6 +55978,13 @@ const _SidebarTree = class _SidebarTree extends I18nLitElement {
       }
     }
   }
+  getTranslation(key) {
+    if (!i18n.isInitialized()) {
+      const parts = key.split(".");
+      return parts[parts.length - 1] || key;
+    }
+    return t$5(key) || key;
+  }
   renderNavItem(item) {
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = this.expandedItems.has(item.id);
@@ -56022,7 +56030,7 @@ const _SidebarTree = class _SidebarTree extends I18nLitElement {
           class="tree-item ${isActive ? "active" : ""}"
           @click=${(e3) => this.handleItemClick(item, e3)}
           @keydown=${(e3) => this.handleKeyDown(item, e3)}
-          title=${this.collapsed ? t$5(item.label) : ""}
+          title=${this.collapsed ? this.getTranslation(item.label) : ""}
           tabindex="0"
           role="treeitem"
           aria-expanded=${hasChildren ? isExpanded : void 0}
@@ -56036,7 +56044,7 @@ const _SidebarTree = class _SidebarTree extends I18nLitElement {
             </span>
           ` : x`<span class="tree-item-arrow"></span>`}
           ${renderIcon()}
-          <span class="tree-item-label">${t$5(item.label)}</span>
+          <span class="tree-item-label">${this.getTranslation(item.label)}</span>
         </div>
         ${hasChildren && isExpanded && !this.collapsed ? x`
           <ul class="tree-children">
@@ -56046,8 +56054,10 @@ const _SidebarTree = class _SidebarTree extends I18nLitElement {
       </li>
     `;
   }
-  connectedCallback() {
+  async connectedCallback() {
     super.connectedCallback();
+    await i18n.init();
+    this.translationsLoaded = true;
     if (!this.expandedItemsArray.includes("containers")) {
       this.expandedItemsArray = [...this.expandedItemsArray, "containers"];
     }
@@ -56099,6 +56109,9 @@ const _SidebarTree = class _SidebarTree extends I18nLitElement {
     return this.activeItemId === item.id;
   }
   render() {
+    if (!this.translationsLoaded) {
+      return x``;
+    }
     return x`
       <ul class="tree" role="tree">
         ${this.navigationItems.map((item) => this.renderNavItem(item))}
@@ -56288,6 +56301,9 @@ __decorateClass$1([
 __decorateClass$1([
   n2({ type: Array })
 ], SidebarTree.prototype, "expandedItemsArray");
+__decorateClass$1([
+  r$1()
+], SidebarTree.prototype, "translationsLoaded");
 customElements.define("sidebar-tree", SidebarTree);
 var __defProp2 = Object.defineProperty;
 var __decorateClass = (decorators, target, key, kind) => {

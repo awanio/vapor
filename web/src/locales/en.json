@@ -307,6 +307,7 @@
     "playbooks": "Playbooks",
     "templates": "Templates",
     "executions": "Executions",
+    "inventory": "Inventory",
     "playbooksTitle": "Ansible Playbooks",
     "playbooksSubtitle": "Manage and run your Ansible playbooks and job templates.",
     "createPlaybook": "Create Playbook",

@@ -8,6 +8,8 @@ class I18n {
   private locale: Locale = 'en';
   private translations: Map<Locale, Translations> = new Map();
   private listeners: Set<() => void> = new Set();
+  private initPromise: Promise<void> | null = null;
+  private initialized = false;
 
   constructor() {
     // Load saved locale preference
@@ -84,6 +86,7 @@ class I18n {
   t(key: string, params?: Record<string, any>): string {
     const translations = this.translations.get(this.locale);
     if (!translations) {
+      console.warn(`No translations loaded for locale: ${this.locale}, key: ${key}`);
       return key;
     }
 
@@ -95,11 +98,13 @@ class I18n {
       if (typeof value === 'object' && k in value) {
         value = value[k];
       } else {
+        console.warn(`Translation key not found: ${key} in locale: ${this.locale}`);
         return key;
       }
     }
 
     if (typeof value !== 'string') {
+      console.warn(`Translation value is not a string for key: ${key}, got:`, value);
       return key;
     }
 
@@ -124,10 +129,29 @@ class I18n {
 
   // Helper method for components
   async init(): Promise<void> {
-    await Promise.all([
+    // If already initializing or initialized, return the existing promise
+    if (this.initPromise) {
+      return this.initPromise;
+    }
+    
+    if (this.initialized) {
+      return Promise.resolve();
+    }
+    
+    // Create and store the initialization promise
+    this.initPromise = Promise.all([
       this.loadTranslations('en'),
       this.loadTranslations(this.locale)
-    ]);
+    ]).then(() => {
+      this.initialized = true;
+      console.log('i18n fully initialized with translations');
+    });
+    
+    return this.initPromise;
+  }
+  
+  isInitialized(): boolean {
+    return this.initialized;
   }
 }
 

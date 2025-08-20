@@ -40,6 +40,8 @@ class I18n {
     this.locale = "en";
     this.translations = /* @__PURE__ */ new Map();
     this.listeners = /* @__PURE__ */ new Set();
+    this.initPromise = null;
+    this.initialized = false;
     const savedLocale = localStorage.getItem("locale");
     if (savedLocale && this.isValidLocale(savedLocale)) {
       this.locale = savedLocale;
@@ -97,6 +99,7 @@ class I18n {
   t(key, params) {
     const translations = this.translations.get(this.locale);
     if (!translations) {
+      console.warn(`No translations loaded for locale: ${this.locale}, key: ${key}`);
       return key;
     }
     const keys = key.split(".");
@@ -105,10 +108,12 @@ class I18n {
       if (typeof value === "object" && k in value) {
         value = value[k];
       } else {
+        console.warn(`Translation key not found: ${key} in locale: ${this.locale}`);
         return key;
       }
     }
     if (typeof value !== "string") {
+      console.warn(`Translation value is not a string for key: ${key}, got:`, value);
       return key;
     }
     if (params) {
@@ -127,28 +132,32 @@ class I18n {
   }
   // Helper method for components
   async init() {
-    await Promise.all([
+    if (this.initPromise) {
+      return this.initPromise;
+    }
+    if (this.initialized) {
+      return Promise.resolve();
+    }
+    this.initPromise = Promise.all([
       this.loadTranslations("en"),
       this.loadTranslations(this.locale)
-    ]);
+    ]).then(() => {
+      this.initialized = true;
+      console.log("i18n fully initialized with translations");
+    });
+    return this.initPromise;
+  }
+  isInitialized() {
+    return this.initialized;
   }
 }
 const i18n = new I18n();
 function t(key, params) {
   return i18n.t(key, params);
 }
-function getSameOriginUrl(protocol) {
-  const { protocol: currentProtocol, host } = window.location;
-  const isSecure = currentProtocol === "https:";
-  if (protocol === "http") {
-    return `${currentProtocol}//${host}`;
-  } else {
-    return `${isSecure ? "wss" : "ws"}://${host}`;
-  }
-}
 const getEnvConfig = () => {
-  const apiBaseUrl = getSameOriginUrl("http");
-  const wsBaseUrl = getSameOriginUrl("ws");
+  const apiBaseUrl = "https://vapor-dev.awan.app";
+  const wsBaseUrl = "wss://vapor-dev.awan.app";
   return {
     API_BASE_URL: apiBaseUrl,
     WS_BASE_URL: wsBaseUrl,
@@ -371,7 +380,7 @@ theme.getTheme();
 auth.isAuthenticated();
 i18n.init().then(() => {
   console.log("i18n initialized, loading app...");
-  import("./app-root-C91meDWX.js");
+  import("./app-root-DzGW6LmS.js");
   console.log("Vapor Web UI initialized");
 }).catch((error) => {
   console.error("Failed to initialize i18n:", error);
