@@ -53,6 +53,9 @@ export class ISOManagement extends LitElement {
   };
   @state() private currentUpload: tus.Upload | null = null;
   @state() private dragOver = false;
+  @state() private isPaused = false;
+  @state() private uploadUrl: string | null = null;
+  @state() private uploadId: string | null = null;
 
   static override styles = css`
     :host {
@@ -701,20 +704,10 @@ export class ISOManagement extends LitElement {
       return;
     }
     
-    // const uploadState = this.uploadStateController.value;
-    
-      // Initialize upload with TUS protocol
-      try {
-        // Set initial upload state
-        $isoUploadState.set({
-          isUploading: true,
-          uploadProgress: 0,
-          uploadId: null,
-          error: null,
-        });
-        
+    try {
+      // Only initiate new upload session if we don't have one already (for resume)
+      if (!this.uploadUrl || !this.uploadId) {
         // Initiate TUS upload session with the API
-        // This will create a TUS-compliant upload session and return the upload URL
         const { uploadUrl, uploadId } = await virtualizationAPI.initiateISOUpload({
           filename: this.selectedFile.name,
           size: this.selectedFile.size,
@@ -722,13 +715,23 @@ export class ISOManagement extends LitElement {
           os_variant: this.uploadMetadata.os_variant,
           description: this.uploadMetadata.description,
         });
+        this.uploadUrl = uploadUrl;
+        this.uploadId = uploadId;
+      }
+      
+      // Set upload state
+      $isoUploadState.set({
+        isUploading: true,
+        uploadProgress: this.isPaused ? $isoUploadState.get().uploadProgress : 0,
+        uploadId: this.uploadId,
+        error: null,
+      });
+      
+      this.isPaused = false;
       
       // Create TUS upload client
-      // The uploadUrl returned from the API is the full URL for this specific upload
       this.currentUpload = new tus.Upload(this.selectedFile, {
-        // Use the specific upload URL returned from the API
-        // This URL already includes the upload ID in the path
-        uploadUrl: uploadUrl,
+        uploadUrl: this.uploadUrl!,
         // Use 10MB chunks as recommended in the OpenAPI spec
         chunkSize: 10 * 1024 * 1024, // 10MB chunks
         // TUS metadata is already sent during session creation,
@@ -776,7 +779,7 @@ export class ISOManagement extends LitElement {
         onSuccess: async () => {
           try {
             // Complete the upload
-            await virtualizationAPI.completeISOUpload(uploadId);
+            await virtualizationAPI.completeISOUpload(this.uploadId!);
             
             // Reset upload state
             $isoUploadState.set({
@@ -821,17 +824,26 @@ export class ISOManagement extends LitElement {
   private pauseUpload() {
     if (this.currentUpload) {
       this.currentUpload.abort();
-      this.showNotification('Upload paused', 'info');
+      this.isPaused = true;
+      
+      // Update store to reflect paused state
+      $isoUploadState.set({
+        ...$isoUploadState.get(),
+        isUploading: false,
+      });
+      
+      this.showNotification('Upload paused - click Resume to continue', 'info');
     }
   }
 
-  // Reserved for future resume functionality
-  // private _resumeUpload() {
-  //   if (this.currentUpload) {
-  //     this.currentUpload.start();
-  //     this.showNotification('Upload resumed', 'info');
-  //   }
-  // }
+  private resumeUpload() {
+    if (this.isPaused && this.selectedFile && this.uploadUrl) {
+      this.isPaused = false;
+      // Re-initiate the upload from where it left off
+      this.handleUpload();
+      this.showNotification('Upload resumed', 'info');
+    }
+  }
 
   private cancelUpload() {
     if (this.currentUpload) {
@@ -847,8 +859,11 @@ export class ISOManagement extends LitElement {
       error: null,
     });
     
-    // Reset file selection
+    // Reset component state
     this.selectedFile = null;
+    this.isPaused = false;
+    this.uploadUrl = null;
+    this.uploadId = null;
     
     // Close the drawer
     this.closeUploadDrawer();
@@ -864,7 +879,7 @@ export class ISOManagement extends LitElement {
 
   private renderUploadDrawer() {
     const uploadState = this._uploadStateController.value;
-    const isUploading = uploadState.isUploading;
+    const isUploading = uploadState.isUploading || this.isPaused;
     
     return html`
       <div class="drawer">
@@ -957,22 +972,28 @@ export class ISOManagement extends LitElement {
               ></textarea>
             </div>
             
-            ${isUploading ? html`
+            ${(uploadState.isUploading || this.isPaused) ? html`
               <div class="upload-progress">
                 <div class="progress-info">
-                  <span>Uploading...</span>
-                  <span>${this._uploadStateController.value.uploadProgress}%</span>
+                  <span>${this.isPaused ? 'Upload Paused' : 'Uploading...'}</span>
+                  <span>${uploadState.uploadProgress}%</span>
                 </div>
                 <div class="progress-bar-container">
                   <div 
                     class="progress-bar" 
-                    style="width: ${this._uploadStateController.value.uploadProgress}%"
+                    style="width: ${uploadState.uploadProgress}%"
                   ></div>
                 </div>
                 <div class="upload-actions">
-                  <button class="btn-secondary" @click=${this.pauseUpload}>
-                    Pause
-                  </button>
+                  ${this.isPaused ? html`
+                    <button class="btn-primary" @click=${this.resumeUpload}>
+                      Resume
+                    </button>
+                  ` : html`
+                    <button class="btn-secondary" @click=${this.pauseUpload}>
+                      Pause
+                    </button>
+                  `}
                   <button class="btn-danger" @click=${this.cancelUpload}>
                     Cancel
                   </button>

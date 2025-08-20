@@ -2,7 +2,7 @@ var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 var _a;
-import { i as i18n, a as auth, g as getWsUrl, b as getApiUrl, t as t$5, c as theme } from "./index-B5fBiSMF.js";
+import { i as i18n, a as auth, g as getWsUrl, b as getApiUrl, t as t$5, c as theme } from "./index-BPyf0n2d.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -16927,7 +16927,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-B5fBiSMF.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-BPyf0n2d.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -16972,7 +16972,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-B5fBiSMF.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-BPyf0n2d.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping WebSocket connection");
     return;
@@ -17040,7 +17040,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-B5fBiSMF.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-BPyf0n2d.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -56712,6 +56712,9 @@ let ISOManagement = class extends i$1 {
     };
     this.currentUpload = null;
     this.dragOver = false;
+    this.isPaused = false;
+    this.uploadUrl = null;
+    this.uploadId = null;
   }
   async connectedCallback() {
     super.connectedCallback();
@@ -56909,23 +56912,26 @@ let ISOManagement = class extends i$1 {
       return;
     }
     try {
+      if (!this.uploadUrl || !this.uploadId) {
+        const { uploadUrl, uploadId } = await virtualizationAPI.initiateISOUpload({
+          filename: this.selectedFile.name,
+          size: this.selectedFile.size,
+          os_type: this.uploadMetadata.os_type,
+          os_variant: this.uploadMetadata.os_variant,
+          description: this.uploadMetadata.description
+        });
+        this.uploadUrl = uploadUrl;
+        this.uploadId = uploadId;
+      }
       $isoUploadState.set({
         isUploading: true,
-        uploadProgress: 0,
-        uploadId: null,
+        uploadProgress: this.isPaused ? $isoUploadState.get().uploadProgress : 0,
+        uploadId: this.uploadId,
         error: null
       });
-      const { uploadUrl, uploadId } = await virtualizationAPI.initiateISOUpload({
-        filename: this.selectedFile.name,
-        size: this.selectedFile.size,
-        os_type: this.uploadMetadata.os_type,
-        os_variant: this.uploadMetadata.os_variant,
-        description: this.uploadMetadata.description
-      });
+      this.isPaused = false;
       this.currentUpload = new Upload(this.selectedFile, {
-        // Use the specific upload URL returned from the API
-        // This URL already includes the upload ID in the path
-        uploadUrl,
+        uploadUrl: this.uploadUrl,
         // Use 10MB chunks as recommended in the OpenAPI spec
         chunkSize: 10 * 1024 * 1024,
         // 10MB chunks
@@ -56968,7 +56974,7 @@ let ISOManagement = class extends i$1 {
         },
         onSuccess: async () => {
           try {
-            await virtualizationAPI.completeISOUpload(uploadId);
+            await virtualizationAPI.completeISOUpload(this.uploadId);
             $isoUploadState.set({
               isUploading: false,
               uploadProgress: 0,
@@ -57002,16 +57008,21 @@ let ISOManagement = class extends i$1 {
   pauseUpload() {
     if (this.currentUpload) {
       this.currentUpload.abort();
-      this.showNotification("Upload paused", "info");
+      this.isPaused = true;
+      $isoUploadState.set({
+        ...$isoUploadState.get(),
+        isUploading: false
+      });
+      this.showNotification("Upload paused - click Resume to continue", "info");
     }
   }
-  // Reserved for future resume functionality
-  // private _resumeUpload() {
-  //   if (this.currentUpload) {
-  //     this.currentUpload.start();
-  //     this.showNotification('Upload resumed', 'info');
-  //   }
-  // }
+  resumeUpload() {
+    if (this.isPaused && this.selectedFile && this.uploadUrl) {
+      this.isPaused = false;
+      this.handleUpload();
+      this.showNotification("Upload resumed", "info");
+    }
+  }
   cancelUpload() {
     if (this.currentUpload) {
       this.currentUpload.abort();
@@ -57024,6 +57035,9 @@ let ISOManagement = class extends i$1 {
       error: null
     });
     this.selectedFile = null;
+    this.isPaused = false;
+    this.uploadUrl = null;
+    this.uploadId = null;
     this.closeUploadDrawer();
   }
   showNotification(message, type = "info") {
@@ -57035,7 +57049,7 @@ let ISOManagement = class extends i$1 {
   }
   renderUploadDrawer() {
     const uploadState = this._uploadStateController.value;
-    const isUploading = uploadState.isUploading;
+    const isUploading = uploadState.isUploading || this.isPaused;
     return x`
       <div class="drawer">
         <div class="drawer-header">
@@ -57124,22 +57138,28 @@ let ISOManagement = class extends i$1 {
               ></textarea>
             </div>
             
-            ${isUploading ? x`
+            ${uploadState.isUploading || this.isPaused ? x`
               <div class="upload-progress">
                 <div class="progress-info">
-                  <span>Uploading...</span>
-                  <span>${this._uploadStateController.value.uploadProgress}%</span>
+                  <span>${this.isPaused ? "Upload Paused" : "Uploading..."}</span>
+                  <span>${uploadState.uploadProgress}%</span>
                 </div>
                 <div class="progress-bar-container">
                   <div 
                     class="progress-bar" 
-                    style="width: ${this._uploadStateController.value.uploadProgress}%"
+                    style="width: ${uploadState.uploadProgress}%"
                   ></div>
                 </div>
                 <div class="upload-actions">
-                  <button class="btn-secondary" @click=${this.pauseUpload}>
-                    Pause
-                  </button>
+                  ${this.isPaused ? x`
+                    <button class="btn-primary" @click=${this.resumeUpload}>
+                      Resume
+                    </button>
+                  ` : x`
+                    <button class="btn-secondary" @click=${this.pauseUpload}>
+                      Pause
+                    </button>
+                  `}
                   <button class="btn-danger" @click=${this.cancelUpload}>
                     Cancel
                   </button>
@@ -57691,6 +57711,15 @@ __decorateClass$b([
 __decorateClass$b([
   r$1()
 ], ISOManagement.prototype, "dragOver", 2);
+__decorateClass$b([
+  r$1()
+], ISOManagement.prototype, "isPaused", 2);
+__decorateClass$b([
+  r$1()
+], ISOManagement.prototype, "uploadUrl", 2);
+__decorateClass$b([
+  r$1()
+], ISOManagement.prototype, "uploadId", 2);
 ISOManagement = __decorateClass$b([
   t$2("iso-management")
 ], ISOManagement);
