@@ -37,6 +37,12 @@ build-linux: embed-web
 	@echo "Building for Linux x86_64..."
 	go build -o bin/$(BINARY_NAME)-linux-amd64 $(MAIN_PATH)
 
+update-systemd:
+	@echo "Update Vapor daemon service in systemd"
+	go build -o bin/$(BINARY_NAME) $(MAIN_PATH)
+	cp ./bin/$(BINARY_NAME) /usr/local/bin/$(BINARY_NAME).new
+	mv /usr/local/bin/$(BINARY_NAME).new /usr/local/bin/$(BINARY_NAME)
+	systemctl restart vapor
 # Run tests
 test:
 	@echo "Running tests..."
