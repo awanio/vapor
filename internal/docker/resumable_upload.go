@@ -2,10 +2,7 @@ package docker
 
 import (
 	"os"
-	"path/filepath"
-	"strconv"
 
-	"github.com/awanio/vapor/internal/common"
 	"github.com/awanio/vapor/internal/container"
 	"github.com/gin-gonic/gin"
 )
@@ -16,7 +13,7 @@ type ResumableUploadHandler struct {
 }
 
 // NewResumableUploadHandler creates a new Docker resumable upload handler
-func NewResumableUploadHandler(dockerService *ServiceWithRuntimeClient, uploadDir string) *ResumableUploadHandler {
+func NewResumableUploadHandler(dockerService *Service, uploadDir string) *ResumableUploadHandler {
 	// Create upload directory if it doesn't exist
 	os.MkdirAll(uploadDir, 0755)
 
