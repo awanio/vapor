@@ -133,10 +133,23 @@ func listVMs(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		vms, err := service.ListVMs(c.Request.Context())
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "LIST_VMS_FAILED",
+					"message": "Failed to list virtual machines",
+					"details": err.Error(),
+				},
+			})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"vms": vms})
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data": gin.H{
+				"vms":   vms,
+				"count": len(vms),
+			},
+		})
 	}
 }
 
@@ -145,10 +158,31 @@ func getVM(service *libvirt.Service) gin.HandlerFunc {
 		id := c.Param("id")
 		vm, err := service.GetVM(c.Request.Context(), id)
 		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			if strings.Contains(err.Error(), "not found") {
+				c.JSON(http.StatusNotFound, gin.H{
+					"status": "error",
+					"error": gin.H{
+						"code":    "VM_NOT_FOUND",
+						"message": "Virtual machine not found",
+						"details": err.Error(),
+					},
+				})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "GET_VM_FAILED",
+					"message": "Failed to get virtual machine",
+					"details": err.Error(),
+				},
+			})
 			return
 		}
-		c.JSON(http.StatusOK, vm)
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data":   vm,
+		})
 	}
 }
 
@@ -156,17 +190,37 @@ func createVM(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req libvirt.VMCreateRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "INVALID_REQUEST",
+					"message": "Invalid VM creation request",
+					"details": err.Error(),
+				},
+			})
 			return
 		}
 
 		vm, err := service.CreateVM(c.Request.Context(), &req)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "CREATE_VM_FAILED",
+					"message": "Failed to create virtual machine",
+					"details": err.Error(),
+				},
+			})
 			return
 		}
 
-		c.JSON(http.StatusCreated, vm)
+		c.JSON(http.StatusCreated, gin.H{
+			"status": "success",
+			"data": gin.H{
+				"vm":      vm,
+				"message": "Virtual machine created successfully",
+			},
+		})
 	}
 }
 
@@ -175,17 +229,48 @@ func updateVM(service *libvirt.Service) gin.HandlerFunc {
 		id := c.Param("id")
 		var req libvirt.VMUpdateRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "INVALID_REQUEST",
+					"message": "Invalid VM update request",
+					"details": err.Error(),
+				},
+			})
 			return
 		}
 
 		vm, err := service.UpdateVM(c.Request.Context(), id, &req)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			if strings.Contains(err.Error(), "not found") {
+				c.JSON(http.StatusNotFound, gin.H{
+					"status": "error",
+					"error": gin.H{
+						"code":    "VM_NOT_FOUND",
+						"message": "Virtual machine not found",
+						"details": err.Error(),
+					},
+				})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "UPDATE_VM_FAILED",
+					"message": "Failed to update virtual machine",
+					"details": err.Error(),
+				},
+			})
 			return
 		}
 
-		c.JSON(http.StatusOK, vm)
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data": gin.H{
+				"vm":      vm,
+				"message": "Virtual machine updated successfully",
+			},
+		})
 	}
 }
 
@@ -198,11 +283,36 @@ func deleteVM(service *libvirt.Service) gin.HandlerFunc {
 
 		err := service.DeleteVM(c.Request.Context(), id, removeDisks)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			if strings.Contains(err.Error(), "not found") {
+				c.JSON(http.StatusNotFound, gin.H{
+					"status": "error",
+					"error": gin.H{
+						"code":    "VM_NOT_FOUND",
+						"message": "Virtual machine not found",
+						"details": err.Error(),
+					},
+				})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "DELETE_VM_FAILED",
+					"message": "Failed to delete virtual machine",
+					"details": err.Error(),
+				},
+			})
 			return
 		}
 
-		c.JSON(http.StatusNoContent, nil)
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data": gin.H{
+				"message":      "Virtual machine deleted successfully",
+				"id":           id,
+				"remove_disks": removeDisks,
+			},
+		})
 	}
 }
 
@@ -211,17 +321,49 @@ func vmAction(service *libvirt.Service) gin.HandlerFunc {
 		id := c.Param("id")
 		var req libvirt.VMActionRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "INVALID_REQUEST",
+					"message": "Invalid VM action request",
+					"details": err.Error(),
+				},
+			})
 			return
 		}
 
 		err := service.VMAction(c.Request.Context(), id, req.Action, req.Force)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			if strings.Contains(err.Error(), "not found") {
+				c.JSON(http.StatusNotFound, gin.H{
+					"status": "error",
+					"error": gin.H{
+						"code":    "VM_NOT_FOUND",
+						"message": "Virtual machine not found",
+						"details": err.Error(),
+					},
+				})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "VM_ACTION_FAILED",
+					"message": "Failed to perform VM action",
+					"details": err.Error(),
+				},
+			})
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "action completed", "action": req.Action})
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data": gin.H{
+				"message": "VM action completed successfully",
+				"action":  req.Action,
+				"vm_id":   id,
+			},
+		})
 	}
 }
 
@@ -247,10 +389,35 @@ func listSnapshots(service *libvirt.Service) gin.HandlerFunc {
 		id := c.Param("id")
 		snapshots, err := service.ListSnapshots(c.Request.Context(), id)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			if strings.Contains(err.Error(), "not found") {
+				c.JSON(http.StatusNotFound, gin.H{
+					"status": "error",
+					"error": gin.H{
+						"code":    "VM_NOT_FOUND",
+						"message": "Virtual machine not found",
+						"details": err.Error(),
+					},
+				})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "LIST_SNAPSHOTS_FAILED",
+					"message": "Failed to list VM snapshots",
+					"details": err.Error(),
+				},
+			})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"snapshots": snapshots})
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data": gin.H{
+				"snapshots": snapshots,
+				"count":     len(snapshots),
+				"vm_id":     id,
+			},
+		})
 	}
 }
 
@@ -310,10 +477,35 @@ func listBackups(service *libvirt.Service) gin.HandlerFunc {
 		id := c.Param("id")
 		backups, err := service.ListBackups(c.Request.Context(), id)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			if strings.Contains(err.Error(), "not found") {
+				c.JSON(http.StatusNotFound, gin.H{
+					"status": "error",
+					"error": gin.H{
+						"code":    "VM_NOT_FOUND",
+						"message": "Virtual machine not found",
+						"details": err.Error(),
+					},
+				})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "LIST_BACKUPS_FAILED",
+					"message": "Failed to list VM backups",
+					"details": err.Error(),
+				},
+			})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"backups": backups})
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data": gin.H{
+				"backups": backups,
+				"count":   len(backups),
+				"vm_id":   id,
+			},
+		})
 	}
 }
 
@@ -535,14 +727,26 @@ return
 }
 
 func listTemplates(service *libvirt.Service) gin.HandlerFunc {
-
 	return func(c *gin.Context) {
 		templates, err := service.TemplateService.ListTemplates(c.Request.Context())
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "LIST_TEMPLATES_FAILED",
+					"message": "Failed to list VM templates",
+					"details": err.Error(),
+				},
+			})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"templates": templates})
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data": gin.H{
+				"templates": templates,
+				"count":     len(templates),
+			},
+		})
 	}
 }
 
@@ -716,10 +920,23 @@ func listStoragePools(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		pools, err := service.ListStoragePools(c.Request.Context())
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "LIST_STORAGE_POOLS_FAILED",
+					"message": "Failed to list storage pools",
+					"details": err.Error(),
+				},
+			})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"pools": pools})
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data": gin.H{
+				"pools": pools,
+				"count": len(pools),
+			},
+		})
 	}
 }
 
@@ -832,10 +1049,23 @@ func listNetworks(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		networks, err := service.ListNetworks(c.Request.Context())
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "LIST_NETWORKS_FAILED",
+					"message": "Failed to list virtual networks",
+					"details": err.Error(),
+				},
+			})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"networks": networks})
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data": gin.H{
+				"networks": networks,
+				"count":    len(networks),
+			},
+		})
 	}
 }
 
@@ -936,7 +1166,14 @@ func listPCIDevices(service *libvirt.Service) gin.HandlerFunc {
 		deviceType := c.Query("type")
 		devices, err := service.ListPCIDevices(c.Request.Context())
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "LIST_PCI_DEVICES_FAILED",
+					"message": "Failed to list PCI devices",
+					"details": err.Error(),
+				},
+			})
 			return
 		}
 
@@ -951,7 +1188,14 @@ func listPCIDevices(service *libvirt.Service) gin.HandlerFunc {
 			devices = filtered
 		}
 
-		c.JSON(http.StatusOK, gin.H{"devices": devices})
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data": gin.H{
+				"devices":     devices,
+				"count":       len(devices),
+				"device_type": deviceType,
+			},
+		})
 	}
 }
 
@@ -1053,10 +1297,23 @@ func listISOs(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		isos, err := service.ListISOs(c.Request.Context())
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "LIST_ISOS_FAILED",
+					"message": "Failed to list ISO images",
+					"details": err.Error(),
+				},
+			})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"isos": isos})
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data": gin.H{
+				"isos":  isos,
+				"count": len(isos),
+			},
+		})
 	}
 }
 
@@ -1064,17 +1321,37 @@ func uploadISO(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req libvirt.ISOUploadRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "INVALID_REQUEST",
+					"message": "Invalid ISO upload request",
+					"details": err.Error(),
+				},
+			})
 			return
 		}
 
 		iso, err := service.UploadISO(c.Request.Context(), &req)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "UPLOAD_ISO_FAILED",
+					"message": "Failed to upload ISO image",
+					"details": err.Error(),
+				},
+			})
 			return
 		}
 
-		c.JSON(http.StatusCreated, iso)
+		c.JSON(http.StatusCreated, gin.H{
+			"status": "success",
+			"data": gin.H{
+				"iso":     iso,
+				"message": "ISO uploaded successfully",
+			},
+		})
 	}
 }
 
@@ -1083,10 +1360,23 @@ func deleteISO(service *libvirt.Service) gin.HandlerFunc {
 		id := c.Param("id")
 		err := service.DeleteISO(c.Request.Context(), id)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "DELETE_ISO_FAILED",
+					"message": "Failed to delete ISO image",
+					"details": err.Error(),
+				},
+			})
 			return
 		}
 
-		c.JSON(http.StatusNoContent, nil)
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data": gin.H{
+				"message": "ISO deleted successfully",
+				"id":      id,
+			},
+		})
 	}
 }
