@@ -5,6 +5,7 @@
 import { atom, computed, map } from 'nanostores';
 import { createStore } from '../utils/factory';
 import { getApiUrl } from '../../config';
+import { StoreEventType } from '../types';
 import type { 
   VirtualMachine, 
   StoragePool, 
@@ -36,11 +37,44 @@ async function apiRequest<T>(
   });
   
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: response.statusText }));
-    throw new Error(error.message || `Request failed: ${response.status}`);
+    const errorData = await response.json().catch(() => ({ message: response.statusText }));
+    // Handle new error format with status and error fields
+    if (errorData.status === 'error' && errorData.error) {
+      throw new Error(errorData.error.message || errorData.error.details || `Request failed: ${response.status}`);
+    }
+    throw new Error(errorData.message || `Request failed: ${response.status}`);
   }
   
-  return response.json();
+  const jsonData = await response.json();
+  
+  // Handle new response format with status and data fields
+  if (jsonData.status === 'success' && jsonData.data !== undefined) {
+    // Extract the actual data based on the endpoint
+    if (endpoint.includes('/isos') && jsonData.data.isos) {
+      return jsonData.data.isos as T;
+    }
+    if (endpoint.includes('/virtualmachines') && jsonData.data.vms) {
+      return jsonData.data.vms as T;
+    }
+    if (endpoint.includes('/pools') && jsonData.data.pools) {
+      return jsonData.data.pools as T;
+    }
+    if (endpoint.includes('/networks') && jsonData.data.networks) {
+      return jsonData.data.networks as T;
+    }
+    if (endpoint.includes('/templates') && jsonData.data.templates) {
+      return jsonData.data.templates as T;
+    }
+    // For single object responses
+    if (jsonData.data.vm || jsonData.data.iso || jsonData.data.pool || jsonData.data.network || jsonData.data.template) {
+      return (jsonData.data.vm || jsonData.data.iso || jsonData.data.pool || jsonData.data.network || jsonData.data.template) as T;
+    }
+    // Fallback to returning the data directly
+    return jsonData.data as T;
+  }
+  
+  // Fallback for old format or other responses
+  return jsonData as T;
 }
 
 // ============ VM Store ============
@@ -69,7 +103,7 @@ export const vmStore = createStore<VirtualMachine>({
 });
 
 // ============ Storage Pool Store ============
-export const storagePoolStore = createStore<StoragePool & { id: string }>({
+const baseStoragePoolStore = createStore<StoragePool & { id: string }>({
   name: 'virtualization-storage-pools',
   idField: 'name',
   endpoint: getApiUrl(`${API_BASE}/storages/pools`),
@@ -81,8 +115,54 @@ export const storagePoolStore = createStore<StoragePool & { id: string }>({
   }),
 });
 
+// Extend the storage pool store with proper fetch implementation
+export const storagePoolStore = {
+  ...baseStoragePoolStore,
+  transform: baseStoragePoolStore.transform,
+  async fetch(): Promise<void> {
+    try {
+      baseStoragePoolStore.$loading.set(true);
+      baseStoragePoolStore.$error.set(null);
+      
+      // Make the actual API request
+      const response = await apiRequest<StoragePool[]>('/storages/pools');
+      
+      // Transform and update the store with fetched data
+      const items = new Map<string, StoragePool & { id: string }>();
+      response.forEach(pool => {
+        const transformed = storagePoolStore.transform ? 
+          storagePoolStore.transform(pool) : 
+          { ...pool, id: pool.name };
+        items.set(pool.name, transformed);
+      });
+      baseStoragePoolStore.$items.set(items);
+      
+      baseStoragePoolStore.emit({
+        type: StoreEventType.FETCHED,
+        payload: response,
+        timestamp: Date.now(),
+      });
+    } catch (error) {
+      const storeError = {
+        code: 'FETCH_ERROR',
+        message: error instanceof Error ? error.message : 'Failed to fetch storage pools',
+        timestamp: Date.now(),
+      };
+      baseStoragePoolStore.$error.set(storeError);
+      baseStoragePoolStore.emit({
+        type: StoreEventType.ERROR,
+        payload: storeError as any,
+        timestamp: Date.now(),
+      });
+      throw error;
+    } finally {
+      baseStoragePoolStore.$loading.set(false);
+    }
+  },
+};
+
 // ============ ISO Store ============
-export const isoStore = createStore<ISOImage>({
+const baseIsoStore = createStore<ISOImage>({
   name: 'virtualization-isos',
   idField: 'id',
   endpoint: getApiUrl(`${API_BASE}/storages/isos`),
@@ -90,6 +170,87 @@ export const isoStore = createStore<ISOImage>({
   persistKey: 'vapor.virtualization.isos',
   debug: process.env.NODE_ENV === 'development',
 });
+
+// Transform function to map API response fields to ISOImage interface
+function transformISOResponse(apiIso: any): ISOImage {
+  return {
+    id: apiIso.image_id || apiIso.id,
+    name: apiIso.filename || apiIso.name,
+    path: apiIso.path,
+    size: apiIso.size_bytes || apiIso.size || 0,
+    os_type: apiIso.os_type,
+    os_variant: apiIso.os_variant,
+    architecture: apiIso.architecture,
+    uploaded_at: apiIso.created_at || apiIso.uploaded_at,
+    checksum: apiIso.checksum,
+    storage_pool: apiIso.storage_pool || 'default',
+  };
+}
+
+// Extend the ISO store with proper fetch implementation
+export const isoStore = {
+  ...baseIsoStore,
+  async fetch(): Promise<void> {
+    try {
+      baseIsoStore.$loading.set(true);
+      baseIsoStore.$error.set(null);
+      
+      // Make the actual API request
+      const response = await apiRequest<any>('/virtualmachines/isos');
+      
+      // Handle different response structures
+      let isos: ISOImage[] = [];
+      
+      if (Array.isArray(response)) {
+        // Direct array response
+        isos = response.map(transformISOResponse);
+      } else if (response && typeof response === 'object') {
+        // Check for nested data.isos structure (as shown in the example)
+        if (response.data && response.data.isos && Array.isArray(response.data.isos)) {
+          isos = response.data.isos.map(transformISOResponse);
+        } 
+        // Check for data array structure
+        else if (response.data && Array.isArray(response.data)) {
+          isos = response.data.map(transformISOResponse);
+        }
+        // Check for direct isos array in response
+        else if (response.isos && Array.isArray(response.isos)) {
+          isos = response.isos.map(transformISOResponse);
+        } else {
+          console.warn('Unexpected ISO list response format:', response);
+        }
+      }
+      
+      // Update the store with fetched data
+      const items = new Map<string, ISOImage>();
+      isos.forEach(iso => {
+        items.set(iso.id, iso);
+      });
+      baseIsoStore.$items.set(items);
+      
+      baseIsoStore.emit({
+        type: StoreEventType.FETCHED,
+        payload: isos,
+        timestamp: Date.now(),
+      });
+    } catch (error) {
+      const storeError = {
+        code: 'FETCH_ERROR',
+        message: error instanceof Error ? error.message : 'Failed to fetch ISOs',
+        timestamp: Date.now(),
+      };
+      baseIsoStore.$error.set(storeError);
+      baseIsoStore.emit({
+        type: StoreEventType.ERROR,
+        payload: storeError as any,
+        timestamp: Date.now(),
+      });
+      throw error;
+    } finally {
+      baseIsoStore.$loading.set(false);
+    }
+  },
+};
 
 // ============ Templates Store ============
 export const templateStore = createStore<VMTemplate>({
@@ -576,7 +737,7 @@ export const storageActions = {
   },
   
   async deleteISO(isoId: string) {
-    await apiRequest(`/storages/isos/${isoId}`, { method: 'DELETE' });
+    await apiRequest(`/virtualmachines/isos/${isoId}`, { method: 'DELETE' });
     await isoStore.delete(isoId);
   },
 };

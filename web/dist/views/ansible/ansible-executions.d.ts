@@ -1,0 +1,41 @@
+import { LitElement } from 'lit';
+import '../../components/ui/search-input';
+import '../../components/ui/loading-state';
+import '../../components/ui/empty-state';
+import '../../components/ui/filter-dropdown';
+import '../../components/tables/resource-table';
+import '../../components/ui/action-dropdown';
+import '../../components/drawers/ansible-execution-drawer';
+export declare class AnsibleExecutions extends LitElement {
+    private loading;
+    private searchQuery;
+    private executions;
+    private statusFilter;
+    private typeFilter;
+    private showExecutionDrawer;
+    private selectedExecutionId?;
+    private refreshInterval?;
+    static styles: import("lit").CSSResult;
+    connectedCallback(): void;
+    disconnectedCallback(): void;
+    private startAutoRefresh;
+    private stopAutoRefresh;
+    private loadData;
+    private handleSearch;
+    private handleFilterChange;
+    private get filteredExecutions();
+    private formatDuration;
+    private formatDate;
+    private getExecutionColumns;
+    private getExecutionActions;
+    private renderStatusBadge;
+    private renderHostStats;
+    private handleExecutionAction;
+    private downloadExecutionLog;
+    private cancelExecution;
+    private handleRefresh;
+    private handleRunClick;
+    private handleDrawerClose;
+    render(): import("lit-html").TemplateResult<1>;
+}
+//# sourceMappingURL=ansible-executions.d.ts.map

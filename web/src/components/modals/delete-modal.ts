@@ -177,7 +177,7 @@ export class DeleteModal extends LitElement {
             <div class="modal-resource-info">
               <div><strong>Type:</strong> ${this.item.type}</div>
               <div><strong>Name:</strong> ${this.item.name}</div>
-              <div><strong>Namespace:</strong> ${this.item.namespace || 'N/A'}</div>
+              ${this.item.namespace ? html`<div><strong>Namespace:</strong> ${this.item.namespace}</div>` : ''}
             </div>
             <p><strong>This action cannot be undone.</strong></p>
           </div>

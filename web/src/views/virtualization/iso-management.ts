@@ -19,6 +19,7 @@ import '../../components/ui/notification-container.js';
 // Import store and types
 import {
   isoStore,
+  storagePoolStore,
   $availableISOs,
   $isoUploadState,
   storageActions,
@@ -40,7 +41,7 @@ export class ISOManagement extends LitElement {
 
   // Component state
   @state() private searchQuery = '';
-  @state() private showUploadModal = false;
+  @state() private showUploadDrawer = false;
   @state() private showDeleteModal = false;
   @state() private isoToDelete: ISOImage | null = null;
   @state() private isDeleting = false;
@@ -103,90 +104,86 @@ export class ISOManagement extends LitElement {
       overflow-y: auto;
     }
 
-    .btn-upload {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 16px;
-      background: var(--vscode-button-background);
-      color: var(--vscode-button-foreground);
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 500;
-      transition: all 0.2s;
-    }
+    /* Button styles are defined below in the general button section */
 
-    .btn-upload:hover {
-      background: var(--vscode-button-hoverBackground);
-    }
-
-    /* Upload Modal Styles */
-    .modal-overlay {
+    /* Drawer Styles */
+    .drawer {
       position: fixed;
       top: 0;
-      left: 0;
       right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.6);
-      backdrop-filter: blur(2px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
-
-    .modal-container {
+      width: 50%;
+      height: 100%;
       background: var(--vscode-editor-background, #1e1e1e);
-      border: 1px solid var(--vscode-editorWidget-border, #464647);
-      border-radius: 8px;
-      width: 90%;
-      max-width: 600px;
-      max-height: 90vh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      border-left: 1px solid var(--vscode-widget-border, #454545);
+      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+      z-index: 1001;
+      overflow-y: auto;
+      animation: slideIn 0.3s ease-out;
     }
 
-    .modal-header {
+    @media (max-width: 1024px) {
+      .drawer {
+        width: 80%;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .drawer {
+        width: 100%;
+      }
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+      }
+      to {
+        transform: translateX(0);
+      }
+    }
+
+    .drawer-header {
       padding: 20px 24px;
       border-bottom: 1px solid var(--vscode-editorWidget-border, #464647);
       display: flex;
       justify-content: space-between;
       align-items: center;
       background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
 
-    .modal-title {
+    .drawer-title {
       font-size: 18px;
       font-weight: 500;
       color: var(--vscode-foreground, #cccccc);
+      margin: 0;
     }
 
-    .modal-body {
+    .drawer-content {
       padding: 24px;
       overflow-y: auto;
-      flex: 1;
-      background: var(--vscode-editor-background, #1e1e1e);
     }
 
-    .modal-footer {
+    .drawer-footer {
       padding: 16px 24px;
       border-top: 1px solid var(--vscode-editorWidget-border, #464647);
       display: flex;
       justify-content: flex-end;
       gap: 12px;
       background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      position: sticky;
+      bottom: 0;
+      z-index: 10;
     }
 
-    .close-button {
+    .close-btn {
       background: transparent;
       border: none;
       color: var(--vscode-foreground, #cccccc);
       cursor: pointer;
-      padding: 4px 8px;
+      padding: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -196,7 +193,7 @@ export class ISOManagement extends LitElement {
       transition: all 0.2s;
     }
 
-    .close-button:hover {
+    .close-btn:hover {
       background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
       color: var(--vscode-icon-foreground, #c5c5c5);
     }
@@ -334,16 +331,21 @@ export class ISOManagement extends LitElement {
     .progress-bar-container {
       width: 100%;
       height: 8px;
-      background: var(--vscode-progressBar-background);
+      background: var(--vscode-progressBar-background, #1e1e1e);
       border-radius: 4px;
       overflow: hidden;
       margin: 12px 0;
+      border: 1px solid var(--vscode-input-border, #5a5a5a);
     }
 
     .progress-bar {
       height: 100%;
-      background: var(--vscode-progressBar-foreground);
+      background: var(--vscode-progressBar-foreground, #0e639c);
+      background: linear-gradient(90deg, 
+        var(--vscode-progressBar-foreground, #0e639c) 0%, 
+        var(--vscode-button-hoverBackground, #1177bb) 100%);
       transition: width 0.3s ease;
+      box-shadow: 0 0 10px rgba(14, 99, 156, 0.5);
     }
 
     .progress-info {
@@ -361,6 +363,17 @@ export class ISOManagement extends LitElement {
 
     /* Buttons */
     button {
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+      font-family: inherit;
+    }
+
+    .btn {
       padding: 8px 16px;
       border-radius: 4px;
       font-size: 13px;
@@ -454,7 +467,11 @@ export class ISOManagement extends LitElement {
 
   private async loadData() {
     try {
+      // Ensure we have a fresh fetch from the API
       await isoStore.fetch();
+      
+      // Also refresh storage pools if needed
+      await storagePoolStore.fetch();
     } catch (error) {
       console.error('Failed to load ISOs:', error);
       this.showNotification('Failed to load ISO images', 'error');
@@ -464,23 +481,33 @@ export class ISOManagement extends LitElement {
   private getColumns(): Column[] {
     return [
       { key: 'name', label: 'Name', type: 'link' },
-      { key: 'size', label: 'Size', type: 'custom' },
+      { key: 'size_formatted', label: 'Size' },
       { key: 'os_type', label: 'OS Type' },
       { key: 'os_variant', label: 'OS Variant' },
-      { key: 'uploaded_at', label: 'Uploaded', type: 'custom' },
+      { key: 'uploaded_at_formatted', label: 'Uploaded' },
       { key: 'storage_pool', label: 'Storage Pool' },
     ];
   }
 
   private getActions(_iso: ISOImage): ActionItem[] {
     return [
-      { label: 'Download', action: 'download', icon: 'download' },
-      { label: 'Copy Path', action: 'copy-path', icon: 'copy' },
-      { label: 'Delete', action: 'delete', icon: 'trash', danger: true },
+      { label: 'Download', action: 'download' },
+      { label: 'Copy Path', action: 'copy-path' },
+      { label: 'Delete', action: 'delete', danger: true },
     ];
   }
 
-  private formatFileSize(bytes: number): string {
+  private formatFileSize(bytes: number | undefined | null): string {
+    // Handle undefined, null, or invalid values
+    if (bytes === undefined || bytes === null || isNaN(bytes)) {
+      return 'Unknown';
+    }
+    
+    // Handle zero or negative values
+    if (bytes <= 0) {
+      return '0 B';
+    }
+    
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
     let size = bytes;
     let unitIndex = 0;
@@ -553,6 +580,8 @@ export class ISOManagement extends LitElement {
   private confirmDeleteISO(iso: ISOImage) {
     this.isoToDelete = iso;
     this.showDeleteModal = true;
+    // Force update to ensure modal renders
+    this.requestUpdate();
   }
 
   private async handleDelete() {
@@ -576,8 +605,8 @@ export class ISOManagement extends LitElement {
     }
   }
 
-  private openUploadModal() {
-    this.showUploadModal = true;
+  private openUploadDrawer() {
+    this.showUploadDrawer = true;
     this.selectedFile = null;
     this.uploadMetadata = {
       os_type: 'linux',
@@ -586,13 +615,28 @@ export class ISOManagement extends LitElement {
     };
   }
 
-  private closeUploadModal() {
+  private closeUploadDrawer() {
     if (this.currentUpload) {
       this.currentUpload.abort();
       this.currentUpload = null;
+      
+      // Reset upload state when closing drawer with active upload
+      $isoUploadState.set({
+        isUploading: false,
+        uploadProgress: 0,
+        uploadId: null,
+        error: null,
+      });
     }
-    this.showUploadModal = false;
+    this.showUploadDrawer = false;
     this.selectedFile = null;
+    
+    // Reset metadata to defaults
+    this.uploadMetadata = {
+      os_type: 'linux',
+      os_variant: '',
+      description: '',
+    };
   }
 
   private handleDragOver(event: DragEvent) {
@@ -659,17 +703,25 @@ export class ISOManagement extends LitElement {
     
     // const uploadState = this.uploadStateController.value;
     
-    // Initialize upload with TUS protocol
-    try {
-      // Initiate TUS upload session with the API
-      // This will create a TUS-compliant upload session and return the upload URL
-      const { uploadUrl, uploadId } = await virtualizationAPI.initiateISOUpload({
-        filename: this.selectedFile.name,
-        size: this.selectedFile.size,
-        os_type: this.uploadMetadata.os_type,
-        os_variant: this.uploadMetadata.os_variant,
-        description: this.uploadMetadata.description,
-      });
+      // Initialize upload with TUS protocol
+      try {
+        // Set initial upload state
+        $isoUploadState.set({
+          isUploading: true,
+          uploadProgress: 0,
+          uploadId: null,
+          error: null,
+        });
+        
+        // Initiate TUS upload session with the API
+        // This will create a TUS-compliant upload session and return the upload URL
+        const { uploadUrl, uploadId } = await virtualizationAPI.initiateISOUpload({
+          filename: this.selectedFile.name,
+          size: this.selectedFile.size,
+          os_type: this.uploadMetadata.os_type,
+          os_variant: this.uploadMetadata.os_variant,
+          description: this.uploadMetadata.description,
+        });
       
       // Create TUS upload client
       // The uploadUrl returned from the API is the full URL for this specific upload
@@ -702,25 +754,54 @@ export class ISOManagement extends LitElement {
           console.error('Upload failed:', error);
           this.showNotification(`Upload failed: ${error.message}`, 'error');
           this.currentUpload = null;
+          
+          // Reset upload state on error
+          $isoUploadState.set({
+            isUploading: false,
+            uploadProgress: 0,
+            uploadId: null,
+            error: error.message,
+          });
         },
-        onProgress: (_bytesUploaded, _bytesTotal) => {
-          // const percentage = (bytesUploaded / bytesTotal * 100).toFixed(0);
-          // Update upload progress in store
-          storageActions.uploadISO(this.selectedFile!, this.uploadMetadata);
+        onProgress: (bytesUploaded, bytesTotal) => {
+          // Calculate progress based on total file size, not chunk size
+          const percentage = Math.round((bytesUploaded / bytesTotal) * 100);
+          
+          // Update the upload progress state
+          $isoUploadState.set({
+            ...$isoUploadState.get(),
+            uploadProgress: percentage,
+          });
         },
         onSuccess: async () => {
           try {
             // Complete the upload
             await virtualizationAPI.completeISOUpload(uploadId);
             
-            // Refresh ISO list
+            // Reset upload state
+            $isoUploadState.set({
+              isUploading: false,
+              uploadProgress: 0,
+              uploadId: null,
+              error: null,
+            });
+            
+            // Refresh ISO list to show the newly uploaded ISO
             await isoStore.fetch();
             
             this.showNotification('ISO uploaded successfully', 'success');
-            this.closeUploadModal();
+            this.closeUploadDrawer();
           } catch (error) {
             console.error('Failed to complete upload:', error);
             this.showNotification('Failed to complete upload', 'error');
+            
+            // Reset upload state on error
+            $isoUploadState.set({
+              isUploading: false,
+              uploadProgress: 0,
+              uploadId: null,
+              error: error instanceof Error ? error.message : 'Unknown error',
+            });
           }
         },
       });
@@ -757,7 +838,20 @@ export class ISOManagement extends LitElement {
       this.currentUpload.abort();
       this.currentUpload = null;
     }
-    this.closeUploadModal();
+    
+    // Reset upload state completely
+    $isoUploadState.set({
+      isUploading: false,
+      uploadProgress: 0,
+      uploadId: null,
+      error: null,
+    });
+    
+    // Reset file selection
+    this.selectedFile = null;
+    
+    // Close the drawer
+    this.closeUploadDrawer();
   }
 
   private showNotification(message: string, type: 'success' | 'error' | 'info' = 'info') {
@@ -768,20 +862,18 @@ export class ISOManagement extends LitElement {
     }));
   }
 
-  private renderUploadModal() {
-    // const uploadState = this.uploadStateController.value;
+  private renderUploadDrawer() {
     const uploadState = this._uploadStateController.value;
     const isUploading = uploadState.isUploading;
     
     return html`
-      <div class="modal-overlay">
-        <div class="modal-container">
-          <div class="modal-header">
-            <div class="modal-title">Upload ISO Image</div>
-            <button class="close-button" @click=${this.closeUploadModal}>✕</button>
-          </div>
-          
-          <div class="modal-body">
+      <div class="drawer">
+        <div class="drawer-header">
+          <h2 class="drawer-title">Upload ISO Image</h2>
+          <button class="close-btn" @click=${this.closeUploadDrawer}>✕</button>
+        </div>
+        
+        <div class="drawer-content">
             ${!this.selectedFile ? html`
               <div 
                 class="drop-zone ${this.dragOver ? 'drag-over' : ''}"
@@ -887,22 +979,21 @@ export class ISOManagement extends LitElement {
                 </div>
               </div>
             ` : ''}
-          </div>
-          
-          <div class="modal-footer">
-            <button class="btn-secondary" @click=${this.closeUploadModal}>
-              Cancel
+        </div>
+        
+        <div class="drawer-footer">
+          <button class="btn btn-secondary" @click=${this.closeUploadDrawer}>
+            Cancel
+          </button>
+          ${!isUploading ? html`
+            <button 
+              class="btn btn-primary" 
+              @click=${this.handleUpload}
+              ?disabled=${!this.selectedFile}
+            >
+              Start Upload
             </button>
-            ${!isUploading ? html`
-              <button 
-                class="btn-primary" 
-                @click=${this.handleUpload}
-                ?disabled=${!this.selectedFile}
-              >
-                Start Upload
-              </button>
-            ` : ''}
-          </div>
+          ` : ''}
         </div>
       </div>
     `;
@@ -913,8 +1004,11 @@ export class ISOManagement extends LitElement {
     const filteredISOs = this.getFilteredISOs();
     // const uploadState = this.uploadStateController.value;
     
-    // Calculate total size
-    const totalSize = filteredISOs.reduce((sum, iso) => sum + iso.size, 0);
+    // Calculate total size (handle undefined/null size values)
+    const totalSize = filteredISOs.reduce((sum, iso) => {
+      const size = iso.size || 0;
+      return sum + (isNaN(size) ? 0 : size);
+    }, 0);
     
     // Transform data for table
     const tableData = filteredISOs.map(iso => ({
@@ -950,8 +1044,8 @@ export class ISOManagement extends LitElement {
               @search-change=${this.handleSearchChange}
             ></search-input>
           </div>
-          <button class="btn-upload" @click=${this.openUploadModal}>
-            <span>📤 Upload ISO</span>
+          <button class="btn btn-primary" @click=${this.openUploadDrawer}>
+            Upload ISO
           </button>
         </div>
         
@@ -977,28 +1071,26 @@ export class ISOManagement extends LitElement {
             <resource-table
               .columns=${this.getColumns()}
               .data=${tableData}
-              .actions=${(item: ISOImage) => this.getActions(item)}
+              .getActions=${(item: ISOImage) => this.getActions(item)}
               @action=${this.handleAction}
             ></resource-table>
           `}
         </div>
         
-        <!-- Upload Modal -->
-        ${this.showUploadModal ? this.renderUploadModal() : ''}
+        <!-- Upload Drawer -->
+        ${this.showUploadDrawer ? this.renderUploadDrawer() : ''}
         
         <!-- Delete Confirmation Modal -->
         ${this.showDeleteModal && this.isoToDelete ? html`
           <delete-modal
-            .open=${this.showDeleteModal}
-            .item=${{
-              name: this.isoToDelete.name,
-              type: 'ISO Image'
-            }}
+            .show=${true}
+            .item=${{ name: this.isoToDelete.name, type: 'ISO Image' }}
             .loading=${this.isDeleting}
-            @delete=${this.handleDelete}
-            @close=${() => { 
+            @confirm-delete=${this.handleDelete}
+            @cancel-delete=${() => { 
               this.showDeleteModal = false;
               this.isoToDelete = null;
+              this.requestUpdate();
             }}
           ></delete-modal>
         ` : ''}

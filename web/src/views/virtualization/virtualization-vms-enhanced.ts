@@ -318,7 +318,6 @@ export class VirtualizationVMsEnhanced extends LitElement {
     }
 
     actions.push(
-      { label: 'Edit', action: 'edit', icon: 'edit' },
       { label: 'Snapshot', action: 'snapshot', icon: 'save' },
       { label: 'Delete', action: 'delete', icon: 'trash', danger: true }
     );
@@ -375,9 +374,6 @@ export class VirtualizationVMsEnhanced extends LitElement {
         case 'clone':
           await this.cloneVM(vm);
           break;
-        case 'edit':
-          this.editVM(vm);
-          break;
         case 'snapshot':
           await this.createSnapshot(vm);
           break;
@@ -414,12 +410,6 @@ export class VirtualizationVMsEnhanced extends LitElement {
     // TODO: Open clone dialog
     console.log('Clone VM:', vm.name);
     this.showNotification('Clone functionality coming soon', 'info');
-  }
-
-  private editVM(vm: VirtualMachine) {
-    // TODO: Open edit dialog
-    console.log('Edit VM:', vm.name);
-    this.showNotification('Edit functionality coming soon', 'info');
   }
 
   private async createSnapshot(vm: VirtualMachine) {
@@ -647,14 +637,14 @@ export class VirtualizationVMsEnhanced extends LitElement {
         <!-- Delete Confirmation Modal -->
         ${this.showDeleteModal && this.vmToDelete ? html`
           <delete-modal
-            .open=${this.showDeleteModal}
-            .item=${{
+            .show=${this.showDeleteModal}
+            .item={{
               name: this.vmToDelete.name,
               type: 'Virtual Machine'
             }}
             .loading=${this.isDeleting}
-            @delete=${this.handleDelete}
-            @close=${() => { 
+            @confirm-delete=${this.handleDelete}
+            @cancel-delete=${() => { 
               this.showDeleteModal = false;
               this.vmToDelete = null;
             }}
