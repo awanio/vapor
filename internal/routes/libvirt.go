@@ -105,6 +105,8 @@ func LibvirtRoutes(r *gin.RouterGroup, service *libvirt.Service) {
 			isoUploadHandler := libvirt.NewISOResumableUploadHandler(service, uploadDir)
 
 			// TUS protocol endpoints for ISO uploads
+			isosGroup.OPTIONS("/upload", isoUploadHandler.HandleOptions)            // OPTIONS for TUS protocol discovery
+			isosGroup.OPTIONS("/upload/:id", isoUploadHandler.HandleOptions)        // OPTIONS for TUS protocol discovery
 			isosGroup.POST("/upload", isoUploadHandler.CreateUpload)                // Create new upload session
 			isosGroup.GET("/upload", isoUploadHandler.ListUploads)                  // List active upload sessions
 			isosGroup.HEAD("/upload/:id", isoUploadHandler.GetUploadInfo)           // Get upload session info (HEAD request for TUS)

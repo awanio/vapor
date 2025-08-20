@@ -49,7 +49,9 @@ func ContainerRoutes(r *gin.RouterGroup) {
 		containersGroup.GET("/images/:id", containerService.GetImage)
 		containersGroup.POST("/images/import", containerService.ImportImage)
 
-		// TUS protocol endpoints under containers group
+		// TUS protocol endpoints under containers group with OPTIONS support
+		containersGroup.OPTIONS("/images/upload", resumableHandler.HandleOptions)     // OPTIONS for TUS protocol discovery
+		containersGroup.OPTIONS("/images/upload/:id", resumableHandler.HandleOptions) // OPTIONS for TUS protocol discovery
 		containersGroup.POST("/images/upload", resumableHandler.CreateUpload)
 		containersGroup.GET("/images/upload", resumableHandler.ListUploads)
 		containersGroup.HEAD("/images/upload/:id", resumableHandler.GetUploadInfo)

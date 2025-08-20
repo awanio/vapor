@@ -51,16 +51,12 @@ func DockerRoutes(r *gin.RouterGroup) {
 	if err != nil {
 		log.Printf("Warning: Failed to create docker service with runtime client for uploads: %v", err)
 	} else if dockerServiceWithRuntime.GetRuntimeClient() != nil {
-		_ = filepath.Join(os.TempDir(), "vapor-uploads", "docker")
-		// Note: We'll need to create a Docker-specific upload handler or adapt the existing one
-		// For now, comment out the upload handler until we implement it properly
-		// uploadDir := filepath.Join(os.TempDir(), "vapor-uploads", "docker")
-		// resumableHandler := docker.NewResumableUploadHandler(dockerServiceWithRuntime.GetRuntimeClient(), uploadDir)
+		uploadDir := filepath.Join(os.TempDir(), "vapor-uploads", "docker")
+		resumableHandler := docker.NewResumableUploadHandler(dockerServiceWithRuntime, uploadDir)
 
-		// TUS protocol endpoints for Docker image uploads
-		// TODO: Implement Docker-specific resumable upload handler
-		// For now, these endpoints are disabled until proper implementation
-		/*
+		// TUS protocol endpoints for Docker image uploads with OPTIONS support
+		r.OPTIONS("/docker/images/upload", resumableHandler.HandleOptions)     // OPTIONS for TUS protocol discovery
+		r.OPTIONS("/docker/images/upload/:id", resumableHandler.HandleOptions) // OPTIONS for TUS protocol discovery
 		r.POST("/docker/images/upload", resumableHandler.CreateUpload)
 		r.GET("/docker/images/upload", resumableHandler.ListUploads)
 		r.HEAD("/docker/images/upload/:id", resumableHandler.GetUploadInfo)
@@ -68,7 +64,6 @@ func DockerRoutes(r *gin.RouterGroup) {
 		r.GET("/docker/images/upload/:id", resumableHandler.GetUploadStatus)
 		r.POST("/docker/images/upload/:id/complete", resumableHandler.CompleteUpload)
 		r.DELETE("/docker/images/upload/:id", resumableHandler.CancelUpload)
-		*/
 	}
 }
 
@@ -106,16 +101,12 @@ func DockerRoutesWithClient(r *gin.RouterGroup, dockerClient docker.Client) {
 	if err != nil {
 		log.Printf("Warning: Failed to create docker service with runtime client for uploads: %v", err)
 	} else if dockerServiceWithRuntime.GetRuntimeClient() != nil {
-		_ = filepath.Join(os.TempDir(), "vapor-uploads", "docker")
-		// Note: We'll need to create a Docker-specific upload handler or adapt the existing one
-		// For now, comment out the upload handler until we implement it properly
-		// uploadDir := filepath.Join(os.TempDir(), "vapor-uploads", "docker")
-		// resumableHandler := docker.NewResumableUploadHandler(dockerServiceWithRuntime.GetRuntimeClient(), uploadDir)
+		uploadDir := filepath.Join(os.TempDir(), "vapor-uploads", "docker")
+		resumableHandler := docker.NewResumableUploadHandler(dockerServiceWithRuntime, uploadDir)
 
-		// TUS protocol endpoints for Docker image uploads
-		// TODO: Implement Docker-specific resumable upload handler
-		// For now, these endpoints are disabled until proper implementation
-		/*
+		// TUS protocol endpoints for Docker image uploads with OPTIONS support
+		r.OPTIONS("/docker/images/upload", resumableHandler.HandleOptions)     // OPTIONS for TUS protocol discovery
+		r.OPTIONS("/docker/images/upload/:id", resumableHandler.HandleOptions) // OPTIONS for TUS protocol discovery
 		r.POST("/docker/images/upload", resumableHandler.CreateUpload)
 		r.GET("/docker/images/upload", resumableHandler.ListUploads)
 		r.HEAD("/docker/images/upload/:id", resumableHandler.GetUploadInfo)
@@ -123,6 +114,5 @@ func DockerRoutesWithClient(r *gin.RouterGroup, dockerClient docker.Client) {
 		r.GET("/docker/images/upload/:id", resumableHandler.GetUploadStatus)
 		r.POST("/docker/images/upload/:id/complete", resumableHandler.CompleteUpload)
 		r.DELETE("/docker/images/upload/:id", resumableHandler.CancelUpload)
-		*/
 	}
 }

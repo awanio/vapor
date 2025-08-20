@@ -51,6 +51,15 @@ func NewService() (*Service, error) {
 	}, nil
 }
 
+// SetClient sets the runtime client for the service
+// This is useful for injecting a Docker runtime client or for testing
+func (s *Service) SetClient(client common.RuntimeClient) {
+	s.client = client
+	if client != nil {
+		s.errorMessage = ""
+	}
+}
+
 // ListContainers handles the GET /containers endpoint
 func (s *Service) ListContainers(c *gin.Context) {
 	// Check if we have a runtime client

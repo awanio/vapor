@@ -46,6 +46,9 @@ func NewISOResumableUploadHandler(service *Service, uploadDir string) *ISOResuma
 
 // CreateUpload handles POST /virtualization/storages/isos/upload - creates a new resumable upload session
 func (h *ISOResumableUploadHandler) CreateUpload(c *gin.Context) {
+	// Set TUS protocol headers for all responses
+	h.setTUSHeaders(c)
+	
 	// Parse TUS headers
 	uploadLength := c.GetHeader("Upload-Length")
 	if uploadLength == "" {
@@ -126,12 +129,16 @@ func (h *ISOResumableUploadHandler) CreateUpload(c *gin.Context) {
 	c.Header("Upload-Offset", "0")
 	c.Header("Location", fmt.Sprintf("/virtualization/storages/isos/upload/%s", uploadID))
 	c.Header("Tus-Resumable", "1.0.0")
+	
+	// Set expiration header
+	expiresAt := upload.CreatedAt.Add(24 * time.Hour)
+	c.Header("Upload-Expires", expiresAt.Format(time.RFC3339))
 
 	// Return response with upload details
 	response := gin.H{
 		"upload_id":  uploadID,
 		"upload_url": fmt.Sprintf("/virtualization/storages/isos/upload/%s", uploadID),
-		"expires_at": upload.CreatedAt.Add(24 * time.Hour), // 24 hour expiry
+		"expires_at": expiresAt,
 		"metadata": gin.H{
 			"filename":     filename,
 			"size":         totalSize,
@@ -159,11 +166,17 @@ func (h *ISOResumableUploadHandler) GetUploadInfo(c *gin.Context) {
 		return
 	}
 
-	// Set TUS headers
+	// Set TUS protocol headers
+	h.setTUSHeaders(c)
+	
+	// Set upload-specific headers
 	c.Header("Upload-Offset", strconv.FormatInt(upload.UploadedSize, 10))
 	c.Header("Upload-Length", strconv.FormatInt(upload.TotalSize, 10))
-	c.Header("Tus-Resumable", "1.0.0")
 	c.Header("Cache-Control", "no-store")
+	
+	// Set expiration header
+	expiresAt := upload.CreatedAt.Add(24 * time.Hour)
+	c.Header("Upload-Expires", expiresAt.Format(time.RFC3339))
 
 	// Add custom metadata headers
 	if filename, ok := upload.Metadata["filename"]; ok {
@@ -175,6 +188,9 @@ func (h *ISOResumableUploadHandler) GetUploadInfo(c *gin.Context) {
 
 // UploadChunk handles PATCH /virtualization/storages/isos/upload/:id - uploads a chunk
 func (h *ISOResumableUploadHandler) UploadChunk(c *gin.Context) {
+	// Set TUS protocol headers
+	h.setTUSHeaders(c)
+	
 	uploadID := c.Param("id")
 	if uploadID == "" {
 		common.SendError(c, 400, "MISSING_UPLOAD_ID", "Upload ID is required")
@@ -269,7 +285,12 @@ func (h *ISOResumableUploadHandler) UploadChunk(c *gin.Context) {
 
 	// Set response headers
 	c.Header("Upload-Offset", strconv.FormatInt(upload.UploadedSize, 10))
-	c.Header("Tus-Resumable", "1.0.0")
+	
+	// Set expiration header if upload is not complete
+	if upload.Status != resumable.UploadStatusCompleted {
+		expiresAt := upload.CreatedAt.Add(24 * time.Hour)
+		c.Header("Upload-Expires", expiresAt.Format(time.RFC3339))
+	}
 
 	c.Status(http.StatusNoContent)
 }
@@ -508,4 +529,35 @@ func base64Decode(s string) string {
 		return s
 	}
 	return string(decoded)
+}
+
+// HandleOptions handles OPTIONS requests for TUS protocol discovery
+func (h *ISOResumableUploadHandler) HandleOptions(c *gin.Context) {
+	// Set TUS protocol discovery headers
+	c.Header("Tus-Resumable", "1.0.0")
+	c.Header("Tus-Version", "1.0.0")
+	c.Header("Tus-Max-Size", strconv.FormatInt(h.maxFileSize, 10))
+	c.Header("Tus-Extension", "creation,termination,expiration")
+	
+	// Set CORS headers for cross-origin support
+	h.setCORSHeaders(c)
+	
+	c.Status(http.StatusNoContent)
+}
+
+// setTUSHeaders sets the standard TUS protocol headers
+func (h *ISOResumableUploadHandler) setTUSHeaders(c *gin.Context) {
+	c.Header("Tus-Resumable", "1.0.0")
+	c.Header("Tus-Version", "1.0.0")
+	c.Header("Tus-Max-Size", strconv.FormatInt(h.maxFileSize, 10))
+	c.Header("Tus-Extension", "creation,termination,expiration")
+}
+
+// setCORSHeaders sets CORS headers for TUS protocol
+func (h *ISOResumableUploadHandler) setCORSHeaders(c *gin.Context) {
+	c.Header("Access-Control-Allow-Origin", "*")
+	c.Header("Access-Control-Allow-Methods", "POST, GET, HEAD, PATCH, DELETE, OPTIONS")
+	c.Header("Access-Control-Allow-Headers", "Content-Type, Upload-Length, Upload-Offset, Upload-Metadata, Tus-Resumable, Upload-Defer-Length, Upload-Checksum, Authorization")
+	c.Header("Access-Control-Expose-Headers", "Upload-Offset, Upload-Length, Upload-Expires, Tus-Version, Tus-Resumable, Tus-Max-Size, Tus-Extension, Location")
+	c.Header("Access-Control-Max-Age", "86400")
 }
