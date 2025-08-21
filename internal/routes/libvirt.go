@@ -79,6 +79,8 @@ func LibvirtRoutes(r *gin.RouterGroup, service *libvirt.Service) {
 		isoGroup.GET("", listISOs(service))
 		isoGroup.POST("", uploadISO(service))
 		isoGroup.DELETE("/:id", deleteISO(service))
+		isoGroup.GET("/:id", getISO(service))
+		isoGroup.GET("/:id/download", downloadISO(service))
 
 		// ISO Management with resumable uploads
 		upload := isoGroup.Group("/upload")
@@ -1320,6 +1322,40 @@ func listISOs(service *libvirt.Service) gin.HandlerFunc {
 	}
 }
 
+func getISO(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+		id := c.Param("id")
+		vm, err := service.GetISO(c.Request.Context(), id)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				c.JSON(http.StatusNotFound, gin.H{
+					"status": "error",
+					"error": gin.H{
+						"code":    "ISO_NOT_FOUND",
+						"message": "ISO Image not found",
+						"details": err.Error(),
+					},
+				})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "GET_ISO_FAILED",
+					"message": "Failed to get ISO image",
+					"details": err.Error(),
+				},
+			})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data":   vm,
+		})
+	}
+}
+
 func uploadISO(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req libvirt.ISOUploadRequest
@@ -1381,5 +1417,37 @@ func deleteISO(service *libvirt.Service) gin.HandlerFunc {
 				"id":      id,
 			},
 		})
+	}
+}
+
+func downloadISO(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+		id := c.Param("id")
+		isoPath, name, err := service.DownloadISO(c.Request.Context(), id)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				c.JSON(http.StatusNotFound, gin.H{
+					"status": "error",
+					"error": gin.H{
+						"code":    "ISO_NOT_FOUND",
+						"message": "ISO Image not found",
+						"details": err.Error(),
+					},
+				})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "GET_ISO_FAILED",
+					"message": "Failed to get ISO image",
+					"details": err.Error(),
+				},
+			})
+			return
+		}
+
+		c.FileAttachment(isoPath, name)
 	}
 }

@@ -716,3 +716,62 @@ func (s *Service) DeleteISO(ctx context.Context, isoID string) error {
 
 	return nil
 }
+
+func (s *Service) GetISO(ctx context.Context, isoID string) (ISOImage, error) {
+	if s.db == nil {
+		return ISOImage{}, fmt.Errorf("database not configured")
+	}
+
+	// Extract numeric ID from image_id (format: "iso-123")
+	var numericID int
+	if strings.HasPrefix(isoID, "iso-") {
+		fmt.Sscanf(isoID, "iso-%d", &numericID)
+	} else {
+		// Try to parse as plain number
+		numericID, _ = strconv.Atoi(isoID)
+	}
+
+	// Get ISO info
+	var iso ISOImage
+	err := s.db.QueryRowContext(ctx, `SELECT id, name, path, size_bytes, 
+		       COALESCE(os_type, ''), COALESCE(os_variant, ''), COALESCE(architecture, ''), 
+		       COALESCE(description, ''), uploaded_at, 
+		       COALESCE(md5_hash, ''), COALESCE(sha256_hash, '') FROM iso_images WHERE id = ?`, numericID).Scan(&iso.ImageID, &iso.Filename, &iso.Path, &iso.SizeBytes,
+		&iso.OSType, &iso.OSVersion, &iso.Architecture,
+		&iso.Description, &iso.CreatedAt, &iso.MD5Hash, &iso.SHA256Hash)
+	if err != nil {
+		return ISOImage{}, fmt.Errorf("ISO not found: %w", err)
+	}
+
+	return iso, nil
+}
+
+// Download an ISO image
+func (s *Service) DownloadISO(ctx context.Context, isoID string) (string, string, error) {
+	if s.db == nil {
+		return "", "", fmt.Errorf("database not configured")
+	}
+
+	// Extract numeric ID from image_id (format: "iso-123")
+	var numericID int
+	if strings.HasPrefix(isoID, "iso-") {
+		fmt.Sscanf(isoID, "iso-%d", &numericID)
+	} else {
+		// Try to parse as plain number
+		numericID, _ = strconv.Atoi(isoID)
+	}
+
+	// Get ISO info
+	var isoPath, name string
+	err := s.db.QueryRowContext(ctx, "SELECT path, name FROM iso_images WHERE id = ?", numericID).Scan(&isoPath, &name)
+	if err != nil {
+		return "", "", fmt.Errorf("ISO not found: %w", err)
+	}
+
+	// Check if the file exists.
+	if _, err := os.Stat(isoPath); os.IsNotExist(err) {
+		return "", "", fmt.Errorf("ISO file not found: %w", err)
+	}
+
+	return isoPath, name, nil
+}
