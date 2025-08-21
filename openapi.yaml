@@ -2966,6 +2966,60 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /virtualization/networks/{name}/dhcp-leases:
+    get:
+      summary: Get DHCP leases for a network
+      description: Retrieve active DHCP leases for a virtual network
+      tags:
+        - Virtualization Networks
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Network name
+      responses:
+        '200':
+          description: DHCP leases retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkDHCPLeasesResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /virtualization/networks/{name}/ports:
+    get:
+      summary: Get network ports
+      description: Retrieve list of ports (VM interfaces) attached to a virtual network
+      tags:
+        - Virtualization Networks
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Network name
+      responses:
+        '200':
+          description: Network ports retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkPortsResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /storage/iscsi/sessions:
     get:
       summary: List iSCSI sessions
@@ -13654,6 +13708,134 @@ components:
         name:
           type: string
           description: Optional hostname for the host
+    
+    DHCPLease:
+      type: object
+      description: Active DHCP lease information
+      properties:
+        interface:
+          type: string
+          description: Network interface name
+        expiry_time:
+          type: string
+          format: date-time
+          description: Lease expiry time
+        type:
+          type: string
+          description: IP address type
+          enum: ["ipv4", "ipv6", "unknown"]
+        mac:
+          type: string
+          description: MAC address of the client
+        iaid:
+          type: string
+          description: Identity Association Identifier (for DHCPv6)
+        ip_address:
+          type: string
+          description: Assigned IP address
+        prefix:
+          type: integer
+          description: Network prefix length
+        hostname:
+          type: string
+          description: Client hostname
+        client_id:
+          type: string
+          description: DHCP client identifier
+      required:
+        - expiry_time
+        - type
+        - mac
+        - ip_address
+        - prefix
+    
+    NetworkDHCPLeasesResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                network_name:
+                  type: string
+                  description: Name of the network
+                leases:
+                  type: array
+                  description: List of active DHCP leases
+                  items:
+                    $ref: '#/components/schemas/DHCPLease'
+                count:
+                  type: integer
+                  description: Total number of active leases
+              required:
+                - network_name
+                - leases
+                - count
+    
+    NetworkPort:
+      type: object
+      description: Network port/interface attached to a virtual network
+      properties:
+        vm_name:
+          type: string
+          description: Name of the virtual machine
+        vm_uuid:
+          type: string
+          description: UUID of the virtual machine
+        vm_state:
+          type: string
+          description: Current state of the virtual machine
+          enum: ["nostate", "running", "blocked", "paused", "shutdown", "shutoff", "crashed", "pmsuspended", "unknown"]
+        interface_mac:
+          type: string
+          description: MAC address of the network interface
+        interface_model:
+          type: string
+          description: Network interface model (e.g., virtio, e1000)
+        interface_type:
+          type: string
+          description: Type of network interface
+        interface_target:
+          type: string
+          description: Target device name (e.g., vnet0)
+        ip_address:
+          type: string
+          description: IP address assigned to the interface (if available)
+        attached_at:
+          type: string
+          format: date-time
+          description: Time when the interface was attached
+      required:
+        - vm_name
+        - vm_uuid
+        - vm_state
+        - interface_mac
+        - interface_type
+    
+    NetworkPortsResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                network_name:
+                  type: string
+                  description: Name of the network
+                ports:
+                  type: array
+                  description: List of network ports/interfaces
+                  items:
+                    $ref: '#/components/schemas/NetworkPort'
+                count:
+                  type: integer
+                  description: Total number of ports
+              required:
+                - network_name
+                - ports
+                - count
     
     VirtualNetworkUpdateResponse:
       allOf:

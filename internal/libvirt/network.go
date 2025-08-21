@@ -2,7 +2,10 @@ package libvirt
 
 import (
 	"context"
+	"encoding/xml"
 	"fmt"
+
+	"libvirt.org/go/libvirt"
 )
 
 // Network Management
@@ -161,4 +164,172 @@ func (s *Service) UpdateNetwork(ctx context.Context, name string, req *NetworkUp
 	}
 
 	return s.networkToType(net)
+}
+
+// GetNetworkDHCPLeases returns active DHCP leases for a network
+func (s *Service) GetNetworkDHCPLeases(ctx context.Context, name string) (*DHCPLeasesResponse, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	// Look up the network
+	net, err := s.conn.LookupNetworkByName(name)
+	if err != nil {
+		return nil, fmt.Errorf("network not found: %w", err)
+	}
+	defer net.Free()
+
+	// Get DHCP leases from libvirt
+	libvirtLeases, err := net.GetDHCPLeases()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get DHCP leases: %w", err)
+	}
+
+	// Convert libvirt leases to our type
+	leases := make([]DHCPLease, 0, len(libvirtLeases))
+	for _, l := range libvirtLeases {
+		lease := DHCPLease{
+			Interface:  l.Iface,
+			ExpiryTime: l.ExpiryTime,
+			MAC:        l.Mac,
+			IAID:       l.Iaid,
+			IPAddress:  l.IPaddr,
+			Prefix:     l.Prefix,
+			Hostname:   l.Hostname,
+			ClientID:   l.Clientid,
+		}
+
+		// Convert IP type to string
+		switch l.Type {
+		case 0: // IPv4 (libvirt.IP_ADDR_TYPE_IPV4)
+			lease.Type = "ipv4"
+		case 1: // IPv6 (libvirt.IP_ADDR_TYPE_IPV6)
+			lease.Type = "ipv6"
+		default:
+			lease.Type = "unknown"
+		}
+
+		leases = append(leases, lease)
+	}
+
+	return &DHCPLeasesResponse{
+		NetworkName: name,
+		Leases:      leases,
+		Count:       len(leases),
+	}, nil
+}
+
+// GetNetworkPorts returns the list of ports (VM interfaces) attached to a network
+func (s *Service) GetNetworkPorts(ctx context.Context, name string) (*NetworkPortsResponse, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	// First, verify the network exists
+	net, err := s.conn.LookupNetworkByName(name)
+	if err != nil {
+		return nil, fmt.Errorf("network not found: %w", err)
+	}
+	net.Free()
+
+	// Get all domains
+	domains, err := s.conn.ListAllDomains(0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list domains: %w", err)
+	}
+
+	// Get DHCP leases for IP address mapping
+	dhcpLeases := make(map[string]string) // MAC -> IP mapping
+	netForLeases, _ := s.conn.LookupNetworkByName(name)
+	if netForLeases != nil {
+		leases, err := netForLeases.GetDHCPLeases()
+		if err == nil {
+			for _, lease := range leases {
+				dhcpLeases[lease.Mac] = lease.IPaddr
+			}
+		}
+		netForLeases.Free()
+	}
+
+	ports := make([]NetworkPort, 0)
+
+	// Check each domain for interfaces connected to this network
+	for _, domain := range domains {
+		domainName, _ := domain.GetName()
+		domainUUID, _ := domain.GetUUIDString()
+
+		// Get domain state
+		state, _, err := domain.GetState()
+		if err != nil {
+			continue
+		}
+		stateStr := domainStateToString(state)
+
+		// Get domain XML
+		xmlDesc, err := domain.GetXMLDesc(0)
+		if err != nil {
+			domain.Free()
+			continue
+		}
+
+		// Parse XML to find interfaces
+		var domainXML DomainInterfaceXML
+		if err := xml.Unmarshal([]byte(xmlDesc), &domainXML); err != nil {
+			domain.Free()
+			continue
+		}
+
+		// Check each interface
+		for _, iface := range domainXML.Devices.Interfaces {
+			// Check if this interface is connected to our network
+			if iface.Type == "network" && iface.Source.Network == name {
+				port := NetworkPort{
+					VMName:          domainName,
+					VMUUID:          domainUUID,
+					VMState:         stateStr,
+					InterfaceMAC:    iface.MAC.Address,
+					InterfaceModel:  iface.Model.Type,
+					InterfaceType:   iface.Type,
+					InterfaceTarget: iface.Target.Dev,
+				}
+
+				// Add IP address if available from DHCP leases
+				if ip, ok := dhcpLeases[iface.MAC.Address]; ok {
+					port.IPAddress = ip
+				}
+
+				ports = append(ports, port)
+			}
+		}
+
+		domain.Free()
+	}
+
+	return &NetworkPortsResponse{
+		NetworkName: name,
+		Ports:       ports,
+		Count:       len(ports),
+	}, nil
+}
+
+// domainStateToString converts libvirt domain state to string
+func domainStateToString(state libvirt.DomainState) string {
+	switch state {
+	case libvirt.DOMAIN_NOSTATE:
+		return "nostate"
+	case libvirt.DOMAIN_RUNNING:
+		return "running"
+	case libvirt.DOMAIN_BLOCKED:
+		return "blocked"
+	case libvirt.DOMAIN_PAUSED:
+		return "paused"
+	case libvirt.DOMAIN_SHUTDOWN:
+		return "shutdown"
+	case libvirt.DOMAIN_SHUTOFF:
+		return "shutoff"
+	case libvirt.DOMAIN_CRASHED:
+		return "crashed"
+	case libvirt.DOMAIN_PMSUSPENDED:
+		return "pmsuspended"
+	default:
+		return "unknown"
+	}
 }

@@ -15,7 +15,7 @@ import (
 
 // LibvirtRoutes sets up libvirt VM management routes
 func LibvirtRoutes(r *gin.RouterGroup, service *libvirt.Service) {
-	vmGroup := r.Group("/virtualization/machines")
+	vmGroup := r.Group("/virtualization/computes")
 	{
 		// VM Management
 		vmGroup.GET("", listVMs(service))              // List all VMs
@@ -126,11 +126,13 @@ func LibvirtRoutes(r *gin.RouterGroup, service *libvirt.Service) {
 	// Network Management
 	networkGroup := r.Group("/virtualization/networks")
 	{
-		networkGroup.GET("", listNetworks(service))           // List virtual networks
-		networkGroup.GET("/:name", getNetwork(service))       // Get network details
-		networkGroup.POST("", createNetwork(service))         // Create network
-		networkGroup.PUT("/:name", updateNetwork(service))    // Update network
-		networkGroup.DELETE("/:name", deleteNetwork(service)) // Delete network
+		networkGroup.GET("", listNetworks(service))                           // List virtual networks
+		networkGroup.GET("/:name", getNetwork(service))                       // Get network details
+		networkGroup.POST("", createNetwork(service))                         // Create network
+		networkGroup.PUT("/:name", updateNetwork(service))                    // Update network
+		networkGroup.GET("/:name/dhcp-leases", getNetworkDHCPLeases(service)) // Get DHCP leases
+		networkGroup.GET("/:name/ports", getNetworkPorts(service))            // Get network ports
+		networkGroup.DELETE("/:name", deleteNetwork(service))                 // Delete network
 	}
 }
 
@@ -1176,6 +1178,75 @@ func updateNetwork(service *libvirt.Service) gin.HandlerFunc {
 	}
 }
 
+func getNetworkDHCPLeases(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		name := c.Param("name")
+
+		leases, err := service.GetNetworkDHCPLeases(c.Request.Context(), name)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				c.JSON(http.StatusNotFound, gin.H{
+					"status": "error",
+					"error": gin.H{
+						"code":    "NETWORK_NOT_FOUND",
+						"message": "Virtual network not found",
+						"details": err.Error(),
+					},
+				})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "GET_DHCP_LEASES_FAILED",
+					"message": "Failed to get DHCP leases",
+					"details": err.Error(),
+				},
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data":   leases,
+		})
+	}
+}
+
+func getNetworkPorts(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		name := c.Param("name")
+
+		ports, err := service.GetNetworkPorts(c.Request.Context(), name)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				c.JSON(http.StatusNotFound, gin.H{
+					"status": "error",
+					"error": gin.H{
+						"code":    "NETWORK_NOT_FOUND",
+						"message": "Virtual network not found",
+						"details": err.Error(),
+					},
+				})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "GET_NETWORK_PORTS_FAILED",
+					"message": "Failed to get network ports",
+					"details": err.Error(),
+				},
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data":   ports,
+		})
+	}
+}
 func deleteNetwork(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		name := c.Param("name")

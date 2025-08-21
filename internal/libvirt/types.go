@@ -3,6 +3,7 @@ package libvirt
 
 import (
 	"time"
+	"encoding/xml"
 )
 
 // VMState represents the state of a virtual machine
@@ -593,4 +594,72 @@ type ISOUploadSession struct {
 	ExpiresAt    time.Time `json:"expires_at"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+// DHCPLease represents an active DHCP lease in a network
+type DHCPLease struct {
+Interface   string    `json:"interface,omitempty"`
+ExpiryTime  time.Time `json:"expiry_time"`
+Type        string    `json:"type"` // ipv4 or ipv6
+MAC         string    `json:"mac"`
+IAID        string    `json:"iaid,omitempty"`
+IPAddress   string    `json:"ip_address"`
+Prefix      uint      `json:"prefix"`
+Hostname    string    `json:"hostname,omitempty"`
+ClientID    string    `json:"client_id,omitempty"`
+}
+
+// DHCPLeasesResponse contains the list of DHCP leases for a network
+type DHCPLeasesResponse struct {
+NetworkName string      `json:"network_name"`
+Leases      []DHCPLease `json:"leases"`
+Count       int         `json:"count"`
+}
+
+// NetworkPort represents a network port/interface attached to a network
+type NetworkPort struct {
+VMName       string    `json:"vm_name"`
+VMUUID       string    `json:"vm_uuid"`
+VMState      string    `json:"vm_state"` // running, shutoff, etc.
+InterfaceMAC string    `json:"interface_mac"`
+InterfaceModel string  `json:"interface_model,omitempty"` // virtio, e1000, etc.
+InterfaceType string   `json:"interface_type"` // network, bridge, etc.
+InterfaceTarget string `json:"interface_target,omitempty"` // vnet0, vnet1, etc.
+IPAddress    string    `json:"ip_address,omitempty"` // If available from DHCP leases
+AttachedAt   time.Time `json:"attached_at,omitempty"`
+}
+
+// NetworkPortsResponse contains the list of ports attached to a network
+type NetworkPortsResponse struct {
+NetworkName string        `json:"network_name"`
+Ports       []NetworkPort `json:"ports"`
+Count       int           `json:"count"`
+}
+
+// DomainInterfaceXML for parsing domain interface XML
+type DomainInterfaceXML struct {
+XMLName xml.Name `xml:"domain"`
+Name    string   `xml:"name"`
+UUID    string   `xml:"uuid"`
+Devices struct {
+Interfaces []InterfaceXML `xml:"interface"`
+} `xml:"devices"`
+}
+
+// InterfaceXML represents a network interface in domain XML
+type InterfaceXML struct {
+Type   string `xml:"type,attr"`
+MAC    struct {
+Address string `xml:"address,attr"`
+} `xml:"mac"`
+Source struct {
+Network string `xml:"network,attr"`
+Bridge  string `xml:"bridge,attr"`
+} `xml:"source"`
+Model struct {
+Type string `xml:"type,attr"`
+} `xml:"model"`
+Target struct {
+Dev string `xml:"dev,attr"`
+} `xml:"target"`
 }
