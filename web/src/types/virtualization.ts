@@ -54,7 +54,7 @@ export interface StoragePool {
   name: string;
   uuid?: string;
   type: StoragePoolType;
-  state: 'active' | 'inactive';
+  state: StoragePoolState;
   autostart?: boolean;
   persistent?: boolean;
   capacity: number;     // Bytes
@@ -64,7 +64,9 @@ export interface StoragePool {
   volumes?: Volume[];
 }
 
-export type StoragePoolType = 'dir' | 'fs' | 'netfs' | 'logical' | 'disk' | 'iscsi' | 'gluster' | 'rbd';
+export type StoragePoolState = 'running' | 'inactive' | 'active' | 'building';
+
+export type StoragePoolType = 'dir' | 'fs' | 'netfs' | 'logical' | 'disk' | 'iscsi' | 'nfs' | 'gluster' | 'ceph' | 'rbd';
 
 export interface Volume {
   name: string;

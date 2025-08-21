@@ -1,5 +1,8 @@
 import { LitElement, html, css } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { customElement, state } from 'lit/decorators.js';
+import { StoreController } from '@nanostores/lit';
+
+// Import UI components
 import '../../components/ui/search-input.js';
 import '../../components/ui/empty-state.js';
 import '../../components/ui/loading-state.js';
@@ -8,35 +11,57 @@ import '../../components/tables/resource-table.js';
 import '../../components/drawers/detail-drawer.js';
 import '../../components/modals/delete-modal.js';
 import '../../components/drawers/create-resource-drawer';
+
+// Import types
 import type { Tab } from '../../components/tabs/tab-group.js';
 import type { Column } from '../../components/tables/resource-table.js';
 import type { ActionItem } from '../../components/ui/action-dropdown.js';
 import type { DeleteItem } from '../../components/modals/delete-modal.js';
+import type { StoragePool } from '../../types/virtualization';
 
-interface StoragePool {
-  id: string;
-  name: string;
-  type: 'dir' | 'fs' | 'logical' | 'disk' | 'iscsi' | 'nfs' | 'gluster' | 'ceph';
-  state: 'active' | 'inactive' | 'building';
-  capacity: string;
-  allocated: string;
-  available: string;
+// Import virtualization store and actions
+import {
+  storagePoolStore,
+  $filteredStoragePools,
+  // $storagePoolStats, // Reserved for future stats display
+  $activeStoragePoolTab,
+  $storagePoolSearchQuery,
+  $selectedStoragePool,
+  storagePoolActions,
+} from '../../stores/virtualization';
+
+// Internal interface with computed fields for display
+interface StoragePoolDisplay extends StoragePool {
+  id: string; // Generated from name
+  capacityFormatted: string;
+  allocatedFormatted: string;
+  availableFormatted: string;
   usage: number; // percentage
-  path: string;
-  autostart: boolean;
-  created: string;
 }
+
+// Reserved for future use when volume management is implemented
+// interface StorageVolume {
+//   name: string;
+//   type: string;
+//   capacity: number;
+//   allocation: number;
+//   path: string;
+//   format: string;
+//   created_at: string;
+// }
 
 @customElement('virtualization-storage-pools')
 export class VirtualizationStoragePools extends LitElement {
-  @property({ type: Array }) pools: StoragePool[] = [];
-  @property({ type: String }) searchQuery = '';
-  @property({ type: Boolean }) loading = false;
-  @property({ type: String }) error: string | null = null;
+  // Store controllers for reactive updates
+  private storeController = new StoreController(this, storagePoolStore.$state);
+  private filteredPoolsController = new StoreController(this, $filteredStoragePools);
+  // private statsController = new StoreController(this, $storagePoolStats); // Reserved for future stats display
+  private selectedPoolController = new StoreController(this, $selectedStoragePool);
+  private activeTabController = new StoreController(this, $activeStoragePoolTab);
+  private searchQueryController = new StoreController(this, $storagePoolSearchQuery);
   
-  @state() private activeTab = 'all';
+  // Local UI state
   @state() private showDetails = false;
-  @state() private selectedPool: StoragePool | null = null;
   @state() private showDeleteModal = false;
   @state() private itemToDelete: DeleteItem | null = null;
   @state() private isDeleting = false;
@@ -140,85 +165,46 @@ export class VirtualizationStoragePools extends LitElement {
     { id: 'network', label: 'Network Storage' }
   ];
 
-  private dummyPools: StoragePool[] = [
-    {
-      id: 'pool-001',
-      name: 'default',
-      type: 'dir',
-      state: 'active',
-      capacity: '500 GB',
-      allocated: '350 GB',
-      available: '150 GB',
-      usage: 70,
-      path: '/var/lib/libvirt/images',
-      autostart: true,
-      created: '2024-01-01'
-    },
-    {
-      id: 'pool-002',
-      name: 'vm-storage',
-      type: 'logical',
-      state: 'active',
-      capacity: '2 TB',
-      allocated: '1.2 TB',
-      available: '800 GB',
-      usage: 60,
-      path: '/dev/vg_vms',
-      autostart: true,
-      created: '2024-01-05'
-    },
-    {
-      id: 'pool-003',
-      name: 'nfs-backup',
-      type: 'nfs',
-      state: 'active',
-      capacity: '10 TB',
-      allocated: '6 TB',
-      available: '4 TB',
-      usage: 60,
-      path: '192.168.1.100:/backup',
-      autostart: false,
-      created: '2024-01-10'
-    },
-    {
-      id: 'pool-004',
-      name: 'iscsi-san',
-      type: 'iscsi',
-      state: 'inactive',
-      capacity: '5 TB',
-      allocated: '0 GB',
-      available: '5 TB',
-      usage: 0,
-      path: 'iqn.2024-01.com.example:storage',
-      autostart: false,
-      created: '2024-01-15'
-    },
-    {
-      id: 'pool-005',
-      name: 'ceph-pool',
-      type: 'ceph',
-      state: 'active',
-      capacity: '20 TB',
-      allocated: '18 TB',
-      available: '2 TB',
-      usage: 90,
-      path: 'rbd:pool=vms',
-      autostart: true,
-      created: '2024-01-20'
-    }
-  ];
-
-  override connectedCallback() {
+  override async connectedCallback() {
     super.connectedCallback();
-    this.loadData();
+    // Initialize stores if not already initialized
+    await this.loadData();
+  }
+
+  private formatBytes(bytes: number): string {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  private calculateUsagePercentage(allocated: number, capacity: number): number {
+    if (capacity === 0) return 0;
+    return Math.round((allocated / capacity) * 100);
+  }
+
+  private transformStoragePool(pool: StoragePool & { id: string }): StoragePoolDisplay {
+    return {
+      ...pool,
+      id: pool.name, // Use name as ID
+      capacityFormatted: this.formatBytes(pool.capacity),
+      allocatedFormatted: this.formatBytes(pool.allocation),
+      availableFormatted: this.formatBytes(pool.available),
+      usage: this.calculateUsagePercentage(pool.allocation, pool.capacity)
+    };
   }
 
   private async loadData() {
-    this.loading = true;
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    this.pools = this.dummyPools;
-    this.loading = false;
+    try {
+      await storagePoolActions.fetchAll();
+    } catch (error) {
+      console.error('Error loading storage pools:', error);
+      this.showNotification(
+        `Failed to load storage pools: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'error'
+      );
+    }
   }
 
   private getColumns(): Column[] {
@@ -226,16 +212,16 @@ export class VirtualizationStoragePools extends LitElement {
       { key: 'name', label: 'Name', type: 'link' },
       { key: 'type', label: 'Type' },
       { key: 'state', label: 'State', type: 'status' },
-      { key: 'capacity', label: 'Capacity' },
-      { key: 'allocated', label: 'Allocated' },
-      { key: 'available', label: 'Available' },
+      { key: 'capacityFormatted', label: 'Capacity' },
+      { key: 'allocatedFormatted', label: 'Allocated' },
+      { key: 'availableFormatted', label: 'Available' },
       { key: 'usage', label: 'Usage %' },
       { key: 'path', label: 'Path/Target' },
       { key: 'autostart', label: 'Autostart' }
     ];
   }
 
-  private getActions(pool: StoragePool): ActionItem[] {
+  private getActions(pool: StoragePoolDisplay): ActionItem[] {
     const actions: ActionItem[] = [
       { label: 'View Details', action: 'view' },
       { label: 'Browse', action: 'browse' }
@@ -260,43 +246,27 @@ export class VirtualizationStoragePools extends LitElement {
     return actions;
   }
 
-  private getFilteredData(): StoragePool[] {
-    let data = this.pools;
-
-    // Filter by tab
-    if (this.activeTab === 'active') {
-      data = data.filter(pool => pool.state === 'active');
-    } else if (this.activeTab === 'inactive') {
-      data = data.filter(pool => pool.state === 'inactive');
-    } else if (this.activeTab === 'local') {
-      data = data.filter(pool => ['dir', 'fs', 'logical', 'disk'].includes(pool.type));
-    } else if (this.activeTab === 'network') {
-      data = data.filter(pool => ['iscsi', 'nfs', 'gluster', 'ceph'].includes(pool.type));
-    }
-
-    // Filter by search query
-    if (this.searchQuery) {
-      data = data.filter(pool => 
-        JSON.stringify(pool).toLowerCase().includes(this.searchQuery.toLowerCase())
-      );
-    }
-
-    return data;
+  private getFilteredData(): StoragePoolDisplay[] {
+    // Use the computed store value which already handles filtering
+    const filteredPools = this.filteredPoolsController.value || [];
+    
+    // Transform to display format
+    return filteredPools.map(pool => this.transformStoragePool(pool));
   }
 
   private async handleTabChange(event: CustomEvent) {
-    this.activeTab = event.detail.tabId;
+    storagePoolActions.setActiveTab(event.detail.tabId);
   }
 
 
   private handleCellClick(event: CustomEvent) {
-    const pool = event.detail.item as StoragePool;
+    const pool = event.detail.item as StoragePoolDisplay;
     this.viewDetails(pool);
   }
 
   private handleAction(event: CustomEvent) {
     const { action, item } = event.detail;
-    const pool = item as StoragePool;
+    const pool = item as StoragePoolDisplay;
     
     switch (action) {
       case 'view':
@@ -321,32 +291,48 @@ export class VirtualizationStoragePools extends LitElement {
     }
   }
 
-  private viewDetails(pool: StoragePool) {
-    this.selectedPool = pool;
+  private viewDetails(pool: StoragePoolDisplay) {
+    storagePoolActions.selectPool(pool.name);
     this.showDetails = true;
   }
 
-  private browsePool(pool: StoragePool) {
+  private browsePool(pool: StoragePoolDisplay) {
     console.log('Browsing pool:', pool.name);
     // Would open file browser for the pool
   }
 
-  private refreshPool(pool: StoragePool) {
-    console.log('Refreshing pool:', pool.name);
-    // Would refresh pool statistics
+  private async refreshPool(pool: StoragePoolDisplay) {
+    try {
+      await storagePoolActions.refresh(pool.name);
+      this.showNotification(`Refreshed pool: ${pool.name}`, 'success');
+    } catch (error) {
+      this.showNotification(`Failed to refresh pool: ${pool.name}`, 'error');
+    }
   }
 
-  private changePoolState(pool: StoragePool, action: string) {
-    console.log(`Changing pool ${pool.name} state to:`, action);
-    // Would call API to change pool state
+  private async changePoolState(pool: StoragePoolDisplay, action: string) {
+    try {
+      if (action === 'start') {
+        await storagePoolActions.start(pool.name);
+        this.showNotification(`Starting pool: ${pool.name}`, 'success');
+      } else if (action === 'stop') {
+        await storagePoolActions.stop(pool.name);
+        this.showNotification(`Stopping pool: ${pool.name}`, 'success');
+      }
+    } catch (error) {
+      this.showNotification(
+        `Failed to ${action} pool: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'error'
+      );
+    }
   }
 
-  private editPool(pool: StoragePool) {
+  private editPool(pool: StoragePoolDisplay) {
     console.log('Editing pool:', pool.name);
     // Would open edit dialog
   }
 
-  private deletePool(pool: StoragePool) {
+  private deletePool(pool: StoragePoolDisplay) {
     this.itemToDelete = {
       name: pool.name,
       type: 'Storage Pool'
@@ -354,19 +340,30 @@ export class VirtualizationStoragePools extends LitElement {
     this.showDeleteModal = true;
   }
 
-  private async handleDelete(event: CustomEvent) {
-    const item = event.detail.item;
+  private async handleDelete(_event: CustomEvent) {
+    if (!this.itemToDelete) return;
+    
     this.isDeleting = true;
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Remove from list
-    this.pools = this.pools.filter(pool => pool.id !== item.id);
-    
-    this.isDeleting = false;
-    this.showDeleteModal = false;
-    this.itemToDelete = null;
+    try {
+      // Find the pool by name from the itemToDelete
+      const poolToDelete = this.getFilteredData().find(pool => pool.name === this.itemToDelete?.name);
+      if (poolToDelete) {
+        await storagePoolActions.delete(poolToDelete.name);
+        this.showNotification(`Storage pool "${poolToDelete.name}" deleted successfully`, 'success');
+      }
+      
+      this.showDeleteModal = false;
+      this.itemToDelete = null;
+    } catch (error) {
+      console.error('Failed to delete storage pool:', error);
+      this.showNotification(
+        `Failed to delete storage pool: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'error'
+      );
+    } finally {
+      this.isDeleting = false;
+    }
   }
 
   private handleCreateNew() {
@@ -387,40 +384,40 @@ export class VirtualizationStoragePools extends LitElement {
   }
 
   private handleSearchChange(e: CustomEvent) {
-    this.searchQuery = e.detail.value;
+    storagePoolActions.setSearchQuery(e.detail.value);
   }
 
   private async handleCreateResource(event: CustomEvent) {
     this.isCreating = true;
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log('Creating pool with:', event.detail.value);
+      // Parse the JSON from the create drawer
+      const poolData = JSON.parse(event.detail.value);
       
-      // Add to list (in real app, would refresh from API)
-      const newPool: StoragePool = {
-        id: `pool-${Date.now()}`,
-        name: 'new-pool',
-        type: 'dir',
-        state: 'inactive',
-        capacity: '100 GB',
-        allocated: '0 GB',
-        available: '100 GB',
-        usage: 0,
-        path: '/var/lib/libvirt/new-pool',
-        autostart: true,
-        created: new Date().toISOString().split('T')[0] || ''
-      };
-      this.pools = [...this.pools, newPool];
+      // Create the storage pool using the action
+      await storagePoolActions.create(poolData);
       
+      this.showNotification('Storage pool created successfully', 'success');
       this.showCreateDrawer = false;
       this.createResourceValue = '';
     } catch (error) {
       console.error('Failed to create pool:', error);
+      this.showNotification(
+        `Failed to create storage pool: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'error'
+      );
     } finally {
       this.isCreating = false;
     }
+  }
+
+  private showNotification(message: string, type: 'success' | 'error' | 'info' = 'info') {
+    // Dispatch event for notification container
+    this.dispatchEvent(new CustomEvent('show-notification', {
+      detail: { message, type },
+      bubbles: true,
+      composed: true
+    }));
   }
 
 
@@ -431,7 +428,21 @@ export class VirtualizationStoragePools extends LitElement {
   }
 
   override render() {
+    const state = this.storeController.value;
     const filteredData = this.getFilteredData();
+    // const stats = this.statsController.value || {
+    //   totalPools: 0,
+    //   activePools: 0,
+    //   inactivePools: 0,
+    //   totalCapacity: 0,
+    //   totalAllocated: 0,
+    //   totalAvailable: 0,
+    //   localPools: 0,
+    //   networkPools: 0,
+    // }; // Reserved for future stats display
+    const activeTab = this.activeTabController.value;
+    const searchQuery = this.searchQueryController.value;
+    const selectedPool = this.selectedPoolController.value;
 
     return html`
       <div class="container">
@@ -441,14 +452,14 @@ export class VirtualizationStoragePools extends LitElement {
 
         <tab-group
           .tabs=${this.tabs}
-          .activeTab=${this.activeTab}
+          .activeTab=${activeTab}
           @tab-change=${this.handleTabChange}
         ></tab-group>
 
         <div class="controls">
           <search-input
             .placeholder=${'Search storage pools...'}
-            .value=${this.searchQuery}
+            .value=${searchQuery}
             @search-change=${this.handleSearchChange}
           ></search-input>
           <button class="btn-create" @click=${this.handleCreateNew}>
@@ -457,13 +468,19 @@ export class VirtualizationStoragePools extends LitElement {
         </div>
 
         <div class="content">
-          ${this.loading ? html`
+          ${state.loading ? html`
             <loading-state message="Loading storage pools..."></loading-state>
+          ` : state.error ? html`
+            <empty-state
+              icon="❌"
+              title="Error loading storage pools"
+              description=${state.error.message}
+            ></empty-state>
           ` : filteredData.length === 0 ? html`
             <empty-state
               icon="🗄️"
               title="No storage pools found"
-              description=${this.searchQuery 
+              description=${searchQuery 
                 ? "No pools match your search criteria" 
                 : "Create your first storage pool to get started"}
             ></empty-state>
@@ -483,22 +500,60 @@ export class VirtualizationStoragePools extends LitElement {
                   </div>
                 `
               }))}
-              .actions=${(item: StoragePool) => this.getActions(item)}
+              .actions=${(item: StoragePoolDisplay) => this.getActions(item)}
               @cell-click=${this.handleCellClick}
               @action=${this.handleAction}
             ></resource-table>
           `}
         </div>
 
-        ${this.showDetails ? html`
+        ${this.showDetails && selectedPool ? html`
           <detail-drawer
-            .title=${this.selectedPool?.name || 'Pool Details'}
+            .title=${selectedPool.name || 'Pool Details'}
             .open=${this.showDetails}
-            @close=${() => { this.showDetails = false; this.selectedPool = null; }}
+            @close=${() => { 
+              this.showDetails = false; 
+              storagePoolActions.selectPool(null);
+            }}
           >
             <div style="padding: 20px;">
               <h3>Storage Pool Information</h3>
-              <pre>${JSON.stringify(this.selectedPool, null, 2)}</pre>
+              <div style="display: grid; grid-template-columns: 150px 1fr; gap: 12px; margin-bottom: 20px;">
+                <strong>Name:</strong> <span>${selectedPool.name}</span>
+                <strong>Type:</strong> <span>${selectedPool.type}</span>
+                <strong>State:</strong> <span>${selectedPool.state}</span>
+                <strong>Path:</strong> <span>${selectedPool.path}</span>
+                <strong>Capacity:</strong> <span>${this.formatBytes(selectedPool.capacity)}</span>
+                <strong>Allocated:</strong> <span>${this.formatBytes(selectedPool.allocation)}</span>
+                <strong>Available:</strong> <span>${this.formatBytes(selectedPool.available)}</span>
+                <strong>Usage:</strong> <span>${this.calculateUsagePercentage(selectedPool.allocation, selectedPool.capacity)}%</span>
+                <strong>Autostart:</strong> <span>${selectedPool.autostart ? 'Yes' : 'No'}</span>
+              </div>
+              ${selectedPool.volumes && selectedPool.volumes.length > 0 ? html`
+                <h4>Volumes (${selectedPool.volumes.length})</h4>
+                <div style="max-height: 300px; overflow-y: auto;">
+                  <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                      <tr style="border-bottom: 1px solid var(--vscode-widget-border);">
+                        <th style="text-align: left; padding: 8px;">Name</th>
+                        <th style="text-align: left; padding: 8px;">Type</th>
+                        <th style="text-align: left; padding: 8px;">Format</th>
+                        <th style="text-align: right; padding: 8px;">Size</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${selectedPool.volumes.map(vol => html`
+                        <tr style="border-bottom: 1px solid var(--vscode-widget-border);">
+                          <td style="padding: 8px;">${vol.name}</td>
+                          <td style="padding: 8px;">${vol.type}</td>
+                          <td style="padding: 8px;">${vol.format}</td>
+                          <td style="text-align: right; padding: 8px;">${this.formatBytes(vol.capacity)}</td>
+                        </tr>
+                      `)}
+                    </tbody>
+                  </table>
+                </div>
+              ` : ''}
             </div>
           </detail-drawer>
         ` : ''}

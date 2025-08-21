@@ -19,6 +19,7 @@ import '../../components/drawers/detail-drawer.js';
 import '../../components/modals/delete-modal.js';
 import '../../components/ui/notification-container.js';
 import '../../components/virtualization/create-vm-wizard.js';
+import '../../components/virtualization/create-vm-wizard-enhanced.js';
 
 // Import types
 import type { Tab } from '../../components/tabs/tab-group.js';
@@ -29,28 +30,30 @@ import type { ActionItem } from '../../components/ui/action-dropdown.js';
 // Import virtualization store and types
 import {
   vmStore,
+  templateStore,
   $filteredVMs,
-  $resourceStats,
-  $activeVMTab,
+  // $activeVMTab, // Unused - using local state instead
   $vmSearchQuery,
+  $vmFilterState,
   $selectedVM,
   // $vmWizardState, // Reserved for future use
   vmActions,
   wizardActions,
   initializeVirtualizationStores,
 } from '../../stores/virtualization';
-import type { VirtualMachine, VMState } from '../../types/virtualization';
+import type { VirtualMachine, VMState, VMTemplate } from '../../types/virtualization';
 
 
 @customElement('virtualization-vms-enhanced')
 export class VirtualizationVMsEnhanced extends LitElement {
   // Store controllers for reactive updates
-  private vmStoreController = new StoreController(this, vmStore.$state);
+  private vmStoreController = new StoreController(this, vmStore.$items);
+  // private templateStoreController = new StoreController(this, templateStore.$items); // Using subscription instead
   private filteredVMsController = new StoreController(this, $filteredVMs);
-  private resourceStatsController = new StoreController(this, $resourceStats);
   private selectedVMController = new StoreController(this, $selectedVM);
-  private activeTabController = new StoreController(this, $activeVMTab);
+  // private activeTabController = new StoreController(this, $activeVMTab); // Using local state instead
   private searchQueryController = new StoreController(this, $vmSearchQuery);
+  // private filterStateController = new StoreController(this, $vmFilterState); // Unused - managed directly
   // private _wizardStateController = new StoreController(this, $vmWizardState); // Reserved for future use
   
   // Local UI state
@@ -58,6 +61,10 @@ export class VirtualizationVMsEnhanced extends LitElement {
   @state() private vmToDelete: VirtualMachine | null = null;
   @state() private isDeleting = false;
   @state() private showDetailsDrawer = false;
+  @state() private useEnhancedWizard = true; // Toggle for enhanced wizard
+  @state() private activeMainTab: 'vms' | 'templates' = 'vms';
+  @state() private stateFilter: 'all' | VMState = 'all';
+  @state() private templates: VMTemplate[] = [];
 
   static override styles = css`
     :host {
@@ -217,12 +224,11 @@ export class VirtualizationVMsEnhanced extends LitElement {
       background: var(--vscode-badge-background);
       color: var(--vscode-badge-foreground);
     }
+
   `;
 
   private tabs: Tab[] = [
-    { id: 'all', label: 'All VMs' },
-    { id: 'running', label: 'Running' },
-    { id: 'stopped', label: 'Stopped' },
+    { id: 'vms', label: 'Virtual Machines' },
     { id: 'templates', label: 'Templates' }
   ];
 
@@ -235,6 +241,29 @@ export class VirtualizationVMsEnhanced extends LitElement {
   private async initializeData() {
     try {
       await initializeVirtualizationStores();
+      // Subscribe to template store changes
+      templateStore.$items.subscribe(items => {
+        if (items) {
+          if (items instanceof Map) {
+            // Convert Map values to array safely
+            const values: VMTemplate[] = [];
+            items.forEach((value) => {
+              if (value && typeof value === 'object') {
+                values.push(value as VMTemplate);
+              }
+            });
+            this.templates = values;
+          } else if (Array.isArray(items)) {
+            this.templates = items.filter(v => v && typeof v === 'object') as VMTemplate[];
+          } else if (typeof items === 'object' && items !== null) {
+            // Handle plain object - use unknown first to avoid type errors
+            const values = Object.values(items as Record<string, unknown>);
+            this.templates = values.filter((v): v is VMTemplate => 
+              v !== null && typeof v === 'object'
+            ) as VMTemplate[];
+          }
+        }
+      });
     } catch (error) {
       console.error('Failed to initialize virtualization stores:', error);
       // Show error notification
@@ -243,6 +272,17 @@ export class VirtualizationVMsEnhanced extends LitElement {
   }
 
   private getColumns(): Column[] {
+    if (this.activeMainTab === 'templates') {
+      return [
+        { key: 'name', label: 'Name', type: 'link' },
+        { key: 'description', label: 'Description' },
+        { key: 'os_type', label: 'OS Type' },
+        { key: 'vcpus', label: 'vCPUs' },
+        { key: 'memory', label: 'Memory (MB)' },
+        { key: 'disk_size', label: 'Disk (GB)' },
+        { key: 'created_at', label: 'Created' }
+      ];
+    }
     return [
       { key: 'name', label: 'Name', type: 'link' },
       { key: 'state', label: 'State', type: 'custom' },
@@ -327,7 +367,24 @@ export class VirtualizationVMsEnhanced extends LitElement {
 
   private async handleTabChange(event: CustomEvent) {
     const tabId = event.detail.tabId;
-    $activeVMTab.set(tabId);
+    this.activeMainTab = tabId as 'vms' | 'templates';
+    
+    // Load appropriate data
+    if (tabId === 'templates') {
+      await templateStore.fetch();
+    } else {
+      await vmActions.fetchAll();
+    }
+  }
+
+  private handleStateFilterChange(event: CustomEvent) {
+    this.stateFilter = event.detail.value as 'all' | VMState;
+    
+    if (this.stateFilter === 'all') {
+      $vmFilterState.set({});
+    } else {
+      $vmFilterState.set({ state: [this.stateFilter] });
+    }
   }
 
   private handleSearchChange(event: CustomEvent) {
@@ -450,10 +507,15 @@ export class VirtualizationVMsEnhanced extends LitElement {
 
   private async handleRefresh() {
     try {
-      await vmActions.fetchAll();
-      this.showNotification('VMs refreshed', 'success');
+      if (this.activeMainTab === 'templates') {
+        await templateStore.fetch();
+        this.showNotification('Templates refreshed', 'success');
+      } else {
+        await vmActions.fetchAll();
+        this.showNotification('VMs refreshed', 'success');
+      }
     } catch (error) {
-      this.showNotification('Failed to refresh VMs', 'error');
+      this.showNotification(`Failed to refresh ${this.activeMainTab}`, 'error');
     }
   }
 
@@ -467,30 +529,59 @@ export class VirtualizationVMsEnhanced extends LitElement {
   }
 
   override render() {
-    const state = this.vmStoreController.value;
+    const vmItems = this.vmStoreController.value;
+    // const templateItems = this.templateStoreController.value; // Unused - using this.templates instead
     const filteredVMs = this.filteredVMsController.value || [];
-    const stats = this.resourceStatsController.value || {
-      totalVMs: 0,
-      runningVMs: 0,
-      stoppedVMs: 0,
-      pausedVMs: 0,
-      totalMemory: 0,
-      totalVCPUs: 0,
-      totalDiskSize: 0
+    
+    // Calculate stats from VMs
+    const allVMs: VirtualMachine[] = Array.isArray(vmItems) ? vmItems as VirtualMachine[] : 
+                   vmItems instanceof Map ? [...vmItems.values()] as VirtualMachine[] :
+                   typeof vmItems === 'object' && vmItems ? Object.values(vmItems) as VirtualMachine[] : [];
+    
+    const stats = {
+      totalVMs: allVMs.length,
+      runningVMs: allVMs.filter(vm => vm.state === 'running').length,
+      stoppedVMs: allVMs.filter(vm => vm.state === 'stopped').length,
+      pausedVMs: allVMs.filter(vm => vm.state === 'paused').length,
+      totalMemory: allVMs.reduce((sum, vm) => sum + (vm.memory || 0), 0),
+      totalVCPUs: allVMs.reduce((sum, vm) => sum + (vm.vcpus || 0), 0),
+      totalDiskSize: allVMs.reduce((sum, vm) => sum + (vm.disk_size || 0), 0)
     };
-    const activeTab = this.activeTabController.value;
+    
+    // const activeTab = this.activeTabController.value; // Unused - using this.activeMainTab instead
     const searchQuery = this.searchQueryController.value;
     const selectedVM = this.selectedVMController.value;
     // const wizardState = this.wizardStateController.value;
 
+    // Get loading and error states
+    const isLoading = this.activeMainTab === 'templates' 
+      ? templateStore.$loading.get() 
+      : vmStore.$loading.get();
+    const error = this.activeMainTab === 'templates'
+      ? templateStore.$error.get()
+      : vmStore.$error.get();
+
+    // Get filtered VMs based on state filter
+    let displayVMs = filteredVMs;
+    if (this.stateFilter !== 'all') {
+      displayVMs = filteredVMs.filter(vm => vm.state === this.stateFilter);
+    }
+
     // Transform data for table rendering
-    const tableData = filteredVMs.map(vm => ({
-      ...vm,
-      state_rendered: this.renderStateCell(vm.state),
-      memory_formatted: this.formatMemory(vm.memory),
-      disk_formatted: this.formatDiskSize(vm.disk_size),
-      created_formatted: new Date(vm.created_at).toLocaleDateString()
-    }));
+    const tableData = this.activeMainTab === 'templates' 
+      ? this.templates.map(template => ({
+          ...template,
+          memory_formatted: this.formatMemory(template.memory),
+          disk_formatted: this.formatDiskSize(template.disk_size),
+          created_formatted: new Date(template.created_at).toLocaleDateString()
+        }))
+      : displayVMs.map(vm => ({
+          ...vm,
+          state_rendered: this.renderStateCell(vm.state),
+          memory_formatted: this.formatMemory(vm.memory),
+          disk_formatted: this.formatDiskSize(vm.disk_size),
+          created_formatted: new Date(vm.created_at).toLocaleDateString()
+        }));
 
     return html`
       <div class="container">
@@ -529,15 +620,30 @@ export class VirtualizationVMsEnhanced extends LitElement {
         <!-- Tabs -->
         <tab-group
           .tabs=${this.tabs}
-          .activeTab=${activeTab}
+          .activeTab=${this.activeMainTab}
           @tab-change=${this.handleTabChange}
         ></tab-group>
 
         <!-- Controls -->
         <div class="controls">
           <div class="filters-section">
+            ${this.activeMainTab === 'vms' ? html`
+              <filter-dropdown
+                .options=${[
+                  { value: 'all', label: 'All States' },
+                  { value: 'running', label: 'Running' },
+                  { value: 'stopped', label: 'Stopped' },
+                  { value: 'paused', label: 'Paused' },
+                  { value: 'suspended', label: 'Suspended' }
+                ]}
+                .selectedValue=${this.stateFilter}
+                .label=${'Filter by State'}
+                .showStatusIndicators=${true}
+                @filter-change=${this.handleStateFilterChange}
+              ></filter-dropdown>
+            ` : ''}
             <search-input
-              .placeholder=${'Search virtual machines...'}
+              .placeholder=${this.activeMainTab === 'vms' ? 'Search virtual machines...' : 'Search templates...'}
               .value=${searchQuery}
               @search-change=${this.handleSearchChange}
             ></search-input>
@@ -554,21 +660,21 @@ export class VirtualizationVMsEnhanced extends LitElement {
 
         <!-- Content -->
         <div class="content">
-          ${state.loading ? html`
-            <loading-state message="Loading virtual machines..."></loading-state>
-          ` : state.error ? html`
+          ${isLoading ? html`
+            <loading-state message="Loading ${this.activeMainTab === 'templates' ? 'templates' : 'virtual machines'}..."></loading-state>
+          ` : error ? html`
             <empty-state
               icon="❌"
-              title="Error loading virtual machines"
-              description=${state.error.message}
+              title="Error loading ${this.activeMainTab === 'templates' ? 'templates' : 'virtual machines'}"
+              description=${error.message}
             ></empty-state>
-          ` : filteredVMs.length === 0 ? html`
+          ` : tableData.length === 0 ? html`
             <empty-state
               icon="🖥️"
-              title="No virtual machines found"
+              title="No ${this.activeMainTab === 'templates' ? 'templates' : 'virtual machines'} found"
               description=${searchQuery 
-                ? "No VMs match your search criteria" 
-                : activeTab === 'templates' 
+                ? `No ${this.activeMainTab === 'templates' ? 'templates' : 'VMs'} match your search criteria` 
+                : this.activeMainTab === 'templates' 
                   ? "No templates available"
                   : "Create your first virtual machine to get started"}
             ></empty-state>
@@ -576,7 +682,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
             <resource-table
               .columns=${this.getColumns()}
               .data=${tableData}
-              .actions=${(item: VirtualMachine) => this.getActions(item)}
+              .actions=${(item: any) => this.activeMainTab === 'templates' ? [] : this.getActions(item)}
               @cell-click=${this.handleCellClick}
               @action=${this.handleAction}
             ></resource-table>
@@ -652,7 +758,11 @@ export class VirtualizationVMsEnhanced extends LitElement {
         ` : ''}
 
         <!-- VM Creation Wizard -->
-        <create-vm-wizard></create-vm-wizard>
+        ${this.useEnhancedWizard ? html`
+          <create-vm-wizard-enhanced></create-vm-wizard-enhanced>
+        ` : html`
+          <create-vm-wizard></create-vm-wizard>
+        `}
 
         <!-- Notification Container -->
         <notification-container></notification-container>
