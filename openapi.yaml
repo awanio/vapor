@@ -5649,6 +5649,206 @@ paths:
                         storage_pool: "bulk-storage"
                       - action: "attach"
                         path: "/mnt/shared/data.qcow2"
+              comprehensive_example:
+                summary: Complete VM configuration with all available fields
+                description: |
+                  This example demonstrates all available configuration options for creating
+                  a virtual machine, including advanced features like PCI passthrough, cloud-init,
+                  multiple disks, networks, and custom metadata.
+                value:
+                  name: "enterprise-workstation"
+                  memory: 32768
+                  vcpus: 16
+                  storage:
+                    default_pool: "fast-nvme"
+                    boot_iso: "ubuntu-22.04-server.iso"
+                    disks:
+                      # Primary OS disk - create new
+                      - action: "create"
+                        size: 100
+                        format: "qcow2"
+                        bus: "virtio"
+                        boot_order: 1
+                        cache: "writeback"
+                        io_mode: "native"
+                        target: "vda"
+                      # Data disk - create new in different pool
+                      - action: "create"
+                        size: 500
+                        format: "raw"
+                        storage_pool: "bulk-storage"
+                        bus: "virtio"
+                        cache: "writethrough"
+                        target: "vdb"
+                      # Clone from template disk
+                      - action: "clone"
+                        clone_from: "/var/lib/libvirt/images/templates/base-ubuntu.qcow2"
+                        storage_pool: "templates"
+                        bus: "virtio"
+                        target: "vdc"
+                      # Attach existing disk
+                      - action: "attach"
+                        path: "/mnt/shared/database.qcow2"
+                        bus: "scsi"
+                        readonly: true
+                        target: "sda"
+                      # CD-ROM device
+                      - action: "attach"
+                        path: "/var/lib/libvirt/images/iso/drivers.iso"
+                        device: "cdrom"
+                        bus: "ide"
+                        readonly: true
+                        target: "hdc"
+                  os_type: "linux"
+                  os_variant: "ubuntu22.04"
+                  architecture: "x86_64"
+                  uefi: true
+                  secure_boot: true
+                  tpm: true
+                  networks:
+                    # Default NAT network
+                    - type: "network"
+                      source: "default"
+                      model: "virtio"
+                    # Bridge network with specific MAC
+                    - type: "bridge"
+                      source: "br0"
+                      model: "virtio"
+                      mac: "52:54:00:12:34:56"
+                    # Direct network (macvtap)
+                    - type: "direct"
+                      source: "eth0"
+                      model: "e1000"
+                    # Isolated user network
+                    - type: "user"
+                      model: "rtl8139"
+                  graphics:
+                    # Primary VNC console
+                    - type: "vnc"
+                      port: 5900
+                      autoport: false
+                      listen: "0.0.0.0"
+                      password: "SecureVNC123!"
+                    # Secondary SPICE console
+                    - type: "spice"
+                      port: 5901
+                      autoport: true
+                      listen: "127.0.0.1"
+                      password: "SpicePass456!"
+                    # Headless EGL for GPU rendering
+                    - type: "egl-headless"
+                  pci_devices:
+                    # GPU passthrough
+                    - host_address: "0000:01:00.0"
+                      guest_address: "0000:05:00.0"
+                      rom_file: "/usr/share/vgabios/nvidia_rtx3080.rom"
+                      multifunction: true
+                      primary_gpu: true
+                    # GPU audio device
+                    - host_address: "0000:01:00.1"
+                      guest_address: "0000:05:00.1"
+                      multifunction: true
+                    # NVMe controller passthrough
+                    - host_address: "0000:02:00.0"
+                    # USB controller passthrough
+                    - host_address: "0000:00:14.0"
+                  cloud_init:
+                    user_data: |
+                      #cloud-config
+                      hostname: enterprise-workstation
+                      manage_etc_hosts: true
+                      package_update: true
+                      package_upgrade: true
+                      timezone: UTC
+                      
+                      write_files:
+                        - path: /etc/sysctl.d/99-custom.conf
+                          content: |
+                            net.ipv4.ip_forward=1
+                            vm.swappiness=10
+                      
+                      runcmd:
+                        - sysctl -p /etc/sysctl.d/99-custom.conf
+                        - curl -fsSL https://get.docker.com | sh
+                        - systemctl enable docker
+                        - usermod -aG docker ubuntu
+                    meta_data: |
+                      instance-id: i-enterprise-001
+                      local-hostname: enterprise-workstation
+                      network-interfaces: |
+                        auto eth0
+                        iface eth0 inet dhcp
+                    network_data: |
+                      version: 2
+                      ethernets:
+                        enp0s3:
+                          dhcp4: true
+                        enp0s8:
+                          addresses:
+                            - 192.168.100.10/24
+                          gateway4: 192.168.100.1
+                          nameservers:
+                            addresses:
+                              - 8.8.8.8
+                              - 8.8.4.4
+                    ssh_keys:
+                      - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDYnGqA... admin@company.com"
+                      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMe8R... backup@company.com"
+                    users:
+                      - name: "admin"
+                        ssh_authorized_keys:
+                          - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDYnGqA... admin@company.com"
+                        sudo: "ALL=(ALL) NOPASSWD:ALL"
+                        groups: "admin,docker,wheel,kvm,libvirt"
+                        shell: "/bin/bash"
+                      - name: "developer"
+                        ssh_authorized_keys:
+                          - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMe8R... dev@company.com"
+                        sudo: "ALL=(ALL) ALL"
+                        groups: "docker,developers"
+                        shell: "/bin/zsh"
+                        password: "$6$rounds=4096$saltsalt$hashedpasswordhere"
+                      - name: "monitoring"
+                        groups: "systemd-journal"
+                        shell: "/bin/sh"
+                    packages:
+                      - "docker.io"
+                      - "docker-compose"
+                      - "git"
+                      - "vim"
+                      - "htop"
+                      - "build-essential"
+                      - "python3-pip"
+                      - "curl"
+                      - "wget"
+                      - "net-tools"
+                      - "nvidia-driver-525"
+                  template: "ubuntu-22.04-base"
+                  autostart: true
+                  custom_xml: |
+                    <features>
+                      <acpi/>
+                      <apic/>
+                      <hyperv>
+                        <relaxed state='on'/>
+                        <vapic state='on'/>
+                        <spinlocks state='on' retries='8191'/>
+                      </hyperv>
+                    </features>
+                    <cpu mode='host-passthrough' check='none'>
+                      <topology sockets='1' cores='8' threads='2'/>
+                    </cpu>
+                  metadata:
+                    environment: "production"
+                    department: "engineering"
+                    project: "ai-workstation"
+                    owner: "john.doe@company.com"
+                    cost_center: "ENG-2024"
+                    backup_policy: "daily"
+                    monitoring: "enabled"
+                    compliance: "pci-dss"
+                    created_by: "terraform"
+                    managed_by: "vapor"
       responses:
         '201':
           description: Virtual machine created successfully
@@ -13531,12 +13731,81 @@ components:
 
     CloudInit:
       type: object
+      description: Cloud-init configuration for VM initialization
       properties:
         user_data:
           type: string
+          description: Cloud-init user data script (YAML or shell script)
+          example: |
+            #cloud-config
+            package_update: true
+            package_upgrade: true
         meta_data:
           type: string
-
+          description: Cloud-init metadata
+          example: |
+            instance-id: i-1234567890abcdef0
+            local-hostname: cloudimg
+        network_data:
+          type: string
+          description: Cloud-init network configuration
+          example: |
+            version: 2
+            ethernets:
+              enp0s3:
+                dhcp4: true
+        ssh_keys:
+          type: array
+          description: SSH public keys to add to the default user
+          items:
+            type: string
+          example:
+            - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC..."
+            - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOM..."
+        users:
+          type: array
+          description: Additional users to create
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                description: Username
+                example: "devops"
+              ssh_authorized_keys:
+                type: array
+                description: SSH public keys for this user
+                items:
+                  type: string
+                example:
+                  - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC..."
+              sudo:
+                type: string
+                description: Sudo privileges configuration
+                example: "ALL=(ALL) NOPASSWD:ALL"
+              groups:
+                type: string
+                description: Comma-separated list of groups
+                example: "admin,docker,wheel"
+              shell:
+                type: string
+                description: User's shell
+                example: "/bin/bash"
+              password:
+                type: string
+                description: Encrypted password for the user
+                format: password
+                example: "$6$rounds=4096$saltsalt$..."
+        packages:
+          type: array
+          description: Packages to install
+          items:
+            type: string
+          example:
+            - "docker.io"
+            - "git"
+            - "vim"
+            - "htop"
     StoragePool:
       type: object
       properties:

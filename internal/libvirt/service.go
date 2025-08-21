@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -1458,4 +1460,574 @@ func (s *Service) lookupDomain(nameOrUUID string) (*libvirt.Domain, error) {
 	}
 
 	return domain, nil
+}
+
+// GetVMEnhanced retrieves comprehensive virtual machine details with nested objects
+// This provides more detailed information than GetVM, including full disk, network,
+// PCI device, and cloud-init configuration details
+func (s *Service) GetVMEnhanced(ctx context.Context, nameOrUUID string) (*VMEnhanced, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	domain, err := s.lookupDomain(nameOrUUID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to lookup domain: %w", err)
+	}
+	defer domain.Free()
+
+	// Get basic VM information
+	name, err := domain.GetName()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get domain name: %w", err)
+	}
+
+	uuid, err := domain.GetUUIDString()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get domain UUID: %w", err)
+	}
+
+	state, _, err := domain.GetState()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get domain state: %w", err)
+	}
+
+	info, err := domain.GetInfo()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get domain info: %w", err)
+	}
+
+	autostart, err := domain.GetAutostart()
+	if err != nil {
+		autostart = false
+	}
+
+	persistent, err := domain.IsPersistent()
+	if err != nil {
+		persistent = false
+	}
+
+	// Get domain XML for detailed parsing
+	xmlDesc, err := domain.GetXMLDesc(0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get domain XML: %w", err)
+	}
+
+	// Create enhanced VM response
+	vmEnhanced := &VMEnhanced{
+		UUID:       uuid,
+		Name:       name,
+		State:      domainStateToVMState(state),
+		Memory:     info.Memory / 1024, // Convert KB to MB
+		MaxMemory:  info.MaxMem / 1024, // Convert KB to MB
+		VCPUs:      info.NrVirtCpu,
+		MaxVCPUs:   info.NrVirtCpu, // Could be parsed from XML for accuracy
+		AutoStart:  autostart,
+		Persistent: persistent,
+		Running:    state == libvirt.DOMAIN_RUNNING,
+		CreatedAt:  time.Now(), // Would need to be stored/retrieved properly
+		UpdatedAt:  time.Now(),
+	}
+
+	// Parse XML for enhanced details
+	if err := s.parseEnhancedVMDetails(vmEnhanced, xmlDesc); err != nil {
+		// Log error but don't fail - return what we have
+		fmt.Printf("Warning: failed to parse some enhanced VM details: %v\n", err)
+	}
+
+	// Get metadata if available
+	if metadata, err := s.getVMMetadata(domain); err == nil {
+		vmEnhanced.Metadata = metadata
+	}
+
+	// Get network statistics if VM is running
+	if vmEnhanced.Running && len(vmEnhanced.Networks) > 0 {
+		s.enrichNetworkStatistics(domain, vmEnhanced)
+	}
+
+	// Get storage pool information for disks
+	if vmEnhanced.Storage != nil && len(vmEnhanced.Storage.Disks) > 0 {
+		s.enrichDiskStorageInfo(vmEnhanced)
+	}
+
+	return vmEnhanced, nil
+}
+
+// parseEnhancedVMDetails parses the domain XML to extract comprehensive VM details
+func (s *Service) parseEnhancedVMDetails(vm *VMEnhanced, xmlDesc string) error {
+	// Parse OS configuration
+	s.parseOSConfiguration(vm, xmlDesc)
+
+	// Parse storage configuration
+	storage, err := s.parseStorageConfiguration(xmlDesc)
+	if err == nil {
+		vm.Storage = storage
+	}
+
+	// Parse network configuration
+	networks, err := s.parseNetworkConfiguration(xmlDesc)
+	if err == nil {
+		vm.Networks = networks
+	}
+
+	// Parse graphics configuration
+	graphics, err := s.parseGraphicsConfiguration(xmlDesc)
+	if err == nil {
+		vm.Graphics = graphics
+	}
+
+	// Parse PCI devices
+	pciDevices, err := s.parsePCIDevices(xmlDesc)
+	if err == nil {
+		vm.PCIDevices = pciDevices
+	}
+
+	// Parse cloud-init configuration (if present)
+	cloudInit, err := s.parseCloudInitConfiguration(xmlDesc)
+	if err == nil && cloudInit != nil {
+		vm.CloudInit = cloudInit
+	}
+
+	// Check for template metadata
+	if template := s.extractTemplateInfo(xmlDesc); template != "" {
+		vm.Template = template
+	}
+
+	return nil
+}
+
+// Helper method to parse OS configuration from XML
+func (s *Service) parseOSConfiguration(vm *VMEnhanced, xmlDesc string) {
+	// Basic parsing - would need proper XML unmarshaling in production
+	if strings.Contains(xmlDesc, "arch='x86_64'") || strings.Contains(xmlDesc, "arch=\"x86_64\"") {
+		vm.Architecture = "x86_64"
+	} else if strings.Contains(xmlDesc, "arch='aarch64'") {
+		vm.Architecture = "aarch64"
+	}
+
+	if strings.Contains(xmlDesc, "<loader") && strings.Contains(xmlDesc, "OVMF") {
+		vm.UEFI = true
+	}
+
+	if strings.Contains(xmlDesc, "secure='yes'") {
+		vm.SecureBoot = true
+	}
+
+	if strings.Contains(xmlDesc, "<tpm") {
+		vm.TPM = true
+	}
+
+	// Set OS type based on domain type
+	if strings.Contains(xmlDesc, "type='kvm'") || strings.Contains(xmlDesc, "type='hvm'") {
+		vm.OSType = "hvm"
+	} else {
+		vm.OSType = "linux"
+	}
+}
+
+// Helper method to parse storage configuration from XML
+func (s *Service) parseStorageConfiguration(xmlDesc string) (*StorageConfigDetail, error) {
+	storage := &StorageConfigDetail{
+		DefaultPool: "default",
+		Disks:       []DiskDetail{},
+	}
+
+	// This is a simplified parser - in production, use proper XML unmarshaling
+	// Parse disk devices
+	diskPattern := `<disk[^>]*>(.*?)</disk>`
+	re := regexp.MustCompile(diskPattern)
+	matches := re.FindAllStringSubmatch(xmlDesc, -1)
+
+	for _, match := range matches {
+		diskXML := match[0]
+		disk := DiskDetail{}
+
+		// Parse device type
+		if strings.Contains(diskXML, "device='disk'") || strings.Contains(diskXML, "device=\"disk\"") {
+			disk.Device = "disk"
+		} else if strings.Contains(diskXML, "device='cdrom'") || strings.Contains(diskXML, "device=\"cdrom\"") {
+			disk.Device = "cdrom"
+			// Check if this is the boot ISO
+			if sourceRe := regexp.MustCompile(`source file=['"]([^'"]+\.iso)['"]`); sourceRe.MatchString(diskXML) {
+				if matches := sourceRe.FindStringSubmatch(diskXML); len(matches) > 1 {
+					isoPath := matches[1]
+					storage.BootISO = filepath.Base(isoPath)
+				}
+			}
+		} else if strings.Contains(diskXML, "device='floppy'") {
+			disk.Device = "floppy"
+		}
+
+		// Parse source file
+		if sourceRe := regexp.MustCompile(`source file=['"]([^'"]+)['"]`); sourceRe.MatchString(diskXML) {
+			if matches := sourceRe.FindStringSubmatch(diskXML); len(matches) > 1 {
+				disk.Path = matches[1]
+				disk.SourcePath = matches[1]
+				disk.SourceType = "file"
+			}
+		}
+
+		// Parse target device and bus
+		if targetRe := regexp.MustCompile(`target dev=['"]([^'"]+)['"].*?bus=['"]([^'"]+)['"]`); targetRe.MatchString(diskXML) {
+			if matches := targetRe.FindStringSubmatch(diskXML); len(matches) > 2 {
+				disk.Target = matches[1]
+				disk.Bus = DiskBus(matches[2])
+			}
+		}
+
+		// Parse driver type (format)
+		if driverRe := regexp.MustCompile(`driver.*?type=['"]([^'"]+)['"]`); driverRe.MatchString(diskXML) {
+			if matches := driverRe.FindStringSubmatch(diskXML); len(matches) > 1 {
+				disk.Format = matches[1]
+			}
+		}
+
+		// Parse cache mode
+		if cacheRe := regexp.MustCompile(`driver.*?cache=['"]([^'"]+)['"]`); cacheRe.MatchString(diskXML) {
+			if matches := cacheRe.FindStringSubmatch(diskXML); len(matches) > 1 {
+				disk.Cache = matches[1]
+			}
+		}
+
+		// Parse IO mode
+		if ioRe := regexp.MustCompile(`driver.*?io=['"]([^'"]+)['"]`); ioRe.MatchString(diskXML) {
+			if matches := ioRe.FindStringSubmatch(diskXML); len(matches) > 1 {
+				disk.IOMode = matches[1]
+			}
+		}
+
+		// Check if readonly
+		if strings.Contains(diskXML, "<readonly/>") {
+			disk.ReadOnly = true
+		}
+
+		// Parse boot order
+		if bootRe := regexp.MustCompile(`boot order=['"](\d+)['"]`); bootRe.MatchString(diskXML) {
+			if matches := bootRe.FindStringSubmatch(diskXML); len(matches) > 1 {
+				if order, err := strconv.Atoi(matches[1]); err == nil {
+					disk.BootOrder = order
+				}
+			}
+		}
+
+		storage.Disks = append(storage.Disks, disk)
+	}
+
+	return storage, nil
+}
+
+// Helper method to parse network configuration from XML
+func (s *Service) parseNetworkConfiguration(xmlDesc string) ([]NetworkConfigDetail, error) {
+	var networks []NetworkConfigDetail
+
+	// Parse interface devices
+	interfacePattern := `<interface[^>]*>(.*?)</interface>`
+	re := regexp.MustCompile(interfacePattern)
+	matches := re.FindAllStringSubmatch(xmlDesc, -1)
+
+	for _, match := range matches {
+		ifaceXML := match[0]
+		network := NetworkConfigDetail{}
+
+		// Parse interface type
+		if strings.Contains(ifaceXML, "type='network'") || strings.Contains(ifaceXML, "type=\"network\"") {
+			network.Type = NetworkTypeNAT
+		} else if strings.Contains(ifaceXML, "type='bridge'") || strings.Contains(ifaceXML, "type=\"bridge\"") {
+			network.Type = NetworkTypeBridge
+		} else if strings.Contains(ifaceXML, "type='direct'") || strings.Contains(ifaceXML, "type=\"direct\"") {
+			network.Type = NetworkTypeDirect
+		} else if strings.Contains(ifaceXML, "type='user'") || strings.Contains(ifaceXML, "type=\"user\"") {
+			network.Type = NetworkTypeUser
+		}
+
+		// Parse source
+		if sourceRe := regexp.MustCompile(`source (?:network|bridge|dev)=['"]([^'"]+)['"]`); sourceRe.MatchString(ifaceXML) {
+			if matches := sourceRe.FindStringSubmatch(ifaceXML); len(matches) > 1 {
+				network.Source = matches[1]
+				if network.Type == NetworkTypeBridge {
+					network.Bridge = matches[1]
+				}
+			}
+		}
+
+		// Parse MAC address
+		if macRe := regexp.MustCompile(`mac address=['"]([^'"]+)['"]`); macRe.MatchString(ifaceXML) {
+			if matches := macRe.FindStringSubmatch(ifaceXML); len(matches) > 1 {
+				network.MAC = matches[1]
+			}
+		}
+
+		// Parse model
+		if modelRe := regexp.MustCompile(`model type=['"]([^'"]+)['"]`); modelRe.MatchString(ifaceXML) {
+			if matches := modelRe.FindStringSubmatch(ifaceXML); len(matches) > 1 {
+				network.Model = matches[1]
+			}
+		} else {
+			network.Model = "virtio" // default
+
+			// Parse target device name
+			if targetRe := regexp.MustCompile(`target dev=['"]([^'"]+)['"]`); targetRe.MatchString(ifaceXML) {
+				if matches := targetRe.FindStringSubmatch(ifaceXML); len(matches) > 1 {
+					network.Target = matches[1]
+				}
+			}
+		}
+
+		networks = append(networks, network)
+	}
+
+	return networks, nil
+}
+
+// Helper method to parse graphics configuration from XML
+func (s *Service) parseGraphicsConfiguration(xmlDesc string) ([]EnhancedGraphicsDetail, error) {
+	var graphics []EnhancedGraphicsDetail
+
+	// Parse graphics devices
+	graphicsPattern := `<graphics[^>]*>(.*?)</graphics>`
+	re := regexp.MustCompile(graphicsPattern)
+	matches := re.FindAllStringSubmatch(xmlDesc, -1)
+
+	for _, match := range matches {
+		graphicsXML := match[0]
+		g := EnhancedGraphicsDetail{}
+
+		// Parse type
+		if typeRe := regexp.MustCompile(`type=['"]([^'"]+)['"]`); typeRe.MatchString(graphicsXML) {
+			if matches := typeRe.FindStringSubmatch(graphicsXML); len(matches) > 1 {
+				g.Type = matches[1]
+			}
+		}
+
+		// Parse port
+		if portRe := regexp.MustCompile(`port=['"]([^'"]+)['"]`); portRe.MatchString(graphicsXML) {
+			if matches := portRe.FindStringSubmatch(graphicsXML); len(matches) > 1 {
+				if port, err := strconv.Atoi(matches[1]); err == nil {
+					g.Port = port
+				}
+			}
+		}
+
+		// Parse autoport
+		if strings.Contains(graphicsXML, "autoport='yes'") || strings.Contains(graphicsXML, "autoport=\"yes\"") {
+			g.AutoPort = true
+		}
+
+		// Parse listen address
+		if listenRe := regexp.MustCompile(`listen=['"]([^'"]+)['"]`); listenRe.MatchString(graphicsXML) {
+			if matches := listenRe.FindStringSubmatch(graphicsXML); len(matches) > 1 {
+				g.Listen = matches[1]
+			}
+		}
+
+		// Parse websocket port
+		if websocketRe := regexp.MustCompile(`websocket=['"]([^'"]+)['"]`); websocketRe.MatchString(graphicsXML) {
+			if matches := websocketRe.FindStringSubmatch(graphicsXML); len(matches) > 1 {
+				if port, err := strconv.Atoi(matches[1]); err == nil {
+					g.Websocket = port
+				}
+			}
+		}
+
+		graphics = append(graphics, g)
+	}
+
+	return graphics, nil
+}
+
+// Helper method to parse PCI devices from XML
+func (s *Service) parsePCIDevices(xmlDesc string) ([]PCIDeviceDetail, error) {
+	var pciDevices []PCIDeviceDetail
+
+	// Parse hostdev devices (PCI passthrough)
+	hostdevPattern := `<hostdev[^>]*mode=['"]subsystem['"][^>]*type=['"]pci['"][^>]*>(.*?)</hostdev>`
+	re := regexp.MustCompile(hostdevPattern)
+	matches := re.FindAllStringSubmatch(xmlDesc, -1)
+
+	for _, match := range matches {
+		hostdevXML := match[0]
+		pci := PCIDeviceDetail{}
+
+		// Parse source address (host address)
+		if addrRe := regexp.MustCompile(`<source>.*?<address.*?domain=['"]0x([^'"]+)['"].*?bus=['"]0x([^'"]+)['"].*?slot=['"]0x([^'"]+)['"].*?function=['"]0x([^'"]+)['"].*?</source>`); addrRe.MatchString(hostdevXML) {
+			if matches := addrRe.FindStringSubmatch(hostdevXML); len(matches) > 4 {
+				pci.HostAddress = fmt.Sprintf("%s:%s:%s.%s", matches[1], matches[2], matches[3], matches[4])
+			}
+		}
+
+		// Parse guest address if present
+		if guestAddrRe := regexp.MustCompile(`<address.*?type=['"]pci['"].*?domain=['"]0x([^'"]+)['"].*?bus=['"]0x([^'"]+)['"].*?slot=['"]0x([^'"]+)['"].*?function=['"]0x([^'"]+)['"]`); guestAddrRe.MatchString(hostdevXML) {
+			if matches := guestAddrRe.FindStringSubmatch(hostdevXML); len(matches) > 4 {
+				pci.GuestAddress = fmt.Sprintf("%s:%s:%s.%s", matches[1], matches[2], matches[3], matches[4])
+			}
+		}
+
+		// Parse ROM file if present
+		if romRe := regexp.MustCompile(`<rom file=['"]([^'"]+)['"]`); romRe.MatchString(hostdevXML) {
+			if matches := romRe.FindStringSubmatch(hostdevXML); len(matches) > 1 {
+				pci.ROMFile = matches[1]
+			}
+		}
+
+		// Check if multifunction
+		if strings.Contains(hostdevXML, "multifunction='on'") || strings.Contains(hostdevXML, "multifunction=\"on\"") {
+			pci.Multifunction = true
+		}
+
+		pciDevices = append(pciDevices, pci)
+	}
+
+	return pciDevices, nil
+}
+
+// Helper method to parse cloud-init configuration from XML
+func (s *Service) parseCloudInitConfiguration(xmlDesc string) (*CloudInitDetail, error) {
+	// Look for cloud-init disks or metadata
+	// This is a simplified implementation - would need more sophisticated parsing
+
+	// Check for cloud-init ISO or disk
+	if !strings.Contains(xmlDesc, "cloud-init") && !strings.Contains(xmlDesc, "cidata") {
+		return nil, nil
+	}
+
+	cloudInit := &CloudInitDetail{}
+
+	// Find cloud-init source
+	if sourceRe := regexp.MustCompile(`source file=['"]([^'"]*(?:cloud-init|cidata)[^'"]+)['"]`); sourceRe.MatchString(xmlDesc) {
+		if matches := sourceRe.FindStringSubmatch(xmlDesc); len(matches) > 1 {
+			cloudInit.Source = matches[1]
+			if strings.HasSuffix(cloudInit.Source, ".iso") {
+				cloudInit.SourceType = "cdrom"
+			} else {
+				cloudInit.SourceType = "disk"
+			}
+		}
+	}
+
+	// Try to extract hostname from metadata in XML comments or description
+	if hostnameRe := regexp.MustCompile(`hostname:\s*([^\s,]+)`); hostnameRe.MatchString(xmlDesc) {
+		if matches := hostnameRe.FindStringSubmatch(xmlDesc); len(matches) > 1 {
+			cloudInit.Hostname = matches[1]
+		}
+	}
+
+	return cloudInit, nil
+}
+
+// Helper method to extract template information from XML
+func (s *Service) extractTemplateInfo(xmlDesc string) string {
+	// Look for template metadata in description or metadata
+	if templateRe := regexp.MustCompile(`<metadata>.*?template['":\s]+([^'"<\s]+).*?</metadata>`); templateRe.MatchString(xmlDesc) {
+		if matches := templateRe.FindStringSubmatch(xmlDesc); len(matches) > 1 {
+			return matches[1]
+		}
+	}
+
+	// Check description for template info
+	if descRe := regexp.MustCompile(`<description>.*?[Tt]emplate:\s*([^<\n]+).*?</description>`); descRe.MatchString(xmlDesc) {
+		if matches := descRe.FindStringSubmatch(xmlDesc); len(matches) > 1 {
+			return strings.TrimSpace(matches[1])
+		}
+	}
+
+	return ""
+}
+
+// Helper method to get VM metadata
+func (s *Service) getVMMetadata(domain *libvirt.Domain) (map[string]string, error) {
+	metadata := make(map[string]string)
+
+	// Try to get metadata from domain description
+	if desc, err := domain.GetMetadata(libvirt.DOMAIN_METADATA_DESCRIPTION, "", 0); err == nil && desc != "" {
+		// Parse key-value pairs from description
+		lines := strings.Split(desc, "\n")
+		for _, line := range lines {
+			if parts := strings.SplitN(line, ":", 2); len(parts) == 2 {
+				key := strings.TrimSpace(parts[0])
+				value := strings.TrimSpace(parts[1])
+				if key != "" && value != "" {
+					metadata[key] = value
+				}
+			}
+		}
+	}
+
+	return metadata, nil
+}
+
+// Helper method to enrich network statistics
+func (s *Service) enrichNetworkStatistics(domain *libvirt.Domain, vm *VMEnhanced) {
+	for i, network := range vm.Networks {
+		if network.MAC == "" {
+			continue
+		}
+
+		// Get interface statistics
+		stats, err := domain.InterfaceStats(network.Target)
+		if err == nil {
+			vm.Networks[i].RxBytes = stats.RxBytes
+			vm.Networks[i].TxBytes = stats.TxBytes
+			vm.Networks[i].RxPackets = stats.RxPackets
+			vm.Networks[i].TxPackets = stats.TxPackets
+		}
+	}
+}
+
+// Helper method to enrich disk storage information
+func (s *Service) enrichDiskStorageInfo(vm *VMEnhanced) {
+	for i, disk := range vm.Storage.Disks {
+		if disk.Path == "" {
+			continue
+		}
+
+		// Try to determine storage pool from path
+		poolName := s.getStoragePoolFromPath(disk.Path)
+		if poolName != "" {
+			vm.Storage.Disks[i].StoragePool = poolName
+		}
+
+		// Get volume information if possible
+		if pool, err := s.conn.LookupStoragePoolByName(poolName); err == nil {
+			defer pool.Free()
+
+			volumeName := filepath.Base(disk.Path)
+			if vol, err := pool.LookupStorageVolByName(volumeName); err == nil {
+				defer vol.Free()
+
+				if info, err := vol.GetInfo(); err == nil {
+					vm.Storage.Disks[i].Capacity = info.Capacity
+					vm.Storage.Disks[i].Allocation = info.Allocation
+					vm.Storage.Disks[i].Size = info.Capacity / (1024 * 1024 * 1024) // Convert to GB
+				}
+			}
+		}
+	}
+}
+
+// Helper method to determine storage pool from file path
+func (s *Service) getStoragePoolFromPath(path string) string {
+	// Common storage pool paths
+	poolPaths := map[string]string{
+		"/var/lib/libvirt/images": "default",
+		"/var/lib/vapor/images":   "vapor",
+		"/mnt/storage":            "storage",
+	}
+
+	for prefix, poolName := range poolPaths {
+		if strings.HasPrefix(path, prefix) {
+			return poolName
+		}
+	}
+
+	// Try to extract pool name from path
+	if strings.Contains(path, "/libvirt/") {
+		parts := strings.Split(path, "/libvirt/")
+		if len(parts) > 1 {
+			subParts := strings.Split(parts[1], "/")
+			if len(subParts) > 0 {
+				return subParts[0]
+			}
+		}
+	}
+
+	return "default"
 }

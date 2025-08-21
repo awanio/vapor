@@ -1,9 +1,8 @@
-
 package libvirt
 
 import (
-	"time"
 	"encoding/xml"
+	"time"
 )
 
 // VMState represents the state of a virtual machine
@@ -446,11 +445,11 @@ type NetworkCreateRequest struct {
 
 // NetworkUpdateRequest for updating virtual network configuration
 type NetworkUpdateRequest struct {
-	Mode      *string          `json:"mode,omitempty"`      // nat, route, bridge, private
-	Bridge    *string          `json:"bridge,omitempty"`
-	IPRange   *NetworkIPRange  `json:"ip_range,omitempty"`
-	DHCP      *DHCPConfig      `json:"dhcp,omitempty"`
-	AutoStart bool             `json:"autostart"`
+	Mode      *string         `json:"mode,omitempty"` // nat, route, bridge, private
+	Bridge    *string         `json:"bridge,omitempty"`
+	IPRange   *NetworkIPRange `json:"ip_range,omitempty"`
+	DHCP      *DHCPConfig     `json:"dhcp,omitempty"`
+	AutoStart bool            `json:"autostart"`
 }
 
 // MigrationResponse for VM migration initiation
@@ -598,68 +597,231 @@ type ISOUploadSession struct {
 
 // DHCPLease represents an active DHCP lease in a network
 type DHCPLease struct {
-Interface   string    `json:"interface,omitempty"`
-ExpiryTime  time.Time `json:"expiry_time"`
-Type        string    `json:"type"` // ipv4 or ipv6
-MAC         string    `json:"mac"`
-IAID        string    `json:"iaid,omitempty"`
-IPAddress   string    `json:"ip_address"`
-Prefix      uint      `json:"prefix"`
-Hostname    string    `json:"hostname,omitempty"`
-ClientID    string    `json:"client_id,omitempty"`
+	Interface  string    `json:"interface,omitempty"`
+	ExpiryTime time.Time `json:"expiry_time"`
+	Type       string    `json:"type"` // ipv4 or ipv6
+	MAC        string    `json:"mac"`
+	IAID       string    `json:"iaid,omitempty"`
+	IPAddress  string    `json:"ip_address"`
+	Prefix     uint      `json:"prefix"`
+	Hostname   string    `json:"hostname,omitempty"`
+	ClientID   string    `json:"client_id,omitempty"`
 }
 
 // DHCPLeasesResponse contains the list of DHCP leases for a network
 type DHCPLeasesResponse struct {
-NetworkName string      `json:"network_name"`
-Leases      []DHCPLease `json:"leases"`
-Count       int         `json:"count"`
+	NetworkName string      `json:"network_name"`
+	Leases      []DHCPLease `json:"leases"`
+	Count       int         `json:"count"`
 }
 
 // NetworkPort represents a network port/interface attached to a network
 type NetworkPort struct {
-VMName       string    `json:"vm_name"`
-VMUUID       string    `json:"vm_uuid"`
-VMState      string    `json:"vm_state"` // running, shutoff, etc.
-InterfaceMAC string    `json:"interface_mac"`
-InterfaceModel string  `json:"interface_model,omitempty"` // virtio, e1000, etc.
-InterfaceType string   `json:"interface_type"` // network, bridge, etc.
-InterfaceTarget string `json:"interface_target,omitempty"` // vnet0, vnet1, etc.
-IPAddress    string    `json:"ip_address,omitempty"` // If available from DHCP leases
-AttachedAt   time.Time `json:"attached_at,omitempty"`
+	VMName          string    `json:"vm_name"`
+	VMUUID          string    `json:"vm_uuid"`
+	VMState         string    `json:"vm_state"` // running, shutoff, etc.
+	InterfaceMAC    string    `json:"interface_mac"`
+	InterfaceModel  string    `json:"interface_model,omitempty"`  // virtio, e1000, etc.
+	InterfaceType   string    `json:"interface_type"`             // network, bridge, etc.
+	InterfaceTarget string    `json:"interface_target,omitempty"` // vnet0, vnet1, etc.
+	IPAddress       string    `json:"ip_address,omitempty"`       // If available from DHCP leases
+	AttachedAt      time.Time `json:"attached_at,omitempty"`
 }
 
 // NetworkPortsResponse contains the list of ports attached to a network
 type NetworkPortsResponse struct {
-NetworkName string        `json:"network_name"`
-Ports       []NetworkPort `json:"ports"`
-Count       int           `json:"count"`
+	NetworkName string        `json:"network_name"`
+	Ports       []NetworkPort `json:"ports"`
+	Count       int           `json:"count"`
 }
 
 // DomainInterfaceXML for parsing domain interface XML
 type DomainInterfaceXML struct {
-XMLName xml.Name `xml:"domain"`
-Name    string   `xml:"name"`
-UUID    string   `xml:"uuid"`
-Devices struct {
-Interfaces []InterfaceXML `xml:"interface"`
-} `xml:"devices"`
+	XMLName xml.Name `xml:"domain"`
+	Name    string   `xml:"name"`
+	UUID    string   `xml:"uuid"`
+	Devices struct {
+		Interfaces []InterfaceXML `xml:"interface"`
+	} `xml:"devices"`
 }
 
 // InterfaceXML represents a network interface in domain XML
 type InterfaceXML struct {
-Type   string `xml:"type,attr"`
-MAC    struct {
-Address string `xml:"address,attr"`
-} `xml:"mac"`
-Source struct {
-Network string `xml:"network,attr"`
-Bridge  string `xml:"bridge,attr"`
-} `xml:"source"`
-Model struct {
-Type string `xml:"type,attr"`
-} `xml:"model"`
-Target struct {
-Dev string `xml:"dev,attr"`
-} `xml:"target"`
+	Type string `xml:"type,attr"`
+	MAC  struct {
+		Address string `xml:"address,attr"`
+	} `xml:"mac"`
+	Source struct {
+		Network string `xml:"network,attr"`
+		Bridge  string `xml:"bridge,attr"`
+	} `xml:"source"`
+	Model struct {
+		Type string `xml:"type,attr"`
+	} `xml:"model"`
+	Target struct {
+		Dev string `xml:"dev,attr"`
+	} `xml:"target"`
+}
+
+// VMEnhanced represents comprehensive virtual machine details
+// This structure mirrors VMCreateRequestEnhanced for detailed VM information
+type VMEnhanced struct {
+	// Basic VM information
+	UUID      string  `json:"uuid"`
+	Name      string  `json:"name"`
+	State     VMState `json:"state"`
+	Memory    uint64  `json:"memory"`     // in MB (converted from KB)
+	MaxMemory uint64  `json:"max_memory"` // in MB (converted from KB)
+	VCPUs     uint    `json:"vcpus"`
+	MaxVCPUs  uint    `json:"max_vcpus"`
+
+	// Storage configuration with nested details
+	Storage *StorageConfigDetail `json:"storage"`
+
+	// OS configuration
+	OSType       string `json:"os_type"`
+	OSVariant    string `json:"os_variant,omitempty"`
+	Architecture string `json:"architecture"`
+	UEFI         bool   `json:"uefi"`
+	SecureBoot   bool   `json:"secure_boot"`
+	TPM          bool   `json:"tpm"`
+
+	// Network configuration with enhanced details
+	Networks []NetworkConfigDetail `json:"networks,omitempty"`
+
+	// Graphics configuration
+	Graphics []EnhancedGraphicsDetail `json:"graphics,omitempty"`
+
+	// PCI device passthrough details
+	PCIDevices []PCIDeviceDetail `json:"pci_devices,omitempty"`
+
+	// Cloud-init configuration (if detected)
+	CloudInit *CloudInitDetail `json:"cloud_init,omitempty"`
+
+	// Template information
+	Template string `json:"template,omitempty"`
+
+	// Auto-start configuration
+	AutoStart bool `json:"autostart"`
+
+	// Custom XML (if any custom modifications detected)
+	CustomXML string `json:"custom_xml,omitempty"`
+
+	// Metadata
+	Metadata map[string]string `json:"metadata,omitempty"`
+
+	// Timestamps
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+
+	// Additional VM state information
+	Persistent bool `json:"persistent"`
+	Running    bool `json:"running"`
+}
+
+// StorageConfigDetail represents detailed storage configuration for enhanced VM response
+type StorageConfigDetail struct {
+	DefaultPool string       `json:"default_pool"`
+	BootISO     string       `json:"boot_iso,omitempty"`
+	Disks       []DiskDetail `json:"disks"`
+}
+
+// DiskDetail represents detailed disk information
+type DiskDetail struct {
+	// Identification
+	Path   string  `json:"path"`
+	Device string  `json:"device"` // disk, cdrom, floppy
+	Target string  `json:"target"` // vda, vdb, hdc, etc
+	Bus    DiskBus `json:"bus"`    // virtio, sata, scsi, ide
+
+	// Size and format
+	Size       uint64 `json:"size,omitempty"`       // Size in GB
+	Capacity   uint64 `json:"capacity,omitempty"`   // Actual capacity in bytes
+	Allocation uint64 `json:"allocation,omitempty"` // Allocated size in bytes
+	Format     string `json:"format,omitempty"`     // qcow2, raw, etc
+
+	// Storage pool
+	StoragePool string `json:"storage_pool,omitempty"`
+
+	// Configuration
+	BootOrder int    `json:"boot_order,omitempty"`
+	Cache     string `json:"cache,omitempty"`
+	IOMode    string `json:"io_mode,omitempty"`
+	ReadOnly  bool   `json:"readonly"`
+
+	// Source information (for cloned or attached disks)
+	SourceType string `json:"source_type,omitempty"` // file, block, network
+	SourcePath string `json:"source_path,omitempty"`
+}
+
+// NetworkConfigDetail represents detailed network configuration
+type NetworkConfigDetail struct {
+	Type   NetworkType `json:"type"`
+	Source string      `json:"source"`
+	Model  string      `json:"model"`
+	MAC    string      `json:"mac,omitempty"`
+	Target string      `json:"target,omitempty"` // Interface name in guest (e.g., eth0, enp0s3)
+
+	// Additional network details
+	Bridge    string   `json:"bridge,omitempty"`
+	IPAddress string   `json:"ip_address,omitempty"`
+	Gateway   string   `json:"gateway,omitempty"`
+	DNS       []string `json:"dns,omitempty"`
+
+	// Statistics
+	RxBytes   int64 `json:"rx_bytes,omitempty"`
+	TxBytes   int64 `json:"tx_bytes,omitempty"`
+	RxPackets int64 `json:"rx_packets,omitempty"`
+	TxPackets int64 `json:"tx_packets,omitempty"`
+}
+
+// EnhancedGraphicsDetail represents detailed graphics device configuration
+type EnhancedGraphicsDetail struct {
+	Type     string `json:"type"`
+	Port     int    `json:"port,omitempty"`
+	AutoPort bool   `json:"autoport,omitempty"`
+	Listen   string `json:"listen,omitempty"`
+	Password string `json:"password,omitempty"`
+
+	// VNC/SPICE specific details
+	Websocket int  `json:"websocket,omitempty"`
+	TLSPort   int  `json:"tls_port,omitempty"`
+	Connected bool `json:"connected,omitempty"`
+	Clients   int  `json:"clients,omitempty"`
+}
+
+// PCIDeviceDetail represents detailed PCI device passthrough configuration
+type PCIDeviceDetail struct {
+	HostAddress  string `json:"host_address"`
+	GuestAddress string `json:"guest_address,omitempty"`
+
+	// Device information
+	Vendor      string `json:"vendor,omitempty"`
+	Product     string `json:"product,omitempty"`
+	Description string `json:"description,omitempty"`
+
+	// Configuration
+	ROMFile       string `json:"rom_file,omitempty"`
+	Multifunction bool   `json:"multifunction,omitempty"`
+	PrimaryGPU    bool   `json:"primary_gpu,omitempty"`
+
+	// IOMMU group information
+	IOMMUGroup int `json:"iommu_group,omitempty"`
+}
+
+// CloudInitDetail represents detected cloud-init configuration
+type CloudInitDetail struct {
+	UserData    string `json:"user_data,omitempty"`
+	MetaData    string `json:"meta_data,omitempty"`
+	NetworkData string `json:"network_data,omitempty"`
+
+	// Parsed details (if available)
+	Hostname string          `json:"hostname,omitempty"`
+	SSHKeys  []string        `json:"ssh_keys,omitempty"`
+	Users    []CloudInitUser `json:"users,omitempty"`
+	Packages []string        `json:"packages,omitempty"`
+
+	// Cloud-init disk/source information
+	Source     string `json:"source,omitempty"`
+	SourceType string `json:"source_type,omitempty"` // disk, cdrom, network
 }

@@ -18,12 +18,13 @@ func LibvirtRoutes(r *gin.RouterGroup, service *libvirt.Service) {
 	vmGroup := r.Group("/virtualization/computes")
 	{
 		// VM Management
-		vmGroup.GET("", listVMs(service))              // List all VMs
-		vmGroup.GET("/:id", getVM(service))            // Get VM details
-		vmGroup.POST("", createVM(service))            // Create new VM
-		vmGroup.PUT("/:id", updateVM(service))         // Update VM config
-		vmGroup.DELETE("/:id", deleteVM(service))      // Delete VM
-		vmGroup.POST("/:id/action", vmAction(service)) // VM actions (start, stop, etc.)
+		vmGroup.GET("", listVMs(service))                    // List all VMs
+		vmGroup.GET("/:id", getVM(service))                  // Get VM details
+		vmGroup.GET("/:id/enhanced", getVMEnhanced(service)) // Get VM details
+		vmGroup.POST("", createVM(service))                  // Create new VM
+		vmGroup.PUT("/:id", updateVM(service))               // Update VM config
+		vmGroup.DELETE("/:id", deleteVM(service))            // Delete VM
+		vmGroup.POST("/:id/action", vmAction(service))       // VM actions (start, stop, etc.)
 
 		// Snapshots
 		vmGroup.GET("/:id/snapshots/capabilities", getSnapshotCapabilities(service)) // Check snapshot capabilities
@@ -166,6 +167,38 @@ func getVM(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
 		vm, err := service.GetVM(c.Request.Context(), id)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				c.JSON(http.StatusNotFound, gin.H{
+					"status": "error",
+					"error": gin.H{
+						"code":    "VM_NOT_FOUND",
+						"message": "Virtual machine not found",
+						"details": err.Error(),
+					},
+				})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "GET_VM_FAILED",
+					"message": "Failed to get virtual machine",
+					"details": err.Error(),
+				},
+			})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data":   vm,
+		})
+	}
+}
+
+func getVMEnhanced(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		vm, err := service.GetVMEnhanced(c.Request.Context(), c.Param("id"))
 		if err != nil {
 			if strings.Contains(err.Error(), "not found") {
 				c.JSON(http.StatusNotFound, gin.H{
