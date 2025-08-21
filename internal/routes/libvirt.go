@@ -129,6 +129,7 @@ func LibvirtRoutes(r *gin.RouterGroup, service *libvirt.Service) {
 		networkGroup.GET("", listNetworks(service))           // List virtual networks
 		networkGroup.GET("/:name", getNetwork(service))       // Get network details
 		networkGroup.POST("", createNetwork(service))         // Create network
+		networkGroup.PUT("/:name", updateNetwork(service))    // Update network
 		networkGroup.DELETE("/:name", deleteNetwork(service)) // Delete network
 	}
 }
@@ -1049,7 +1050,6 @@ func deleteVolume(service *libvirt.Service) gin.HandlerFunc {
 }
 
 // Network handlers
-
 func listNetworks(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		networks, err := service.ListNetworks(c.Request.Context())
@@ -1096,11 +1096,83 @@ func getNetwork(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		name := c.Param("name")
 		network, err := service.GetNetwork(c.Request.Context(), name)
+
 		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			if strings.Contains(err.Error(), "not found") {
+				c.JSON(http.StatusNotFound, gin.H{
+					"status": "error",
+					"error": gin.H{
+						"code":    "NETWORK_NOT_FOUND",
+						"message": "Virtual network not found",
+						"details": err.Error(),
+					},
+				})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "GET_NETWORK_FAILED",
+					"message": "Failed to get virtual network",
+					"details": err.Error(),
+				},
+			})
 			return
 		}
-		c.JSON(http.StatusOK, network)
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data":   network,
+		})
+	}
+}
+
+func updateNetwork(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		name := c.Param("name")
+		var req libvirt.NetworkUpdateRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "INVALID_REQUEST",
+					"message": "Invalid network update request",
+					"details": err.Error(),
+				},
+			})
+			return
+		}
+
+		network, err := service.UpdateNetwork(c.Request.Context(), name, &req)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				c.JSON(http.StatusNotFound, gin.H{
+					"status": "error",
+					"error": gin.H{
+						"code":    "NETWORK_NOT_FOUND",
+						"message": "Virtual network not found",
+						"details": err.Error(),
+					},
+				})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "UPDATE_NETWORK_FAILED",
+					"message": "Failed to update virtual network",
+					"details": err.Error(),
+				},
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data": gin.H{
+				"network": network,
+				"message": "Virtual network updated successfully",
+			},
+		})
 	}
 }
 

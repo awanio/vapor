@@ -1,4 +1,3 @@
-
 package libvirt
 
 import (
@@ -6,7 +5,6 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
-	"encoding/xml"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -1107,447 +1105,44 @@ func generateConsoleToken(vmID string) string {
 }
 
 func (s *Service) loadDefaultTemplates() {
-// Load some default VM templates
-s.templates["ubuntu-22.04"] = &VMTemplate{
-Name:              "ubuntu-22.04",
-Description:       "Ubuntu 22.04 LTS Server",
-OSType:            "linux",
-OSVariant:         "ubuntu22.04",
-MinMemory:         2048 * 1024 * 1024,     // 2GB in bytes
-RecommendedMemory: 4096 * 1024 * 1024,     // 4GB in bytes
-MinVCPUs:          2,
-RecommendedVCPUs:  4,
-MinDisk:           20 * 1024 * 1024 * 1024, // 20GB in bytes
-RecommendedDisk:   50 * 1024 * 1024 * 1024, // 50GB in bytes
-DiskFormat:        "qcow2",
-NetworkModel:      "virtio",
-GraphicsType:      "vnc",
-CloudInit:         true,
-UEFIBoot:          false,
-DefaultUser:       "ubuntu",
-}
-
-s.templates["centos-9"] = &VMTemplate{
-Name:              "centos-9",
-Description:       "CentOS Stream 9",
-OSType:            "linux",
-OSVariant:         "centos-stream9",
-MinMemory:         2048 * 1024 * 1024,     // 2GB in bytes
-RecommendedMemory: 4096 * 1024 * 1024,     // 4GB in bytes
-MinVCPUs:          2,
-RecommendedVCPUs:  4,
-MinDisk:           20 * 1024 * 1024 * 1024, // 20GB in bytes
-RecommendedDisk:   50 * 1024 * 1024 * 1024, // 50GB in bytes
-DiskFormat:        "qcow2",
-NetworkModel:      "virtio",
-GraphicsType:      "vnc",
-CloudInit:         true,
-UEFIBoot:          true,
-DefaultUser:       "centos",
-}
-}
-
-// Storage Pool Management
-
-// ListStoragePools returns all storage pools
-func (s *Service) ListStoragePools(ctx context.Context) ([]StoragePool, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	pools, err := s.conn.ListAllStoragePools(0)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list storage pools: %w", err)
+	// Load some default VM templates
+	s.templates["ubuntu-22.04"] = &VMTemplate{
+		Name:              "ubuntu-22.04",
+		Description:       "Ubuntu 22.04 LTS Server",
+		OSType:            "linux",
+		OSVariant:         "ubuntu22.04",
+		MinMemory:         2048 * 1024 * 1024, // 2GB in bytes
+		RecommendedMemory: 4096 * 1024 * 1024, // 4GB in bytes
+		MinVCPUs:          2,
+		RecommendedVCPUs:  4,
+		MinDisk:           20 * 1024 * 1024 * 1024, // 20GB in bytes
+		RecommendedDisk:   50 * 1024 * 1024 * 1024, // 50GB in bytes
+		DiskFormat:        "qcow2",
+		NetworkModel:      "virtio",
+		GraphicsType:      "vnc",
+		CloudInit:         true,
+		UEFIBoot:          false,
+		DefaultUser:       "ubuntu",
 	}
 
-	storagePools := make([]StoragePool, 0, len(pools))
-	for _, pool := range pools {
-		sp, err := s.storagePoolToType(&pool)
-		if err != nil {
-			continue
-		}
-		storagePools = append(storagePools, *sp)
-		pool.Free()
+	s.templates["centos-9"] = &VMTemplate{
+		Name:              "centos-9",
+		Description:       "CentOS Stream 9",
+		OSType:            "linux",
+		OSVariant:         "centos-stream9",
+		MinMemory:         2048 * 1024 * 1024, // 2GB in bytes
+		RecommendedMemory: 4096 * 1024 * 1024, // 4GB in bytes
+		MinVCPUs:          2,
+		RecommendedVCPUs:  4,
+		MinDisk:           20 * 1024 * 1024 * 1024, // 20GB in bytes
+		RecommendedDisk:   50 * 1024 * 1024 * 1024, // 50GB in bytes
+		DiskFormat:        "qcow2",
+		NetworkModel:      "virtio",
+		GraphicsType:      "vnc",
+		CloudInit:         true,
+		UEFIBoot:          true,
+		DefaultUser:       "centos",
 	}
-
-	return storagePools, nil
-}
-
-// storagePoolToType converts libvirt storage pool to our type
-func (s *Service) storagePoolToType(pool *libvirt.StoragePool) (*StoragePool, error) {
-	name, err := pool.GetName()
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = pool.GetUUIDString()
-	if err != nil {
-		_ = "" // Non-fatal
-	}
-
-	info, err := pool.GetInfo()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get pool info: %w", err)
-	}
-
-	xmlDesc, err := pool.GetXMLDesc(0)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get pool XML: %w", err)
-	}
-
-	// Parse XML to get pool type and path
-	var poolXML struct {
-		Type   string `xml:"type,attr"`
-		Target struct {
-			Path string `xml:"path"`
-		} `xml:"target"`
-	}
-	if err := xml.Unmarshal([]byte(xmlDesc), &poolXML); err != nil {
-		return nil, fmt.Errorf("failed to parse pool XML: %w", err)
-	}
-
-	autostart, err := pool.GetAutostart()
-	if err != nil {
-		autostart = false // Non-fatal
-	}
-
-	state := "inactive"
-	if info.State == libvirt.STORAGE_POOL_RUNNING {
-		state = "running"
-	}
-
-	sp := &StoragePool{
-		Name:       name,
-		Type:       poolXML.Type,
-		State:      state,
-		Capacity:   info.Capacity,
-		Allocation: info.Allocation,
-		Available:  info.Available,
-		Path:       poolXML.Target.Path,
-		AutoStart:  autostart,
-	}
-
-	// Optionally list volumes in the pool
-	if state == "running" {
-		vols, err := pool.ListAllStorageVolumes(0)
-		if err == nil {
-			for _, vol := range vols {
-				if sv, err := s.storageVolumeToType(&vol); err == nil {
-					sp.Volumes = append(sp.Volumes, *sv)
-				}
-				vol.Free()
-			}
-		}
-	}
-
-	return sp, nil
-}
-
-// storageVolumeToType converts libvirt storage volume to our type
-func (s *Service) storageVolumeToType(vol *libvirt.StorageVol) (*StorageVolume, error) {
-	name, err := vol.GetName()
-	if err != nil {
-		return nil, err
-	}
-
-	path, err := vol.GetPath()
-	if err != nil {
-		return nil, err
-	}
-
-	info, err := vol.GetInfo()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get volume info: %w", err)
-	}
-
-	xmlDesc, err := vol.GetXMLDesc(0)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get volume XML: %w", err)
-	}
-
-	// Parse XML to get format
-	var volXML struct {
-		Type   string `xml:"type,attr"`
-		Target struct {
-			Format struct {
-				Type string `xml:"type,attr"`
-			} `xml:"format"`
-		} `xml:"target"`
-	}
-	if err := xml.Unmarshal([]byte(xmlDesc), &volXML); err != nil {
-		return nil, fmt.Errorf("failed to parse volume XML: %w", err)
-	}
-
-	volumeType := "file"
-	if info.Type == libvirt.STORAGE_VOL_BLOCK {
-		volumeType = "block"
-	} else if info.Type == libvirt.STORAGE_VOL_DIR {
-		volumeType = "dir"
-	}
-
-	return &StorageVolume{
-		Name:       name,
-		Type:       volumeType,
-		Capacity:   info.Capacity,
-		Allocation: info.Allocation,
-		Path:       path,
-		Format:     volXML.Target.Format.Type,
-		CreatedAt:  time.Now(), // Would need to be retrieved from metadata
-	}, nil
-}
-
-// GetStoragePool returns a specific storage pool
-func (s *Service) GetStoragePool(ctx context.Context, name string) (*StoragePool, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	pool, err := s.conn.LookupStoragePoolByName(name)
-	if err != nil {
-		return nil, fmt.Errorf("storage pool not found: %w", err)
-	}
-	defer pool.Free()
-
-	return s.storagePoolToType(pool)
-}
-
-// CreateStoragePool creates a new storage pool
-func (s *Service) CreateStoragePool(ctx context.Context, req *StoragePoolCreateRequest) (*StoragePool, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	// Generate pool XML
-	poolXML := s.generateStoragePoolXML(req)
-
-	// Define the pool
-	pool, err := s.conn.StoragePoolDefineXML(poolXML, 0)
-	if err != nil {
-		return nil, fmt.Errorf("failed to define storage pool: %w", err)
-	}
-	defer pool.Free()
-
-	// Build the pool if needed (creates directory for dir type)
-	if err := pool.Build(0); err != nil {
-		// Non-fatal - pool might already exist
-		fmt.Printf("Warning: failed to build pool: %v\n", err)
-	}
-
-	// Start the pool
-	if err := pool.Create(0); err != nil {
-		return nil, fmt.Errorf("failed to start storage pool: %w", err)
-	}
-
-	// Set autostart if requested
-	if req.AutoStart {
-		if err := pool.SetAutostart(true); err != nil {
-			fmt.Printf("Warning: failed to set autostart: %v\n", err)
-		}
-	}
-
-	return s.storagePoolToType(pool)
-}
-
-// DeleteStoragePool deletes a storage pool
-func (s *Service) DeleteStoragePool(ctx context.Context, name string, deleteVolumes bool) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	pool, err := s.conn.LookupStoragePoolByName(name)
-	if err != nil {
-		return fmt.Errorf("storage pool not found: %w", err)
-	}
-	defer pool.Free()
-
-	// Stop the pool if active
-	if active, _ := pool.IsActive(); active {
-		if err := pool.Destroy(); err != nil {
-			return fmt.Errorf("failed to stop storage pool: %w", err)
-		}
-	}
-
-	// Delete the pool
-	if deleteVolumes {
-		if err := pool.Delete(libvirt.STORAGE_POOL_DELETE_NORMAL); err != nil {
-			return fmt.Errorf("failed to delete storage pool: %w", err)
-		}
-	}
-
-	// Undefine the pool
-	if err := pool.Undefine(); err != nil {
-		return fmt.Errorf("failed to undefine storage pool: %w", err)
-	}
-
-	return nil
-}
-
-// ListVolumes returns all volumes in a pool
-func (s *Service) ListVolumes(ctx context.Context, poolName string) ([]StorageVolume, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	pool, err := s.conn.LookupStoragePoolByName(poolName)
-	if err != nil {
-		return nil, fmt.Errorf("storage pool not found: %w", err)
-	}
-	defer pool.Free()
-
-	vols, err := pool.ListAllStorageVolumes(0)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list volumes: %w", err)
-	}
-
-	volumes := make([]StorageVolume, 0, len(vols))
-	for _, vol := range vols {
-		sv, err := s.storageVolumeToType(&vol)
-		if err != nil {
-			continue
-		}
-		volumes = append(volumes, *sv)
-		vol.Free()
-	}
-
-	return volumes, nil
-}
-
-// CreateVolume creates a new volume in a pool
-func (s *Service) CreateVolume(ctx context.Context, req *VolumeCreateRequest) (*StorageVolume, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	pool, err := s.conn.LookupStoragePoolByName(req.PoolName)
-	if err != nil {
-		return nil, fmt.Errorf("storage pool not found: %w", err)
-	}
-	defer pool.Free()
-
-	// Generate volume XML
-	volXML := s.generateVolumeXML(req)
-
-	// Create the volume
-	vol, err := pool.StorageVolCreateXML(volXML, 0)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create volume: %w", err)
-	}
-	defer vol.Free()
-
-	return s.storageVolumeToType(vol)
-}
-
-// DeleteVolume deletes a volume from a pool
-func (s *Service) DeleteVolume(ctx context.Context, poolName, volumeName string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	pool, err := s.conn.LookupStoragePoolByName(poolName)
-	if err != nil {
-		return fmt.Errorf("storage pool not found: %w", err)
-	}
-	defer pool.Free()
-
-	vol, err := pool.LookupStorageVolByName(volumeName)
-	if err != nil {
-		return fmt.Errorf("volume not found: %w", err)
-	}
-	defer vol.Free()
-
-	if err := vol.Delete(0); err != nil {
-		return fmt.Errorf("failed to delete volume: %w", err)
-	}
-
-	return nil
-}
-
-// Network Management
-
-// ListNetworks returns all virtual networks
-func (s *Service) ListNetworks(ctx context.Context) ([]Network, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	nets, err := s.conn.ListAllNetworks(0)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list networks: %w", err)
-	}
-
-	networks := make([]Network, 0, len(nets))
-	for _, net := range nets {
-		n, err := s.networkToType(&net)
-		if err != nil {
-			continue
-		}
-		networks = append(networks, *n)
-		net.Free()
-	}
-
-	return networks, nil
-}
-
-// GetNetwork returns a specific network
-func (s *Service) GetNetwork(ctx context.Context, name string) (*Network, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	net, err := s.conn.LookupNetworkByName(name)
-	if err != nil {
-		return nil, fmt.Errorf("network not found: %w", err)
-	}
-	defer net.Free()
-
-	return s.networkToType(net)
-}
-
-// CreateNetwork creates a new virtual network
-func (s *Service) CreateNetwork(ctx context.Context, req *NetworkCreateRequest) (*Network, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	// Generate network XML
-	netXML := s.generateNetworkXML(req)
-
-	// Define the network
-	net, err := s.conn.NetworkDefineXML(netXML)
-	if err != nil {
-		return nil, fmt.Errorf("failed to define network: %w", err)
-	}
-	defer net.Free()
-
-	// Start the network
-	if err := net.Create(); err != nil {
-		return nil, fmt.Errorf("failed to start network: %w", err)
-	}
-
-	// Set autostart if requested
-	if req.AutoStart {
-		if err := net.SetAutostart(true); err != nil {
-			fmt.Printf("Warning: failed to set autostart: %v\n", err)
-		}
-	}
-
-	return s.networkToType(net)
-}
-
-// DeleteNetwork deletes a virtual network
-func (s *Service) DeleteNetwork(ctx context.Context, name string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	net, err := s.conn.LookupNetworkByName(name)
-	if err != nil {
-		return fmt.Errorf("network not found: %w", err)
-	}
-	defer net.Free()
-
-	// Stop the network if active
-	if active, _ := net.IsActive(); active {
-		if err := net.Destroy(); err != nil {
-			return fmt.Errorf("failed to stop network: %w", err)
-		}
-	}
-
-	// Undefine the network
-	if err := net.Undefine(); err != nil {
-		return fmt.Errorf("failed to undefine network: %w", err)
-	}
-
-	return nil
 }
 
 // MigrateVM initiates a live migration of a VM to another host
@@ -1822,45 +1417,45 @@ func (s *Service) networkToType(net *libvirt.Network) (*Network, error) {
 	return n, nil
 }
 
-func storagePoolStateToString(state libvirt.StoragePoolState) string {
-	switch state {
-	case libvirt.STORAGE_POOL_RUNNING:
-		return "running"
-	case libvirt.STORAGE_POOL_INACTIVE:
-		return "inactive"
-	case libvirt.STORAGE_POOL_BUILDING:
-		return "building"
-	default:
-		return "unknown"
-	}
-}
+// func storagePoolStateToString(state libvirt.StoragePoolState) string {
+// 	switch state {
+// 	case libvirt.STORAGE_POOL_RUNNING:
+// 		return "running"
+// 	case libvirt.STORAGE_POOL_INACTIVE:
+// 		return "inactive"
+// 	case libvirt.STORAGE_POOL_BUILDING:
+// 		return "building"
+// 	default:
+// 		return "unknown"
+// 	}
+// }
 
-func storageVolumeTypeToString(volType libvirt.StorageVolType) string {
-	switch volType {
-	case libvirt.STORAGE_VOL_FILE:
-		return "file"
-	case libvirt.STORAGE_VOL_BLOCK:
-		return "block"
-	case libvirt.STORAGE_VOL_DIR:
-		return "dir"
-	default:
-		return "unknown"
-	}
-}
+// func storageVolumeTypeToString(volType libvirt.StorageVolType) string {
+// 	switch volType {
+// 	case libvirt.STORAGE_VOL_FILE:
+// 		return "file"
+// 	case libvirt.STORAGE_VOL_BLOCK:
+// 		return "block"
+// 	case libvirt.STORAGE_VOL_DIR:
+// 		return "dir"
+// 	default:
+// 		return "unknown"
+// 	}
+// }
 
 // lookupDomain looks up a domain by name or UUID
 func (s *Service) lookupDomain(nameOrUUID string) (*libvirt.Domain, error) {
-// Try by UUID first
-domain, err := s.conn.LookupDomainByUUIDString(nameOrUUID)
-if err == nil {
-return domain, nil
-}
+	// Try by UUID first
+	domain, err := s.conn.LookupDomainByUUIDString(nameOrUUID)
+	if err == nil {
+		return domain, nil
+	}
 
-// Try by name
-domain, err = s.conn.LookupDomainByName(nameOrUUID)
-if err != nil {
-return nil, fmt.Errorf("domain not found: %w", err)
-}
+	// Try by name
+	domain, err = s.conn.LookupDomainByName(nameOrUUID)
+	if err != nil {
+		return nil, fmt.Errorf("domain not found: %w", err)
+	}
 
-return domain, nil
+	return domain, nil
 }

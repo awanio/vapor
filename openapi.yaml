@@ -2413,7 +2413,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualization/storages/isos/upload:
+  /virtualization/isos/upload:
     post:
       summary: Create ISO upload session (TUS)
       description: |
@@ -2430,7 +2430,7 @@ paths:
         Upload-Metadata: filename dWJ1bnR1LTIyLjA0LWRlc2t0b3AtYW1kNjQuaXNv,os_type bGludXg=,os_variant dWJ1bnR1MjIuMDQ=
         ```
       tags:
-        - Virtualization Storage
+        - Virtualization ISO
       security:
         - bearerAuth: []
       parameters:
@@ -2516,7 +2516,7 @@ paths:
       summary: List active ISO upload sessions
       description: Get a list of all active ISO upload sessions for the current user
       tags:
-        - Virtualization Storage
+        - Virtualization ISO
       security:
         - bearerAuth: []
       responses:
@@ -2558,14 +2558,14 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualization/storages/isos/upload/{id}:
+  /virtualization/isos/upload/{id}:
     head:
       summary: Get upload session info (TUS)
       description: |
         Get information about a resumable upload session for ISO images.
         This follows TUS protocol for HEAD requests.
       tags:
-        - Virtualization Storage
+        - Virtualization ISO
       security:
         - bearerAuth: []
       parameters:
@@ -2610,7 +2610,7 @@ paths:
         
         The request body should contain the raw binary data of the chunk.
       tags:
-        - Virtualization Storage
+        - Virtualization ISO
       security:
         - bearerAuth: []
       parameters:
@@ -2688,7 +2688,7 @@ paths:
       summary: Get ISO upload status
       description: Get detailed status of an ISO upload session
       tags:
-        - Virtualization Storage
+        - Virtualization ISO
       security:
         - bearerAuth: []
       parameters:
@@ -2753,7 +2753,7 @@ paths:
       summary: Cancel ISO upload session
       description: Cancel and delete an ISO upload session, removing any uploaded data
       tags:
-        - Virtualization Storage
+        - Virtualization ISO
       security:
         - bearerAuth: []
       parameters:
@@ -2783,14 +2783,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /virtualization/storages/isos/upload/{id}/complete:
+  /virtualization/isos/upload/{id}/complete:
     post:
       summary: Complete ISO upload and register
       description: |
         Complete the upload session and register the ISO in the system.
         This will move the ISO to the final storage location and make it available for VM creation.
       tags:
-        - Virtualization Storage
+        - Virtualization ISO
       security:
         - bearerAuth: []
       parameters:
@@ -2912,6 +2912,39 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+    put:
+      summary: Update a virtual network
+      description: Update an existing virtual network configuration. The network will be stopped if active, updated, and restarted.
+      tags:
+        - Virtualization Networks
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Network name
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NetworkUpdateRequest'
+      responses:
+        '200':
+          description: Virtual network updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VirtualNetworkUpdateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
     delete:
       summary: Delete a virtual network
       tags:
@@ -13515,16 +13548,31 @@ components:
       properties:
         name:
           type: string
+          description: Network name
         uuid:
           type: string
-        bridge:
-          type: string
+          description: Network UUID
         state:
           type: string
+          description: Network state (active, inactive)
+          enum: ["active", "inactive"]
+        bridge:
+          type: string
+          description: Bridge name
+        mode:
+          type: string
+          description: Network forwarding mode
+          enum: ["nat", "route", "bridge", "private"]
+        ip_range:
+          $ref: '#/components/schemas/IPRange'
+        dhcp:
+          $ref: '#/components/schemas/DHCPConfig'
         autostart:
           type: boolean
+          description: Whether autostart is enabled
         persistent:
           type: boolean
+          description: Whether the network is persistent
 
     NetworkCreateRequest:
       type: object
@@ -13538,25 +13586,90 @@ components:
         ip_range:
           $ref: '#/components/schemas/IPRange'
         dhcp:
-          $ref: '#/components/schemas/DHCP'
+          $ref: '#/components/schemas/DHCPConfig'
         autostart:
           type: boolean
 
     IPRange:
       type: object
+      description: IP range configuration for network
       properties:
         address:
           type: string
+          description: Network address (e.g., 192.168.122.1)
         netmask:
           type: string
+          description: Network mask (e.g., 255.255.255.0)
+        gateway:
+          type: string
+          description: Gateway address (optional)
 
-    DHCP:
+    
+    NetworkUpdateRequest:
       type: object
+      description: Request to update a virtual network configuration
+      properties:
+        mode:
+          type: string
+          description: Network forwarding mode
+          enum: ["nat", "route", "bridge", "private"]
+        bridge:
+          type: string
+          description: Bridge name for the network
+        ip_range:
+          $ref: '#/components/schemas/IPRange'
+        dhcp:
+          $ref: '#/components/schemas/DHCPConfig'
+        autostart:
+          type: boolean
+          description: Whether to enable autostart for the network
+    
+    DHCPConfig:
+      type: object
+      description: DHCP configuration for network
       properties:
         start:
           type: string
+          description: Start of DHCP IP range (e.g., 192.168.122.2)
         end:
           type: string
+          description: End of DHCP IP range (e.g., 192.168.122.254)
+        hosts:
+          type: array
+          description: Static DHCP host assignments
+          items:
+            $ref: '#/components/schemas/DHCPHost'
+    
+    DHCPHost:
+      type: object
+      description: Static DHCP host assignment
+      required:
+        - mac
+        - ip
+      properties:
+        mac:
+          type: string
+          description: MAC address of the host
+        ip:
+          type: string
+          description: IP address to assign to the host
+        name:
+          type: string
+          description: Optional hostname for the host
+    
+    VirtualNetworkUpdateResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                network:
+                  $ref: '#/components/schemas/VirtualNetwork'
+                message:
+                  type: string
+                  description: Success message
     PlaybooksListResponse:
       allOf:
         - $ref: '#/components/schemas/APIResponse'

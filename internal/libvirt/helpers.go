@@ -1,4 +1,3 @@
-
 package libvirt
 
 import (
@@ -849,7 +848,55 @@ func guessOSFromFilename(filename string) (osType string, osVersion string) {
 
 // executeSystemCommandWithOutput executes a shell command and returns output
 func (s *Service) executeSystemCommandWithOutput(command string) (string, error) {
-// This would be implemented using os/exec
-// For now, return a placeholder
-return "", fmt.Errorf("not implemented")
+	// This would be implemented using os/exec
+	// For now, return a placeholder
+	return "", fmt.Errorf("not implemented")
+}
+
+// generateNetworkXMLForUpdate generates libvirt network XML for updates, preserving UUID
+func (s *Service) generateNetworkXMLForUpdate(name, uuid string, req *NetworkUpdateRequest) string {
+	xml := fmt.Sprintf(`<network>
+<name>%s</name>
+<uuid>%s</uuid>`, name, uuid)
+
+	if req.Bridge != nil && *req.Bridge != "" {
+		xml += fmt.Sprintf(`
+<bridge name='%s'/>`, *req.Bridge)
+	}
+
+	if req.Mode != nil && *req.Mode != "" {
+		xml += fmt.Sprintf(`
+<forward mode='%s'/>`, *req.Mode)
+	}
+
+	if req.IPRange != nil {
+		xml += fmt.Sprintf(`
+<ip address='%s' netmask='%s'>`, req.IPRange.Address, req.IPRange.Netmask)
+
+		if req.DHCP != nil {
+			xml += fmt.Sprintf(`
+<dhcp>
+<range start='%s' end='%s'/>`, req.DHCP.Start, req.DHCP.End)
+
+			for _, host := range req.DHCP.Hosts {
+				xml += fmt.Sprintf(`
+<host mac='%s' ip='%s'`, host.MAC, host.IP)
+				if host.Name != "" {
+					xml += fmt.Sprintf(` name='%s'`, host.Name)
+				}
+				xml += `/>`
+			}
+
+			xml += `
+</dhcp>`
+		}
+
+		xml += `
+</ip>`
+	}
+
+	xml += `
+</network>`
+
+	return xml
 }

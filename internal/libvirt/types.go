@@ -443,6 +443,15 @@ type NetworkCreateRequest struct {
 	AutoStart bool            `json:"autostart"`
 }
 
+// NetworkUpdateRequest for updating virtual network configuration
+type NetworkUpdateRequest struct {
+	Mode      *string          `json:"mode,omitempty"`      // nat, route, bridge, private
+	Bridge    *string          `json:"bridge,omitempty"`
+	IPRange   *NetworkIPRange  `json:"ip_range,omitempty"`
+	DHCP      *DHCPConfig      `json:"dhcp,omitempty"`
+	AutoStart bool             `json:"autostart"`
+}
+
 // MigrationResponse for VM migration initiation
 type MigrationResponse struct {
 	MigrationID string    `json:"migration_id"`
