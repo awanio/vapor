@@ -566,7 +566,7 @@ export class ISOManagement extends LitElement {
   private downloadISO(iso: ISOImage) {
     // Create a download link
     const link = document.createElement('a');
-    link.href = `/api/v1/virtualization/storages/isos/${iso.id}/download`;
+    link.href = `/api/v1/virtualization/isos/${iso.id}/download`;
     link.download = iso.name;
     link.click();
   }

@@ -168,7 +168,7 @@ export const storagePoolStore = {
 const baseIsoStore = createStore<ISOImage>({
   name: 'virtualization-isos',
   idField: 'id',
-  endpoint: getApiUrl(`${API_BASE}/storages/isos`),
+  endpoint: getApiUrl(`${API_BASE}/isos`),
   persistent: true,
   persistKey: 'vapor.virtualization.isos',
   debug: process.env.NODE_ENV === 'development',
@@ -199,7 +199,7 @@ export const isoStore = {
       baseIsoStore.$error.set(null);
       
       // Make the actual API request
-      const response = await apiRequest<any>('/virtualmachines/isos');
+      const response = await apiRequest<any>('/isos');
       
       // Handle different response structures
       let isos: ISOImage[] = [];
@@ -740,7 +740,7 @@ export const storageActions = {
   },
   
   async deleteISO(isoId: string) {
-    await apiRequest(`/virtualmachines/isos/${isoId}`, { method: 'DELETE' });
+    await apiRequest(`/isos/${isoId}`, { method: 'DELETE' });
     await isoStore.delete(isoId);
   },
 };

@@ -497,14 +497,14 @@ export class VirtualizationAPI {
    * List ISO images
    */
   async listISOs(): Promise<ISOImage[]> {
-    return apiRequest<ISOImage[]>('/storages/isos');
+    return apiRequest<ISOImage[]>('/isos');
   }
   
   /**
    * Get ISO details
    */
   async getISO(id: string): Promise<ISOImage> {
-    return apiRequest<ISOImage>(`/storages/isos/${id}`);
+    return apiRequest<ISOImage>(`/isos/${id}`);
   }
   
   /**
@@ -545,7 +545,7 @@ export class VirtualizationAPI {
       .join(',');
     
     const token = getAuthToken();
-    const url = getApiUrl('/virtualization/storages/isos/upload');
+    const url = getApiUrl('/virtualization/isos/upload');
     
     // Make TUS-compliant POST request with proper headers
     const response = await fetch(url, {
@@ -586,10 +586,10 @@ export class VirtualizationAPI {
   // If the URL is relative, make it absolute
   if (tusUploadUrl && !tusUploadUrl.startsWith('http')) {
     // The upload URL should include the full path with upload ID
-    // Expected format: /api/v1/virtualization/storages/isos/upload/{upload_id}
+    // Expected format: /api/v1/virtualization/isos/upload/{upload_id}
     const fullUploadPath = tusUploadUrl.startsWith('/api/') 
       ? tusUploadUrl 
-      : `/api/v1/virtualization/storages/isos/upload/${responseData.upload_id}`;
+      : `/api/v1/virtualization/isos/upload/${responseData.upload_id}`;
     
     // Get the base URL from the config
     const baseUrl = url.substring(0, url.indexOf('/api/'));
@@ -610,7 +610,7 @@ export class VirtualizationAPI {
    * Complete ISO upload
    */
   async completeISOUpload(uploadId: string): Promise<ISOImage> {
-    return apiRequest<ISOImage>(`/storages/isos/upload/${uploadId}/complete`, {
+    return apiRequest<ISOImage>(`/isos/upload/${uploadId}/complete`, {
       method: 'POST',
     });
   }
@@ -619,14 +619,14 @@ export class VirtualizationAPI {
    * Get ISO upload progress
    */
   async getISOUploadProgress(uploadId: string): Promise<ISOUploadProgress> {
-    return apiRequest<ISOUploadProgress>(`/storages/isos/upload/${uploadId}/progress`);
+    return apiRequest<ISOUploadProgress>(`/isos/upload/${uploadId}/progress`);
   }
   
   /**
    * Delete an ISO
    */
   async deleteISO(id: string): Promise<OperationResult> {
-    return apiRequest<OperationResult>(`/storages/isos/${id}`, {
+    return apiRequest<OperationResult>(`/isos/${id}`, {
       method: 'DELETE',
     });
   }
