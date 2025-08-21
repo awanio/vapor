@@ -13897,11 +13897,14 @@ components:
 
     NetworkCreateRequest:
       type: object
+      required:
+        - name
       properties:
         name:
           type: string
         mode:
           type: string
+          enum: ["nat", "route", "bridge", "private"]
         bridge:
           type: string
         ip_range:
