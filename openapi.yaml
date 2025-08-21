@@ -2205,7 +2205,7 @@ paths:
     get:
       summary: List all storage pools
       tags:
-        - Virtualization Storage
+        - "Virtualization Storage"
       security:
         - bearerAuth: []
       responses:
@@ -2221,7 +2221,7 @@ paths:
     post:
       summary: Create a new storage pool
       tags:
-        - Virtualization Storage
+        - "Virtualization Storage"
       security:
         - bearerAuth: []
       requestBody:
@@ -2246,7 +2246,7 @@ paths:
     get:
       summary: Get storage pool details
       tags:
-        - Virtualization Storage
+        - "Virtualization Storage"
       security:
         - bearerAuth: []
       parameters:
@@ -2271,7 +2271,7 @@ paths:
     delete:
       summary: Delete a storage pool
       tags:
-        - Virtualization Storage
+        - "Virtualization Storage"
       security:
         - bearerAuth: []
       parameters:
@@ -2299,7 +2299,7 @@ paths:
     get:
       summary: List all volumes in a storage pool
       tags:
-        - Virtualization Storage
+        - "Virtualization Volume"
       security:
         - bearerAuth: []
       parameters:
@@ -2324,7 +2324,7 @@ paths:
     post:
       summary: Create a new volume in a storage pool
       tags:
-        - Virtualization Storage
+        - "Virtualization Volume"
       security:
         - bearerAuth: []
       parameters:
@@ -2358,7 +2358,7 @@ paths:
     get:
       summary: Get storage volume details
       tags:
-        - Virtualization Storage
+        - "Virtualization Volume"
       security:
         - bearerAuth: []
       parameters:
@@ -2389,7 +2389,7 @@ paths:
     delete:
       summary: Delete a storage volume
       tags:
-        - Virtualization Storage
+        - "Virtualization Volume"
       security:
         - bearerAuth: []
       parameters:
@@ -2844,7 +2844,7 @@ paths:
     get:
       summary: List all virtual networks
       tags:
-        - Virtualization Networks
+        - "Virtualization Network"
       security:
         - bearerAuth: []
       responses:
@@ -2865,7 +2865,7 @@ paths:
     post:
       summary: Create a new virtual network
       tags:
-        - Virtualization Networks
+        - "Virtualization Network"
       security:
         - bearerAuth: []
       requestBody:
@@ -2890,7 +2890,7 @@ paths:
     get:
       summary: Get virtual network details
       tags:
-        - Virtualization Networks
+        - "Virtualization Network"
       security:
         - bearerAuth: []
       parameters:
@@ -2916,7 +2916,7 @@ paths:
       summary: Update a virtual network
       description: Update an existing virtual network configuration. The network will be stopped if active, updated, and restarted.
       tags:
-        - Virtualization Networks
+        - "Virtualization Network"
       security:
         - bearerAuth: []
       parameters:
@@ -2948,7 +2948,7 @@ paths:
     delete:
       summary: Delete a virtual network
       tags:
-        - Virtualization Networks
+        - "Virtualization Network"
       security:
         - bearerAuth: []
       parameters:
@@ -3751,7 +3751,6 @@ paths:
                   code: KILL_CONTAINER_FAILED
                   message: "Failed to kill container: Container not running"
 
-
   /docker/containers/{id}/logs:
     get:
       summary: Get Docker container logs
@@ -4197,11 +4196,11 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedError'
   
-  /virtualization/virtualmachines:
+  /virtualization/computes:
     get:
       summary: List all virtual machines
       tags:
-        - Virtualization Compute
+        - "Virtualization Compute"
       security:
         - bearerAuth: []
       responses:
@@ -4217,7 +4216,7 @@ paths:
     post:
       summary: Create a new virtual machine
       tags:
-        - Virtualization Compute
+        - "Virtualization Compute"
       security:
         - bearerAuth: []
       requestBody:
@@ -4238,11 +4237,11 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualization/virtualmachines/{id}:
+  /virtualization/computes/{id}:
     get:
       summary: Get virtual machine details
       tags:
-        - Virtualization Compute
+        - "Virtualization Compute"
       security:
         - bearerAuth: []
       parameters:
@@ -4267,7 +4266,7 @@ paths:
     put:
       summary: Update a virtual machine
       tags:
-        - Virtualization
+        - "Virtualization Compute"
       security:
         - bearerAuth: []
       parameters:
@@ -4300,7 +4299,7 @@ paths:
     delete:
       summary: Delete a virtual machine
       tags:
-        - Virtualization
+        - "Virtualization Compute"
       security:
         - bearerAuth: []
       parameters:
@@ -4324,7 +4323,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualization/virtualmachines/{id}/migrate:
+  /virtualization/computes/{id}/migrate:
     post:
       summary: Migrate VM to another host
       description: |
@@ -4366,7 +4365,7 @@ paths:
            - Consider TLS for production environments
            - Ensure firewall rules allow migration traffic
       tags:
-        - Virtualization Compute
+        - "Virtualization Compute"
       security:
         - bearerAuth: []
       parameters:
@@ -4396,12 +4395,12 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualization/virtualmachines/{id}/migration/status:
+  /virtualization/computes/{id}/migration/status:
     get:
       summary: Get migration status
       description: Check the status of an ongoing VM migration
       tags:
-        - Virtualization Compute
+        - "Virtualization Compute"
       security:
         - bearerAuth: []
       parameters:
@@ -4429,15 +4428,14 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-
-  /virtualization/virtualmachines/{id}/console:
+  /virtualization/computes/{id}/console:
     get:
       summary: Get VM console information
       description: |
         Retrieves console connection information for a virtual machine and generates a secure access token.
         The token is valid for a limited time (default 5 minutes) and can only be used once.
       tags:
-        - Virtualization - VMs
+        - "Virtualization Compute"
       operationId: getVMConsole
       parameters:
         - name: id
@@ -4466,7 +4464,7 @@ paths:
                 host: localhost
                 port: 5901
                 token: "a1b2c3d4e5f6789..."
-                ws_path: "/api/v1/virtualization/virtualmachines/vm-123/console/ws"
+                ws_path: "/api/v1/virtualization/computes/vm-123/console/ws"
                 expires_at: "2024-01-15T10:30:00Z"
                 tls_enabled: false
                 password: "********"
@@ -4477,7 +4475,7 @@ paths:
       security:
         - bearerAuth: []
 
-  /virtualization/virtualmachines/{id}/console/ws:
+  /virtualization/computes/{id}/console/ws:
     get:
       summary: WebSocket console connection
       description: |
@@ -4490,7 +4488,7 @@ paths:
         
         **Error Messages**: JSON messages for errors and status updates
       tags:
-        - Virtualization - VMs
+        - "Virtualization Compute"
       operationId: vmConsoleWebSocket
       parameters:
         - name: id
@@ -4529,13 +4527,13 @@ paths:
       security:
         - bearerAuth: []
 
-  /virtualization/virtualmachines/{id}/console/stats:
+  /virtualization/computes/{id}/console/stats:
     get:
       summary: Get console connection statistics
       description: |
         Retrieves statistics about active console connections for monitoring and debugging purposes.
       tags:
-        - Virtualization - VMs
+        - "Virtualization Compute"
       operationId: getVMConsoleStats
       parameters:
         - name: id
@@ -4588,7 +4586,8 @@ paths:
           $ref: '#/components/responses/InternalError'
       security:
         - bearerAuth: []
-  /virtualization/virtualmachines/pci-devices:
+  
+  /virtualization/computes/pci-devices:
     get:
       summary: List available PCI devices
       description: |
@@ -4600,7 +4599,7 @@ paths:
         - Devices must be in separate IOMMU groups for passthrough
         - vfio-pci driver must be loaded
       tags:
-        - Virtualization Compute
+        - "Virtualization Compute"
       security:
         - bearerAuth: []
       parameters:
@@ -4621,7 +4620,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualization/virtualmachines/{id}/pci-devices:
+  /virtualization/computes/{id}/pci-devices:
     post:
       summary: Attach PCI device to VM
       description: |
@@ -4633,7 +4632,7 @@ paths:
         - Device will be unbound from host driver and bound to vfio-pci
         - For GPUs, consider passing through audio device as well
       tags:
-        - Virtualization Compute
+        - "Virtualization Compute"
       security:
         - bearerAuth: []
       parameters:
@@ -4669,7 +4668,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualization/virtualmachines/{id}/pci-devices/{device_id}:
+  /virtualization/computes/{id}/pci-devices/{device_id}:
     delete:
       summary: Detach PCI device from VM
       description: |
@@ -4679,7 +4678,7 @@ paths:
         - VM should be powered off for safe removal
         - Device will be unbound from vfio-pci and may rebind to original driver
       tags:
-        - Virtualization Compute
+        - "Virtualization Compute"
       security:
         - bearerAuth: []
       parameters:
@@ -4707,7 +4706,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualization/virtualmachines/{id}/hotplug:
+  /virtualization/computes/{id}/hotplug:
     post:
       summary: Hotplug resources to VM
       description: |
@@ -4725,7 +4724,7 @@ paths:
         - Guest OS must support hotplug for the resource type
         - ACPI hotplug must be enabled in VM configuration
       tags:
-        - Virtualization Compute
+        - "Virtualization Compute"
       security:
         - bearerAuth: []
       parameters:
@@ -4761,7 +4760,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualization/virtualmachines/{id}/snapshots/capabilities:
+  /virtualization/computes/{id}/snapshots/capabilities:
     get:
       summary: Check VM snapshot capabilities
       description: |
@@ -4773,7 +4772,7 @@ paths:
         - Whether memory snapshots are supported (requires qcow2 for all disks)
         - Disk format limitations and recommendations
       tags:
-        - Virtualization Compute
+        - "Virtualization Compute"
       security:
         - bearerAuth: []
       parameters:
@@ -4795,12 +4794,12 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualization/virtualmachines/{id}/snapshots:
+  /virtualization/computes/{id}/snapshots:
     get:
       summary: List VM snapshots
       description: Retrieve all snapshots for a specific virtual machine
       tags:
-        - Virtualization Compute
+        - "Virtualization Compute"
       security:
         - bearerAuth: []
       parameters:
@@ -4858,7 +4857,7 @@ paths:
         - Monitor storage space before creating snapshots
         - Test snapshot restoration in non-production first
       tags:
-        - Virtualization Compute
+        - "Virtualization Compute"
       security:
         - bearerAuth: []
       parameters:
@@ -4938,12 +4937,12 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualization/virtualmachines/{id}/snapshots/{snapshot}:
+  /virtualization/computes/{id}/snapshots/{snapshot}:
     get:
       summary: Get snapshot details
       description: Retrieve details of a specific VM snapshot
       tags:
-        - Virtualization Compute
+        - "Virtualization Compute"
       security:
         - bearerAuth: []
       parameters:
@@ -4975,7 +4974,7 @@ paths:
       summary: Delete VM snapshot
       description: Delete a specific snapshot of a virtual machine
       tags:
-        - Virtualization Compute
+        - "Virtualization Compute"
       security:
         - bearerAuth: []
       parameters:
@@ -4999,7 +4998,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualization/virtualmachines/{id}/snapshots/{snapshot}/revert:
+  /virtualization/computes/{id}/snapshots/{snapshot}/revert:
     post:
       summary: Revert to snapshot
       description: |
@@ -5013,7 +5012,7 @@ paths:
         **Note:** If the snapshot includes memory state, the VM will resume
         from the exact running state. Otherwise, the VM will be in a stopped state.
       tags:
-        - Virtualization Compute
+        - "Virtualization Compute"
       security:
         - bearerAuth: []
       parameters:
@@ -5047,12 +5046,12 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualization/virtualmachines/{id}/backups:
+  /virtualization/computes/{id}/backups:
     get:
       summary: List VM backups
       description: List all backups for a specific virtual machine
       tags:
-        - Virtualization Compute
+        - "Virtualization Compute"
       security:
         - bearerAuth: []
       parameters:
@@ -5095,7 +5094,7 @@ paths:
         - Include memory state
         - Custom retention period
       tags:
-        - Virtualization Compute
+        - "Virtualization Compute"
       security:
         - bearerAuth: []
       parameters:
@@ -5125,7 +5124,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualization/virtualmachines/restore:
+  /virtualization/computes/restore:
     post:
       summary: Restore VM from backup
       description: |
@@ -5136,7 +5135,7 @@ paths:
         - Overwrite existing VM
         - Decrypt encrypted backups
       tags:
-        - Virtualization Compute
+        - "Virtualization Compute"
       security:
         - bearerAuth: []
       requestBody:
@@ -5169,12 +5168,12 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualization/virtualmachines/backups/{backup_id}:
+  /virtualization/computes/backups/{backup_id}:
     delete:
       summary: Delete VM backup
       description: Delete a specific VM backup
       tags:
-        - Virtualization Compute
+        - "Virtualization Compute"
       security:
         - bearerAuth: []
       parameters:
@@ -5196,7 +5195,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualization/virtualmachines/templates:
+  /virtualization/computes/templates:
     get:
       summary: List VM templates
       description: |
@@ -5206,7 +5205,7 @@ paths:
         to quickly create new virtual machines with optimal settings for
         specific operating systems and use cases.
       tags:
-        - Virtualization Compute
+        - "Virtualization Compute"
       security:
         - bearerAuth: []
       responses:
@@ -5233,7 +5232,7 @@ paths:
         including memory, CPU, disk, and optional features like UEFI boot,
         Secure Boot, and TPM support.
       tags:
-        - Virtualization Compute
+        - "Virtualization Compute"
       security:
         - bearerAuth: []
       requestBody:
@@ -5260,12 +5259,12 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualization/virtualmachines/templates/{id}:
+  /virtualization/computes/templates/{id}:
     get:
       summary: Get VM template details
       description: Get detailed information about a specific VM template
       tags:
-        - Virtualization Compute
+        - "Virtualization Compute"
       security:
         - bearerAuth: []
       parameters:
@@ -5295,7 +5294,7 @@ paths:
       summary: Update VM template
       description: Update an existing VM template
       tags:
-        - Virtualization Compute
+        - "Virtualization Compute"
       security:
         - bearerAuth: []
       parameters:
@@ -5333,7 +5332,7 @@ paths:
       summary: Delete VM template
       description: Delete a VM template from the system
       tags:
-        - Virtualization Compute
+        - "Virtualization Compute"
       security:
         - bearerAuth: []
       parameters:
@@ -5355,7 +5354,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualization/virtualmachines/from-template:
+  /virtualization/computes/from-template:
     post:
       summary: Create VM from template
       description: |
@@ -5371,7 +5370,7 @@ paths:
         - User values are validated against template minimum requirements
         - Template settings for OS, network, graphics, and cloud-init are applied
       tags:
-        - Virtualization Compute
+        - "Virtualization Compute"
       security:
         - bearerAuth: []
       requestBody:
@@ -5509,7 +5508,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualization/virtualmachines/create-enhanced:
+  /virtualization/computes/create-enhanced:
     post:
       summary: Create VM with enhanced configuration (v2)
       description: |
@@ -5537,7 +5536,7 @@ paths:
         - Reference ISOs by ID, name, or path
         - Automatic ISO resolution from multiple sources
       tags:
-        - Virtualization Compute
+        - "Virtualization Compute"
       security:
         - bearerAuth: []
       requestBody:
@@ -5608,7 +5607,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualization/storages/isos:
+  /virtualization/isos:
     get:
       summary: List available ISO images
       description: |
@@ -5620,7 +5619,7 @@ paths:
         - ISOs in /var/lib/vapor/iso
         - ISOs in /usr/share/iso
       tags:
-        - Virtualization Storage
+        - "Virtualization ISO"
       security:
         - bearerAuth: []
       responses:
@@ -5643,7 +5642,7 @@ paths:
         - Download from URL
         - Copy from existing path
       tags:
-        - Virtualization Storage
+        - "Virtualization ISO"
       security:
         - bearerAuth: []
       requestBody:
@@ -5691,12 +5690,12 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /virtualization/storages/isos/{id}:
+  /virtualization/isos/{id}:
     delete:
       summary: Delete ISO image
       description: Delete an ISO image from the system
       tags:
-        - Virtualization Storage
+        - "Virtualization ISO"
       security:
         - bearerAuth: []
       parameters:
@@ -6272,6 +6271,7 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
         '503':
           $ref: '#/components/responses/KubernetesNotInstalledError'
+  
   /kubernetes/pvs:
     get:
       summary: List all persistent volumes in the cluster
@@ -7075,8 +7075,6 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '503':
           $ref: '#/components/responses/KubernetesNotInstalledError'
-
-
 
   /kubernetes/deployments/{namespace}/{name}:
     get:
