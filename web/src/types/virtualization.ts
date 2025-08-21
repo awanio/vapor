@@ -84,6 +84,7 @@ export interface ISOImage {
   os_type?: string;
   os_variant?: string;
   architecture?: string;
+  description?: string;
   uploaded_at: string;
   checksum?: string;
   storage_pool?: string;

@@ -43,7 +43,10 @@ export class ISOManagement extends LitElement {
   @state() private searchQuery = '';
   @state() private showUploadDrawer = false;
   @state() private showDeleteModal = false;
+  @state() private showDetailDrawer = false;
   @state() private isoToDelete: ISOImage | null = null;
+  @state() private selectedISO: ISOImage | null = null;
+  @state() private isLoadingDetail = false;
   @state() private isDeleting = false;
   @state() private selectedFile: File | null = null;
   @state() private uploadMetadata = {
@@ -461,6 +464,43 @@ export class ISOManagement extends LitElement {
       font-weight: 600;
       color: var(--vscode-foreground);
     }
+
+    /* Detail Drawer Styles */
+    .detail-section {
+      margin-bottom: 24px;
+    }
+
+    .detail-section h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--vscode-foreground);
+      margin: 0 0 12px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 12px;
+    }
+
+    .detail-label {
+      font-size: 13px;
+      color: var(--vscode-descriptionForeground);
+      font-weight: 500;
+    }
+
+    .detail-value {
+      font-size: 13px;
+      color: var(--vscode-foreground);
+      word-break: break-word;
+    }
+
+    .detail-value.monospace {
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 12px;
+    }
   `;
 
   override async connectedCallback() {
@@ -494,8 +534,8 @@ export class ISOManagement extends LitElement {
 
   private getActions(_iso: ISOImage): ActionItem[] {
     return [
+      { label: 'View Detail', action: 'view-detail' },
       { label: 'Download', action: 'download' },
-      { label: 'Copy Path', action: 'copy-path' },
       { label: 'Delete', action: 'delete', danger: true },
     ];
   }
@@ -551,11 +591,11 @@ export class ISOManagement extends LitElement {
     const iso = item as ISOImage;
     
     switch (action) {
+      case 'view-detail':
+        this.viewISODetail(iso);
+        break;
       case 'download':
         this.downloadISO(iso);
-        break;
-      case 'copy-path':
-        this.copyISOPath(iso);
         break;
       case 'delete':
         this.confirmDeleteISO(iso);
@@ -563,21 +603,88 @@ export class ISOManagement extends LitElement {
     }
   }
 
-  private downloadISO(iso: ISOImage) {
-    // Create a download link
-    const link = document.createElement('a');
-    link.href = `/api/v1/virtualization/isos/${iso.id}/download`;
-    link.download = iso.name;
-    link.click();
+  private handleCellClick(event: CustomEvent) {
+    const { item, column } = event.detail;
+    
+    // If the name column is clicked, open the detail drawer
+    if (column.key === 'name') {
+      this.viewISODetail(item as ISOImage);
+    }
   }
 
-  private async copyISOPath(iso: ISOImage) {
+  private async downloadISO(iso: ISOImage) {
     try {
-      await navigator.clipboard.writeText(iso.path);
-      this.showNotification('Path copied to clipboard', 'success');
+      // Get auth token
+      const token = localStorage.getItem('jwt_token') || localStorage.getItem('auth_token');
+      if (!token) {
+        this.showNotification('Authentication required', 'error');
+        return;
+      }
+
+      // Make the download request
+      const response = await fetch(`/api/v1/virtualization/isos/${iso.id}/download`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.statusText}`);
+      }
+
+      // Get the blob from response
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = iso.name;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      this.showNotification(`Downloading ${iso.name}...`, 'success');
     } catch (error) {
-      this.showNotification('Failed to copy path', 'error');
+      console.error('Failed to download ISO:', error);
+      this.showNotification(
+        `Failed to download ISO: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'error'
+      );
     }
+  }
+
+  private async viewISODetail(iso: ISOImage) {
+    this.showDetailDrawer = true;
+    this.isLoadingDetail = true;
+    this.selectedISO = iso;
+    
+    try {
+      // Fetch detailed information from API
+      const detailedISO = await virtualizationAPI.getISO(iso.id);
+      this.selectedISO = {
+        ...iso,
+        ...detailedISO,
+      };
+    } catch (error) {
+      console.error('Failed to fetch ISO details:', error);
+      this.showNotification(
+        `Failed to load ISO details: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'error'
+      );
+    } finally {
+      this.isLoadingDetail = false;
+    }
+  }
+
+  private closeDetailDrawer() {
+    this.showDetailDrawer = false;
+    this.selectedISO = null;
+    this.isLoadingDetail = false;
   }
 
   private confirmDeleteISO(iso: ISOImage) {
@@ -877,6 +984,87 @@ export class ISOManagement extends LitElement {
     }));
   }
 
+  private renderDetailDrawer() {
+    if (!this.selectedISO) return '';
+    
+    return html`
+      <div class="drawer">
+        <div class="drawer-header">
+          <h2 class="drawer-title">ISO Image Details</h2>
+          <button class="close-btn" @click=${this.closeDetailDrawer}>✕</button>
+        </div>
+        
+        <div class="drawer-content">
+          ${this.isLoadingDetail ? html`
+            <loading-state message="Loading ISO details..."></loading-state>
+          ` : html`
+            <div class="detail-section">
+              <h3>General Information</h3>
+              <div class="detail-grid">
+                <div class="detail-label">Name:</div>
+                <div class="detail-value">${this.selectedISO.name}</div>
+                
+                <div class="detail-label">Size:</div>
+                <div class="detail-value">${this.formatFileSize(this.selectedISO.size)}</div>
+                
+                <div class="detail-label">OS Type:</div>
+                <div class="detail-value">${this.selectedISO.os_type || 'Unknown'}</div>
+                
+                <div class="detail-label">OS Variant:</div>
+                <div class="detail-value">${this.selectedISO.os_variant || 'Not specified'}</div>
+                
+                <div class="detail-label">Architecture:</div>
+                <div class="detail-value">${this.selectedISO.architecture || 'Not specified'}</div>
+                
+                <div class="detail-label">Storage Pool:</div>
+                <div class="detail-value">${this.selectedISO.storage_pool || 'default'}</div>
+                
+                <div class="detail-label">Uploaded:</div>
+                <div class="detail-value">${this.formatDate(this.selectedISO.uploaded_at)}</div>
+              </div>
+            </div>
+            
+            <div class="detail-section">
+              <h3>File Information</h3>
+              <div class="detail-grid">
+                <div class="detail-label">File Path:</div>
+                <div class="detail-value monospace">${this.selectedISO.path}</div>
+                
+                ${this.selectedISO.checksum ? html`
+                  <div class="detail-label">Checksum:</div>
+                  <div class="detail-value monospace">${this.selectedISO.checksum}</div>
+                ` : ''}
+                
+                <div class="detail-label">ID:</div>
+                <div class="detail-value monospace">${this.selectedISO.id}</div>
+              </div>
+            </div>
+            
+            ${this.selectedISO.description ? html`
+              <div class="detail-section">
+                <h3>Description</h3>
+                <div class="detail-value">${this.selectedISO.description}</div>
+              </div>
+            ` : ''}
+          `}
+        </div>
+        
+        <div class="drawer-footer">
+          <button 
+            class="btn btn-secondary" 
+            @click=${() => this.downloadISO(this.selectedISO!)}
+            ?disabled=${this.isLoadingDetail}
+          >
+            Download ISO
+          </button>
+          <button class="btn btn-primary" @click=${this.closeDetailDrawer}>
+            Close
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
   private renderUploadDrawer() {
     const uploadState = this._uploadStateController.value;
     const isUploading = uploadState.isUploading || this.isPaused;
@@ -1094,12 +1282,16 @@ export class ISOManagement extends LitElement {
               .data=${tableData}
               .getActions=${(item: ISOImage) => this.getActions(item)}
               @action=${this.handleAction}
+              @cell-click=${this.handleCellClick}
             ></resource-table>
           `}
         </div>
         
         <!-- Upload Drawer -->
         ${this.showUploadDrawer ? this.renderUploadDrawer() : ''}
+        
+        <!-- Detail Drawer -->
+        ${this.showDetailDrawer ? this.renderDetailDrawer() : ''}
         
         <!-- Delete Confirmation Modal -->
         ${this.showDeleteModal && this.isoToDelete ? html`
