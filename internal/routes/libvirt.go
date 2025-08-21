@@ -15,7 +15,7 @@ import (
 
 // LibvirtRoutes sets up libvirt VM management routes
 func LibvirtRoutes(r *gin.RouterGroup, service *libvirt.Service) {
-	vmGroup := r.Group("/virtualization/virtualmachines")
+	vmGroup := r.Group("/virtualization/machines")
 	{
 		// VM Management
 		vmGroup.GET("", listVMs(service))              // List all VMs
@@ -71,11 +71,34 @@ func LibvirtRoutes(r *gin.RouterGroup, service *libvirt.Service) {
 
 		// Enhanced VM creation with multiple disks support
 		vmGroup.POST("/create-enhanced", createVMEnhanced(service)) // Create VM with enhanced options
+	}
 
-		// ISO Management
-		vmGroup.GET("/isos", listISOs(service))         // List available ISOs
-		vmGroup.POST("/isos", uploadISO(service))       // Upload/register ISO
-		vmGroup.DELETE("/isos/:id", deleteISO(service)) // Delete ISO
+	// ISO Management
+	isoGroup := r.Group("/virtualization/isos")
+	{
+		isoGroup.GET("", listISOs(service))
+		isoGroup.POST("", uploadISO(service))
+		isoGroup.DELETE("/:id", deleteISO(service))
+
+		// ISO Management with resumable uploads
+		upload := isoGroup.Group("/upload")
+		{
+			// Setup resumable upload handler for ISO images using TUS protocol
+			uploadDir := filepath.Join(os.TempDir(), "vapor-uploads", "isos")
+			isoUploadHandler := libvirt.NewISOResumableUploadHandler(service, uploadDir)
+
+			// TUS protocol endpoints for ISO uploads
+			upload.OPTIONS("", isoUploadHandler.HandleOptions)            // OPTIONS for TUS protocol discovery
+			upload.OPTIONS("/:id", isoUploadHandler.HandleOptions)        // OPTIONS for TUS protocol discovery
+			upload.POST("", isoUploadHandler.CreateUpload)                // Create new upload session
+			upload.GET("", isoUploadHandler.ListUploads)                  // List active upload sessions
+			upload.HEAD("/:id", isoUploadHandler.GetUploadInfo)           // Get upload session info (HEAD request for TUS)
+			upload.PATCH("/:id", isoUploadHandler.UploadChunk)            // Upload chunk (PATCH request for TUS)
+			upload.GET("/:id", isoUploadHandler.GetUploadStatus)          // Get upload status
+			upload.POST("/:id/complete", isoUploadHandler.CompleteUpload) // Complete upload and register ISO
+			upload.DELETE("/:id", isoUploadHandler.CancelUpload)          // Cancel/delete upload session
+		}
+
 	}
 
 	// Storage Management
@@ -95,25 +118,6 @@ func LibvirtRoutes(r *gin.RouterGroup, service *libvirt.Service) {
 				volumesGroup.GET("/:vol_name", getVolume(service))       // Get volume details
 				volumesGroup.DELETE("/:vol_name", deleteVolume(service)) // Delete a volume
 			}
-		}
-
-		// ISO Management with resumable uploads
-		isosGroup := storageGroup.Group("/isos")
-		{
-			// Setup resumable upload handler for ISO images using TUS protocol
-			uploadDir := filepath.Join(os.TempDir(), "vapor-uploads", "isos")
-			isoUploadHandler := libvirt.NewISOResumableUploadHandler(service, uploadDir)
-
-			// TUS protocol endpoints for ISO uploads
-			isosGroup.OPTIONS("/upload", isoUploadHandler.HandleOptions)            // OPTIONS for TUS protocol discovery
-			isosGroup.OPTIONS("/upload/:id", isoUploadHandler.HandleOptions)        // OPTIONS for TUS protocol discovery
-			isosGroup.POST("/upload", isoUploadHandler.CreateUpload)                // Create new upload session
-			isosGroup.GET("/upload", isoUploadHandler.ListUploads)                  // List active upload sessions
-			isosGroup.HEAD("/upload/:id", isoUploadHandler.GetUploadInfo)           // Get upload session info (HEAD request for TUS)
-			isosGroup.PATCH("/upload/:id", isoUploadHandler.UploadChunk)            // Upload chunk (PATCH request for TUS)
-			isosGroup.GET("/upload/:id", isoUploadHandler.GetUploadStatus)          // Get upload status
-			isosGroup.POST("/upload/:id/complete", isoUploadHandler.CompleteUpload) // Complete upload and register ISO
-			isosGroup.DELETE("/upload/:id", isoUploadHandler.CancelUpload)          // Cancel/delete upload session
 		}
 	}
 
@@ -670,60 +674,59 @@ func getConsole(service *libvirt.Service) gin.HandlerFunc {
 	}
 }
 
-
 func vmConsoleWebSocket(service *libvirt.Service) gin.HandlerFunc {
-return func(c *gin.Context) {
+	return func(c *gin.Context) {
 		// id parameter not used in WebSocket connection
-token := c.Query("token")
+		token := c.Query("token")
 
-// Validate token is provided
-if token == "" {
-c.JSON(http.StatusUnauthorized, gin.H{
-"error": "missing token",
-"code":  "MISSING_TOKEN",
-})
-return
-}
+		// Validate token is provided
+		if token == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "missing token",
+				"code":  "MISSING_TOKEN",
+			})
+			return
+		}
 
-// Get console proxy from service
-consoleProxy := service.GetConsoleProxy()
-if consoleProxy == nil {
-c.JSON(http.StatusInternalServerError, gin.H{
-"error": "console proxy not initialized",
-"code":  "PROXY_UNAVAILABLE",
-})
-return
-}
+		// Get console proxy from service
+		consoleProxy := service.GetConsoleProxy()
+		if consoleProxy == nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "console proxy not initialized",
+				"code":  "PROXY_UNAVAILABLE",
+			})
+			return
+		}
 
-// Upgrade to WebSocket
-ws, err := consoleProxy.WebSocketUpgrader().Upgrade(c.Writer, c.Request, nil)
-if err != nil {
-c.JSON(http.StatusBadRequest, gin.H{
-"error": "failed to upgrade to WebSocket",
-"code":  "UPGRADE_FAILED",
-})
-return
-}
-defer ws.Close()
+		// Upgrade to WebSocket
+		ws, err := consoleProxy.WebSocketUpgrader().Upgrade(c.Writer, c.Request, nil)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "failed to upgrade to WebSocket",
+				"code":  "UPGRADE_FAILED",
+			})
+			return
+		}
+		defer ws.Close()
 
-// Handle the WebSocket connection through the console proxy
-if err := consoleProxy.HandleWebSocket(ws, token); err != nil {
-// Send error to client before closing
-if consoleErr, ok := err.(*libvirt.ConsoleError); ok {
-ws.WriteJSON(gin.H{
-"type":  "error",
-"code":  consoleErr.Code,
-"error": consoleErr.Message,
-})
-} else {
-ws.WriteJSON(gin.H{
-"type":  "error",
-"error": err.Error(),
-})
-}
-return
-}
-}
+		// Handle the WebSocket connection through the console proxy
+		if err := consoleProxy.HandleWebSocket(ws, token); err != nil {
+			// Send error to client before closing
+			if consoleErr, ok := err.(*libvirt.ConsoleError); ok {
+				ws.WriteJSON(gin.H{
+					"type":  "error",
+					"code":  consoleErr.Code,
+					"error": consoleErr.Message,
+				})
+			} else {
+				ws.WriteJSON(gin.H{
+					"type":  "error",
+					"error": err.Error(),
+				})
+			}
+			return
+		}
+	}
 }
 
 func listTemplates(service *libvirt.Service) gin.HandlerFunc {
