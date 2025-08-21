@@ -637,7 +637,19 @@ export class VirtualizationAPI {
    * List virtual networks
    */
   async listNetworks(): Promise<VirtualNetwork[]> {
-    return apiRequest<VirtualNetwork[]>('/networks');
+    const response = await apiRequest<any>('/networks');
+    
+    // Handle the wrapped response structure
+    if (response.status === 'success' && response.data) {
+      return response.data.networks || [];
+    }
+    
+    // Fallback for direct array response
+    if (Array.isArray(response)) {
+      return response;
+    }
+    
+    return [];
   }
   
   /**

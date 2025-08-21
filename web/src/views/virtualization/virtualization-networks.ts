@@ -12,28 +12,35 @@ import type { Tab } from '../../components/tabs/tab-group.js';
 import type { Column } from '../../components/tables/resource-table.js';
 import type { ActionItem } from '../../components/ui/action-dropdown.js';
 import type { DeleteItem } from '../../components/modals/delete-modal.js';
+import { virtualizationAPI } from '../../services/virtualization-api';
+import type { VirtualNetwork as BaseVirtualNetwork } from '../../types/virtualization';
 
-interface VirtualNetwork {
-  id: string;
-  name: string;
-  type: 'bridge' | 'nat' | 'isolated' | 'open' | 'macvtap' | 'host';
+// Extend the base VirtualNetwork interface to match the actual API response
+interface VirtualNetwork extends Omit<BaseVirtualNetwork, 'type' | 'ip' | 'netmask'> {
+  uuid: string;
   state: 'active' | 'inactive';
   bridge: string;
-  ipRange: string;
-  dhcp: boolean;
+  mode: string;
+  ip_range: {
+    address: string;
+    netmask: string;
+  };
   autostart: boolean;
   persistent: boolean;
-  devices: number;
-  created: string;
+}
+
+interface NetworksResponse {
+  count: number;
+  networks: VirtualNetwork[];
 }
 
 @customElement('virtualization-networks')
 export class VirtualizationNetworks extends LitElement {
-  @property({ type: Array }) networks: VirtualNetwork[] = [];
-  @property({ type: String }) searchQuery = '';
-  @property({ type: Boolean }) loading = false;
-  @property({ type: String }) error: string | null = null;
-  
+  @state() private networks: VirtualNetwork[] = [];
+  @state() private searchQuery = '';
+  @state() private loading = false;
+  @state() private error: string | null = null;
+  @state() private totalCount = 0;
   @state() private activeTab = 'all';
   @state() private showDetails = false;
   @state() private selectedNetwork: VirtualNetwork | null = null;
@@ -142,91 +149,10 @@ export class VirtualizationNetworks extends LitElement {
     { id: 'all', label: 'All Networks' },
     { id: 'active', label: 'Active' },
     { id: 'inactive', label: 'Inactive' },
-    { id: 'bridge', label: 'Bridge' },
-    { id: 'nat', label: 'NAT' },
-    { id: 'isolated', label: 'Isolated' }
+    { id: 'persistent', label: 'Persistent' },
+    { id: 'autostart', label: 'Autostart' }
   ];
 
-  private dummyNetworks: VirtualNetwork[] = [
-    {
-      id: 'net-001',
-      name: 'default',
-      type: 'nat',
-      state: 'active',
-      bridge: 'virbr0',
-      ipRange: '192.168.122.0/24',
-      dhcp: true,
-      autostart: true,
-      persistent: true,
-      devices: 3,
-      created: '2024-01-01'
-    },
-    {
-      id: 'net-002',
-      name: 'br0-bridged',
-      type: 'bridge',
-      state: 'active',
-      bridge: 'br0',
-      ipRange: '192.168.1.0/24',
-      dhcp: false,
-      autostart: true,
-      persistent: true,
-      devices: 5,
-      created: '2024-01-05'
-    },
-    {
-      id: 'net-003',
-      name: 'isolated-network',
-      type: 'isolated',
-      state: 'active',
-      bridge: 'virbr1',
-      ipRange: '10.0.0.0/24',
-      dhcp: true,
-      autostart: false,
-      persistent: true,
-      devices: 2,
-      created: '2024-01-10'
-    },
-    {
-      id: 'net-004',
-      name: 'test-network',
-      type: 'nat',
-      state: 'inactive',
-      bridge: 'virbr2',
-      ipRange: '172.16.0.0/24',
-      dhcp: true,
-      autostart: false,
-      persistent: false,
-      devices: 0,
-      created: '2024-01-15'
-    },
-    {
-      id: 'net-005',
-      name: 'host-only',
-      type: 'host',
-      state: 'active',
-      bridge: 'virbr3',
-      ipRange: '192.168.100.0/24',
-      dhcp: true,
-      autostart: true,
-      persistent: true,
-      devices: 1,
-      created: '2024-01-20'
-    },
-    {
-      id: 'net-006',
-      name: 'macvtap-net',
-      type: 'macvtap',
-      state: 'active',
-      bridge: 'eth0',
-      ipRange: 'N/A',
-      dhcp: false,
-      autostart: true,
-      persistent: true,
-      devices: 2,
-      created: '2024-02-01'
-    }
-  ];
 
   override connectedCallback() {
     super.connectedCallback();
@@ -235,23 +161,47 @@ export class VirtualizationNetworks extends LitElement {
 
   private async loadData() {
     this.loading = true;
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    this.networks = this.dummyNetworks;
-    this.loading = false;
+    this.error = null;
+    
+    try {
+      // Use the virtualizationAPI service which handles authentication and response structure
+      const response = await virtualizationAPI.listNetworks();
+      
+      // Map the response to match our local interface structure
+      this.networks = (response || []).map(net => ({
+        name: net.name,
+        uuid: net.uuid || '',
+        state: net.state,
+        bridge: net.bridge || '',
+        mode: (net as any).mode || '',
+        ip_range: {
+          address: (net as any).ip_range?.address || net.ip || '',
+          netmask: (net as any).ip_range?.netmask || net.netmask || ''
+        },
+        autostart: net.autostart || false,
+        persistent: (net as any).persistent !== undefined ? (net as any).persistent : true
+      }));
+      this.totalCount = this.networks.length;
+    } catch (error) {
+      console.error('Failed to load networks:', error);
+      this.error = error instanceof Error ? error.message : 'Failed to load networks';
+      this.networks = [];
+    } finally {
+      this.loading = false;
+    }
   }
 
   private getColumns(): Column[] {
     return [
       { key: 'name', label: 'Name', type: 'link' },
-      { key: 'type', label: 'Type' },
       { key: 'state', label: 'State', type: 'status' },
-      { key: 'bridge', label: 'Bridge/Interface' },
-      { key: 'ipRange', label: 'IP Range' },
-      { key: 'dhcp', label: 'DHCP' },
-      { key: 'devices', label: 'Connected Devices' },
+      { key: 'bridge', label: 'Bridge' },
+      { key: 'mode', label: 'Mode' },
+      { key: 'ip_address', label: 'IP Address' },
+      { key: 'netmask', label: 'Netmask' },
       { key: 'autostart', label: 'Autostart' },
-      { key: 'created', label: 'Created' }
+      { key: 'persistent', label: 'Persistent' },
+      { key: 'uuid', label: 'UUID' }
     ];
   }
 
@@ -286,17 +236,28 @@ export class VirtualizationNetworks extends LitElement {
 
     // Filter by tab
     if (this.activeTab !== 'all') {
-      if (this.activeTab === 'active' || this.activeTab === 'inactive') {
-        data = data.filter(net => net.state === this.activeTab);
-      } else {
-        data = data.filter(net => net.type === this.activeTab);
+      switch (this.activeTab) {
+        case 'active':
+        case 'inactive':
+          data = data.filter(net => net.state === this.activeTab);
+          break;
+        case 'persistent':
+          data = data.filter(net => net.persistent);
+          break;
+        case 'autostart':
+          data = data.filter(net => net.autostart);
+          break;
       }
     }
 
     // Filter by search query
     if (this.searchQuery) {
+      const query = this.searchQuery.toLowerCase();
       data = data.filter(net => 
-        JSON.stringify(net).toLowerCase().includes(this.searchQuery.toLowerCase())
+        net.name.toLowerCase().includes(query) ||
+        net.bridge.toLowerCase().includes(query) ||
+        net.uuid.toLowerCase().includes(query) ||
+        net.ip_range.address.toLowerCase().includes(query)
       );
     }
 
@@ -351,9 +312,27 @@ export class VirtualizationNetworks extends LitElement {
     // Would open DHCP leases dialog
   }
 
-  private changeNetworkState(network: VirtualNetwork, action: string) {
-    console.log(`Changing network ${network.name} state to:`, action);
-    // Would call API to change network state
+  private async changeNetworkState(network: VirtualNetwork, action: string) {
+    try {
+      switch (action) {
+        case 'start':
+          await virtualizationAPI.startNetwork(network.name);
+          break;
+        case 'stop':
+          await virtualizationAPI.stopNetwork(network.name);
+          break;
+        case 'restart':
+          // Stop then start
+          await virtualizationAPI.stopNetwork(network.name);
+          await virtualizationAPI.startNetwork(network.name);
+          break;
+      }
+      // Reload data after state change
+      await this.loadData();
+    } catch (error) {
+      console.error(`Failed to ${action} network:`, error);
+      this.error = error instanceof Error ? error.message : `Failed to ${action} network`;
+    }
   }
 
   private cloneNetwork(network: VirtualNetwork) {
@@ -374,35 +353,48 @@ export class VirtualizationNetworks extends LitElement {
     this.showDeleteModal = true;
   }
 
-  private async handleDelete(event: CustomEvent) {
-    const item = event.detail.item;
+  private formatIPRange(network: VirtualNetwork): string {
+    if (network.ip_range.address && network.ip_range.netmask) {
+      return `${network.ip_range.address}/${network.ip_range.netmask}`;
+    }
+    return 'Not configured';
+  }
+
+  private async handleDelete() {
+    if (!this.itemToDelete) return;
+    
     this.isDeleting = true;
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Remove from list
-    this.networks = this.networks.filter(net => net.id !== item.id);
-    
-    this.isDeleting = false;
-    this.showDeleteModal = false;
-    this.itemToDelete = null;
+    try {
+      const networkToDelete = this.networks.find(n => n.name === this.itemToDelete?.name);
+      
+      if (networkToDelete) {
+        await virtualizationAPI.deleteNetwork(networkToDelete.name);
+        
+        // Reload the data after successful deletion
+        await this.loadData();
+      }
+    } catch (error) {
+      console.error('Failed to delete network:', error);
+      this.error = error instanceof Error ? error.message : 'Failed to delete network';
+    } finally {
+      this.isDeleting = false;
+      this.showDeleteModal = false;
+      this.itemToDelete = null;
+    }
   }
 
   private handleCreateNew() {
     this.createResourceValue = JSON.stringify({
-      apiVersion: 'v1',
-      kind: 'VirtualNetwork',
-      metadata: {
-        name: 'new-network',
-        namespace: 'default'
+      name: 'new-network',
+      bridge: 'virbr99',
+      mode: 'nat',
+      ip_range: {
+        address: '192.168.99.0',
+        netmask: '255.255.255.0'
       },
-      spec: {
-        type: 'nat',
-        bridge: 'virbr99',
-        ipRange: '192.168.99.0/24',
-        dhcp: true
-      }
+      autostart: false,
+      persistent: true
     }, null, 2);
     this.showCreateDrawer = true;
   }
@@ -415,39 +407,41 @@ export class VirtualizationNetworks extends LitElement {
     this.isCreating = true;
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log('Creating network with:', event.detail.value);
+      const networkConfig = JSON.parse(event.detail.value);
       
-      // Add to list (in real app, would refresh from API)
-      const newNetwork: VirtualNetwork = {
-        id: `net-${Date.now()}`,
-        name: 'new-network',
-        type: 'nat',
-        state: 'inactive',
-        bridge: 'virbr10',
-        ipRange: '192.168.200.0/24',
-        dhcp: true,
-        autostart: true,
-        persistent: true,
-        devices: 0,
-        created: new Date().toISOString().split('T')[0] || ''
+      // Transform the config to match the API expected format
+      const apiConfig = {
+        name: networkConfig.name,
+        type: 'bridge' as const,  // Default type
+        state: 'inactive' as const,
+        bridge: networkConfig.bridge,
+        ip: networkConfig.ip_range?.address,
+        netmask: networkConfig.ip_range?.netmask,
+        autostart: networkConfig.autostart
       };
-      this.networks = [...this.networks, newNetwork];
+      
+      await virtualizationAPI.createNetwork(apiConfig);
+      
+      // Reload the data after successful creation
+      await this.loadData();
       
       this.showCreateDrawer = false;
       this.createResourceValue = '';
     } catch (error) {
       console.error('Failed to create network:', error);
+      this.error = error instanceof Error ? error.message : 'Failed to create network';
     } finally {
       this.isCreating = false;
     }
   }
 
 
-  private renderNetworkType(type: string) {
-    const badgeClass = `badge-${type}`;
-    return html`<span class="network-type-badge ${badgeClass}">${type}</span>`;
+  private renderNetworkMode(mode: string) {
+    if (!mode) return html`<span>-</span>`;
+    const badgeClass = mode === 'nat' ? 'badge-nat' : 
+                      mode === 'bridge' ? 'badge-bridge' : 
+                      'badge-isolated';
+    return html`<span class="network-type-badge ${badgeClass}">${mode || 'Default'}</span>`;
   }
 
   override render() {
@@ -479,24 +473,34 @@ export class VirtualizationNetworks extends LitElement {
         <div class="content">
           ${this.loading ? html`
             <loading-state message="Loading virtual networks..."></loading-state>
+          ` : this.error ? html`
+            <empty-state
+              icon="❌"
+              title="Error loading networks"
+              description=${this.error}
+            ></empty-state>
           ` : filteredData.length === 0 ? html`
             <empty-state
               icon="🔗"
               title="No virtual networks found"
               description=${this.searchQuery 
                 ? "No networks match your search criteria" 
-                : "Create your first virtual network to get started"}
+                : this.networks.length === 0 
+                  ? "No virtual networks configured. Create your first network to get started."
+                  : "No networks match the selected filter"}
             ></empty-state>
           ` : html`
             <resource-table
               .columns=${this.getColumns()}
               .data=${filteredData.map(net => ({
                 ...net,
-                type: this.renderNetworkType(net.type),
-                dhcp: net.dhcp ? 'Enabled' : 'Disabled',
-                autostart: net.autostart ? 'Yes' : 'No'
+                mode: this.renderNetworkMode(net.mode),
+                ip_address: net.ip_range.address || 'Not configured',
+                netmask: net.ip_range.netmask || 'Not configured',
+                autostart: net.autostart ? 'Yes' : 'No',
+                persistent: net.persistent ? 'Yes' : 'No'
               }))}
-              .actions=${(item: VirtualNetwork) => this.getActions(item)}
+              .getActions=${(item: VirtualNetwork) => this.getActions(item)}
               @cell-click=${this.handleCellClick}
               @action=${this.handleAction}
             ></resource-table>
@@ -510,29 +514,35 @@ export class VirtualizationNetworks extends LitElement {
             @close=${() => { this.showDetails = false; this.selectedNetwork = null; }}
           >
             <div style="padding: 20px;">
-              <h3>Virtual Network Information</h3>
-              <pre>${JSON.stringify(this.selectedNetwork, null, 2)}</pre>
+              <h3>Network Configuration</h3>
+              <p><strong>UUID:</strong> ${this.selectedNetwork?.uuid}</p>
+              <p><strong>State:</strong> ${this.selectedNetwork?.state}</p>
+              <p><strong>Bridge:</strong> ${this.selectedNetwork?.bridge}</p>
+              <p><strong>Mode:</strong> ${this.selectedNetwork?.mode || 'Default'}</p>
+              <p><strong>Autostart:</strong> ${this.selectedNetwork?.autostart ? 'Enabled' : 'Disabled'}</p>
+              <p><strong>Persistent:</strong> ${this.selectedNetwork?.persistent ? 'Yes' : 'No'}</p>
               
-              ${this.selectedNetwork?.dhcp ? html`
-                <h3>DHCP Configuration</h3>
-                <p>DHCP Range: ${this.selectedNetwork.ipRange}</p>
-                <p>Active Leases: ${this.selectedNetwork.devices}</p>
-              ` : ''}
+              <h3>IP Configuration</h3>
+              <p><strong>IP Address:</strong> ${this.selectedNetwork?.ip_range.address || 'Not configured'}</p>
+              <p><strong>Netmask:</strong> ${this.selectedNetwork?.ip_range.netmask || 'Not configured'}</p>
+              <p><strong>IP Range:</strong> ${this.selectedNetwork ? this.formatIPRange(this.selectedNetwork) : 'Not configured'}</p>
               
-              <h3>Bridge Information</h3>
-              <p>Bridge Name: ${this.selectedNetwork?.bridge}</p>
-              <p>Type: ${this.selectedNetwork?.type}</p>
+              <h3>Raw Configuration</h3>
+              <pre style="background: var(--vscode-editor-background); padding: 10px; border-radius: 4px;">${JSON.stringify(this.selectedNetwork, null, 2)}</pre>
             </div>
           </detail-drawer>
         ` : ''}
 
-        ${this.showDeleteModal ? html`
+        ${this.showDeleteModal && this.itemToDelete ? html`
           <delete-modal
-            .open=${this.showDeleteModal}
+            .show=${true}
             .item=${this.itemToDelete}
             .loading=${this.isDeleting}
-            @delete=${this.handleDelete}
-            @close=${() => { this.showDeleteModal = false; this.itemToDelete = null; }}
+            @confirm-delete=${this.handleDelete}
+            @cancel-delete=${() => { 
+              this.showDeleteModal = false; 
+              this.itemToDelete = null; 
+            }}
           ></delete-modal>
         ` : ''}
 
