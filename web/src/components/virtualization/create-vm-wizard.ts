@@ -46,99 +46,83 @@ export class CreateVMWizard extends LitElement {
   static override styles = css`
     :host {
       display: block;
-    }
-
-    .wizard-overlay {
       position: fixed;
       top: 0;
-      left: 0;
       right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.6);
-      backdrop-filter: blur(2px);
+      width: 800px;
+      height: 100vh;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    :host([show]) {
+      pointer-events: auto;
+    }
+
+    .drawer {
+      width: 100%;
+      height: 100%;
+      background: var(--vscode-editor-background, var(--surface-0, #1e1e1e));
+      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+      display: flex;
+      flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+      border-left: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+    }
+
+    :host([show]) .drawer {
+      transform: translateX(0);
+    }
+
+    .drawer-header {
+      padding: 20px;
+      background: var(--vscode-bg-lighter, #2c2f3a);
+      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .header-title {
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--title-color, #e0e0e0);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .wizard-icon {
+      width: 20px;
+      height: 20px;
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 2000;
-      animation: fadeIn 0.2s ease-out;
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-      }
-      to {
-        opacity: 1;
-      }
-    }
-
-    .wizard-container {
-      /* Use multiple fallback approaches for background */
-      background: #1e1e1e;
-      background: var(--surface-0, #1e1e1e);
-      background: var(--vscode-editor-background, var(--surface-0, #1e1e1e));
-      background-color: #1e1e1e;
-      background-color: var(--vscode-editor-background, var(--surface-0, #1e1e1e));
-      border: 1px solid #464647;
-      border: 1px solid var(--vscode-editorWidget-border, var(--border-color, #464647));
-      border-radius: 8px;
-      width: 90%;
-      max-width: 800px;
-      max-height: 90vh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-      animation: slideIn 0.3s ease-out;
-      /* Ensure opaque background */
-      opacity: 1;
-      isolation: isolate;
-      position: relative;
-      z-index: 1;
-    }
-
-    @keyframes slideIn {
-      from {
-        opacity: 0;
-        transform: translateY(-20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .wizard-header {
-      padding: 20px;
-      border-bottom: 1px solid var(--vscode-editorWidget-border, var(--border-color, #464647));
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: #252526;
-      background: var(--surface-1, #252526);
-      background: var(--vscode-editor-background, var(--surface-1, #252526));
-    }
-
-    .wizard-title {
-      font-size: 18px;
-      font-weight: 500;
-      color: var(--vscode-foreground);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .wizard-title::before {
-      content: '🖥️';
-      font-size: 20px;
     }
 
     .wizard-steps {
       display: flex;
-      gap: 24px;
-      padding: 20px;
-      border-bottom: 1px solid var(--vscode-editorWidget-border);
-      background: var(--vscode-editor-inactiveSelectionBackground);
+      gap: 16px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      background: var(--vscode-bg-lighter, #2c2f3a);
+      flex-shrink: 0;
+      overflow-x: auto;
+    }
+
+    .wizard-steps::-webkit-scrollbar {
+      height: 4px;
+    }
+
+    .wizard-steps::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .wizard-steps::-webkit-scrollbar-thumb {
+      background: var(--vscode-scrollbarSlider-background, #4a4d5a);
+      border-radius: 2px;
     }
 
     .step {
@@ -183,25 +167,46 @@ export class CreateVMWizard extends LitElement {
       border-color: var(--vscode-charts-green);
     }
 
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
     .wizard-body {
       flex: 1;
       padding: 24px;
       overflow-y: auto;
-      background: #1e1e1e;
-      background: var(--surface-0, #1e1e1e);
       background: var(--vscode-editor-background, var(--surface-0, #1e1e1e));
     }
 
-    .wizard-footer {
+    .wizard-body::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .wizard-body::-webkit-scrollbar-track {
+      background: var(--scrollbar-track, var(--vscode-editor-background, #1e1e1e));
+    }
+
+    .wizard-body::-webkit-scrollbar-thumb {
+      background: var(--scrollbar-thumb, var(--vscode-scrollbarSlider-background, #4a4d5a));
+      border-radius: 4px;
+    }
+
+    .wizard-body::-webkit-scrollbar-thumb:hover {
+      background: var(--scrollbar-thumb-hover, #5a5d6a);
+    }
+
+    .controls {
       padding: 20px;
-      border-top: 1px solid var(--vscode-editorWidget-border, var(--border-color, #464647));
+      border-top: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 12px;
-      background: #252526;
-      background: var(--surface-1, #252526);
-      background: var(--vscode-editor-background, var(--surface-1, #252526));
+      background: var(--vscode-bg-lighter, #2c2f3a);
+      flex-shrink: 0;
     }
 
     .button-group {
@@ -264,6 +269,8 @@ export class CreateVMWizard extends LitElement {
 
     .form-group {
       margin-bottom: 20px;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     .form-group label {
@@ -287,6 +294,7 @@ export class CreateVMWizard extends LitElement {
     select,
     textarea {
       width: 100%;
+      max-width: 100%;
       padding: 8px 12px;
       background: var(--vscode-input-background, #3c3c3c);
       color: var(--vscode-input-foreground, #cccccc);
@@ -295,6 +303,7 @@ export class CreateVMWizard extends LitElement {
       font-size: 13px;
       font-family: inherit;
       transition: all 0.2s;
+      box-sizing: border-box;
     }
 
     input:focus,
@@ -378,21 +387,24 @@ export class CreateVMWizard extends LitElement {
       white-space: nowrap;
     }
 
-    .slider-container {
+    .memory-input-group {
       display: flex;
       align-items: center;
       gap: 12px;
     }
 
-    input[type="range"] {
+    .memory-input-group input[type="number"] {
       flex: 1;
-      padding: 0;
     }
 
-    .slider-value {
-      min-width: 60px;
-      text-align: right;
-      font-weight: 500;
+    .memory-unit {
+      padding: 8px 12px;
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      border: 1px solid var(--vscode-input-border, #858585);
+      border-radius: 4px;
+      font-size: 13px;
+      color: var(--vscode-descriptionForeground, #8b8b8b);
+      white-space: nowrap;
     }
 
     .grid-2 {
@@ -516,23 +528,18 @@ export class CreateVMWizard extends LitElement {
     }
 
     .close-button {
-      background: transparent;
+      background: none;
       border: none;
-      color: var(--vscode-foreground);
+      color: var(--close-color, #999);
       cursor: pointer;
-      padding: 4px 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      padding: 8px;
       border-radius: 4px;
-      font-size: 18px;
-      line-height: 1;
       transition: all 0.2s;
     }
 
     .close-button:hover {
-      background: var(--vscode-toolbar-hoverBackground);
-      color: var(--vscode-icon-foreground);
+      background: var(--close-hover-bg, rgba(255, 255, 255, 0.1));
+      color: var(--close-hover-color, #e0e0e0);
     }
   `;
 
@@ -559,12 +566,6 @@ export class CreateVMWizard extends LitElement {
     }
   }
 
-  private handleOverlayClick(event: MouseEvent) {
-    // Close wizard if clicking outside the container
-    if (event.target === event.currentTarget && !this.isCreating) {
-      this.handleClose();
-    }
-  }
 
   private handlePrevious() {
     wizardActions.previousStep();
@@ -790,34 +791,27 @@ export class CreateVMWizard extends LitElement {
         <div class="grid-2">
           <div class="form-group ${this.validationErrors.memory ? 'error' : ''}">
             <label>
-              Memory (MB) <span class="required">*</span>
+              Memory <span class="required">*</span>
             </label>
-            <div class="slider-container">
-              <input
-                type="range"
-                min="512"
-                max="32768"
-                step="512"
-                .value=${String(formData.memory || 2048)}
-                @input=${(e: InputEvent) => 
-                  this.updateFormData('memory', Number((e.target as HTMLInputElement).value))
-                }
-              />
+            <div class="memory-input-group">
               <input
                 type="number"
                 min="512"
                 max="32768"
                 step="512"
-                class="slider-value"
+                placeholder="2048"
                 .value=${String(formData.memory || 2048)}
                 @input=${(e: InputEvent) => 
                   this.updateFormData('memory', Number((e.target as HTMLInputElement).value))
                 }
               />
+              <span class="memory-unit">MB</span>
             </div>
             ${this.validationErrors.memory ? html`
               <div class="error-message">${this.validationErrors.memory}</div>
-            ` : ''}
+            ` : html`
+              <div class="help-text">Minimum 512 MB, Maximum 32768 MB</div>
+            `}
           </div>
 
           <div class="form-group ${this.validationErrors.vcpus ? 'error' : ''}">
@@ -1180,6 +1174,13 @@ export class CreateVMWizard extends LitElement {
   override render() {
     const wizardState = this.wizardController.value;
     
+    // Set the show attribute based on wizard state
+    if (wizardState.isOpen) {
+      this.setAttribute('show', '');
+    } else {
+      this.removeAttribute('show');
+    }
+    
     if (!wizardState.isOpen) {
       return html``;
     }
@@ -1192,29 +1193,36 @@ export class CreateVMWizard extends LitElement {
     ];
 
     return html`
-      <div class="wizard-overlay" @click=${this.handleOverlayClick}>
-        <div class="wizard-container">
-          <div class="wizard-header">
-            <div class="wizard-title">Create Virtual Machine</div>
-            <button 
-              class="close-button" 
-              @click=${this.handleClose}
-              ?disabled=${this.isCreating}
-              title="Close"
-            >✕</button>
-          </div>
+      <div class="drawer" part="drawer">
+        <div class="drawer-header" part="header">
+          <h2 class="header-title">
+            <span class="wizard-icon">🖥️</span>
+            Create Virtual Machine
+          </h2>
+          <button 
+            class="close-button" 
+            @click=${this.handleClose}
+            ?disabled=${this.isCreating}
+            aria-label="Close"
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </button>
+        </div>
 
-          <div class="wizard-steps">
-            ${steps.map(step => html`
-              <div class="step ${wizardState.currentStep === step.number ? 'active' : ''} ${wizardState.currentStep > step.number ? 'completed' : ''}">
-                <div class="step-number">
-                  ${wizardState.currentStep > step.number ? '✓' : step.number}
-                </div>
-                <span>${step.label}</span>
+        <div class="wizard-steps">
+          ${steps.map(step => html`
+            <div class="step ${wizardState.currentStep === step.number ? 'active' : ''} ${wizardState.currentStep > step.number ? 'completed' : ''}">
+              <div class="step-number">
+                ${wizardState.currentStep > step.number ? '✓' : step.number}
               </div>
-            `)}
-          </div>
+              <span>${step.label}</span>
+            </div>
+          `)}
+        </div>
 
+        <div class="content" part="content">
           <div class="wizard-body">
             ${wizardState.currentStep === 1 ? this.renderBasicConfig() :
               wizardState.currentStep === 2 ? this.renderStorageConfig() :
@@ -1223,38 +1231,38 @@ export class CreateVMWizard extends LitElement {
               html`<div>Invalid step</div>`
             }
           </div>
+        </div>
 
-          <div class="wizard-footer">
-            <button class="btn-ghost" @click=${this.handleClose}>
-              Cancel
+        <div class="controls" part="controls">
+          <button class="btn-ghost" @click=${this.handleClose}>
+            Cancel
+          </button>
+          
+          <div class="button-group">
+            <button 
+              class="btn-secondary" 
+              @click=${this.handlePrevious}
+              ?disabled=${wizardState.currentStep === 1}
+            >
+              Previous
             </button>
             
-            <div class="button-group">
+            ${wizardState.currentStep < 4 ? html`
               <button 
-                class="btn-secondary" 
-                @click=${this.handlePrevious}
-                ?disabled=${wizardState.currentStep === 1}
+                class="btn-primary" 
+                @click=${this.handleNext}
               >
-                Previous
+                Next
               </button>
-              
-              ${wizardState.currentStep < 4 ? html`
-                <button 
-                  class="btn-primary" 
-                  @click=${this.handleNext}
-                >
-                  Next
-                </button>
-              ` : html`
-                <button 
-                  class="btn-primary" 
-                  @click=${this.handleCreate}
-                  ?disabled=${this.isCreating}
-                >
-                  ${this.isCreating ? 'Creating...' : 'Create VM'}
-                </button>
-              `}
-            </div>
+            ` : html`
+              <button 
+                class="btn-primary" 
+                @click=${this.handleCreate}
+                ?disabled=${this.isCreating}
+              >
+                ${this.isCreating ? 'Creating...' : 'Create VM'}
+              </button>
+            `}
           </div>
         </div>
       </div>

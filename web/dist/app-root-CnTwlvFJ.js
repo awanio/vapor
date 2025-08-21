@@ -2,7 +2,7 @@ var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 var _a;
-import { i as i18n, a as auth, g as getWsUrl, b as getApiUrl, t as t$5, c as theme } from "./index-BPyf0n2d.js";
+import { i as i18n, a as auth, g as getWsUrl, b as getApiUrl, t as t$5, c as theme } from "./index-Cr1GYo8Z.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -16927,7 +16927,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-BPyf0n2d.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-Cr1GYo8Z.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -16972,7 +16972,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-BPyf0n2d.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-Cr1GYo8Z.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping WebSocket connection");
     return;
@@ -17040,7 +17040,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-BPyf0n2d.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-Cr1GYo8Z.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -49902,7 +49902,7 @@ const storagePoolStore = {
 const baseIsoStore = createStore({
   name: "virtualization-isos",
   idField: "id",
-  endpoint: getApiUrl(`${API_BASE$1}/storages/isos`),
+  endpoint: getApiUrl(`${API_BASE$1}/isos`),
   persistent: true,
   persistKey: "vapor.virtualization.isos",
   debug: false
@@ -49927,7 +49927,7 @@ const isoStore = {
     try {
       baseIsoStore.$loading.set(true);
       baseIsoStore.$error.set(null);
-      const response = await apiRequest$1("/virtualmachines/isos");
+      const response = await apiRequest$1("/isos");
       let isos = [];
       if (Array.isArray(response)) {
         isos = response.map(transformISOResponse);
@@ -50332,7 +50332,7 @@ const storageActions = {
     });
   },
   async deleteISO(isoId) {
-    await apiRequest$1(`/virtualmachines/isos/${isoId}`, { method: "DELETE" });
+    await apiRequest$1(`/isos/${isoId}`, { method: "DELETE" });
     await isoStore.delete(isoId);
   }
 };
@@ -50386,11 +50386,6 @@ let CreateVMWizard = class extends i$1 {
   handleClose() {
     if (!this.isCreating) {
       wizardActions.closeWizard();
-    }
-  }
-  handleOverlayClick(event) {
-    if (event.target === event.currentTarget && !this.isCreating) {
-      this.handleClose();
     }
   }
   handlePrevious() {
@@ -50582,30 +50577,25 @@ let CreateVMWizard = class extends i$1 {
         <div class="grid-2">
           <div class="form-group ${this.validationErrors.memory ? "error" : ""}">
             <label>
-              Memory (MB) <span class="required">*</span>
+              Memory <span class="required">*</span>
             </label>
-            <div class="slider-container">
-              <input
-                type="range"
-                min="512"
-                max="32768"
-                step="512"
-                .value=${String(formData.memory || 2048)}
-                @input=${(e3) => this.updateFormData("memory", Number(e3.target.value))}
-              />
+            <div class="memory-input-group">
               <input
                 type="number"
                 min="512"
                 max="32768"
                 step="512"
-                class="slider-value"
+                placeholder="2048"
                 .value=${String(formData.memory || 2048)}
                 @input=${(e3) => this.updateFormData("memory", Number(e3.target.value))}
               />
+              <span class="memory-unit">MB</span>
             </div>
             ${this.validationErrors.memory ? x`
               <div class="error-message">${this.validationErrors.memory}</div>
-            ` : ""}
+            ` : x`
+              <div class="help-text">Minimum 512 MB, Maximum 32768 MB</div>
+            `}
           </div>
 
           <div class="form-group ${this.validationErrors.vcpus ? "error" : ""}">
@@ -50944,6 +50934,11 @@ let CreateVMWizard = class extends i$1 {
   }
   render() {
     const wizardState = this.wizardController.value;
+    if (wizardState.isOpen) {
+      this.setAttribute("show", "");
+    } else {
+      this.removeAttribute("show");
+    }
     if (!wizardState.isOpen) {
       return x``;
     }
@@ -50954,64 +50949,71 @@ let CreateVMWizard = class extends i$1 {
       { number: 4, label: "Review & Create" }
     ];
     return x`
-      <div class="wizard-overlay" @click=${this.handleOverlayClick}>
-        <div class="wizard-container">
-          <div class="wizard-header">
-            <div class="wizard-title">Create Virtual Machine</div>
-            <button 
-              class="close-button" 
-              @click=${this.handleClose}
-              ?disabled=${this.isCreating}
-              title="Close"
-            >✕</button>
-          </div>
+      <div class="drawer" part="drawer">
+        <div class="drawer-header" part="header">
+          <h2 class="header-title">
+            <span class="wizard-icon">🖥️</span>
+            Create Virtual Machine
+          </h2>
+          <button 
+            class="close-button" 
+            @click=${this.handleClose}
+            ?disabled=${this.isCreating}
+            aria-label="Close"
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </button>
+        </div>
 
-          <div class="wizard-steps">
-            ${steps2.map((step) => x`
-              <div class="step ${wizardState.currentStep === step.number ? "active" : ""} ${wizardState.currentStep > step.number ? "completed" : ""}">
-                <div class="step-number">
-                  ${wizardState.currentStep > step.number ? "✓" : step.number}
-                </div>
-                <span>${step.label}</span>
+        <div class="wizard-steps">
+          ${steps2.map((step) => x`
+            <div class="step ${wizardState.currentStep === step.number ? "active" : ""} ${wizardState.currentStep > step.number ? "completed" : ""}">
+              <div class="step-number">
+                ${wizardState.currentStep > step.number ? "✓" : step.number}
               </div>
-            `)}
-          </div>
+              <span>${step.label}</span>
+            </div>
+          `)}
+        </div>
 
+        <div class="content" part="content">
           <div class="wizard-body">
             ${wizardState.currentStep === 1 ? this.renderBasicConfig() : wizardState.currentStep === 2 ? this.renderStorageConfig() : wizardState.currentStep === 3 ? this.renderNetworkConfig() : wizardState.currentStep === 4 ? this.renderReview() : x`<div>Invalid step</div>`}
           </div>
+        </div>
 
-          <div class="wizard-footer">
-            <button class="btn-ghost" @click=${this.handleClose}>
-              Cancel
+        <div class="controls" part="controls">
+          <button class="btn-ghost" @click=${this.handleClose}>
+            Cancel
+          </button>
+          
+          <div class="button-group">
+            <button 
+              class="btn-secondary" 
+              @click=${this.handlePrevious}
+              ?disabled=${wizardState.currentStep === 1}
+            >
+              Previous
             </button>
             
-            <div class="button-group">
+            ${wizardState.currentStep < 4 ? x`
               <button 
-                class="btn-secondary" 
-                @click=${this.handlePrevious}
-                ?disabled=${wizardState.currentStep === 1}
+                class="btn-primary" 
+                @click=${this.handleNext}
               >
-                Previous
+                Next
               </button>
-              
-              ${wizardState.currentStep < 4 ? x`
-                <button 
-                  class="btn-primary" 
-                  @click=${this.handleNext}
-                >
-                  Next
-                </button>
-              ` : x`
-                <button 
-                  class="btn-primary" 
-                  @click=${this.handleCreate}
-                  ?disabled=${this.isCreating}
-                >
-                  ${this.isCreating ? "Creating..." : "Create VM"}
-                </button>
-              `}
-            </div>
+            ` : x`
+              <button 
+                class="btn-primary" 
+                @click=${this.handleCreate}
+                ?disabled=${this.isCreating}
+              >
+                ${this.isCreating ? "Creating..." : "Create VM"}
+              </button>
+            `}
           </div>
         </div>
       </div>
@@ -51021,99 +51023,83 @@ let CreateVMWizard = class extends i$1 {
 CreateVMWizard.styles = i$4`
     :host {
       display: block;
-    }
-
-    .wizard-overlay {
       position: fixed;
       top: 0;
-      left: 0;
       right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.6);
-      backdrop-filter: blur(2px);
+      width: 800px;
+      height: 100vh;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    :host([show]) {
+      pointer-events: auto;
+    }
+
+    .drawer {
+      width: 100%;
+      height: 100%;
+      background: var(--vscode-editor-background, var(--surface-0, #1e1e1e));
+      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+      display: flex;
+      flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+      border-left: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+    }
+
+    :host([show]) .drawer {
+      transform: translateX(0);
+    }
+
+    .drawer-header {
+      padding: 20px;
+      background: var(--vscode-bg-lighter, #2c2f3a);
+      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .header-title {
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--title-color, #e0e0e0);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .wizard-icon {
+      width: 20px;
+      height: 20px;
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 2000;
-      animation: fadeIn 0.2s ease-out;
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-      }
-      to {
-        opacity: 1;
-      }
-    }
-
-    .wizard-container {
-      /* Use multiple fallback approaches for background */
-      background: #1e1e1e;
-      background: var(--surface-0, #1e1e1e);
-      background: var(--vscode-editor-background, var(--surface-0, #1e1e1e));
-      background-color: #1e1e1e;
-      background-color: var(--vscode-editor-background, var(--surface-0, #1e1e1e));
-      border: 1px solid #464647;
-      border: 1px solid var(--vscode-editorWidget-border, var(--border-color, #464647));
-      border-radius: 8px;
-      width: 90%;
-      max-width: 800px;
-      max-height: 90vh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-      animation: slideIn 0.3s ease-out;
-      /* Ensure opaque background */
-      opacity: 1;
-      isolation: isolate;
-      position: relative;
-      z-index: 1;
-    }
-
-    @keyframes slideIn {
-      from {
-        opacity: 0;
-        transform: translateY(-20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .wizard-header {
-      padding: 20px;
-      border-bottom: 1px solid var(--vscode-editorWidget-border, var(--border-color, #464647));
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: #252526;
-      background: var(--surface-1, #252526);
-      background: var(--vscode-editor-background, var(--surface-1, #252526));
-    }
-
-    .wizard-title {
-      font-size: 18px;
-      font-weight: 500;
-      color: var(--vscode-foreground);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .wizard-title::before {
-      content: '🖥️';
-      font-size: 20px;
     }
 
     .wizard-steps {
       display: flex;
-      gap: 24px;
-      padding: 20px;
-      border-bottom: 1px solid var(--vscode-editorWidget-border);
-      background: var(--vscode-editor-inactiveSelectionBackground);
+      gap: 16px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      background: var(--vscode-bg-lighter, #2c2f3a);
+      flex-shrink: 0;
+      overflow-x: auto;
+    }
+
+    .wizard-steps::-webkit-scrollbar {
+      height: 4px;
+    }
+
+    .wizard-steps::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .wizard-steps::-webkit-scrollbar-thumb {
+      background: var(--vscode-scrollbarSlider-background, #4a4d5a);
+      border-radius: 2px;
     }
 
     .step {
@@ -51158,25 +51144,46 @@ CreateVMWizard.styles = i$4`
       border-color: var(--vscode-charts-green);
     }
 
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
     .wizard-body {
       flex: 1;
       padding: 24px;
       overflow-y: auto;
-      background: #1e1e1e;
-      background: var(--surface-0, #1e1e1e);
       background: var(--vscode-editor-background, var(--surface-0, #1e1e1e));
     }
 
-    .wizard-footer {
+    .wizard-body::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .wizard-body::-webkit-scrollbar-track {
+      background: var(--scrollbar-track, var(--vscode-editor-background, #1e1e1e));
+    }
+
+    .wizard-body::-webkit-scrollbar-thumb {
+      background: var(--scrollbar-thumb, var(--vscode-scrollbarSlider-background, #4a4d5a));
+      border-radius: 4px;
+    }
+
+    .wizard-body::-webkit-scrollbar-thumb:hover {
+      background: var(--scrollbar-thumb-hover, #5a5d6a);
+    }
+
+    .controls {
       padding: 20px;
-      border-top: 1px solid var(--vscode-editorWidget-border, var(--border-color, #464647));
+      border-top: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 12px;
-      background: #252526;
-      background: var(--surface-1, #252526);
-      background: var(--vscode-editor-background, var(--surface-1, #252526));
+      background: var(--vscode-bg-lighter, #2c2f3a);
+      flex-shrink: 0;
     }
 
     .button-group {
@@ -51239,6 +51246,8 @@ CreateVMWizard.styles = i$4`
 
     .form-group {
       margin-bottom: 20px;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     .form-group label {
@@ -51262,6 +51271,7 @@ CreateVMWizard.styles = i$4`
     select,
     textarea {
       width: 100%;
+      max-width: 100%;
       padding: 8px 12px;
       background: var(--vscode-input-background, #3c3c3c);
       color: var(--vscode-input-foreground, #cccccc);
@@ -51270,6 +51280,7 @@ CreateVMWizard.styles = i$4`
       font-size: 13px;
       font-family: inherit;
       transition: all 0.2s;
+      box-sizing: border-box;
     }
 
     input:focus,
@@ -51353,21 +51364,24 @@ CreateVMWizard.styles = i$4`
       white-space: nowrap;
     }
 
-    .slider-container {
+    .memory-input-group {
       display: flex;
       align-items: center;
       gap: 12px;
     }
 
-    input[type="range"] {
+    .memory-input-group input[type="number"] {
       flex: 1;
-      padding: 0;
     }
 
-    .slider-value {
-      min-width: 60px;
-      text-align: right;
-      font-weight: 500;
+    .memory-unit {
+      padding: 8px 12px;
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      border: 1px solid var(--vscode-input-border, #858585);
+      border-radius: 4px;
+      font-size: 13px;
+      color: var(--vscode-descriptionForeground, #8b8b8b);
+      white-space: nowrap;
     }
 
     .grid-2 {
@@ -51491,23 +51505,18 @@ CreateVMWizard.styles = i$4`
     }
 
     .close-button {
-      background: transparent;
+      background: none;
       border: none;
-      color: var(--vscode-foreground);
+      color: var(--close-color, #999);
       cursor: pointer;
-      padding: 4px 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      padding: 8px;
       border-radius: 4px;
-      font-size: 18px;
-      line-height: 1;
       transition: all 0.2s;
     }
 
     .close-button:hover {
-      background: var(--vscode-toolbar-hoverBackground);
-      color: var(--vscode-icon-foreground);
+      background: var(--close-hover-bg, rgba(255, 255, 255, 0.1));
+      color: var(--close-hover-color, #e0e0e0);
     }
   `;
 __decorateClass$f([
@@ -52624,6 +52633,596 @@ __decorateClass$d([
 VirtualizationStoragePools = __decorateClass$d([
   t$2("virtualization-storage-pools")
 ], VirtualizationStoragePools);
+const API_BASE = "/virtualization";
+class VirtualizationAPIError extends Error {
+  constructor(code, message, details) {
+    super(message);
+    this.code = code;
+    this.details = details;
+    this.name = "VirtualizationAPIError";
+  }
+}
+function getAuthToken() {
+  const token = localStorage.getItem("jwt_token") || localStorage.getItem("auth_token");
+  if (!token) {
+    throw new VirtualizationAPIError("AUTH_ERROR", "No authentication token found");
+  }
+  return token;
+}
+async function apiRequest(endpoint, options = {}) {
+  const token = getAuthToken();
+  const config = {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+      ...options.headers
+    }
+  };
+  try {
+    const url = getApiUrl(`${API_BASE}${endpoint}`);
+    const response = await fetch(url, config);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({
+        code: "API_ERROR",
+        message: response.statusText
+      }));
+      throw new VirtualizationAPIError(
+        error.code || "API_ERROR",
+        error.message || `Request failed: ${response.status}`,
+        error.details
+      );
+    }
+    if (response.status === 204) {
+      return {};
+    }
+    return await response.json();
+  } catch (error) {
+    if (error instanceof VirtualizationAPIError) {
+      throw error;
+    }
+    throw new VirtualizationAPIError(
+      "NETWORK_ERROR",
+      error instanceof Error ? error.message : "Network request failed"
+    );
+  }
+}
+class VirtualizationAPI {
+  // ============ Virtual Machines ============
+  /**
+   * List all virtual machines
+   */
+  async listVMs(params) {
+    const queryParams = new URLSearchParams();
+    if (params == null ? void 0 : params.page) queryParams.append("page", params.page.toString());
+    if (params == null ? void 0 : params.pageSize) queryParams.append("pageSize", params.pageSize.toString());
+    if (params == null ? void 0 : params.filter) queryParams.append("filter", params.filter);
+    if (params == null ? void 0 : params.sort) queryParams.append("sort", params.sort);
+    const query = queryParams.toString();
+    return apiRequest(
+      `/virtualmachines${query ? `?${query}` : ""}`
+    );
+  }
+  /**
+   * Get a specific virtual machine
+   */
+  async getVM(id) {
+    return apiRequest(`/virtualmachines/${id}`);
+  }
+  /**
+   * Create a new virtual machine (basic)
+   */
+  async createVM(config) {
+    return apiRequest("/virtualmachines", {
+      method: "POST",
+      body: JSON.stringify(config)
+    });
+  }
+  /**
+   * Create a new virtual machine (enhanced with wizard data)
+   */
+  async createVMEnhanced(config) {
+    return apiRequest("/virtualmachines/create-enhanced", {
+      method: "POST",
+      body: JSON.stringify(config)
+    });
+  }
+  /**
+   * Update a virtual machine
+   */
+  async updateVM(id, updates) {
+    return apiRequest(`/virtualmachines/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(updates)
+    });
+  }
+  /**
+   * Delete a virtual machine
+   */
+  async deleteVM(id, force = false) {
+    return apiRequest(
+      `/virtualmachines/${id}${force ? "?force=true" : ""}`,
+      { method: "DELETE" }
+    );
+  }
+  /**
+   * Clone a virtual machine
+   */
+  async cloneVM(id, name) {
+    return apiRequest(`/virtualmachines/${id}/clone`, {
+      method: "POST",
+      body: JSON.stringify({ name })
+    });
+  }
+  // ============ VM Power Management ============
+  /**
+   * Start a virtual machine
+   */
+  async startVM(id) {
+    return apiRequest(`/virtualmachines/${id}/start`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Stop a virtual machine
+   */
+  async stopVM(id, force = false) {
+    return apiRequest(`/virtualmachines/${id}/stop`, {
+      method: "POST",
+      body: JSON.stringify({ force })
+    });
+  }
+  /**
+   * Restart a virtual machine
+   */
+  async restartVM(id, force = false) {
+    return apiRequest(`/virtualmachines/${id}/restart`, {
+      method: "POST",
+      body: JSON.stringify({ force })
+    });
+  }
+  /**
+   * Pause a virtual machine
+   */
+  async pauseVM(id) {
+    return apiRequest(`/virtualmachines/${id}/pause`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Resume a paused virtual machine
+   */
+  async resumeVM(id) {
+    return apiRequest(`/virtualmachines/${id}/resume`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Reset a virtual machine
+   */
+  async resetVM(id) {
+    return apiRequest(`/virtualmachines/${id}/reset`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Execute a VM action
+   */
+  async executeVMAction(id, action) {
+    return apiRequest(`/virtualmachines/${id}/action`, {
+      method: "POST",
+      body: JSON.stringify(action)
+    });
+  }
+  // ============ Console Access ============
+  /**
+   * Get console connection information
+   */
+  async getConsoleInfo(id) {
+    return apiRequest(`/virtualmachines/${id}/console`);
+  }
+  /**
+   * Create a console session
+   */
+  async createConsoleSession(id) {
+    return apiRequest(`/virtualmachines/${id}/console/session`, {
+      method: "POST"
+    });
+  }
+  // ============ Templates ============
+  /**
+   * List VM templates
+   */
+  async listTemplates() {
+    return apiRequest("/virtualmachines/templates");
+  }
+  /**
+   * Get a specific template
+   */
+  async getTemplate(id) {
+    return apiRequest(`/virtualmachines/templates/${id}`);
+  }
+  /**
+   * Create a VM from template
+   */
+  async createFromTemplate(templateId, config) {
+    return apiRequest("/virtualmachines/from-template", {
+      method: "POST",
+      body: JSON.stringify({ templateId, ...config })
+    });
+  }
+  /**
+   * Create a template from existing VM
+   */
+  async createTemplate(vmId, name, description) {
+    return apiRequest(`/virtualmachines/${vmId}/template`, {
+      method: "POST",
+      body: JSON.stringify({ name, description })
+    });
+  }
+  // ============ Snapshots ============
+  /**
+   * List VM snapshots
+   */
+  async listSnapshots(vmId) {
+    return apiRequest(`/virtualmachines/${vmId}/snapshots`);
+  }
+  /**
+   * Create a snapshot
+   */
+  async createSnapshot(vmId, name, description) {
+    return apiRequest(`/virtualmachines/${vmId}/snapshots`, {
+      method: "POST",
+      body: JSON.stringify({ name, description })
+    });
+  }
+  /**
+   * Revert to snapshot
+   */
+  async revertToSnapshot(vmId, snapshotId) {
+    return apiRequest(
+      `/virtualmachines/${vmId}/snapshots/${snapshotId}/revert`,
+      { method: "POST" }
+    );
+  }
+  /**
+   * Delete a snapshot
+   */
+  async deleteSnapshot(vmId, snapshotId) {
+    return apiRequest(
+      `/virtualmachines/${vmId}/snapshots/${snapshotId}`,
+      { method: "DELETE" }
+    );
+  }
+  // ============ Backups ============
+  /**
+   * List VM backups
+   */
+  async listBackups(vmId) {
+    return apiRequest(`/virtualmachines/${vmId}/backups`);
+  }
+  /**
+   * Create a backup
+   */
+  async createBackup(vmId, name, type) {
+    return apiRequest(`/virtualmachines/${vmId}/backups`, {
+      method: "POST",
+      body: JSON.stringify({ name, type })
+    });
+  }
+  /**
+   * Restore from backup
+   */
+  async restoreFromBackup(vmId, backupId) {
+    return apiRequest(
+      `/virtualmachines/${vmId}/backups/${backupId}/restore`,
+      { method: "POST" }
+    );
+  }
+  // ============ Storage Pools ============
+  /**
+   * List storage pools
+   */
+  async listStoragePools() {
+    return apiRequest("/storages/pools");
+  }
+  /**
+   * Get a specific storage pool
+   */
+  async getStoragePool(name) {
+    return apiRequest(`/storages/pools/${name}`);
+  }
+  /**
+   * Create a storage pool
+   */
+  async createStoragePool(config) {
+    return apiRequest("/storages/pools", {
+      method: "POST",
+      body: JSON.stringify(config)
+    });
+  }
+  /**
+   * Delete a storage pool
+   */
+  async deleteStoragePool(name) {
+    return apiRequest(`/storages/pools/${name}`, {
+      method: "DELETE"
+    });
+  }
+  /**
+   * Start a storage pool
+   */
+  async startStoragePool(name) {
+    return apiRequest(`/storages/pools/${name}/start`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Stop a storage pool
+   */
+  async stopStoragePool(name) {
+    return apiRequest(`/storages/pools/${name}/stop`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Set storage pool autostart
+   */
+  async setStoragePoolAutostart(name, autostart) {
+    return apiRequest(`/storages/pools/${name}/autostart`, {
+      method: "PUT",
+      body: JSON.stringify({ autostart })
+    });
+  }
+  /**
+   * Refresh storage pool
+   */
+  async refreshStoragePool(name) {
+    return apiRequest(`/storages/pools/${name}/refresh`, {
+      method: "POST"
+    });
+  }
+  /**
+   * List volumes in a storage pool
+   */
+  async listVolumes(poolName) {
+    return apiRequest(`/storages/pools/${poolName}/volumes`);
+  }
+  /**
+   * Create a volume in a storage pool
+   */
+  async createVolume(poolName, config) {
+    return apiRequest(`/storages/pools/${poolName}/volumes`, {
+      method: "POST",
+      body: JSON.stringify(config)
+    });
+  }
+  /**
+   * Delete a volume
+   */
+  async deleteVolume(poolName, volumeName) {
+    return apiRequest(
+      `/storages/pools/${poolName}/volumes/${volumeName}`,
+      { method: "DELETE" }
+    );
+  }
+  // ============ ISO Management ============
+  /**
+   * List ISO images
+   */
+  async listISOs() {
+    return apiRequest("/isos");
+  }
+  /**
+   * Get ISO details
+   */
+  async getISO(id) {
+    return apiRequest(`/isos/${id}`);
+  }
+  /**
+   * Upload an ISO (returns upload URL for TUS)
+   * This creates a TUS upload session following the TUS protocol v1.0.0
+   */
+  async initiateISOUpload(metadata) {
+    const tusMetadata = {};
+    if (metadata.filename) {
+      tusMetadata.filename = btoa(metadata.filename);
+    }
+    if (metadata.os_type) {
+      tusMetadata.os_type = btoa(metadata.os_type);
+    }
+    if (metadata.os_variant) {
+      tusMetadata.os_variant = btoa(metadata.os_variant);
+    }
+    if (metadata.description) {
+      tusMetadata.description = btoa(metadata.description);
+    }
+    if (metadata.architecture) {
+      tusMetadata.architecture = btoa(metadata.architecture);
+    }
+    const uploadMetadata = Object.entries(tusMetadata).map(([key, value]) => `${key} ${value}`).join(",");
+    const token = getAuthToken();
+    const url = getApiUrl("/virtualization/isos/upload");
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Upload-Length": metadata.size.toString(),
+        "Upload-Metadata": uploadMetadata,
+        "Tus-Resumable": "1.0.0"
+      }
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({
+        code: "API_ERROR",
+        message: response.statusText
+      }));
+      throw new VirtualizationAPIError(
+        error.code || "API_ERROR",
+        error.message || `Request failed: ${response.status}`,
+        error.details
+      );
+    }
+    const location = response.headers.get("Location");
+    const responseData = await response.json();
+    console.log("[TUS] Session created:", {
+      location,
+      responseData,
+      originalUrl: url
+    });
+    let tusUploadUrl = location || responseData.upload_url;
+    if (tusUploadUrl && !tusUploadUrl.startsWith("http")) {
+      const fullUploadPath = tusUploadUrl.startsWith("/api/") ? tusUploadUrl : `/api/v1/virtualization/isos/upload/${responseData.upload_id}`;
+      const baseUrl = url.substring(0, url.indexOf("/api/"));
+      tusUploadUrl = baseUrl + fullUploadPath;
+    }
+    console.log("[TUS] Final upload URL:", tusUploadUrl);
+    return {
+      uploadUrl: tusUploadUrl,
+      uploadId: responseData.upload_id
+    };
+  }
+  /**
+   * Complete ISO upload
+   */
+  async completeISOUpload(uploadId) {
+    return apiRequest(`/isos/upload/${uploadId}/complete`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Get ISO upload progress
+   */
+  async getISOUploadProgress(uploadId) {
+    return apiRequest(`/isos/upload/${uploadId}/progress`);
+  }
+  /**
+   * Delete an ISO
+   */
+  async deleteISO(id) {
+    return apiRequest(`/isos/${id}`, {
+      method: "DELETE"
+    });
+  }
+  // ============ Virtual Networks ============
+  /**
+   * List virtual networks
+   */
+  async listNetworks() {
+    const response = await apiRequest("/networks");
+    if (response.status === "success" && response.data) {
+      return response.data.networks || [];
+    }
+    if (Array.isArray(response)) {
+      return response;
+    }
+    return [];
+  }
+  /**
+   * Get a specific network
+   */
+  async getNetwork(name) {
+    return apiRequest(`/networks/${name}`);
+  }
+  /**
+   * Create a virtual network
+   */
+  async createNetwork(config) {
+    return apiRequest("/networks", {
+      method: "POST",
+      body: JSON.stringify(config)
+    });
+  }
+  /**
+   * Delete a virtual network
+   */
+  async deleteNetwork(name) {
+    return apiRequest(`/networks/${name}`, {
+      method: "DELETE"
+    });
+  }
+  /**
+   * Start a network
+   */
+  async startNetwork(name) {
+    return apiRequest(`/networks/${name}/start`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Stop a network
+   */
+  async stopNetwork(name) {
+    return apiRequest(`/networks/${name}/stop`, {
+      method: "POST"
+    });
+  }
+  // ============ Metrics \u0026 Monitoring ============
+  /**
+   * Get VM metrics
+   */
+  async getVMMetrics(vmId, duration = "1h") {
+    return apiRequest(`/virtualmachines/${vmId}/metrics?duration=${duration}`);
+  }
+  /**
+   * Get host resource usage
+   */
+  async getHostResources() {
+    return apiRequest("/host/resources");
+  }
+  /**
+   * Get real-time VM metrics (WebSocket endpoint info)
+   */
+  getMetricsWebSocketUrl(vmId) {
+    const token = getAuthToken();
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    return `${protocol}//${window.location.host}${API_BASE}/virtualmachines/${vmId}/metrics/ws?token=${token}`;
+  }
+  // ============ Disk Management ============
+  /**
+   * Attach a disk to VM
+   */
+  async attachDisk(vmId, disk) {
+    return apiRequest(`/virtualmachines/${vmId}/disks/attach`, {
+      method: "POST",
+      body: JSON.stringify(disk)
+    });
+  }
+  /**
+   * Detach a disk from VM
+   */
+  async detachDisk(vmId, device) {
+    return apiRequest(`/virtualmachines/${vmId}/disks/${device}/detach`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Resize a VM disk
+   */
+  async resizeDisk(vmId, device, newSize) {
+    return apiRequest(`/virtualmachines/${vmId}/disks/${device}/resize`, {
+      method: "POST",
+      body: JSON.stringify({ size: newSize })
+    });
+  }
+  // ============ Migration ============
+  /**
+   * Migrate a VM to another host
+   */
+  async migrateVM(vmId, targetHost, live = true) {
+    return apiRequest(`/virtualmachines/${vmId}/migrate`, {
+      method: "POST",
+      body: JSON.stringify({ targetHost, live })
+    });
+  }
+  /**
+   * Get migration status
+   */
+  async getMigrationStatus(vmId) {
+    return apiRequest(`/virtualmachines/${vmId}/migrate/status`);
+  }
+}
+const virtualizationAPI = new VirtualizationAPI();
 var __defProp$c = Object.defineProperty;
 var __getOwnPropDesc$a = Object.getOwnPropertyDescriptor;
 var __decorateClass$c = (decorators, target, key, kind) => {
@@ -52642,8 +53241,9 @@ let VirtualizationNetworks = class extends i$1 {
     this.loading = false;
     this.error = null;
     this.activeTab = "all";
-    this.showDetails = false;
+    this.showDetailDrawer = false;
     this.selectedNetwork = null;
+    this.isLoadingDetail = false;
     this.showDeleteModal = false;
     this.itemToDelete = null;
     this.isDeleting = false;
@@ -52654,89 +53254,8 @@ let VirtualizationNetworks = class extends i$1 {
       { id: "all", label: "All Networks" },
       { id: "active", label: "Active" },
       { id: "inactive", label: "Inactive" },
-      { id: "bridge", label: "Bridge" },
-      { id: "nat", label: "NAT" },
-      { id: "isolated", label: "Isolated" }
-    ];
-    this.dummyNetworks = [
-      {
-        id: "net-001",
-        name: "default",
-        type: "nat",
-        state: "active",
-        bridge: "virbr0",
-        ipRange: "192.168.122.0/24",
-        dhcp: true,
-        autostart: true,
-        persistent: true,
-        devices: 3,
-        created: "2024-01-01"
-      },
-      {
-        id: "net-002",
-        name: "br0-bridged",
-        type: "bridge",
-        state: "active",
-        bridge: "br0",
-        ipRange: "192.168.1.0/24",
-        dhcp: false,
-        autostart: true,
-        persistent: true,
-        devices: 5,
-        created: "2024-01-05"
-      },
-      {
-        id: "net-003",
-        name: "isolated-network",
-        type: "isolated",
-        state: "active",
-        bridge: "virbr1",
-        ipRange: "10.0.0.0/24",
-        dhcp: true,
-        autostart: false,
-        persistent: true,
-        devices: 2,
-        created: "2024-01-10"
-      },
-      {
-        id: "net-004",
-        name: "test-network",
-        type: "nat",
-        state: "inactive",
-        bridge: "virbr2",
-        ipRange: "172.16.0.0/24",
-        dhcp: true,
-        autostart: false,
-        persistent: false,
-        devices: 0,
-        created: "2024-01-15"
-      },
-      {
-        id: "net-005",
-        name: "host-only",
-        type: "host",
-        state: "active",
-        bridge: "virbr3",
-        ipRange: "192.168.100.0/24",
-        dhcp: true,
-        autostart: true,
-        persistent: true,
-        devices: 1,
-        created: "2024-01-20"
-      },
-      {
-        id: "net-006",
-        name: "macvtap-net",
-        type: "macvtap",
-        state: "active",
-        bridge: "eth0",
-        ipRange: "N/A",
-        dhcp: false,
-        autostart: true,
-        persistent: true,
-        devices: 2,
-        created: "2024-02-01"
-      }
+      { id: "persistent", label: "Persistent" },
+      { id: "autostart", label: "Autostart" }
     ];
   }
   connectedCallback() {
@@ -52745,21 +53264,45 @@ let VirtualizationNetworks = class extends i$1 {
   }
   async loadData() {
     this.loading = true;
-    await new Promise((resolve2) => setTimeout(resolve2, 500));
-    this.networks = this.dummyNetworks;
-    this.loading = false;
+    this.error = null;
+    try {
+      const response = await virtualizationAPI.listNetworks();
+      console.log("Networks API response:", response);
+      this.networks = (response || []).map((net) => {
+        var _a2, _b;
+        return {
+          name: net.name || "Unnamed Network",
+          uuid: net.uuid || "",
+          state: net.state,
+          bridge: net.bridge || "",
+          mode: net.mode || "",
+          ip_range: {
+            address: ((_a2 = net.ip_range) == null ? void 0 : _a2.address) || net.ip || "",
+            netmask: ((_b = net.ip_range) == null ? void 0 : _b.netmask) || net.netmask || ""
+          },
+          autostart: net.autostart || false,
+          persistent: net.persistent !== void 0 ? net.persistent : true
+        };
+      });
+    } catch (error) {
+      console.error("Failed to load networks:", error);
+      this.error = error instanceof Error ? error.message : "Failed to load networks";
+      this.networks = [];
+    } finally {
+      this.loading = false;
+    }
   }
   getColumns() {
     return [
       { key: "name", label: "Name", type: "link" },
-      { key: "type", label: "Type" },
       { key: "state", label: "State", type: "status" },
-      { key: "bridge", label: "Bridge/Interface" },
-      { key: "ipRange", label: "IP Range" },
-      { key: "dhcp", label: "DHCP" },
-      { key: "devices", label: "Connected Devices" },
+      { key: "bridge", label: "Bridge" },
+      { key: "mode", label: "Mode" },
+      { key: "ip_address", label: "IP Address" },
+      { key: "netmask", label: "Netmask" },
       { key: "autostart", label: "Autostart" },
-      { key: "created", label: "Created" }
+      { key: "persistent", label: "Persistent" },
+      { key: "uuid", label: "UUID" }
     ];
   }
   getActions(network) {
@@ -52787,15 +53330,23 @@ let VirtualizationNetworks = class extends i$1 {
   getFilteredData() {
     let data = this.networks;
     if (this.activeTab !== "all") {
-      if (this.activeTab === "active" || this.activeTab === "inactive") {
-        data = data.filter((net) => net.state === this.activeTab);
-      } else {
-        data = data.filter((net) => net.type === this.activeTab);
+      switch (this.activeTab) {
+        case "active":
+        case "inactive":
+          data = data.filter((net) => net.state === this.activeTab);
+          break;
+        case "persistent":
+          data = data.filter((net) => net.persistent);
+          break;
+        case "autostart":
+          data = data.filter((net) => net.autostart);
+          break;
       }
     }
     if (this.searchQuery) {
+      const query = this.searchQuery.toLowerCase();
       data = data.filter(
-        (net) => JSON.stringify(net).toLowerCase().includes(this.searchQuery.toLowerCase())
+        (net) => net.name.toLowerCase().includes(query) || net.bridge.toLowerCase().includes(query) || net.uuid.toLowerCase().includes(query) || net.ip_range.address.toLowerCase().includes(query)
       );
     }
     return data;
@@ -52804,15 +53355,17 @@ let VirtualizationNetworks = class extends i$1 {
     this.activeTab = event.detail.tabId;
   }
   handleCellClick(event) {
-    const network = event.detail.item;
-    this.viewDetails(network);
+    const { item, column } = event.detail;
+    if (column.key === "name") {
+      this.viewNetworkDetail(item);
+    }
   }
   handleAction(event) {
     const { action, item } = event.detail;
     const network = item;
     switch (action) {
       case "view":
-        this.viewDetails(network);
+        this.viewNetworkDetail(network);
         break;
       case "dhcp-leases":
         this.viewDHCPLeases(network);
@@ -52833,15 +53386,65 @@ let VirtualizationNetworks = class extends i$1 {
         break;
     }
   }
-  viewDetails(network) {
+  async viewNetworkDetail(network) {
+    var _a2, _b;
+    this.showDetailDrawer = true;
+    this.isLoadingDetail = true;
     this.selectedNetwork = network;
-    this.showDetails = true;
+    console.log("Opening detail drawer for network:", network);
+    try {
+      const detailedNetwork = await virtualizationAPI.getNetwork(network.name);
+      console.log("Detailed network response:", detailedNetwork);
+      this.selectedNetwork = {
+        name: detailedNetwork.name || network.name || "Unnamed Network",
+        uuid: detailedNetwork.uuid || network.uuid,
+        state: detailedNetwork.state,
+        bridge: detailedNetwork.bridge || "",
+        mode: detailedNetwork.mode || network.mode || "",
+        ip_range: {
+          address: ((_a2 = detailedNetwork.ip_range) == null ? void 0 : _a2.address) || detailedNetwork.ip || "",
+          netmask: ((_b = detailedNetwork.ip_range) == null ? void 0 : _b.netmask) || detailedNetwork.netmask || ""
+        },
+        autostart: detailedNetwork.autostart || false,
+        persistent: detailedNetwork.persistent !== void 0 ? detailedNetwork.persistent : true,
+        // Include any additional fields from the detailed response
+        dhcp: detailedNetwork.dhcp,
+        forward: detailedNetwork.forward
+      };
+    } catch (error) {
+      console.error("Failed to fetch network details:", error);
+      this.error = error instanceof Error ? error.message : "Failed to load network details";
+    } finally {
+      this.isLoadingDetail = false;
+    }
+  }
+  closeDetailDrawer() {
+    this.showDetailDrawer = false;
+    this.selectedNetwork = null;
+    this.isLoadingDetail = false;
   }
   viewDHCPLeases(network) {
     console.log("Viewing DHCP leases for:", network.name);
   }
-  changeNetworkState(network, action) {
-    console.log(`Changing network ${network.name} state to:`, action);
+  async changeNetworkState(network, action) {
+    try {
+      switch (action) {
+        case "start":
+          await virtualizationAPI.startNetwork(network.name);
+          break;
+        case "stop":
+          await virtualizationAPI.stopNetwork(network.name);
+          break;
+        case "restart":
+          await virtualizationAPI.stopNetwork(network.name);
+          await virtualizationAPI.startNetwork(network.name);
+          break;
+      }
+      await this.loadData();
+    } catch (error) {
+      console.error(`Failed to ${action} network:`, error);
+      this.error = error instanceof Error ? error.message : `Failed to ${action} network`;
+    }
   }
   cloneNetwork(network) {
     console.log("Cloning network:", network.name);
@@ -52856,29 +53459,44 @@ let VirtualizationNetworks = class extends i$1 {
     };
     this.showDeleteModal = true;
   }
-  async handleDelete(event) {
-    const item = event.detail.item;
+  formatIPRange(network) {
+    if (network.ip_range.address && network.ip_range.netmask) {
+      return `${network.ip_range.address}/${network.ip_range.netmask}`;
+    }
+    return "Not configured";
+  }
+  async handleDelete() {
+    if (!this.itemToDelete) return;
     this.isDeleting = true;
-    await new Promise((resolve2) => setTimeout(resolve2, 1e3));
-    this.networks = this.networks.filter((net) => net.id !== item.id);
-    this.isDeleting = false;
-    this.showDeleteModal = false;
-    this.itemToDelete = null;
+    try {
+      const networkToDelete = this.networks.find((n3) => {
+        var _a2;
+        return n3.name === ((_a2 = this.itemToDelete) == null ? void 0 : _a2.name);
+      });
+      if (networkToDelete) {
+        await virtualizationAPI.deleteNetwork(networkToDelete.name);
+        await this.loadData();
+      }
+    } catch (error) {
+      console.error("Failed to delete network:", error);
+      this.error = error instanceof Error ? error.message : "Failed to delete network";
+    } finally {
+      this.isDeleting = false;
+      this.showDeleteModal = false;
+      this.itemToDelete = null;
+    }
   }
   handleCreateNew() {
     this.createResourceValue = JSON.stringify({
-      apiVersion: "v1",
-      kind: "VirtualNetwork",
-      metadata: {
-        name: "new-network",
-        namespace: "default"
+      name: "new-network",
+      bridge: "virbr99",
+      mode: "nat",
+      ip_range: {
+        address: "192.168.99.0",
+        netmask: "255.255.255.0"
       },
-      spec: {
-        type: "nat",
-        bridge: "virbr99",
-        ipRange: "192.168.99.0/24",
-        dhcp: true
-      }
+      autostart: false,
+      persistent: true
     }, null, 2);
     this.showCreateDrawer = true;
   }
@@ -52886,38 +53504,345 @@ let VirtualizationNetworks = class extends i$1 {
     this.searchQuery = e3.detail.value;
   }
   async handleCreateResource(event) {
+    var _a2, _b;
     this.isCreating = true;
     try {
-      await new Promise((resolve2) => setTimeout(resolve2, 1e3));
-      console.log("Creating network with:", event.detail.value);
-      const newNetwork = {
-        id: `net-${Date.now()}`,
-        name: "new-network",
-        type: "nat",
+      const networkConfig = JSON.parse(event.detail.value);
+      const apiConfig = {
+        name: networkConfig.name,
+        type: "bridge",
+        // Default type
         state: "inactive",
-        bridge: "virbr10",
-        ipRange: "192.168.200.0/24",
-        dhcp: true,
-        autostart: true,
-        persistent: true,
-        devices: 0,
-        created: (/* @__PURE__ */ new Date()).toISOString().split("T")[0] || ""
+        bridge: networkConfig.bridge,
+        ip: (_a2 = networkConfig.ip_range) == null ? void 0 : _a2.address,
+        netmask: (_b = networkConfig.ip_range) == null ? void 0 : _b.netmask,
+        autostart: networkConfig.autostart
       };
-      this.networks = [...this.networks, newNetwork];
+      await virtualizationAPI.createNetwork(apiConfig);
+      await this.loadData();
       this.showCreateDrawer = false;
       this.createResourceValue = "";
     } catch (error) {
       console.error("Failed to create network:", error);
+      this.error = error instanceof Error ? error.message : "Failed to create network";
     } finally {
       this.isCreating = false;
     }
   }
-  renderNetworkType(type) {
-    const badgeClass = `badge-${type}`;
-    return x`<span class="network-type-badge ${badgeClass}">${type}</span>`;
+  renderNetworkMode(mode) {
+    if (!mode) return x`<span>-</span>`;
+    const badgeClass = mode === "nat" ? "badge-nat" : mode === "bridge" ? "badge-bridge" : "badge-isolated";
+    return x`<span class="network-type-badge ${badgeClass}">${mode || "Default"}</span>`;
+  }
+  renderDetailDrawer() {
+    var _a2, _b, _c, _d, _e, _f, _g;
+    if (!this.selectedNetwork) return "";
+    const network = this.selectedNetwork;
+    const extendedNetwork = network;
+    return x`
+      <div class="drawer">
+        <div class="drawer-header">
+          <h2 class="drawer-title">${network.name}</h2>
+          <button class="close-btn" @click=${this.closeDetailDrawer}>✕</button>
+        </div>
+        
+        <div class="drawer-content">
+          ${this.isLoadingDetail ? x`
+            <loading-state message="Loading network details..."></loading-state>
+          ` : x`
+            <div class="network-details-content">
+              <div class="detail-sections">
+                <!-- Basic Information -->
+                <div class="detail-section">
+                  <h3>Basic Information</h3>
+                  
+                  <div class="detail-item">
+                    <strong class="detail-key">Name:</strong>
+                    <span class="detail-value">${network.name}</span>
+                  </div>
+                  
+                  <div class="detail-item">
+                    <strong class="detail-key">UUID:</strong>
+                    <span class="detail-value monospace">${network.uuid || "Not available"}</span>
+                  </div>
+                  
+                  <div class="detail-item">
+                    <strong class="detail-key">State:</strong>
+                    <span class="detail-value">
+                      <span class="badge-inline ${network.state === "active" ? "badge-active" : "badge-inactive"}">
+                        ${network.state === "active" ? "●" : "○"} ${network.state}
+                      </span>
+                    </span>
+                  </div>
+                  
+                  <div class="detail-item">
+                    <strong class="detail-key">Network Mode:</strong>
+                    <span class="detail-value">${this.renderNetworkMode(network.mode)}</span>
+                  </div>
+                  
+                  <div class="detail-item">
+                    <strong class="detail-key">Bridge Interface:</strong>
+                    <span class="detail-value monospace">${network.bridge || "Not configured"}</span>
+                  </div>
+                  
+                  <div class="detail-item">
+                    <strong class="detail-key">Autostart:</strong>
+                    <span class="detail-value">
+                      <span class="badge-inline ${network.autostart ? "badge-enabled" : "badge-disabled"}">
+                        ${network.autostart ? "Enabled" : "Disabled"}
+                      </span>
+                    </span>
+                  </div>
+                  
+                  <div class="detail-item">
+                    <strong class="detail-key">Persistent:</strong>
+                    <span class="detail-value">
+                      <span class="badge-inline ${network.persistent ? "badge-enabled" : "badge-disabled"}">
+                        ${network.persistent ? "Yes" : "No"}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+
+                <!-- IP Configuration -->
+                <div class="detail-section">
+                  <h3>IP Configuration</h3>
+                  
+                  <div class="detail-item">
+                    <strong class="detail-key">Network Address:</strong>
+                    <span class="detail-value monospace">${network.ip_range.address || "Not configured"}</span>
+                  </div>
+                  
+                  <div class="detail-item">
+                    <strong class="detail-key">Netmask:</strong>
+                    <span class="detail-value monospace">${network.ip_range.netmask || "Not configured"}</span>
+                  </div>
+                  
+                  <div class="detail-item">
+                    <strong class="detail-key">CIDR Notation:</strong>
+                    <span class="detail-value monospace">${this.formatIPRange(network)}</span>
+                  </div>
+                  
+                  ${network.ip_range.address && network.ip_range.netmask ? x`
+                    <div class="detail-item">
+                      <strong class="detail-key">Broadcast Address:</strong>
+                      <span class="detail-value monospace">${this.calculateBroadcast(network.ip_range.address, network.ip_range.netmask)}</span>
+                    </div>
+                  ` : ""}
+                </div>
+                
+                <!-- DHCP Configuration -->
+                ${extendedNetwork.dhcp ? x`
+                  <div class="detail-section">
+                    <h3>DHCP Configuration</h3>
+                    
+                    <div class="detail-item">
+                      <strong class="detail-key">DHCP Status:</strong>
+                      <span class="detail-value">
+                        <span class="badge-inline ${((_a2 = extendedNetwork.dhcp) == null ? void 0 : _a2.enabled) ? "badge-enabled" : "badge-disabled"}">
+                          ${((_b = extendedNetwork.dhcp) == null ? void 0 : _b.enabled) ? "Enabled" : "Disabled"}
+                        </span>
+                      </span>
+                    </div>
+                    
+                    ${((_c = extendedNetwork.dhcp) == null ? void 0 : _c.start) && ((_d = extendedNetwork.dhcp) == null ? void 0 : _d.end) ? x`
+                      <div class="detail-item">
+                        <strong class="detail-key">DHCP Range:</strong>
+                        <span class="detail-value monospace">
+                          ${extendedNetwork.dhcp.start} - ${extendedNetwork.dhcp.end}
+                        </span>
+                      </div>
+                      
+                      <div class="detail-item">
+                        <strong class="detail-key">Pool Size:</strong>
+                        <span class="detail-value">
+                          ${this.calculatePoolSize(extendedNetwork.dhcp.start, extendedNetwork.dhcp.end)} addresses
+                        </span>
+                      </div>
+                    ` : ""}
+                    
+                    ${((_e = extendedNetwork.dhcp) == null ? void 0 : _e.hosts) && extendedNetwork.dhcp.hosts.length > 0 ? x`
+                      <div class="detail-item nested">
+                        <strong class="detail-key">Static Leases:</strong>
+                        <div class="dhcp-hosts-list">
+                          ${extendedNetwork.dhcp.hosts.map((host) => x`
+                            <div class="dhcp-host-item">
+                              <span><strong>MAC:</strong> ${host.mac}</span>
+                              <span><strong>IP:</strong> ${host.ip}</span>
+                              <span><strong>Name:</strong> ${host.name || "N/A"}</span>
+                            </div>
+                          `)}
+                        </div>
+                      </div>
+                    ` : ""}
+                  </div>
+                ` : ""}
+                
+                <!-- Forward Configuration -->
+                ${extendedNetwork.forward ? x`
+                  <div class="detail-section">
+                    <h3>Network Forwarding</h3>
+                    
+                    <div class="detail-item">
+                      <strong class="detail-key">Forward Mode:</strong>
+                      <span class="detail-value">
+                        <span class="badge-inline badge-enabled">
+                          ${extendedNetwork.forward.mode || "Not configured"}
+                        </span>
+                      </span>
+                    </div>
+                    
+                    ${((_f = extendedNetwork.forward) == null ? void 0 : _f.dev) ? x`
+                      <div class="detail-item">
+                        <strong class="detail-key">Physical Device:</strong>
+                        <span class="detail-value monospace">${extendedNetwork.forward.dev}</span>
+                      </div>
+                    ` : ""}
+                    
+                    ${((_g = extendedNetwork.forward) == null ? void 0 : _g.nat) ? x`
+                      <div class="detail-item nested">
+                        <strong class="detail-key">NAT Configuration:</strong>
+                        <div class="nested-content">
+                          ${extendedNetwork.forward.nat.start ? x`
+                            <div class="detail-item">
+                              <strong class="detail-key">Port Range Start:</strong>
+                              <span class="detail-value">${extendedNetwork.forward.nat.start}</span>
+                            </div>
+                          ` : ""}
+                          ${extendedNetwork.forward.nat.end ? x`
+                            <div class="detail-item">
+                              <strong class="detail-key">Port Range End:</strong>
+                              <span class="detail-value">${extendedNetwork.forward.nat.end}</span>
+                            </div>
+                          ` : ""}
+                        </div>
+                      </div>
+                    ` : ""}
+                  </div>
+                ` : ""}
+                
+                <!-- DNS Configuration if available -->
+                ${extendedNetwork.dns ? x`
+                  <div class="detail-section">
+                    <h3>DNS Configuration</h3>
+                    
+                    ${extendedNetwork.dns.forwarders && extendedNetwork.dns.forwarders.length > 0 ? x`
+                      <div class="detail-item">
+                        <strong class="detail-key">DNS Forwarders:</strong>
+                        <span class="detail-value">
+                          ${extendedNetwork.dns.forwarders.map((dns) => x`
+                            <span class="monospace">${dns}</span>${extendedNetwork.dns.forwarders.indexOf(dns) < extendedNetwork.dns.forwarders.length - 1 ? ", " : ""}
+                          `)}
+                        </span>
+                      </div>
+                    ` : ""}
+                    
+                    ${extendedNetwork.dns.domain ? x`
+                      <div class="detail-item">
+                        <strong class="detail-key">Domain:</strong>
+                        <span class="detail-value monospace">${extendedNetwork.dns.domain}</span>
+                      </div>
+                    ` : ""}
+                  </div>
+                ` : ""}
+                
+                <!-- Additional Metadata -->
+                ${extendedNetwork.metadata ? x`
+                  <div class="detail-section">
+                    <h3>Metadata</h3>
+                    
+                    ${extendedNetwork.metadata.created ? x`
+                      <div class="detail-item">
+                        <strong class="detail-key">Created:</strong>
+                        <span class="detail-value">${new Date(extendedNetwork.metadata.created).toLocaleString()}</span>
+                      </div>
+                    ` : ""}
+                    
+                    ${extendedNetwork.metadata.modified ? x`
+                      <div class="detail-item">
+                        <strong class="detail-key">Last Modified:</strong>
+                        <span class="detail-value">${new Date(extendedNetwork.metadata.modified).toLocaleString()}</span>
+                      </div>
+                    ` : ""}
+                  </div>
+                ` : ""}
+                
+                <!-- Raw Data -->
+                <div class="detail-section">
+                  <h3>Raw Data</h3>
+                  <details>
+                    <summary>View raw network configuration</summary>
+                    <pre class="raw-data">${JSON.stringify(network, null, 2)}</pre>
+                  </details>
+                </div>
+              </div>
+            </div>
+          `}
+        </div>
+        
+        <div class="drawer-footer">
+          ${network.state === "active" ? x`
+            <button 
+              class="btn btn-secondary" 
+              @click=${() => this.changeNetworkState(network, "stop")}
+              ?disabled=${this.isLoadingDetail}
+            >
+              Stop Network
+            </button>
+          ` : x`
+            <button 
+              class="btn btn-secondary" 
+              @click=${() => this.changeNetworkState(network, "start")}
+              ?disabled=${this.isLoadingDetail}
+            >
+              Start Network
+            </button>
+          `}
+          <button 
+            class="btn btn-secondary" 
+            @click=${() => this.editNetwork(network)}
+            ?disabled=${this.isLoadingDetail}
+          >
+            Edit Configuration
+          </button>
+          <button class="btn btn-primary" @click=${this.closeDetailDrawer}>
+            Close
+          </button>
+        </div>
+      </div>
+    `;
+  }
+  // Helper method to calculate broadcast address
+  calculateBroadcast(ipAddress, netmask) {
+    try {
+      const ipParts = ipAddress.split(".").map(Number);
+      const maskParts = netmask.split(".").map(Number);
+      if (ipParts.length !== 4 || maskParts.length !== 4) {
+        return "N/A";
+      }
+      const broadcastParts = ipParts.map((ip, i3) => {
+        const mask = maskParts[i3];
+        if (mask === void 0) {
+          return 0;
+        }
+        return ip | ~mask & 255;
+      });
+      return broadcastParts.join(".");
+    } catch {
+      return "N/A";
+    }
+  }
+  // Helper method to calculate DHCP pool size
+  calculatePoolSize(startIp, endIp) {
+    try {
+      const start = startIp.split(".").reduce((acc, val) => (acc << 8) + parseInt(val), 0);
+      const end = endIp.split(".").reduce((acc, val) => (acc << 8) + parseInt(val), 0);
+      return end - start + 1;
+    } catch {
+      return 0;
+    }
   }
   render() {
-    var _a2, _b, _c, _d;
     const filteredData = this.getFilteredData();
     return x`
       <div class="container">
@@ -52945,61 +53870,46 @@ let VirtualizationNetworks = class extends i$1 {
         <div class="content">
           ${this.loading ? x`
             <loading-state message="Loading virtual networks..."></loading-state>
+          ` : this.error ? x`
+            <empty-state
+              icon="❌"
+              title="Error loading networks"
+              description=${this.error}
+            ></empty-state>
           ` : filteredData.length === 0 ? x`
             <empty-state
               icon="🔗"
               title="No virtual networks found"
-              description=${this.searchQuery ? "No networks match your search criteria" : "Create your first virtual network to get started"}
+              description=${this.searchQuery ? "No networks match your search criteria" : this.networks.length === 0 ? "No virtual networks configured. Create your first network to get started." : "No networks match the selected filter"}
             ></empty-state>
           ` : x`
             <resource-table
               .columns=${this.getColumns()}
               .data=${filteredData.map((net) => ({
       ...net,
-      type: this.renderNetworkType(net.type),
-      dhcp: net.dhcp ? "Enabled" : "Disabled",
-      autostart: net.autostart ? "Yes" : "No"
+      mode: this.renderNetworkMode(net.mode),
+      ip_address: net.ip_range.address || "Not configured",
+      netmask: net.ip_range.netmask || "Not configured",
+      autostart: net.autostart ? "Yes" : "No",
+      persistent: net.persistent ? "Yes" : "No"
     }))}
-              .actions=${(item) => this.getActions(item)}
+              .getActions=${(item) => this.getActions(item)}
               @cell-click=${this.handleCellClick}
               @action=${this.handleAction}
             ></resource-table>
           `}
         </div>
 
-        ${this.showDetails ? x`
-          <detail-drawer
-            .title=${((_a2 = this.selectedNetwork) == null ? void 0 : _a2.name) || "Network Details"}
-            .open=${this.showDetails}
-            @close=${() => {
-      this.showDetails = false;
-      this.selectedNetwork = null;
-    }}
-          >
-            <div style="padding: 20px;">
-              <h3>Virtual Network Information</h3>
-              <pre>${JSON.stringify(this.selectedNetwork, null, 2)}</pre>
-              
-              ${((_b = this.selectedNetwork) == null ? void 0 : _b.dhcp) ? x`
-                <h3>DHCP Configuration</h3>
-                <p>DHCP Range: ${this.selectedNetwork.ipRange}</p>
-                <p>Active Leases: ${this.selectedNetwork.devices}</p>
-              ` : ""}
-              
-              <h3>Bridge Information</h3>
-              <p>Bridge Name: ${(_c = this.selectedNetwork) == null ? void 0 : _c.bridge}</p>
-              <p>Type: ${(_d = this.selectedNetwork) == null ? void 0 : _d.type}</p>
-            </div>
-          </detail-drawer>
-        ` : ""}
+        <!-- Detail Drawer -->
+        ${this.showDetailDrawer ? this.renderDetailDrawer() : ""}
 
-        ${this.showDeleteModal ? x`
+        ${this.showDeleteModal && this.itemToDelete ? x`
           <delete-modal
-            .open=${this.showDeleteModal}
+            .show=${true}
             .item=${this.itemToDelete}
             .loading=${this.isDeleting}
-            @delete=${this.handleDelete}
-            @close=${() => {
+            @confirm-delete=${this.handleDelete}
+            @cancel-delete=${() => {
       this.showDeleteModal = false;
       this.itemToDelete = null;
     }}
@@ -53115,28 +54025,322 @@ VirtualizationNetworks.styles = i$4`
       background: var(--vscode-testing-iconFailed);
       color: white;
     }
+
+    /* Detail Drawer Styles - Similar to ISO management */
+    .drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 50%;
+      height: 100%;
+      background: var(--vscode-editor-background, #1e1e1e);
+      border-left: 1px solid var(--vscode-widget-border, #454545);
+      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+      z-index: 1001;
+      overflow-y: auto;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @media (max-width: 1024px) {
+      .drawer {
+        width: 80%;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .drawer {
+        width: 100%;
+      }
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+      }
+      to {
+        transform: translateX(0);
+      }
+    }
+
+    .drawer-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--vscode-editorWidget-border, #464647);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .drawer-title {
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--vscode-foreground, #cccccc);
+      margin: 0;
+    }
+
+    .drawer-content {
+      padding: 24px;
+      overflow-y: auto;
+    }
+
+    .drawer-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--vscode-editorWidget-border, #464647);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      position: sticky;
+      bottom: 0;
+      z-index: 10;
+    }
+
+    .close-btn {
+      background: transparent;
+      border: none;
+      color: var(--vscode-foreground, #cccccc);
+      cursor: pointer;
+      padding: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      font-size: 20px;
+      line-height: 1;
+      transition: all 0.2s;
+    }
+
+    .close-btn:hover {
+      background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
+      color: var(--vscode-icon-foreground, #c5c5c5);
+    }
+
+    .detail-sections {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .detail-section {
+      margin-bottom: 20px;
+    }
+
+    .detail-section h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--vscode-foreground, #cccccc);
+      margin: 0 0 12px 0;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+    }
+
+    .detail-item {
+      display: flex;
+      align-items: flex-start;
+      padding: 8px 0;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .detail-item:not(:last-child) {
+      border-bottom: 1px solid var(--vscode-widget-border, rgba(255, 255, 255, 0.1));
+    }
+
+    .detail-key {
+      flex: 0 0 180px;
+      color: var(--vscode-descriptionForeground, #9d9d9d);
+      font-weight: 500;
+    }
+
+    .detail-value {
+      flex: 1;
+      color: var(--vscode-foreground, #cccccc);
+      word-break: break-word;
+    }
+
+    .detail-value.monospace {
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 12px;
+    }
+
+    .detail-item.nested {
+      flex-direction: column;
+    }
+
+    .nested-content {
+      margin-top: 8px;
+      margin-left: 180px;
+      padding-left: 12px;
+      border-left: 2px solid var(--vscode-widget-border, #454545);
+    }
+
+    .badge-inline {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 500;
+      gap: 4px;
+    }
+
+    .badge-active {
+      background: rgba(115, 201, 145, 0.2);
+      color: #73c991;
+      border: 1px solid rgba(115, 201, 145, 0.3);
+    }
+
+    .badge-inactive {
+      background: rgba(161, 38, 13, 0.2);
+      color: #ff8c66;
+      border: 1px solid rgba(161, 38, 13, 0.3);
+    }
+
+    .badge-enabled {
+      background: rgba(56, 138, 52, 0.2);
+      color: #73c991;
+      border: 1px solid rgba(56, 138, 52, 0.3);
+    }
+
+    .badge-disabled {
+      background: rgba(161, 38, 13, 0.2);
+      color: #ff8c66;
+      border: 1px solid rgba(161, 38, 13, 0.3);
+    }
+
+    .dhcp-hosts-list {
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .dhcp-host-item {
+      padding: 6px 0;
+      display: flex;
+      gap: 20px;
+      font-size: 12px;
+      border-bottom: 1px solid var(--vscode-widget-border, rgba(255, 255, 255, 0.05));
+    }
+
+    .dhcp-host-item:last-child {
+      border-bottom: none;
+    }
+
+    .dhcp-host-item span {
+      flex: 1;
+      color: var(--vscode-foreground, #cccccc);
+    }
+
+    .dhcp-host-item strong {
+      color: var(--vscode-descriptionForeground, #9d9d9d);
+      font-weight: 500;
+      margin-right: 8px;
+    }
+
+    .raw-data {
+      background: var(--vscode-editor-background, #1e1e1e);
+      border: 1px solid var(--vscode-editorWidget-border, #464647);
+      border-radius: 4px;
+      padding: 12px;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 12px;
+      overflow-x: auto;
+      max-height: 400px;
+      overflow-y: auto;
+      margin-top: 8px;
+    }
+
+    details {
+      cursor: pointer;
+    }
+
+    details summary {
+      padding: 8px 12px;
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      color: var(--vscode-button-secondaryForeground, #cccccc);
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      transition: background 0.2s;
+      user-select: none;
+    }
+
+    details summary:hover {
+      background: var(--vscode-button-secondaryHoverBackground, #45494e);
+    }
+
+    details[open] summary {
+      border-radius: 4px 4px 0 0;
+      margin-bottom: 0;
+    }
+
+
+    .btn {
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+      font-family: inherit;
+    }
+
+    .btn-primary {
+      background: var(--vscode-button-background, #0e639c);
+      color: var(--vscode-button-foreground, #ffffff);
+      border: 1px solid var(--vscode-button-background, #0e639c);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--vscode-button-hoverBackground, #1177bb);
+      border-color: var(--vscode-button-hoverBackground, #1177bb);
+    }
+
+    .btn-secondary {
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      color: var(--vscode-button-secondaryForeground, #cccccc);
+      border: 1px solid var(--vscode-button-border, #5a5a5a);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--vscode-button-secondaryHoverBackground, #45494e);
+      border-color: var(--vscode-button-border, #5a5a5a);
+    }
+
+    .btn-secondary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
   `;
 __decorateClass$c([
-  n2({ type: Array })
+  r$1()
 ], VirtualizationNetworks.prototype, "networks", 2);
 __decorateClass$c([
-  n2({ type: String })
+  r$1()
 ], VirtualizationNetworks.prototype, "searchQuery", 2);
 __decorateClass$c([
-  n2({ type: Boolean })
+  r$1()
 ], VirtualizationNetworks.prototype, "loading", 2);
 __decorateClass$c([
-  n2({ type: String })
+  r$1()
 ], VirtualizationNetworks.prototype, "error", 2);
 __decorateClass$c([
   r$1()
 ], VirtualizationNetworks.prototype, "activeTab", 2);
 __decorateClass$c([
   r$1()
-], VirtualizationNetworks.prototype, "showDetails", 2);
+], VirtualizationNetworks.prototype, "showDetailDrawer", 2);
 __decorateClass$c([
   r$1()
 ], VirtualizationNetworks.prototype, "selectedNetwork", 2);
+__decorateClass$c([
+  r$1()
+], VirtualizationNetworks.prototype, "isLoadingDetail", 2);
 __decorateClass$c([
   r$1()
 ], VirtualizationNetworks.prototype, "showDeleteModal", 2);
@@ -56100,589 +57304,6 @@ var Upload = /* @__PURE__ */ function(_BaseUpload) {
   }]);
   return Upload2;
 }(BaseUpload);
-const API_BASE = "/virtualization";
-class VirtualizationAPIError extends Error {
-  constructor(code, message, details) {
-    super(message);
-    this.code = code;
-    this.details = details;
-    this.name = "VirtualizationAPIError";
-  }
-}
-function getAuthToken() {
-  const token = localStorage.getItem("jwt_token") || localStorage.getItem("auth_token");
-  if (!token) {
-    throw new VirtualizationAPIError("AUTH_ERROR", "No authentication token found");
-  }
-  return token;
-}
-async function apiRequest(endpoint, options = {}) {
-  const token = getAuthToken();
-  const config = {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`,
-      ...options.headers
-    }
-  };
-  try {
-    const url = getApiUrl(`${API_BASE}${endpoint}`);
-    const response = await fetch(url, config);
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        code: "API_ERROR",
-        message: response.statusText
-      }));
-      throw new VirtualizationAPIError(
-        error.code || "API_ERROR",
-        error.message || `Request failed: ${response.status}`,
-        error.details
-      );
-    }
-    if (response.status === 204) {
-      return {};
-    }
-    return await response.json();
-  } catch (error) {
-    if (error instanceof VirtualizationAPIError) {
-      throw error;
-    }
-    throw new VirtualizationAPIError(
-      "NETWORK_ERROR",
-      error instanceof Error ? error.message : "Network request failed"
-    );
-  }
-}
-class VirtualizationAPI {
-  // ============ Virtual Machines ============
-  /**
-   * List all virtual machines
-   */
-  async listVMs(params) {
-    const queryParams = new URLSearchParams();
-    if (params == null ? void 0 : params.page) queryParams.append("page", params.page.toString());
-    if (params == null ? void 0 : params.pageSize) queryParams.append("pageSize", params.pageSize.toString());
-    if (params == null ? void 0 : params.filter) queryParams.append("filter", params.filter);
-    if (params == null ? void 0 : params.sort) queryParams.append("sort", params.sort);
-    const query = queryParams.toString();
-    return apiRequest(
-      `/virtualmachines${query ? `?${query}` : ""}`
-    );
-  }
-  /**
-   * Get a specific virtual machine
-   */
-  async getVM(id) {
-    return apiRequest(`/virtualmachines/${id}`);
-  }
-  /**
-   * Create a new virtual machine (basic)
-   */
-  async createVM(config) {
-    return apiRequest("/virtualmachines", {
-      method: "POST",
-      body: JSON.stringify(config)
-    });
-  }
-  /**
-   * Create a new virtual machine (enhanced with wizard data)
-   */
-  async createVMEnhanced(config) {
-    return apiRequest("/virtualmachines/create-enhanced", {
-      method: "POST",
-      body: JSON.stringify(config)
-    });
-  }
-  /**
-   * Update a virtual machine
-   */
-  async updateVM(id, updates) {
-    return apiRequest(`/virtualmachines/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(updates)
-    });
-  }
-  /**
-   * Delete a virtual machine
-   */
-  async deleteVM(id, force = false) {
-    return apiRequest(
-      `/virtualmachines/${id}${force ? "?force=true" : ""}`,
-      { method: "DELETE" }
-    );
-  }
-  /**
-   * Clone a virtual machine
-   */
-  async cloneVM(id, name) {
-    return apiRequest(`/virtualmachines/${id}/clone`, {
-      method: "POST",
-      body: JSON.stringify({ name })
-    });
-  }
-  // ============ VM Power Management ============
-  /**
-   * Start a virtual machine
-   */
-  async startVM(id) {
-    return apiRequest(`/virtualmachines/${id}/start`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Stop a virtual machine
-   */
-  async stopVM(id, force = false) {
-    return apiRequest(`/virtualmachines/${id}/stop`, {
-      method: "POST",
-      body: JSON.stringify({ force })
-    });
-  }
-  /**
-   * Restart a virtual machine
-   */
-  async restartVM(id, force = false) {
-    return apiRequest(`/virtualmachines/${id}/restart`, {
-      method: "POST",
-      body: JSON.stringify({ force })
-    });
-  }
-  /**
-   * Pause a virtual machine
-   */
-  async pauseVM(id) {
-    return apiRequest(`/virtualmachines/${id}/pause`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Resume a paused virtual machine
-   */
-  async resumeVM(id) {
-    return apiRequest(`/virtualmachines/${id}/resume`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Reset a virtual machine
-   */
-  async resetVM(id) {
-    return apiRequest(`/virtualmachines/${id}/reset`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Execute a VM action
-   */
-  async executeVMAction(id, action) {
-    return apiRequest(`/virtualmachines/${id}/action`, {
-      method: "POST",
-      body: JSON.stringify(action)
-    });
-  }
-  // ============ Console Access ============
-  /**
-   * Get console connection information
-   */
-  async getConsoleInfo(id) {
-    return apiRequest(`/virtualmachines/${id}/console`);
-  }
-  /**
-   * Create a console session
-   */
-  async createConsoleSession(id) {
-    return apiRequest(`/virtualmachines/${id}/console/session`, {
-      method: "POST"
-    });
-  }
-  // ============ Templates ============
-  /**
-   * List VM templates
-   */
-  async listTemplates() {
-    return apiRequest("/virtualmachines/templates");
-  }
-  /**
-   * Get a specific template
-   */
-  async getTemplate(id) {
-    return apiRequest(`/virtualmachines/templates/${id}`);
-  }
-  /**
-   * Create a VM from template
-   */
-  async createFromTemplate(templateId, config) {
-    return apiRequest("/virtualmachines/from-template", {
-      method: "POST",
-      body: JSON.stringify({ templateId, ...config })
-    });
-  }
-  /**
-   * Create a template from existing VM
-   */
-  async createTemplate(vmId, name, description) {
-    return apiRequest(`/virtualmachines/${vmId}/template`, {
-      method: "POST",
-      body: JSON.stringify({ name, description })
-    });
-  }
-  // ============ Snapshots ============
-  /**
-   * List VM snapshots
-   */
-  async listSnapshots(vmId) {
-    return apiRequest(`/virtualmachines/${vmId}/snapshots`);
-  }
-  /**
-   * Create a snapshot
-   */
-  async createSnapshot(vmId, name, description) {
-    return apiRequest(`/virtualmachines/${vmId}/snapshots`, {
-      method: "POST",
-      body: JSON.stringify({ name, description })
-    });
-  }
-  /**
-   * Revert to snapshot
-   */
-  async revertToSnapshot(vmId, snapshotId) {
-    return apiRequest(
-      `/virtualmachines/${vmId}/snapshots/${snapshotId}/revert`,
-      { method: "POST" }
-    );
-  }
-  /**
-   * Delete a snapshot
-   */
-  async deleteSnapshot(vmId, snapshotId) {
-    return apiRequest(
-      `/virtualmachines/${vmId}/snapshots/${snapshotId}`,
-      { method: "DELETE" }
-    );
-  }
-  // ============ Backups ============
-  /**
-   * List VM backups
-   */
-  async listBackups(vmId) {
-    return apiRequest(`/virtualmachines/${vmId}/backups`);
-  }
-  /**
-   * Create a backup
-   */
-  async createBackup(vmId, name, type) {
-    return apiRequest(`/virtualmachines/${vmId}/backups`, {
-      method: "POST",
-      body: JSON.stringify({ name, type })
-    });
-  }
-  /**
-   * Restore from backup
-   */
-  async restoreFromBackup(vmId, backupId) {
-    return apiRequest(
-      `/virtualmachines/${vmId}/backups/${backupId}/restore`,
-      { method: "POST" }
-    );
-  }
-  // ============ Storage Pools ============
-  /**
-   * List storage pools
-   */
-  async listStoragePools() {
-    return apiRequest("/storages/pools");
-  }
-  /**
-   * Get a specific storage pool
-   */
-  async getStoragePool(name) {
-    return apiRequest(`/storages/pools/${name}`);
-  }
-  /**
-   * Create a storage pool
-   */
-  async createStoragePool(config) {
-    return apiRequest("/storages/pools", {
-      method: "POST",
-      body: JSON.stringify(config)
-    });
-  }
-  /**
-   * Delete a storage pool
-   */
-  async deleteStoragePool(name) {
-    return apiRequest(`/storages/pools/${name}`, {
-      method: "DELETE"
-    });
-  }
-  /**
-   * Start a storage pool
-   */
-  async startStoragePool(name) {
-    return apiRequest(`/storages/pools/${name}/start`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Stop a storage pool
-   */
-  async stopStoragePool(name) {
-    return apiRequest(`/storages/pools/${name}/stop`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Set storage pool autostart
-   */
-  async setStoragePoolAutostart(name, autostart) {
-    return apiRequest(`/storages/pools/${name}/autostart`, {
-      method: "PUT",
-      body: JSON.stringify({ autostart })
-    });
-  }
-  /**
-   * Refresh storage pool
-   */
-  async refreshStoragePool(name) {
-    return apiRequest(`/storages/pools/${name}/refresh`, {
-      method: "POST"
-    });
-  }
-  /**
-   * List volumes in a storage pool
-   */
-  async listVolumes(poolName) {
-    return apiRequest(`/storages/pools/${poolName}/volumes`);
-  }
-  /**
-   * Create a volume in a storage pool
-   */
-  async createVolume(poolName, config) {
-    return apiRequest(`/storages/pools/${poolName}/volumes`, {
-      method: "POST",
-      body: JSON.stringify(config)
-    });
-  }
-  /**
-   * Delete a volume
-   */
-  async deleteVolume(poolName, volumeName) {
-    return apiRequest(
-      `/storages/pools/${poolName}/volumes/${volumeName}`,
-      { method: "DELETE" }
-    );
-  }
-  // ============ ISO Management ============
-  /**
-   * List ISO images
-   */
-  async listISOs() {
-    return apiRequest("/storages/isos");
-  }
-  /**
-   * Get ISO details
-   */
-  async getISO(id) {
-    return apiRequest(`/storages/isos/${id}`);
-  }
-  /**
-   * Upload an ISO (returns upload URL for TUS)
-   * This creates a TUS upload session following the TUS protocol v1.0.0
-   */
-  async initiateISOUpload(metadata) {
-    const tusMetadata = {};
-    if (metadata.filename) {
-      tusMetadata.filename = btoa(metadata.filename);
-    }
-    if (metadata.os_type) {
-      tusMetadata.os_type = btoa(metadata.os_type);
-    }
-    if (metadata.os_variant) {
-      tusMetadata.os_variant = btoa(metadata.os_variant);
-    }
-    if (metadata.description) {
-      tusMetadata.description = btoa(metadata.description);
-    }
-    if (metadata.architecture) {
-      tusMetadata.architecture = btoa(metadata.architecture);
-    }
-    const uploadMetadata = Object.entries(tusMetadata).map(([key, value]) => `${key} ${value}`).join(",");
-    const token = getAuthToken();
-    const url = getApiUrl("/virtualization/storages/isos/upload");
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "Upload-Length": metadata.size.toString(),
-        "Upload-Metadata": uploadMetadata,
-        "Tus-Resumable": "1.0.0"
-      }
-    });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        code: "API_ERROR",
-        message: response.statusText
-      }));
-      throw new VirtualizationAPIError(
-        error.code || "API_ERROR",
-        error.message || `Request failed: ${response.status}`,
-        error.details
-      );
-    }
-    const location = response.headers.get("Location");
-    const responseData = await response.json();
-    console.log("[TUS] Session created:", {
-      location,
-      responseData,
-      originalUrl: url
-    });
-    let tusUploadUrl = location || responseData.upload_url;
-    if (tusUploadUrl && !tusUploadUrl.startsWith("http")) {
-      const fullUploadPath = tusUploadUrl.startsWith("/api/") ? tusUploadUrl : `/api/v1/virtualization/storages/isos/upload/${responseData.upload_id}`;
-      const baseUrl = url.substring(0, url.indexOf("/api/"));
-      tusUploadUrl = baseUrl + fullUploadPath;
-    }
-    console.log("[TUS] Final upload URL:", tusUploadUrl);
-    return {
-      uploadUrl: tusUploadUrl,
-      uploadId: responseData.upload_id
-    };
-  }
-  /**
-   * Complete ISO upload
-   */
-  async completeISOUpload(uploadId) {
-    return apiRequest(`/storages/isos/upload/${uploadId}/complete`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Get ISO upload progress
-   */
-  async getISOUploadProgress(uploadId) {
-    return apiRequest(`/storages/isos/upload/${uploadId}/progress`);
-  }
-  /**
-   * Delete an ISO
-   */
-  async deleteISO(id) {
-    return apiRequest(`/storages/isos/${id}`, {
-      method: "DELETE"
-    });
-  }
-  // ============ Virtual Networks ============
-  /**
-   * List virtual networks
-   */
-  async listNetworks() {
-    return apiRequest("/networks");
-  }
-  /**
-   * Get a specific network
-   */
-  async getNetwork(name) {
-    return apiRequest(`/networks/${name}`);
-  }
-  /**
-   * Create a virtual network
-   */
-  async createNetwork(config) {
-    return apiRequest("/networks", {
-      method: "POST",
-      body: JSON.stringify(config)
-    });
-  }
-  /**
-   * Delete a virtual network
-   */
-  async deleteNetwork(name) {
-    return apiRequest(`/networks/${name}`, {
-      method: "DELETE"
-    });
-  }
-  /**
-   * Start a network
-   */
-  async startNetwork(name) {
-    return apiRequest(`/networks/${name}/start`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Stop a network
-   */
-  async stopNetwork(name) {
-    return apiRequest(`/networks/${name}/stop`, {
-      method: "POST"
-    });
-  }
-  // ============ Metrics \u0026 Monitoring ============
-  /**
-   * Get VM metrics
-   */
-  async getVMMetrics(vmId, duration = "1h") {
-    return apiRequest(`/virtualmachines/${vmId}/metrics?duration=${duration}`);
-  }
-  /**
-   * Get host resource usage
-   */
-  async getHostResources() {
-    return apiRequest("/host/resources");
-  }
-  /**
-   * Get real-time VM metrics (WebSocket endpoint info)
-   */
-  getMetricsWebSocketUrl(vmId) {
-    const token = getAuthToken();
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    return `${protocol}//${window.location.host}${API_BASE}/virtualmachines/${vmId}/metrics/ws?token=${token}`;
-  }
-  // ============ Disk Management ============
-  /**
-   * Attach a disk to VM
-   */
-  async attachDisk(vmId, disk) {
-    return apiRequest(`/virtualmachines/${vmId}/disks/attach`, {
-      method: "POST",
-      body: JSON.stringify(disk)
-    });
-  }
-  /**
-   * Detach a disk from VM
-   */
-  async detachDisk(vmId, device) {
-    return apiRequest(`/virtualmachines/${vmId}/disks/${device}/detach`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Resize a VM disk
-   */
-  async resizeDisk(vmId, device, newSize) {
-    return apiRequest(`/virtualmachines/${vmId}/disks/${device}/resize`, {
-      method: "POST",
-      body: JSON.stringify({ size: newSize })
-    });
-  }
-  // ============ Migration ============
-  /**
-   * Migrate a VM to another host
-   */
-  async migrateVM(vmId, targetHost, live = true) {
-    return apiRequest(`/virtualmachines/${vmId}/migrate`, {
-      method: "POST",
-      body: JSON.stringify({ targetHost, live })
-    });
-  }
-  /**
-   * Get migration status
-   */
-  async getMigrationStatus(vmId) {
-    return apiRequest(`/virtualmachines/${vmId}/migrate/status`);
-  }
-}
-const virtualizationAPI = new VirtualizationAPI();
 var __defProp$b = Object.defineProperty;
 var __getOwnPropDesc$9 = Object.getOwnPropertyDescriptor;
 var __decorateClass$b = (decorators, target, key, kind) => {
@@ -56702,7 +57323,10 @@ let ISOManagement = class extends i$1 {
     this.searchQuery = "";
     this.showUploadDrawer = false;
     this.showDeleteModal = false;
+    this.showDetailDrawer = false;
     this.isoToDelete = null;
+    this.selectedISO = null;
+    this.isLoadingDetail = false;
     this.isDeleting = false;
     this.selectedFile = null;
     this.uploadMetadata = {
@@ -56741,8 +57365,8 @@ let ISOManagement = class extends i$1 {
   }
   getActions(_iso) {
     return [
+      { label: "View Detail", action: "view-detail" },
       { label: "Download", action: "download" },
-      { label: "Copy Path", action: "copy-path" },
       { label: "Delete", action: "delete", danger: true }
     ];
   }
@@ -56785,30 +57409,81 @@ let ISOManagement = class extends i$1 {
     const { action, item } = event.detail;
     const iso = item;
     switch (action) {
+      case "view-detail":
+        this.viewISODetail(iso);
+        break;
       case "download":
         this.downloadISO(iso);
-        break;
-      case "copy-path":
-        this.copyISOPath(iso);
         break;
       case "delete":
         this.confirmDeleteISO(iso);
         break;
     }
   }
-  downloadISO(iso) {
-    const link = document.createElement("a");
-    link.href = `/api/v1/virtualization/storages/isos/${iso.id}/download`;
-    link.download = iso.name;
-    link.click();
-  }
-  async copyISOPath(iso) {
-    try {
-      await navigator.clipboard.writeText(iso.path);
-      this.showNotification("Path copied to clipboard", "success");
-    } catch (error) {
-      this.showNotification("Failed to copy path", "error");
+  handleCellClick(event) {
+    const { item, column } = event.detail;
+    if (column.key === "name") {
+      this.viewISODetail(item);
     }
+  }
+  async downloadISO(iso) {
+    try {
+      const token = localStorage.getItem("jwt_token") || localStorage.getItem("auth_token");
+      if (!token) {
+        this.showNotification("Authentication required", "error");
+        return;
+      }
+      const response = await fetch(`/api/v1/virtualization/isos/${iso.id}/download`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.statusText}`);
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = iso.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      this.showNotification(`Downloading ${iso.name}...`, "success");
+    } catch (error) {
+      console.error("Failed to download ISO:", error);
+      this.showNotification(
+        `Failed to download ISO: ${error instanceof Error ? error.message : "Unknown error"}`,
+        "error"
+      );
+    }
+  }
+  async viewISODetail(iso) {
+    this.showDetailDrawer = true;
+    this.isLoadingDetail = true;
+    this.selectedISO = iso;
+    try {
+      const detailedISO = await virtualizationAPI.getISO(iso.id);
+      this.selectedISO = {
+        ...iso,
+        ...detailedISO
+      };
+    } catch (error) {
+      console.error("Failed to fetch ISO details:", error);
+      this.showNotification(
+        `Failed to load ISO details: ${error instanceof Error ? error.message : "Unknown error"}`,
+        "error"
+      );
+    } finally {
+      this.isLoadingDetail = false;
+    }
+  }
+  closeDetailDrawer() {
+    this.showDetailDrawer = false;
+    this.selectedISO = null;
+    this.isLoadingDetail = false;
   }
   confirmDeleteISO(iso) {
     this.isoToDelete = iso;
@@ -57047,6 +57722,85 @@ let ISOManagement = class extends i$1 {
       composed: true
     }));
   }
+  renderDetailDrawer() {
+    if (!this.selectedISO) return "";
+    return x`
+      <div class="drawer">
+        <div class="drawer-header">
+          <h2 class="drawer-title">ISO Image Details</h2>
+          <button class="close-btn" @click=${this.closeDetailDrawer}>✕</button>
+        </div>
+        
+        <div class="drawer-content">
+          ${this.isLoadingDetail ? x`
+            <loading-state message="Loading ISO details..."></loading-state>
+          ` : x`
+            <div class="detail-section">
+              <h3>General Information</h3>
+              <div class="detail-grid">
+                <div class="detail-label">Name:</div>
+                <div class="detail-value">${this.selectedISO.name}</div>
+                
+                <div class="detail-label">Size:</div>
+                <div class="detail-value">${this.formatFileSize(this.selectedISO.size)}</div>
+                
+                <div class="detail-label">OS Type:</div>
+                <div class="detail-value">${this.selectedISO.os_type || "Unknown"}</div>
+                
+                <div class="detail-label">OS Variant:</div>
+                <div class="detail-value">${this.selectedISO.os_variant || "Not specified"}</div>
+                
+                <div class="detail-label">Architecture:</div>
+                <div class="detail-value">${this.selectedISO.architecture || "Not specified"}</div>
+                
+                <div class="detail-label">Storage Pool:</div>
+                <div class="detail-value">${this.selectedISO.storage_pool || "default"}</div>
+                
+                <div class="detail-label">Uploaded:</div>
+                <div class="detail-value">${this.formatDate(this.selectedISO.uploaded_at)}</div>
+              </div>
+            </div>
+            
+            <div class="detail-section">
+              <h3>File Information</h3>
+              <div class="detail-grid">
+                <div class="detail-label">File Path:</div>
+                <div class="detail-value monospace">${this.selectedISO.path}</div>
+                
+                ${this.selectedISO.checksum ? x`
+                  <div class="detail-label">Checksum:</div>
+                  <div class="detail-value monospace">${this.selectedISO.checksum}</div>
+                ` : ""}
+                
+                <div class="detail-label">ID:</div>
+                <div class="detail-value monospace">${this.selectedISO.id}</div>
+              </div>
+            </div>
+            
+            ${this.selectedISO.description ? x`
+              <div class="detail-section">
+                <h3>Description</h3>
+                <div class="detail-value">${this.selectedISO.description}</div>
+              </div>
+            ` : ""}
+          `}
+        </div>
+        
+        <div class="drawer-footer">
+          <button 
+            class="btn btn-secondary" 
+            @click=${() => this.downloadISO(this.selectedISO)}
+            ?disabled=${this.isLoadingDetail}
+          >
+            Download ISO
+          </button>
+          <button class="btn btn-primary" @click=${this.closeDetailDrawer}>
+            Close
+          </button>
+        </div>
+      </div>
+    `;
+  }
   renderUploadDrawer() {
     const uploadState = this._uploadStateController.value;
     const isUploading = uploadState.isUploading || this.isPaused;
@@ -57251,12 +58005,16 @@ let ISOManagement = class extends i$1 {
               .data=${tableData}
               .getActions=${(item) => this.getActions(item)}
               @action=${this.handleAction}
+              @cell-click=${this.handleCellClick}
             ></resource-table>
           `}
         </div>
         
         <!-- Upload Drawer -->
         ${this.showUploadDrawer ? this.renderUploadDrawer() : ""}
+        
+        <!-- Detail Drawer -->
+        ${this.showDetailDrawer ? this.renderDetailDrawer() : ""}
         
         <!-- Delete Confirmation Modal -->
         ${this.showDeleteModal && this.isoToDelete ? x`
@@ -57683,6 +58441,43 @@ ISOManagement.styles = i$4`
       font-weight: 600;
       color: var(--vscode-foreground);
     }
+
+    /* Detail Drawer Styles */
+    .detail-section {
+      margin-bottom: 24px;
+    }
+
+    .detail-section h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--vscode-foreground);
+      margin: 0 0 12px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 12px;
+    }
+
+    .detail-label {
+      font-size: 13px;
+      color: var(--vscode-descriptionForeground);
+      font-weight: 500;
+    }
+
+    .detail-value {
+      font-size: 13px;
+      color: var(--vscode-foreground);
+      word-break: break-word;
+    }
+
+    .detail-value.monospace {
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 12px;
+    }
   `;
 __decorateClass$b([
   r$1()
@@ -57695,7 +58490,16 @@ __decorateClass$b([
 ], ISOManagement.prototype, "showDeleteModal", 2);
 __decorateClass$b([
   r$1()
+], ISOManagement.prototype, "showDetailDrawer", 2);
+__decorateClass$b([
+  r$1()
 ], ISOManagement.prototype, "isoToDelete", 2);
+__decorateClass$b([
+  r$1()
+], ISOManagement.prototype, "selectedISO", 2);
+__decorateClass$b([
+  r$1()
+], ISOManagement.prototype, "isLoadingDetail", 2);
 __decorateClass$b([
   r$1()
 ], ISOManagement.prototype, "isDeleting", 2);

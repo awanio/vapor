@@ -1,13 +1,13 @@
 import { LitElement, html, css } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { customElement, state } from 'lit/decorators.js';
 import '../../components/ui/search-input.js';
 import '../../components/ui/empty-state.js';
 import '../../components/ui/loading-state.js';
+import '../../components/ui/status-badge.js';
 import '../../components/tabs/tab-group.js';
 import '../../components/tables/resource-table.js';
-import '../../components/drawers/detail-drawer.js';
 import '../../components/modals/delete-modal.js';
-import '../../components/drawers/create-resource-drawer';
+import '../../components/drawers/create-resource-drawer.js';
 import type { Tab } from '../../components/tabs/tab-group.js';
 import type { Column } from '../../components/tables/resource-table.js';
 import type { ActionItem } from '../../components/ui/action-dropdown.js';
@@ -29,10 +29,6 @@ interface VirtualNetwork extends Omit<BaseVirtualNetwork, 'type' | 'ip' | 'netma
   persistent: boolean;
 }
 
-interface NetworksResponse {
-  count: number;
-  networks: VirtualNetwork[];
-}
 
 @customElement('virtualization-networks')
 export class VirtualizationNetworks extends LitElement {
@@ -40,10 +36,10 @@ export class VirtualizationNetworks extends LitElement {
   @state() private searchQuery = '';
   @state() private loading = false;
   @state() private error: string | null = null;
-  @state() private totalCount = 0;
   @state() private activeTab = 'all';
-  @state() private showDetails = false;
+  @state() private showDetailDrawer = false;
   @state() private selectedNetwork: VirtualNetwork | null = null;
+  @state() private isLoadingDetail = false;
   @state() private showDeleteModal = false;
   @state() private itemToDelete: DeleteItem | null = null;
   @state() private isDeleting = false;
@@ -143,6 +139,297 @@ export class VirtualizationNetworks extends LitElement {
       background: var(--vscode-testing-iconFailed);
       color: white;
     }
+
+    /* Detail Drawer Styles - Similar to ISO management */
+    .drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 50%;
+      height: 100%;
+      background: var(--vscode-editor-background, #1e1e1e);
+      border-left: 1px solid var(--vscode-widget-border, #454545);
+      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+      z-index: 1001;
+      overflow-y: auto;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @media (max-width: 1024px) {
+      .drawer {
+        width: 80%;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .drawer {
+        width: 100%;
+      }
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+      }
+      to {
+        transform: translateX(0);
+      }
+    }
+
+    .drawer-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--vscode-editorWidget-border, #464647);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .drawer-title {
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--vscode-foreground, #cccccc);
+      margin: 0;
+    }
+
+    .drawer-content {
+      padding: 24px;
+      overflow-y: auto;
+    }
+
+    .drawer-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--vscode-editorWidget-border, #464647);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      position: sticky;
+      bottom: 0;
+      z-index: 10;
+    }
+
+    .close-btn {
+      background: transparent;
+      border: none;
+      color: var(--vscode-foreground, #cccccc);
+      cursor: pointer;
+      padding: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      font-size: 20px;
+      line-height: 1;
+      transition: all 0.2s;
+    }
+
+    .close-btn:hover {
+      background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
+      color: var(--vscode-icon-foreground, #c5c5c5);
+    }
+
+    .detail-sections {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .detail-section {
+      margin-bottom: 20px;
+    }
+
+    .detail-section h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--vscode-foreground, #cccccc);
+      margin: 0 0 12px 0;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+    }
+
+    .detail-item {
+      display: flex;
+      align-items: flex-start;
+      padding: 8px 0;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .detail-item:not(:last-child) {
+      border-bottom: 1px solid var(--vscode-widget-border, rgba(255, 255, 255, 0.1));
+    }
+
+    .detail-key {
+      flex: 0 0 180px;
+      color: var(--vscode-descriptionForeground, #9d9d9d);
+      font-weight: 500;
+    }
+
+    .detail-value {
+      flex: 1;
+      color: var(--vscode-foreground, #cccccc);
+      word-break: break-word;
+    }
+
+    .detail-value.monospace {
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 12px;
+    }
+
+    .detail-item.nested {
+      flex-direction: column;
+    }
+
+    .nested-content {
+      margin-top: 8px;
+      margin-left: 180px;
+      padding-left: 12px;
+      border-left: 2px solid var(--vscode-widget-border, #454545);
+    }
+
+    .badge-inline {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 500;
+      gap: 4px;
+    }
+
+    .badge-active {
+      background: rgba(115, 201, 145, 0.2);
+      color: #73c991;
+      border: 1px solid rgba(115, 201, 145, 0.3);
+    }
+
+    .badge-inactive {
+      background: rgba(161, 38, 13, 0.2);
+      color: #ff8c66;
+      border: 1px solid rgba(161, 38, 13, 0.3);
+    }
+
+    .badge-enabled {
+      background: rgba(56, 138, 52, 0.2);
+      color: #73c991;
+      border: 1px solid rgba(56, 138, 52, 0.3);
+    }
+
+    .badge-disabled {
+      background: rgba(161, 38, 13, 0.2);
+      color: #ff8c66;
+      border: 1px solid rgba(161, 38, 13, 0.3);
+    }
+
+    .dhcp-hosts-list {
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .dhcp-host-item {
+      padding: 6px 0;
+      display: flex;
+      gap: 20px;
+      font-size: 12px;
+      border-bottom: 1px solid var(--vscode-widget-border, rgba(255, 255, 255, 0.05));
+    }
+
+    .dhcp-host-item:last-child {
+      border-bottom: none;
+    }
+
+    .dhcp-host-item span {
+      flex: 1;
+      color: var(--vscode-foreground, #cccccc);
+    }
+
+    .dhcp-host-item strong {
+      color: var(--vscode-descriptionForeground, #9d9d9d);
+      font-weight: 500;
+      margin-right: 8px;
+    }
+
+    .raw-data {
+      background: var(--vscode-editor-background, #1e1e1e);
+      border: 1px solid var(--vscode-editorWidget-border, #464647);
+      border-radius: 4px;
+      padding: 12px;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 12px;
+      overflow-x: auto;
+      max-height: 400px;
+      overflow-y: auto;
+      margin-top: 8px;
+    }
+
+    details {
+      cursor: pointer;
+    }
+
+    details summary {
+      padding: 8px 12px;
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      color: var(--vscode-button-secondaryForeground, #cccccc);
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      transition: background 0.2s;
+      user-select: none;
+    }
+
+    details summary:hover {
+      background: var(--vscode-button-secondaryHoverBackground, #45494e);
+    }
+
+    details[open] summary {
+      border-radius: 4px 4px 0 0;
+      margin-bottom: 0;
+    }
+
+
+    .btn {
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+      font-family: inherit;
+    }
+
+    .btn-primary {
+      background: var(--vscode-button-background, #0e639c);
+      color: var(--vscode-button-foreground, #ffffff);
+      border: 1px solid var(--vscode-button-background, #0e639c);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--vscode-button-hoverBackground, #1177bb);
+      border-color: var(--vscode-button-hoverBackground, #1177bb);
+    }
+
+    .btn-secondary {
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      color: var(--vscode-button-secondaryForeground, #cccccc);
+      border: 1px solid var(--vscode-button-border, #5a5a5a);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--vscode-button-secondaryHoverBackground, #45494e);
+      border-color: var(--vscode-button-border, #5a5a5a);
+    }
+
+    .btn-secondary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
   `;
 
   private tabs: Tab[] = [
@@ -167,9 +454,11 @@ export class VirtualizationNetworks extends LitElement {
       // Use the virtualizationAPI service which handles authentication and response structure
       const response = await virtualizationAPI.listNetworks();
       
+      console.log('Networks API response:', response); // Debug log
+      
       // Map the response to match our local interface structure
       this.networks = (response || []).map(net => ({
-        name: net.name,
+        name: net.name || 'Unnamed Network',
         uuid: net.uuid || '',
         state: net.state,
         bridge: net.bridge || '',
@@ -181,7 +470,6 @@ export class VirtualizationNetworks extends LitElement {
         autostart: net.autostart || false,
         persistent: (net as any).persistent !== undefined ? (net as any).persistent : true
       }));
-      this.totalCount = this.networks.length;
     } catch (error) {
       console.error('Failed to load networks:', error);
       this.error = error instanceof Error ? error.message : 'Failed to load networks';
@@ -270,8 +558,12 @@ export class VirtualizationNetworks extends LitElement {
 
 
   private handleCellClick(event: CustomEvent) {
-    const network = event.detail.item as VirtualNetwork;
-    this.viewDetails(network);
+    const { item, column } = event.detail;
+    
+    // If the name column is clicked, open the detail drawer
+    if (column.key === 'name') {
+      this.viewNetworkDetail(item as VirtualNetwork);
+    }
   }
 
   private handleAction(event: CustomEvent) {
@@ -280,7 +572,7 @@ export class VirtualizationNetworks extends LitElement {
     
     switch (action) {
       case 'view':
-        this.viewDetails(network);
+        this.viewNetworkDetail(network);
         break;
       case 'dhcp-leases':
         this.viewDHCPLeases(network);
@@ -302,9 +594,49 @@ export class VirtualizationNetworks extends LitElement {
     }
   }
 
-  private viewDetails(network: VirtualNetwork) {
+  private async viewNetworkDetail(network: VirtualNetwork) {
+    this.showDetailDrawer = true;
+    this.isLoadingDetail = true;
     this.selectedNetwork = network;
-    this.showDetails = true;
+    
+    console.log('Opening detail drawer for network:', network); // Debug log
+    
+    try {
+      // Fetch detailed information from API
+      const detailedNetwork = await virtualizationAPI.getNetwork(network.name);
+      
+      console.log('Detailed network response:', detailedNetwork); // Debug log
+      
+      // Map the response to match our local interface structure
+      this.selectedNetwork = {
+        name: detailedNetwork.name || network.name || 'Unnamed Network',
+        uuid: detailedNetwork.uuid || network.uuid,
+        state: detailedNetwork.state,
+        bridge: detailedNetwork.bridge || '',
+        mode: (detailedNetwork as any).mode || network.mode || '',
+        ip_range: {
+          address: (detailedNetwork as any).ip_range?.address || detailedNetwork.ip || '',
+          netmask: (detailedNetwork as any).ip_range?.netmask || detailedNetwork.netmask || ''
+        },
+        autostart: detailedNetwork.autostart || false,
+        persistent: (detailedNetwork as any).persistent !== undefined ? (detailedNetwork as any).persistent : true,
+        // Include any additional fields from the detailed response
+        dhcp: detailedNetwork.dhcp,
+        forward: detailedNetwork.forward
+      } as VirtualNetwork & { dhcp?: any; forward?: any };
+    } catch (error) {
+      console.error('Failed to fetch network details:', error);
+      this.error = error instanceof Error ? error.message : 'Failed to load network details';
+      // Keep the basic network info even if detailed fetch fails
+    } finally {
+      this.isLoadingDetail = false;
+    }
+  }
+
+  private closeDetailDrawer() {
+    this.showDetailDrawer = false;
+    this.selectedNetwork = null;
+    this.isLoadingDetail = false;
   }
 
   private viewDHCPLeases(network: VirtualNetwork) {
@@ -444,6 +776,322 @@ export class VirtualizationNetworks extends LitElement {
     return html`<span class="network-type-badge ${badgeClass}">${mode || 'Default'}</span>`;
   }
 
+  private renderDetailDrawer() {
+    if (!this.selectedNetwork) return '';
+    
+    const network = this.selectedNetwork;
+    const extendedNetwork = network as any;
+    
+    return html`
+      <div class="drawer">
+        <div class="drawer-header">
+          <h2 class="drawer-title">${network.name}</h2>
+          <button class="close-btn" @click=${this.closeDetailDrawer}>✕</button>
+        </div>
+        
+        <div class="drawer-content">
+          ${this.isLoadingDetail ? html`
+            <loading-state message="Loading network details..."></loading-state>
+          ` : html`
+            <div class="network-details-content">
+              <div class="detail-sections">
+                <!-- Basic Information -->
+                <div class="detail-section">
+                  <h3>Basic Information</h3>
+                  
+                  <div class="detail-item">
+                    <strong class="detail-key">Name:</strong>
+                    <span class="detail-value">${network.name}</span>
+                  </div>
+                  
+                  <div class="detail-item">
+                    <strong class="detail-key">UUID:</strong>
+                    <span class="detail-value monospace">${network.uuid || 'Not available'}</span>
+                  </div>
+                  
+                  <div class="detail-item">
+                    <strong class="detail-key">State:</strong>
+                    <span class="detail-value">
+                      <span class="badge-inline ${network.state === 'active' ? 'badge-active' : 'badge-inactive'}">
+                        ${network.state === 'active' ? '●' : '○'} ${network.state}
+                      </span>
+                    </span>
+                  </div>
+                  
+                  <div class="detail-item">
+                    <strong class="detail-key">Network Mode:</strong>
+                    <span class="detail-value">${this.renderNetworkMode(network.mode)}</span>
+                  </div>
+                  
+                  <div class="detail-item">
+                    <strong class="detail-key">Bridge Interface:</strong>
+                    <span class="detail-value monospace">${network.bridge || 'Not configured'}</span>
+                  </div>
+                  
+                  <div class="detail-item">
+                    <strong class="detail-key">Autostart:</strong>
+                    <span class="detail-value">
+                      <span class="badge-inline ${network.autostart ? 'badge-enabled' : 'badge-disabled'}">
+                        ${network.autostart ? 'Enabled' : 'Disabled'}
+                      </span>
+                    </span>
+                  </div>
+                  
+                  <div class="detail-item">
+                    <strong class="detail-key">Persistent:</strong>
+                    <span class="detail-value">
+                      <span class="badge-inline ${network.persistent ? 'badge-enabled' : 'badge-disabled'}">
+                        ${network.persistent ? 'Yes' : 'No'}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+
+                <!-- IP Configuration -->
+                <div class="detail-section">
+                  <h3>IP Configuration</h3>
+                  
+                  <div class="detail-item">
+                    <strong class="detail-key">Network Address:</strong>
+                    <span class="detail-value monospace">${network.ip_range.address || 'Not configured'}</span>
+                  </div>
+                  
+                  <div class="detail-item">
+                    <strong class="detail-key">Netmask:</strong>
+                    <span class="detail-value monospace">${network.ip_range.netmask || 'Not configured'}</span>
+                  </div>
+                  
+                  <div class="detail-item">
+                    <strong class="detail-key">CIDR Notation:</strong>
+                    <span class="detail-value monospace">${this.formatIPRange(network)}</span>
+                  </div>
+                  
+                  ${network.ip_range.address && network.ip_range.netmask ? html`
+                    <div class="detail-item">
+                      <strong class="detail-key">Broadcast Address:</strong>
+                      <span class="detail-value monospace">${this.calculateBroadcast(network.ip_range.address, network.ip_range.netmask)}</span>
+                    </div>
+                  ` : ''}
+                </div>
+                
+                <!-- DHCP Configuration -->
+                ${extendedNetwork.dhcp ? html`
+                  <div class="detail-section">
+                    <h3>DHCP Configuration</h3>
+                    
+                    <div class="detail-item">
+                      <strong class="detail-key">DHCP Status:</strong>
+                      <span class="detail-value">
+                        <span class="badge-inline ${extendedNetwork.dhcp?.enabled ? 'badge-enabled' : 'badge-disabled'}">
+                          ${extendedNetwork.dhcp?.enabled ? 'Enabled' : 'Disabled'}
+                        </span>
+                      </span>
+                    </div>
+                    
+                    ${extendedNetwork.dhcp?.start && extendedNetwork.dhcp?.end ? html`
+                      <div class="detail-item">
+                        <strong class="detail-key">DHCP Range:</strong>
+                        <span class="detail-value monospace">
+                          ${extendedNetwork.dhcp.start} - ${extendedNetwork.dhcp.end}
+                        </span>
+                      </div>
+                      
+                      <div class="detail-item">
+                        <strong class="detail-key">Pool Size:</strong>
+                        <span class="detail-value">
+                          ${this.calculatePoolSize(extendedNetwork.dhcp.start, extendedNetwork.dhcp.end)} addresses
+                        </span>
+                      </div>
+                    ` : ''}
+                    
+                    ${extendedNetwork.dhcp?.hosts && extendedNetwork.dhcp.hosts.length > 0 ? html`
+                      <div class="detail-item nested">
+                        <strong class="detail-key">Static Leases:</strong>
+                        <div class="dhcp-hosts-list">
+                          ${extendedNetwork.dhcp.hosts.map((host: any) => html`
+                            <div class="dhcp-host-item">
+                              <span><strong>MAC:</strong> ${host.mac}</span>
+                              <span><strong>IP:</strong> ${host.ip}</span>
+                              <span><strong>Name:</strong> ${host.name || 'N/A'}</span>
+                            </div>
+                          `)}
+                        </div>
+                      </div>
+                    ` : ''}
+                  </div>
+                ` : ''}
+                
+                <!-- Forward Configuration -->
+                ${extendedNetwork.forward ? html`
+                  <div class="detail-section">
+                    <h3>Network Forwarding</h3>
+                    
+                    <div class="detail-item">
+                      <strong class="detail-key">Forward Mode:</strong>
+                      <span class="detail-value">
+                        <span class="badge-inline badge-enabled">
+                          ${extendedNetwork.forward.mode || 'Not configured'}
+                        </span>
+                      </span>
+                    </div>
+                    
+                    ${extendedNetwork.forward?.dev ? html`
+                      <div class="detail-item">
+                        <strong class="detail-key">Physical Device:</strong>
+                        <span class="detail-value monospace">${extendedNetwork.forward.dev}</span>
+                      </div>
+                    ` : ''}
+                    
+                    ${extendedNetwork.forward?.nat ? html`
+                      <div class="detail-item nested">
+                        <strong class="detail-key">NAT Configuration:</strong>
+                        <div class="nested-content">
+                          ${extendedNetwork.forward.nat.start ? html`
+                            <div class="detail-item">
+                              <strong class="detail-key">Port Range Start:</strong>
+                              <span class="detail-value">${extendedNetwork.forward.nat.start}</span>
+                            </div>
+                          ` : ''}
+                          ${extendedNetwork.forward.nat.end ? html`
+                            <div class="detail-item">
+                              <strong class="detail-key">Port Range End:</strong>
+                              <span class="detail-value">${extendedNetwork.forward.nat.end}</span>
+                            </div>
+                          ` : ''}
+                        </div>
+                      </div>
+                    ` : ''}
+                  </div>
+                ` : ''}
+                
+                <!-- DNS Configuration if available -->
+                ${extendedNetwork.dns ? html`
+                  <div class="detail-section">
+                    <h3>DNS Configuration</h3>
+                    
+                    ${extendedNetwork.dns.forwarders && extendedNetwork.dns.forwarders.length > 0 ? html`
+                      <div class="detail-item">
+                        <strong class="detail-key">DNS Forwarders:</strong>
+                        <span class="detail-value">
+                          ${extendedNetwork.dns.forwarders.map((dns: string) => html`
+                            <span class="monospace">${dns}</span>${extendedNetwork.dns.forwarders.indexOf(dns) < extendedNetwork.dns.forwarders.length - 1 ? ', ' : ''}
+                          `)}
+                        </span>
+                      </div>
+                    ` : ''}
+                    
+                    ${extendedNetwork.dns.domain ? html`
+                      <div class="detail-item">
+                        <strong class="detail-key">Domain:</strong>
+                        <span class="detail-value monospace">${extendedNetwork.dns.domain}</span>
+                      </div>
+                    ` : ''}
+                  </div>
+                ` : ''}
+                
+                <!-- Additional Metadata -->
+                ${extendedNetwork.metadata ? html`
+                  <div class="detail-section">
+                    <h3>Metadata</h3>
+                    
+                    ${extendedNetwork.metadata.created ? html`
+                      <div class="detail-item">
+                        <strong class="detail-key">Created:</strong>
+                        <span class="detail-value">${new Date(extendedNetwork.metadata.created).toLocaleString()}</span>
+                      </div>
+                    ` : ''}
+                    
+                    ${extendedNetwork.metadata.modified ? html`
+                      <div class="detail-item">
+                        <strong class="detail-key">Last Modified:</strong>
+                        <span class="detail-value">${new Date(extendedNetwork.metadata.modified).toLocaleString()}</span>
+                      </div>
+                    ` : ''}
+                  </div>
+                ` : ''}
+                
+                <!-- Raw Data -->
+                <div class="detail-section">
+                  <h3>Raw Data</h3>
+                  <details>
+                    <summary>View raw network configuration</summary>
+                    <pre class="raw-data">${JSON.stringify(network, null, 2)}</pre>
+                  </details>
+                </div>
+              </div>
+            </div>
+          `}
+        </div>
+        
+        <div class="drawer-footer">
+          ${network.state === 'active' ? html`
+            <button 
+              class="btn btn-secondary" 
+              @click=${() => this.changeNetworkState(network, 'stop')}
+              ?disabled=${this.isLoadingDetail}
+            >
+              Stop Network
+            </button>
+          ` : html`
+            <button 
+              class="btn btn-secondary" 
+              @click=${() => this.changeNetworkState(network, 'start')}
+              ?disabled=${this.isLoadingDetail}
+            >
+              Start Network
+            </button>
+          `}
+          <button 
+            class="btn btn-secondary" 
+            @click=${() => this.editNetwork(network)}
+            ?disabled=${this.isLoadingDetail}
+          >
+            Edit Configuration
+          </button>
+          <button class="btn btn-primary" @click=${this.closeDetailDrawer}>
+            Close
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  // Helper method to calculate broadcast address
+  private calculateBroadcast(ipAddress: string, netmask: string): string {
+    try {
+      const ipParts = ipAddress.split('.').map(Number);
+      const maskParts = netmask.split('.').map(Number);
+      
+      // Ensure both arrays have 4 parts (valid IPv4)
+      if (ipParts.length !== 4 || maskParts.length !== 4) {
+        return 'N/A';
+      }
+      
+      const broadcastParts = ipParts.map((ip, i) => {
+        const mask = maskParts[i];
+        // Add explicit undefined check for TypeScript
+        if (mask === undefined) {
+          return 0;
+        }
+        return ip | (~mask & 255);
+      });
+      return broadcastParts.join('.');
+    } catch {
+      return 'N/A';
+    }
+  }
+
+  // Helper method to calculate DHCP pool size
+  private calculatePoolSize(startIp: string, endIp: string): number {
+    try {
+      const start = startIp.split('.').reduce((acc, val) => (acc << 8) + parseInt(val), 0);
+      const end = endIp.split('.').reduce((acc, val) => (acc << 8) + parseInt(val), 0);
+      return end - start + 1;
+    } catch {
+      return 0;
+    }
+  }
+
   override render() {
     const filteredData = this.getFilteredData();
 
@@ -507,31 +1155,8 @@ export class VirtualizationNetworks extends LitElement {
           `}
         </div>
 
-        ${this.showDetails ? html`
-          <detail-drawer
-            .title=${this.selectedNetwork?.name || 'Network Details'}
-            .open=${this.showDetails}
-            @close=${() => { this.showDetails = false; this.selectedNetwork = null; }}
-          >
-            <div style="padding: 20px;">
-              <h3>Network Configuration</h3>
-              <p><strong>UUID:</strong> ${this.selectedNetwork?.uuid}</p>
-              <p><strong>State:</strong> ${this.selectedNetwork?.state}</p>
-              <p><strong>Bridge:</strong> ${this.selectedNetwork?.bridge}</p>
-              <p><strong>Mode:</strong> ${this.selectedNetwork?.mode || 'Default'}</p>
-              <p><strong>Autostart:</strong> ${this.selectedNetwork?.autostart ? 'Enabled' : 'Disabled'}</p>
-              <p><strong>Persistent:</strong> ${this.selectedNetwork?.persistent ? 'Yes' : 'No'}</p>
-              
-              <h3>IP Configuration</h3>
-              <p><strong>IP Address:</strong> ${this.selectedNetwork?.ip_range.address || 'Not configured'}</p>
-              <p><strong>Netmask:</strong> ${this.selectedNetwork?.ip_range.netmask || 'Not configured'}</p>
-              <p><strong>IP Range:</strong> ${this.selectedNetwork ? this.formatIPRange(this.selectedNetwork) : 'Not configured'}</p>
-              
-              <h3>Raw Configuration</h3>
-              <pre style="background: var(--vscode-editor-background); padding: 10px; border-radius: 4px;">${JSON.stringify(this.selectedNetwork, null, 2)}</pre>
-            </div>
-          </detail-drawer>
-        ` : ''}
+        <!-- Detail Drawer -->
+        ${this.showDetailDrawer ? this.renderDetailDrawer() : ''}
 
         ${this.showDeleteModal && this.itemToDelete ? html`
           <delete-modal
