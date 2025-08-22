@@ -1634,7 +1634,7 @@ func (s *Service) parseStorageConfiguration(xmlDesc string) (*StorageConfigDetai
 
 	// This is a simplified parser - in production, use proper XML unmarshaling
 	// Parse disk devices
-	diskPattern := `<disk[^>]*>(.*?)</disk>`
+	diskPattern := `(?s)<disk[^>]*>(.*?)</disk>`
 	re := regexp.MustCompile(diskPattern)
 	matches := re.FindAllStringSubmatch(xmlDesc, -1)
 
@@ -1721,7 +1721,7 @@ func (s *Service) parseNetworkConfiguration(xmlDesc string) ([]NetworkConfigDeta
 	var networks []NetworkConfigDetail
 
 	// Parse interface devices
-	interfacePattern := `<interface[^>]*>(.*?)</interface>`
+	interfacePattern := `(?s)<interface[^>]*>(.*?)</interface>`
 	re := regexp.MustCompile(interfacePattern)
 	matches := re.FindAllStringSubmatch(xmlDesc, -1)
 
@@ -1784,7 +1784,7 @@ func (s *Service) parseGraphicsConfiguration(xmlDesc string) ([]EnhancedGraphics
 	var graphics []EnhancedGraphicsDetail
 
 	// Parse graphics devices
-	graphicsPattern := `<graphics[^>]*>(.*?)</graphics>`
+	graphicsPattern := `(?s)<graphics[^>]*>(.*?)</graphics>`
 	re := regexp.MustCompile(graphicsPattern)
 	matches := re.FindAllStringSubmatch(xmlDesc, -1)
 
@@ -1840,7 +1840,7 @@ func (s *Service) parsePCIDevices(xmlDesc string) ([]PCIDeviceDetail, error) {
 	var pciDevices []PCIDeviceDetail
 
 	// Parse hostdev devices (PCI passthrough)
-	hostdevPattern := `<hostdev[^>]*mode=['"]subsystem['"][^>]*type=['"]pci['"][^>]*>(.*?)</hostdev>`
+	hostdevPattern := `(?s)<hostdev[^>]*mode=['"']subsystem['"'][^>]*type=['"']pci['"'][^>]*>(.*?)</hostdev>`
 	re := regexp.MustCompile(hostdevPattern)
 	matches := re.FindAllStringSubmatch(xmlDesc, -1)
 
