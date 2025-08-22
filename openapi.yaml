@@ -1,9 +1,9 @@
 openapi: 3.1.0
 info:
-  title: Go System API
-  version: 1.0.0
+  title: Vapor API
+  version: 0.0.1
   description: |
-    RESTful API for Vapor a web console for modern Linux stacks.
+    RESTful API for Vapor, a web console for modern Linux stacks.
     
     ### Key Features
     - System management and monitoring
@@ -2971,7 +2971,7 @@ paths:
       summary: Get DHCP leases for a network
       description: Retrieve active DHCP leases for a virtual network
       tags:
-        - Virtualization Networks
+        - "Virtualization Network"
       security:
         - bearerAuth: []
       parameters:
@@ -2998,7 +2998,7 @@ paths:
       summary: Get network ports
       description: Retrieve list of ports (VM interfaces) attached to a virtual network
       tags:
-        - Virtualization Networks
+        - "Virtualization Network"
       security:
         - bearerAuth: []
       parameters:
