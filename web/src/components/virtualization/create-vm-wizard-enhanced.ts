@@ -7,6 +7,9 @@ import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { StoreController } from '@nanostores/lit';
 
+// Import config for API URL
+import { getApiUrl } from '../../config';
+
 // Import store and types
 import {
   $vmWizardState,
@@ -125,6 +128,8 @@ export class CreateVMWizardEnhanced extends LitElement {
   @state() private validationErrors: Record<string, string> = {};
   @state() private expandedSections: Set<string> = new Set(['basic']);
   @state() private currentStep = 1;
+  @state() private availablePCIDevices: any[] = [];
+  @state() private isLoadingPCIDevices = false;
   @state() private formData: Partial<EnhancedVMCreateRequest> = {
     memory: 2048,
     vcpus: 2,
@@ -170,12 +175,51 @@ export class CreateVMWizardEnhanced extends LitElement {
       display: flex;
       flex-direction: column;
       transform: translateX(100%);
-      transition: transform 0.3s ease;
+      transition: transform 0.3s ease-out;
       border-left: 1px solid var(--vscode-widget-border, #454545);
     }
 
     :host([show]) .drawer {
       transform: translateX(0);
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0.8;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideOut {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(100%);
+        opacity: 0.8;
+      }
+    }
+
+    :host(:not([show])) .drawer {
+      animation: slideOut 0.3s ease-in;
+    }
+
+    @media (max-width: 1200px) {
+      :host {
+        width: 75%;
+      }
+    }
+
+    @media (max-width: 768px) {
+      :host {
+        width: 100%;
+      }
     }
 
     .drawer-header {
@@ -616,9 +660,48 @@ export class CreateVMWizardEnhanced extends LitElement {
         templateStore.fetch(), // Fetch templates from /virtualization/computes/templates
         networkStore.fetch(), // Fetch networks from /virtualization/networks
         initializeNetworkStore(), // Initialize network store to load bridges and interfaces
+        this.loadPCIDevices(), // Load available PCI devices
       ]);
     } catch (error) {
       console.error('Failed to load data for VM wizard:', error);
+    }
+  }
+
+  private async loadPCIDevices() {
+    this.isLoadingPCIDevices = true;
+    try {
+      // Use the getApiUrl from config for consistency with other API calls
+      const token = localStorage.getItem('jwt_token') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+      const response = await fetch(getApiUrl('/virtualization/computes/pci-devices'), {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        // Handle the response structure
+        if (result.status === 'success' && result.data?.devices) {
+          this.availablePCIDevices = result.data.devices;
+        } else if (result.devices) {
+          this.availablePCIDevices = result.devices;
+        } else if (Array.isArray(result)) {
+          this.availablePCIDevices = result;
+        } else {
+          this.availablePCIDevices = [];
+          console.warn('Unexpected PCI devices response format:', result);
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({ message: response.statusText }));
+        console.error('Failed to fetch PCI devices:', errorData.message || response.statusText);
+        this.availablePCIDevices = [];
+      }
+    } catch (error) {
+      console.error('Failed to load PCI devices:', error);
+      this.availablePCIDevices = [];
+    } finally {
+      this.isLoadingPCIDevices = false;
     }
   }
 
@@ -702,11 +785,12 @@ export class CreateVMWizardEnhanced extends LitElement {
     this.isCreating = true;
 
     try {
-      const response = await fetch('/virtualization/computes/create-enhanced', {
+      const token = localStorage.getItem('jwt_token') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+      const response = await fetch(getApiUrl('/virtualization/computes/create-enhanced'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': token ? `Bearer ${token}` : '',
         },
         body: JSON.stringify(this.formData),
       });
@@ -718,10 +802,18 @@ export class CreateVMWizardEnhanced extends LitElement {
         vmActions.fetchAll();
       } else {
         const error = await response.json();
-        this.showNotification(
-          error.message || 'Failed to create virtual machine',
-          'error'
-        );
+        // Handle new error format with status and error fields
+        if (error.status === 'error' && error.error) {
+          this.showNotification(
+            error.error.message || error.error.details || 'Failed to create virtual machine',
+            'error'
+          );
+        } else {
+          this.showNotification(
+            error.message || 'Failed to create virtual machine',
+            'error'
+          );
+        }
       }
     } catch (error) {
       console.error('Failed to create VM:', error);
@@ -815,6 +907,24 @@ export class CreateVMWizardEnhanced extends LitElement {
   private removeGraphics(index: number) {
     if (this.formData.graphics) {
       this.formData.graphics.splice(index, 1);
+      this.requestUpdate();
+    }
+  }
+
+  private addPCIDevice() {
+    if (!this.formData.pci_devices) {
+      this.formData.pci_devices = [];
+    }
+    
+    this.formData.pci_devices.push({
+      host_address: '',
+    });
+    this.requestUpdate();
+  }
+
+  private removePCIDevice(index: number) {
+    if (this.formData.pci_devices) {
+      this.formData.pci_devices.splice(index, 1);
       this.requestUpdate();
     }
   }
@@ -1443,6 +1553,202 @@ export class CreateVMWizardEnhanced extends LitElement {
           </div>
         </div>
         <div class="section-content">
+          <div class="form-group">
+            <label>PCI Device Passthrough</label>
+            <div class="help-text">Configure PCI devices (GPUs, network cards, USB controllers) to pass through to the VM</div>
+            
+            ${this.isLoadingPCIDevices ? html`
+              <div class="list-container">
+                <div class="help-text">Loading available PCI devices...</div>
+              </div>
+            ` : html`
+              <div class="list-container">
+                ${this.formData.pci_devices?.map((device, index) => html`
+                  <div class="list-item">
+                    <div class="list-item-content">
+                      <div class="grid-2">
+                        <div class="form-group">
+                          <label>Host PCI Address <span class="required">*</span></label>
+                          ${this.availablePCIDevices.length > 0 ? html`
+                            <select
+                              .value=${device.host_address || ''}
+                              @change=${(e: Event) => {
+                                const value = (e.target as HTMLSelectElement).value;
+                                device.host_address = value;
+                                
+                                // Auto-populate device info if selected from list
+                                const selectedDevice = this.availablePCIDevices.find(d => d.pci_address === value);
+                                if (selectedDevice) {
+                                  // Show device info
+                                  this.showNotification(
+                                    `Selected: ${selectedDevice.product_name || 'Unknown Device'} (${selectedDevice.vendor_name || 'Unknown Vendor'})`,
+                                    'info'
+                                  );
+                                }
+                                this.requestUpdate();
+                              }}
+                            >
+                              <option value="">Select a PCI device</option>
+                              ${this.availablePCIDevices
+                                .filter(d => d.is_available)
+                                .map(d => html`
+                                  <option value=${d.pci_address} ?disabled=${!d.is_available}>
+                                    ${d.pci_address} - ${d.product_name || 'Unknown'} 
+                                    (${d.vendor_name || 'Unknown'})
+                                    ${d.device_type ? `[${d.device_type.toUpperCase()}]` : ''}
+                                    ${d.assigned_to_vm ? `(Assigned to: ${d.assigned_to_vm})` : ''}
+                                  </option>
+                                `)}
+                              <option value="custom">Enter custom address...</option>
+                            </select>
+                            ${device.host_address === 'custom' ? html`
+                              <input
+                                type="text"
+                                placeholder="0000:01:00.0"
+                                style="margin-top: 8px;"
+                                @input=${(e: InputEvent) => {
+                                  device.host_address = (e.target as HTMLInputElement).value;
+                                  this.requestUpdate();
+                                }}
+                              />
+                            ` : ''}
+                          ` : html`
+                            <input
+                              type="text"
+                              placeholder="0000:01:00.0"
+                              .value=${device.host_address || ''}
+                              @input=${(e: InputEvent) => {
+                                device.host_address = (e.target as HTMLInputElement).value;
+                                this.requestUpdate();
+                              }}
+                            />
+                          `}
+                          <div class="help-text">
+                            PCI address on the host (e.g., 0000:01:00.0)
+                            ${(() => {
+                              const selectedDevice = this.availablePCIDevices.find(d => d.pci_address === device.host_address);
+                              if (selectedDevice) {
+                                return html`<br><strong>IOMMU Group:</strong> ${selectedDevice.iommu_group || 'Unknown'}`;
+                              }
+                              return '';
+                            })()}
+                          </div>
+                        </div>
+
+                        <div class="form-group">
+                          <label>Guest PCI Address (Optional)</label>
+                          <input
+                            type="text"
+                            placeholder="0000:05:00.0 (auto if empty)"
+                            .value=${device.guest_address || ''}
+                            @input=${(e: InputEvent) => {
+                              device.guest_address = (e.target as HTMLInputElement).value;
+                              this.requestUpdate();
+                            }}
+                          />
+                          <div class="help-text">PCI address in the guest VM</div>
+                        </div>
+                      </div>
+
+                      <div class="form-group">
+                        <label>ROM File (Optional)</label>
+                        <input
+                          type="text"
+                          placeholder="/usr/share/vgabios/nvidia.rom"
+                          .value=${device.rom_file || ''}
+                          @input=${(e: InputEvent) => {
+                            device.rom_file = (e.target as HTMLInputElement).value;
+                            this.requestUpdate();
+                          }}
+                        />
+                        <div class="help-text">Path to option ROM file (required for some GPUs to work properly)</div>
+                      </div>
+
+                      <div class="grid-2" style="margin-top: 12px;">
+                        <div class="checkbox-group">
+                          <input
+                            type="checkbox"
+                            id="multifunction-${index}"
+                            ?checked=${device.multifunction}
+                            @change=${(e: Event) => {
+                              device.multifunction = (e.target as HTMLInputElement).checked;
+                              this.requestUpdate();
+                            }}
+                          />
+                          <label for="multifunction-${index}">Multi-function device</label>
+                          <div class="help-text" style="margin-left: 24px;">Enable for devices with multiple functions (e.g., GPU with audio)</div>
+                        </div>
+
+                        <div class="checkbox-group">
+                          <input
+                            type="checkbox"
+                            id="primary-gpu-${index}"
+                            ?checked=${device.primary_gpu}
+                            @change=${(e: Event) => {
+                              device.primary_gpu = (e.target as HTMLInputElement).checked;
+                              // If setting as primary GPU, unset others
+                              if (device.primary_gpu && this.formData.pci_devices) {
+                                this.formData.pci_devices.forEach((d, i) => {
+                                  if (i !== index) d.primary_gpu = false;
+                                });
+                              }
+                              this.requestUpdate();
+                            }}
+                          />
+                          <label for="primary-gpu-${index}">Primary GPU</label>
+                          <div class="help-text" style="margin-left: 24px;">Set as the primary display adapter</div>
+                        </div>
+                      </div>
+
+                      ${(() => {
+                        const selectedDevice = this.availablePCIDevices.find(d => d.pci_address === device.host_address);
+                        if (selectedDevice && selectedDevice.device_type === 'gpu') {
+                          return html`
+                            <div class="help-text" style="margin-top: 12px; padding: 8px; background: var(--vscode-inputValidation-infoBackground); border-radius: 4px;">
+                              <strong>GPU Passthrough Tips:</strong>
+                              <ul style="margin: 4px 0; padding-left: 20px;">
+                                <li>Ensure the GPU is not being used by the host (blacklist driver or use vfio-pci)</li>
+                                <li>Consider passing through the audio device (usually at .1 address) as well</li>
+                                <li>You may need a ROM file for certain NVIDIA GPUs</li>
+                                <li>Enable "Primary GPU" if this will be the main display</li>
+                              </ul>
+                            </div>
+                          `;
+                        }
+                        return '';
+                      })()}
+                    </div>
+                    <div class="list-item-actions">
+                      <button class="btn-remove" @click=${() => this.removePCIDevice(index)}>
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                `) || html`<div class="help-text">No PCI devices configured</div>`}
+                
+                <button class="btn-add" @click=${this.addPCIDevice}>
+                  + Add PCI Device
+                </button>
+                
+                ${this.availablePCIDevices.length > 0 ? html`
+                  <div class="help-text" style="margin-top: 12px;">
+                    <strong>Available Devices:</strong> ${this.availablePCIDevices.filter(d => d.is_available).length} of ${this.availablePCIDevices.length} devices available for passthrough
+                  </div>
+                ` : ''}
+              </div>
+            `}
+            
+            <div class="help-text" style="margin-top: 12px; padding: 12px; background: var(--vscode-inputValidation-warningBackground); border-radius: 4px;">
+              <strong>⚠️ Important:</strong> PCI passthrough requires:
+              <ul style="margin: 4px 0; padding-left: 20px;">
+                <li>IOMMU support enabled in BIOS (Intel VT-d or AMD-Vi)</li>
+                <li>IOMMU enabled in kernel parameters (intel_iommu=on or amd_iommu=on)</li>
+                <li>Devices must be in separate IOMMU groups or ACS override may be needed</li>
+                <li>Host driver must be unbound from the device (use vfio-pci driver)</li>
+              </ul>
+            </div>
+          </div>
+
           <div class="form-group">
             <label>Custom XML (Optional)</label>
             <textarea
