@@ -5,6 +5,8 @@
 
 // Export types
 export * from './types';
+export * from './types/auth';
+export * from './types/ui';
 
 // Export utilities
 export { createStore, type StoreFactoryOptions, type CrudStore } from './utils/factory';
@@ -46,6 +48,12 @@ export * from './shared/metrics';
 
 // Export Terminal store
 export * from './shared/terminal';
+
+// Export Auth store
+export * from './auth';
+
+// Export UI store  
+export * from './ui';
 
 // Re-export nanostores core functions for convenience
 export { atom, computed, map } from 'nanostores';

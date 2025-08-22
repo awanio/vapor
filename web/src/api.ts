@@ -1,4 +1,4 @@
-import { auth } from './auth';
+import { getAuthHeaders, $token, $isAuthenticated } from './stores/auth';
 import { getApiUrl } from './config';
 import type { APIResponse, WSMessage } from './types/api';
 
@@ -48,7 +48,7 @@ export class Api {
 
     // Build headers
     // Don't include auth headers for login endpoint
-    const authHeaders = endpoint === '/auth/login' ? {} : auth.getAuthHeaders();
+    const authHeaders = endpoint === '/auth/login' ? {} : getAuthHeaders();
     const requestHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
       ...authHeaders,
@@ -127,7 +127,7 @@ export class Api {
 
   // Special method for posting Kubernetes resources with custom content type
   static async postResource<T = any>(endpoint: string, content: string, contentType: 'application/json' | 'application/yaml'): Promise<T> {
-    const authHeaders = auth.getAuthHeaders();
+    const authHeaders = getAuthHeaders();
     const url = getApiUrl(endpoint);
     
     try {
@@ -197,7 +197,8 @@ export class WebSocketManager {
       try {
         // Reset intentional disconnect flag when connecting
         this.intentionalDisconnect = false;
-        this.url = auth.getWebSocketUrl(this.path);
+        // WebSocket URL doesn't need auth in query string anymore
+        this.url = `${getApiUrl('').replace(/^http/, 'ws')}${this.path}`;
         this.ws = new WebSocket(this.url);
 
         this.ws.onopen = () => {
@@ -240,7 +241,7 @@ export class WebSocketManager {
   }
 
   private async authenticate(): Promise<void> {
-    const token = auth.getToken();
+    const token = $token.get();
     if (!token) {
       throw new Error('No authentication token available');
     }
@@ -292,7 +293,7 @@ export class WebSocketManager {
       console.log(`Scheduling reconnect attempt ${this.reconnectAttempts}...`);
       
       this.reconnectTimer = window.setTimeout(() => {
-        if (auth.isAuthenticated()) {
+        if ($isAuthenticated.get()) {
           this.connect().catch(console.error);
         }
       }, this.reconnectInterval);

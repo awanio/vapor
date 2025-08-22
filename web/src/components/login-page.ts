@@ -1,6 +1,6 @@
 import { html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import { auth } from '../auth';
+import { login } from '../stores/auth';
 import { I18nLitElement } from '../i18n-mixin';
 
 @customElement('login-page')
@@ -258,10 +258,13 @@ export class LoginPage extends I18nLitElement {
     this.error = '';
 
     try {
-      const success = await auth.login(this.username, this.password);
+      const success = await login({ 
+        username: this.username, 
+        password: this.password 
+      });
       
       if (success) {
-        // The auth manager will dispatch an event and app-root will handle the redirect
+        // The auth store will dispatch an event and app-root will handle the redirect
         this.dispatchEvent(new CustomEvent('login-success', {
           bubbles: true,
           composed: true

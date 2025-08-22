@@ -2,7 +2,7 @@ var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 var _a;
-import { i as i18n, a as auth, g as getWsUrl, b as getApiUrl, t as t$5, c as theme } from "./index-BegGAMHR.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-Bwb7XPAO.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -604,6 +604,627 @@ function n2(t2) {
 function r$1(r2) {
   return n2({ ...r2, state: true, attribute: false });
 }
+let listenerQueue = [];
+let lqIndex = 0;
+const QUEUE_ITEMS_PER_LISTENER = 4;
+let epoch = 0;
+let atom = (initialValue) => {
+  let listeners = [];
+  let $atom = {
+    get() {
+      if (!$atom.lc) {
+        $atom.listen(() => {
+        })();
+      }
+      return $atom.value;
+    },
+    lc: 0,
+    listen(listener) {
+      $atom.lc = listeners.push(listener);
+      return () => {
+        for (let i3 = lqIndex + QUEUE_ITEMS_PER_LISTENER; i3 < listenerQueue.length; ) {
+          if (listenerQueue[i3] === listener) {
+            listenerQueue.splice(i3, QUEUE_ITEMS_PER_LISTENER);
+          } else {
+            i3 += QUEUE_ITEMS_PER_LISTENER;
+          }
+        }
+        let index2 = listeners.indexOf(listener);
+        if (~index2) {
+          listeners.splice(index2, 1);
+          if (!--$atom.lc) $atom.off();
+        }
+      };
+    },
+    notify(oldValue, changedKey) {
+      epoch++;
+      let runListenerQueue = !listenerQueue.length;
+      for (let listener of listeners) {
+        listenerQueue.push(listener, $atom.value, oldValue, changedKey);
+      }
+      if (runListenerQueue) {
+        for (lqIndex = 0; lqIndex < listenerQueue.length; lqIndex += QUEUE_ITEMS_PER_LISTENER) {
+          listenerQueue[lqIndex](
+            listenerQueue[lqIndex + 1],
+            listenerQueue[lqIndex + 2],
+            listenerQueue[lqIndex + 3]
+          );
+        }
+        listenerQueue.length = 0;
+      }
+    },
+    /* It will be called on last listener unsubscribing.
+       We will redefine it in onMount and onStop. */
+    off() {
+    },
+    set(newValue) {
+      let oldValue = $atom.value;
+      if (oldValue !== newValue) {
+        $atom.value = newValue;
+        $atom.notify(oldValue);
+      }
+    },
+    subscribe(listener) {
+      let unbind = $atom.listen(listener);
+      listener($atom.value);
+      return unbind;
+    },
+    value: initialValue
+  };
+  return $atom;
+};
+const MOUNT = 5;
+const UNMOUNT = 6;
+const REVERT_MUTATION = 10;
+let on = (object, listener, eventKey, mutateStore) => {
+  object.events = object.events || {};
+  if (!object.events[eventKey + REVERT_MUTATION]) {
+    object.events[eventKey + REVERT_MUTATION] = mutateStore((eventProps) => {
+      object.events[eventKey].reduceRight((event, l2) => (l2(event), event), {
+        shared: {},
+        ...eventProps
+      });
+    });
+  }
+  object.events[eventKey] = object.events[eventKey] || [];
+  object.events[eventKey].push(listener);
+  return () => {
+    let currentListeners = object.events[eventKey];
+    let index2 = currentListeners.indexOf(listener);
+    currentListeners.splice(index2, 1);
+    if (!currentListeners.length) {
+      delete object.events[eventKey];
+      object.events[eventKey + REVERT_MUTATION]();
+      delete object.events[eventKey + REVERT_MUTATION];
+    }
+  };
+};
+let STORE_UNMOUNT_DELAY = 1e3;
+let onMount = ($store, initialize) => {
+  let listener = (payload) => {
+    let destroy = initialize(payload);
+    if (destroy) $store.events[UNMOUNT].push(destroy);
+  };
+  return on($store, listener, MOUNT, (runListeners) => {
+    let originListen = $store.listen;
+    $store.listen = (...args) => {
+      if (!$store.lc && !$store.active) {
+        $store.active = true;
+        runListeners();
+      }
+      return originListen(...args);
+    };
+    let originOff = $store.off;
+    $store.events[UNMOUNT] = [];
+    $store.off = () => {
+      originOff();
+      setTimeout(() => {
+        if ($store.active && !$store.lc) {
+          $store.active = false;
+          for (let destroy of $store.events[UNMOUNT]) destroy();
+          $store.events[UNMOUNT] = [];
+        }
+      }, STORE_UNMOUNT_DELAY);
+    };
+    return () => {
+      $store.listen = originListen;
+      $store.off = originOff;
+    };
+  });
+};
+let computedStore = (stores, cb, batched) => {
+  if (!Array.isArray(stores)) stores = [stores];
+  let previousArgs;
+  let currentEpoch;
+  let set2 = () => {
+    if (currentEpoch === epoch) return;
+    currentEpoch = epoch;
+    let args = stores.map(($store) => $store.get());
+    if (!previousArgs || args.some((arg, i3) => arg !== previousArgs[i3])) {
+      previousArgs = args;
+      let value = cb(...args);
+      if (value && value.then && value.t) {
+        value.then((asyncValue) => {
+          if (previousArgs === args) {
+            $computed.set(asyncValue);
+          }
+        });
+      } else {
+        $computed.set(value);
+        currentEpoch = epoch;
+      }
+    }
+  };
+  let $computed = atom(void 0);
+  let get = $computed.get;
+  $computed.get = () => {
+    set2();
+    return get();
+  };
+  let run = set2;
+  onMount($computed, () => {
+    let unbinds = stores.map(($store) => $store.listen(run));
+    set2();
+    return () => {
+      for (let unbind of unbinds) unbind();
+    };
+  });
+  return $computed;
+};
+let computed = (stores, fn) => computedStore(stores, fn);
+let map$3 = (initial = {}) => {
+  let $map = atom(initial);
+  $map.setKey = function(key, value) {
+    let oldMap = $map.value;
+    if (typeof value === "undefined" && key in $map.value) {
+      $map.value = { ...$map.value };
+      delete $map.value[key];
+      $map.notify(oldMap, key);
+    } else if ($map.value[key] !== value) {
+      $map.value = {
+        ...$map.value,
+        [key]: value
+      };
+      $map.notify(oldMap, key);
+    }
+  };
+  return $map;
+};
+function decodeJWT(token) {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) {
+      console.error("[Auth] Invalid JWT format");
+      return null;
+    }
+    const payload = parts[1];
+    if (!payload) {
+      console.error("[Auth] Missing JWT payload");
+      return null;
+    }
+    const decoded = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
+    return JSON.parse(decoded);
+  } catch (error) {
+    console.error("[Auth] Failed to decode JWT:", error);
+    return null;
+  }
+}
+function getTimeUntilExpiry(expiresAt) {
+  const expiresAtMs = expiresAt < 1e10 ? expiresAt * 1e3 : expiresAt;
+  return Math.max(0, expiresAtMs - Date.now());
+}
+function extractPermissions(token) {
+  const payload = decodeJWT(token);
+  if (!payload) {
+    return /* @__PURE__ */ new Set();
+  }
+  const permissions = /* @__PURE__ */ new Set();
+  if (payload.permissions) {
+    payload.permissions.forEach((p2) => permissions.add(p2));
+  }
+  if (payload.groups) {
+    payload.groups.forEach((group) => {
+      permissions.add(`group:${group}`);
+      if (group === "sudo" || group === "wheel" || group === "admin") {
+        permissions.add("admin");
+        permissions.add("system:manage");
+      }
+      if (group === "docker") {
+        permissions.add("containers:manage");
+      }
+    });
+  }
+  return permissions;
+}
+const _AuthStorage = class _AuthStorage {
+  /**
+   * Save authentication data
+   */
+  static save(token, refreshToken2, expiresAt, user) {
+    try {
+      const expiresAtMs = expiresAt < 1e10 ? expiresAt * 1e3 : expiresAt;
+      localStorage.setItem(this.TOKEN_KEY, token);
+      localStorage.setItem(this.REFRESH_TOKEN_KEY, refreshToken2);
+      localStorage.setItem(this.EXPIRES_KEY, expiresAtMs.toString());
+      localStorage.setItem(this.USER_KEY, JSON.stringify(user));
+      console.log("[AuthStorage] Saved auth data", {
+        hasToken: !!token,
+        hasRefreshToken: !!refreshToken2,
+        expiresAt: new Date(expiresAtMs).toISOString()
+      });
+    } catch (error) {
+      console.error("[AuthStorage] Failed to save auth data:", error);
+    }
+  }
+  /**
+   * Load authentication data
+   */
+  static load() {
+    try {
+      const token = localStorage.getItem(this.TOKEN_KEY);
+      const refreshToken2 = localStorage.getItem(this.REFRESH_TOKEN_KEY);
+      const expiresStr = localStorage.getItem(this.EXPIRES_KEY);
+      const userStr = localStorage.getItem(this.USER_KEY);
+      return {
+        token,
+        refreshToken: refreshToken2,
+        expiresAt: expiresStr ? parseInt(expiresStr, 10) : null,
+        user: userStr ? JSON.parse(userStr) : null
+      };
+    } catch (error) {
+      console.error("[AuthStorage] Failed to load auth data:", error);
+      return {
+        token: null,
+        refreshToken: null,
+        expiresAt: null,
+        user: null
+      };
+    }
+  }
+  /**
+   * Clear all authentication data
+   */
+  static clear() {
+    try {
+      localStorage.removeItem(this.TOKEN_KEY);
+      localStorage.removeItem(this.REFRESH_TOKEN_KEY);
+      localStorage.removeItem(this.EXPIRES_KEY);
+      localStorage.removeItem(this.USER_KEY);
+      console.log("[AuthStorage] Cleared auth data");
+    } catch (error) {
+      console.error("[AuthStorage] Failed to clear auth data:", error);
+    }
+  }
+  /**
+   * Check if authentication data exists
+   */
+  static exists() {
+    return !!localStorage.getItem(this.TOKEN_KEY);
+  }
+};
+_AuthStorage.TOKEN_KEY = "jwt_token";
+_AuthStorage.REFRESH_TOKEN_KEY = "jwt_refresh_token";
+_AuthStorage.EXPIRES_KEY = "jwt_expires_at";
+_AuthStorage.USER_KEY = "jwt_user";
+let AuthStorage = _AuthStorage;
+const _SessionTracker = class _SessionTracker {
+  /**
+   * Initialize activity tracking
+   */
+  static init() {
+    if (this.initialized) return;
+    const events = ["mousedown", "keydown", "scroll", "touchstart"];
+    const updateActivity = () => {
+      this.lastActivity = Date.now();
+      this.activityListeners.forEach((listener) => listener());
+    };
+    events.forEach((event) => {
+      window.addEventListener(event, updateActivity, { passive: true });
+    });
+    this.initialized = true;
+    console.log("[SessionTracker] Initialized");
+  }
+  /**
+   * Get last activity timestamp
+   */
+  static getLastActivity() {
+    return this.lastActivity;
+  }
+  /**
+   * Check if session is inactive
+   */
+  static isInactive(timeoutMs) {
+    return Date.now() - this.lastActivity > timeoutMs;
+  }
+  /**
+   * Add activity listener
+   */
+  static addListener(listener) {
+    this.activityListeners.add(listener);
+    return () => this.activityListeners.delete(listener);
+  }
+  /**
+   * Reset activity timestamp
+   */
+  static reset() {
+    this.lastActivity = Date.now();
+  }
+};
+_SessionTracker.lastActivity = Date.now();
+_SessionTracker.activityListeners = /* @__PURE__ */ new Set();
+_SessionTracker.initialized = false;
+let SessionTracker = _SessionTracker;
+const DEFAULT_SESSION_CONFIG = {
+  sessionTimeout: 30 * 60 * 1e3,
+  // 30 minutes
+  refreshThreshold: 5 * 60 * 1e3,
+  // 5 minutes before expiry
+  autoRefresh: true,
+  enableSessionTimeout: true
+};
+const $authState = map$3({
+  user: null,
+  token: null,
+  refreshToken: null,
+  expiresAt: null,
+  permissions: /* @__PURE__ */ new Set(),
+  isRefreshing: false,
+  lastActivity: Date.now()
+});
+const $sessionConfig = map$3(DEFAULT_SESSION_CONFIG);
+const $authError = atom(null);
+const $isAuthenticated = computed($authState, (state) => {
+  return !!state.token && !!state.expiresAt && state.expiresAt > Date.now();
+});
+computed($authState, (state) => state.user);
+const $token = computed($authState, (state) => state.token);
+computed($authState, (state) => state.permissions);
+computed($authState, (state) => state.isRefreshing);
+let refreshTimer = null;
+let sessionTimer = null;
+function initAuthStore() {
+  console.log("[AuthStore] Initializing");
+  const stored = AuthStorage.load();
+  if (stored.token && stored.expiresAt && stored.user) {
+    if (stored.expiresAt > Date.now()) {
+      $authState.setKey("token", stored.token);
+      $authState.setKey("refreshToken", stored.refreshToken);
+      $authState.setKey("expiresAt", stored.expiresAt);
+      $authState.setKey("user", stored.user);
+      $authState.setKey("permissions", extractPermissions(stored.token));
+      console.log("[AuthStore] Restored auth from storage");
+      setupTokenRefresh();
+    } else {
+      console.log("[AuthStore] Stored token expired, clearing");
+      AuthStorage.clear();
+    }
+  }
+  SessionTracker.init();
+  setupSessionTimeout();
+  SessionTracker.addListener(() => {
+    $authState.setKey("lastActivity", Date.now());
+  });
+  console.log("[AuthStore] Initialized");
+}
+async function login(credentials) {
+  var _a2;
+  try {
+    console.log("[AuthStore] Attempting login");
+    const response = await fetch(getApiUrl("/auth/login"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        ...credentials,
+        auth_type: credentials.auth_type || "password"
+      })
+    });
+    const data = await response.json();
+    if (response.ok && data.status === "success" && data.data) {
+      const authData = data.data;
+      $authState.set({
+        user: authData.user,
+        token: authData.token,
+        refreshToken: authData.refresh_token,
+        expiresAt: authData.expires_at < 1e10 ? authData.expires_at * 1e3 : authData.expires_at,
+        permissions: extractPermissions(authData.token),
+        isRefreshing: false,
+        lastActivity: Date.now()
+      });
+      AuthStorage.save(
+        authData.token,
+        authData.refresh_token,
+        authData.expires_at,
+        authData.user
+      );
+      setupTokenRefresh();
+      SessionTracker.reset();
+      setupSessionTimeout();
+      window.dispatchEvent(new CustomEvent("auth:login", {
+        detail: { user: authData.user }
+      }));
+      console.log("[AuthStore] Login successful");
+      return true;
+    } else {
+      const error = {
+        type: "INVALID_CREDENTIALS",
+        message: ((_a2 = data.error) == null ? void 0 : _a2.message) || "Invalid credentials",
+        timestamp: Date.now(),
+        details: data.error
+      };
+      $authError.set(error);
+      console.error("[AuthStore] Login failed:", error);
+      return false;
+    }
+  } catch (error) {
+    const authError = {
+      type: "NETWORK_ERROR",
+      message: error instanceof Error ? error.message : "Network error",
+      timestamp: Date.now(),
+      details: error
+    };
+    $authError.set(authError);
+    console.error("[AuthStore] Login error:", error);
+    return false;
+  }
+}
+async function refreshToken() {
+  var _a2;
+  const state = $authState.get();
+  if (!state.refreshToken || state.isRefreshing) {
+    console.log("[AuthStore] Cannot refresh token", {
+      hasRefreshToken: !!state.refreshToken,
+      isRefreshing: state.isRefreshing
+    });
+    return false;
+  }
+  console.log("[AuthStore] Refreshing token");
+  $authState.setKey("isRefreshing", true);
+  try {
+    const response = await fetch(getApiUrl("/auth/refresh"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${state.token}`
+      },
+      body: JSON.stringify({
+        refresh_token: state.refreshToken
+      })
+    });
+    const data = await response.json();
+    if (response.ok && data.status === "success" && data.data) {
+      const authData = data.data;
+      $authState.set({
+        user: authData.user,
+        token: authData.token,
+        refreshToken: authData.refresh_token,
+        expiresAt: authData.expires_at < 1e10 ? authData.expires_at * 1e3 : authData.expires_at,
+        permissions: extractPermissions(authData.token),
+        isRefreshing: false,
+        lastActivity: Date.now()
+      });
+      AuthStorage.save(
+        authData.token,
+        authData.refresh_token,
+        authData.expires_at,
+        authData.user
+      );
+      setupTokenRefresh();
+      console.log("[AuthStore] Token refreshed successfully");
+      return true;
+    } else {
+      const error = {
+        type: "REFRESH_FAILED",
+        message: ((_a2 = data.error) == null ? void 0 : _a2.message) || "Failed to refresh token",
+        timestamp: Date.now(),
+        details: data.error
+      };
+      $authError.set(error);
+      console.error("[AuthStore] Token refresh failed:", error);
+      logout();
+      return false;
+    }
+  } catch (error) {
+    const authError = {
+      type: "NETWORK_ERROR",
+      message: error instanceof Error ? error.message : "Network error",
+      timestamp: Date.now(),
+      details: error
+    };
+    $authError.set(authError);
+    console.error("[AuthStore] Token refresh error:", error);
+    return false;
+  } finally {
+    $authState.setKey("isRefreshing", false);
+  }
+}
+function setupTokenRefresh() {
+  if (refreshTimer) {
+    clearTimeout(refreshTimer);
+    refreshTimer = null;
+  }
+  const config = $sessionConfig.get();
+  if (!config.autoRefresh) {
+    console.log("[AuthStore] Auto-refresh disabled");
+    return;
+  }
+  const state = $authState.get();
+  if (!state.expiresAt) {
+    console.log("[AuthStore] No expiry time, skipping refresh setup");
+    return;
+  }
+  const timeUntilExpiry = getTimeUntilExpiry(state.expiresAt);
+  const refreshIn = Math.max(0, timeUntilExpiry - config.refreshThreshold);
+  console.log("[AuthStore] Setting up token refresh", {
+    expiresAt: new Date(state.expiresAt).toISOString(),
+    refreshIn: `${Math.floor(refreshIn / 1e3)}s`,
+    refreshAt: new Date(Date.now() + refreshIn).toISOString()
+  });
+  refreshTimer = setTimeout(async () => {
+    console.log("[AuthStore] Auto-refresh triggered");
+    const success = await refreshToken();
+    if (!success) {
+      console.error("[AuthStore] Auto-refresh failed");
+    }
+  }, refreshIn);
+}
+function setupSessionTimeout() {
+  if (sessionTimer) {
+    clearInterval(sessionTimer);
+    sessionTimer = null;
+  }
+  const config = $sessionConfig.get();
+  if (!config.enableSessionTimeout) {
+    console.log("[AuthStore] Session timeout disabled");
+    return;
+  }
+  sessionTimer = setInterval(() => {
+    if (SessionTracker.isInactive(config.sessionTimeout)) {
+      console.log("[AuthStore] Session timeout detected");
+      const error = {
+        type: "SESSION_TIMEOUT",
+        message: "Your session has expired due to inactivity",
+        timestamp: Date.now()
+      };
+      $authError.set(error);
+      logout();
+    }
+  }, 60 * 1e3);
+}
+function logout() {
+  console.log("[AuthStore] Logging out");
+  if (refreshTimer) {
+    clearTimeout(refreshTimer);
+    refreshTimer = null;
+  }
+  if (sessionTimer) {
+    clearInterval(sessionTimer);
+    sessionTimer = null;
+  }
+  $authState.set({
+    user: null,
+    token: null,
+    refreshToken: null,
+    expiresAt: null,
+    permissions: /* @__PURE__ */ new Set(),
+    isRefreshing: false,
+    lastActivity: Date.now()
+  });
+  AuthStorage.clear();
+  window.dispatchEvent(new CustomEvent("auth:logout"));
+  window.location.href = "/";
+}
+function getAuthHeaders() {
+  const token = $token.get();
+  if (token) {
+    return {
+      "Authorization": `Bearer ${token}`
+    };
+  }
+  return {};
+}
+initAuthStore();
 class I18nLitElement extends i$1 {
   connectedCallback() {
     super.connectedCallback();
@@ -731,7 +1352,10 @@ let LoginPage = class extends I18nLitElement {
     this.loading = true;
     this.error = "";
     try {
-      const success = await auth.login(this.username, this.password);
+      const success = await login({
+        username: this.username,
+        password: this.password
+      });
       if (success) {
         this.dispatchEvent(new CustomEvent("login-success", {
           bubbles: true,
@@ -1068,7 +1692,7 @@ function hslString(v2) {
   const l2 = n2p(a2[2]);
   return v2.a < 255 ? `hsla(${h3}, ${s2}%, ${l2}%, ${b2n(v2.a)})` : `hsl(${h3}, ${s2}%, ${l2}%)`;
 }
-const map$3 = {
+const map$2 = {
   x: "dark",
   Z: "light",
   Y: "re",
@@ -1250,13 +1874,13 @@ const names$1 = {
 function unpack() {
   const unpacked = {};
   const keys = Object.keys(names$1);
-  const tkeys = Object.keys(map$3);
+  const tkeys = Object.keys(map$2);
   let i3, j2, k2, ok, nk;
   for (i3 = 0; i3 < keys.length; i3++) {
     ok = nk = keys[i3];
     for (j2 = 0; j2 < tkeys.length; j2++) {
       k2 = tkeys[j2];
-      nk = nk.replace(k2, map$3[k2]);
+      nk = nk.replace(k2, map$2[k2]);
     }
     k2 = parseInt(names$1[ok], 16);
     unpacked[nk] = [k2 >> 16 & 255, k2 >> 8 & 255, k2 & 255];
@@ -12747,7 +13371,7 @@ var plugin_title = {
     _indexable: false
   }
 };
-const map$2 = /* @__PURE__ */ new WeakMap();
+const map$1 = /* @__PURE__ */ new WeakMap();
 var plugin_subtitle = {
   id: "subtitle",
   start(chart, _args, options) {
@@ -12758,14 +13382,14 @@ var plugin_subtitle = {
     });
     layouts.configure(chart, title, options);
     layouts.addBox(chart, title);
-    map$2.set(chart, title);
+    map$1.set(chart, title);
   },
   stop(chart) {
-    layouts.removeBox(chart, map$2.get(chart));
-    map$2.delete(chart);
+    layouts.removeBox(chart, map$1.get(chart));
+    map$1.delete(chart);
   },
   beforeUpdate(chart, _args, options) {
-    const title = map$2.get(chart);
+    const title = map$1.get(chart);
     layouts.configure(chart, title, options);
     title.options = options;
   },
@@ -15597,192 +16221,6 @@ function StoreMixin(Base, config) {
   }
   return StoreConnectedElement;
 }
-let listenerQueue = [];
-let lqIndex = 0;
-const QUEUE_ITEMS_PER_LISTENER = 4;
-let epoch = 0;
-let atom = (initialValue) => {
-  let listeners = [];
-  let $atom = {
-    get() {
-      if (!$atom.lc) {
-        $atom.listen(() => {
-        })();
-      }
-      return $atom.value;
-    },
-    lc: 0,
-    listen(listener) {
-      $atom.lc = listeners.push(listener);
-      return () => {
-        for (let i3 = lqIndex + QUEUE_ITEMS_PER_LISTENER; i3 < listenerQueue.length; ) {
-          if (listenerQueue[i3] === listener) {
-            listenerQueue.splice(i3, QUEUE_ITEMS_PER_LISTENER);
-          } else {
-            i3 += QUEUE_ITEMS_PER_LISTENER;
-          }
-        }
-        let index2 = listeners.indexOf(listener);
-        if (~index2) {
-          listeners.splice(index2, 1);
-          if (!--$atom.lc) $atom.off();
-        }
-      };
-    },
-    notify(oldValue, changedKey) {
-      epoch++;
-      let runListenerQueue = !listenerQueue.length;
-      for (let listener of listeners) {
-        listenerQueue.push(listener, $atom.value, oldValue, changedKey);
-      }
-      if (runListenerQueue) {
-        for (lqIndex = 0; lqIndex < listenerQueue.length; lqIndex += QUEUE_ITEMS_PER_LISTENER) {
-          listenerQueue[lqIndex](
-            listenerQueue[lqIndex + 1],
-            listenerQueue[lqIndex + 2],
-            listenerQueue[lqIndex + 3]
-          );
-        }
-        listenerQueue.length = 0;
-      }
-    },
-    /* It will be called on last listener unsubscribing.
-       We will redefine it in onMount and onStop. */
-    off() {
-    },
-    set(newValue) {
-      let oldValue = $atom.value;
-      if (oldValue !== newValue) {
-        $atom.value = newValue;
-        $atom.notify(oldValue);
-      }
-    },
-    subscribe(listener) {
-      let unbind = $atom.listen(listener);
-      listener($atom.value);
-      return unbind;
-    },
-    value: initialValue
-  };
-  return $atom;
-};
-const MOUNT = 5;
-const UNMOUNT = 6;
-const REVERT_MUTATION = 10;
-let on = (object, listener, eventKey, mutateStore) => {
-  object.events = object.events || {};
-  if (!object.events[eventKey + REVERT_MUTATION]) {
-    object.events[eventKey + REVERT_MUTATION] = mutateStore((eventProps) => {
-      object.events[eventKey].reduceRight((event, l2) => (l2(event), event), {
-        shared: {},
-        ...eventProps
-      });
-    });
-  }
-  object.events[eventKey] = object.events[eventKey] || [];
-  object.events[eventKey].push(listener);
-  return () => {
-    let currentListeners = object.events[eventKey];
-    let index2 = currentListeners.indexOf(listener);
-    currentListeners.splice(index2, 1);
-    if (!currentListeners.length) {
-      delete object.events[eventKey];
-      object.events[eventKey + REVERT_MUTATION]();
-      delete object.events[eventKey + REVERT_MUTATION];
-    }
-  };
-};
-let STORE_UNMOUNT_DELAY = 1e3;
-let onMount = ($store, initialize) => {
-  let listener = (payload) => {
-    let destroy = initialize(payload);
-    if (destroy) $store.events[UNMOUNT].push(destroy);
-  };
-  return on($store, listener, MOUNT, (runListeners) => {
-    let originListen = $store.listen;
-    $store.listen = (...args) => {
-      if (!$store.lc && !$store.active) {
-        $store.active = true;
-        runListeners();
-      }
-      return originListen(...args);
-    };
-    let originOff = $store.off;
-    $store.events[UNMOUNT] = [];
-    $store.off = () => {
-      originOff();
-      setTimeout(() => {
-        if ($store.active && !$store.lc) {
-          $store.active = false;
-          for (let destroy of $store.events[UNMOUNT]) destroy();
-          $store.events[UNMOUNT] = [];
-        }
-      }, STORE_UNMOUNT_DELAY);
-    };
-    return () => {
-      $store.listen = originListen;
-      $store.off = originOff;
-    };
-  });
-};
-let computedStore = (stores, cb, batched) => {
-  if (!Array.isArray(stores)) stores = [stores];
-  let previousArgs;
-  let currentEpoch;
-  let set2 = () => {
-    if (currentEpoch === epoch) return;
-    currentEpoch = epoch;
-    let args = stores.map(($store) => $store.get());
-    if (!previousArgs || args.some((arg, i3) => arg !== previousArgs[i3])) {
-      previousArgs = args;
-      let value = cb(...args);
-      if (value && value.then && value.t) {
-        value.then((asyncValue) => {
-          if (previousArgs === args) {
-            $computed.set(asyncValue);
-          }
-        });
-      } else {
-        $computed.set(value);
-        currentEpoch = epoch;
-      }
-    }
-  };
-  let $computed = atom(void 0);
-  let get = $computed.get;
-  $computed.get = () => {
-    set2();
-    return get();
-  };
-  let run = set2;
-  onMount($computed, () => {
-    let unbinds = stores.map(($store) => $store.listen(run));
-    set2();
-    return () => {
-      for (let unbind of unbinds) unbind();
-    };
-  });
-  return $computed;
-};
-let computed = (stores, fn) => computedStore(stores, fn);
-let map$1 = (initial = {}) => {
-  let $map = atom(initial);
-  $map.setKey = function(key, value) {
-    let oldMap = $map.value;
-    if (typeof value === "undefined" && key in $map.value) {
-      $map.value = { ...$map.value };
-      delete $map.value[key];
-      $map.notify(oldMap, key);
-    } else if ($map.value[key] !== value) {
-      $map.value = {
-        ...$map.value,
-        [key]: value
-      };
-      $map.notify(oldMap, key);
-    }
-  };
-  return $map;
-};
 let identity = (a2) => a2;
 let storageEngine = {};
 let eventsEngine = { addEventListener() {
@@ -15853,7 +16291,7 @@ function persistentAtom(name, initial = void 0, opts = {}) {
 function persistentMap(prefix, initial = {}, opts = {}) {
   let encode2 = opts.encode || identity;
   let decode2 = opts.decode || identity;
-  let store = map$1();
+  let store = map$3();
   let setKey = store.setKey;
   let storeKey = (key, newValue) => {
     if (typeof newValue === "undefined") {
@@ -16510,7 +16948,7 @@ class Api {
         url += `?${queryString}`;
       }
     }
-    const authHeaders = endpoint === "/auth/login" ? {} : auth.getAuthHeaders();
+    const authHeaders = endpoint === "/auth/login" ? {} : getAuthHeaders();
     const requestHeaders = {
       "Content-Type": "application/json",
       ...authHeaders,
@@ -16572,7 +17010,7 @@ class Api {
   // Special method for posting Kubernetes resources with custom content type
   static async postResource(endpoint, content, contentType) {
     var _a2, _b, _c;
-    const authHeaders = auth.getAuthHeaders();
+    const authHeaders = getAuthHeaders();
     const url = getApiUrl(endpoint);
     try {
       const response = await fetch(url, {
@@ -16628,7 +17066,7 @@ class WebSocketManager2 {
     return new Promise((resolve2, reject) => {
       try {
         this.intentionalDisconnect = false;
-        this.url = auth.getWebSocketUrl(this.path);
+        this.url = `${getApiUrl("").replace(/^http/, "ws")}${this.path}`;
         this.ws = new WebSocket(this.url);
         this.ws.onopen = () => {
           console.log(`WebSocket connected to ${this.path}`);
@@ -16664,7 +17102,7 @@ class WebSocketManager2 {
     });
   }
   async authenticate() {
-    const token = auth.getToken();
+    const token = $token.get();
     if (!token) {
       throw new Error("No authentication token available");
     }
@@ -16709,7 +17147,7 @@ class WebSocketManager2 {
       this.reconnectAttempts++;
       console.log(`Scheduling reconnect attempt ${this.reconnectAttempts}...`);
       this.reconnectTimer = window.setTimeout(() => {
-        if (auth.isAuthenticated()) {
+        if ($isAuthenticated.get()) {
           this.connect().catch(console.error);
         }
       }, this.reconnectInterval);
@@ -16927,7 +17365,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-BegGAMHR.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-Bwb7XPAO.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -16972,7 +17410,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-BegGAMHR.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-Bwb7XPAO.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping WebSocket connection");
     return;
@@ -17040,7 +17478,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-BegGAMHR.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-Bwb7XPAO.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -50176,7 +50614,7 @@ const $isoUploadState = atom({
   uploadId: null,
   error: null
 });
-map$1({});
+map$3({});
 const $activeVMTab = atom("all");
 const $vmSearchQuery = atom("");
 const $vmFilterState = atom({});
