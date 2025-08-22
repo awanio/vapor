@@ -15,7 +15,7 @@ import '../../components/ui/status-badge.js';
 import '../../components/ui/filter-dropdown.js';
 import '../../components/tabs/tab-group.js';
 import '../../components/tables/resource-table.js';
-import '../../components/drawers/detail-drawer.js';
+import '../../components/virtualization/vm-detail-drawer.js';
 import '../../components/modals/delete-modal.js';
 import '../../components/ui/notification-container.js';
 import '../../components/virtualization/create-vm-wizard.js';
@@ -65,6 +65,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
   @state() private activeMainTab: 'vms' | 'templates' = 'vms';
   @state() private stateFilter: 'all' | VMState = 'all';
   @state() private templates: VMTemplate[] = [];
+  @state() private selectedVMForDetails: VirtualMachine | null = null;
 
   static override styles = css`
     :host {
@@ -392,8 +393,11 @@ export class VirtualizationVMsEnhanced extends LitElement {
   }
 
   private handleCellClick(event: CustomEvent) {
-    const vm = event.detail.item as VirtualMachine;
-    this.viewVMDetails(vm);
+    const { column, item } = event.detail;
+    // Check if clicking on the name column for VMs (not templates)
+    if (column.key === 'name' && this.activeMainTab === 'vms') {
+      this.showVMDetails(item as VirtualMachine);
+    }
   }
 
   private async handleAction(event: CustomEvent) {
@@ -403,7 +407,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
     try {
       switch (action) {
         case 'view':
-          this.viewVMDetails(vm);
+          this.showVMDetails(vm);
           break;
         case 'console':
           await this.openConsole(vm);
@@ -447,8 +451,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
     }
   }
 
-  private viewVMDetails(vm: VirtualMachine) {
-    vmActions.selectVM(vm.id);
+  private showVMDetails(vm: VirtualMachine) {
+    this.selectedVMForDetails = vm;
     this.showDetailsDrawer = true;
   }
 
@@ -526,6 +530,60 @@ export class VirtualizationVMsEnhanced extends LitElement {
       bubbles: true,
       composed: true
     }));
+  }
+
+  private async handleVMPowerAction(event: CustomEvent) {
+    const { action, vm } = event.detail;
+    
+    try {
+      switch (action) {
+        case 'start':
+          await vmActions.start(vm.id);
+          this.showNotification(`Starting VM: ${vm.name}`, 'success');
+          break;
+        case 'stop':
+          await vmActions.stop(vm.id);
+          this.showNotification(`Stopping VM: ${vm.name}`, 'success');
+          break;
+        case 'restart':
+          await vmActions.restart(vm.id);
+          this.showNotification(`Restarting VM: ${vm.name}`, 'success');
+          break;
+        case 'pause':
+          await vmActions.pause(vm.id);
+          this.showNotification(`Pausing VM: ${vm.name}`, 'success');
+          break;
+        case 'resume':
+          await vmActions.resume(vm.id);
+          this.showNotification(`Resuming VM: ${vm.name}`, 'success');
+          break;
+        case 'clone':
+          await this.cloneVM(vm);
+          break;
+        case 'snapshot':
+          await this.createSnapshot(vm);
+          break;
+        case 'delete':
+          this.confirmDeleteVM(vm);
+          break;
+        default:
+          console.warn(`Unknown VM action: ${action}`);
+      }
+      
+      // Refresh the VM data to show updated state
+      await vmActions.fetchAll();
+    } catch (error) {
+      console.error(`Failed to execute VM action ${action}:`, error);
+      this.showNotification(
+        `Failed to ${action} VM: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'error'
+      );
+    }
+  }
+
+  private async handleVMConsoleConnect(event: CustomEvent) {
+    const { vm } = event.detail;
+    await this.openConsole(vm);
   }
 
   override render() {
@@ -690,55 +748,16 @@ export class VirtualizationVMsEnhanced extends LitElement {
         </div>
 
         <!-- VM Details Drawer -->
-        ${this.showDetailsDrawer && selectedVM ? html`
-          <detail-drawer
-            .title=${selectedVM.name}
-            .open=${this.showDetailsDrawer}
-            @close=${() => { 
-              this.showDetailsDrawer = false;
-              vmActions.selectVM(null);
-            }}
-          >
-            <div style="padding: 20px;">
-              <h3>Virtual Machine Details</h3>
-              <div style="display: grid; gap: 12px; margin-top: 16px;">
-                <div><strong>ID:</strong> ${selectedVM.id}</div>
-                <div><strong>Name:</strong> ${selectedVM.name}</div>
-                <div><strong>State:</strong> ${this.renderStateCell(selectedVM.state)}</div>
-                <div><strong>OS Type:</strong> ${selectedVM.os_type}</div>
-                <div><strong>Memory:</strong> ${this.formatMemory(selectedVM.memory)}</div>
-                <div><strong>vCPUs:</strong> ${selectedVM.vcpus}</div>
-                <div><strong>Disk Size:</strong> ${this.formatDiskSize(selectedVM.disk_size)}</div>
-                <div><strong>Created:</strong> ${new Date(selectedVM.created_at).toLocaleString()}</div>
-                ${selectedVM.updated_at ? html`
-                  <div><strong>Updated:</strong> ${new Date(selectedVM.updated_at).toLocaleString()}</div>
-                ` : ''}
-              </div>
-              
-              ${selectedVM.graphics ? html`
-                <h4 style="margin-top: 24px;">Graphics</h4>
-                <div style="display: grid; gap: 8px;">
-                  <div><strong>Type:</strong> ${selectedVM.graphics.type}</div>
-                  ${selectedVM.graphics.port ? html`
-                    <div><strong>Port:</strong> ${selectedVM.graphics.port}</div>
-                  ` : ''}
-                </div>
-              ` : ''}
-              
-              ${selectedVM.network_interfaces?.length ? html`
-                <h4 style="margin-top: 24px;">Network Interfaces</h4>
-                ${selectedVM.network_interfaces.map(nic => html`
-                  <div style="margin-top: 12px; padding: 8px; background: var(--vscode-editor-background); border-radius: 4px;">
-                    <div><strong>Name:</strong> ${nic.name}</div>
-                    <div><strong>Type:</strong> ${nic.type}</div>
-                    ${nic.mac ? html`<div><strong>MAC:</strong> ${nic.mac}</div>` : ''}
-                    ${nic.ip ? html`<div><strong>IP:</strong> ${nic.ip}</div>` : ''}
-                  </div>
-                `)}
-              ` : ''}
-            </div>
-          </detail-drawer>
-        ` : ''}
+        <vm-detail-drawer
+          ?show=${this.showDetailsDrawer}
+          .vm=${this.selectedVMForDetails}
+          @close=${() => { 
+            this.showDetailsDrawer = false;
+            this.selectedVMForDetails = null;
+          }}
+          @power-action=${this.handleVMPowerAction}
+          @console-connect=${this.handleVMConsoleConnect}
+        ></vm-detail-drawer>
 
         <!-- Delete Confirmation Modal -->
         ${this.showDeleteModal && this.vmToDelete ? html`
