@@ -671,11 +671,33 @@ func getVMMetrics(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
 		metrics, err := service.GetVMMetrics(c.Request.Context(), id)
+
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			if strings.Contains(err.Error(), "not found") {
+				c.JSON(http.StatusNotFound, gin.H{
+					"status": "error",
+					"error": gin.H{
+						"code":    "VM_NOT_FOUND",
+						"message": "Virtual machine not found",
+						"details": err.Error(),
+					},
+				})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "GET_VM_METRICS_FAILED",
+					"message": "Failed to get virtual machine metrics",
+					"details": err.Error(),
+				},
+			})
 			return
 		}
-		c.JSON(http.StatusOK, metrics)
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data":   metrics,
+		})
 	}
 }
 
