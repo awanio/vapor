@@ -7,7 +7,6 @@ export class AuthManager {
   private expiresAt: number | null = null;
 
   private constructor() {
-    console.log('[AuthManager] Constructor called');
     this.loadToken();
   }
 
@@ -18,40 +17,20 @@ export class AuthManager {
     return AuthManager.instance;
   }
 
-  private loadToken(): void {
-    console.log('[AuthManager] loadToken called');
+  public loadToken(): void {
     const storedToken = localStorage.getItem('jwt_token');
     const storedExpiry = localStorage.getItem('jwt_expires_at');
     
-    console.log('[AuthManager] localStorage values:', {
-      storedToken: storedToken ? `${storedToken.substring(0, 20)}...` : 'null',
-      storedExpiry,
-      currentTime: Date.now(),
-      localStorage: {
-        jwt_token: localStorage.getItem('jwt_token') ? 'exists' : 'null',
-        jwt_expires_at: localStorage.getItem('jwt_expires_at')
-      }
-    });
-    
     if (storedToken && storedExpiry) {
       const expiry = parseInt(storedExpiry, 10);
-      console.log('[AuthManager] Token found, checking expiry:', {
-        expiry,
-        currentTime: Date.now(),
-        isExpired: expiry <= Date.now(),
-        timeUntilExpiry: expiry - Date.now()
-      });
       
       if (expiry > Date.now()) {
         this.token = storedToken;
         this.expiresAt = expiry;
-        console.log('[AuthManager] Token loaded successfully');
       } else {
         console.log('[AuthManager] Token expired, clearing');
         this.clearToken();
       }
-    } else {
-      console.log('[AuthManager] No valid token in localStorage');
     }
   }
 
@@ -60,26 +39,10 @@ export class AuthManager {
     // Unix timestamps in seconds are typically 10 digits, in milliseconds 13 digits
     const expiresAtMs = expiresAt < 10000000000 ? expiresAt * 1000 : expiresAt;
     
-    console.log('[AuthManager] saveToken called:', {
-      token: token ? `${token.substring(0, 20)}...` : 'null',
-      expiresAtOriginal: expiresAt,
-      expiresAtMs,
-      expiresAtDate: new Date(expiresAtMs).toISOString()
-    });
-    
     this.token = token;
     this.expiresAt = expiresAtMs;
     localStorage.setItem('jwt_token', token);
     localStorage.setItem('jwt_expires_at', expiresAtMs.toString());
-    
-    // Verify save
-    const savedToken = localStorage.getItem('jwt_token');
-    const savedExpiry = localStorage.getItem('jwt_expires_at');
-    console.log('[AuthManager] Token saved to localStorage:', {
-      savedSuccessfully: savedToken === token && savedExpiry === expiresAtMs.toString(),
-      savedToken: savedToken ? 'exists' : 'null',
-      savedExpiry
-    });
   }
 
   private clearToken(): void {
@@ -103,21 +66,9 @@ export class AuthManager {
       const data: APIResponse<LoginResponse> = await response.json();
 
       if (response.ok && data.status === 'success' && data.data) {
-        console.log('[AuthManager] Login successful, response data:', {
-          hasToken: !!data.data.token,
-          expiresAt: data.data.expires_at,
-          expiresAtDate: new Date(data.data.expires_at).toISOString()
-        });
         this.saveToken(data.data.token, data.data.expires_at);
         window.dispatchEvent(new CustomEvent('auth:login'));
         return true;
-      } else {
-        console.log('[AuthManager] Login failed:', {
-          responseOk: response.ok,
-          status: data.status,
-          hasData: !!data.data,
-          error: data.error
-        });
       }
 
       return false;
@@ -134,10 +85,18 @@ export class AuthManager {
   }
 
   isAuthenticated(): boolean {
+    // Always check localStorage to ensure we have the latest state
+    if (!this.token || !this.expiresAt) {
+      this.loadToken();
+    }
     return !!this.token && !!this.expiresAt && this.expiresAt > Date.now();
   }
 
   getToken(): string | null {
+    // Always check localStorage to ensure we have the latest state
+    if (!this.token || !this.expiresAt) {
+      this.loadToken();
+    }
     if (this.isAuthenticated()) {
       return this.token;
     }
@@ -146,15 +105,11 @@ export class AuthManager {
 
   getAuthHeaders(): Record<string, string> {
     const token = this.getToken();
-    console.log('[AuthManager] getAuthHeaders called, token:', token ? 'present' : 'null');
     if (token) {
-      const headers = {
+      return {
         'Authorization': `Bearer ${token}`,
       };
-      console.log('[AuthManager] Returning auth headers:', headers);
-      return headers;
     }
-    console.log('[AuthManager] No token, returning empty headers');
     return {};
   }
 

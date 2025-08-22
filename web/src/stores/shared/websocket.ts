@@ -61,7 +61,7 @@ class WebSocketManager implements IWebSocketManager {
   // Connection health monitoring
   private healthCheckIntervals = new Map<string, NodeJS.Timeout>();
   
-  // Debug mode
+  // Debug mode - enable for troubleshooting
   private debug = false;
   
   private constructor() {
@@ -159,6 +159,33 @@ class WebSocketManager implements IWebSocketManager {
     
     // Start health monitoring
     this.startHealthMonitoring(connectionId);
+  }
+  
+  /**
+   * Force reconnect a shared connection (useful after auth changes)
+   */
+  forceReconnectShared(type: keyof typeof this.sharedConnections): void {
+    const connectionId = `shared:${type}`;
+    const ws = this.sharedConnections[type];
+    
+    if (ws) {
+      if (this.debug) {
+        console.log(`[WebSocketManager] Force reconnecting shared connection: ${connectionId}`);
+      }
+      
+      // Close existing connection without clearing subscribers
+      ws.close(1000, 'Force reconnect');
+      this.sharedConnections[type] = null;
+      
+      // Immediately create new connection if there are subscribers
+      const routers = this.messageRouters.get(connectionId);
+      if (routers && routers.size > 0) {
+        // Small delay to ensure clean reconnection
+        setTimeout(() => {
+          this.createSharedConnection(type);
+        }, 100);
+      }
+    }
   }
   
   /**

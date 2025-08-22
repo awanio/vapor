@@ -473,16 +473,14 @@ export async function connectMetrics(): Promise<void> {
   
   // Check if user is authenticated before connecting
   if (!auth.isAuthenticated()) {
-    console.log('[MetricsStore] User not authenticated, skipping WebSocket connection');
     return;
   }
   
   if (unsubscribeMetrics) {
-    console.log('[MetricsStore] Already connected to metrics WebSocket');
+    // Force reconnect to ensure fresh auth token
+    wsManager.forceReconnectShared('metrics');
     return;
   }
-  
-  console.log('[MetricsStore] Connecting to metrics WebSocket');
   
   // Subscribe to metrics WebSocket
   unsubscribeMetrics = wsManager.subscribeToShared('metrics', {
@@ -490,7 +488,6 @@ export async function connectMetrics(): Promise<void> {
     handler: (message) => {
       // Handle authentication
       if (message.type === 'auth' && message.payload?.authenticated) {
-        console.log('[MetricsStore] Authenticated, subscribing to metrics');
         $metricsConnected.set(true);
         $metricsError.set(null);
         
@@ -591,11 +588,21 @@ export async function initializeMetrics(): Promise<void> {
 export async function reinitializeMetricsAfterLogin(): Promise<void> {
   console.log('[MetricsStore] Re-initializing after login');
   
+  // Clear any existing error state
+  $metricsError.set(null);
+  $metricsConnected.set(false);
+  
   // Disconnect any existing connection
   disconnectMetrics();
   
+  // Clear existing metrics data to ensure fresh state
+  $currentCpu.set(null);
+  $currentMemory.set(null);
+  $currentDisk.set(null);
+  $currentNetwork.set(null);
+  
   // Wait a moment for auth to stabilize
-  await new Promise(resolve => setTimeout(resolve, 100));
+  await new Promise(resolve => setTimeout(resolve, 200));
   
   // Initialize with fresh auth
   await initializeMetrics();
@@ -647,15 +654,7 @@ export function exportMetrics(): MetricsState {
   return $metricsState.get();
 }
 
-// Auto-initialize if in browser environment
+// Cleanup on page unload
 if (typeof window !== 'undefined') {
-  // Initialize on page load
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeMetrics);
-  } else {
-    initializeMetrics();
-  }
-  
-  // Cleanup on page unload
   window.addEventListener('beforeunload', cleanupMetrics);
 }

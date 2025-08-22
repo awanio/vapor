@@ -2,7 +2,7 @@ var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 var _a;
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-OBduVWGS.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-DSi9EwTE.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -16479,6 +16479,26 @@ let WebSocketManager$1 = class WebSocketManager {
     this.startHealthMonitoring(connectionId);
   }
   /**
+   * Force reconnect a shared connection (useful after auth changes)
+   */
+  forceReconnectShared(type) {
+    const connectionId = `shared:${type}`;
+    const ws = this.sharedConnections[type];
+    if (ws) {
+      if (this.debug) {
+        console.log(`[WebSocketManager] Force reconnecting shared connection: ${connectionId}`);
+      }
+      ws.close(1e3, "Force reconnect");
+      this.sharedConnections[type] = null;
+      const routers = this.messageRouters.get(connectionId);
+      if (routers && routers.size > 0) {
+        setTimeout(() => {
+          this.createSharedConnection(type);
+        }, 100);
+      }
+    }
+  }
+  /**
    * Close a shared connection
    */
   closeSharedConnection(type) {
@@ -17365,7 +17385,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-OBduVWGS.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-DSi9EwTE.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17410,22 +17430,19 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-OBduVWGS.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-DSi9EwTE.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
-    console.log("[MetricsStore] User not authenticated, skipping WebSocket connection");
     return;
   }
   if (unsubscribeMetrics) {
-    console.log("[MetricsStore] Already connected to metrics WebSocket");
+    wsManager.forceReconnectShared("metrics");
     return;
   }
-  console.log("[MetricsStore] Connecting to metrics WebSocket");
   unsubscribeMetrics = wsManager.subscribeToShared("metrics", {
     routeId: "metrics-store",
     handler: (message) => {
       var _a2, _b, _c, _d, _e;
       if (message.type === "auth" && ((_a2 = message.payload) == null ? void 0 : _a2.authenticated)) {
-        console.log("[MetricsStore] Authenticated, subscribing to metrics");
         $metricsConnected.set(true);
         $metricsError.set(null);
         wsManager.send("shared:metrics", { type: "subscribe" });
@@ -17478,7 +17495,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-OBduVWGS.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-DSi9EwTE.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17489,8 +17506,14 @@ async function initializeMetrics() {
 }
 async function reinitializeMetricsAfterLogin() {
   console.log("[MetricsStore] Re-initializing after login");
+  $metricsError.set(null);
+  $metricsConnected.set(false);
   disconnectMetrics();
-  await new Promise((resolve2) => setTimeout(resolve2, 100));
+  $currentCpu.set(null);
+  $currentMemory.set(null);
+  $currentDisk.set(null);
+  $currentNetwork.set(null);
+  await new Promise((resolve2) => setTimeout(resolve2, 200));
   await initializeMetrics();
 }
 function cleanupMetrics() {
@@ -17514,11 +17537,6 @@ function formatUptime(seconds) {
   return parts.join(", ") || "0 minutes";
 }
 if (typeof window !== "undefined") {
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initializeMetrics);
-  } else {
-    initializeMetrics();
-  }
   window.addEventListener("beforeunload", cleanupMetrics);
 }
 const metrics = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
@@ -17585,9 +17603,17 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
     this.memoryTrend = this.subscribeToStore($memoryTrend);
     this.metricsAlerts = this.subscribeToStore($metricsAlerts);
   }
-  connectedCallback() {
+  async connectedCallback() {
     super.connectedCallback();
-    connectMetrics();
+    const { auth: auth2 } = await import("./index-DSi9EwTE.js").then((n3) => n3.d);
+    if (auth2.isAuthenticated()) {
+      await new Promise((resolve2) => setTimeout(resolve2, 500));
+      try {
+        await connectMetrics();
+      } catch (error) {
+        console.error("[DashboardTabV2] Failed to connect metrics:", error);
+      }
+    }
   }
   disconnectedCallback() {
     super.disconnectedCallback();
@@ -67282,6 +67308,13 @@ const _AppRoot = class _AppRoot extends i$1 {
   async selectLanguage(locale) {
     await i18n.setLocale(locale);
     this.languageMenuOpen = false;
+  }
+  async updated(changedProperties) {
+    super.updated(changedProperties);
+    if (changedProperties.has("isAuthenticated") && this.isAuthenticated) {
+      const { initializeMetrics: initializeMetrics2 } = await Promise.resolve().then(() => metrics);
+      await initializeMetrics2();
+    }
   }
   render() {
     if (!this.isAuthenticated) {

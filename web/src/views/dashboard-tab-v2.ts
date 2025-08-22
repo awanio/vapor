@@ -336,10 +336,24 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
   private memoryTrend = this.subscribeToStore($memoryTrend);
   private metricsAlerts = this.subscribeToStore($metricsAlerts);
 
-  override connectedCallback() {
+  override async connectedCallback() {
     super.connectedCallback();
-    // Ensure metrics connection is active
-    connectMetrics();
+    
+    // Import auth to check authentication status
+    const { auth } = await import('../auth');
+    
+    // Only connect if authenticated
+    if (auth.isAuthenticated()) {
+      // Small delay to ensure auth token is properly set
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Ensure metrics connection is active
+      try {
+        await connectMetrics();
+      } catch (error) {
+        console.error('[DashboardTabV2] Failed to connect metrics:', error);
+      }
+    }
   }
 
   override disconnectedCallback() {

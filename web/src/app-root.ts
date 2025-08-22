@@ -374,6 +374,16 @@ export class AppRoot extends LitElement {
     }
   };
 
+  override async updated(changedProperties: Map<string, any>) {
+    super.updated(changedProperties);
+    
+    // If authentication status changed to true, initialize metrics
+    if (changedProperties.has('isAuthenticated') && this.isAuthenticated) {
+      const { initializeMetrics } = await import('./stores/shared/metrics');
+      await initializeMetrics();
+    }
+  }
+  
   override render() {
     // Show login page if not authenticated
     if (!this.isAuthenticated) {
