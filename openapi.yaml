@@ -1,9 +1,9 @@
 openapi: 3.1.0
 info:
-  title: Vapor API
-  version: 0.0.1
+  title: Go System API
+  version: 1.0.0
   description: |
-    RESTful API for Vapor, a web console for modern Linux stacks.
+    RESTful API for Vapor a web console for modern Linux stacks.
     
     ### Key Features
     - System management and monitoring
@@ -4374,6 +4374,66 @@ paths:
           description: Virtual machine deleted successfully
         '404':
           $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /virtualization/computes/{id}/action:
+    post:
+      summary: Perform action on virtual machine
+      description: |
+        Execute various state-changing actions on a virtual machine.
+        Available actions include: start, stop, restart, pause, resume, reset.
+        Use the 'force' flag for forced stop or restart operations.
+      tags:
+        - "Virtualization Compute"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: VM name or UUID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VMActionRequest'
+            examples:
+              start:
+                summary: Start a VM
+                value:
+                  action: "start"
+                  force: false
+              force_stop:
+                summary: Force stop a VM
+                value:
+                  action: "stop"
+                  force: true
+              restart:
+                summary: Restart a VM
+                value:
+                  action: "restart"
+                  force: false
+      responses:
+        '200':
+          description: VM action executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VMActionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Conflict - Invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -13709,6 +13769,63 @@ components:
         autostart:
           type: boolean
 
+    VMActionRequest:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          type: string
+          description: The action to perform on the virtual machine
+          enum:
+            - start
+            - stop
+            - restart
+            - pause
+            - resume
+            - reset
+          example: start
+        force:
+          type: boolean
+          description: Force the action (applicable for stop and restart)
+          default: false
+          example: false
+
+    VMActionResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          description: Status of the action execution
+          example: success
+        message:
+          type: string
+          description: Human-readable message about the action result
+          example: Virtual machine started successfully
+        vm:
+          type: object
+          description: Current state of the VM after the action
+          properties:
+            id:
+              type: string
+              description: VM identifier
+              example: vm-123
+            name:
+              type: string
+              description: VM name
+              example: web-server-01
+            state:
+              type: string
+              description: Current VM state
+              enum:
+                - running
+                - shut off
+                - paused
+                - suspended
+                - crashed
+                - dying
+              example: running
+
     OSInfo:
       type: object
       properties:
@@ -13897,14 +14014,11 @@ components:
 
     NetworkCreateRequest:
       type: object
-      required:
-        - name
       properties:
         name:
           type: string
         mode:
           type: string
-          enum: ["nat", "route", "bridge", "private"]
         bridge:
           type: string
         ip_range:
