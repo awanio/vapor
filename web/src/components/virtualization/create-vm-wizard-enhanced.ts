@@ -21,6 +21,9 @@ import {
 } from '../../stores/virtualization';
 import type { VMTemplate, VirtualNetwork } from '../../types/virtualization';
 
+// Import network store for bridge interfaces
+import { $bridges } from '../../stores/network';
+
 // Import UI components
 import '../ui/loading-state.js';
 import '../ui/empty-state.js';
@@ -115,6 +118,7 @@ export class CreateVMWizardEnhanced extends LitElement {
   private isosController = new StoreController(this, $availableISOs);
   private templatesController = new StoreController(this, templateStore.$items);
   private networksController = new StoreController(this, networkStore.$items);
+  private bridgesController = new StoreController(this, $bridges);
 
   // Component state
   @state() private isCreating = false;
@@ -1263,6 +1267,29 @@ export class CreateVMWizardEnhanced extends LitElement {
                             return networksArray.map((virtualNetwork: VirtualNetwork) => html`
                               <option value=${virtualNetwork.name}>
                                 ${virtualNetwork.name} ${virtualNetwork.state === 'active' ? '(Active)' : '(Inactive)'}
+                              </option>
+                            `);
+                          })()}
+                        </select>
+                      ` : network.type === 'bridge' ? html`
+                        <select
+                          .value=${network.source || ''}
+                          @change=${(e: Event) => {
+                            network.source = (e.target as HTMLSelectElement).value;
+                            this.requestUpdate();
+                          }}
+                        >
+                          <option value="">Select a bridge</option>
+                          ${(() => {
+                            const bridges = this.bridgesController.value || [];
+                            // Filter to only show bridge type interfaces
+                            const bridgeInterfaces = bridges.filter(iface => 
+                              iface.type === 'bridge'
+                            );
+                            
+                            return bridgeInterfaces.map(bridge => html`
+                              <option value=${bridge.name}>
+                                ${bridge.name} ${bridge.state === 'up' ? '(Up)' : '(Down)'}
                               </option>
                             `);
                           })()}
