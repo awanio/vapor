@@ -2,7 +2,7 @@ var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 var _a;
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-DSi9EwTE.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-DtRH_erI.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -17385,7 +17385,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-DSi9EwTE.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-DtRH_erI.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17430,7 +17430,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-DSi9EwTE.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-DtRH_erI.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17495,7 +17495,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-DSi9EwTE.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-DtRH_erI.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17605,7 +17605,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-DSi9EwTE.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-DtRH_erI.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -52977,8 +52977,10 @@ let CreateVMWizardEnhanced = class extends i$1 {
         isoStore.fetch(),
         templateStore.fetch(),
         // Fetch templates from /virtualization/computes/templates
-        networkStore.fetch()
+        networkStore.fetch(),
         // Fetch networks from /virtualization/networks
+        initializeNetworkStore()
+        // Initialize network store to load bridges and interfaces
       ]);
     } catch (error) {
       console.error("Failed to load data for VM wizard:", error);

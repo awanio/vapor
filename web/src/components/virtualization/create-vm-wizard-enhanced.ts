@@ -22,7 +22,7 @@ import {
 import type { VMTemplate, VirtualNetwork } from '../../types/virtualization';
 
 // Import network store for bridge interfaces
-import { $bridges } from '../../stores/network';
+import { $bridges, initializeNetworkStore } from '../../stores/network';
 
 // Import UI components
 import '../ui/loading-state.js';
@@ -615,6 +615,7 @@ export class CreateVMWizardEnhanced extends LitElement {
         isoStore.fetch(),
         templateStore.fetch(), // Fetch templates from /virtualization/computes/templates
         networkStore.fetch(), // Fetch networks from /virtualization/networks
+        initializeNetworkStore(), // Initialize network store to load bridges and interfaces
       ]);
     } catch (error) {
       console.error('Failed to load data for VM wizard:', error);
