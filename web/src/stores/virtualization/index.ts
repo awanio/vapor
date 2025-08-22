@@ -477,7 +477,7 @@ export const templateStore = {
 };
 
 // ============ Virtual Networks Store ============
-export const networkStore = createStore<VirtualNetwork & { id: string }>({
+const baseNetworkStore = createStore<VirtualNetwork & { id: string }>({
   name: 'virtualization-networks',
   idField: 'name',
   endpoint: getApiUrl(`${API_BASE}/networks`),
@@ -488,6 +488,99 @@ export const networkStore = createStore<VirtualNetwork & { id: string }>({
     id: data.name, // Use name as id to satisfy BaseEntity constraint
   }),
 });
+
+// Transform function to map API response fields to VirtualNetwork interface
+function transformNetworkResponse(apiNetwork: any): VirtualNetwork & { id: string } {
+  return {
+    id: apiNetwork.name, // Use name as id to satisfy BaseEntity constraint
+    name: apiNetwork.name,
+    uuid: apiNetwork.uuid,
+    type: apiNetwork.type || 'nat',
+    state: apiNetwork.state || 'inactive',
+    autostart: apiNetwork.autostart || false,
+    bridge: apiNetwork.bridge,
+    ip: apiNetwork.ip || apiNetwork.ip_range?.address,
+    netmask: apiNetwork.netmask || apiNetwork.ip_range?.netmask,
+    dhcp: apiNetwork.dhcp,
+    forward: apiNetwork.forward,
+  };
+}
+
+// Extend the network store with proper fetch implementation
+export const networkStore = {
+  ...baseNetworkStore,
+  async fetch(): Promise<void> {
+    try {
+      baseNetworkStore.$loading.set(true);
+      baseNetworkStore.$error.set(null);
+      
+      // Make the actual API request to /networks endpoint
+      const response = await apiRequest<any>('/networks');
+      
+      // Handle the response structure
+      let networks: (VirtualNetwork & { id: string })[] = [];
+      
+      if (response && typeof response === 'object') {
+        // Check if response is directly an array
+        if (Array.isArray(response)) {
+          networks = response.map(transformNetworkResponse);
+        }
+        // Check for wrapped response
+        else if (response.data && Array.isArray(response.data)) {
+          networks = response.data.map(transformNetworkResponse);
+        }
+        // Check for networks property
+        else if (response.networks && Array.isArray(response.networks)) {
+          networks = response.networks.map(transformNetworkResponse);
+        } else {
+          console.warn('Unexpected network list response format:', response);
+        }
+      }
+      
+      // Update the store with fetched data
+      const items = new Map<string, VirtualNetwork & { id: string }>();
+      networks.forEach(network => {
+        items.set(network.name, network);
+      });
+      baseNetworkStore.$items.set(items);
+      
+      baseNetworkStore.emit({
+        type: StoreEventType.BATCH_UPDATED,
+        payload: networks as any,
+        timestamp: Date.now(),
+      });
+      
+      console.log(`Fetched ${networks.length} networks from /networks endpoint`);
+    } catch (error) {
+      const storeError = {
+        code: 'FETCH_ERROR',
+        message: error instanceof Error ? error.message : 'Failed to fetch networks',
+        timestamp: Date.now(),
+      };
+      baseNetworkStore.$error.set(storeError);
+      baseNetworkStore.emit({
+        type: StoreEventType.ERROR,
+        payload: storeError as any,
+        timestamp: Date.now(),
+      });
+      throw error;
+    } finally {
+      baseNetworkStore.$loading.set(false);
+    }
+  },
+  
+  // Keep the original methods from baseNetworkStore
+  getById: baseNetworkStore.getById.bind(baseNetworkStore),
+  update: baseNetworkStore.update.bind(baseNetworkStore),
+  delete: baseNetworkStore.delete.bind(baseNetworkStore),
+  clear: baseNetworkStore.clear.bind(baseNetworkStore),
+  emit: baseNetworkStore.emit.bind(baseNetworkStore),
+  
+  // Expose the store atoms
+  $items: baseNetworkStore.$items,
+  $loading: baseNetworkStore.$loading,
+  $error: baseNetworkStore.$error,
+};
 
 // ============ UI State Atoms ============
 

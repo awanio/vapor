@@ -17,8 +17,9 @@ import {
   storagePoolStore,
   isoStore,
   templateStore,
+  networkStore,
 } from '../../stores/virtualization';
-import type { VMTemplate } from '../../types/virtualization';
+import type { VMTemplate, VirtualNetwork } from '../../types/virtualization';
 
 // Import UI components
 import '../ui/loading-state.js';
@@ -113,6 +114,7 @@ export class CreateVMWizardEnhanced extends LitElement {
   private storagePoolsController = new StoreController(this, $availableStoragePools);
   private isosController = new StoreController(this, $availableISOs);
   private templatesController = new StoreController(this, templateStore.$items);
+  private networksController = new StoreController(this, networkStore.$items);
 
   // Component state
   @state() private isCreating = false;
@@ -608,6 +610,7 @@ export class CreateVMWizardEnhanced extends LitElement {
         storagePoolStore.fetch(),
         isoStore.fetch(),
         templateStore.fetch(), // Fetch templates from /virtualization/computes/templates
+        networkStore.fetch(), // Fetch networks from /virtualization/networks
       ]);
     } catch (error) {
       console.error('Failed to load data for VM wizard:', error);
@@ -1243,15 +1246,38 @@ export class CreateVMWizardEnhanced extends LitElement {
                         <option value="user">User Mode</option>
                       </select>
 
-                      <input
-                        type="text"
-                        placeholder="Source (e.g., default, br0)"
-                        .value=${network.source || ''}
-                        @input=${(e: InputEvent) => {
-                          network.source = (e.target as HTMLInputElement).value;
-                          this.requestUpdate();
-                        }}
-                      />
+                      ${network.type === 'network' ? html`
+                        <select
+                          .value=${network.source || 'default'}
+                          @change=${(e: Event) => {
+                            network.source = (e.target as HTMLSelectElement).value;
+                            this.requestUpdate();
+                          }}
+                        >
+                          <option value="default">default</option>
+                          ${(() => {
+                            const networks = this.networksController.value;
+                            const networksArray = networks instanceof Map ? Array.from(networks.values()) : 
+                                                   Array.isArray(networks) ? networks : [];
+                            
+                            return networksArray.map((virtualNetwork: VirtualNetwork) => html`
+                              <option value=${virtualNetwork.name}>
+                                ${virtualNetwork.name} ${virtualNetwork.state === 'active' ? '(Active)' : '(Inactive)'}
+                              </option>
+                            `);
+                          })()}
+                        </select>
+                      ` : html`
+                        <input
+                          type="text"
+                          placeholder="Source (e.g., default, br0)"
+                          .value=${network.source || ''}
+                          @input=${(e: InputEvent) => {
+                            network.source = (e.target as HTMLInputElement).value;
+                            this.requestUpdate();
+                          }}
+                        />
+                      `}
 
                       <select
                         .value=${network.model || 'virtio'}
