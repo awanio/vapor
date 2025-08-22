@@ -1,9 +1,24 @@
 import { html, css } from 'lit';
 import { state, property } from 'lit/decorators.js';
+import { StoreController } from '@nanostores/lit';
 import { t } from '../i18n';
 import { I18nLitElement } from '../i18n-mixin';
 import { api } from '../api';
-import type { AddressRequest, BridgeRequest, BondRequest, VLANRequest, NetworkInterface } from '../types/api';
+import type { AddressRequest, NetworkInterface } from '../types/api';
+import {
+  $filteredInterfaces,
+  $filteredBridges,
+  $filteredBonds,
+  $filteredVlans,
+  $selectedInterface,
+  $searchQuery,
+  $selectedType,
+  $bridgeSearchQuery,
+  $bondSearchQuery,
+  $vlanSearchQuery,
+  networkActions,
+  initializeNetworkStore,
+} from '../stores/network';
 
 // Define BondMode locally until it's exported from api types
 type BondMode = 'balance-rr' | 'active-backup' | 'balance-xor' | 'broadcast' | '802.3ad' | 'balance-tlb' | 'balance-alb';
@@ -12,6 +27,19 @@ import '../components/modal-dialog';
 export class NetworkTab extends I18nLitElement {
   @property({ type: String })
   subRoute: string | null = null;
+  
+  // Store controllers
+  private interfacesController = new StoreController(this, $filteredInterfaces);
+  private bridgesController = new StoreController(this, $filteredBridges);
+  private bondsController = new StoreController(this, $filteredBonds);
+  private vlansController = new StoreController(this, $filteredVlans);
+  private selectedInterfaceController = new StoreController(this, $selectedInterface);
+  private searchQueryController = new StoreController(this, $searchQuery);
+  private selectedTypeController = new StoreController(this, $selectedType);
+  private bridgeSearchController = new StoreController(this, $bridgeSearchQuery);
+  private bondSearchController = new StoreController(this, $bondSearchQuery);
+  private vlanSearchController = new StoreController(this, $vlanSearchQuery);
+  
   static override styles = css`
     :host {
       display: block;
@@ -721,25 +749,10 @@ export class NetworkTab extends I18nLitElement {
   private activeTab = 'interfaces';
 
   @state()
-  private interfaces: NetworkInterface[] = [];
-
-  @state()
-  private bridges: NetworkInterface[] = [];
-
-  @state()
-  private bonds: NetworkInterface[] = [];
-
-  @state()
-  private vlans: NetworkInterface[] = [];
-
-  @state()
   private showConfigureDrawer = false;
 
   @state()
   private showDetailsDrawer = false;
-
-  @state()
-  private selectedInterface: NetworkInterface | null = null;
 
   @state()
   private editingIpIndex: number | null = null;
@@ -804,21 +817,6 @@ export class NetworkTab extends I18nLitElement {
   private showVLANDrawer = false;
 
   @state()
-  private searchQuery = '';
-
-  @state()
-  private selectedType = 'all';
-
-  @state()
-  private bridgeSearchQuery = '';
-
-  @state()
-  private bondSearchQuery = '';
-
-  @state()
-  private vlanSearchQuery = '';
-
-  @state()
   private configureNetworkInterface: NetworkInterface | null = null;
 
   @state()
@@ -840,6 +838,71 @@ export class NetworkTab extends I18nLitElement {
   @state()
   private confirmMessage = '';
 
+  // Getters for store data
+  get interfaces() {
+    return this.interfacesController.value || [];
+  }
+
+  get bridges() {
+    return this.bridgesController.value || [];
+  }
+
+  get bonds() {
+    return this.bondsController.value || [];
+  }
+
+  get vlans() {
+    return this.vlansController.value || [];
+  }
+
+  get selectedInterface() {
+    return this.selectedInterfaceController.value;
+  }
+
+  set selectedInterface(value: NetworkInterface | null) {
+    networkActions.selectInterface(value);
+  }
+
+  get searchQuery() {
+    return this.searchQueryController.value || '';
+  }
+
+  set searchQuery(value: string) {
+    networkActions.setSearchQuery(value);
+  }
+
+  get selectedType() {
+    return this.selectedTypeController.value || 'all';
+  }
+
+  set selectedType(value: string) {
+    networkActions.setSelectedType(value);
+  }
+
+  get bridgeSearchQuery() {
+    return this.bridgeSearchController.value || '';
+  }
+
+  set bridgeSearchQuery(value: string) {
+    networkActions.setBridgeSearchQuery(value);
+  }
+
+  get bondSearchQuery() {
+    return this.bondSearchController.value || '';
+  }
+
+  set bondSearchQuery(value: string) {
+    networkActions.setBondSearchQuery(value);
+  }
+
+  get vlanSearchQuery() {
+    return this.vlanSearchController.value || '';
+  }
+
+  set vlanSearchQuery(value: string) {
+    networkActions.setVlanSearchQuery(value);
+  }
+
   constructor() {
     super();
     this.handlePopState = this.handlePopState.bind(this);
@@ -854,7 +917,9 @@ export class NetworkTab extends I18nLitElement {
   }
 
   override firstUpdated() {
-    this.fetchNetworkData();
+    // Initialize the network store
+    initializeNetworkStore();
+    
     document.addEventListener('click', this.handleDocumentClick.bind(this));
     document.addEventListener('keydown', this.handleKeyDown.bind(this));
     window.addEventListener('popstate', this.handlePopState);
@@ -952,47 +1017,27 @@ export class NetworkTab extends I18nLitElement {
   }
 
   async fetchNetworkData() {
-    // Fetch all network data based on active tab
-    this.fetchInterfaces();
-    this.fetchBridges();
-    this.fetchBonds();
-    this.fetchVlans();
+    // Fetch all network data using store actions
+    networkActions.fetchInterfaces();
+    networkActions.fetchBridges();
+    networkActions.fetchBonds();
+    networkActions.fetchVlans();
   }
 
   async fetchInterfaces() {
-    try {
-      const data = await api.get('/network/interfaces');
-      this.interfaces = data.interfaces || [];
-    } catch (error) {
-      console.error('Error fetching network interfaces:', error);
-    }
+    await networkActions.fetchInterfaces();
   }
 
   async fetchBridges() {
-    try {
-      const data = await api.get('/network/bridges');
-      this.bridges = data.bridges || [];
-    } catch (error) {
-      console.error('Error fetching bridges:', error);
-    }
+    await networkActions.fetchBridges();
   }
 
   async fetchBonds() {
-    try {
-      const data = await api.get('/network/bonds');
-      this.bonds = data.bonds || [];
-    } catch (error) {
-      console.error('Error fetching bonds:', error);
-    }
+    await networkActions.fetchBonds();
   }
 
   async fetchVlans() {
-    try {
-      const data = await api.get('/network/vlans');
-      this.vlans = data.vlans || [];
-    } catch (error) {
-      console.error('Error fetching VLANs:', error);
-    }
+    await networkActions.fetchVlans();
   }
 
   toggleInterfaceState(iface: NetworkInterface) {
@@ -1003,13 +1048,7 @@ export class NetworkTab extends I18nLitElement {
       title,
       message,
       async () => {
-        const url = `/network/interfaces/${iface.name}/${iface.state === 'up' ? 'down' : 'up'}`;
-        try {
-          await api.put(url);
-          this.fetchInterfaces();
-        } catch (error) {
-          console.error(`Error bringing interface ${isUp ? 'down' : 'up'}:`, error);
-        }
+        await networkActions.toggleInterfaceState(iface);
       }
     );
   }
@@ -1019,12 +1058,7 @@ export class NetworkTab extends I18nLitElement {
       t('network.deleteBridge'),
       t('network.confirmDeleteBridge', { name }),
       async () => {
-        try {
-          await api.delete(`/network/bridge/${name}`);
-          await this.fetchBridges();
-        } catch (error) {
-          console.error('Error deleting bridge:', error);
-        }
+        await networkActions.deleteBridge(name);
       }
     );
   }
@@ -1034,12 +1068,7 @@ export class NetworkTab extends I18nLitElement {
       t('network.deleteBond'),
       t('network.confirmDeleteBond', { name }),
       async () => {
-        try {
-          await api.delete(`/network/bond/${name}`);
-          await this.fetchBonds();
-        } catch (error) {
-          console.error('Error deleting bond:', error);
-        }
+        await networkActions.deleteBond(name);
       }
     );
   }
@@ -1049,12 +1078,7 @@ export class NetworkTab extends I18nLitElement {
       t('network.deleteVlan'),
       t('network.confirmDeleteVlan', { name }),
       async () => {
-        try {
-          await api.delete(`/network/vlan/${name}`);
-          await this.fetchVlans();
-        } catch (error) {
-          console.error('Error deleting VLAN:', error);
-        }
+        await networkActions.deleteVlan(name);
       }
     );
   }
@@ -1326,19 +1350,12 @@ export class NetworkTab extends I18nLitElement {
       return;
     }
 
-    const request: BridgeRequest = {
+    const request = {
       name: this.bridgeFormData.name,
       interfaces: this.bridgeFormData.interfaces.split(',').map(item => item.trim()).filter(Boolean)
     };
-
-    try {
-      await api.post('/network/bridge', request);
-      this.closeBridgeDrawer();
-      await this.fetchBridges();
-      await this.fetchInterfaces();
-    } catch (error) {
-      console.error('Error creating bridge:', error);
-    }
+    await networkActions.createBridge(request);
+    this.closeBridgeDrawer();
   }
 
   async handleCreateBond() {
@@ -1346,20 +1363,13 @@ export class NetworkTab extends I18nLitElement {
       return;
     }
 
-    const request: BondRequest = {
+    const request = {
       name: this.bondFormData.name,
       mode: this.bondFormData.mode,
       interfaces: this.bondFormData.interfaces.split(',').map(item => item.trim()).filter(Boolean)
     };
-
-    try {
-      await api.post('/network/bond', request);
-      this.closeBondDrawer();
-      await this.fetchBonds();
-      await this.fetchInterfaces();
-    } catch (error) {
-      console.error('Error creating bond:', error);
-    }
+    await networkActions.createBond(request);
+    this.closeBondDrawer();
   }
 
   async handleCreateVLANInterface() {
@@ -1367,20 +1377,13 @@ export class NetworkTab extends I18nLitElement {
       return;
     }
 
-    const request: VLANRequest = {
+    const request = {
       interface: this.vlanFormData.interface,
       vlan_id: this.vlanFormData.vlanId,
       name: this.vlanFormData.name || `${this.vlanFormData.interface}.${this.vlanFormData.vlanId}`
     };
-
-    try {
-      await api.post('/network/vlan', request);
-      this.closeVLANDrawer();
-      this.fetchVlans();
-      this.fetchInterfaces();
-    } catch (error) {
-      console.error('Error creating VLAN:', error);
-    }
+    await networkActions.createVlan(request);
+    this.closeVLANDrawer();
   }
 
   renderInterface(iface: NetworkInterface) {
