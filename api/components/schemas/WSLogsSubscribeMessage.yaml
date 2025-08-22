@@ -1,0 +1,33 @@
+type: object
+required:
+  - type
+  - filters
+properties:
+  type:
+    type: string
+    enum:
+      - subscribe
+  filters:
+    type: object
+    properties:
+      services:
+        type: array
+        items:
+          type: string
+        description: Filter by service names
+      priority:
+        type: string
+        enum:
+          - emergency
+          - alert
+          - critical
+          - error
+          - warning
+          - notice
+          - info
+          - debug
+        description: Minimum priority level
+      follow:
+        type: boolean
+        default: true
+        description: Whether to follow new logs

@@ -1,0 +1,21 @@
+get:
+  summary: List BTRFS subvolumes
+  tags:
+    - Storage
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: mount_point
+      in: query
+      schema:
+        type: string
+      required: true
+  responses:
+    '200':
+      description: Subvolumes listed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/BTRFSSubvolumesResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

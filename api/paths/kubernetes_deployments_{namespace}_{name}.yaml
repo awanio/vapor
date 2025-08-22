@@ -1,0 +1,122 @@
+get:
+  summary: Get detailed deployment information
+  description: Get detailed information about a specific deployment in a namespace
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: Deployment namespace
+      schema:
+        type: string
+    - name: name
+      in: path
+      required: true
+      description: Deployment name
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Deployment details retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/DeploymentDetailResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: Deployment not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml
+put:
+  summary: Update a Deployment
+  description: Update an existing Deployment
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: Deployment namespace
+      schema:
+        type: string
+    - name: name
+      in: path
+      required: true
+      description: Deployment name
+      schema:
+        type: string
+  requestBody:
+    required: true
+    description: Deployment specification in JSON or YAML format
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/DeploymentDetail.yaml
+      application/yaml:
+        schema:
+          type: string
+      text/yaml:
+        schema:
+          type: string
+  responses:
+    '200':
+      description: Deployment updated successfully
+    '400':
+      description: Invalid Deployment specification or unsupported content type
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: Deployment not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml
+delete:
+  summary: Delete a Deployment
+  description: Delete a specific Deployment
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: Deployment namespace
+      schema:
+        type: string
+    - name: name
+      in: path
+      required: true
+      description: Deployment name
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Deployment deleted successfully
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: Deployment not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

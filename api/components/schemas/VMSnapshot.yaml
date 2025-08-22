@@ -1,0 +1,57 @@
+type: object
+properties:
+  id:
+    type: string
+    description: Unique snapshot identifier
+    example: snap-123e4567-e89b-12d3-a456-426614174000
+  name:
+    type: string
+    description: Snapshot name
+    example: before-upgrade
+  description:
+    type: string
+    description: Snapshot description
+    example: Snapshot taken before system upgrade
+  vm_name:
+    type: string
+    description: Name of the VM this snapshot belongs to
+    example: web-server-01
+  vm_uuid:
+    type: string
+    description: UUID of the VM
+    example: 550e8400-e29b-41d4-a716-446655440000
+  state:
+    type: string
+    description: Snapshot state
+    enum:
+      - active
+      - inactive
+      - creating
+      - deleting
+      - error
+    example: active
+  type:
+    type: string
+    description: Snapshot type
+    enum:
+      - disk-only
+      - memory-included
+    example: memory-included
+  parent:
+    type: string
+    description: Parent snapshot name (if part of a snapshot tree)
+    example: initial-snapshot
+  created_at:
+    type: string
+    format: date-time
+    description: When the snapshot was created
+    example: '2025-01-15T10:00:00Z'
+  size_bytes:
+    type: integer
+    format: int64
+    description: Total size of the snapshot in bytes
+    example: 5368709120
+  is_current:
+    type: boolean
+    description: Whether this is the current snapshot
+    example: false

@@ -1,0 +1,82 @@
+type: object
+required:
+  - name
+  - memory
+  - vcpus
+  - storage
+properties:
+  name:
+    type: string
+    description: Name of the virtual machine
+    example: web-server-01
+  memory:
+    type: integer
+    description: Memory size in MB
+    minimum: 256
+    example: 4096
+  vcpus:
+    type: integer
+    description: Number of virtual CPUs
+    minimum: 1
+    maximum: 256
+    example: 2
+  storage:
+    $ref: ./StorageConfig.yaml
+  os_type:
+    type: string
+    description: Operating system type
+    example: linux
+  os_variant:
+    type: string
+    description: Operating system variant
+    example: ubuntu20.04
+  architecture:
+    type: string
+    description: System architecture
+    default: x86_64
+    example: x86_64
+  uefi:
+    type: boolean
+    description: Use UEFI boot
+    default: false
+  secure_boot:
+    type: boolean
+    description: Enable secure boot
+    default: false
+  tpm:
+    type: boolean
+    description: Add TPM device
+    default: false
+  networks:
+    type: array
+    description: Network configurations
+    items:
+      $ref: ./NetworkCreateConfig.yaml
+  graphics:
+    type: array
+    description: Graphics device configurations
+    items:
+      $ref: ./EnhancedGraphicsConfig.yaml
+  pci_devices:
+    type: array
+    description: PCI devices for passthrough
+    items:
+      $ref: ./PCIDeviceConfig.yaml
+  cloud_init:
+    $ref: ./CloudInit.yaml
+  template:
+    type: string
+    description: Template name to base VM on
+    example: ubuntu-server-template
+  autostart:
+    type: boolean
+    description: Start VM automatically on host boot
+    default: false
+  custom_xml:
+    type: string
+    description: Custom libvirt XML snippet to merge
+  metadata:
+    type: object
+    description: Custom metadata key-value pairs
+    additionalProperties:
+      type: string

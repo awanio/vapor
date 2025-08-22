@@ -1,0 +1,180 @@
+get:
+  summary: List VM snapshots
+  description: Retrieve all snapshots for a specific virtual machine
+  tags:
+    - Virtualization Compute
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: VM name or UUID
+  responses:
+    '200':
+      description: Snapshots retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/VMSnapshotsListResponse.yaml
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml
+post:
+  summary: Create VM snapshot with enhanced format checking
+  description: >
+    Create a new snapshot of a virtual machine with enhanced disk format
+    validation.
+
+
+    This endpoint performs comprehensive format checking for all VM disks and
+    determines
+
+    the appropriate snapshot type based on disk formats and user preferences.
+
+
+    **Snapshot Types:**
+
+    - **Internal**: All disk states stored within existing disk files (requires
+    all disks to be qcow2)
+
+    - **External**: Creates new files for disk states (supports any disk format)
+
+    - **Internal-Memory**: Internal snapshot with memory state (requires qcow2
+    and running VM)
+
+
+    **Format Requirements:**
+
+    - Internal snapshots: All disks must be qcow2 format
+
+    - External snapshots: Works with any disk format (raw, qcow2, vmdk, etc.)
+
+    - Memory snapshots: Requires qcow2 format for all disks
+
+
+    **Validation Checks:**
+
+    - Disk format compatibility
+
+    - VM state compatibility
+
+    - Storage availability
+
+    - Guest agent availability (for quiesce)
+
+
+    **Warning Conditions:**
+
+    - Mixed disk formats detected
+
+    - Raw format disks requiring external snapshots
+
+    - Large memory state warnings
+
+    - Quiesce requested but guest agent unavailable
+
+
+    **Best Practices:**
+
+    - Use quiesce for database workloads when guest agent is available
+
+    - Consider external snapshots for mixed format environments
+
+    - Monitor storage space before creating snapshots
+
+    - Test snapshot restoration in non-production first
+  tags:
+    - Virtualization Compute
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: VM name or UUID
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/VMSnapshotRequest.yaml
+  responses:
+    '201':
+      description: Snapshot created successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/VMSnapshotResponse.yaml
+    '400':
+      description: |
+        Bad request - validation failed. Common reasons:
+        - Internal snapshot requested but disks not all qcow2
+        - Memory snapshot requested with incompatible disk formats
+        - Invalid snapshot name or parameters
+        - Insufficient storage space
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+          examples:
+            formatMismatch:
+              summary: Disk format incompatible with internal snapshots
+              value:
+                status: error
+                error:
+                  code: INVALID_DISK_FORMAT
+                  message: >-
+                    Cannot create internal snapshot: disk 'vda' has format
+                    'raw'. All disks must be qcow2 for internal snapshots.
+                  details: Use force_external=true or convert disks to qcow2 format
+            mixedFormats:
+              summary: Mixed disk formats detected
+              value:
+                status: error
+                error:
+                  code: MIXED_DISK_FORMATS
+                  message: >-
+                    VM has mixed disk formats (qcow2, raw). External snapshot
+                    will be used.
+                  details: 'Disks: vda (qcow2), vdb (raw)'
+                  data:
+                    warnings:
+                      - External snapshot required due to raw format disk 'vdb'
+                      - >-
+                        Consider converting all disks to qcow2 for internal
+                        snapshot support
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '422':
+      description: >
+        Unprocessable entity - snapshot cannot be created due to VM state or
+        configuration.
+
+        Common reasons:
+
+        - VM doesn't support snapshots
+
+        - Transient VM (non-persistent)
+
+        - VM in migration state
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+          examples:
+            unsupported:
+              summary: VM doesn't support snapshots
+              value:
+                status: error
+                error:
+                  code: SNAPSHOTS_NOT_SUPPORTED
+                  message: This VM configuration does not support snapshots
+                  details: VM may be transient or have unsupported devices attached
+    '500':
+      $ref: ../components/responses/InternalError.yaml

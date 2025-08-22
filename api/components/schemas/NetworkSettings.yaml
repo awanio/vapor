@@ -1,0 +1,7 @@
+type: object
+properties:
+  networks:
+    type: object
+    additionalProperties:
+      $ref: ./NetworkInfo.yaml
+    description: Network configurations

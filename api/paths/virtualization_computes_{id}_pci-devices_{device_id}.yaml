@@ -1,0 +1,36 @@
+delete:
+  summary: Detach PCI device from VM
+  description: |
+    Detach a PCI device from a virtual machine.
+
+    **Notes:**
+    - VM should be powered off for safe removal
+    - Device will be unbound from vfio-pci and may rebind to original driver
+  tags:
+    - Virtualization Compute
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: VM name or UUID
+    - name: device_id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: PCI device ID (e.g., pci_0000_01_00_0)
+  responses:
+    '200':
+      description: PCI device detached successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/PCIDetachResponse.yaml
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

@@ -1,0 +1,15 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          uploads:
+            type: array
+            items:
+              $ref: ./ISOUploadSession.yaml
+          count:
+            type: integer
+            description: Total number of active upload sessions
+            example: 3

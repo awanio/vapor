@@ -1,0 +1,16 @@
+type: object
+properties:
+  driver:
+    type: string
+    description: IPAM driver
+    example: default
+  options:
+    type: object
+    additionalProperties:
+      type: string
+    description: IPAM options
+  config:
+    type: array
+    items:
+      $ref: ./IPAMConfig.yaml
+    description: IPAM configuration

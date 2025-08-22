@@ -1,0 +1,76 @@
+type: object
+description: Cloud-init configuration for VM initialization
+properties:
+  user_data:
+    type: string
+    description: Cloud-init user data script (YAML or shell script)
+    example: |
+      #cloud-config
+      package_update: true
+      package_upgrade: true
+  meta_data:
+    type: string
+    description: Cloud-init metadata
+    example: |
+      instance-id: i-1234567890abcdef0
+      local-hostname: cloudimg
+  network_data:
+    type: string
+    description: Cloud-init network configuration
+    example: |
+      version: 2
+      ethernets:
+        enp0s3:
+          dhcp4: true
+  ssh_keys:
+    type: array
+    description: SSH public keys to add to the default user
+    items:
+      type: string
+    example:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC...
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOM...
+  users:
+    type: array
+    description: Additional users to create
+    items:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Username
+          example: devops
+        ssh_authorized_keys:
+          type: array
+          description: SSH public keys for this user
+          items:
+            type: string
+          example:
+            - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC...
+        sudo:
+          type: string
+          description: Sudo privileges configuration
+          example: ALL=(ALL) NOPASSWD:ALL
+        groups:
+          type: string
+          description: Comma-separated list of groups
+          example: admin,docker,wheel
+        shell:
+          type: string
+          description: User's shell
+          example: /bin/bash
+        password:
+          type: string
+          description: Encrypted password for the user
+          format: password
+          example: $6$rounds=4096$saltsalt$...
+  packages:
+    type: array
+    description: Packages to install
+    items:
+      type: string
+    example:
+      - docker.io
+      - git
+      - vim
+      - htop

@@ -1,0 +1,25 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          hostname:
+            type: string
+          os:
+            type: string
+          platform:
+            type: string
+          platform_family:
+            type: string
+          platform_version:
+            type: string
+          kernel_version:
+            type: string
+          uptime:
+            type: integer
+          boot_time:
+            type: integer
+          cpu_count:
+            type: integer

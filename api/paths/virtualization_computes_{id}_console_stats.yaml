@@ -1,0 +1,59 @@
+get:
+  summary: Get console connection statistics
+  description: >
+    Retrieves statistics about active console connections for monitoring and
+    debugging purposes.
+  tags:
+    - Virtualization Compute
+  operationId: getVMConsoleStats
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: VM ID (name or UUID)
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Console statistics retrieved successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              active_connections:
+                type: integer
+                description: Number of active console connections for this VM
+              total_bytes_sent:
+                type: integer
+                format: int64
+                description: Total bytes sent to clients
+              total_bytes_received:
+                type: integer
+                format: int64
+                description: Total bytes received from clients
+              connections:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    established:
+                      type: string
+                      format: date-time
+                    last_activity:
+                      type: string
+                      format: date-time
+                    bytes_sent:
+                      type: integer
+                      format: int64
+                    bytes_received:
+                      type: integer
+                      format: int64
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml
+  security:
+    - bearerAuth: []

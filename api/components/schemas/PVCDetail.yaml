@@ -1,0 +1,45 @@
+type: object
+description: Raw Kubernetes PersistentVolumeClaim object with full API specification
+additionalProperties: true
+example:
+  apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    name: postgres-pvc
+    namespace: database
+    uid: 62345678-6234-6234-6234-623456789012
+    resourceVersion: '12345'
+    creationTimestamp: '2024-01-15T07:30:00Z'
+    labels:
+      app: postgres
+      environment: production
+    annotations:
+      volume.beta.kubernetes.io/storage-provisioner: ebs.csi.aws.com
+      pv.kubernetes.io/bind-completed: 'yes'
+      pv.kubernetes.io/bound-by-controller: 'yes'
+    finalizers:
+      - kubernetes.io/pvc-protection
+  spec:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: 20Gi
+    storageClassName: gp3-encrypted
+    volumeMode: Filesystem
+    volumeName: pvc-62345678-6234-6234-6234-623456789012
+  status:
+    phase: Bound
+    accessModes:
+      - ReadWriteOnce
+    capacity:
+      storage: 20Gi
+    conditions:
+      - type: Resizing
+        status: 'False'
+        lastProbeTime: null
+        lastTransitionTime: '2024-01-15T07:31:00Z'
+      - type: FileSystemResizePending
+        status: 'False'
+        lastProbeTime: null
+        lastTransitionTime: '2024-01-15T07:31:00Z'

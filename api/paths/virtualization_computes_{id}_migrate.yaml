@@ -1,0 +1,70 @@
+post:
+  summary: Migrate VM to another host
+  description: |
+    Initiate live or offline migration of a virtual machine to another host.
+
+    **Prerequisites for SSH-based Migration:**
+
+    When using SSH transport (e.g., `qemu+ssh://host2.example.com/system`):
+
+    1. **SSH Key Authentication Required:**
+       - The source host must have passwordless SSH access to the destination host
+       - The user running libvirtd (typically `root` or `libvirt`) needs SSH keys configured
+
+    2. **Setup Steps:**
+       ```bash
+       # On source host (as root or libvirt user):
+       ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa
+       ssh-copy-id root@destination-host
+       
+       # Verify connectivity:
+       ssh root@destination-host 'virsh list'
+       ```
+
+    3. **Both Hosts Requirements:**
+       - Same libvirt version (recommended)
+       - Compatible CPU architectures
+       - Shared storage (for disk migration) or use `copy_storage` parameter
+       - Network connectivity between hosts
+       - Sufficient resources on destination host
+
+    4. **Alternative Transport Options:**
+       - `qemu+tcp://` - Unencrypted TCP (not recommended)
+       - `qemu+tls://` - TLS with certificates (more secure for production)
+       - `qemu+ssh://user@host/system` - SSH with specific user
+
+    5. **Security Best Practices:**
+       - Use dedicated service accounts instead of root
+       - Restrict SSH keys to libvirt commands only
+       - Consider TLS for production environments
+       - Ensure firewall rules allow migration traffic
+  tags:
+    - Virtualization Compute
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: VM name or UUID
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/MigrationRequest.yaml
+  responses:
+    '202':
+      description: Migration initiated successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MigrationResponse.yaml
+    '400':
+      $ref: ../components/responses/BadRequest.yaml
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

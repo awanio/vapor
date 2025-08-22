@@ -1,0 +1,23 @@
+type: object
+required:
+  - username
+properties:
+  username:
+    type: string
+    description: Username for authentication
+  password:
+    type: string
+    description: User password (required for password auth)
+  auth_type:
+    type: string
+    description: Authentication type
+    enum:
+      - password
+      - ssh_key
+    default: password
+  ssh_signature:
+    type: string
+    description: SSH signature for key-based auth
+  challenge:
+    type: string
+    description: Challenge string for SSH key auth

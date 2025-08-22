@@ -1,0 +1,10 @@
+type: object
+properties:
+  name:
+    type: string
+    description: Name of the Helm repository
+    example: bitnami
+  url:
+    type: string
+    description: URL of the Helm repository
+    example: https://charts.bitnami.com/bitnami

@@ -1,0 +1,28 @@
+post:
+  summary: Install from Ansible Galaxy
+  description: Installs roles or collections from Ansible Galaxy
+  tags:
+    - Ansible
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/GalaxyInstallRequest.yaml
+  responses:
+    '200':
+      description: Roles/collections installed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MessageResponse.yaml
+    '400':
+      description: Invalid request or installation failed
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

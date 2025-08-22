@@ -1,0 +1,31 @@
+type: object
+required:
+  - type
+properties:
+  type:
+    type: string
+    description: Graphics type
+    enum:
+      - vnc
+      - spice
+      - none
+    example: vnc
+  port:
+    type: integer
+    description: Port number (-1 for auto-assign)
+    default: -1
+    example: 5900
+  listen:
+    type: string
+    description: Listen address
+    default: 127.0.0.1
+    example: 0.0.0.0
+  password:
+    type: string
+    description: Access password
+    example: secret123
+  autoport:
+    type: boolean
+    description: Automatically assign port
+    default: true
+    example: true

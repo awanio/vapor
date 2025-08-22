@@ -1,0 +1,24 @@
+type: object
+description: Raw Kubernetes IngressClass object with full API specification
+additionalProperties: true
+example:
+  apiVersion: networking.k8s.io/v1
+  kind: IngressClass
+  metadata:
+    name: nginx
+    uid: f3345678-f334-f334-f334-f33456789012
+    resourceVersion: '94567'
+    creationTimestamp: '2024-01-14T22:00:00Z'
+    labels:
+      app.kubernetes.io/component: controller
+      app.kubernetes.io/instance: nginx
+      app.kubernetes.io/name: ingress-nginx
+    annotations:
+      ingressclass.kubernetes.io/is-default-class: 'true'
+  spec:
+    controller: k8s.io/ingress-nginx
+    parameters:
+      apiGroup: v1
+      kind: ConfigMap
+      name: nginx-load-balancer-microk8s-conf
+      namespace: ingress

@@ -1,0 +1,31 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          token:
+            type: string
+            description: JWT authentication token
+          expires_at:
+            type: integer
+            description: Token expiration timestamp
+          refresh_token:
+            type: string
+            description: Refresh token for token renewal
+          token_type:
+            type: string
+            description: Token type
+            default: Bearer
+          user:
+            type: object
+            properties:
+              username:
+                type: string
+              uid:
+                type: string
+              groups:
+                type: array
+                items:
+                  type: string

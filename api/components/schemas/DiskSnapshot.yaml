@@ -1,0 +1,26 @@
+type: object
+properties:
+  disk_name:
+    type: string
+    description: Name of the disk
+    example: vda
+  snapshot_name:
+    type: string
+    description: Snapshot name for this disk
+    example: vda.before-upgrade
+  size_bytes:
+    type: integer
+    format: int64
+    description: Size of the disk snapshot
+    example: 10737418240
+  type:
+    type: string
+    description: Snapshot type
+    enum:
+      - internal
+      - external
+    example: internal
+  file_path:
+    type: string
+    description: Path to snapshot file (for external snapshots)
+    example: /var/lib/libvirt/images/web-server-01.vda.before-upgrade.qcow2

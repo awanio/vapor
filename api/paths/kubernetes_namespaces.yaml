@@ -1,0 +1,53 @@
+get:
+  summary: List all namespaces in the cluster
+  description: List all namespaces in the Kubernetes cluster
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: Namespaces listed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/NamespacesResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml
+post:
+  summary: Create or update a Namespace
+  description: >-
+    Create a new Namespace or update an existing one using Kubernetes apply
+    semantics.
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    description: Namespace specification in JSON or YAML format
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/NamespaceDetail.yaml
+      application/yaml:
+        schema:
+          type: string
+      text/yaml:
+        schema:
+          type: string
+  responses:
+    '200':
+      description: Namespace created or updated successfully
+    '400':
+      description: Invalid Namespace specification or unsupported content type
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

@@ -1,0 +1,30 @@
+type: object
+required:
+  - name
+properties:
+  name:
+    type: string
+    description: Name for the snapshot
+    example: before-upgrade
+    minLength: 1
+    maxLength: 255
+  description:
+    type: string
+    description: Optional description of the snapshot
+    example: Snapshot taken before system upgrade
+    maxLength: 1024
+  include_memory:
+    type: boolean
+    description: |
+      Include memory state in the snapshot.
+      - true: Full system state including RAM (VM must be running)
+      - false: Disk-only snapshot (VM can be running or stopped)
+    default: false
+    example: true
+  quiesce:
+    type: boolean
+    description: |
+      Quiesce the VM filesystem before snapshot (requires guest agent).
+      This ensures filesystem consistency by flushing buffers.
+    default: false
+    example: true

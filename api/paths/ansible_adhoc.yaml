@@ -1,0 +1,28 @@
+post:
+  summary: Run ad-hoc command
+  description: Executes an ad-hoc Ansible command
+  tags:
+    - Ansible
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/AdHocRequest.yaml
+  responses:
+    '202':
+      description: Ad-hoc command execution started
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ExecutionStartResponse.yaml
+    '400':
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

@@ -1,0 +1,91 @@
+type: object
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      id:
+        type: string
+      repo_tags:
+        type: array
+        items:
+          type: string
+      repo_digests:
+        type: array
+        items:
+          type: string
+      parent:
+        type: string
+      author:
+        type: string
+      architecture:
+        type: string
+      os:
+        type: string
+      variant:
+        type: string
+      created_at:
+        type: string
+        format: date-time
+      size:
+        type: integer
+      labels:
+        type: object
+        additionalProperties:
+          type: string
+      annotations:
+        type: object
+        additionalProperties:
+          type: string
+      layers:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: string
+            size:
+              type: integer
+            created_at:
+              type: string
+              format: date-time
+            created_by:
+              type: string
+            comment:
+              type: string
+      config:
+        type: object
+        properties:
+          user:
+            type: string
+          exposed_ports:
+            type: array
+            items:
+              type: string
+          env:
+            type: array
+            items:
+              type: string
+          cmd:
+            type: array
+            items:
+              type: string
+          entrypoint:
+            type: array
+            items:
+              type: string
+          volumes:
+            type: array
+            items:
+              type: string
+          working_dir:
+            type: string
+          stop_signal:
+            type: string
+          labels:
+            type: object
+            additionalProperties:
+              type: string
+      manifest:
+        type: object
+        additionalProperties:
+          type: string

@@ -1,0 +1,64 @@
+get:
+  summary: WebSocket Terminal Connection
+  description: |
+    Establish a WebSocket connection for an interactive terminal session.
+
+    **WebSocket URL**: `ws://localhost:8080/ws/terminal`
+
+    **Authentication**: Send JWT token in the first message after connection:
+    ```json
+    {
+      "type": "auth",
+      "payload": {
+        "token": "your-jwt-token"
+      }
+    }
+    ```
+
+    **Start terminal session**:
+    ```json
+    {
+      "type": "subscribe",
+      "payload": {
+        "cols": 80,
+        "rows": 24,
+        "shell": "/bin/bash"
+      }
+    }
+    ```
+
+    **Send input**:
+    ```json
+    {
+      "type": "input",
+      "data": "ls -la\n"
+    }
+    ```
+
+    **Resize terminal**:
+    ```json
+    {
+      "type": "resize",
+      "payload": {
+        "cols": 120,
+        "rows": 40
+      }
+    }
+    ```
+
+    **Server messages** will be in the format:
+    ```json
+    {
+      "type": "output",
+      "data": "terminal output..."
+    }
+    ```
+  tags:
+    - WebSocket
+  security:
+    - bearerAuth: []
+  responses:
+    '101':
+      description: Switching Protocols - WebSocket connection established
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

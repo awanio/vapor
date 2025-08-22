@@ -1,0 +1,35 @@
+delete:
+  summary: Delete scheduled task
+  description: Deletes a scheduled task (not yet implemented)
+  tags:
+    - Ansible
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: Schedule ID
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Schedule deleted successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MessageResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: Schedule not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '501':
+      description: Scheduling not yet implemented
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml

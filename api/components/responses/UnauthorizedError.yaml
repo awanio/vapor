@@ -1,0 +1,5 @@
+description: Authentication required
+content:
+  application/json:
+    schema:
+      $ref: ../schemas/ErrorResponse.yaml

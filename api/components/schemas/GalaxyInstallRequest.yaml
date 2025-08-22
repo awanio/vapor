@@ -1,0 +1,26 @@
+type: object
+properties:
+  type:
+    type: string
+    enum:
+      - role
+      - collection
+    description: Resource type to install
+    example: collection
+  name:
+    type: string
+    description: Name of role/collection
+    example: community.general
+  version:
+    type: string
+    description: Version to install
+    example: 5.0.0
+  requirements_file:
+    type: string
+    description: Path to requirements file
+    example: requirements.yml
+  force:
+    type: boolean
+    description: Force reinstall
+    default: false
+    example: false

@@ -1,0 +1,15 @@
+get:
+  summary: Get memory information
+  tags:
+    - System
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: Memory information
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MemoryResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

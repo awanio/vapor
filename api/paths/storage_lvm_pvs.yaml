@@ -1,0 +1,15 @@
+get:
+  summary: List LVM physical volumes
+  tags:
+    - Storage
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: Physical volumes listed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/PhysicalVolumesResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

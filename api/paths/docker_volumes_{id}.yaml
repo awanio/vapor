@@ -1,0 +1,34 @@
+delete:
+  summary: Remove Docker volume
+  description: Remove a Docker volume from the system
+  tags:
+    - Docker
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: Volume name
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Volume removed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/VolumeActionResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '500':
+      description: Failed to remove volume
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+          example:
+            status: error
+            error:
+              code: REMOVE_VOLUME_FAILED
+              message: 'Failed to remove volume: Volume is in use by containers'

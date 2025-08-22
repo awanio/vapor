@@ -1,0 +1,68 @@
+get:
+  summary: Get Docker container details
+  description: Get detailed information about a specific Docker container
+  tags:
+    - Docker
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: Container ID or name
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Container details retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ContainerDetailResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: Container not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+          example:
+            status: error
+            error:
+              code: CONTAINER_NOT_FOUND
+              message: 'Failed to get container detail: No such container'
+delete:
+  summary: Remove Docker container
+  description: Remove a Docker container (must be stopped first)
+  tags:
+    - Docker
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: Container ID or name
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Container removed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ContainerActionResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '500':
+      description: Failed to remove container
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+          example:
+            status: error
+            error:
+              code: REMOVE_CONTAINER_FAILED
+              message: 'Failed to remove container: Cannot remove running container'

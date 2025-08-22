@@ -1,0 +1,122 @@
+get:
+  summary: Get detailed service information
+  description: Get detailed information about a specific service in a namespace
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: Service namespace
+      schema:
+        type: string
+    - name: name
+      in: path
+      required: true
+      description: Service name
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Service details retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ServiceDetailResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: Service not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml
+put:
+  summary: Update a Service
+  description: Update an existing Service
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: Service namespace
+      schema:
+        type: string
+    - name: name
+      in: path
+      required: true
+      description: Service name
+      schema:
+        type: string
+  requestBody:
+    required: true
+    description: Service specification in JSON or YAML format
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/ServiceDetail.yaml
+      application/yaml:
+        schema:
+          type: string
+      text/yaml:
+        schema:
+          type: string
+  responses:
+    '200':
+      description: Service updated successfully
+    '400':
+      description: Invalid Service specification or unsupported content type
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: Service not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml
+delete:
+  summary: Delete a Service
+  description: Delete a specific Service
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: Service namespace
+      schema:
+        type: string
+    - name: name
+      in: path
+      required: true
+      description: Service name
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Service deleted successfully
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: Service not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

@@ -1,0 +1,15 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          executions:
+            type: array
+            items:
+              $ref: ./ExecutionSummary.yaml
+          count:
+            type: integer
+            description: Total number of executions
+            example: 25

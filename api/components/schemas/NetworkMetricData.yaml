@@ -1,0 +1,29 @@
+type: object
+properties:
+  interfaces:
+    type: array
+    items:
+      type: object
+      properties:
+        name:
+          type: string
+        rx_bytes_per_sec:
+          type: number
+          format: float
+        tx_bytes_per_sec:
+          type: number
+          format: float
+        rx_packets_per_sec:
+          type: number
+          format: float
+        tx_packets_per_sec:
+          type: number
+          format: float
+        rx_errors:
+          type: integer
+        tx_errors:
+          type: integer
+        rx_dropped:
+          type: integer
+        tx_dropped:
+          type: integer

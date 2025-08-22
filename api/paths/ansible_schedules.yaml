@@ -1,0 +1,56 @@
+get:
+  summary: List scheduled tasks
+  description: Returns all scheduled Ansible tasks (not yet implemented)
+  tags:
+    - Ansible
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: Schedules listed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/SchedulesListResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '501':
+      description: Scheduling not yet implemented
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+post:
+  summary: Create scheduled task
+  description: Creates a scheduled playbook execution (not yet implemented)
+  tags:
+    - Ansible
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/CreateScheduleRequest.yaml
+  responses:
+    '201':
+      description: Schedule created successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MessageResponse.yaml
+    '400':
+      description: Invalid schedule format
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '501':
+      description: Scheduling not yet implemented
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml

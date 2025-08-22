@@ -1,0 +1,27 @@
+type: object
+properties:
+  host:
+    type: string
+    description: Host name
+    example: web1.example.com
+  ok:
+    type: integer
+    example: 10
+  changed:
+    type: integer
+    example: 3
+  unreachable:
+    type: boolean
+    example: false
+  failed:
+    type: boolean
+    example: false
+  skipped:
+    type: integer
+    example: 1
+  rescued:
+    type: integer
+    example: 0
+  ignored:
+    type: integer
+    example: 0

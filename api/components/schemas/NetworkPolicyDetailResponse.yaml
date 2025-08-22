@@ -1,0 +1,12 @@
+type: object
+properties:
+  status:
+    type: string
+    enum:
+      - success
+      - error
+  networkpolicy_detail:
+    $ref: ./NetworkPolicyDetail.yaml
+  error:
+    $ref: ./APIError.yaml
+    nullable: true

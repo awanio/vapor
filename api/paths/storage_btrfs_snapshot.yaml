@@ -1,0 +1,21 @@
+post:
+  summary: Create BTRFS snapshot
+  tags:
+    - Storage
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/BTRFSSnapshotRequest.yaml
+  responses:
+    '200':
+      description: Snapshot created successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MessageResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

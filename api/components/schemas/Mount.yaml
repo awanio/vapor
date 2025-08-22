@@ -1,0 +1,25 @@
+type: object
+properties:
+  type:
+    type: string
+    description: Mount type
+    example: bind
+  source:
+    type: string
+    description: Source path
+    example: /host/path
+  destination:
+    type: string
+    description: Destination path in container
+    example: /container/path
+  mode:
+    type: string
+    description: Mount mode
+    example: rw
+  rw:
+    type: boolean
+    description: Read-write flag
+  propagation:
+    type: string
+    description: Mount propagation
+    example: rprivate

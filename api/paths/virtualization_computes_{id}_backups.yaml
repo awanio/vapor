@@ -1,0 +1,75 @@
+get:
+  summary: List VM backups
+  description: List all backups for a specific virtual machine
+  tags:
+    - Virtualization Compute
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: VM name or UUID
+  responses:
+    '200':
+      description: Backups listed successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              backups:
+                type: array
+                items:
+                  $ref: ../components/schemas/VMBackup.yaml
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml
+post:
+  summary: Create VM backup
+  description: |
+    Create a backup of a virtual machine.
+
+    **Backup Types:**
+    - `full`: Complete backup of all VM disks
+    - `incremental`: Only changes since last backup
+    - `differential`: Changes since last full backup
+
+    **Options:**
+    - Compression (gzip, bzip2, xz, zstd)
+    - Encryption (AES-256, AES-128)
+    - Include memory state
+    - Custom retention period
+  tags:
+    - Virtualization Compute
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: VM name or UUID
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/VMBackupRequest.yaml
+  responses:
+    '202':
+      description: Backup initiated successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/VMBackup.yaml
+    '400':
+      $ref: ../components/responses/BadRequest.yaml
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

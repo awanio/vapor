@@ -1,0 +1,91 @@
+get:
+  summary: Get VM template details
+  description: Get detailed information about a specific VM template
+  tags:
+    - Virtualization Compute
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Template ID
+  responses:
+    '200':
+      description: Template details retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/VMTemplate.yaml
+    '404':
+      description: Template not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml
+put:
+  summary: Update VM template
+  description: Update an existing VM template
+  tags:
+    - Virtualization Compute
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Template ID
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/VMTemplateUpdateRequest.yaml
+  responses:
+    '200':
+      description: Template updated successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/VMTemplate.yaml
+    '400':
+      $ref: ../components/responses/BadRequest.yaml
+    '404':
+      description: Template not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml
+delete:
+  summary: Delete VM template
+  description: Delete a VM template from the system
+  tags:
+    - Virtualization Compute
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Template ID
+  responses:
+    '204':
+      description: Template deleted successfully
+    '404':
+      description: Template not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

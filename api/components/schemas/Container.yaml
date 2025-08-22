@@ -1,0 +1,64 @@
+type: object
+properties:
+  id:
+    type: string
+    description: Container ID
+    example: 9c7c8a3b0123
+  names:
+    type: array
+    items:
+      type: string
+    description: Container names
+    example:
+      - my-container
+  image:
+    type: string
+    description: Image name
+    example: nginx:latest
+  imageId:
+    type: string
+    description: Image ID
+    example: sha256:abcd1234
+  command:
+    type: string
+    description: Command being run
+    example: nginx -g 'daemon off;'
+  created:
+    type: string
+    format: date-time
+    description: Container creation time
+  state:
+    type: string
+    description: Container state
+    example: running
+  status:
+    type: string
+    description: Container status
+    example: Up 2 hours
+  ports:
+    type: array
+    items:
+      $ref: ./Port.yaml
+    description: Port mappings
+  labels:
+    type: object
+    additionalProperties:
+      type: string
+    description: Container labels
+  sizeRw:
+    type: integer
+    format: int64
+    description: Size of files that have been created or changed
+  sizeRootFs:
+    type: integer
+    format: int64
+    description: Total size of all the files in the container
+  hostConfig:
+    $ref: ./HostConfig.yaml
+  networkSettings:
+    $ref: ./NetworkSettings.yaml
+  mounts:
+    type: array
+    items:
+      $ref: ./Mount.yaml
+    description: Container mounts

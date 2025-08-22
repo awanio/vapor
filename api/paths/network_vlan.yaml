@@ -1,0 +1,23 @@
+post:
+  summary: Create VLAN interface
+  tags:
+    - Network
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/VLANRequest.yaml
+  responses:
+    '200':
+      description: VLAN created
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MessageResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '409':
+      description: VLAN already exists

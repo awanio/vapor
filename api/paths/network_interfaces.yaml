@@ -1,0 +1,15 @@
+get:
+  summary: List network interfaces
+  tags:
+    - Network
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: List of interfaces
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/InterfacesResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

@@ -1,0 +1,18 @@
+type: object
+description: Console connection statistics
+properties:
+  total_connections:
+    type: integer
+    description: Total number of active connections
+  total_tokens:
+    type: integer
+    description: Total number of active tokens
+  connections_per_vm:
+    type: object
+    additionalProperties:
+      type: integer
+    description: Number of connections per VM
+  connections:
+    type: array
+    items:
+      $ref: ./ConsoleConnection.yaml

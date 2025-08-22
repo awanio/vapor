@@ -1,0 +1,100 @@
+get:
+  summary: WebSocket endpoint for live system logs
+  description: |
+    Establish a WebSocket connection to receive real-time system logs.
+
+    **WebSocket URL**: `ws://localhost:8080/ws/logs`
+
+    **Authentication**: Send JWT token in the first message after connection:
+    ```json
+    {
+      "type": "auth",
+      "payload": {
+        "token": "your-jwt-token"
+      }
+    }
+    ```
+
+    **Subscribe Examples**:
+
+    1. All logs from all services (most verbose):
+    ```json
+    {
+      "type": "subscribe",
+      "payload": {
+        "filters": {
+          "follow": true
+        }
+      }
+    }
+    ```
+
+    2. Specific service logs:
+    ```json
+    {
+      "type": "subscribe",
+      "payload": {
+        "filters": {
+          "unit": "sshd",
+          "priority": "info",
+          "follow": true
+        }
+      }
+    }
+    ```
+
+    3. Kernel messages:
+    ```json
+    {
+      "type": "subscribe",
+      "payload": {
+        "filters": {
+          "unit": "kernel",
+          "follow": true
+        }
+      }
+    }
+    ```
+
+    4. Recent logs (last 10 minutes):
+    ```json
+    {
+      "type": "subscribe",
+      "payload": {
+        "filters": {
+          "since": "10 minutes ago",
+          "follow": true
+        }
+      }
+    }
+    ```
+
+    **Server Response Format**:
+    ```json
+    {
+      "type": "data",
+      "payload": {
+        "timestamp": "2024-01-15T10:30:00Z",
+        "level": "info",
+        "unit": "sshd.service",
+        "message": "Accepted publickey for john from 192.168.1.100 port 52341 ssh2"
+      }
+    }
+    ```
+
+    **Priority Levels** (from least to most severe):
+    - `debug` - Debugging messages
+    - `info` - Informational messages  
+    - `notice` - Normal but significant messages
+    - `warning` - Warning messages
+    - `error` - Error messages
+    - `critical` - Critical messages
+  tags:
+    - WebSocket
+  security:
+    - bearerAuth: []
+  responses:
+    '101':
+      description: Switching Protocols - WebSocket connection established
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

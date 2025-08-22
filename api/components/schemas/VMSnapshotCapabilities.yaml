@@ -1,0 +1,41 @@
+type: object
+properties:
+  supports_snapshots:
+    type: boolean
+    description: Whether this VM supports snapshots at all
+    example: true
+  supports_internal:
+    type: boolean
+    description: Whether internal snapshots are supported (requires all disks to be qcow2)
+    example: false
+  supports_external:
+    type: boolean
+    description: >-
+      Whether external snapshots are supported (always true if snapshots are
+      supported)
+    example: true
+  supports_memory:
+    type: boolean
+    description: Whether memory snapshots are supported (requires qcow2 for all disks)
+    example: false
+  disk_formats:
+    type: array
+    items:
+      $ref: ./DiskFormatInfo.yaml
+    description: Information about each disk's format
+  warnings:
+    type: array
+    items:
+      type: string
+    description: Any warnings about snapshot capabilities
+    example:
+      - Disk 'vdb' uses raw format, only external snapshots are supported
+      - Mixed disk formats detected (qcow2, raw)
+  recommendations:
+    type: array
+    items:
+      type: string
+    description: Recommendations for optimal snapshot support
+    example:
+      - Convert all disks to qcow2 format for full snapshot capabilities
+      - Use external snapshots for this VM configuration

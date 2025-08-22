@@ -1,0 +1,8 @@
+type: object
+properties:
+  memory:
+    type: integer
+  vcpus:
+    type: integer
+  autostart:
+    type: boolean

@@ -1,0 +1,17 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          iso:
+            $ref: ./ISOImage.yaml
+          upload_id:
+            type: string
+            description: Completed upload session ID
+            example: 550e8400-e29b-41d4-a716-446655440000
+          message:
+            type: string
+            description: Success message
+            example: ISO upload completed and registered successfully

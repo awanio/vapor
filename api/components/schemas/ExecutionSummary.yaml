@@ -1,0 +1,66 @@
+type: object
+properties:
+  id:
+    type: string
+    description: Execution ID
+    example: exec-a1b2c3d4
+  type:
+    type: string
+    description: Execution type
+    enum:
+      - playbook
+      - adhoc
+    example: playbook
+  playbook:
+    type: string
+    description: Playbook name (if type is playbook)
+    example: site.yml
+  module:
+    type: string
+    description: Module name (if type is adhoc)
+    example: ping
+  status:
+    type: string
+    description: Execution status
+    enum:
+      - running
+      - success
+      - failed
+      - cancelled
+    example: success
+  started_at:
+    type: string
+    format: date-time
+    example: '2025-01-15T10:30:00Z'
+  finished_at:
+    type: string
+    format: date-time
+    example: '2025-01-15T10:35:00Z'
+  duration:
+    type: integer
+    description: Duration in seconds
+    example: 300
+  hosts_summary:
+    type: object
+    properties:
+      ok:
+        type: integer
+        example: 10
+      changed:
+        type: integer
+        example: 5
+      unreachable:
+        type: integer
+        example: 0
+      failed:
+        type: integer
+        example: 1
+      skipped:
+        type: integer
+        example: 2
+      rescued:
+        type: integer
+        example: 0
+      ignored:
+        type: integer
+        example: 0

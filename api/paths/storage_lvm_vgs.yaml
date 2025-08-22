@@ -1,0 +1,15 @@
+get:
+  summary: List LVM volume groups
+  tags:
+    - Storage
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: Volume groups listed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/VolumeGroupsResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

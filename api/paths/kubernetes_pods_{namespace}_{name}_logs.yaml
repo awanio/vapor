@@ -1,0 +1,59 @@
+get:
+  summary: Get pod logs
+  description: Retrieve logs from a specific pod
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: Pod namespace
+      schema:
+        type: string
+    - name: name
+      in: path
+      required: true
+      description: Pod name
+      schema:
+        type: string
+    - name: follow
+      in: query
+      required: false
+      description: Follow the log output
+      schema:
+        type: boolean
+        default: false
+    - name: lines
+      in: query
+      required: false
+      description: Number of lines to retrieve from the end of the logs
+      schema:
+        type: integer
+        default: 100
+  responses:
+    '200':
+      description: Pod logs retrieved successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                enum:
+                  - success
+              logs:
+                type: string
+                description: Pod log output
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: Pod not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

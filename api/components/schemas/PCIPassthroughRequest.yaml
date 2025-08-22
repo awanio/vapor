@@ -1,0 +1,35 @@
+type: object
+required:
+  - device_id
+properties:
+  device_id:
+    type: string
+    description: PCI device identifier to attach
+    example: pci_0000_01_00_0
+  vfio_options:
+    type: object
+    description: VFIO driver options
+    properties:
+      display:
+        type: string
+        description: Display mode for GPU passthrough
+        enum:
+          - 'on'
+          - 'off'
+          - auto
+        default: auto
+        example: 'on'
+      x_vga:
+        type: boolean
+        description: Enable VGA mode for primary GPU
+        default: false
+        example: true
+      romfile:
+        type: string
+        description: Path to GPU ROM file
+        example: /usr/share/vgabios/gpu.rom
+  managed:
+    type: boolean
+    description: Let libvirt manage device binding
+    default: true
+    example: true

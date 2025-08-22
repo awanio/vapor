@@ -1,0 +1,31 @@
+type: object
+required:
+  - type
+properties:
+  type:
+    type: string
+    description: Network type
+    enum:
+      - network
+      - bridge
+      - direct
+      - user
+    example: network
+  source:
+    type: string
+    description: Network source (network name, bridge name, or interface)
+    example: default
+  model:
+    type: string
+    description: Network device model
+    enum:
+      - virtio
+      - e1000
+      - rtl8139
+    default: virtio
+    example: virtio
+  mac:
+    type: string
+    description: MAC address (auto-generated if not specified)
+    pattern: ^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$
+    example: '52:54:00:12:34:56'

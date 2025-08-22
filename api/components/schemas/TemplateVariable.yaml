@@ -1,0 +1,32 @@
+type: object
+properties:
+  name:
+    type: string
+    description: Variable name
+    example: domain_name
+  description:
+    type: string
+    description: Variable description
+    example: The domain name for the website
+  type:
+    type: string
+    description: Variable type
+    enum:
+      - string
+      - integer
+      - boolean
+      - list
+      - dict
+    example: string
+  required:
+    type: boolean
+    description: Whether variable is required
+    example: true
+  default:
+    type: string
+    description: Default value
+    example: example.com
+  validation:
+    type: string
+    description: Validation regex pattern
+    example: ^[a-z0-9.-]+$

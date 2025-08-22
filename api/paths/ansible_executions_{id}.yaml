@@ -1,0 +1,64 @@
+get:
+  summary: Get execution details
+  description: Returns detailed information about a specific execution
+  tags:
+    - Ansible
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: Execution ID
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Execution details retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ExecutionDetailResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: Execution not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+delete:
+  summary: Cancel execution
+  description: Cancels a running execution (not yet implemented)
+  tags:
+    - Ansible
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: Execution ID
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Execution cancelled successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MessageResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: Execution not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '501':
+      description: Cancellation not yet implemented
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml

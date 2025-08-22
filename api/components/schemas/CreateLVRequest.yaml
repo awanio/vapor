@@ -1,0 +1,20 @@
+type: object
+required:
+  - name
+  - vg_name
+  - size
+properties:
+  name:
+    type: string
+  vg_name:
+    type: string
+  size:
+    type: string
+  filesystem:
+    type: string
+    enum:
+      - ext4
+      - ext3
+      - ext2
+      - xfs
+      - btrfs

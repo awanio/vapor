@@ -1,0 +1,22 @@
+description: Helm operation failed
+content:
+  application/json:
+    schema:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - error
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              enum:
+                - HELM_ERROR
+            message:
+              type: string
+              example: 'Failed to list releases: connection refused'
+            data:
+              type: object

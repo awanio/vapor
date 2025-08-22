@@ -1,0 +1,14 @@
+type: object
+properties:
+  version:
+    type: string
+  platform:
+    type: string
+  nodes:
+    type: integer
+  namespaces:
+    type: integer
+  pods:
+    type: integer
+  services:
+    type: integer

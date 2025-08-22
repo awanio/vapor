@@ -1,0 +1,12 @@
+type: object
+properties:
+  status:
+    type: string
+    enum:
+      - success
+      - error
+  pvc_detail:
+    $ref: ./PVCDetail.yaml
+  error:
+    $ref: ./APIError.yaml
+    nullable: true

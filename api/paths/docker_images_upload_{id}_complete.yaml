@@ -1,0 +1,61 @@
+post:
+  summary: Complete upload and import image
+  description: Complete a resumable upload session and import the Docker image
+  tags:
+    - Docker
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: Upload session ID
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Upload completed and image imported successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: success
+              data:
+                type: object
+                properties:
+                  upload_id:
+                    type: string
+                  import_result:
+                    $ref: ../components/schemas/ImageImportResult.yaml
+                  runtime:
+                    type: string
+                    example: docker
+                  filename:
+                    type: string
+    '400':
+      description: Upload not complete
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '404':
+      description: Upload session not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      description: Failed to import image
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      description: No container runtime available
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml

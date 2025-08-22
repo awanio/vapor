@@ -1,0 +1,44 @@
+get:
+  summary: List Helm charts
+  description: >-
+    Search all Helm charts from configured repositories (equivalent to 'helm
+    search repo -l')
+  tags:
+    - Helm
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: repository
+      in: query
+      description: Filter charts by repository name
+      required: false
+      schema:
+        type: string
+        example: bitnami
+    - name: all_versions
+      in: query
+      description: Show all versions of charts (equivalent to -l flag in helm search)
+      required: false
+      schema:
+        type: boolean
+        default: true
+    - name: devel
+      in: query
+      description: Include development versions (equivalent to --devel flag)
+      required: false
+      schema:
+        type: boolean
+        default: false
+  responses:
+    '200':
+      description: Helm charts listed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/HelmChartsResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '403':
+      $ref: ../components/responses/HelmNotAvailableError.yaml
+    '500':
+      $ref: ../components/responses/HelmError.yaml

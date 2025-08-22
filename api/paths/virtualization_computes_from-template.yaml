@@ -1,0 +1,168 @@
+post:
+  summary: Create VM from template
+  description: |
+    Create a new virtual machine using a predefined template.
+
+    The template provides base specifications including minimum and recommended
+    values for memory, vCPUs, and disk size. User-provided values will override
+    template recommendations but must meet minimum requirements.
+
+    **Template Application:**
+    - If user values are not provided, template recommended values are used
+    - If template has no recommendation, minimum values are used
+    - User values are validated against template minimum requirements
+    - Template settings for OS, network, graphics, and cloud-init are applied
+  tags:
+    - Virtualization Compute
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - template_id
+            - name
+          properties:
+            template_id:
+              type: integer
+              description: Template ID to use for VM creation
+              example: 1
+            name:
+              type: string
+              description: Name for the new VM
+              example: my-ubuntu-vm
+            memory:
+              type: integer
+              description: >-
+                Memory in MB (overrides template recommendation, must meet
+                minimum)
+              example: 4096
+            vcpus:
+              type: integer
+              description: >-
+                Number of vCPUs (overrides template recommendation, must meet
+                minimum)
+              example: 2
+            disk_size:
+              type: integer
+              description: >-
+                Disk size in GB (overrides template recommendation, must meet
+                minimum)
+              example: 50
+            network:
+              type: object
+              description: Network configuration (overrides template defaults)
+              properties:
+                type:
+                  type: string
+                  enum:
+                    - bridge
+                    - nat
+                    - direct
+                    - user
+                  description: Network type
+                source:
+                  type: string
+                  description: Network source (bridge name, network name, etc.)
+                model:
+                  type: string
+                  enum:
+                    - virtio
+                    - e1000
+                    - rtl8139
+                  description: Network adapter model
+                mac:
+                  type: string
+                  description: MAC address (auto-generated if not specified)
+            graphics:
+              type: object
+              description: Graphics configuration (overrides template defaults)
+              properties:
+                type:
+                  type: string
+                  enum:
+                    - vnc
+                    - spice
+                    - none
+                  description: Graphics type
+                port:
+                  type: integer
+                  description: Graphics port (auto-assigned if -1 or not specified)
+                listen:
+                  type: string
+                  description: Listen address
+                  default: 0.0.0.0
+                password:
+                  type: string
+                  description: Graphics password for authentication
+            cloud_init:
+              type: object
+              description: Cloud-init configuration (if template supports cloud-init)
+              properties:
+                users:
+                  type: array
+                  description: Users to create
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      password:
+                        type: string
+                      ssh_keys:
+                        type: array
+                        items:
+                          type: string
+                      sudo:
+                        type: string
+                      groups:
+                        type: string
+                      shell:
+                        type: string
+                hostname:
+                  type: string
+                  description: Hostname to set
+                packages:
+                  type: array
+                  description: Packages to install
+                  items:
+                    type: string
+                runcmd:
+                  type: array
+                  description: Commands to run on first boot
+                  items:
+                    type: string
+            metadata:
+              type: object
+              description: Additional metadata for the VM
+              additionalProperties:
+                type: string
+  responses:
+    '201':
+      description: VM created successfully from template
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/VMCreateResponse.yaml
+    '400':
+      description: |
+        Bad request - validation error.
+        This can occur when:
+        - Required fields are missing
+        - User values don't meet template minimum requirements
+        - Invalid configuration provided
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '404':
+      description: Template not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

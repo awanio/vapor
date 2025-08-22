@@ -1,0 +1,15 @@
+type: object
+description: Raw Kubernetes Namespace object with full API specification
+additionalProperties: true
+example:
+  apiVersion: v1
+  kind: Namespace
+  metadata:
+    name: production
+    uid: a2345678-a234-a234-a234-a23456789012
+    resourceVersion: '89012'
+    creationTimestamp: '2024-01-15T04:00:00Z'
+    labels:
+      name: production
+  status:
+    phase: Active

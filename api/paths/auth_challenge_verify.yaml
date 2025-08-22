@@ -1,0 +1,33 @@
+post:
+  summary: Verify SSH challenge signature
+  description: |
+    Verify a signed SSH challenge to complete authentication.
+    Returns a JWT token upon successful verification.
+  tags:
+    - Auth
+  security: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/VerifyRequest.yaml
+  responses:
+    '200':
+      description: Challenge verified successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/EnhancedLoginResponse.yaml
+    '401':
+      description: Invalid signature or expired challenge
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '404':
+      description: Challenge not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml

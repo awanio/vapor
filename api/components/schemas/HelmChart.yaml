@@ -1,0 +1,22 @@
+type: object
+properties:
+  name:
+    type: string
+    description: Name of the Helm chart
+    example: bitnami/nginx
+  version:
+    type: string
+    description: Version of the chart
+    example: 13.2.23
+  description:
+    type: string
+    description: Description of the chart
+    example: NGINX Open Source plus a number of useful modules
+  repository:
+    type: string
+    description: Repository containing the chart
+    example: bitnami
+  app_version:
+    type: string
+    description: Version of the application being deployed
+    example: 1.25.3

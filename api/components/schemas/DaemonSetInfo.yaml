@@ -1,0 +1,28 @@
+type: object
+properties:
+  name:
+    type: string
+  namespace:
+    type: string
+  desired:
+    type: integer
+  current:
+    type: integer
+  ready:
+    type: integer
+  up_to_date:
+    type: integer
+  available:
+    type: integer
+  node_selector:
+    type: string
+  age:
+    type: string
+  labels:
+    type: object
+    additionalProperties:
+      type: string
+  annotations:
+    type: object
+    additionalProperties:
+      type: string

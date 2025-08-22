@@ -1,0 +1,18 @@
+get:
+  summary: List all stateful sets in the cluster
+  description: List all stateful sets across all namespaces in the Kubernetes cluster
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: Stateful sets listed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/StatefulSetsResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

@@ -1,0 +1,31 @@
+get:
+  summary: Get detailed node information
+  description: Get detailed information about a specific node
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      description: Node name
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Node details retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/NodeDetailResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: Node not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

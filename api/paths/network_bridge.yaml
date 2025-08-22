@@ -1,0 +1,23 @@
+post:
+  summary: Create network bridge
+  tags:
+    - Network
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/BridgeRequest.yaml
+  responses:
+    '200':
+      description: Bridge created
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MessageResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '409':
+      description: Bridge already exists

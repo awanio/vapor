@@ -1,0 +1,22 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          network_name:
+            type: string
+            description: Name of the network
+          leases:
+            type: array
+            description: List of active DHCP leases
+            items:
+              $ref: ./DHCPLease.yaml
+          count:
+            type: integer
+            description: Total number of active leases
+        required:
+          - network_name
+          - leases
+          - count

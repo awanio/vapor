@@ -1,0 +1,30 @@
+type: object
+required:
+  - name
+  - playbook
+  - cron
+properties:
+  name:
+    type: string
+    description: Schedule name
+    example: Daily backup
+  playbook:
+    type: string
+    description: Playbook to run
+    example: backup.yml
+  cron:
+    type: string
+    description: Cron expression
+    example: 0 2 * * *
+  enabled:
+    type: boolean
+    description: Enable schedule immediately
+    default: true
+    example: true
+  parameters:
+    $ref: ./PlaybookRunRequest.yaml
+  timezone:
+    type: string
+    description: Timezone for schedule
+    default: UTC
+    example: America/New_York

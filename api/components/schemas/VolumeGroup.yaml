@@ -1,0 +1,14 @@
+type: object
+properties:
+  name:
+    type: string
+  size:
+    type: integer
+  free:
+    type: integer
+  pv_count:
+    type: integer
+  lv_count:
+    type: integer
+  uuid:
+    type: string

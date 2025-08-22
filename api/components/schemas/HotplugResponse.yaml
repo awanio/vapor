@@ -1,0 +1,28 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          vm_id:
+            type: string
+            description: VM identifier
+            example: web-server-01
+          resource_type:
+            type: string
+            description: Type of resource that was hotplugged
+            example: cpu
+          action:
+            type: string
+            description: Action that was performed
+            example: add
+          message:
+            type: string
+            description: Success message
+            example: Successfully added 2 vCPUs to VM
+          details:
+            type: object
+            description: Additional details about the operation
+            additionalProperties:
+              type: string

@@ -1,0 +1,135 @@
+post:
+  summary: Create resumable upload session
+  description: >
+    Alternative path for creating resumable upload session for container images
+    using TUS protocol.
+
+    ```
+  tags:
+    - Container
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: Upload-Length
+      in: header
+      required: true
+      description: Total size of the file to upload
+      schema:
+        type: integer
+        format: int64
+    - name: Upload-Metadata
+      in: header
+      required: false
+      description: Metadata about the upload (filename, etc.)
+      schema:
+        type: string
+  responses:
+    '201':
+      description: Upload session created successfully
+      headers:
+        Location:
+          description: URL for the upload session
+          schema:
+            type: string
+        Upload-Offset:
+          description: Current upload offset (starts at 0)
+          schema:
+            type: integer
+        Tus-Resumable:
+          description: TUS protocol version
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              upload_id:
+                type: string
+                example: abc123-def456-ghi789
+              upload_url:
+                type: string
+                example: /containers/images/upload/abc123-def456-ghi789
+              expires_at:
+                type: string
+                format: date-time
+                example: '2025-08-06T15:38:32Z'
+    '400':
+      description: Invalid upload request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '413':
+      description: File too large
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      description: No container runtime available
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+get:
+  summary: List active upload sessions
+  description: |
+
+    This endpoint lists all active TUS upload sessions for container images,
+    allowing you to:
+    - Monitor multiple concurrent uploads
+    - Resume interrupted uploads
+    - Clean up stale upload sessions
+
+    Upload sessions expire after 24 hours of inactivity.
+  tags:
+    - Container
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: Upload sessions listed successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: success
+              data:
+                type: object
+                properties:
+                  uploads:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        upload_id:
+                          type: string
+                        total_size:
+                          type: integer
+                        uploaded_size:
+                          type: integer
+                        progress:
+                          type: number
+                          format: float
+                        status:
+                          type: string
+                          enum:
+                            - created
+                            - in_progress
+                            - completed
+                            - failed
+                            - cancelled
+                        created_at:
+                          type: string
+                          format: date-time
+                        updated_at:
+                          type: string
+                          format: date-time
+                        filename:
+                          type: string
+                  count:
+                    type: integer

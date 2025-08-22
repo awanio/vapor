@@ -1,0 +1,10 @@
+type: object
+properties:
+  imageName:
+    type: string
+    description: Name of the image to pull
+    example: nginx
+  tag:
+    type: string
+    description: Tag of the image to pull
+    example: latest

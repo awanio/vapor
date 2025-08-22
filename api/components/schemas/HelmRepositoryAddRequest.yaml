@@ -1,0 +1,47 @@
+type: object
+required:
+  - name
+  - url
+properties:
+  name:
+    type: string
+    description: Name to assign to the repository
+    example: bitnami
+    minLength: 1
+  url:
+    type: string
+    description: URL of the Helm repository
+    example: https://charts.bitnami.com/bitnami
+    format: uri
+  username:
+    type: string
+    description: Username for authenticated repositories
+    example: ''
+  password:
+    type: string
+    description: Password for authenticated repositories
+    example: ''
+  cert_file:
+    type: string
+    description: Path to TLS certificate file
+    example: ''
+  key_file:
+    type: string
+    description: Path to TLS key file
+    example: ''
+  ca_file:
+    type: string
+    description: Path to CA bundle file
+    example: ''
+  insecure_skip_tls_verify:
+    type: boolean
+    description: Skip TLS certificate verification
+    default: false
+  pass_credentials_all:
+    type: boolean
+    description: Pass credentials to all domains
+    default: false
+  force_update:
+    type: boolean
+    description: Force update the repository if it already exists
+    default: false

@@ -1,0 +1,18 @@
+type: object
+properties:
+  name:
+    type: string
+  type:
+    type: string
+  path:
+    type: string
+  state:
+    type: string
+  capacity:
+    type: integer
+  allocation:
+    type: integer
+  available:
+    type: integer
+  autostart:
+    type: boolean

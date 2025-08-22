@@ -1,0 +1,6 @@
+type: object
+required:
+  - portal
+properties:
+  portal:
+    type: string

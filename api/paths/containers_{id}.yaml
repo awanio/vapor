@@ -1,0 +1,81 @@
+get:
+  summary: Get detailed container information
+  tags:
+    - Container
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: Container ID
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Container details retrieved successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: success
+              data:
+                type: object
+                properties:
+                  container:
+                    $ref: ../components/schemas/ContainerDetail.yaml
+                  runtime:
+                    type: string
+                    example: docker
+                  execution_context:
+                    type: object
+                    properties:
+                      directory_state:
+                        type: object
+                        properties:
+                          pwd:
+                            type: string
+                            example: /Users/kandar/Workspaces/vapor/api
+                          home:
+                            type: string
+                            example: /Users/kandar
+                      operating_system:
+                        type: object
+                        properties:
+                          platform:
+                            type: string
+                            example: MacOS
+                      current_time:
+                        type: string
+                        format: date-time
+                        example: '2025-08-02T06:33:19Z'
+                      shell:
+                        type: object
+                        properties:
+                          name:
+                            type: string
+                            example: zsh
+                          version:
+                            type: string
+                            example: '5.9'
+    '400':
+      description: Invalid container ID
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      description: Failed to get container details
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      description: No container runtime available
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml

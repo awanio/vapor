@@ -1,0 +1,33 @@
+type: object
+properties:
+  total:
+    type: integer
+    description: Total memory in bytes
+  used:
+    type: integer
+    description: Used memory in bytes
+  free:
+    type: integer
+    description: Free memory in bytes
+  available:
+    type: integer
+    description: Available memory in bytes
+  used_percent:
+    type: number
+    format: float
+    minimum: 0
+    maximum: 100
+  swap_total:
+    type: integer
+    description: Total swap in bytes
+  swap_used:
+    type: integer
+    description: Used swap in bytes
+  swap_free:
+    type: integer
+    description: Free swap in bytes
+  swap_used_percent:
+    type: number
+    format: float
+    minimum: 0
+    maximum: 100

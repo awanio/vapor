@@ -1,0 +1,27 @@
+type: object
+properties:
+  name:
+    type: string
+  namespace:
+    type: string
+  pod_selector:
+    type: object
+    additionalProperties:
+      type: string
+  policy_types:
+    type: array
+    items:
+      type: string
+      enum:
+        - Ingress
+        - Egress
+  age:
+    type: string
+  labels:
+    type: object
+    additionalProperties:
+      type: string
+  annotations:
+    type: object
+    additionalProperties:
+      type: string

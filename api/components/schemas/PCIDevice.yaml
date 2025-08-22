@@ -1,0 +1,62 @@
+type: object
+properties:
+  device_id:
+    type: string
+    description: PCI device identifier
+    example: pci_0000_01_00_0
+  vendor_id:
+    type: string
+    description: Vendor ID
+    example: 10de
+  product_id:
+    type: string
+    description: Product ID
+    example: '1e84'
+  vendor_name:
+    type: string
+    description: Vendor name
+    example: NVIDIA Corporation
+  product_name:
+    type: string
+    description: Product name
+    example: GeForce RTX 2070 SUPER
+  device_type:
+    type: string
+    description: Device type
+    enum:
+      - gpu
+      - network
+      - storage
+      - usb
+      - other
+    example: gpu
+  pci_address:
+    type: string
+    description: PCI address
+    example: '0000:01:00.0'
+  iommu_group:
+    type: integer
+    description: IOMMU group number
+    example: 14
+  driver:
+    type: string
+    description: Current driver
+    example: vfio-pci
+  is_available:
+    type: boolean
+    description: Whether device is available for passthrough
+    example: true
+  assigned_to_vm:
+    type: string
+    description: VM UUID if assigned
+    example: null
+  capabilities:
+    type: object
+    description: Device capabilities
+    additionalProperties:
+      type: string
+  last_seen:
+    type: string
+    format: date-time
+    description: Last time device was detected
+    example: '2025-01-15T10:00:00Z'

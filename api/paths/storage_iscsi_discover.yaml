@@ -1,0 +1,21 @@
+post:
+  summary: Discover iSCSI targets
+  tags:
+    - Storage
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/ISCSIDiscoverRequest.yaml
+  responses:
+    '200':
+      description: Targets discovered successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ISCSITargetsResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

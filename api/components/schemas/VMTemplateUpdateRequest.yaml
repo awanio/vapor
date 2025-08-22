@@ -1,0 +1,108 @@
+type: object
+properties:
+  display_name:
+    type: string
+    description: Display name for the template
+    example: Ubuntu 22.04 LTS Server Updated
+    minLength: 1
+    maxLength: 255
+  description:
+    type: string
+    description: Template description
+    example: Updated Ubuntu 22.04 LTS Server template
+    maxLength: 1024
+  min_memory:
+    type: integer
+    description: Minimum memory in MB
+    minimum: 128
+    example: 512
+  recommended_memory:
+    type: integer
+    description: Recommended memory in MB
+    minimum: 256
+    example: 4096
+  min_vcpus:
+    type: integer
+    description: Minimum vCPUs
+    minimum: 1
+    maximum: 256
+    example: 1
+  recommended_vcpus:
+    type: integer
+    description: Recommended vCPUs
+    minimum: 1
+    maximum: 256
+    example: 4
+  min_disk:
+    type: integer
+    description: Minimum disk size in GB
+    minimum: 1
+    example: 10
+  recommended_disk:
+    type: integer
+    description: Recommended disk size in GB
+    minimum: 1
+    example: 30
+  disk_bus:
+    type: string
+    description: Recommended disk bus type
+    enum:
+      - virtio
+      - ide
+      - scsi
+      - sata
+    example: virtio
+  network_model:
+    type: string
+    description: Recommended network model
+    enum:
+      - virtio
+      - e1000
+      - rtl8139
+    example: virtio
+  features:
+    type: object
+    description: Required or recommended features
+    properties:
+      uefi:
+        type: boolean
+        description: Use UEFI boot
+        example: true
+      secure_boot:
+        type: boolean
+        description: Enable secure boot
+        example: true
+      tpm:
+        type: boolean
+        description: Add TPM device
+        example: true
+      virtio_drivers:
+        type: boolean
+        description: Requires VirtIO drivers
+        example: true
+  cloud_init_support:
+    type: boolean
+    description: Supports cloud-init
+    example: true
+  default_user:
+    type: string
+    description: Default username for the OS
+    example: ubuntu
+  icon:
+    type: string
+    description: Icon identifier or URL
+    example: ubuntu-new
+  tags:
+    type: array
+    items:
+      type: string
+    description: Template tags for categorization
+    example:
+      - server
+      - lts
+      - cloud
+      - production
+  is_active:
+    type: boolean
+    description: Whether template is active
+    example: true

@@ -1,0 +1,28 @@
+type: object
+properties:
+  usage_percent:
+    type: number
+    format: float
+    minimum: 0
+    maximum: 100
+  load1:
+    type: number
+    format: float
+  load5:
+    type: number
+    format: float
+  load15:
+    type: number
+    format: float
+  cores:
+    type: array
+    items:
+      type: object
+      properties:
+        core:
+          type: integer
+        usage_percent:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100

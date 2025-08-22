@@ -1,0 +1,19 @@
+type: object
+required:
+  - name
+  - content
+properties:
+  name:
+    type: string
+    description: Name of the playbook file
+    example: deploy.yml
+  content:
+    type: string
+    description: Base64 encoded playbook content
+    example: >-
+      LS0tCi0gbmFtZTogRGVwbG95IGFwcGxpY2F0aW9uCiAgaG9zdHM6IGFsbAogIHRhc2tzOgogICAgLSBuYW1lOiBVcGRhdGUgYXBwCiAgICAgIGNvbW1hbmQ6IC9iaW4vdXBkYXRlLnNo
+  overwrite:
+    type: boolean
+    description: Whether to overwrite existing playbook
+    default: false
+    example: true

@@ -1,0 +1,40 @@
+type: object
+required:
+  - hosts
+  - module
+properties:
+  hosts:
+    type: string
+    description: Host pattern to run against
+    example: all
+  module:
+    type: string
+    description: Ansible module to run
+    example: ping
+  args:
+    type: string
+    description: Module arguments
+    example: data=pong
+  inventory:
+    type: string
+    description: Inventory to use
+    example: production
+  extra_vars:
+    type: object
+    additionalProperties:
+      type: string
+    description: Extra variables
+  become:
+    type: boolean
+    description: Run with become (sudo)
+    default: false
+  verbose:
+    type: integer
+    description: Verbosity level
+    minimum: 0
+    maximum: 4
+    default: 0
+  forks:
+    type: integer
+    description: Number of parallel processes
+    default: 5

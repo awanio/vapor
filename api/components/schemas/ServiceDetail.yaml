@@ -1,0 +1,48 @@
+type: object
+description: Raw Kubernetes Service object with full API specification
+additionalProperties: true
+example:
+  apiVersion: v1
+  kind: Service
+  metadata:
+    name: nginx-service
+    namespace: default
+    uid: 42345678-4234-4234-4234-423456789012
+    resourceVersion: '9999'
+    creationTimestamp: '2024-01-15T10:00:00Z'
+    labels:
+      app: nginx
+      tier: frontend
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: nlb
+  spec:
+    type: LoadBalancer
+    selector:
+      app: nginx
+    ports:
+      - name: http
+        port: 80
+        targetPort: 8080
+        protocol: TCP
+        nodePort: 30080
+      - name: https
+        port: 443
+        targetPort: 8443
+        protocol: TCP
+        nodePort: 30443
+    clusterIP: 10.96.0.44
+    externalTrafficPolicy: Cluster
+    sessionAffinity: None
+    loadBalancerSourceRanges:
+      - 0.0.0.0/0
+  status:
+    loadBalancer:
+      ingress:
+        - ip: 192.168.1.100
+          hostname: a1234567890abcdef.elb.us-west-2.amazonaws.com
+    conditions:
+      - type: LoadBalancerReady
+        status: 'True'
+        lastTransitionTime: '2024-01-15T10:05:00Z'
+        reason: LoadBalancerProvisioned
+        message: Load balancer is ready

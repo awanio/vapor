@@ -1,0 +1,39 @@
+type: object
+description: Raw Kubernetes Job object with full API specification
+additionalProperties: true
+example:
+  apiVersion: batch/v1
+  kind: Job
+  metadata:
+    name: backup-job
+    namespace: backup
+    uid: d2345678-d234-d234-d234-d23456789012
+    resourceVersion: '92345'
+    creationTimestamp: '2024-01-15T01:00:00Z'
+    labels:
+      batch: backup
+      environment: production
+  spec:
+    template:
+      metadata:
+        labels:
+          batch: backup
+      spec:
+        containers:
+          - name: backup-container
+            image: myorg/backup:1.0
+            command:
+              - /bin/sh
+              - '-c'
+              - echo Backup started...
+        restartPolicy: Never
+    backoffLimit: 3
+  status:
+    conditions:
+      - type: Complete
+        status: 'True'
+        lastProbeTime: '2024-01-15T01:20:00Z'
+        lastTransitionTime: '2024-01-15T01:15:00Z'
+    startTime: '2024-01-15T01:00:00Z'
+    completionTime: '2024-01-15T01:30:00Z'
+    succeeded: 1

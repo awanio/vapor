@@ -1,0 +1,122 @@
+get:
+  summary: Get detailed ingress information
+  description: Get detailed information about a specific ingress in a namespace
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: Ingress namespace
+      schema:
+        type: string
+    - name: name
+      in: path
+      required: true
+      description: Ingress name
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Ingress details retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/IngressDetailResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: Ingress not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml
+put:
+  summary: Update an Ingress
+  description: Update an existing Ingress
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: Ingress namespace
+      schema:
+        type: string
+    - name: name
+      in: path
+      required: true
+      description: Ingress name
+      schema:
+        type: string
+  requestBody:
+    required: true
+    description: Ingress specification in JSON or YAML format
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/IngressDetail.yaml
+      application/yaml:
+        schema:
+          type: string
+      text/yaml:
+        schema:
+          type: string
+  responses:
+    '200':
+      description: Ingress updated successfully
+    '400':
+      description: Invalid Ingress specification or unsupported content type
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: Ingress not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml
+delete:
+  summary: Delete an Ingress
+  description: Delete a specific Ingress
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: Ingress namespace
+      schema:
+        type: string
+    - name: name
+      in: path
+      required: true
+      description: Ingress name
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Ingress deleted successfully
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: Ingress not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

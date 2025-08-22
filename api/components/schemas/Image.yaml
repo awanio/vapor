@@ -1,0 +1,46 @@
+type: object
+properties:
+  id:
+    type: string
+    description: Image ID
+    example: sha256:abcd1234
+  parentId:
+    type: string
+    description: Parent image ID
+  repoTags:
+    type: array
+    items:
+      type: string
+    description: Repository tags
+    example:
+      - nginx:latest
+  repoDigests:
+    type: array
+    items:
+      type: string
+    description: Repository digests
+  created:
+    type: string
+    format: date-time
+    description: Image creation time
+  size:
+    type: integer
+    format: int64
+    description: Image size in bytes
+  virtualSize:
+    type: integer
+    format: int64
+    description: Virtual size in bytes
+  sharedSize:
+    type: integer
+    format: int64
+    description: Shared size in bytes
+  labels:
+    type: object
+    additionalProperties:
+      type: string
+    description: Image labels
+  containers:
+    type: integer
+    format: int64
+    description: Number of containers using this image

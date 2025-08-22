@@ -1,0 +1,47 @@
+type: object
+description: Network port/interface attached to a virtual network
+properties:
+  vm_name:
+    type: string
+    description: Name of the virtual machine
+  vm_uuid:
+    type: string
+    description: UUID of the virtual machine
+  vm_state:
+    type: string
+    description: Current state of the virtual machine
+    enum:
+      - nostate
+      - running
+      - blocked
+      - paused
+      - shutdown
+      - shutoff
+      - crashed
+      - pmsuspended
+      - unknown
+  interface_mac:
+    type: string
+    description: MAC address of the network interface
+  interface_model:
+    type: string
+    description: Network interface model (e.g., virtio, e1000)
+  interface_type:
+    type: string
+    description: Type of network interface
+  interface_target:
+    type: string
+    description: Target device name (e.g., vnet0)
+  ip_address:
+    type: string
+    description: IP address assigned to the interface (if available)
+  attached_at:
+    type: string
+    format: date-time
+    description: Time when the interface was attached
+required:
+  - vm_name
+  - vm_uuid
+  - vm_state
+  - interface_mac
+  - interface_type

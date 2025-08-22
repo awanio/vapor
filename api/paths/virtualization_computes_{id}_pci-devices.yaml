@@ -1,0 +1,46 @@
+post:
+  summary: Attach PCI device to VM
+  description: |
+    Attach a PCI device to a virtual machine for passthrough.
+
+    **Important Notes:**
+    - VM must be powered off for initial PCI passthrough setup
+    - All devices in the same IOMMU group must be passed through together
+    - Device will be unbound from host driver and bound to vfio-pci
+    - For GPUs, consider passing through audio device as well
+  tags:
+    - Virtualization Compute
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: VM name or UUID
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/PCIPassthroughRequest.yaml
+  responses:
+    '200':
+      description: PCI device attached successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/PCIAttachResponse.yaml
+    '400':
+      $ref: ../components/responses/BadRequest.yaml
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '409':
+      description: Device already in use or IOMMU group conflict
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

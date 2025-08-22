@@ -1,0 +1,25 @@
+type: object
+properties:
+  name:
+    type: string
+  controller:
+    type: string
+  parameters:
+    type: object
+    properties:
+      apiGroup:
+        type: string
+      kind:
+        type: string
+      name:
+        type: string
+  age:
+    type: string
+  labels:
+    type: object
+    additionalProperties:
+      type: string
+  annotations:
+    type: object
+    additionalProperties:
+      type: string

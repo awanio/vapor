@@ -1,0 +1,12 @@
+type: object
+required:
+  - type
+  - data
+properties:
+  type:
+    type: string
+    enum:
+      - input
+  data:
+    type: string
+    description: Input data to send to terminal

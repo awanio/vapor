@@ -1,0 +1,58 @@
+get:
+  summary: Get snapshot details
+  description: Retrieve details of a specific VM snapshot
+  tags:
+    - Virtualization Compute
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: VM name or UUID
+    - name: snapshot
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Snapshot name
+  responses:
+    '200':
+      description: Snapshot details retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/VMSnapshotDetailResponse.yaml
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml
+delete:
+  summary: Delete VM snapshot
+  description: Delete a specific snapshot of a virtual machine
+  tags:
+    - Virtualization Compute
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: VM name or UUID
+    - name: snapshot
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Snapshot name to delete
+  responses:
+    '204':
+      description: Snapshot deleted successfully
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

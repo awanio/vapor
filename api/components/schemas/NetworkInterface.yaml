@@ -1,0 +1,8 @@
+type: object
+properties:
+  mac:
+    type: string
+  source:
+    type: string
+  model:
+    type: string

@@ -1,0 +1,23 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          vm_id:
+            type: string
+            description: VM identifier
+            example: web-server-01
+          device_id:
+            type: string
+            description: Attached PCI device ID
+            example: pci_0000_01_00_0
+          pci_address:
+            type: string
+            description: PCI address of the device
+            example: '0000:01:00.0'
+          message:
+            type: string
+            description: Success message
+            example: PCI device attached successfully

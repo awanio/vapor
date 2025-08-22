@@ -1,0 +1,9 @@
+type: object
+required:
+  - mount_point
+properties:
+  mount_point:
+    type: string
+  force:
+    type: boolean
+    default: false

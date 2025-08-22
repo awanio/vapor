@@ -1,0 +1,9 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          volume:
+            $ref: ./StorageVolume.yaml

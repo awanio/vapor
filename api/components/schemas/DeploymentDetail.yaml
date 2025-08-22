@@ -1,0 +1,67 @@
+type: object
+description: Raw Kubernetes Deployment object with full API specification
+additionalProperties: true
+example:
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: nginx-deployment
+    namespace: default
+    uid: 22345678-2234-2234-2234-223456789012
+    resourceVersion: '5678'
+    generation: 3
+    creationTimestamp: '2024-01-15T09:00:00Z'
+    labels:
+      app: nginx
+      tier: frontend
+    annotations:
+      deployment.kubernetes.io/revision: '3'
+  spec:
+    replicas: 3
+    selector:
+      matchLabels:
+        app: nginx
+    template:
+      metadata:
+        labels:
+          app: nginx
+      spec:
+        containers:
+          - name: nginx
+            image: nginx:1.21-alpine
+            ports:
+              - containerPort: 80
+            resources:
+              limits:
+                cpu: 500m
+                memory: 512Mi
+              requests:
+                cpu: 250m
+                memory: 256Mi
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 1
+    minReadySeconds: 10
+    revisionHistoryLimit: 10
+    progressDeadlineSeconds: 600
+  status:
+    observedGeneration: 3
+    replicas: 3
+    updatedReplicas: 3
+    readyReplicas: 3
+    availableReplicas: 3
+    conditions:
+      - type: Available
+        status: 'True'
+        lastUpdateTime: '2024-01-15T09:05:00Z'
+        lastTransitionTime: '2024-01-15T09:05:00Z'
+        reason: MinimumReplicasAvailable
+        message: Deployment has minimum availability.
+      - type: Progressing
+        status: 'True'
+        lastUpdateTime: '2024-01-15T09:05:00Z'
+        lastTransitionTime: '2024-01-15T09:01:00Z'
+        reason: NewReplicaSetAvailable
+        message: ReplicaSet "nginx-deployment-6b474476c4" has successfully progressed.

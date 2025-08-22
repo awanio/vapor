@@ -1,0 +1,10 @@
+type: object
+properties:
+  portal:
+    type: string
+  iqn:
+    type: string
+  name:
+    type: string
+  connected:
+    type: boolean

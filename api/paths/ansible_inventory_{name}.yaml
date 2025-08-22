@@ -1,0 +1,35 @@
+get:
+  summary: Get inventory
+  description: Retrieves a saved inventory (not yet implemented)
+  tags:
+    - Ansible
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      description: Inventory name
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Inventory retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/DynamicInventoryResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: Inventory not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '501':
+      description: Not yet implemented
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml

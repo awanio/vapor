@@ -1,0 +1,40 @@
+get:
+  summary: List all objects for a specific CRD
+  description: List all Kubernetes objects for a specific Custom Resource Definition
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      description: CRD name
+      schema:
+        type: string
+    - name: namespace
+      in: query
+      required: false
+      description: >-
+        Namespace to filter objects by. If not provided, all namespaces are
+        searched for cluster-scoped CRDs, and the default namespace is used for
+        namespaced-scoped CRDs.
+      schema:
+        type: string
+  responses:
+    '200':
+      description: CRD objects listed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/CRDObjectListResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: CRD not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

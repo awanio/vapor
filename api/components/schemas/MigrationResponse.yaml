@@ -1,0 +1,38 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          migration_id:
+            type: string
+            description: Unique migration identifier
+            example: mig-a1b2c3d4-e5f6-7890-abcd-ef1234567890
+          status:
+            type: string
+            description: Current migration status
+            enum:
+              - initiated
+              - migrating
+              - completed
+              - failed
+              - cancelled
+            example: initiated
+          source_host:
+            type: string
+            description: Source host name
+            example: host1.example.com
+          dest_host:
+            type: string
+            description: Destination host name
+            example: host2.example.com
+          started_at:
+            type: string
+            format: date-time
+            description: Migration start time
+            example: '2025-01-15T10:30:00Z'
+          message:
+            type: string
+            description: Additional status message
+            example: Migration initiated successfully

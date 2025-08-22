@@ -1,0 +1,48 @@
+get:
+  summary: Get detailed CRD object information
+  description: >-
+    Get detailed information about a specific CRD object. For namespaced CRDs,
+    provide the actual namespace. For cluster-scoped CRDs, use '-' as the
+    namespace.
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      description: CRD name
+      schema:
+        type: string
+    - name: namespace
+      in: path
+      required: true
+      description: >-
+        Namespace for the CRD object. Use '-' for cluster-scoped CRDs, or the
+        actual namespace name for namespaced CRDs.
+      schema:
+        type: string
+    - name: object-name
+      in: path
+      required: true
+      description: The name of the CRD object
+      schema:
+        type: string
+  responses:
+    '200':
+      description: CRD object details retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/CRDObjectDetailResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: CRD or object not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

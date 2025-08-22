@@ -1,0 +1,30 @@
+type: object
+properties:
+  name:
+    type: string
+    description: Disk device name
+    example: vda
+  path:
+    type: string
+    description: Path to the disk image
+    example: /var/lib/libvirt/images/vm1-vda.qcow2
+  format:
+    type: string
+    description: Disk image format
+    enum:
+      - qcow2
+      - raw
+      - vmdk
+      - vdi
+      - vpc
+      - qed
+    example: qcow2
+  supports_internal:
+    type: boolean
+    description: Whether this disk supports internal snapshots
+    example: true
+  size_bytes:
+    type: integer
+    format: int64
+    description: Disk size in bytes
+    example: 10737418240

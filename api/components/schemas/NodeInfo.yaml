@@ -1,0 +1,29 @@
+type: object
+properties:
+  name:
+    type: string
+  status:
+    type: string
+  roles:
+    type: string
+  age:
+    type: string
+  version:
+    type: string
+  internalIP:
+    type: string
+  externalIP:
+    type: string
+  os:
+    type: string
+  kernelVersion:
+    type: string
+  containerRuntime:
+    type: string
+  labels:
+    type: object
+    additionalProperties:
+      type: string
+  creationTimestamp:
+    type: string
+    format: date-time

@@ -1,0 +1,7 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      status:
+        enum:
+          - error

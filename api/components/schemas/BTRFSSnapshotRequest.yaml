@@ -1,0 +1,9 @@
+type: object
+required:
+  - source
+  - destination
+properties:
+  source:
+    type: string
+  destination:
+    type: string

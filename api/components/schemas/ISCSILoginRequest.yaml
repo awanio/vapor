@@ -1,0 +1,13 @@
+type: object
+required:
+  - target
+  - portal
+properties:
+  target:
+    type: string
+  portal:
+    type: string
+  username:
+    type: string
+  password:
+    type: string

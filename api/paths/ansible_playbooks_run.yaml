@@ -1,0 +1,34 @@
+post:
+  summary: Run playbook
+  description: Executes an Ansible playbook with specified parameters
+  tags:
+    - Ansible
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/PlaybookRunRequest.yaml
+  responses:
+    '202':
+      description: Playbook execution started
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ExecutionStartResponse.yaml
+    '400':
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: Playbook not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml

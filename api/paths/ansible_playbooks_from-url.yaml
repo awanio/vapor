@@ -1,0 +1,39 @@
+post:
+  summary: Download playbook from URL
+  description: Downloads a playbook from a URL
+  tags:
+    - Ansible
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - url
+            - name
+          properties:
+            url:
+              type: string
+              format: uri
+              description: URL of the playbook to download
+            name:
+              type: string
+              description: Name to save the playbook as
+  responses:
+    '200':
+      description: Playbook downloaded successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MessageResponse.yaml
+    '400':
+      description: Invalid URL or download failed
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

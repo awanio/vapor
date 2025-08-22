@@ -1,0 +1,28 @@
+post:
+  summary: Sync playbooks from Git
+  description: Syncs playbooks from a Git repository
+  tags:
+    - Ansible
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/GitSyncRequest.yaml
+  responses:
+    '200':
+      description: Playbooks synced successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MessageResponse.yaml
+    '400':
+      description: Invalid repository URL or authentication failed
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

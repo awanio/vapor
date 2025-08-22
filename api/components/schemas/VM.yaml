@@ -1,0 +1,34 @@
+type: object
+properties:
+  uuid:
+    type: string
+  name:
+    type: string
+  state:
+    type: string
+  memory:
+    type: integer
+  max_memory:
+    type: integer
+  vcpus:
+    type: integer
+  autostart:
+    type: boolean
+  persistent:
+    type: boolean
+  created_at:
+    type: string
+    format: date-time
+  updated_at:
+    type: string
+    format: date-time
+  os:
+    $ref: ./OSInfo.yaml
+  disks:
+    type: array
+    items:
+      $ref: ./Disk.yaml
+  networks:
+    type: array
+    items:
+      $ref: ./NetworkInterface.yaml

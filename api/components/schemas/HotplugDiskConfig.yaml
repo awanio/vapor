@@ -1,0 +1,27 @@
+type: object
+required:
+  - source
+properties:
+  source:
+    type: string
+    description: Path to disk image or device
+    example: /var/lib/libvirt/images/additional-disk.qcow2
+  target:
+    type: string
+    description: Target device name (e.g., vdb, vdc)
+    example: vdb
+  bus:
+    type: string
+    description: Bus type
+    enum:
+      - virtio
+      - scsi
+      - ide
+      - sata
+    default: virtio
+    example: virtio
+  readonly:
+    type: boolean
+    description: Mount as read-only
+    default: false
+    example: false

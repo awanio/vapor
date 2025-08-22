@@ -1,0 +1,30 @@
+type: object
+required:
+  - backup_id
+properties:
+  backup_id:
+    type: string
+    description: ID of the backup to restore from
+    example: backup-123456
+  new_vm_name:
+    type: string
+    description: Name for the restored VM (optional, uses original name if not specified)
+    example: web-server-01-restored
+  overwrite:
+    type: boolean
+    description: Whether to overwrite existing VM with same name
+    default: false
+    example: false
+  decryption_key:
+    type: string
+    description: Decryption key (required if backup is encrypted)
+    example: my-secret-key-123
+  restore_memory:
+    type: boolean
+    description: Whether to restore memory state (if available)
+    default: true
+    example: true
+  storage_pool:
+    type: string
+    description: Storage pool to restore VM disks to
+    example: default

@@ -1,0 +1,23 @@
+type: object
+properties:
+  name:
+    type: string
+    description: Playbook filename
+    example: site.yml
+  path:
+    type: string
+    description: Full path to the playbook
+    example: /opt/ansible/playbooks/site.yml
+  size:
+    type: integer
+    description: File size in bytes
+    example: 2048
+  modified:
+    type: string
+    format: date-time
+    description: Last modification time
+    example: '2025-01-15T10:30:00Z'
+  is_directory:
+    type: boolean
+    description: Whether this is a directory
+    example: false

@@ -1,0 +1,73 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          migration_id:
+            type: string
+            description: Unique migration identifier
+            example: mig-a1b2c3d4-e5f6-7890-abcd-ef1234567890
+          vm_name:
+            type: string
+            description: Name of the VM being migrated
+            example: web-server-01
+          status:
+            type: string
+            description: Current migration status
+            enum:
+              - initiating
+              - migrating
+              - completed
+              - failed
+              - cancelled
+            example: migrating
+          progress:
+            type: integer
+            description: Migration progress percentage (0-100)
+            minimum: 0
+            maximum: 100
+            example: 45
+          source_host:
+            type: string
+            description: Source host name
+            example: host1.example.com
+          dest_host:
+            type: string
+            description: Destination host name
+            example: host2.example.com
+          data_processed:
+            type: integer
+            format: int64
+            description: Bytes of data processed
+            example: 1073741824
+          data_remaining:
+            type: integer
+            format: int64
+            description: Bytes of data remaining
+            example: 2147483648
+          mem_processed:
+            type: integer
+            format: int64
+            description: Memory bytes processed
+            example: 536870912
+          mem_remaining:
+            type: integer
+            format: int64
+            description: Memory bytes remaining
+            example: 1073741824
+          started_at:
+            type: string
+            format: date-time
+            description: Migration start time
+            example: '2025-01-15T10:30:00Z'
+          completed_at:
+            type: string
+            format: date-time
+            description: Migration completion time (if completed)
+            example: '2025-01-15T10:35:00Z'
+          error_message:
+            type: string
+            description: Error message if migration failed
+            example: Connection to destination host lost

@@ -1,0 +1,64 @@
+get:
+  summary: Get detailed PVC information
+  description: >-
+    Get detailed information about a specific persistent volume claim in a
+    namespace
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: PVC namespace
+      schema:
+        type: string
+    - name: name
+      in: path
+      required: true
+      description: PVC name
+      schema:
+        type: string
+  responses:
+    '200':
+      description: PVC details retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/PVCDetailResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: PVC not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml
+delete:
+  summary: Delete a PVC
+  description: Delete a specific PVC
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: name
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    '200':
+      description: PVC deleted successfully
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

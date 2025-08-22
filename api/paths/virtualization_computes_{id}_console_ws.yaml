@@ -1,0 +1,56 @@
+get:
+  summary: WebSocket console connection
+  description: >
+    Establishes a WebSocket connection for VM console access. This endpoint
+    upgrades the HTTP connection
+
+    to a WebSocket connection and proxies data between the client and the VM's
+    VNC/SPICE server.
+
+
+    **Protocol**: WebSocket (ws:// or wss://)
+
+
+    **Data Flow**: Binary frames containing VNC/SPICE protocol data
+
+
+    **Error Messages**: JSON messages for errors and status updates
+  tags:
+    - Virtualization Compute
+  operationId: vmConsoleWebSocket
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: VM ID (name or UUID)
+      schema:
+        type: string
+    - name: token
+      in: query
+      required: true
+      description: Access token from console information endpoint
+      schema:
+        type: string
+  responses:
+    '101':
+      description: Switching Protocols - WebSocket connection established
+    '400':
+      description: Bad Request - Missing or invalid token
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '401':
+      description: Unauthorized - Invalid or expired token
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ConsoleError.yaml
+    '503':
+      description: Service Unavailable - Console proxy not available
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+  security:
+    - bearerAuth: []

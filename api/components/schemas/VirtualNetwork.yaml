@@ -1,0 +1,35 @@
+type: object
+properties:
+  name:
+    type: string
+    description: Network name
+  uuid:
+    type: string
+    description: Network UUID
+  state:
+    type: string
+    description: Network state (active, inactive)
+    enum:
+      - active
+      - inactive
+  bridge:
+    type: string
+    description: Bridge name
+  mode:
+    type: string
+    description: Network forwarding mode
+    enum:
+      - nat
+      - route
+      - bridge
+      - private
+  ip_range:
+    $ref: ./IPRange.yaml
+  dhcp:
+    $ref: ./DHCPConfig.yaml
+  autostart:
+    type: boolean
+    description: Whether autostart is enabled
+  persistent:
+    type: boolean
+    description: Whether the network is persistent

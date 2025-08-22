@@ -1,0 +1,28 @@
+type: object
+required:
+  - name
+  - content
+properties:
+  name:
+    type: string
+    description: Inventory name
+    example: production
+  content:
+    type: string
+    description: Inventory content (INI or YAML format)
+    example: |
+      [webservers]
+      web1.example.com
+      web2.example.com
+
+      [databases]
+      db1.example.com
+  format:
+    type: string
+    enum:
+      - ini
+      - yaml
+      - json
+    description: Inventory format
+    default: ini
+    example: ini

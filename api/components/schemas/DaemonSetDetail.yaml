@@ -1,0 +1,43 @@
+type: object
+description: Raw Kubernetes DaemonSet object with full API specification
+additionalProperties: true
+example:
+  apiVersion: apps/v1
+  kind: DaemonSet
+  metadata:
+    name: prometheus-node-exporter
+    namespace: monitoring
+    uid: c2345678-c234-c234-c234-c23456789012
+    resourceVersion: '91234'
+    creationTimestamp: '2024-01-15T02:00:00Z'
+    labels:
+      app: node-exporter
+      environment: production
+  spec:
+    selector:
+      matchLabels:
+        app: node-exporter
+    template:
+      metadata:
+        labels:
+          app: node-exporter
+      spec:
+        containers:
+          - name: node-exporter
+            image: prom/node-exporter:v1.0.1
+            resources:
+              limits:
+                cpu: 100m
+                memory: 200Mi
+              requests:
+                cpu: 100m
+                memory: 200Mi
+    updateStrategy:
+      type: RollingUpdate
+    minReadySeconds: 5
+  status:
+    currentNumberScheduled: 5
+    numberMisscheduled: 0
+    desiredNumberScheduled: 5
+    numberReady: 5
+    observedGeneration: 1

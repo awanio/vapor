@@ -1,0 +1,28 @@
+post:
+  summary: Create playbook from template
+  description: Creates a new playbook from a template with variable substitution
+  tags:
+    - Ansible
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/CreateFromTemplateRequest.yaml
+  responses:
+    '201':
+      description: Playbook created from template successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MessageResponse.yaml
+    '400':
+      description: Invalid request or template not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

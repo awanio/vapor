@@ -1,0 +1,15 @@
+type: object
+description: Static DHCP host assignment
+required:
+  - mac
+  - ip
+properties:
+  mac:
+    type: string
+    description: MAC address of the host
+  ip:
+    type: string
+    description: IP address to assign to the host
+  name:
+    type: string
+    description: Optional hostname for the host

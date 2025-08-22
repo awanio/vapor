@@ -1,0 +1,16 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          containerId:
+            type: string
+            description: ID of the created container
+            example: 8dfafdbc3a40
+          warnings:
+            type: array
+            items:
+              type: string
+            description: Any warnings generated from container creation

@@ -1,0 +1,10 @@
+type: object
+properties:
+  target:
+    type: string
+  portal:
+    type: string
+  session_id:
+    type: string
+  state:
+    type: string

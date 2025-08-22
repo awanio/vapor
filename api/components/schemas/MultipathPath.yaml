@@ -1,0 +1,12 @@
+type: object
+properties:
+  device:
+    type: string
+  host:
+    type: string
+  state:
+    type: string
+  priority:
+    type: integer
+  checker:
+    type: string

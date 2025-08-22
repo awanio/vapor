@@ -1,0 +1,122 @@
+get:
+  summary: Get detailed configmap information
+  description: Get detailed information about a specific configmap in a namespace
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: ConfigMap namespace
+      schema:
+        type: string
+    - name: name
+      in: path
+      required: true
+      description: ConfigMap name
+      schema:
+        type: string
+  responses:
+    '200':
+      description: ConfigMap details retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ConfigMapDetailResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: ConfigMap not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml
+put:
+  summary: Update a ConfigMap
+  description: Update an existing ConfigMap
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: ConfigMap namespace
+      schema:
+        type: string
+    - name: name
+      in: path
+      required: true
+      description: ConfigMap name
+      schema:
+        type: string
+  requestBody:
+    required: true
+    description: ConfigMap specification in JSON or YAML format
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/ConfigMapDetail.yaml
+      application/yaml:
+        schema:
+          type: string
+      text/yaml:
+        schema:
+          type: string
+  responses:
+    '200':
+      description: ConfigMap updated successfully
+    '400':
+      description: Invalid ConfigMap specification or unsupported content type
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: ConfigMap not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml
+delete:
+  summary: Delete a ConfigMap
+  description: Delete a specific ConfigMap
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: ConfigMap namespace
+      schema:
+        type: string
+    - name: name
+      in: path
+      required: true
+      description: ConfigMap name
+      schema:
+        type: string
+  responses:
+    '200':
+      description: ConfigMap deleted successfully
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: ConfigMap not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

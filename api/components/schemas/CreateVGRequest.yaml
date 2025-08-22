@@ -1,0 +1,11 @@
+type: object
+required:
+  - name
+  - devices
+properties:
+  name:
+    type: string
+  devices:
+    type: array
+    items:
+      type: string

@@ -1,0 +1,22 @@
+type: object
+required:
+  - template_id
+  - name
+properties:
+  template_id:
+    type: string
+    description: Template identifier
+    example: nginx-setup
+  name:
+    type: string
+    description: Name for the new playbook
+    example: production-nginx.yml
+  variables:
+    type: object
+    additionalProperties:
+      type: string
+    description: Template variable values
+    example:
+      domain_name: mysite.com
+      ssl_enabled: 'true'
+      worker_processes: '4'

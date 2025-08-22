@@ -1,0 +1,54 @@
+put:
+  summary: Update network bond
+  tags:
+    - Network
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      schema:
+        type: string
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/BondRequest.yaml
+  responses:
+    '200':
+      description: Bond updated
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MessageResponse.yaml
+    '400':
+      description: Not a bond interface
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: Bond not found
+delete:
+  summary: Delete network bond
+  tags:
+    - Network
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Bond deleted
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MessageResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: Bond not found

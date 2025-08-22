@@ -1,0 +1,41 @@
+type: object
+description: Active DHCP lease information
+properties:
+  interface:
+    type: string
+    description: Network interface name
+  expiry_time:
+    type: string
+    format: date-time
+    description: Lease expiry time
+  type:
+    type: string
+    description: IP address type
+    enum:
+      - ipv4
+      - ipv6
+      - unknown
+  mac:
+    type: string
+    description: MAC address of the client
+  iaid:
+    type: string
+    description: Identity Association Identifier (for DHCPv6)
+  ip_address:
+    type: string
+    description: Assigned IP address
+  prefix:
+    type: integer
+    description: Network prefix length
+  hostname:
+    type: string
+    description: Client hostname
+  client_id:
+    type: string
+    description: DHCP client identifier
+required:
+  - expiry_time
+  - type
+  - mac
+  - ip_address
+  - prefix

@@ -1,0 +1,17 @@
+type: object
+required:
+  - device
+  - filesystem
+properties:
+  device:
+    type: string
+  filesystem:
+    type: string
+    enum:
+      - ext4
+      - ext3
+      - ext2
+      - xfs
+      - btrfs
+  label:
+    type: string

@@ -1,0 +1,22 @@
+post:
+  summary: Refresh JWT token
+  description: |
+    Refresh an existing JWT token. Supports refreshing expired tokens
+    within a 7-day grace period.
+  tags:
+    - Auth
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: Token refreshed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/EnhancedLoginResponse.yaml
+    '401':
+      description: Invalid or expired token beyond refresh window
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml

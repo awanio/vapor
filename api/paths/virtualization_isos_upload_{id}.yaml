@@ -1,0 +1,226 @@
+head:
+  summary: Get upload session info (TUS)
+  description: |
+    Get information about a resumable upload session for ISO images.
+    This follows TUS protocol for HEAD requests.
+  tags:
+    - Virtualization ISO
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: Upload session ID
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Upload session info retrieved
+      headers:
+        Upload-Offset:
+          description: Current upload offset in bytes
+          schema:
+            type: string
+        Upload-Length:
+          description: Total size of the file in bytes
+          schema:
+            type: string
+        Cache-Control:
+          description: Cache control header
+          schema:
+            type: string
+            default: no-store
+        Tus-Resumable:
+          description: TUS protocol version
+          schema:
+            type: string
+    '404':
+      description: Upload session not found
+patch:
+  summary: Upload ISO chunk (TUS)
+  description: |
+    Upload a chunk of data for an ISO file using TUS protocol.
+
+    Required headers:
+    - Upload-Offset: Current offset in bytes
+    - Content-Type: Must be "application/offset+octet-stream"
+
+    The request body should contain the raw binary data of the chunk.
+  tags:
+    - Virtualization ISO
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: Upload session ID
+      schema:
+        type: string
+    - name: Upload-Offset
+      in: header
+      required: true
+      description: Current offset in bytes
+      schema:
+        type: integer
+    - name: Content-Type
+      in: header
+      required: true
+      description: Must be application/offset+octet-stream
+      schema:
+        type: string
+        enum:
+          - application/offset+octet-stream
+    - name: Tus-Resumable
+      in: header
+      required: false
+      description: TUS protocol version
+      schema:
+        type: string
+        default: 1.0.0
+  requestBody:
+    required: true
+    content:
+      application/offset+octet-stream:
+        schema:
+          type: string
+          format: binary
+  responses:
+    '204':
+      description: Chunk uploaded successfully
+      headers:
+        Upload-Offset:
+          description: New upload offset after this chunk
+          schema:
+            type: string
+        Tus-Resumable:
+          description: TUS protocol version
+          schema:
+            type: string
+    '400':
+      description: Invalid chunk or headers
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '404':
+      description: Upload session not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '409':
+      description: Offset mismatch or upload already completed
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '410':
+      description: Upload session expired or cancelled
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+get:
+  summary: Get ISO upload status
+  description: Get detailed status of an ISO upload session
+  tags:
+    - Virtualization ISO
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: Upload session ID
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Upload status retrieved successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              upload_id:
+                type: string
+              status:
+                type: string
+                enum:
+                  - created
+                  - in_progress
+                  - completed
+                  - failed
+                  - cancelled
+              total_size:
+                type: integer
+              uploaded_size:
+                type: integer
+              progress:
+                type: string
+                example: 75.25%
+              metadata:
+                type: object
+                properties:
+                  filename:
+                    type: string
+                  os_type:
+                    type: string
+                  os_variant:
+                    type: string
+                  architecture:
+                    type: string
+                  description:
+                    type: string
+                  tags:
+                    type: string
+              created_at:
+                type: string
+                format: date-time
+              updated_at:
+                type: string
+                format: date-time
+              expires_at:
+                type: string
+                format: date-time
+    '404':
+      description: Upload session not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+delete:
+  summary: Cancel ISO upload session
+  description: Cancel and delete an ISO upload session, removing any uploaded data
+  tags:
+    - Virtualization ISO
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: Upload session ID
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Upload session cancelled successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: Upload cancelled successfully
+              upload_id:
+                type: string
+    '404':
+      description: Upload session not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml

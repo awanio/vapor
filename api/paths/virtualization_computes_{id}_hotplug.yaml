@@ -1,0 +1,52 @@
+post:
+  summary: Hotplug resources to VM
+  description: |
+    Dynamically add or remove resources to/from a running virtual machine.
+
+    **Supported Resources:**
+    - **CPU**: Add vCPUs (removal not supported on most guests)
+    - **Memory**: Add memory (removal requires guest support)
+    - **Disk**: Add/remove storage devices
+    - **Network**: Add/remove network interfaces
+    - **USB**: Add/remove USB devices
+
+    **Requirements:**
+    - VM must be running for hotplug operations
+    - Guest OS must support hotplug for the resource type
+    - ACPI hotplug must be enabled in VM configuration
+  tags:
+    - Virtualization Compute
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: VM name or UUID
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/HotplugRequest.yaml
+  responses:
+    '200':
+      description: Hotplug operation completed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/HotplugResponse.yaml
+    '400':
+      $ref: ../components/responses/BadRequest.yaml
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '409':
+      description: VM not running or resource conflict
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

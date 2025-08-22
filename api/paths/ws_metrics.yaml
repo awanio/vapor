@@ -1,0 +1,49 @@
+get:
+  summary: WebSocket endpoint for live system metrics
+  description: |
+    Establish a WebSocket connection to receive real-time system metrics.
+
+    **WebSocket URL**: `ws://localhost:8080/ws/metrics`
+
+    **Authentication**: Send JWT token in the first message after connection:
+    ```json
+    {
+      "type": "auth",
+      "payload": {
+        "token": "your-jwt-token"
+      }
+    }
+    ```
+
+    **Subscribe to metrics**:
+    ```json
+    {
+      "type": "subscribe"
+    }
+    ```
+
+    **Unsubscribe from metrics**:
+    ```json
+    {
+      "type": "unsubscribe"
+    }
+    ```
+
+    **Server messages** will be in the format:
+    ```json
+    {
+      "type": "metric",
+      "metric": "cpu",
+      "timestamp": "2024-01-01T00:00:00Z",
+      "data": { ... }
+    }
+    ```
+  tags:
+    - WebSocket
+  security:
+    - bearerAuth: []
+  responses:
+    '101':
+      description: Switching Protocols - WebSocket connection established
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

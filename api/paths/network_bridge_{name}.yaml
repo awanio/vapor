@@ -1,0 +1,54 @@
+put:
+  summary: Update network bridge
+  tags:
+    - Network
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      schema:
+        type: string
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/BridgeRequest.yaml
+  responses:
+    '200':
+      description: Bridge updated
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MessageResponse.yaml
+    '400':
+      description: Not a bridge interface
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: Bridge not found
+delete:
+  summary: Delete network bridge
+  tags:
+    - Network
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Bridge deleted
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MessageResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: Bridge not found

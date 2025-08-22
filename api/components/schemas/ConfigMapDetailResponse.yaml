@@ -1,0 +1,12 @@
+type: object
+properties:
+  status:
+    type: string
+    enum:
+      - success
+      - error
+  configmap_detail:
+    $ref: ./ConfigMapDetail.yaml
+  error:
+    $ref: ./APIError.yaml
+    nullable: true

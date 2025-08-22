@@ -1,0 +1,204 @@
+head:
+  summary: Get upload session info
+  description: Get information about a resumable upload session for container images
+  tags:
+    - Container
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: Upload session ID
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Upload session info retrieved successfully
+      headers:
+        Upload-Offset:
+          description: Current upload offset
+          schema:
+            type: integer
+        Upload-Length:
+          description: Total upload length
+          schema:
+            type: integer
+        Tus-Resumable:
+          description: TUS protocol version
+          schema:
+            type: string
+        Cache-Control:
+          description: Cache control header
+          schema:
+            type: string
+    '404':
+      description: Upload session not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+patch:
+  summary: Upload chunk
+  description: Upload a chunk of data to a resumable upload session for container images
+  tags:
+    - Container
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: Upload session ID
+      schema:
+        type: string
+    - name: Upload-Offset
+      in: header
+      required: true
+      description: Current upload offset
+      schema:
+        type: integer
+    - name: Content-Type
+      in: header
+      required: true
+      description: Must be application/offset+octet-stream
+      schema:
+        type: string
+        enum:
+          - application/offset+octet-stream
+  requestBody:
+    required: true
+    content:
+      application/offset+octet-stream:
+        schema:
+          type: string
+          format: binary
+  responses:
+    '204':
+      description: Chunk uploaded successfully
+      headers:
+        Upload-Offset:
+          description: New upload offset after this chunk
+          schema:
+            type: integer
+        Tus-Resumable:
+          description: TUS protocol version
+          schema:
+            type: string
+    '400':
+      description: Invalid chunk or headers
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '404':
+      description: Upload session not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '409':
+      description: Offset mismatch or upload already completed
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '410':
+      description: Upload session expired or cancelled
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+get:
+  summary: Get upload status
+  description: Get detailed status of a resumable upload session for container images
+  tags:
+    - Container
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: Upload session ID
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Upload status retrieved successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: success
+              data:
+                type: object
+                properties:
+                  upload:
+                    type: object
+                    properties:
+                      upload_id:
+                        type: string
+                      total_size:
+                        type: integer
+                      uploaded_size:
+                        type: integer
+                      progress:
+                        type: number
+                        format: float
+                      status:
+                        type: string
+                        enum:
+                          - created
+                          - in_progress
+                          - completed
+                          - failed
+                          - cancelled
+                      created_at:
+                        type: string
+                        format: date-time
+                      updated_at:
+                        type: string
+                        format: date-time
+                      filename:
+                        type: string
+                      metadata:
+                        type: object
+                        additionalProperties: true
+    '404':
+      description: Upload session not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+delete:
+  summary: Cancel upload session
+  description: Cancel and delete a resumable upload session for container images
+  tags:
+    - Container
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: Upload session ID
+      schema:
+        type: string
+  responses:
+    '204':
+      description: Upload session cancelled successfully
+      headers:
+        Tus-Resumable:
+          description: TUS protocol version
+          schema:
+            type: string
+    '404':
+      description: Upload session not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml

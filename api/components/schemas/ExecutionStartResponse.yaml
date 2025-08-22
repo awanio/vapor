@@ -1,0 +1,36 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          execution_id:
+            type: string
+            description: Unique execution identifier
+            example: exec-a1b2c3d4-e5f6-7890-abcd-ef1234567890
+          status:
+            type: string
+            description: Execution status
+            enum:
+              - starting
+              - running
+              - success
+              - failed
+            example: starting
+          type:
+            type: string
+            description: Execution type
+            enum:
+              - playbook
+              - adhoc
+            example: playbook
+          started_at:
+            type: string
+            format: date-time
+            description: Execution start time
+            example: '2025-01-15T10:30:00Z'
+          stream_url:
+            type: string
+            description: WebSocket URL for streaming output
+            example: /api/v1/ansible/executions/exec-a1b2c3d4/stream

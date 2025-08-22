@@ -1,0 +1,15 @@
+get:
+  summary: Get CPU information
+  tags:
+    - System
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: CPU information
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/CPUResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

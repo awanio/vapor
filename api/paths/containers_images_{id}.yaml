@@ -1,0 +1,50 @@
+get:
+  summary: Get detailed image information
+  tags:
+    - Container
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: Image ID
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Image details retrieved successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: success
+              data:
+                type: object
+                properties:
+                  image:
+                    $ref: ../components/schemas/ImageDetail.yaml
+                  runtime:
+                    type: string
+                    example: docker
+    '400':
+      description: Invalid image ID
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      description: Failed to get image details
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      description: No container runtime available
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml

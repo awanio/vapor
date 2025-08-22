@@ -1,0 +1,53 @@
+get:
+  summary: List all network policies in the cluster
+  description: List all network policies across all namespaces in the Kubernetes cluster
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: Network policies listed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/NetworkPoliciesResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml
+post:
+  summary: Create or update a NetworkPolicy
+  description: >-
+    Create a new NetworkPolicy or update an existing NetworkPolicy using
+    Kubernetes apply semantics.
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    description: NetworkPolicy specification in JSON or YAML format
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/NetworkPolicyDetail.yaml
+      application/yaml:
+        schema:
+          type: string
+      text/yaml:
+        schema:
+          type: string
+  responses:
+    '200':
+      description: NetworkPolicy created or updated successfully
+    '400':
+      description: Invalid NetworkPolicy specification or unsupported content type
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

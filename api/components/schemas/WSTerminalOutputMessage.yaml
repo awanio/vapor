@@ -1,0 +1,12 @@
+type: object
+required:
+  - type
+  - data
+properties:
+  type:
+    type: string
+    enum:
+      - output
+  data:
+    type: string
+    description: Output data from terminal

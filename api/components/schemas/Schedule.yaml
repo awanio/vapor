@@ -1,0 +1,36 @@
+type: object
+properties:
+  id:
+    type: string
+    description: Schedule ID
+    example: sched-123456
+  name:
+    type: string
+    description: Schedule name
+    example: Daily backup
+  playbook:
+    type: string
+    description: Playbook to run
+    example: backup.yml
+  cron:
+    type: string
+    description: Cron expression
+    example: 0 2 * * *
+  enabled:
+    type: boolean
+    description: Whether schedule is enabled
+    example: true
+  last_run:
+    type: string
+    format: date-time
+    description: Last execution time
+    example: '2025-01-14T02:00:00Z'
+  next_run:
+    type: string
+    format: date-time
+    description: Next scheduled execution
+    example: '2025-01-15T02:00:00Z'
+  parameters:
+    type: object
+    description: Playbook parameters
+    additionalProperties: true

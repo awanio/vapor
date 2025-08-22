@@ -1,0 +1,21 @@
+post:
+  summary: Unmount filesystem
+  tags:
+    - Storage
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/UnmountRequest.yaml
+  responses:
+    '200':
+      description: Filesystem unmounted
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MessageResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

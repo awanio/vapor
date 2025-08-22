@@ -1,0 +1,58 @@
+post:
+  summary: Perform action on virtual machine
+  description: |
+    Execute various state-changing actions on a virtual machine.
+    Available actions include: start, stop, restart, pause, resume, reset.
+    Use the 'force' flag for forced stop or restart operations.
+  tags:
+    - Virtualization Compute
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: VM name or UUID
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/VMActionRequest.yaml
+        examples:
+          start:
+            summary: Start a VM
+            value:
+              action: start
+              force: false
+          force_stop:
+            summary: Force stop a VM
+            value:
+              action: stop
+              force: true
+          restart:
+            summary: Restart a VM
+            value:
+              action: restart
+              force: false
+  responses:
+    '200':
+      description: VM action executed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/VMActionResponse.yaml
+    '400':
+      $ref: ../components/responses/BadRequest.yaml
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '409':
+      description: Conflict - Invalid state transition
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

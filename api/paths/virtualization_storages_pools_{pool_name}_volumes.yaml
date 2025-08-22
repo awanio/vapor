@@ -1,0 +1,56 @@
+get:
+  summary: List all volumes in a storage pool
+  tags:
+    - Virtualization Volume
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: pool_name
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Storage pool name
+  responses:
+    '200':
+      description: A list of storage volumes
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/StorageVolumesResponse.yaml
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml
+post:
+  summary: Create a new volume in a storage pool
+  tags:
+    - Virtualization Volume
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: pool_name
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Storage pool name
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/VolumeCreateRequest.yaml
+  responses:
+    '201':
+      description: Storage volume created successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/StorageVolumeCreateResponse.yaml
+    '400':
+      $ref: ../components/responses/BadRequest.yaml
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

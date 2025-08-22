@@ -1,0 +1,12 @@
+type: object
+properties:
+  status:
+    type: string
+    enum:
+      - success
+      - error
+  ingressclass_detail:
+    $ref: ./IngressClassDetail.yaml
+  error:
+    $ref: ./APIError.yaml
+    nullable: true

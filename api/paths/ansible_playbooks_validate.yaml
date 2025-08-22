@@ -1,0 +1,40 @@
+post:
+  summary: Validate playbook
+  description: Validates playbook syntax using ansible-playbook --syntax-check
+  tags:
+    - Ansible
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
+              description: Name of the playbook to validate
+  responses:
+    '200':
+      description: Validation result
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/PlaybookValidationResponse.yaml
+    '400':
+      description: Playbook syntax is invalid
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/PlaybookValidationResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: Playbook not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml

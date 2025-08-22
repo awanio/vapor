@@ -1,0 +1,37 @@
+get:
+  summary: Get detailed daemonset information
+  description: Get detailed information about a specific daemonset in a namespace
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: DaemonSet namespace
+      schema:
+        type: string
+    - name: name
+      in: path
+      required: true
+      description: DaemonSet name
+      schema:
+        type: string
+  responses:
+    '200':
+      description: DaemonSet details retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/DaemonSetDetailResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: DaemonSet not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

@@ -1,0 +1,21 @@
+type: object
+properties:
+  name:
+    type: string
+  namespace:
+    type: string
+  kind:
+    type: string
+  apiVersion:
+    type: string
+  creationTimestamp:
+    type: string
+    format: date-time
+  labels:
+    type: object
+    additionalProperties:
+      type: string
+  annotations:
+    type: object
+    additionalProperties:
+      type: string

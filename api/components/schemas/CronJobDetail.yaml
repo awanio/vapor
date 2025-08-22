@@ -1,0 +1,40 @@
+type: object
+description: Raw Kubernetes CronJob object with full API specification
+additionalProperties: true
+example:
+  apiVersion: batch/v1
+  kind: CronJob
+  metadata:
+    name: database-backup
+    namespace: backups
+    uid: e2345678-e234-e234-e234-e23456789012
+    resourceVersion: '93456'
+    creationTimestamp: '2024-01-14T23:00:00Z'
+    labels:
+      batch: cron-job
+      environment: production
+  spec:
+    schedule: 0 1 * * *
+    jobTemplate:
+      spec:
+        template:
+          metadata:
+            labels:
+              batch: cron-job
+          spec:
+            containers:
+              - name: backup-container
+                image: myorg/backup:1.0
+                command:
+                  - /bin/sh
+                  - '-c'
+                  - echo Performing backup...
+            restartPolicy: OnFailure
+    successfulJobsHistoryLimit: 3
+    failedJobsHistoryLimit: 1
+  status:
+    lastScheduleTime: '2024-01-19T01:00:00Z'
+    active:
+      - name: database-backup-273987
+        namespace: backups
+        uid: f2345678-f234-f234-f234-f23456789012

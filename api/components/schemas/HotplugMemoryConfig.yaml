@@ -1,0 +1,9 @@
+type: object
+required:
+  - memory
+properties:
+  memory:
+    type: integer
+    description: Memory in MB to set (add operation only)
+    minimum: 256
+    example: 4096

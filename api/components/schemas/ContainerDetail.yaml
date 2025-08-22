@@ -1,0 +1,161 @@
+type: object
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      image:
+        type: string
+      image_id:
+        type: string
+      state:
+        type: string
+      status:
+        type: string
+      created_at:
+        type: string
+        format: date-time
+      started_at:
+        type: string
+        format: date-time
+      finished_at:
+        type: string
+        format: date-time
+      exit_code:
+        type: integer
+      pid:
+        type: integer
+      restart_count:
+        type: integer
+      command:
+        type: array
+        items:
+          type: string
+      args:
+        type: array
+        items:
+          type: string
+      env:
+        type: array
+        items:
+          type: string
+      mounts:
+        type: array
+        items:
+          type: object
+          properties:
+            source:
+              type: string
+            destination:
+              type: string
+            mode:
+              type: string
+            type:
+              type: string
+            read_only:
+              type: boolean
+      ports:
+        type: array
+        items:
+          type: object
+          properties:
+            container_port:
+              type: integer
+            host_port:
+              type: integer
+            protocol:
+              type: string
+            host_ip:
+              type: string
+      networks:
+        type: array
+        items:
+          type: object
+          properties:
+            name:
+              type: string
+            id:
+              type: string
+            ip_address:
+              type: string
+            ip_prefix_len:
+              type: integer
+            gateway:
+              type: string
+            mac_address:
+              type: string
+            ipv6_address:
+              type: string
+            ipv6_gateway:
+              type: string
+            aliases:
+              type: array
+              items:
+                type: string
+            driver_opts:
+              type: object
+              additionalProperties:
+                type: string
+      resources:
+        type: object
+        properties:
+          cpu_shares:
+            type: integer
+          cpu_quota:
+            type: integer
+          cpu_period:
+            type: integer
+          cpuset_cpus:
+            type: string
+          cpuset_mems:
+            type: string
+          memory_limit:
+            type: integer
+          memory_reservation:
+            type: integer
+          memory_swap:
+            type: integer
+          memory_usage:
+            type: integer
+          memory_max_usage:
+            type: integer
+          cpu_usage_percent:
+            type: number
+            format: float
+          pids_limit:
+            type: integer
+          pids_current:
+            type: integer
+          blkio_weight:
+            type: integer
+          io_read_bytes:
+            type: integer
+          io_write_bytes:
+            type: integer
+          network_rx_bytes:
+            type: integer
+          network_tx_bytes:
+            type: integer
+      user:
+        type: string
+      working_dir:
+        type: string
+      hostname:
+        type: string
+      domain_name:
+        type: string
+      labels:
+        type: object
+        additionalProperties:
+          type: string
+      annotations:
+        type: object
+        additionalProperties:
+          type: string
+      config:
+        type: object
+        additionalProperties:
+          type: object

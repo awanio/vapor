@@ -1,0 +1,10 @@
+type: object
+properties:
+  path:
+    type: string
+  size:
+    type: integer
+  partition:
+    type: boolean
+  device:
+    type: string

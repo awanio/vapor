@@ -1,0 +1,57 @@
+post:
+  summary: Complete ISO upload and register
+  description: >
+    Complete the upload session and register the ISO in the system.
+
+    This will move the ISO to the final storage location and make it available
+    for VM creation.
+  tags:
+    - Virtualization ISO
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: Upload session ID
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Upload completed and ISO registered successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: success
+              data:
+                type: object
+                properties:
+                  upload_id:
+                    type: string
+                  iso:
+                    $ref: ../components/schemas/ISOImage.yaml
+                  message:
+                    type: string
+                    example: ISO uploaded and registered successfully
+    '400':
+      description: Upload not complete or invalid
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '404':
+      description: Upload session not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      description: Failed to register ISO
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml

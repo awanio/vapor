@@ -1,0 +1,24 @@
+type: object
+properties:
+  name:
+    type: string
+  namespace:
+    type: string
+  type:
+    type: string
+  cluster_ip:
+    type: string
+  external_ip:
+    type: string
+  ports:
+    type: string
+  age:
+    type: string
+  labels:
+    type: object
+    additionalProperties:
+      type: string
+  annotations:
+    type: object
+    additionalProperties:
+      type: string

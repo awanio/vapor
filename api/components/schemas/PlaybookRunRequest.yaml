@@ -1,0 +1,79 @@
+type: object
+required:
+  - playbook
+properties:
+  playbook:
+    type: string
+    description: Name of the playbook to run
+    example: site.yml
+  inventory:
+    type: string
+    description: Inventory to use (name or content)
+    example: production
+  limit:
+    type: string
+    description: Limit execution to specific hosts/groups
+    example: webservers
+  tags:
+    type: array
+    items:
+      type: string
+    description: Run only tasks with these tags
+    example:
+      - deploy
+      - config
+  skip_tags:
+    type: array
+    items:
+      type: string
+    description: Skip tasks with these tags
+    example:
+      - test
+  extra_vars:
+    type: object
+    additionalProperties:
+      type: string
+    description: Extra variables to pass to playbook
+    example:
+      app_version: 1.2.3
+      environment: production
+  check:
+    type: boolean
+    description: Run in check mode (dry run)
+    default: false
+    example: false
+  diff:
+    type: boolean
+    description: Show differences
+    default: false
+    example: true
+  verbose:
+    type: integer
+    description: Verbosity level (0-4)
+    minimum: 0
+    maximum: 4
+    default: 0
+    example: 2
+  become:
+    type: boolean
+    description: Run with become (sudo)
+    default: false
+    example: true
+  become_user:
+    type: string
+    description: User to become
+    example: root
+  private_key:
+    type: string
+    description: Path to SSH private key
+    example: /home/user/.ssh/id_rsa
+  timeout:
+    type: integer
+    description: Connection timeout in seconds
+    default: 10
+    example: 30
+  forks:
+    type: integer
+    description: Number of parallel processes
+    default: 5
+    example: 10

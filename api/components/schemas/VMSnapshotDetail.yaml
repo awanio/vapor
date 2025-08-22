@@ -1,0 +1,35 @@
+allOf:
+  - $ref: ./VMSnapshot.yaml
+  - type: object
+    properties:
+      disks:
+        type: array
+        description: Disk snapshots included in this VM snapshot
+        items:
+          $ref: ./DiskSnapshot.yaml
+      memory_state:
+        type: object
+        description: Memory state information (if included)
+        properties:
+          size_bytes:
+            type: integer
+            format: int64
+            description: Size of memory snapshot
+            example: 2147483648
+          file_path:
+            type: string
+            description: Path to memory state file
+            example: /var/lib/libvirt/qemu/save/web-server-01.before-upgrade.mem
+      metadata:
+        type: object
+        description: Additional metadata
+        additionalProperties:
+          type: string
+      children:
+        type: array
+        description: Child snapshots (if any)
+        items:
+          type: string
+        example:
+          - after-upgrade
+          - test-config

@@ -1,0 +1,96 @@
+type: object
+properties:
+  id:
+    type: string
+    description: Unique backup identifier
+    example: backup-123e4567-e89b-12d3-a456-426614174000
+  backup_id:
+    type: string
+    description: Backup ID
+    example: backup-123456
+  vm_uuid:
+    type: string
+    description: UUID of the VM
+    example: 550e8400-e29b-41d4-a716-446655440000
+  vm_name:
+    type: string
+    description: Name of the VM
+    example: web-server-01
+  backup_type:
+    type: string
+    description: Type of backup
+    enum:
+      - full
+      - incremental
+      - differential
+    example: full
+  status:
+    type: string
+    description: Backup status
+    enum:
+      - running
+      - completed
+      - failed
+      - deleted
+    example: completed
+  source_path:
+    type: string
+    description: Source path of the backup
+    example: /var/lib/libvirt/images/web-server-01.qcow2
+  destination_path:
+    type: string
+    description: Destination path of the backup
+    example: /backup/vms/web-server-01/
+  size_bytes:
+    type: integer
+    format: int64
+    description: Size of the backup in bytes
+    example: 10737418240
+  compressed:
+    type: boolean
+    description: Whether the backup is compressed
+    example: true
+  compression:
+    type: string
+    description: Compression type
+    enum:
+      - none
+      - gzip
+      - bzip2
+      - xz
+      - zstd
+    example: gzip
+  encryption:
+    type: string
+    description: Encryption type
+    enum:
+      - none
+      - AES-256
+      - AES-128
+    example: AES-256
+  parent_backup_id:
+    type: string
+    description: Parent backup ID for incremental backups
+    example: backup-123455
+  started_at:
+    type: string
+    format: date-time
+    description: When the backup started
+    example: '2025-01-15T10:00:00Z'
+  completed_at:
+    type: string
+    format: date-time
+    description: When the backup completed
+    example: '2025-01-15T10:30:00Z'
+  retention_days:
+    type: integer
+    description: Number of days to retain the backup
+    example: 30
+  include_memory:
+    type: boolean
+    description: Whether memory state is included
+    example: false
+  error_message:
+    type: string
+    description: Error message if backup failed
+    example: Failed to connect to storage

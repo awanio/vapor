@@ -1,0 +1,12 @@
+type: object
+properties:
+  status:
+    type: string
+    enum:
+      - success
+      - error
+  daemonset_detail:
+    $ref: ./DaemonSetDetail.yaml
+  error:
+    $ref: ./APIError.yaml
+    nullable: true

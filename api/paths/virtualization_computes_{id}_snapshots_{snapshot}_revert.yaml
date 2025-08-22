@@ -1,0 +1,46 @@
+post:
+  summary: Revert to snapshot
+  description: |
+    Revert a virtual machine to a previous snapshot state.
+
+    **Warning:** This operation will:
+    - Discard all changes made since the snapshot was taken
+    - Restore the VM to the exact state when the snapshot was created
+    - Cannot be undone without another snapshot
+
+    **Note:** If the snapshot includes memory state, the VM will resume
+    from the exact running state. Otherwise, the VM will be in a stopped state.
+  tags:
+    - Virtualization Compute
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: VM name or UUID
+    - name: snapshot
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Snapshot name to revert to
+  responses:
+    '200':
+      description: VM reverted to snapshot successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/VMSnapshotRevertResponse.yaml
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '409':
+      description: Conflict - VM is in a state that prevents reverting
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

@@ -1,0 +1,20 @@
+type: object
+properties:
+  name:
+    type: string
+    description: Container name
+  image:
+    type: string
+    description: Container image
+  ready:
+    type: boolean
+    description: Container ready status
+  restart_count:
+    type: integer
+    description: Container restart count
+  state:
+    type: string
+    description: Container state
+  state_reason:
+    type: string
+    description: Container state reason

@@ -1,0 +1,29 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          valid:
+            type: boolean
+            description: Whether the playbook syntax is valid
+            example: true
+          message:
+            type: string
+            description: Validation result message
+            example: Playbook syntax is valid
+          errors:
+            type: array
+            items:
+              type: string
+            description: Syntax errors if validation failed
+            example:
+              - ERROR! 'hosts' is not a valid attribute for a Play
+          warnings:
+            type: array
+            items:
+              type: string
+            description: Syntax warnings
+            example:
+              - '[WARNING]: No inventory was parsed'

@@ -1,0 +1,64 @@
+type: object
+required:
+  - name
+  - memory
+  - vcpus
+properties:
+  name:
+    type: string
+    description: Name of the virtual machine
+    example: web-server-01
+  memory:
+    type: integer
+    description: Memory size in MB
+    minimum: 256
+    example: 4096
+  vcpus:
+    type: integer
+    description: Number of virtual CPUs
+    minimum: 1
+    maximum: 256
+    example: 2
+  disks:
+    type: array
+    description: Disk configurations
+    items:
+      $ref: ./DiskCreateConfig.yaml
+  iso_path:
+    type: string
+    description: ISO image path, name, or ID
+    example: ubuntu-22.04.iso
+  storage_pool:
+    type: string
+    description: Storage pool name
+    default: default
+    example: default
+  networks:
+    type: array
+    description: Network configurations
+    items:
+      $ref: ./NetworkCreateConfig.yaml
+  graphics:
+    type: array
+    description: Graphics device configurations
+    items:
+      $ref: ./GraphicsConfig.yaml
+  cloud_init:
+    $ref: ./CloudInit.yaml
+  autostart:
+    type: boolean
+    description: Start VM automatically on host boot
+    default: false
+    example: true
+  template:
+    type: string
+    description: Template name to base VM on
+    example: ubuntu-server-template
+  custom_xml:
+    type: string
+    description: Custom libvirt XML snippet to merge
+  metadata:
+    type: object
+    description: Custom metadata key-value pairs
+    additionalProperties:
+      type: string

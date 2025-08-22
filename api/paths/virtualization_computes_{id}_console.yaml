@@ -1,0 +1,50 @@
+get:
+  summary: Get VM console information
+  description: >
+    Retrieves console connection information for a virtual machine and generates
+    a secure access token.
+
+    The token is valid for a limited time (default 5 minutes) and can only be
+    used once.
+  tags:
+    - Virtualization Compute
+  operationId: getVMConsole
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: VM ID (name or UUID)
+      schema:
+        type: string
+    - name: type
+      in: query
+      required: false
+      description: Console type preference
+      schema:
+        type: string
+        enum:
+          - vnc
+          - spice
+        default: vnc
+  responses:
+    '200':
+      description: Console information retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ConsoleInfo.yaml
+          example:
+            type: vnc
+            host: localhost
+            port: 5901
+            token: a1b2c3d4e5f6789...
+            ws_path: /api/v1/virtualization/computes/vm-123/console/ws
+            expires_at: '2024-01-15T10:30:00Z'
+            tls_enabled: false
+            password: '********'
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml
+  security:
+    - bearerAuth: []

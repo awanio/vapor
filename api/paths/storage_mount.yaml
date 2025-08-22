@@ -1,0 +1,23 @@
+post:
+  summary: Mount filesystem
+  tags:
+    - Storage
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/MountRequest.yaml
+  responses:
+    '200':
+      description: Filesystem mounted
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MessageResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: Device not found

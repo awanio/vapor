@@ -1,0 +1,25 @@
+delete:
+  summary: Delete ISO image
+  description: Delete an ISO image from the system
+  tags:
+    - Virtualization ISO
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: ISO ID or filename
+  responses:
+    '204':
+      description: ISO deleted successfully
+    '404':
+      description: ISO not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

@@ -1,0 +1,20 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          vm_name:
+            type: string
+            example: web-server-01
+          snapshot_name:
+            type: string
+            example: before-upgrade
+          reverted_at:
+            type: string
+            format: date-time
+            example: '2025-01-15T11:00:00Z'
+          message:
+            type: string
+            example: VM successfully reverted to snapshot 'before-upgrade'

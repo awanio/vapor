@@ -1,0 +1,41 @@
+type: object
+description: VM console connection information
+required:
+  - type
+  - host
+  - port
+  - token
+  - ws_path
+  - expires_at
+properties:
+  type:
+    type: string
+    enum:
+      - vnc
+      - spice
+    description: Console protocol type
+  host:
+    type: string
+    description: Console server host address
+  port:
+    type: integer
+    description: Console server port
+  password:
+    type: string
+    description: Console password (masked for security)
+  token:
+    type: string
+    description: Secure access token for WebSocket connection
+  ws_path:
+    type: string
+    description: WebSocket endpoint path
+  expires_at:
+    type: string
+    format: date-time
+    description: Token expiration time
+  tls_enabled:
+    type: boolean
+    description: Whether TLS is enabled for console connection
+  tls_port:
+    type: integer
+    description: TLS port if TLS is enabled

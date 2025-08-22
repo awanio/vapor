@@ -1,0 +1,12 @@
+type: object
+required:
+  - type
+  - token
+properties:
+  type:
+    type: string
+    enum:
+      - auth
+  token:
+    type: string
+    description: JWT authentication token

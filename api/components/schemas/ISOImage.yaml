@@ -1,0 +1,58 @@
+type: object
+properties:
+  id:
+    type: string
+    description: ISO unique identifier
+    example: iso-123e4567-e89b-12d3-a456-426614174000
+  name:
+    type: string
+    description: ISO name
+    example: ubuntu-22.04-live-server-amd64.iso
+  path:
+    type: string
+    description: Full path to ISO file
+    example: /var/lib/libvirt/images/iso/ubuntu-22.04-live-server-amd64.iso
+  size:
+    type: integer
+    format: int64
+    description: File size in bytes
+    example: 1474560000
+  checksum:
+    type: string
+    description: SHA256 checksum
+    example: 5e38b55d57d94ff029719342357325ed3bda38fa80054f9330dc789cd2d43931
+  os_type:
+    type: string
+    description: Operating system type
+    example: linux
+  os_variant:
+    type: string
+    description: Operating system variant
+    example: ubuntu22.04
+  description:
+    type: string
+    description: ISO description
+    example: Ubuntu 22.04 LTS Server Installation Media
+  created_at:
+    type: string
+    format: date-time
+    description: When the ISO was added
+    example: '2025-01-15T10:00:00Z'
+  last_used:
+    type: string
+    format: date-time
+    description: Last time the ISO was used
+    example: '2025-01-15T14:30:00Z'
+  source:
+    type: string
+    description: Source of the ISO
+    enum:
+      - uploaded
+      - downloaded
+      - system
+    example: uploaded
+  metadata:
+    type: object
+    description: Additional metadata
+    additionalProperties:
+      type: string

@@ -1,0 +1,16 @@
+get:
+  summary: Get playbook templates
+  description: Returns a list of available playbook templates
+  tags:
+    - Ansible
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: Templates retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/TemplatesListResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

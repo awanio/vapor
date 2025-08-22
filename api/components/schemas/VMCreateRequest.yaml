@@ -1,0 +1,22 @@
+type: object
+properties:
+  name:
+    type: string
+  memory:
+    type: integer
+  vcpus:
+    type: integer
+  disk_size:
+    type: integer
+  disk_path:
+    type: string
+  iso_path:
+    type: string
+  storage_pool:
+    type: string
+  network:
+    type: string
+  cloud_init:
+    $ref: ./CloudInit.yaml
+  autostart:
+    type: boolean

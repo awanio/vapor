@@ -1,0 +1,15 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          repositories:
+            type: array
+            items:
+              $ref: ./HelmRepository.yaml
+          count:
+            type: integer
+            description: Number of repositories returned
+            example: 2

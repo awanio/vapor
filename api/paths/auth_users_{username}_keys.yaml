@@ -1,0 +1,28 @@
+get:
+  summary: Get user's SSH public keys
+  description: |
+    Retrieve the authorized SSH public keys for a specific user.
+    Reads from the user's ~/.ssh/authorized_keys file.
+  tags:
+    - Auth
+  security: []
+  parameters:
+    - name: username
+      in: path
+      required: true
+      description: Username to get keys for
+      schema:
+        type: string
+  responses:
+    '200':
+      description: List of SSH public keys
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/SSHKeysResponse.yaml
+    '404':
+      description: User not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml

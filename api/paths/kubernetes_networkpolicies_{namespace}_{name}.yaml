@@ -1,0 +1,126 @@
+get:
+  summary: Get detailed network policy information
+  description: Get detailed information about a specific network policy in a namespace
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: NetworkPolicy namespace
+      schema:
+        type: string
+    - name: name
+      in: path
+      required: true
+      description: NetworkPolicy name
+      schema:
+        type: string
+  responses:
+    '200':
+      description: NetworkPolicy details retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/NetworkPolicyDetailResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: NetworkPolicy not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml
+put:
+  summary: Update a NetworkPolicy
+  description: Update an existing NetworkPolicy
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: NetworkPolicy namespace
+      schema:
+        type: string
+    - name: name
+      in: path
+      required: true
+      description: NetworkPolicy name
+      schema:
+        type: string
+  requestBody:
+    required: true
+    description: NetworkPolicy specification in JSON or YAML format
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/NetworkPolicyDetail.yaml
+      application/yaml:
+        schema:
+          type: string
+      text/yaml:
+        schema:
+          type: string
+  responses:
+    '200':
+      description: NetworkPolicy updated successfully
+    '400':
+      description: Invalid NetworkPolicy specification or unsupported content type
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: NetworkPolicy not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml
+delete:
+  summary: Delete a network policy
+  description: Delete a specific network policy from a namespace
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: NetworkPolicy namespace
+      schema:
+        type: string
+    - name: name
+      in: path
+      required: true
+      description: NetworkPolicy name
+      schema:
+        type: string
+  responses:
+    '200':
+      description: NetworkPolicy deleted successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MessageResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: NetworkPolicy not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

@@ -1,0 +1,92 @@
+type: object
+properties:
+  name:
+    type: string
+    description: Optional container name
+    example: my-container
+  image:
+    type: string
+    description: Docker image to use for the container
+    example: nginx:latest
+  cmd:
+    type: array
+    items:
+      type: string
+    description: Command to run in the container
+    example:
+      - nginx
+      - '-g'
+      - daemon off;
+  env:
+    type: array
+    items:
+      type: string
+    description: List of environment variables to set in the container
+    example:
+      - ENV=production
+      - DEBUG=false
+  exposedPorts:
+    type: object
+    additionalProperties: {}
+    description: Ports to expose from the container
+    example:
+      80/tcp: {}
+  portBindings:
+    type: object
+    additionalProperties:
+      type: array
+      items:
+        type: object
+        properties:
+          hostPort:
+            type: string
+    description: Port mappings for exposed container ports
+    example:
+      80/tcp:
+        - hostPort: '8080'
+  labels:
+    type: object
+    additionalProperties:
+      type: string
+    description: Metadata labels assigned to the container
+  workingDir:
+    type: string
+    description: Working directory in the container
+    example: /app
+  volumes:
+    type: array
+    items:
+      type: object
+      properties:
+        source:
+          type: string
+        target:
+          type: string
+        type:
+          type: string
+        readOnly:
+          type: boolean
+        bindOptions:
+          type: object
+          properties:
+            propagation:
+              type: string
+      example:
+        source: /var/www
+        target: /usr/share/nginx/html
+        type: bind
+        readOnly: false
+  networkMode:
+    type: string
+    description: Which network to connect container to
+    example: bridge
+  restartPolicy:
+    type: object
+    properties:
+      name:
+        type: string
+        description: Restart policy to apply when a container exits
+        example: always
+      maximumRetryCount:
+        type: integer
+        description: Maximum retry count for 'on-failure' policy

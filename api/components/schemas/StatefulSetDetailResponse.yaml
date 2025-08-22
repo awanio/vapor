@@ -1,0 +1,12 @@
+type: object
+properties:
+  status:
+    type: string
+    enum:
+      - success
+      - error
+  statefulset_detail:
+    $ref: ./StatefulSetDetail.yaml
+  error:
+    $ref: ./APIError.yaml
+    nullable: true

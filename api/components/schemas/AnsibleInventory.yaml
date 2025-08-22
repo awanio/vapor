@@ -1,0 +1,63 @@
+type: object
+properties:
+  _meta:
+    type: object
+    properties:
+      hostvars:
+        type: object
+        additionalProperties:
+          type: object
+          additionalProperties:
+            type: string
+    description: Host variables
+  all:
+    type: object
+    properties:
+      hosts:
+        type: array
+        items:
+          type: string
+        example:
+          - web1.example.com
+          - web2.example.com
+      children:
+        type: array
+        items:
+          type: string
+        example:
+          - webservers
+          - databases
+      vars:
+        type: object
+        additionalProperties:
+          type: string
+  webservers:
+    type: object
+    properties:
+      hosts:
+        type: array
+        items:
+          type: string
+        example:
+          - web1.example.com
+          - web2.example.com
+      vars:
+        type: object
+        additionalProperties:
+          type: string
+        example:
+          http_port: '80'
+          max_clients: '200'
+  databases:
+    type: object
+    properties:
+      hosts:
+        type: array
+        items:
+          type: string
+        example:
+          - db1.example.com
+      vars:
+        type: object
+        additionalProperties:
+          type: string

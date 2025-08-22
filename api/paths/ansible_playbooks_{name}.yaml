@@ -1,0 +1,58 @@
+get:
+  summary: Get playbook details
+  description: Returns detailed information about a specific playbook including its content
+  tags:
+    - Ansible
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      description: Name of the playbook
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Playbook details retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/PlaybookDetailResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: Playbook not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+delete:
+  summary: Delete playbook
+  description: Deletes a playbook from the system
+  tags:
+    - Ansible
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      description: Name of the playbook to delete
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Playbook deleted successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MessageResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: Playbook not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml

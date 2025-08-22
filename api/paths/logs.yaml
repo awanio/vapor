@@ -1,0 +1,56 @@
+get:
+  summary: Query system logs
+  tags:
+    - Logs
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: service
+      in: query
+      schema:
+        type: string
+      description: Filter by service name
+    - name: priority
+      in: query
+      schema:
+        type: string
+        enum:
+          - emergency
+          - alert
+          - critical
+          - error
+          - warning
+          - notice
+          - info
+          - debug
+      description: Filter by priority
+    - name: since
+      in: query
+      schema:
+        type: string
+      description: Show logs since timestamp
+    - name: until
+      in: query
+      schema:
+        type: string
+      description: Show logs until timestamp
+    - name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+    - name: page_size
+      in: query
+      schema:
+        type: integer
+        default: 100
+        maximum: 1000
+  responses:
+    '200':
+      description: Log entries
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/LogsResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

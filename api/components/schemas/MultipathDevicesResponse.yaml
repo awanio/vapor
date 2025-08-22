@@ -1,0 +1,11 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          devices:
+            type: array
+            items:
+              $ref: ./MultipathDevice.yaml

@@ -1,0 +1,20 @@
+type: object
+properties:
+  name:
+    type: string
+  namespace:
+    type: string
+  completions:
+    type: string
+  duration:
+    type: string
+  age:
+    type: string
+  labels:
+    type: object
+    additionalProperties:
+      type: string
+  annotations:
+    type: object
+    additionalProperties:
+      type: string

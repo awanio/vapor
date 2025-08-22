@@ -1,0 +1,79 @@
+type: object
+description: Raw Kubernetes StatefulSet object with full API specification
+additionalProperties: true
+example:
+  apiVersion: apps/v1
+  kind: StatefulSet
+  metadata:
+    name: postgres-statefulset
+    namespace: database
+    uid: 32345678-3234-3234-3234-323456789012
+    resourceVersion: '8901'
+    generation: 2
+    creationTimestamp: '2024-01-15T08:00:00Z'
+    labels:
+      app: postgres
+      tier: database
+  spec:
+    serviceName: postgres-service
+    replicas: 3
+    selector:
+      matchLabels:
+        app: postgres
+    template:
+      metadata:
+        labels:
+          app: postgres
+      spec:
+        containers:
+          - name: postgres
+            image: postgres:14.5
+            ports:
+              - containerPort: 5432
+                name: postgres
+            env:
+              - name: POSTGRES_DB
+                value: mydb
+              - name: POSTGRES_USER
+                value: myuser
+              - name: POSTGRES_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: postgres-secret
+                    key: password
+            volumeMounts:
+              - name: postgres-storage
+                mountPath: /var/lib/postgresql/data
+    volumeClaimTemplates:
+      - metadata:
+          name: postgres-storage
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          storageClassName: fast-ssd
+          resources:
+            requests:
+              storage: 10Gi
+    updateStrategy:
+      type: RollingUpdate
+      rollingUpdate:
+        partition: 0
+    podManagementPolicy: OrderedReady
+    persistentVolumeClaimRetentionPolicy:
+      whenDeleted: Retain
+      whenScaled: Retain
+  status:
+    observedGeneration: 2
+    replicas: 3
+    readyReplicas: 3
+    currentReplicas: 3
+    updatedReplicas: 3
+    currentRevision: postgres-statefulset-6d4cf56b5f
+    updateRevision: postgres-statefulset-6d4cf56b5f
+    collisionCount: 0
+    conditions:
+      - type: Available
+        status: 'True'
+        lastTransitionTime: '2024-01-15T08:10:00Z'
+        reason: MinimumReplicasAvailable
+        message: StatefulSet has minimum availability.

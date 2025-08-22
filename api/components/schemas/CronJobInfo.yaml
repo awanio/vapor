@@ -1,0 +1,24 @@
+type: object
+properties:
+  name:
+    type: string
+  namespace:
+    type: string
+  schedule:
+    type: string
+  suspend:
+    type: boolean
+  active:
+    type: integer
+  last_schedule:
+    type: string
+  age:
+    type: string
+  labels:
+    type: object
+    additionalProperties:
+      type: string
+  annotations:
+    type: object
+    additionalProperties:
+      type: string

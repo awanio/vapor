@@ -1,0 +1,55 @@
+type: object
+required:
+  - destination_path
+properties:
+  backup_type:
+    type: string
+    description: Type of backup
+    enum:
+      - full
+      - incremental
+      - differential
+    default: full
+    example: full
+  destination_path:
+    type: string
+    description: Where to store the backup
+    example: /backup/vms/
+  compression:
+    type: string
+    description: Compression type
+    enum:
+      - none
+      - gzip
+      - bzip2
+      - xz
+      - zstd
+    default: none
+    example: gzip
+  encryption:
+    type: string
+    description: Encryption type
+    enum:
+      - none
+      - AES-256
+      - AES-128
+    default: none
+    example: AES-256
+  encryption_key:
+    type: string
+    description: Encryption key (required if encryption is enabled)
+    example: my-secret-key-123
+  include_memory:
+    type: boolean
+    description: Include memory state in backup
+    default: false
+    example: true
+  retention_days:
+    type: integer
+    description: Number of days to retain the backup
+    default: 30
+    example: 90
+  description:
+    type: string
+    description: Optional description of the backup
+    example: Weekly backup before maintenance

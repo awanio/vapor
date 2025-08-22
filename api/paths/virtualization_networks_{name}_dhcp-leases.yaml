@@ -1,0 +1,25 @@
+get:
+  summary: Get DHCP leases for a network
+  description: Retrieve active DHCP leases for a virtual network
+  tags:
+    - Virtualization Network
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Network name
+  responses:
+    '200':
+      description: DHCP leases retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/NetworkDHCPLeasesResponse.yaml
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

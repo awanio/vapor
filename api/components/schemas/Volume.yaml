@@ -1,0 +1,34 @@
+type: object
+properties:
+  name:
+    type: string
+    description: Volume name
+    example: my-volume
+  driver:
+    type: string
+    description: Volume driver
+    example: local
+  mountpoint:
+    type: string
+    description: Volume mount point
+    example: /var/lib/docker/volumes/my-volume/_data
+  createdAt:
+    type: string
+    format: date-time
+    description: Volume creation time
+  labels:
+    type: object
+    additionalProperties:
+      type: string
+    description: Volume labels
+  scope:
+    type: string
+    description: Volume scope
+    example: local
+  options:
+    type: object
+    additionalProperties:
+      type: string
+    description: Volume options
+  usageData:
+    $ref: ./VolumeUsageData.yaml

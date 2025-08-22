@@ -1,0 +1,31 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          upload_id:
+            type: string
+            description: Unique upload session identifier
+            example: 550e8400-e29b-41d4-a716-446655440000
+          upload_url:
+            type: string
+            description: URL for uploading chunks
+            example: >-
+              /api/v1/virtualmachines/isos/upload/550e8400-e29b-41d4-a716-446655440000
+          expires_at:
+            type: string
+            format: date-time
+            description: When the upload session expires
+            example: '2025-08-06T15:38:32Z'
+          total_size:
+            type: integer
+            format: int64
+            description: Total file size in bytes
+            example: 1474560000
+          uploaded_size:
+            type: integer
+            format: int64
+            description: Bytes uploaded so far
+            example: 0

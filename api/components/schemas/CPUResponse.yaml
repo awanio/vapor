@@ -1,0 +1,17 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          model_name:
+            type: string
+          cores:
+            type: integer
+          load1:
+            type: number
+          load5:
+            type: number
+          load15:
+            type: number

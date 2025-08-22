@@ -1,0 +1,21 @@
+type: object
+description: Request to update a virtual network configuration
+properties:
+  mode:
+    type: string
+    description: Network forwarding mode
+    enum:
+      - nat
+      - route
+      - bridge
+      - private
+  bridge:
+    type: string
+    description: Bridge name for the network
+  ip_range:
+    $ref: ./IPRange.yaml
+  dhcp:
+    $ref: ./DHCPConfig.yaml
+  autostart:
+    type: boolean
+    description: Whether to enable autostart for the network

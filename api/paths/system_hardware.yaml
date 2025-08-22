@@ -1,0 +1,15 @@
+get:
+  summary: Get hardware information
+  tags:
+    - System
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: Hardware information
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/HardwareResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

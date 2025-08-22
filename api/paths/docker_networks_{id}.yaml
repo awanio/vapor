@@ -1,0 +1,34 @@
+delete:
+  summary: Remove Docker network
+  description: Remove a Docker network from the system
+  tags:
+    - Docker
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: Network ID or name
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Network removed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/NetworkActionResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '500':
+      description: Failed to remove network
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+          example:
+            status: error
+            error:
+              code: REMOVE_NETWORK_FAILED
+              message: 'Failed to remove network: Network is in use by containers'

@@ -1,0 +1,13 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          ingressClasses:
+            type: array
+            items:
+              $ref: ./IngressClassInfo.yaml
+          count:
+            type: integer

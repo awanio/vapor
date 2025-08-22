@@ -1,0 +1,27 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          containerId:
+            type: string
+            description: Container ID that the action was performed on
+            example: abc123def456
+          action:
+            type: string
+            description: Action that was performed
+            enum:
+              - start
+              - stop
+              - remove
+            example: start
+          message:
+            type: string
+            description: Human-readable message about the action result
+            example: Container started successfully
+          success:
+            type: boolean
+            description: Whether the action was successful
+            example: true

@@ -1,0 +1,37 @@
+get:
+  summary: Get detailed job information
+  description: Get detailed information about a specific job in a namespace
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: Job namespace
+      schema:
+        type: string
+    - name: name
+      in: path
+      required: true
+      description: Job name
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Job details retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/JobDetailResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: Job not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

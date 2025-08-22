@@ -1,0 +1,13 @@
+type: object
+required:
+  - interface
+  - vlan_id
+properties:
+  interface:
+    type: string
+  vlan_id:
+    type: integer
+    minimum: 1
+    maximum: 4094
+  name:
+    type: string

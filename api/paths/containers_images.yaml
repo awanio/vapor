@@ -1,0 +1,82 @@
+get:
+  summary: List images
+  tags:
+    - Container
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: Images listed successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: success
+              data:
+                type: object
+                properties:
+                  images:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          example: >-
+                            sha256:d12fc38c77e50eab23af17f302d5b94514173d9f84150b7662aecbfeb21f8717
+                        repo_tags:
+                          type: array
+                          items:
+                            type: string
+                          example:
+                            - r.awan.app/library/remote-console-ipmi:2.0
+                        repo_digests:
+                          type: array
+                          items:
+                            type: string
+                          example:
+                            - >-
+                              quay.io/operatorhubio/catalog@sha256:096fa413e1b8dba2071020e5809597e7d86da5a2833ffdf97a20457af714e678
+                        size:
+                          type: integer
+                          example: 109999465
+                        created_at:
+                          type: string
+                          format: date-time
+                          example: '2025-08-01T12:40:55.236465486Z'
+                        runtime:
+                          type: string
+                          example: containerd
+                  count:
+                    type: integer
+                    example: 92
+                  runtime:
+                    type: string
+                    example: containerd
+    '503':
+      description: No container runtime available
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: error
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: NO_RUNTIME_AVAILABLE
+                  message:
+                    type: string
+                    example: >-
+                      No container runtime found. Tried CRI sockets
+                      ([/run/containerd/containerd.sock
+                      /var/run/crio/crio.sock]) and Docker. Last error: Cannot
+                      connect to the Docker daemon at
+                      unix:///var/run/docker.sock. Is the docker daemon running?

@@ -1,0 +1,22 @@
+type: object
+required:
+  - type
+  - cols
+  - rows
+properties:
+  type:
+    type: string
+    enum:
+      - start
+  cols:
+    type: integer
+    minimum: 1
+    description: Terminal width in columns
+  rows:
+    type: integer
+    minimum: 1
+    description: Terminal height in rows
+  shell:
+    type: string
+    default: /bin/bash
+    description: Shell to execute

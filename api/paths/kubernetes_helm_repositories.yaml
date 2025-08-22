@@ -1,0 +1,71 @@
+get:
+  summary: List Helm repositories
+  description: List all configured Helm repositories (equivalent to 'helm repo list')
+  tags:
+    - Helm
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: Helm repositories listed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/HelmRepositoriesResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '403':
+      $ref: ../components/responses/HelmNotAvailableError.yaml
+    '500':
+      $ref: ../components/responses/HelmError.yaml
+post:
+  summary: Add a new Helm repository
+  description: >-
+    Add a new Helm repository to the configuration (equivalent to 'helm repo
+    add')
+  tags:
+    - Helm
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/HelmRepositoryAddRequest.yaml
+        example:
+          name: bitnami
+          url: https://charts.bitnami.com/bitnami
+          username: ''
+          password: ''
+          cert_file: ''
+          key_file: ''
+          ca_file: ''
+          insecure_skip_tls_verify: false
+          pass_credentials_all: false
+          force_update: false
+  responses:
+    '200':
+      description: Helm repository added successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/HelmRepositoryAddResponse.yaml
+    '400':
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '403':
+      $ref: ../components/responses/HelmNotAvailableError.yaml
+    '409':
+      description: Repository already exists
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      $ref: ../components/responses/HelmError.yaml

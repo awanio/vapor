@@ -1,0 +1,50 @@
+get:
+  summary: Get storage pool details
+  tags:
+    - Virtualization Storage
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Storage pool name
+  responses:
+    '200':
+      description: Storage pool details
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/StoragePoolDetailResponse.yaml
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml
+delete:
+  summary: Delete a storage pool
+  tags:
+    - Virtualization Storage
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Storage pool name
+    - name: delete_volumes
+      in: query
+      required: false
+      schema:
+        type: boolean
+      description: Whether to delete associated volumes
+  responses:
+    '204':
+      description: Storage pool deleted successfully
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

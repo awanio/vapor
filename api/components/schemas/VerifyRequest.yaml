@@ -1,0 +1,22 @@
+type: object
+required:
+  - username
+  - challenge
+  - signature
+properties:
+  username:
+    type: string
+    description: Username
+  challenge:
+    type: string
+    description: Original challenge string
+  signature:
+    type: string
+    description: Base64-encoded signature of the challenge
+  key_type:
+    type: string
+    description: SSH key type
+    enum:
+      - rsa
+      - ed25519
+      - ecdsa

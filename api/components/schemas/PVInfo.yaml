@@ -1,0 +1,28 @@
+type: object
+properties:
+  name:
+    type: string
+  capacity:
+    type: string
+  access_modes:
+    type: string
+  reclaim_policy:
+    type: string
+  status:
+    type: string
+  claim:
+    type: string
+  storage_class:
+    type: string
+  reason:
+    type: string
+  age:
+    type: string
+  labels:
+    type: object
+    additionalProperties:
+      type: string
+  annotations:
+    type: object
+    additionalProperties:
+      type: string

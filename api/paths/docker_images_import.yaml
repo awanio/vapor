@@ -1,0 +1,50 @@
+post:
+  summary: Import Docker image from tarball
+  tags:
+    - Docker
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          properties:
+            image:
+              type: string
+              format: binary
+  responses:
+    '200':
+      description: Docker image imported successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: success
+              data:
+                type: object
+                properties:
+                  import_result:
+                    $ref: ../components/schemas/ImageImportResult.yaml
+                  runtime:
+                    type: string
+                    example: docker
+                  filename:
+                    type: string
+                    example: docker-image.tar.gz
+    '400':
+      description: Invalid file or request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      description: Failed to import Docker image
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml

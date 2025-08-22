@@ -1,0 +1,28 @@
+type: object
+required:
+  - name
+  - level
+  - disks
+properties:
+  name:
+    type: string
+    description: Name of the RAID device (e.g., raid0)
+  level:
+    type: string
+    enum:
+      - '0'
+      - '1'
+      - '5'
+      - '6'
+      - '10'
+    description: RAID level
+  disks:
+    type: array
+    items:
+      type: string
+    minItems: 2
+    description: List of disk paths to use for RAID
+  chunk_size:
+    type: string
+    description: Chunk size (e.g., 512K, 1M)
+    default: 512K

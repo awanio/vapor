@@ -1,0 +1,30 @@
+type: object
+required:
+  - source
+  - type
+properties:
+  type:
+    type: string
+    description: Network type
+    enum:
+      - bridge
+      - network
+      - direct
+    example: network
+  source:
+    type: string
+    description: Network source (bridge name, network name, or interface)
+    example: default
+  model:
+    type: string
+    description: Network device model
+    enum:
+      - virtio
+      - e1000
+      - rtl8139
+    default: virtio
+    example: virtio
+  mac:
+    type: string
+    description: MAC address (auto-generated if not specified)
+    example: '52:54:00:12:34:56'

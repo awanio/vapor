@@ -1,0 +1,12 @@
+type: object
+properties:
+  name:
+    type: string
+  vg_name:
+    type: string
+  size:
+    type: integer
+  free:
+    type: integer
+  uuid:
+    type: string

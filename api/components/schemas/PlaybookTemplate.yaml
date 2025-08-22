@@ -1,0 +1,30 @@
+type: object
+properties:
+  id:
+    type: string
+    description: Template identifier
+    example: nginx-setup
+  name:
+    type: string
+    description: Template display name
+    example: Nginx Web Server Setup
+  description:
+    type: string
+    description: Template description
+    example: Sets up Nginx with SSL and basic configuration
+  category:
+    type: string
+    description: Template category
+    example: Web Servers
+  variables:
+    type: array
+    items:
+      $ref: ./TemplateVariable.yaml
+  tags:
+    type: array
+    items:
+      type: string
+    example:
+      - web
+      - nginx
+      - ssl

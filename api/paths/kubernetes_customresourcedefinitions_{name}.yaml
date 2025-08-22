@@ -1,0 +1,31 @@
+get:
+  summary: Get detailed CRD information
+  description: Get detailed information about a specific Custom Resource Definition
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      description: CRD name
+      schema:
+        type: string
+  responses:
+    '200':
+      description: CRD details retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/CRDDetailResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: CRD not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

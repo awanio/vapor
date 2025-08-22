@@ -1,0 +1,15 @@
+get:
+  summary: List multipath devices
+  tags:
+    - Storage
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: Multipath devices listed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MultipathDevicesResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

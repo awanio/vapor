@@ -1,0 +1,108 @@
+get:
+  summary: Get detailed ingress class information
+  description: Get detailed information about a specific ingress class
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      description: IngressClass name
+      schema:
+        type: string
+  responses:
+    '200':
+      description: IngressClass details retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/IngressClassDetailResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: IngressClass not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml
+put:
+  summary: Update an IngressClass
+  description: Update an existing IngressClass
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      description: IngressClass name
+      schema:
+        type: string
+  requestBody:
+    required: true
+    description: IngressClass specification in JSON or YAML format
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/IngressClassDetail.yaml
+      application/yaml:
+        schema:
+          type: string
+      text/yaml:
+        schema:
+          type: string
+  responses:
+    '200':
+      description: IngressClass updated successfully
+    '400':
+      description: Invalid IngressClass specification or unsupported content type
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: IngressClass not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml
+delete:
+  summary: Delete an ingress class
+  description: Delete a specific ingress class
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      description: IngressClass name
+      schema:
+        type: string
+  responses:
+    '200':
+      description: IngressClass deleted successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MessageResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: IngressClass not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

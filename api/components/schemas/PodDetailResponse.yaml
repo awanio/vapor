@@ -1,0 +1,12 @@
+type: object
+properties:
+  status:
+    type: string
+    enum:
+      - success
+      - error
+  pod_detail:
+    $ref: ./PodDetail.yaml
+  error:
+    $ref: ./APIError.yaml
+    nullable: true

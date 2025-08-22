@@ -1,0 +1,25 @@
+get:
+  summary: List VLAN interfaces
+  tags:
+    - Network
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: List of VLANs
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              data:
+                type: object
+                properties:
+                  vlans:
+                    type: array
+                    items:
+                      $ref: ../components/schemas/Interface.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

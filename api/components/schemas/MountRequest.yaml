@@ -1,0 +1,13 @@
+type: object
+required:
+  - device
+  - mount_point
+properties:
+  device:
+    type: string
+  mount_point:
+    type: string
+  filesystem:
+    type: string
+  options:
+    type: string

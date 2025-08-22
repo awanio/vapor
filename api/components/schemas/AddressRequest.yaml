@@ -1,0 +1,15 @@
+type: object
+required:
+  - address
+  - netmask
+properties:
+  address:
+    type: string
+    format: ipv4
+  netmask:
+    type: integer
+    minimum: 0
+    maximum: 32
+  gateway:
+    type: string
+    format: ipv4

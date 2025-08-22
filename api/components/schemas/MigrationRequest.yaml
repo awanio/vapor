@@ -1,0 +1,110 @@
+type: object
+required:
+  - destination_host
+properties:
+  destination_host:
+    type: string
+    description: |
+      Target host for migration. The host must be accessible via the transport
+      method specified in destination_uri (SSH by default).
+
+      For SSH transport, passwordless SSH access must be configured from
+      source to destination host.
+    example: host2.example.com
+  destination_uri:
+    type: string
+    description: >
+      Optional custom libvirt URI for destination. Common formats:
+
+
+      - `qemu+ssh://host2.example.com/system` - SSH transport (default, requires
+      SSH keys)
+
+      - `qemu+ssh://user@host2.example.com/system` - SSH with specific user
+
+      - `qemu+tcp://host2.example.com/system` - TCP transport (unencrypted, not
+      recommended)
+
+      - `qemu+tls://host2.example.com/system` - TLS transport (requires
+      certificates)
+
+
+      **SSH Requirements:**
+
+      The source host must have passwordless SSH access to the destination.
+
+      SSH public key of the source host's libvirt user (usually root) must be
+
+      in the destination host's authorized_keys file.
+
+
+      **Setup Example:**
+
+      ```bash
+
+      # On source host as root:
+
+      ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa
+
+      ssh-copy-id root@host2.example.com
+
+      ```
+    example: qemu+ssh://host2.example.com/system
+  live:
+    type: boolean
+    description: |
+      Perform live migration (VM stays running during migration).
+      Requires stable network connection and compatible hosts.
+    default: true
+  tunneled:
+    type: boolean
+    description: |
+      Use tunneled migration. All migration data goes through the libvirt
+      connection. More secure but potentially slower.
+    default: false
+  compressed:
+    type: boolean
+    description: |
+      Enable compression during migration. Reduces network bandwidth usage
+      but increases CPU usage on both hosts.
+    default: false
+  auto_converge:
+    type: boolean
+    description: |
+      Enable auto-convergence to speed up migration. Automatically throttles
+      VM CPU usage if migration is not converging.
+    default: false
+  allow_unsafe:
+    type: boolean
+    description: |
+      Allow unsafe migration operations. Use with caution as it may result
+      in VM crashes or data corruption if hosts are incompatible.
+    default: false
+  max_bandwidth:
+    type: integer
+    description: |
+      Maximum bandwidth in MB/s for migration (0 for unlimited).
+      Useful to prevent migration from saturating network links.
+    default: 0
+    example: 100
+  max_downtime:
+    type: integer
+    description: |
+      Maximum allowed downtime in milliseconds during live migration.
+      Lower values mean less interruption but migration may take longer.
+    default: 500
+    example: 500
+  copy_storage:
+    type: string
+    description: |
+      Storage migration mode:
+      - `none`: No storage migration (requires shared storage)
+      - `all`: Copy all disk images to destination
+      - `inc`: Copy only incremental changes (for supported formats)
+
+      Note: Storage migration significantly increases migration time.
+    enum:
+      - none
+      - all
+      - inc
+    default: none

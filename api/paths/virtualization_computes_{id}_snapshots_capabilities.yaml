@@ -1,0 +1,38 @@
+get:
+  summary: Check VM snapshot capabilities
+  description: >
+    Check what snapshot operations are supported for a VM based on its disk
+    formats.
+
+
+    This endpoint analyzes all disks attached to the VM and determines:
+
+    - Whether internal snapshots are supported (requires all disks to be qcow2)
+
+    - Whether external snapshots are supported (always supported)
+
+    - Whether memory snapshots are supported (requires qcow2 for all disks)
+
+    - Disk format limitations and recommendations
+  tags:
+    - Virtualization Compute
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: VM name or UUID
+  responses:
+    '200':
+      description: Snapshot capabilities retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/VMSnapshotCapabilitiesResponse.yaml
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

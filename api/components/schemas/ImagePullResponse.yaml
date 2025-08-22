@@ -1,0 +1,11 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          imageName:
+            type: string
+            description: Name of the pulled image
+            example: nginx:latest

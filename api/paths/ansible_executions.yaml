@@ -1,0 +1,43 @@
+get:
+  summary: List executions
+  description: Returns a list of all Ansible execution results
+  tags:
+    - Ansible
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: status
+      in: query
+      required: false
+      description: Filter by execution status
+      schema:
+        type: string
+        enum:
+          - running
+          - success
+          - failed
+    - name: type
+      in: query
+      required: false
+      description: Filter by execution type
+      schema:
+        type: string
+        enum:
+          - playbook
+          - adhoc
+    - name: limit
+      in: query
+      required: false
+      description: Maximum number of results to return
+      schema:
+        type: integer
+        default: 100
+  responses:
+    '200':
+      description: Executions listed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ExecutionsListResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

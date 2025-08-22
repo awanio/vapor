@@ -1,0 +1,129 @@
+type: object
+properties:
+  id:
+    type: integer
+    description: Template unique identifier
+    example: 1
+  name:
+    type: string
+    description: Template name (unique)
+    example: ubuntu-22.04
+  display_name:
+    type: string
+    description: Display name for the template
+    example: Ubuntu 22.04 LTS Server
+  description:
+    type: string
+    description: Template description
+    example: Ubuntu 22.04 LTS Server optimized for cloud deployments
+  os_type:
+    type: string
+    description: Operating system type
+    enum:
+      - linux
+      - windows
+      - bsd
+      - other
+    example: linux
+  os_variant:
+    type: string
+    description: OS variant identifier for libvirt
+    example: ubuntu22.04
+  min_memory:
+    type: integer
+    description: Minimum memory in MB
+    example: 512
+  recommended_memory:
+    type: integer
+    description: Recommended memory in MB
+    example: 2048
+  min_vcpus:
+    type: integer
+    description: Minimum vCPUs
+    example: 1
+  recommended_vcpus:
+    type: integer
+    description: Recommended vCPUs
+    example: 2
+  min_disk:
+    type: integer
+    description: Minimum disk size in GB
+    example: 10
+  recommended_disk:
+    type: integer
+    description: Recommended disk size in GB
+    example: 20
+  disk_bus:
+    type: string
+    description: Recommended disk bus type
+    enum:
+      - virtio
+      - ide
+      - scsi
+      - sata
+    default: virtio
+    example: virtio
+  network_model:
+    type: string
+    description: Recommended network model
+    enum:
+      - virtio
+      - e1000
+      - rtl8139
+    default: virtio
+    example: virtio
+  features:
+    type: object
+    description: Required or recommended features
+    properties:
+      uefi:
+        type: boolean
+        description: Use UEFI boot
+        example: true
+      secure_boot:
+        type: boolean
+        description: Enable secure boot
+        example: false
+      tpm:
+        type: boolean
+        description: Add TPM device
+        example: false
+      virtio_drivers:
+        type: boolean
+        description: Requires VirtIO drivers
+        example: true
+  cloud_init_support:
+    type: boolean
+    description: Supports cloud-init
+    example: true
+  default_user:
+    type: string
+    description: Default username for the OS
+    example: ubuntu
+  icon:
+    type: string
+    description: Icon identifier or URL
+    example: ubuntu
+  tags:
+    type: array
+    items:
+      type: string
+    description: Template tags for categorization
+    example:
+      - server
+      - lts
+      - cloud
+  is_active:
+    type: boolean
+    description: Whether template is active
+    example: true
+  created_at:
+    type: string
+    format: date-time
+    description: When the template was created
+    example: '2025-01-15T10:00:00Z'
+  updated_at:
+    type: string
+    format: date-time
+    description: When the template was last updated
+    example: '2025-01-15T10:00:00Z'

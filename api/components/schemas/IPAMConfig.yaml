@@ -1,0 +1,18 @@
+type: object
+properties:
+  subnet:
+    type: string
+    description: Subnet CIDR
+    example: 172.18.0.0/16
+  ipRange:
+    type: string
+    description: IP range CIDR
+  gateway:
+    type: string
+    description: Gateway IP
+    example: 172.18.0.1
+  auxAddress:
+    type: object
+    additionalProperties:
+      type: string
+    description: Auxiliary IP addresses

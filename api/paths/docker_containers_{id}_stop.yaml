@@ -1,0 +1,34 @@
+post:
+  summary: Stop Docker container
+  description: Stop a running Docker container
+  tags:
+    - Docker
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: Container ID or name
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Container stopped successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ContainerActionResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '500':
+      description: Failed to stop container
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+          example:
+            status: error
+            error:
+              code: STOP_CONTAINER_FAILED
+              message: 'Failed to stop container: Container not running'

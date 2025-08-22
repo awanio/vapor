@@ -1,0 +1,32 @@
+type: object
+required:
+  - type
+  - timestamp
+  - message
+properties:
+  type:
+    type: string
+    enum:
+      - log
+  timestamp:
+    type: string
+    format: date-time
+  service:
+    type: string
+  priority:
+    type: string
+    enum:
+      - emergency
+      - alert
+      - critical
+      - error
+      - warning
+      - notice
+      - info
+      - debug
+  message:
+    type: string
+  hostname:
+    type: string
+  pid:
+    type: integer

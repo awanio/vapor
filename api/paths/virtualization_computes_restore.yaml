@@ -1,0 +1,42 @@
+post:
+  summary: Restore VM from backup
+  description: |
+    Restore a virtual machine from a backup.
+
+    **Options:**
+    - Restore to new VM with different name
+    - Overwrite existing VM
+    - Decrypt encrypted backups
+  tags:
+    - Virtualization Compute
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/VMRestoreRequest.yaml
+  responses:
+    '200':
+      description: VM restored successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/VMResponse.yaml
+    '400':
+      $ref: ../components/responses/BadRequest.yaml
+    '404':
+      description: Backup not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '409':
+      description: Conflict - VM already exists
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

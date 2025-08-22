@@ -1,0 +1,33 @@
+allOf:
+  - $ref: ./CRDInfo.yaml
+  - type: object
+    properties:
+      spec:
+        type: object
+        properties:
+          versions:
+            type: array
+            items:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Version name
+                served:
+                  type: boolean
+                  description: Whether this version is served
+                storage:
+                  type: boolean
+                  description: Whether this version is the storage version
+                schema:
+                  type: object
+                  description: OpenAPI v3 schema for this version
+          conversion:
+            type: object
+            properties:
+              strategy:
+                type: string
+                description: Conversion strategy
+          preserveUnknownFields:
+            type: boolean
+            description: Whether unknown fields are preserved

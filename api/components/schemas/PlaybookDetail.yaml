@@ -1,0 +1,32 @@
+type: object
+properties:
+  name:
+    type: string
+    description: Playbook filename
+    example: site.yml
+  path:
+    type: string
+    description: Full path to the playbook
+    example: /opt/ansible/playbooks/site.yml
+  content:
+    type: string
+    description: Playbook content (YAML)
+    example: |
+      ---
+      - name: Configure web servers
+        hosts: webservers
+        become: yes
+        tasks:
+          - name: Install nginx
+            package:
+              name: nginx
+              state: present
+  size:
+    type: integer
+    description: File size in bytes
+    example: 2048
+  modified:
+    type: string
+    format: date-time
+    description: Last modification time
+    example: '2025-01-15T10:30:00Z'

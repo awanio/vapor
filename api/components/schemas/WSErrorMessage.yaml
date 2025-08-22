@@ -1,0 +1,15 @@
+type: object
+required:
+  - type
+  - error
+properties:
+  type:
+    type: string
+    enum:
+      - error
+  error:
+    type: string
+    description: Error message
+  code:
+    type: string
+    description: Error code

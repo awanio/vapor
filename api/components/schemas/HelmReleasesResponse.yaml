@@ -1,0 +1,15 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          releases:
+            type: array
+            items:
+              $ref: ./HelmRelease.yaml
+          count:
+            type: integer
+            description: Number of releases returned
+            example: 3

@@ -1,0 +1,42 @@
+get:
+  summary: List available PCI devices
+  description: >
+    List all PCI devices available for passthrough to virtual machines.
+
+    This includes GPUs, network cards, storage controllers, USB controllers, and
+    other PCI devices.
+
+
+    **Prerequisites:**
+
+    - IOMMU must be enabled in BIOS/UEFI and kernel
+
+    - Devices must be in separate IOMMU groups for passthrough
+
+    - vfio-pci driver must be loaded
+  tags:
+    - Virtualization Compute
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: type
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+          - gpu
+          - network
+          - storage
+          - usb
+          - other
+      description: Filter devices by type
+  responses:
+    '200':
+      description: PCI devices listed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/PCIDevicesResponse.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

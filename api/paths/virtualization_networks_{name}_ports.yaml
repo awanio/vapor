@@ -1,0 +1,25 @@
+get:
+  summary: Get network ports
+  description: Retrieve list of ports (VM interfaces) attached to a virtual network
+  tags:
+    - Virtualization Network
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Network name
+  responses:
+    '200':
+      description: Network ports retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/NetworkPortsResponse.yaml
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

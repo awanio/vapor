@@ -1,0 +1,80 @@
+get:
+  summary: List available ISO images
+  description: |
+    List all available ISO images from the system.
+
+    **Sources:**
+    - Database-managed ISOs
+    - ISOs in /var/lib/libvirt/images/iso
+    - ISOs in /var/lib/vapor/iso
+    - ISOs in /usr/share/iso
+  tags:
+    - Virtualization ISO
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: ISO images listed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ISOImagesResponse.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml
+post:
+  summary: Upload ISO image
+  description: |
+    Upload (non resumable) a new ISO image to the system.
+
+    **Options:**
+    - Direct file upload
+    - Download from URL
+    - Copy from existing path
+  tags:
+    - Virtualization ISO
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          properties:
+            file:
+              type: string
+              format: binary
+              description: ISO file to upload
+            name:
+              type: string
+              description: Name for the ISO
+            description:
+              type: string
+              description: Description of the ISO
+      application/json:
+        schema:
+          type: object
+          properties:
+            url:
+              type: string
+              description: URL to download ISO from
+            path:
+              type: string
+              description: Local path to copy ISO from
+            name:
+              type: string
+              description: Name for the ISO
+            description:
+              type: string
+              description: Description of the ISO
+  responses:
+    '201':
+      description: ISO uploaded successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ISOUploadResponse.yaml
+    '400':
+      $ref: ../components/responses/BadRequest.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

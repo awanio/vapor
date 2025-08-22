@@ -1,0 +1,11 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          services:
+            type: array
+            items:
+              $ref: ./ServiceInfo.yaml

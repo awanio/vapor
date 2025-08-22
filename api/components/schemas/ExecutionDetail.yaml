@@ -1,0 +1,28 @@
+allOf:
+  - $ref: ./ExecutionSummary.yaml
+  - type: object
+    properties:
+      command:
+        type: string
+        description: Full ansible command executed
+        example: ansible-playbook -i production site.yml
+      parameters:
+        type: object
+        description: Execution parameters
+        additionalProperties: true
+      output:
+        type: string
+        description: Full execution output
+        example: |
+          PLAY [Configure web servers] ***
+
+          TASK [Gathering Facts] ***
+          ok: [web1]
+      exit_code:
+        type: integer
+        description: Process exit code
+        example: 0
+      host_results:
+        type: array
+        items:
+          $ref: ./HostResult.yaml

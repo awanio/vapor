@@ -1,0 +1,15 @@
+get:
+  summary: List iSCSI sessions
+  tags:
+    - Storage
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: Sessions listed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ISCSISessionsResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

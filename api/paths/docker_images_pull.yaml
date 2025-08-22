@@ -1,0 +1,50 @@
+post:
+  summary: Pull Docker image
+  description: Pull a Docker image from a registry (e.g., Docker Hub)
+  tags:
+    - Docker
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/ImagePullRequest.yaml
+        examples:
+          pullNginx:
+            summary: Pull nginx image
+            value:
+              imageName: nginx
+              tag: latest
+          pullAlpine:
+            summary: Pull Alpine Linux
+            value:
+              imageName: alpine
+              tag: '3.18'
+  responses:
+    '200':
+      description: Image pulled successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ImagePullResponse.yaml
+    '400':
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '500':
+      description: Failed to pull image
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+          example:
+            status: error
+            error:
+              code: PULL_IMAGE_FAILED
+              message: 'Failed to pull image: repository does not exist'

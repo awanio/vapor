@@ -1,0 +1,27 @@
+description: Kubernetes is not installed on the system
+content:
+  application/json:
+    schema:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - error
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              enum:
+                - KUBERNETES_NOT_INSTALLED
+            message:
+              type: string
+              example: Kubernetes is not installed on this system
+            details:
+              type: string
+              example: >-
+                The kubelet service was not found on this system. Please install
+                Kubernetes to use these features.
+            data:
+              type: object

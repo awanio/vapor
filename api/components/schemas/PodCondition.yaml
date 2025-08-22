@@ -1,0 +1,22 @@
+type: object
+properties:
+  type:
+    type: string
+    description: Condition type
+  status:
+    type: string
+    description: Condition status
+  last_probe_time:
+    type: string
+    format: date-time
+    description: Last probe time
+  last_transition_time:
+    type: string
+    format: date-time
+    description: Last transition time
+  reason:
+    type: string
+    description: Condition reason
+  message:
+    type: string
+    description: Condition message

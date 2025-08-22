@@ -1,0 +1,44 @@
+type: object
+description: Console proxy configuration
+properties:
+  max_connections_per_vm:
+    type: integer
+    description: Maximum concurrent connections per VM
+    default: 5
+  max_total_connections:
+    type: integer
+    description: Maximum total concurrent connections
+    default: 100
+  token_ttl:
+    type: string
+    description: Token expiration time (e.g., "5m")
+    default: 5m
+  connection_timeout:
+    type: string
+    description: Connection establishment timeout
+    default: 30s
+  idle_timeout:
+    type: string
+    description: Idle connection timeout
+    default: 10m
+  allowed_hosts:
+    type: array
+    items:
+      type: string
+    description: List of allowed console server hosts
+    default:
+      - localhost
+      - 127.0.0.1
+      - '::1'
+  enable_tls:
+    type: boolean
+    description: Enable TLS for console connections
+    default: false
+  buffer_size:
+    type: integer
+    description: Buffer size in KB for data transfer
+    default: 32
+  cleanup_interval:
+    type: string
+    description: Interval for cleaning up expired tokens and connections
+    default: 1m

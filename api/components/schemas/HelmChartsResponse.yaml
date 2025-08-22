@@ -1,0 +1,15 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          charts:
+            type: array
+            items:
+              $ref: ./HelmChart.yaml
+          count:
+            type: integer
+            description: Number of charts returned
+            example: 6

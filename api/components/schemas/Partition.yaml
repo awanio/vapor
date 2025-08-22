@@ -1,0 +1,20 @@
+type: object
+properties:
+  name:
+    type: string
+  path:
+    type: string
+  size:
+    type: integer
+  type:
+    type: string
+  filesystem:
+    type: string
+  mount_point:
+    type: string
+  used:
+    type: integer
+  available:
+    type: integer
+  use_percent:
+    type: number

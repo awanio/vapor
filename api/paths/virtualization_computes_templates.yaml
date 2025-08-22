@@ -1,0 +1,61 @@
+get:
+  summary: List VM templates
+  description: |
+    List all available VM templates from the system.
+
+    Templates provide pre-configured VM specifications that can be used
+    to quickly create new virtual machines with optimal settings for
+    specific operating systems and use cases.
+  tags:
+    - Virtualization Compute
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: Templates listed successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              templates:
+                type: array
+                items:
+                  $ref: ../components/schemas/VMTemplate.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml
+post:
+  summary: Create VM template
+  description: |
+    Create a new VM template with specific requirements and recommendations.
+
+    Templates define minimum and recommended specifications for VMs,
+    including memory, CPU, disk, and optional features like UEFI boot,
+    Secure Boot, and TPM support.
+  tags:
+    - Virtualization Compute
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/VMTemplateCreateRequest.yaml
+  responses:
+    '201':
+      description: Template created successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/VMTemplate.yaml
+    '400':
+      $ref: ../components/responses/BadRequest.yaml
+    '409':
+      description: Template with same name already exists
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

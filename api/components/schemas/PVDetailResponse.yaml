@@ -1,0 +1,12 @@
+type: object
+properties:
+  status:
+    type: string
+    enum:
+      - success
+      - error
+  pv_detail:
+    $ref: ./PVDetail.yaml
+  error:
+    $ref: ./APIError.yaml
+    nullable: true

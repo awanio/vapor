@@ -1,0 +1,312 @@
+post:
+  summary: Create VM with enhanced configuration (v2)
+  description: >
+    Create a new virtual machine with enhanced disk and device configuration
+    options.
+
+
+    **BREAKING CHANGE (v2):**
+
+    - Storage configuration now nested under "storage" object
+
+    - "storage_pool", "iso_path", and "disks" at root level removed
+
+    - PCI device passthrough support added
+
+    - Required fields: name, memory, vcpus, storage
+
+
+    **Key Features:**
+
+    - Multiple disk support (new, existing, or cloned)
+
+    - Flexible ISO management
+
+    - Advanced network and graphics configuration
+
+    - Cloud-init support
+
+    - Template-based creation
+
+
+    **Disk Configuration Options:**
+
+    - Create new disks with custom sizes and formats
+
+    - Attach existing disk images
+
+    - Clone from existing disks
+
+
+    **ISO Management:**
+
+    - Reference ISOs by ID, name, or path
+
+    - Automatic ISO resolution from multiple sources
+  tags:
+    - Virtualization Compute
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/VMCreateRequestEnhancedV2.yaml
+        examples:
+          simple_vm:
+            summary: Simple VM with boot ISO
+            value:
+              name: ubuntu-vm
+              memory: 2048
+              vcpus: 2
+              storage:
+                default_pool: default
+                boot_iso: ubuntu-22.04.iso
+                disks:
+                  - action: create
+                    size: 20
+          gpu_passthrough:
+            summary: VM with GPU passthrough
+            value:
+              name: gpu-workstation
+              memory: 32768
+              vcpus: 16
+              storage:
+                default_pool: fast-nvme
+                boot_iso: ubuntu-desktop.iso
+                disks:
+                  - action: create
+                    size: 100
+                    format: qcow2
+              pci_devices:
+                - host_address: '0000:01:00.0'
+                  rom_file: /usr/share/vgabios/rtx3080.rom
+                  primary_gpu: true
+                - host_address: '0000:01:00.1'
+              graphics:
+                - type: none
+          multi_disk_vm:
+            summary: VM with multiple disks from different pools
+            value:
+              name: database-server
+              memory: 16384
+              vcpus: 8
+              storage:
+                default_pool: fast-nvme
+                disks:
+                  - action: create
+                    size: 50
+                    format: qcow2
+                  - action: create
+                    size: 500
+                    storage_pool: bulk-storage
+                  - action: attach
+                    path: /mnt/shared/data.qcow2
+          comprehensive_example:
+            summary: Complete VM configuration with all available fields
+            description: >
+              This example demonstrates all available configuration options for
+              creating
+
+              a virtual machine, including advanced features like PCI
+              passthrough, cloud-init,
+
+              multiple disks, networks, and custom metadata.
+            value:
+              name: enterprise-workstation
+              memory: 32768
+              vcpus: 16
+              storage:
+                default_pool: fast-nvme
+                boot_iso: ubuntu-22.04-server.iso
+                disks:
+                  - action: create
+                    size: 100
+                    format: qcow2
+                    bus: virtio
+                    boot_order: 1
+                    cache: writeback
+                    io_mode: native
+                    target: vda
+                  - action: create
+                    size: 500
+                    format: raw
+                    storage_pool: bulk-storage
+                    bus: virtio
+                    cache: writethrough
+                    target: vdb
+                  - action: clone
+                    clone_from: /var/lib/libvirt/images/templates/base-ubuntu.qcow2
+                    storage_pool: templates
+                    bus: virtio
+                    target: vdc
+                  - action: attach
+                    path: /mnt/shared/database.qcow2
+                    bus: scsi
+                    readonly: true
+                    target: sda
+                  - action: attach
+                    path: /var/lib/libvirt/images/iso/drivers.iso
+                    device: cdrom
+                    bus: ide
+                    readonly: true
+                    target: hdc
+              os_type: linux
+              os_variant: ubuntu22.04
+              architecture: x86_64
+              uefi: true
+              secure_boot: true
+              tpm: true
+              networks:
+                - type: network
+                  source: default
+                  model: virtio
+                - type: bridge
+                  source: br0
+                  model: virtio
+                  mac: '52:54:00:12:34:56'
+                - type: direct
+                  source: eth0
+                  model: e1000
+                - type: user
+                  model: rtl8139
+              graphics:
+                - type: vnc
+                  port: 5900
+                  autoport: false
+                  listen: 0.0.0.0
+                  password: SecureVNC123!
+                - type: spice
+                  port: 5901
+                  autoport: true
+                  listen: 127.0.0.1
+                  password: SpicePass456!
+                - type: egl-headless
+              pci_devices:
+                - host_address: '0000:01:00.0'
+                  guest_address: '0000:05:00.0'
+                  rom_file: /usr/share/vgabios/nvidia_rtx3080.rom
+                  multifunction: true
+                  primary_gpu: true
+                - host_address: '0000:01:00.1'
+                  guest_address: '0000:05:00.1'
+                  multifunction: true
+                - host_address: '0000:02:00.0'
+                - host_address: '0000:00:14.0'
+              cloud_init:
+                user_data: |
+                  #cloud-config
+                  hostname: enterprise-workstation
+                  manage_etc_hosts: true
+                  package_update: true
+                  package_upgrade: true
+                  timezone: UTC
+
+                  write_files:
+                    - path: /etc/sysctl.d/99-custom.conf
+                      content: |
+                        net.ipv4.ip_forward=1
+                        vm.swappiness=10
+
+                  runcmd:
+                    - sysctl -p /etc/sysctl.d/99-custom.conf
+                    - curl -fsSL https://get.docker.com | sh
+                    - systemctl enable docker
+                    - usermod -aG docker ubuntu
+                meta_data: |
+                  instance-id: i-enterprise-001
+                  local-hostname: enterprise-workstation
+                  network-interfaces: |
+                    auto eth0
+                    iface eth0 inet dhcp
+                network_data: |
+                  version: 2
+                  ethernets:
+                    enp0s3:
+                      dhcp4: true
+                    enp0s8:
+                      addresses:
+                        - 192.168.100.10/24
+                      gateway4: 192.168.100.1
+                      nameservers:
+                        addresses:
+                          - 8.8.8.8
+                          - 8.8.4.4
+                ssh_keys:
+                  - >-
+                    ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDYnGqA...
+                    admin@company.com
+                  - >-
+                    ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMe8R...
+                    backup@company.com
+                users:
+                  - name: admin
+                    ssh_authorized_keys:
+                      - >-
+                        ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDYnGqA...
+                        admin@company.com
+                    sudo: ALL=(ALL) NOPASSWD:ALL
+                    groups: admin,docker,wheel,kvm,libvirt
+                    shell: /bin/bash
+                  - name: developer
+                    ssh_authorized_keys:
+                      - >-
+                        ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMe8R...
+                        dev@company.com
+                    sudo: ALL=(ALL) ALL
+                    groups: docker,developers
+                    shell: /bin/zsh
+                    password: $6$rounds=4096$saltsalt$hashedpasswordhere
+                  - name: monitoring
+                    groups: systemd-journal
+                    shell: /bin/sh
+                packages:
+                  - docker.io
+                  - docker-compose
+                  - git
+                  - vim
+                  - htop
+                  - build-essential
+                  - python3-pip
+                  - curl
+                  - wget
+                  - net-tools
+                  - nvidia-driver-525
+              template: ubuntu-22.04-base
+              autostart: true
+              custom_xml: |
+                <features>
+                  <acpi/>
+                  <apic/>
+                  <hyperv>
+                    <relaxed state='on'/>
+                    <vapic state='on'/>
+                    <spinlocks state='on' retries='8191'/>
+                  </hyperv>
+                </features>
+                <cpu mode='host-passthrough' check='none'>
+                  <topology sockets='1' cores='8' threads='2'/>
+                </cpu>
+              metadata:
+                environment: production
+                department: engineering
+                project: ai-workstation
+                owner: john.doe@company.com
+                cost_center: ENG-2024
+                backup_policy: daily
+                monitoring: enabled
+                compliance: pci-dss
+                created_by: terraform
+                managed_by: vapor
+  responses:
+    '201':
+      description: Virtual machine created successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/VMCreateResponse.yaml
+    '400':
+      $ref: ../components/responses/BadRequest.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

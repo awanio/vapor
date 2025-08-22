@@ -1,0 +1,14 @@
+type: object
+description: DHCP configuration for network
+properties:
+  start:
+    type: string
+    description: Start of DHCP IP range (e.g., 192.168.122.2)
+  end:
+    type: string
+    description: End of DHCP IP range (e.g., 192.168.122.254)
+  hosts:
+    type: array
+    description: Static DHCP host assignments
+    items:
+      $ref: ./DHCPHost.yaml

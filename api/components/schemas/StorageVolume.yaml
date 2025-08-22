@@ -1,0 +1,14 @@
+type: object
+properties:
+  name:
+    type: string
+  pool:
+    type: string
+  path:
+    type: string
+  type:
+    type: string
+  capacity:
+    type: integer
+  allocation:
+    type: integer

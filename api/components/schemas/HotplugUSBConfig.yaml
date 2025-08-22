@@ -1,0 +1,21 @@
+type: object
+required:
+  - vendor_id
+  - product_id
+properties:
+  vendor_id:
+    type: string
+    description: USB vendor ID
+    example: '0x1234'
+  product_id:
+    type: string
+    description: USB product ID
+    example: '0x5678'
+  bus:
+    type: integer
+    description: USB bus number
+    example: 1
+  device:
+    type: integer
+    description: USB device number
+    example: 2

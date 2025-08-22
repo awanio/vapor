@@ -1,0 +1,18 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          repository:
+            $ref: ./HelmRepository.yaml
+          message:
+            type: string
+            description: Success message from helm repo update
+            example: Successfully got an update from the "bitnami" chart repository
+          updated_at:
+            type: string
+            format: date-time
+            description: Timestamp when the repository was updated
+            example: '2025-08-07T00:10:12Z'

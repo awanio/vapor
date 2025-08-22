@@ -1,0 +1,12 @@
+type: object
+description: IP range configuration for network
+properties:
+  address:
+    type: string
+    description: Network address (e.g., 192.168.122.1)
+  netmask:
+    type: string
+    description: Network mask (e.g., 255.255.255.0)
+  gateway:
+    type: string
+    description: Gateway address (optional)

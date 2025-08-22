@@ -1,0 +1,25 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          imageId:
+            type: string
+            description: Image ID that the action was performed on
+            example: sha256:abc123def456
+          action:
+            type: string
+            description: Action that was performed
+            enum:
+              - remove
+            example: remove
+          message:
+            type: string
+            description: Human-readable message about the action result
+            example: Image removed successfully
+          success:
+            type: boolean
+            description: Whether the action was successful
+            example: true

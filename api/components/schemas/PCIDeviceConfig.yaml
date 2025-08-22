@@ -1,0 +1,26 @@
+type: object
+required:
+  - host_address
+properties:
+  host_address:
+    type: string
+    description: PCI address on host
+    pattern: ^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-7]$
+    example: '0000:01:00.0'
+  guest_address:
+    type: string
+    description: PCI address in guest (auto-assigned if omitted)
+    pattern: ^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-7]$
+    example: '0000:05:00.0'
+  rom_file:
+    type: string
+    description: Path to ROM file (for GPU passthrough)
+    example: /usr/share/vgabios/rtx3080.rom
+  multifunction:
+    type: boolean
+    description: Enable multifunction
+    default: false
+  primary_gpu:
+    type: boolean
+    description: Set as primary GPU
+    default: false

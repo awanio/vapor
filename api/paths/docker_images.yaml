@@ -1,0 +1,27 @@
+get:
+  summary: List Docker images
+  description: List all Docker images available on the system
+  tags:
+    - Docker
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: Images listed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/DockerImagesResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '503':
+      description: Docker service unavailable
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+          example:
+            status: error
+            error:
+              code: DOCKER_ERROR
+              message: 'Failed to list images: Cannot connect to the Docker daemon'

@@ -1,0 +1,7 @@
+type: object
+required:
+  - device
+properties:
+  device:
+    type: string
+    description: RAID device path to destroy

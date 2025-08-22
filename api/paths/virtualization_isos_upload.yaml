@@ -1,0 +1,157 @@
+post:
+  summary: Create ISO upload session (TUS)
+  description: >
+    Create a new resumable upload session for ISO images using TUS protocol.
+
+
+    This endpoint follows TUS protocol v1.0.0 for resumable uploads.
+
+
+    Required headers:
+
+    - Upload-Length: Total size of the ISO file in bytes
+
+    - Upload-Metadata: Base64-encoded metadata (filename, os_type, os_variant,
+    architecture, description, tags)
+
+
+    Example Upload-Metadata header:
+
+    ```
+
+    Upload-Metadata: filename dWJ1bnR1LTIyLjA0LWRlc2t0b3AtYW1kNjQuaXNv,os_type
+    bGludXg=,os_variant dWJ1bnR1MjIuMDQ=
+
+    ```
+  tags:
+    - Virtualization ISO
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: Upload-Length
+      in: header
+      required: true
+      description: Total size of the ISO file in bytes
+      schema:
+        type: integer
+    - name: Upload-Metadata
+      in: header
+      required: false
+      description: Base64-encoded metadata about the ISO
+      schema:
+        type: string
+    - name: Tus-Resumable
+      in: header
+      required: false
+      description: TUS protocol version (1.0.0)
+      schema:
+        type: string
+        default: 1.0.0
+  responses:
+    '201':
+      description: Upload session created successfully
+      headers:
+        Location:
+          description: URL of the created upload session
+          schema:
+            type: string
+        Upload-Offset:
+          description: Current upload offset (0 for new upload)
+          schema:
+            type: string
+        Tus-Resumable:
+          description: TUS protocol version
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              upload_id:
+                type: string
+                description: Unique identifier for the upload session
+              upload_url:
+                type: string
+                description: URL to upload chunks to
+              expires_at:
+                type: string
+                format: date-time
+                description: When the upload session expires
+              metadata:
+                type: object
+                properties:
+                  filename:
+                    type: string
+                  size:
+                    type: integer
+                  os_type:
+                    type: string
+                  os_variant:
+                    type: string
+                  architecture:
+                    type: string
+                  description:
+                    type: string
+    '400':
+      description: Invalid request (missing headers or invalid metadata)
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '413':
+      description: File size exceeds maximum allowed
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+get:
+  summary: List active ISO upload sessions
+  description: Get a list of all active ISO upload sessions for the current user
+  tags:
+    - Virtualization ISO
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: Upload sessions listed successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              uploads:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    upload_id:
+                      type: string
+                    filename:
+                      type: string
+                    status:
+                      type: string
+                      enum:
+                        - created
+                        - in_progress
+                        - completed
+                        - failed
+                        - cancelled
+                    progress:
+                      type: string
+                      example: 45.50%
+                    total_size:
+                      type: integer
+                    uploaded_size:
+                      type: integer
+                    created_at:
+                      type: string
+                      format: date-time
+                    expires_at:
+                      type: string
+                      format: date-time
+              count:
+                type: integer
+                description: Total number of active uploads
+    '500':
+      $ref: ../components/responses/InternalError.yaml

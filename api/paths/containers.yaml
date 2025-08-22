@@ -1,0 +1,85 @@
+get:
+  summary: List containers
+  tags:
+    - Container
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: Containers listed successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: success
+              data:
+                type: object
+                properties:
+                  containers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          example: >-
+                            2309b08a1303d054769d3adba93ac148c6cc31748a6dbecda5b12156028b034c
+                        name:
+                          type: string
+                          example: reloader
+                        image:
+                          type: string
+                          example: >-
+                            sha256:5ea6cbf6dee9b4b67edbd108986d75c5958273e6f6faaf0c18e734572b6b8821
+                        state:
+                          type: string
+                          example: CONTAINER_RUNNING
+                        status:
+                          type: string
+                          example: CONTAINER_RUNNING
+                        created_at:
+                          type: string
+                          format: date-time
+                          example: '2025-07-25T09:38:51.086238448Z'
+                        labels:
+                          type: object
+                          additionalProperties:
+                            type: string
+                          example:
+                            io.kubernetes.container.name: reloader
+                        runtime:
+                          type: string
+                          example: containerd
+                  count:
+                    type: integer
+                    example: 151
+                  runtime:
+                    type: string
+                    example: containerd
+    '503':
+      description: No container runtime available
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: error
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: NO_RUNTIME_AVAILABLE
+                  message:
+                    type: string
+                    example: >-
+                      No container runtime found. Tried CRI sockets
+                      ([/run/containerd/containerd.sock
+                      /var/run/crio/crio.sock]) and Docker. Last error: Cannot
+                      connect to the Docker daemon at
+                      unix:///var/run/docker.sock. Is the docker daemon running?

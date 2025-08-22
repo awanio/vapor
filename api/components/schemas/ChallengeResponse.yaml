@@ -1,0 +1,16 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          challenge:
+            type: string
+            description: Challenge string to be signed
+          expires_at:
+            type: integer
+            description: Challenge expiration timestamp
+          username:
+            type: string
+            description: Username for this challenge

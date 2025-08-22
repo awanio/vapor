@@ -1,0 +1,25 @@
+type: object
+required:
+  - type
+  - metric
+  - timestamp
+  - data
+properties:
+  type:
+    type: string
+    enum:
+      - metric
+  metric:
+    type: string
+    enum:
+      - cpu
+      - memory
+      - disk
+      - network
+      - load
+  timestamp:
+    type: string
+    format: date-time
+  data:
+    type: object
+    description: Metric-specific data

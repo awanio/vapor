@@ -1,0 +1,17 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          containerId:
+            type: string
+            description: Container ID that logs were retrieved from
+            example: abc123def456
+          logs:
+            type: string
+            description: Container logs output
+            example: |
+              2025-08-04T12:00:00.000Z Starting application...
+              2025-08-04T12:00:01.000Z Server listening on port 8080

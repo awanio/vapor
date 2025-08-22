@@ -1,0 +1,17 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          repository:
+            $ref: ./HelmRepository.yaml
+          message:
+            type: string
+            description: Success message
+            example: Repository has been added
+          updated:
+            type: boolean
+            description: Whether the repository was updated (vs newly added)
+            example: false

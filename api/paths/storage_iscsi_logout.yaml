@@ -1,0 +1,21 @@
+post:
+  summary: Logout from iSCSI target
+  tags:
+    - Storage
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/ISCSILogoutRequest.yaml
+  responses:
+    '200':
+      description: Logout successful
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MessageResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

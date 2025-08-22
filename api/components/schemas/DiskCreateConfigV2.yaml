@@ -1,0 +1,81 @@
+type: object
+required:
+  - action
+properties:
+  action:
+    type: string
+    description: Disk action type
+    enum:
+      - create
+      - attach
+      - clone
+    example: create
+  size:
+    type: integer
+    description: Disk size in GB (required for create action)
+    minimum: 1
+    example: 20
+  format:
+    type: string
+    description: Disk format
+    enum:
+      - qcow2
+      - raw
+      - vmdk
+      - vdi
+    default: qcow2
+  path:
+    type: string
+    description: Path to disk (for attach action, or relative path for any action)
+    example: existing-disk.qcow2
+  storage_pool:
+    type: string
+    description: Override storage pool for this disk
+    example: fast-ssd
+  clone_from:
+    type: string
+    description: Source disk path to clone from (required for clone action)
+    example: template-disk.qcow2
+  bus:
+    type: string
+    description: Disk bus type
+    enum:
+      - virtio
+      - sata
+      - scsi
+      - ide
+      - usb
+    default: virtio
+  boot_order:
+    type: integer
+    description: Boot priority (1 = first)
+    minimum: 1
+  cache:
+    type: string
+    description: Cache mode
+    enum:
+      - none
+      - writethrough
+      - writeback
+  io_mode:
+    type: string
+    description: I/O mode
+    enum:
+      - native
+      - threads
+  readonly:
+    type: boolean
+    description: Read-only disk
+    default: false
+  device:
+    type: string
+    description: Device type
+    enum:
+      - disk
+      - cdrom
+      - floppy
+    default: disk
+  target:
+    type: string
+    description: Target device name (auto-generated if not specified)
+    example: vda

@@ -1,0 +1,12 @@
+type: object
+properties:
+  status:
+    type: string
+    enum:
+      - success
+      - error
+  node_detail:
+    $ref: ./NodeDetail.yaml
+  error:
+    $ref: ./APIError.yaml
+    nullable: true

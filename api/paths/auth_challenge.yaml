@@ -1,0 +1,27 @@
+post:
+  summary: Create SSH authentication challenge
+  description: |
+    Create a challenge for SSH key-based authentication.
+    The challenge must be signed with the user's private key.
+  tags:
+    - Auth
+  security: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/ChallengeRequest.yaml
+  responses:
+    '200':
+      description: Challenge created successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ChallengeResponse.yaml
+    '404':
+      description: User not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml

@@ -1,0 +1,31 @@
+get:
+  summary: Get detailed PV information
+  description: Get detailed information about a specific persistent volume
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      description: PV name
+      schema:
+        type: string
+  responses:
+    '200':
+      description: PV details retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/PVDetailResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: PV not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

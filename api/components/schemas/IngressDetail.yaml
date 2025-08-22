@@ -1,0 +1,59 @@
+type: object
+description: Raw Kubernetes Ingress object with full API specification
+additionalProperties: true
+example:
+  apiVersion: networking.k8s.io/v1
+  kind: Ingress
+  metadata:
+    name: app-ingress
+    namespace: default
+    uid: 52345678-5234-5234-5234-523456789012
+    resourceVersion: '11111'
+    creationTimestamp: '2024-01-15T11:00:00Z'
+    labels:
+      app: webapp
+      environment: production
+    annotations:
+      nginx.ingress.kubernetes.io/rewrite-target: /
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      nginx.ingress.kubernetes.io/ssl-redirect: 'true'
+  spec:
+    ingressClassName: nginx
+    tls:
+      - hosts:
+          - app.example.com
+          - www.app.example.com
+        secretName: app-tls-secret
+    rules:
+      - host: app.example.com
+        http:
+          paths:
+            - path: /api
+              pathType: Prefix
+              backend:
+                service:
+                  name: api-service
+                  port:
+                    number: 8080
+            - path: /
+              pathType: Prefix
+              backend:
+                service:
+                  name: frontend-service
+                  port:
+                    number: 80
+      - host: www.app.example.com
+        http:
+          paths:
+            - path: /
+              pathType: Prefix
+              backend:
+                service:
+                  name: frontend-service
+                  port:
+                    number: 80
+  status:
+    loadBalancer:
+      ingress:
+        - ip: 203.0.113.10
+          hostname: a234567890abcdef.elb.us-west-2.amazonaws.com

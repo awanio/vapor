@@ -1,0 +1,11 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          targets:
+            type: array
+            items:
+              $ref: ./ISCSITarget.yaml

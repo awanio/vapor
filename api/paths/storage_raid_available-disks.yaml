@@ -1,0 +1,15 @@
+get:
+  summary: Get available disks for RAID
+  tags:
+    - Storage
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: Available disks listed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/RAIDAvailableDisksResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

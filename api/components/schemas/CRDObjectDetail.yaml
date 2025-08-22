@@ -1,0 +1,8 @@
+allOf:
+  - $ref: ./CRDObject.yaml
+  - type: object
+    properties:
+      raw:
+        type: object
+        description: The full Kubernetes object data.
+        additionalProperties: true

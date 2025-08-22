@@ -1,0 +1,50 @@
+type: object
+description: Raw Kubernetes Node object with full API specification
+additionalProperties: true
+example:
+  apiVersion: v1
+  kind: Node
+  metadata:
+    name: worker-node-1
+    uid: b2345678-b234-b234-b234-b23456789012
+    resourceVersion: '90123'
+    creationTimestamp: '2024-01-15T03:00:00Z'
+    labels:
+      node-role.kubernetes.io/worker: ''
+  spec:
+    podCIDR: 192.168.1.0/24
+    providerID: aws:///us-west-2a/i-0a1b2c3d4e5f6g7h8
+  status:
+    capacity:
+      cpu: '4'
+      memory: 16384Mi
+      pods: '110'
+    allocatable:
+      cpu: '4'
+      memory: 16384Mi
+      pods: '110'
+    addresses:
+      - type: InternalIP
+        address: 10.0.1.100
+      - type: ExternalIP
+        address: 52.10.15.20
+      - type: Hostname
+        address: worker-node-1.example.com
+    conditions:
+      - type: Ready
+        status: 'True'
+        lastHeartbeatTime: '2024-01-15T03:10:00Z'
+        lastTransitionTime: '2024-01-15T03:05:00Z'
+        reason: KubeletReady
+        message: kubelet is posting ready status
+    nodeInfo:
+      machineID: ec2540b5b2540123
+      systemUUID: ecb4567-ebfd-44b1-a312-a23456789012
+      bootID: ec7c257e-a128-11ec-9620-a23456789012
+      kernelVersion: 5.4.0-1045-aws
+      osImage: Ubuntu 20.04.2 LTS
+      containerRuntimeVersion: docker://20.10.6
+      kubeletVersion: v1.21.1
+      kubeProxyVersion: v1.21.1
+      operatingSystem: linux
+      architecture: amd64

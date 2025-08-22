@@ -1,0 +1,23 @@
+type: object
+properties:
+  networkId:
+    type: string
+    description: Network ID
+  endpointId:
+    type: string
+    description: Endpoint ID
+  gateway:
+    type: string
+    description: Gateway IP
+  ipAddress:
+    type: string
+    description: Container IP address
+  ipPrefixLen:
+    type: integer
+    description: IP prefix length
+  ipv6Gateway:
+    type: string
+    description: IPv6 gateway
+  macAddress:
+    type: string
+    description: MAC address

@@ -1,0 +1,30 @@
+type: object
+required:
+  - url
+properties:
+  url:
+    type: string
+    format: uri
+    description: Git repository URL
+    example: https://github.com/myorg/ansible-playbooks.git
+  branch:
+    type: string
+    description: Git branch to sync
+    default: main
+    example: main
+  path:
+    type: string
+    description: Path within repository
+    example: playbooks/
+  auth_token:
+    type: string
+    description: Authentication token for private repos
+    example: ghp_xxxxxxxxxxxxxxxxxxxx
+  ssh_key:
+    type: string
+    description: SSH private key for authentication
+  sync_as_symlink:
+    type: boolean
+    description: Create symlink instead of copying
+    default: false
+    example: false

@@ -1,0 +1,14 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          username:
+            type: string
+            description: Username
+          keys:
+            type: array
+            items:
+              $ref: ./SSHKey.yaml

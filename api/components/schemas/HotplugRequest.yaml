@@ -1,0 +1,31 @@
+type: object
+required:
+  - resource_type
+  - action
+  - configuration
+properties:
+  resource_type:
+    type: string
+    description: Type of resource to hotplug
+    enum:
+      - cpu
+      - memory
+      - disk
+      - network
+      - usb
+    example: cpu
+  action:
+    type: string
+    description: Action to perform
+    enum:
+      - add
+      - remove
+    example: add
+  configuration:
+    oneOf:
+      - $ref: ./HotplugCPUConfig.yaml
+      - $ref: ./HotplugMemoryConfig.yaml
+      - $ref: ./HotplugDiskConfig.yaml
+      - $ref: ./HotplugNetworkConfig.yaml
+      - $ref: ./HotplugUSBConfig.yaml
+    description: Resource-specific configuration

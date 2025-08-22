@@ -1,0 +1,19 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          vm_id:
+            type: string
+            description: VM identifier
+            example: web-server-01
+          device_id:
+            type: string
+            description: Detached PCI device ID
+            example: pci_0000_01_00_0
+          message:
+            type: string
+            description: Success message
+            example: PCI device detached successfully

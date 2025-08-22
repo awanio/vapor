@@ -1,0 +1,15 @@
+get:
+  summary: List multipath paths
+  tags:
+    - Storage
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: Multipath paths listed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MultipathPathsResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

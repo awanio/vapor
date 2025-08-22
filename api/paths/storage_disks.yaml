@@ -1,0 +1,15 @@
+get:
+  summary: List storage disks
+  tags:
+    - Storage
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: List of disks
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/DisksResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

@@ -1,0 +1,24 @@
+type: object
+description: Raw Kubernetes ConfigMap object with full API specification
+additionalProperties: true
+example:
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: nginx-config
+    namespace: default
+    uid: 92345678-9234-9234-9234-923456789012
+    resourceVersion: '78901'
+    creationTimestamp: '2024-01-15T05:00:00Z'
+    labels:
+      app: nginx
+  data:
+    nginx.conf: |
+      server {
+        listen 80;
+        server_name localhost;
+        location / {
+          root /usr/share/nginx/html;
+          index index.html index.htm;
+        }
+      }

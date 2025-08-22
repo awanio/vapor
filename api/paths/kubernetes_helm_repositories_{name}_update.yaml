@@ -1,0 +1,50 @@
+put:
+  summary: Update a Helm repository
+  description: >-
+    Update a specific Helm repository to fetch the latest charts (equivalent to
+    'helm repo update {repo-name}')
+  tags:
+    - Helm
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      description: Name of the repository to update
+      schema:
+        type: string
+        example: bitnami
+  responses:
+    '200':
+      description: Helm repository updated successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/HelmRepositoryUpdateResponse.yaml
+          example:
+            status: success
+            data:
+              repository:
+                name: bitnami
+                url: https://charts.bitnami.com/bitnami
+              message: Successfully got an update from the 'bitnami' chart repository
+              updated_at: '2025-08-07T00:10:12Z'
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '403':
+      $ref: ../components/responses/HelmNotAvailableError.yaml
+    '404':
+      description: Repository not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+          example:
+            status: error
+            error:
+              code: REPOSITORY_NOT_FOUND
+              message: No repository named 'bitnami' found
+              details: Run 'helm repo add' to add the repository first
+    '500':
+      $ref: ../components/responses/HelmError.yaml

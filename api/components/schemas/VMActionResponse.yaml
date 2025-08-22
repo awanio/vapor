@@ -1,0 +1,33 @@
+type: object
+properties:
+  status:
+    type: string
+    description: Status of the action execution
+    example: success
+  message:
+    type: string
+    description: Human-readable message about the action result
+    example: Virtual machine started successfully
+  vm:
+    type: object
+    description: Current state of the VM after the action
+    properties:
+      id:
+        type: string
+        description: VM identifier
+        example: vm-123
+      name:
+        type: string
+        description: VM name
+        example: web-server-01
+      state:
+        type: string
+        description: Current VM state
+        enum:
+          - running
+          - shut off
+          - paused
+          - suspended
+          - crashed
+          - dying
+        example: running

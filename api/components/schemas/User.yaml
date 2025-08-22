@@ -1,0 +1,12 @@
+type: object
+properties:
+  username:
+    type: string
+  uid:
+    type: string
+  gid:
+    type: string
+  home:
+    type: string
+  shell:
+    type: string

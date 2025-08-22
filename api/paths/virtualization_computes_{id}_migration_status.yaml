@@ -1,0 +1,31 @@
+get:
+  summary: Get migration status
+  description: Check the status of an ongoing VM migration
+  tags:
+    - Virtualization Compute
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: VM name or UUID
+    - name: migration_id
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Migration ID to check status for
+  responses:
+    '200':
+      description: Migration status retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MigrationStatusResponse.yaml
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

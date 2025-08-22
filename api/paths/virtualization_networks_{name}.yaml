@@ -1,0 +1,79 @@
+get:
+  summary: Get virtual network details
+  tags:
+    - Virtualization Network
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Network name
+  responses:
+    '200':
+      description: Virtual network details
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/VirtualNetworkDetailResponse.yaml
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml
+put:
+  summary: Update a virtual network
+  description: >-
+    Update an existing virtual network configuration. The network will be
+    stopped if active, updated, and restarted.
+  tags:
+    - Virtualization Network
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Network name
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/NetworkUpdateRequest.yaml
+  responses:
+    '200':
+      description: Virtual network updated successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/VirtualNetworkUpdateResponse.yaml
+    '400':
+      $ref: ../components/responses/BadRequest.yaml
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml
+delete:
+  summary: Delete a virtual network
+  tags:
+    - Virtualization Network
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Network name
+  responses:
+    '204':
+      description: Virtual network deleted successfully
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

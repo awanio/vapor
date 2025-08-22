@@ -1,0 +1,22 @@
+get:
+  summary: List all playbooks
+  description: Returns a list of all available Ansible playbooks in the system
+  tags:
+    - Ansible
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: Playbooks listed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/PlaybooksListResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '500':
+      description: Failed to list playbooks
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml

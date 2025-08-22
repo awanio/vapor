@@ -1,0 +1,14 @@
+type: object
+properties:
+  name:
+    type: string
+  mode:
+    type: string
+  bridge:
+    type: string
+  ip_range:
+    $ref: ./IPRange.yaml
+  dhcp:
+    $ref: ./DHCPConfig.yaml
+  autostart:
+    type: boolean

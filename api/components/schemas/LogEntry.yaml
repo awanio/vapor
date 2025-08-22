@@ -1,0 +1,15 @@
+type: object
+properties:
+  timestamp:
+    type: string
+    format: date-time
+  priority:
+    type: string
+  unit:
+    type: string
+  message:
+    type: string
+  hostname:
+    type: string
+  pid:
+    type: integer

@@ -1,0 +1,36 @@
+get:
+  summary: List users
+  tags:
+    - Users
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: List of users
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/UsersResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+post:
+  summary: Create user
+  tags:
+    - Users
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/UserRequest.yaml
+  responses:
+    '200':
+      description: User created
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MessageResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

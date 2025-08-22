@@ -1,0 +1,32 @@
+post:
+  summary: Authenticate user
+  description: |
+    Authenticate a user and receive a JWT token.
+
+    **Authentication Methods:**
+    - **Password**: Use Linux system user credentials
+    - **SSH Key**: Use SSH private key for authentication
+
+    The `auth_type` field determines the authentication method.
+  tags:
+    - Auth
+  security: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/EnhancedLoginRequest.yaml
+  responses:
+    '200':
+      description: Successful authentication
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/EnhancedLoginResponse.yaml
+    '401':
+      description: Invalid credentials
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml

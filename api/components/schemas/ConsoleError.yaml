@@ -1,0 +1,27 @@
+type: object
+description: Console-specific error response
+required:
+  - code
+  - error
+properties:
+  type:
+    type: string
+    enum:
+      - error
+    default: error
+  code:
+    type: string
+    enum:
+      - INVALID_TOKEN
+      - TOKEN_EXPIRED
+      - TOKEN_ALREADY_USED
+      - VM_NOT_FOUND
+      - NO_CONSOLE_AVAILABLE
+      - CONNECTION_FAILED
+      - MAX_CONNECTIONS_REACHED
+      - UNAUTHORIZED
+      - INTERNAL_ERROR
+    description: Error code for console operations
+  error:
+    type: string
+    description: Human-readable error message

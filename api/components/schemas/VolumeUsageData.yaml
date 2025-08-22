@@ -1,0 +1,10 @@
+type: object
+properties:
+  size:
+    type: integer
+    format: int64
+    description: Volume size in bytes
+  refCount:
+    type: integer
+    format: int64
+    description: Reference count

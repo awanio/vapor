@@ -1,0 +1,23 @@
+type: object
+properties:
+  name:
+    type: string
+    description: Optional custom name for the ISO
+    example: ubuntu-22.04-custom.iso
+  description:
+    type: string
+    description: Optional description for the ISO
+    example: Ubuntu 22.04 LTS Server with custom packages
+  os_type:
+    type: string
+    description: Operating system type
+    example: linux
+  os_variant:
+    type: string
+    description: Operating system variant
+    example: ubuntu22.04
+  metadata:
+    type: object
+    description: Additional metadata to store with the ISO
+    additionalProperties:
+      type: string

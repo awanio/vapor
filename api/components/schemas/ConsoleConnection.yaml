@@ -1,0 +1,34 @@
+type: object
+description: Active console connection details
+properties:
+  id:
+    type: string
+    description: Connection ID
+  vm_name:
+    type: string
+    description: VM name
+  vm_uuid:
+    type: string
+    description: VM UUID
+  type:
+    type: string
+    enum:
+      - vnc
+      - spice
+    description: Console type
+  established:
+    type: string
+    format: date-time
+    description: Connection establishment time
+  last_activity:
+    type: string
+    format: date-time
+    description: Last activity timestamp
+  bytes_sent:
+    type: integer
+    format: int64
+    description: Bytes sent to client
+  bytes_received:
+    type: integer
+    format: int64
+    description: Bytes received from client

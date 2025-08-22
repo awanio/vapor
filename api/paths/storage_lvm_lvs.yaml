@@ -1,0 +1,15 @@
+get:
+  summary: List LVM logical volumes
+  tags:
+    - Storage
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: Logical volumes listed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/LogicalVolumesResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

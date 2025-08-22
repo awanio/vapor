@@ -1,0 +1,13 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          volumes:
+            type: array
+            items:
+              $ref: ./StorageVolume.yaml
+          count:
+            type: integer

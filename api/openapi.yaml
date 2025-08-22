@@ -1,0 +1,538 @@
+openapi: 3.1.0
+info:
+  title: Go System API
+  version: 1.0.0
+  description: >
+    RESTful API for Vapor a web console for modern Linux stacks.
+
+
+    ### Key Features
+
+    - System management and monitoring
+
+    - Network configuration
+
+    - Storage management
+
+    - Virtual machine management
+
+    - Container and Kubernetes support
+
+    - Ansible automation
+
+    - Resumable file uploads using TUS protocol
+
+
+    ### TUS Protocol Support
+
+
+    This API implements the **TUS Protocol v1.0.0** for resumable file uploads,
+    specifically for:
+
+    - ISO images for virtual machines (`/virtualmachines/isos/upload/*`)
+
+    - Container images (`/containers/images/upload/*`)
+
+    - Docker images (`/docker/images/upload/*`)
+
+
+    #### What is TUS?
+
+
+    TUS is an open protocol for resumable file uploads via HTTP/1.1 and HTTP/2.
+    It allows:
+
+    - **Resume interrupted uploads**: Network failures don't mean starting over
+
+    - **Upload large files reliably**: Perfect for multi-GB ISO and container
+    images
+
+    - **Monitor progress**: Real-time upload progress tracking
+
+    - **Automatic retry**: Built-in resilience to network issues
+
+
+    #### How to Use TUS Endpoints
+
+
+    ##### 1. Create Upload Session
+
+    ```http
+
+    POST /api/v1/virtualmachines/isos/upload
+
+    Headers:
+      Upload-Length: 1474560000  # File size in bytes
+      Upload-Metadata: filename aXNvLXVidW50dS0yMi4wNC5pc28=  # Base64 encoded metadata
+    ```
+
+    Returns:
+
+    - `201 Created` with `Location` header containing upload URL
+
+    - Upload session ID in response body
+
+
+    ##### 2. Upload File Chunks
+
+    ```http
+
+    PATCH /api/v1/virtualmachines/isos/upload/{upload_id}
+
+    Headers:
+      Upload-Offset: 0  # Starting byte position
+      Content-Type: application/offset+octet-stream
+    Body: [binary data chunk]
+
+    ```
+
+    - Chunk size: 1MB - 50MB recommended
+
+    - Returns new offset after successful upload
+
+
+    ##### 3. Resume Interrupted Upload
+
+    ```http
+
+    HEAD /api/v1/virtualmachines/isos/upload/{upload_id}
+
+    ```
+
+    Returns current `Upload-Offset` to resume from
+
+
+    ##### 4. Complete Upload
+
+    ```http
+
+    POST /api/v1/virtualmachines/isos/upload/{upload_id}/complete
+
+    ```
+
+    Finalizes upload and registers the file in the system
+
+
+    #### Frontend Implementation
+
+
+    For frontend applications, we recommend using:
+
+    - **tus-js-client**: Official JavaScript client library
+
+    - **Uppy**: Modern file upload library with TUS support
+
+    - **Fine Uploader**: Enterprise-grade upload solution
+
+
+    Example with tus-js-client:
+
+    ```javascript
+
+    import * as tus from 'tus-js-client';
+
+
+    const upload = new tus.Upload(file, {
+      endpoint: '/api/v1/virtualmachines/isos/upload',
+      headers: {
+        'Authorization': 'Bearer ' + token
+      },
+      chunkSize: 10 * 1024 * 1024, // 10MB chunks
+      metadata: {
+        filename: file.name,
+        filetype: file.type
+      },
+      onError: (error) => console.error('Upload failed:', error),
+      onProgress: (bytesUploaded, bytesTotal) => {
+        const percentage = (bytesUploaded / bytesTotal * 100).toFixed(2);
+        console.log(percentage + '% uploaded');
+      },
+      onSuccess: () => {
+        console.log('Upload complete');
+        // Call complete endpoint to finalize
+        fetch(`/api/v1/virtualmachines/isos/upload/${upload.url.split('/').pop()}/complete`, {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+      }
+    });
+
+
+    upload.start();
+
+    ```
+
+
+    ### Benefits for Large Files
+
+
+    - **Reliability**: Automatic resume on network failures
+
+    - **Efficiency**: Only retransmit failed chunks
+
+    - **User Experience**: Show accurate progress, pause/resume capability
+
+    - **Bandwidth Optimization**: Configurable chunk sizes
+
+    - **Server Resources**: Reduced memory usage with streaming uploads
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+paths:
+  /auth/login:
+    $ref: paths/auth_login.yaml
+  /auth/refresh:
+    $ref: paths/auth_refresh.yaml
+  /auth/challenge:
+    $ref: paths/auth_challenge.yaml
+  /auth/challenge/verify:
+    $ref: paths/auth_challenge_verify.yaml
+  /auth/users/{username}/keys:
+    $ref: paths/auth_users_{username}_keys.yaml
+  /network/interfaces:
+    $ref: paths/network_interfaces.yaml
+  /network/interfaces/{name}/up:
+    $ref: paths/network_interfaces_{name}_up.yaml
+  /network/interfaces/{name}/down:
+    $ref: paths/network_interfaces_{name}_down.yaml
+  /network/interfaces/{name}/address:
+    $ref: paths/network_interfaces_{name}_address.yaml
+  /network/bridges:
+    $ref: paths/network_bridges.yaml
+  /network/bridge:
+    $ref: paths/network_bridge.yaml
+  /network/bridge/{name}:
+    $ref: paths/network_bridge_{name}.yaml
+  /network/bonds:
+    $ref: paths/network_bonds.yaml
+  /network/bond:
+    $ref: paths/network_bond.yaml
+  /network/bond/{name}:
+    $ref: paths/network_bond_{name}.yaml
+  /network/vlans:
+    $ref: paths/network_vlans.yaml
+  /network/vlan:
+    $ref: paths/network_vlan.yaml
+  /network/vlan/{name}:
+    $ref: paths/network_vlan_{name}.yaml
+  /storage/disks:
+    $ref: paths/storage_disks.yaml
+  /storage/mount:
+    $ref: paths/storage_mount.yaml
+  /storage/unmount:
+    $ref: paths/storage_unmount.yaml
+  /storage/format:
+    $ref: paths/storage_format.yaml
+  /storage/lvm/vgs:
+    $ref: paths/storage_lvm_vgs.yaml
+  /storage/lvm/lvs:
+    $ref: paths/storage_lvm_lvs.yaml
+  /storage/lvm/pvs:
+    $ref: paths/storage_lvm_pvs.yaml
+  /storage/lvm/vg:
+    $ref: paths/storage_lvm_vg.yaml
+  /storage/lvm/lv:
+    $ref: paths/storage_lvm_lv.yaml
+  /storage/iscsi/discover:
+    $ref: paths/storage_iscsi_discover.yaml
+  /containers:
+    $ref: paths/containers.yaml
+  /containers/{id}:
+    $ref: paths/containers_{id}.yaml
+  /containers/{id}/logs:
+    $ref: paths/containers_{id}_logs.yaml
+  /containers/images:
+    $ref: paths/containers_images.yaml
+  /containers/images/{id}:
+    $ref: paths/containers_images_{id}.yaml
+  /containers/images/import:
+    $ref: paths/containers_images_import.yaml
+  /containers/images/upload:
+    $ref: paths/containers_images_upload.yaml
+  /containers/images/upload/{id}:
+    $ref: paths/containers_images_upload_{id}.yaml
+  /containers/images/upload/{id}/complete:
+    $ref: paths/containers_images_upload_{id}_complete.yaml
+  /docker/images/import:
+    $ref: paths/docker_images_import.yaml
+  /docker/images/upload:
+    $ref: paths/docker_images_upload.yaml
+  /docker/images/upload/{id}:
+    $ref: paths/docker_images_upload_{id}.yaml
+  /docker/images/upload/{id}/complete:
+    $ref: paths/docker_images_upload_{id}_complete.yaml
+  /virtualization/storages/pools:
+    $ref: paths/virtualization_storages_pools.yaml
+  /virtualization/storages/pools/{name}:
+    $ref: paths/virtualization_storages_pools_{name}.yaml
+  /virtualization/storages/pools/{pool_name}/volumes:
+    $ref: paths/virtualization_storages_pools_{pool_name}_volumes.yaml
+  /virtualization/storages/pools/{pool_name}/volumes/{vol_name}:
+    $ref: paths/virtualization_storages_pools_{pool_name}_volumes_{vol_name}.yaml
+  /virtualization/isos/upload:
+    $ref: paths/virtualization_isos_upload.yaml
+  /virtualization/isos/upload/{id}:
+    $ref: paths/virtualization_isos_upload_{id}.yaml
+  /virtualization/isos/upload/{id}/complete:
+    $ref: paths/virtualization_isos_upload_{id}_complete.yaml
+  /virtualization/networks:
+    $ref: paths/virtualization_networks.yaml
+  /virtualization/networks/{name}:
+    $ref: paths/virtualization_networks_{name}.yaml
+  /virtualization/networks/{name}/dhcp-leases:
+    $ref: paths/virtualization_networks_{name}_dhcp-leases.yaml
+  /virtualization/networks/{name}/ports:
+    $ref: paths/virtualization_networks_{name}_ports.yaml
+  /storage/iscsi/sessions:
+    $ref: paths/storage_iscsi_sessions.yaml
+  /storage/iscsi/login:
+    $ref: paths/storage_iscsi_login.yaml
+  /storage/iscsi/logout:
+    $ref: paths/storage_iscsi_logout.yaml
+  /storage/multipath/devices:
+    $ref: paths/storage_multipath_devices.yaml
+  /storage/multipath/paths:
+    $ref: paths/storage_multipath_paths.yaml
+  /storage/btrfs/subvolumes:
+    $ref: paths/storage_btrfs_subvolumes.yaml
+  /storage/btrfs/subvolume:
+    $ref: paths/storage_btrfs_subvolume.yaml
+  /storage/btrfs/snapshot:
+    $ref: paths/storage_btrfs_snapshot.yaml
+  /storage/raid/devices:
+    $ref: paths/storage_raid_devices.yaml
+  /storage/raid/available-disks:
+    $ref: paths/storage_raid_available-disks.yaml
+  /storage/raid/create:
+    $ref: paths/storage_raid_create.yaml
+  /storage/raid/destroy:
+    $ref: paths/storage_raid_destroy.yaml
+  /docker/ps:
+    $ref: paths/docker_ps.yaml
+  /docker/images:
+    $ref: paths/docker_images.yaml
+  /docker/images/pull:
+    $ref: paths/docker_images_pull.yaml
+  /docker/containers:
+    $ref: paths/docker_containers.yaml
+  /docker/images/{id}:
+    $ref: paths/docker_images_{id}.yaml
+  /docker/networks:
+    $ref: paths/docker_networks.yaml
+  /docker/networks/{id}:
+    $ref: paths/docker_networks_{id}.yaml
+  /docker/volumes:
+    $ref: paths/docker_volumes.yaml
+  /docker/volumes/{id}:
+    $ref: paths/docker_volumes_{id}.yaml
+  /docker/containers/{id}:
+    $ref: paths/docker_containers_{id}.yaml
+  /docker/containers/{id}/start:
+    $ref: paths/docker_containers_{id}_start.yaml
+  /docker/containers/{id}/stop:
+    $ref: paths/docker_containers_{id}_stop.yaml
+  /docker/containers/{id}/kill:
+    $ref: paths/docker_containers_{id}_kill.yaml
+  /docker/containers/{id}/logs:
+    $ref: paths/docker_containers_{id}_logs.yaml
+  /users:
+    $ref: paths/users.yaml
+  /users/{username}:
+    $ref: paths/users_{username}.yaml
+  /users/{username}/reset-password:
+    $ref: paths/users_{username}_reset-password.yaml
+  /logs:
+    $ref: paths/logs.yaml
+  /system/summary:
+    $ref: paths/system_summary.yaml
+  /system/hardware:
+    $ref: paths/system_hardware.yaml
+  /system/memory:
+    $ref: paths/system_memory.yaml
+  /system/cpu:
+    $ref: paths/system_cpu.yaml
+  /ws/metrics:
+    $ref: paths/ws_metrics.yaml
+  /ws/logs:
+    $ref: paths/ws_logs.yaml
+  /virtualization/computes:
+    $ref: paths/virtualization_computes.yaml
+  /virtualization/computes/{id}:
+    $ref: paths/virtualization_computes_{id}.yaml
+  /virtualization/computes/{id}/action:
+    $ref: paths/virtualization_computes_{id}_action.yaml
+  /virtualization/computes/{id}/migrate:
+    $ref: paths/virtualization_computes_{id}_migrate.yaml
+  /virtualization/computes/{id}/migration/status:
+    $ref: paths/virtualization_computes_{id}_migration_status.yaml
+  /virtualization/computes/{id}/console:
+    $ref: paths/virtualization_computes_{id}_console.yaml
+  /virtualization/computes/{id}/console/ws:
+    $ref: paths/virtualization_computes_{id}_console_ws.yaml
+  /virtualization/computes/{id}/console/stats:
+    $ref: paths/virtualization_computes_{id}_console_stats.yaml
+  /virtualization/computes/pci-devices:
+    $ref: paths/virtualization_computes_pci-devices.yaml
+  /virtualization/computes/{id}/pci-devices:
+    $ref: paths/virtualization_computes_{id}_pci-devices.yaml
+  /virtualization/computes/{id}/pci-devices/{device_id}:
+    $ref: paths/virtualization_computes_{id}_pci-devices_{device_id}.yaml
+  /virtualization/computes/{id}/hotplug:
+    $ref: paths/virtualization_computes_{id}_hotplug.yaml
+  /virtualization/computes/{id}/snapshots/capabilities:
+    $ref: paths/virtualization_computes_{id}_snapshots_capabilities.yaml
+  /virtualization/computes/{id}/snapshots:
+    $ref: paths/virtualization_computes_{id}_snapshots.yaml
+  /virtualization/computes/{id}/snapshots/{snapshot}:
+    $ref: paths/virtualization_computes_{id}_snapshots_{snapshot}.yaml
+  /virtualization/computes/{id}/snapshots/{snapshot}/revert:
+    $ref: paths/virtualization_computes_{id}_snapshots_{snapshot}_revert.yaml
+  /virtualization/computes/{id}/backups:
+    $ref: paths/virtualization_computes_{id}_backups.yaml
+  /virtualization/computes/restore:
+    $ref: paths/virtualization_computes_restore.yaml
+  /virtualization/computes/backups/{backup_id}:
+    $ref: paths/virtualization_computes_backups_{backup_id}.yaml
+  /virtualization/computes/templates:
+    $ref: paths/virtualization_computes_templates.yaml
+  /virtualization/computes/templates/{id}:
+    $ref: paths/virtualization_computes_templates_{id}.yaml
+  /virtualization/computes/from-template:
+    $ref: paths/virtualization_computes_from-template.yaml
+  /virtualization/computes/create-enhanced:
+    $ref: paths/virtualization_computes_create-enhanced.yaml
+  /virtualization/isos:
+    $ref: paths/virtualization_isos.yaml
+  /virtualization/isos/{id}:
+    $ref: paths/virtualization_isos_{id}.yaml
+  /ws/terminal:
+    $ref: paths/ws_terminal.yaml
+  /kubernetes/customresourcedefinitions:
+    $ref: paths/kubernetes_customresourcedefinitions.yaml
+  /kubernetes/customresourcedefinitions/{name}:
+    $ref: paths/kubernetes_customresourcedefinitions_{name}.yaml
+  /kubernetes/customresourcedefinitions/{name}/instances:
+    $ref: paths/kubernetes_customresourcedefinitions_{name}_instances.yaml
+  /kubernetes/customresourcedefinitions/{name}/instances/{namespace}/{object-name}:
+    $ref: >-
+      paths/kubernetes_customresourcedefinitions_{name}_instances_{namespace}_{object-name}.yaml
+  /kubernetes/pods:
+    $ref: paths/kubernetes_pods.yaml
+  /kubernetes/deployments:
+    $ref: paths/kubernetes_deployments.yaml
+  /kubernetes/services:
+    $ref: paths/kubernetes_services.yaml
+  /kubernetes/ingresses:
+    $ref: paths/kubernetes_ingresses.yaml
+  /kubernetes/pvcs:
+    $ref: paths/kubernetes_pvcs.yaml
+  /kubernetes/pvs:
+    $ref: paths/kubernetes_pvs.yaml
+  /kubernetes/secrets:
+    $ref: paths/kubernetes_secrets.yaml
+  /kubernetes/configmaps:
+    $ref: paths/kubernetes_configmaps.yaml
+  /kubernetes/namespaces:
+    $ref: paths/kubernetes_namespaces.yaml
+  /kubernetes/nodes:
+    $ref: paths/kubernetes_nodes.yaml
+  /kubernetes/daemonsets:
+    $ref: paths/kubernetes_daemonsets.yaml
+  /kubernetes/statefulsets:
+    $ref: paths/kubernetes_statefulsets.yaml
+  /kubernetes/jobs:
+    $ref: paths/kubernetes_jobs.yaml
+  /kubernetes/cronjobs:
+    $ref: paths/kubernetes_cronjobs.yaml
+  /kubernetes/cluster-info:
+    $ref: paths/kubernetes_cluster-info.yaml
+  /kubernetes/ingressclasses:
+    $ref: paths/kubernetes_ingressclasses.yaml
+  /kubernetes/ingressclasses/{name}:
+    $ref: paths/kubernetes_ingressclasses_{name}.yaml
+  /kubernetes/networkpolicies:
+    $ref: paths/kubernetes_networkpolicies.yaml
+  /kubernetes/networkpolicies/{namespace}/{name}:
+    $ref: paths/kubernetes_networkpolicies_{namespace}_{name}.yaml
+  /kubernetes/pods/{namespace}/{name}:
+    $ref: paths/kubernetes_pods_{namespace}_{name}.yaml
+  /kubernetes/pods/{namespace}/{name}/logs:
+    $ref: paths/kubernetes_pods_{namespace}_{name}_logs.yaml
+  /kubernetes/deployments/{namespace}/{name}:
+    $ref: paths/kubernetes_deployments_{namespace}_{name}.yaml
+  /kubernetes/services/{namespace}/{name}:
+    $ref: paths/kubernetes_services_{namespace}_{name}.yaml
+  /kubernetes/ingresses/{namespace}/{name}:
+    $ref: paths/kubernetes_ingresses_{namespace}_{name}.yaml
+  /kubernetes/pvcs/{namespace}/{name}:
+    $ref: paths/kubernetes_pvcs_{namespace}_{name}.yaml
+  /kubernetes/pvs/{name}:
+    $ref: paths/kubernetes_pvs_{name}.yaml
+  /kubernetes/secrets/{namespace}/{name}:
+    $ref: paths/kubernetes_secrets_{namespace}_{name}.yaml
+  /kubernetes/configmaps/{namespace}/{name}:
+    $ref: paths/kubernetes_configmaps_{namespace}_{name}.yaml
+  /kubernetes/namespaces/{name}:
+    $ref: paths/kubernetes_namespaces_{name}.yaml
+  /kubernetes/nodes/{name}:
+    $ref: paths/kubernetes_nodes_{name}.yaml
+  /kubernetes/daemonsets/{namespace}/{name}:
+    $ref: paths/kubernetes_daemonsets_{namespace}_{name}.yaml
+  /kubernetes/statefulsets/{namespace}/{name}:
+    $ref: paths/kubernetes_statefulsets_{namespace}_{name}.yaml
+  /kubernetes/jobs/{namespace}/{name}:
+    $ref: paths/kubernetes_jobs_{namespace}_{name}.yaml
+  /kubernetes/cronjobs/{namespace}/{name}:
+    $ref: paths/kubernetes_cronjobs_{namespace}_{name}.yaml
+  /kubernetes/helm/releases:
+    $ref: paths/kubernetes_helm_releases.yaml
+  /kubernetes/helm/charts:
+    $ref: paths/kubernetes_helm_charts.yaml
+  /kubernetes/helm/repositories:
+    $ref: paths/kubernetes_helm_repositories.yaml
+  /kubernetes/helm/repositories/{name}/update:
+    $ref: paths/kubernetes_helm_repositories_{name}_update.yaml
+  /ansible/playbooks:
+    $ref: paths/ansible_playbooks.yaml
+  /ansible/playbooks/{name}:
+    $ref: paths/ansible_playbooks_{name}.yaml
+  /ansible/playbooks/upload:
+    $ref: paths/ansible_playbooks_upload.yaml
+  /ansible/playbooks/validate:
+    $ref: paths/ansible_playbooks_validate.yaml
+  /ansible/playbooks/run:
+    $ref: paths/ansible_playbooks_run.yaml
+  /ansible/playbooks/templates:
+    $ref: paths/ansible_playbooks_templates.yaml
+  /ansible/playbooks/from-template:
+    $ref: paths/ansible_playbooks_from-template.yaml
+  /ansible/playbooks/sync-git:
+    $ref: paths/ansible_playbooks_sync-git.yaml
+  /ansible/playbooks/from-galaxy:
+    $ref: paths/ansible_playbooks_from-galaxy.yaml
+  /ansible/playbooks/from-url:
+    $ref: paths/ansible_playbooks_from-url.yaml
+  /ansible/adhoc:
+    $ref: paths/ansible_adhoc.yaml
+  /ansible/executions:
+    $ref: paths/ansible_executions.yaml
+  /ansible/executions/{id}:
+    $ref: paths/ansible_executions_{id}.yaml
+  /ansible/executions/{id}/stream:
+    $ref: paths/ansible_executions_{id}_stream.yaml
+  /ansible/inventory/dynamic:
+    $ref: paths/ansible_inventory_dynamic.yaml
+  /ansible/inventory:
+    $ref: paths/ansible_inventory.yaml
+  /ansible/inventory/{name}:
+    $ref: paths/ansible_inventory_{name}.yaml
+  /ansible/schedules:
+    $ref: paths/ansible_schedules.yaml
+  /ansible/schedules/{id}:
+    $ref: paths/ansible_schedules_{id}.yaml
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

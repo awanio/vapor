@@ -1,0 +1,43 @@
+get:
+  summary: List all virtual networks
+  tags:
+    - Virtualization Network
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: Networks listed successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              networks:
+                type: array
+                items:
+                  $ref: ../components/schemas/VirtualNetwork.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml
+post:
+  summary: Create a new virtual network
+  tags:
+    - Virtualization Network
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/NetworkCreateRequest.yaml
+  responses:
+    '201':
+      description: Virtual network created successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/VirtualNetworkCreateResponse.yaml
+    '400':
+      $ref: ../components/responses/BadRequest.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

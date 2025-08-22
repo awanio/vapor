@@ -1,0 +1,18 @@
+type: object
+properties:
+  name:
+    type: string
+  wwid:
+    type: string
+  vendor:
+    type: string
+  product:
+    type: string
+  size:
+    type: string
+  state:
+    type: string
+  paths:
+    type: array
+    items:
+      $ref: ./MultipathPath.yaml

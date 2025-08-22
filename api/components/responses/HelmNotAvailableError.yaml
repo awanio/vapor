@@ -1,0 +1,27 @@
+description: Helm is not available
+content:
+  application/json:
+    schema:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - error
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              enum:
+                - HELM_NOT_AVAILABLE
+            message:
+              type: string
+              example: Helm is not available
+            details:
+              type: string
+              example: >-
+                Helm requires Kubernetes to be installed and configured. Please
+                ensure Kubernetes is running and accessible.
+            data:
+              type: object

@@ -1,0 +1,22 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          network_name:
+            type: string
+            description: Name of the network
+          ports:
+            type: array
+            description: List of network ports/interfaces
+            items:
+              $ref: ./NetworkPort.yaml
+          count:
+            type: integer
+            description: Total number of ports
+        required:
+          - network_name
+          - ports
+          - count

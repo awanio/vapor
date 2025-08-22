@@ -1,0 +1,54 @@
+type: object
+properties:
+  id:
+    type: string
+    description: Network ID
+    example: bridge
+  name:
+    type: string
+    description: Network name
+    example: bridge
+  driver:
+    type: string
+    description: Network driver
+    example: bridge
+  created:
+    type: string
+    format: date-time
+    description: Network creation time
+  scope:
+    type: string
+    description: Network scope
+    example: local
+  enableIPv6:
+    type: boolean
+    description: IPv6 enabled flag
+  ipam:
+    $ref: ./IPAM.yaml
+  internal:
+    type: boolean
+    description: Internal network flag
+  attachable:
+    type: boolean
+    description: Attachable flag
+  ingress:
+    type: boolean
+    description: Ingress flag
+  configOnly:
+    type: boolean
+    description: Config-only flag
+  options:
+    type: object
+    additionalProperties:
+      type: string
+    description: Network options
+  labels:
+    type: object
+    additionalProperties:
+      type: string
+    description: Network labels
+  containers:
+    type: object
+    additionalProperties:
+      $ref: ./NetworkInfo.yaml
+    description: Connected containers

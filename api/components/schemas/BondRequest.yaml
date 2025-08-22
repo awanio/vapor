@@ -1,0 +1,14 @@
+type: object
+required:
+  - name
+  - mode
+  - interfaces
+properties:
+  name:
+    type: string
+  mode:
+    type: string
+  interfaces:
+    type: array
+    items:
+      type: string

@@ -1,0 +1,16 @@
+get:
+  summary: Generate dynamic inventory
+  description: Generates a dynamic inventory from current system state
+  tags:
+    - Ansible
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: Dynamic inventory generated successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/DynamicInventoryResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

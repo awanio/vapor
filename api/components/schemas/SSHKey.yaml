@@ -1,0 +1,14 @@
+type: object
+properties:
+  key:
+    type: string
+    description: Full SSH public key string
+  type:
+    type: string
+    description: Key type (ssh-rsa, ssh-ed25519, etc.)
+  fingerprint:
+    type: string
+    description: Key fingerprint
+  comment:
+    type: string
+    description: Key comment/label

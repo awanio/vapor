@@ -1,0 +1,15 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          total:
+            type: integer
+          free:
+            type: integer
+          used:
+            type: integer
+          used_percent:
+            type: number

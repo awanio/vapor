@@ -1,0 +1,60 @@
+type: object
+required:
+  - action
+properties:
+  action:
+    type: string
+    description: Disk action type
+    enum:
+      - create
+      - existing
+      - clone
+    example: create
+  size:
+    type: integer
+    description: Disk size in GB (for create action)
+    minimum: 1
+    example: 20
+  path:
+    type: string
+    description: Path to existing disk image (for existing action)
+    example: /var/lib/libvirt/images/disk.qcow2
+  source_path:
+    type: string
+    description: Source disk path to clone from (for clone action)
+    example: /var/lib/libvirt/images/template.qcow2
+  format:
+    type: string
+    description: Disk format
+    enum:
+      - qcow2
+      - raw
+      - vmdk
+      - vdi
+    default: qcow2
+    example: qcow2
+  bus:
+    type: string
+    description: Disk bus type
+    enum:
+      - virtio
+      - ide
+      - scsi
+      - sata
+    default: virtio
+    example: virtio
+  cache:
+    type: string
+    description: Cache mode
+    enum:
+      - none
+      - writethrough
+      - writeback
+      - directsync
+      - unsafe
+    default: none
+    example: writeback
+  target:
+    type: string
+    description: Target device name (e.g., vda, sda)
+    example: vda

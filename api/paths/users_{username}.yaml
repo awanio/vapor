@@ -1,0 +1,48 @@
+put:
+  summary: Update user
+  tags:
+    - Users
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: username
+      in: path
+      required: true
+      schema:
+        type: string
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/UserRequest.yaml
+  responses:
+    '200':
+      description: User updated
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MessageResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+delete:
+  summary: Delete user
+  tags:
+    - Users
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: username
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    '200':
+      description: User deleted
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MessageResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

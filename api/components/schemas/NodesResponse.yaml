@@ -1,0 +1,14 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          count:
+            type: integer
+            description: Total number of nodes
+          nodes:
+            type: array
+            items:
+              $ref: ./NodeInfo.yaml

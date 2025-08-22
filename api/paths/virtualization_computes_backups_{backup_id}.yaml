@@ -1,0 +1,25 @@
+delete:
+  summary: Delete VM backup
+  description: Delete a specific VM backup
+  tags:
+    - Virtualization Compute
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: backup_id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Backup ID
+  responses:
+    '204':
+      description: Backup deleted successfully
+    '404':
+      description: Backup not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

@@ -1,0 +1,17 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          logs:
+            type: array
+            items:
+              $ref: ./LogEntry.yaml
+          total_count:
+            type: integer
+          page:
+            type: integer
+          page_size:
+            type: integer
