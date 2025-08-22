@@ -2,7 +2,7 @@ var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 var _a;
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-Bwb7XPAO.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-D0kjfQxF.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -17365,7 +17365,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-Bwb7XPAO.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-D0kjfQxF.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17410,7 +17410,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-Bwb7XPAO.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-D0kjfQxF.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping WebSocket connection");
     return;
@@ -17478,7 +17478,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-Bwb7XPAO.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-D0kjfQxF.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -52501,6 +52501,7 @@ let CreateVMWizardEnhanced = class extends i$1 {
     this.wizardController = new lib.StoreController(this, $vmWizardState);
     this.storagePoolsController = new lib.StoreController(this, $availableStoragePools);
     this.isosController = new lib.StoreController(this, $availableISOs);
+    this.templatesController = new lib.StoreController(this, templateStore.$items);
     this.isCreating = false;
     this.validationErrors = {};
     this.expandedSections = /* @__PURE__ */ new Set(["basic"]);
@@ -52534,7 +52535,9 @@ let CreateVMWizardEnhanced = class extends i$1 {
     try {
       await Promise.all([
         storagePoolStore.fetch(),
-        isoStore.fetch()
+        isoStore.fetch(),
+        templateStore.fetch()
+        // Fetch templates from /virtualization/computes/templates
       ]);
     } catch (error) {
       console.error("Failed to load data for VM wizard:", error);
@@ -52854,13 +52857,44 @@ let CreateVMWizardEnhanced = class extends i$1 {
 
           <div class="form-group">
             <label>Template (Optional)</label>
-            <input
-              type="text"
-              placeholder="ubuntu-22.04-base"
+            <select
               .value=${this.formData.template || ""}
-              @input=${(e3) => this.updateFormData("template", e3.target.value)}
-            />
-            <div class="help-text">Use an existing VM template</div>
+              @change=${(e3) => {
+      var _a2, _b, _c, _d;
+      const selectedValue = e3.target.value;
+      this.updateFormData("template", selectedValue);
+      if (selectedValue) {
+        const templates = this.templatesController.value;
+        const templatesArray = templates instanceof Map ? Array.from(templates.values()) : Array.isArray(templates) ? templates : [];
+        const selectedTemplate = templatesArray.find((t2) => t2.id === selectedValue);
+        if (selectedTemplate) {
+          this.updateFormData("memory", selectedTemplate.memory || 2048);
+          this.updateFormData("vcpus", selectedTemplate.vcpus || 2);
+          this.updateFormData("os_type", selectedTemplate.os_type || "linux");
+          this.updateFormData("os_variant", selectedTemplate.os_variant || "");
+          if (selectedTemplate.disk_size && ((_b = (_a2 = this.formData.storage) == null ? void 0 : _a2.disks) == null ? void 0 : _b.length) === 0) {
+            this.addDisk();
+            if ((_d = (_c = this.formData.storage) == null ? void 0 : _c.disks) == null ? void 0 : _d[0]) {
+              this.formData.storage.disks[0].size = selectedTemplate.disk_size;
+            }
+          }
+          this.showNotification(`Template "${selectedTemplate.name}" applied`, "info");
+        }
+      }
+    }}
+            >
+              <option value="">No template</option>
+              ${(() => {
+      const templates = this.templatesController.value;
+      const templatesArray = templates instanceof Map ? Array.from(templates.values()) : Array.isArray(templates) ? templates : [];
+      return templatesArray.map((template) => x`
+                  <option value=${template.id}>
+                    ${template.name} - ${template.description || `${template.os_type}/${template.os_variant || "default"}`}
+                  </option>
+                `);
+    })()}
+            </select>
+            <div class="help-text">Select a VM template to pre-populate configuration</div>
           </div>
         </div>
       </div>

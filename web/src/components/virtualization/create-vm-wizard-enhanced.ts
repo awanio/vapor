@@ -16,7 +16,9 @@ import {
   vmActions,
   storagePoolStore,
   isoStore,
+  templateStore,
 } from '../../stores/virtualization';
+import type { VMTemplate } from '../../types/virtualization';
 
 // Import UI components
 import '../ui/loading-state.js';
@@ -110,6 +112,7 @@ export class CreateVMWizardEnhanced extends LitElement {
   private wizardController = new StoreController(this, $vmWizardState);
   private storagePoolsController = new StoreController(this, $availableStoragePools);
   private isosController = new StoreController(this, $availableISOs);
+  private templatesController = new StoreController(this, templateStore.$items);
 
   // Component state
   @state() private isCreating = false;
@@ -604,6 +607,7 @@ export class CreateVMWizardEnhanced extends LitElement {
       await Promise.all([
         storagePoolStore.fetch(),
         isoStore.fetch(),
+        templateStore.fetch(), // Fetch templates from /virtualization/computes/templates
       ]);
     } catch (error) {
       console.error('Failed to load data for VM wizard:', error);
@@ -979,15 +983,53 @@ export class CreateVMWizardEnhanced extends LitElement {
 
           <div class="form-group">
             <label>Template (Optional)</label>
-            <input
-              type="text"
-              placeholder="ubuntu-22.04-base"
+            <select
               .value=${this.formData.template || ''}
-              @input=${(e: InputEvent) => 
-                this.updateFormData('template', (e.target as HTMLInputElement).value)
-              }
-            />
-            <div class="help-text">Use an existing VM template</div>
+              @change=${(e: Event) => {
+                const selectedValue = (e.target as HTMLSelectElement).value;
+                this.updateFormData('template', selectedValue);
+                
+                // If a template is selected, auto-populate form fields
+                if (selectedValue) {
+                  const templates = this.templatesController.value;
+                  const templatesArray = templates instanceof Map ? Array.from(templates.values()) : 
+                                         Array.isArray(templates) ? templates : [];
+                  const selectedTemplate = templatesArray.find((t: VMTemplate) => t.id === selectedValue);
+                  
+                  if (selectedTemplate) {
+                    // Auto-populate fields from template
+                    this.updateFormData('memory', selectedTemplate.memory || 2048);
+                    this.updateFormData('vcpus', selectedTemplate.vcpus || 2);
+                    this.updateFormData('os_type', selectedTemplate.os_type || 'linux');
+                    this.updateFormData('os_variant', selectedTemplate.os_variant || '');
+                    
+                    // Update disk size if template has it
+                    if (selectedTemplate.disk_size && this.formData.storage?.disks?.length === 0) {
+                      this.addDisk();
+                      if (this.formData.storage?.disks?.[0]) {
+                        this.formData.storage.disks[0].size = selectedTemplate.disk_size;
+                      }
+                    }
+                    
+                    this.showNotification(`Template "${selectedTemplate.name}" applied`, 'info');
+                  }
+                }
+              }}
+            >
+              <option value="">No template</option>
+              ${(() => {
+                const templates = this.templatesController.value;
+                const templatesArray = templates instanceof Map ? Array.from(templates.values()) : 
+                                       Array.isArray(templates) ? templates : [];
+                
+                return templatesArray.map((template: VMTemplate) => html`
+                  <option value=${template.id}>
+                    ${template.name} - ${template.description || `${template.os_type}/${template.os_variant || 'default'}`}
+                  </option>
+                `);
+              })()}
+            </select>
+            <div class="help-text">Select a VM template to pre-populate configuration</div>
           </div>
         </div>
       </div>
