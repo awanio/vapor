@@ -2,7 +2,7 @@ var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 var _a;
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-BgfAzLz_.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-OBduVWGS.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -17365,7 +17365,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-BgfAzLz_.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-OBduVWGS.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17410,7 +17410,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-BgfAzLz_.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-OBduVWGS.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping WebSocket connection");
     return;
@@ -17478,7 +17478,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-BgfAzLz_.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-OBduVWGS.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -52914,6 +52914,7 @@ let CreateVMWizardEnhanced = class extends i$1 {
     this.isosController = new lib.StoreController(this, $availableISOs);
     this.templatesController = new lib.StoreController(this, templateStore.$items);
     this.networksController = new lib.StoreController(this, networkStore.$items);
+    this.bridgesController = new lib.StoreController(this, $bridges);
     this.isCreating = false;
     this.validationErrors = {};
     this.expandedSections = /* @__PURE__ */ new Set(["basic"]);
@@ -53532,6 +53533,27 @@ let CreateVMWizardEnhanced = class extends i$1 {
       return networksArray.map((virtualNetwork) => x`
                               <option value=${virtualNetwork.name}>
                                 ${virtualNetwork.name} ${virtualNetwork.state === "active" ? "(Active)" : "(Inactive)"}
+                              </option>
+                            `);
+    })()}
+                        </select>
+                      ` : network.type === "bridge" ? x`
+                        <select
+                          .value=${network.source || ""}
+                          @change=${(e3) => {
+      network.source = e3.target.value;
+      this.requestUpdate();
+    }}
+                        >
+                          <option value="">Select a bridge</option>
+                          ${(() => {
+      const bridges = this.bridgesController.value || [];
+      const bridgeInterfaces = bridges.filter(
+        (iface) => iface.type === "bridge"
+      );
+      return bridgeInterfaces.map((bridge) => x`
+                              <option value=${bridge.name}>
+                                ${bridge.name} ${bridge.state === "up" ? "(Up)" : "(Down)"}
                               </option>
                             `);
     })()}
