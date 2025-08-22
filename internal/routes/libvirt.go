@@ -25,6 +25,7 @@ func LibvirtRoutes(r *gin.RouterGroup, service *libvirt.Service) {
 		vmGroup.PUT("/:id", updateVM(service))               // Update VM config
 		vmGroup.DELETE("/:id", deleteVM(service))            // Delete VM
 		vmGroup.POST("/:id/action", vmAction(service))       // VM actions (start, stop, etc.)
+vmGroup.POST("/:id/network-link", setNetworkLinkState(service)) // Set network interface link state
 
 		// Snapshots
 		vmGroup.GET("/:id/snapshots/capabilities", getSnapshotCapabilities(service)) // Check snapshot capabilities
@@ -410,6 +411,49 @@ func vmAction(service *libvirt.Service) gin.HandlerFunc {
 }
 
 // Snapshot handlers
+
+func setNetworkLinkState(service *libvirt.Service) gin.HandlerFunc {
+return func(c *gin.Context) {
+id := c.Param("id")
+var req libvirt.NetworkLinkStateRequest
+if err := c.ShouldBindJSON(&req); err != nil {
+c.JSON(http.StatusBadRequest, gin.H{
+"status": "error",
+"error": gin.H{
+"code":    "INVALID_REQUEST",
+"message": "Invalid network link state request",
+"details": err.Error(),
+},
+})
+return
+}
+
+resp, err := service.SetNetworkLinkState(c.Request.Context(), id, &req)
+if err != nil {
+if strings.Contains(err.Error(), "not found") {
+c.JSON(http.StatusNotFound, gin.H{
+"status": "error",
+"error": gin.H{
+"code":    "NOT_FOUND",
+"message": err.Error(),
+},
+})
+return
+}
+c.JSON(http.StatusInternalServerError, gin.H{
+"status": "error",
+"error": gin.H{
+"code":    "INTERNAL_ERROR",
+"message": "Failed to set network link state",
+"details": err.Error(),
+},
+})
+return
+}
+
+c.JSON(http.StatusOK, resp)
+}
+}
 
 func getSnapshotCapabilities(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {

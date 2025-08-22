@@ -825,3 +825,18 @@ type CloudInitDetail struct {
 	Source     string `json:"source,omitempty"`
 	SourceType string `json:"source_type,omitempty"` // disk, cdrom, network
 }
+
+// NetworkLinkStateRequest for changing network interface link state
+type NetworkLinkStateRequest struct {
+Interface string `json:"interface" binding:"required"` // Interface name (e.g., vnet0) or MAC address
+State     string `json:"state" binding:"required,oneof=up down"` // "up" or "down"
+}
+
+// NetworkLinkStateResponse represents the result of link state change
+type NetworkLinkStateResponse struct {
+Status    string `json:"status"`
+Message   string `json:"message"`
+Interface string `json:"interface"`
+State     string `json:"state"`
+MAC       string `json:"mac,omitempty"`
+}

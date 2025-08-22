@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"encoding/xml"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -2030,4 +2031,121 @@ func (s *Service) getStoragePoolFromPath(path string) string {
 	}
 
 	return "default"
+}
+
+// SetNetworkLinkState changes the link state of a VM's network interface
+func (s *Service) SetNetworkLinkState(ctx context.Context, nameOrUUID string, req *NetworkLinkStateRequest) (*NetworkLinkStateResponse, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	domain, err := s.lookupDomain(nameOrUUID)
+	if err != nil {
+		return nil, err
+	}
+	defer domain.Free()
+
+	// Get domain XML to find the interface
+	xmlDesc, err := domain.GetXMLDesc(0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get domain XML: %w", err)
+	}
+
+	// Parse XML to verify interface exists and get its details
+	var domainXML struct {
+		XMLName xml.Name `xml:"domain"`
+		Devices struct {
+			Interfaces []struct {
+				XMLName xml.Name `xml:"interface"`
+				Type    string   `xml:"type,attr"`
+				Target  struct {
+					Dev string `xml:"dev,attr"`
+				} `xml:"target"`
+				MAC struct {
+					Address string `xml:"address,attr"`
+				} `xml:"mac"`
+				Source struct {
+					Bridge  string `xml:"bridge,attr,omitempty"`
+					Network string `xml:"network,attr,omitempty"`
+					Dev     string `xml:"dev,attr,omitempty"`
+				} `xml:"source"`
+				Model struct {
+					Type string `xml:"type,attr,omitempty"`
+				} `xml:"model"`
+				Link struct {
+					State string `xml:"state,attr,omitempty"`
+				} `xml:"link"`
+			} `xml:"interface"`
+		} `xml:"devices"`
+	}
+
+	if err := xml.Unmarshal([]byte(xmlDesc), &domainXML); err != nil {
+		return nil, fmt.Errorf("failed to parse domain XML: %w", err)
+	}
+
+	// Find the interface by name or MAC
+	var targetInterfaceIdx int = -1
+	var targetInterface string
+	var macAddress string
+
+	for idx, iface := range domainXML.Devices.Interfaces {
+		if iface.Target.Dev == req.Interface || iface.MAC.Address == req.Interface {
+			targetInterfaceIdx = idx
+			targetInterface = iface.Target.Dev
+			macAddress = iface.MAC.Address
+			break
+		}
+	}
+
+	if targetInterfaceIdx == -1 {
+		return nil, fmt.Errorf("interface %s not found", req.Interface)
+	}
+
+	// Update the link state in the interface XML
+	iface := domainXML.Devices.Interfaces[targetInterfaceIdx]
+
+	// Build the interface XML with updated link state
+	interfaceXML := fmt.Sprintf(`<interface type='%s'>`, iface.Type)
+
+	// Add source based on type
+	if iface.Source.Bridge != "" {
+		interfaceXML += fmt.Sprintf(`<source bridge='%s'/>`, iface.Source.Bridge)
+	} else if iface.Source.Network != "" {
+		interfaceXML += fmt.Sprintf(`<source network='%s'/>`, iface.Source.Network)
+	} else if iface.Source.Dev != "" {
+		interfaceXML += fmt.Sprintf(`<source dev='%s'/>`, iface.Source.Dev)
+	}
+
+	// Add target device
+	if targetInterface != "" {
+		interfaceXML += fmt.Sprintf(`<target dev='%s'/>`, targetInterface)
+	}
+
+	// Add MAC address
+	interfaceXML += fmt.Sprintf(`<mac address='%s'/>`, macAddress)
+
+	// Add model if present
+	if iface.Model.Type != "" {
+		interfaceXML += fmt.Sprintf(`<model type='%s'/>`, iface.Model.Type)
+	}
+
+	// Add link state
+	interfaceXML += fmt.Sprintf(`<link state='%s'/>`, req.State)
+	interfaceXML += `</interface>`
+
+	// Update the device (this is equivalent to virsh domif-setlink)
+	flags := libvirt.DOMAIN_DEVICE_MODIFY_LIVE | libvirt.DOMAIN_DEVICE_MODIFY_CONFIG
+	if err := domain.UpdateDeviceFlags(interfaceXML, flags); err != nil {
+		// If live update fails, try config only
+		if err := domain.UpdateDeviceFlags(interfaceXML, libvirt.DOMAIN_DEVICE_MODIFY_CONFIG); err != nil {
+			return nil, fmt.Errorf("failed to set interface link state: %w", err)
+		}
+	}
+
+	return &NetworkLinkStateResponse{
+		Status:    "success",
+		Message:   fmt.Sprintf("Network interface %s link state changed to %s", targetInterface, req.State),
+		Interface: targetInterface,
+		State:     req.State,
+		MAC:       macAddress,
+	}, nil
 }
