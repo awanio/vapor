@@ -596,3 +596,83 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  schemas:
+    NetworkLinkStateRequest:
+      type: object
+      required:
+        - interface
+        - state
+      properties:
+        interface:
+          type: string
+          description: |
+            The network interface identifier. Can be either:
+            - Interface device name (e.g., "vnet0", "vnet1", "eth0")
+            - MAC address (e.g., "52:54:00:12:34:56")
+          examples:
+            - "vnet0"
+            - "52:54:00:ab:cd:ef"
+        state:
+          type: string
+          description: The desired link state
+          enum:
+            - up
+            - down
+          example: "down"
+      example:
+        interface: "vnet0"
+        state: "down"
+
+    NetworkLinkStateResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          description: Operation status
+          example: "success"
+        message:
+          type: string
+          description: Human-readable message about the operation result
+          example: "Network interface vnet0 link state changed to down"
+        interface:
+          type: string
+          description: The actual interface name that was modified
+          example: "vnet0"
+        state:
+          type: string
+          description: The current link state after the operation
+          enum:
+            - up
+            - down
+          example: "down"
+        mac:
+          type: string
+          description: MAC address of the network interface
+          example: "52:54:00:12:34:56"
+      required:
+        - status
+        - message
+        - interface
+        - state
+
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "error"
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              description: Error code
+              example: "NOT_FOUND"
+            message:
+              type: string
+              description: Error message
+              example: "Interface not found"
+            details:
+              type: string
+              description: Additional error details
+              example: "interface vnet99 not found on domain web-server-01"
