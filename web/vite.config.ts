@@ -79,7 +79,15 @@ export default defineConfig(({ mode }) => {
     
     // Optimize dependencies for better performance
     optimizeDeps: {
-      include: ['lit', 'nanostores', 'xterm', 'chart.js']
+      include: [
+        'lit', 
+        'nanostores', 
+        'xterm', 
+        'xterm-addon-fit',
+        'xterm-addon-web-links',
+        'xterm-addon-attach',
+        'chart.js'
+      ]
     }
   };
 });

@@ -35,7 +35,7 @@ import {
   // $activeVMTab, // Unused - using local state instead
   $vmSearchQuery,
   $vmFilterState,
-  $selectedVM,
+  // $selectedVM, // Unused - using local state instead
   // $vmWizardState, // Reserved for future use
   vmActions,
   wizardActions,
@@ -50,7 +50,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
   private vmStoreController = new StoreController(this, vmStore.$items);
   // private templateStoreController = new StoreController(this, templateStore.$items); // Using subscription instead
   private filteredVMsController = new StoreController(this, $filteredVMs);
-  private selectedVMController = new StoreController(this, $selectedVM);
+  // private selectedVMController = new StoreController(this, $selectedVM); // Unused
   // private activeTabController = new StoreController(this, $activeVMTab); // Using local state instead
   private searchQueryController = new StoreController(this, $vmSearchQuery);
   // private filterStateController = new StoreController(this, $vmFilterState); // Unused - managed directly
@@ -608,7 +608,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
     
     // const activeTab = this.activeTabController.value; // Unused - using this.activeMainTab instead
     const searchQuery = this.searchQueryController.value;
-    const selectedVM = this.selectedVMController.value;
+    // const selectedVM = this.selectedVMController.value; // Unused variable
     // const wizardState = this.wizardStateController.value;
 
     // Get loading and error states

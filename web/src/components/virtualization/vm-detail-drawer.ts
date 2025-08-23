@@ -7,15 +7,20 @@ import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { VirtualMachine } from '../../types/virtualization';
 import { getApiUrl } from '../../config';
+import { auth } from '../../auth';
+import './vm-console';
 
 interface VMMetrics {
+  uuid: string;
+  timestamp: string;
+  cpu_time: number;
   cpu_usage: number;
+  memory_used: number;
   memory_usage: number;
   disk_read: number;
   disk_write: number;
   network_rx: number;
   network_tx: number;
-  uptime: number;
 }
 
 interface VMEnhancedDetails {
@@ -32,23 +37,22 @@ interface VMEnhancedDetails {
     machine: string;
     boot?: string[] | null;
   };
-  disks?: Array<{
-    device: string;
-    type: string;
-    driver: string;
-    source: {
-      file?: string;
-      dev?: string;
-      pool?: string;
-      volume?: string;
-    };
-    target: {
-      dev: string;
+  storage?: {
+    default_pool: string;
+    boot_iso?: string;
+    disks?: Array<{
+      path: string;
+      device: string;
+      target: string;
       bus: string;
-    };
-    readonly: boolean;
-    size?: number;
-  }> | null;
+      format: string;
+      storage_pool: string;
+      readonly: boolean;
+      source_type: string;
+      source_path: string;
+      size?: number;
+    }>;
+  };
   networks?: Array<{
     type: string;
     mac: string;
@@ -87,6 +91,7 @@ interface DiskInfo {
   format: string;
   bus: string;
   readonly: boolean;
+  device?: string;
 }
 
 interface NetworkInterfaceInfo {
@@ -112,7 +117,14 @@ export class VMDetailDrawer extends LitElement {
   @state() private disks: DiskInfo[] = [];
   @state() private networkInterfaces: NetworkInterfaceInfo[] = [];
   @state() private vmDetails: VMEnhancedDetails | null = null;
-  @state() private error: string | null = null;
+  // @state() private error: string | null = null; // TODO: Display errors in UI
+  @state() private isPowerActionLoading = false;
+  @state() private showDeleteModal = false;
+  @state() private isDeleting = false;
+  @state() private isLoadingMetrics = false;
+  @state() private showConsole = false;
+  
+  private metricsRefreshInterval: NodeJS.Timeout | null = null;
 
   static override styles = css`
     :host {
@@ -611,6 +623,17 @@ export class VMDetailDrawer extends LitElement {
         transform: rotate(360deg);
       }
     }
+    
+    /* Small spinner for buttons */
+    .spinner-small {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid var(--vscode-widget-border, #454545);
+      border-top-color: var(--vscode-foreground, #cccccc);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
 
     /* Empty State */
     .empty-state {
@@ -658,6 +681,170 @@ export class VMDetailDrawer extends LitElement {
     .console-connect-btn:hover {
       background: var(--vscode-button-hoverBackground, #1177bb);
     }
+    
+    /* Delete Confirmation Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 2000;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 80px;
+    }
+    
+    .modal-overlay.show {
+      display: flex;
+      animation: fadeIn 0.2s ease-out;
+    }
+    
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+    
+    .modal {
+      background: var(--vscode-editor-background, #1e1e1e);
+      border: 1px solid var(--vscode-widget-border, #454545);
+      border-radius: 8px;
+      padding: 24px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.2s ease-out;
+    }
+    
+    @keyframes slideUp {
+      from {
+        transform: translateY(-20px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+    
+    .modal-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    
+    .modal-icon {
+      font-size: 24px;
+    }
+    
+    .modal-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--vscode-foreground, #cccccc);
+      margin: 0;
+    }
+    
+    .modal-body {
+      margin-bottom: 24px;
+    }
+    
+    .modal-message {
+      color: var(--vscode-foreground, #cccccc);
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+    
+    .warning-box {
+      background: var(--vscode-inputValidation-warningBackground, #5a5012);
+      border: 1px solid var(--vscode-inputValidation-warningBorder, #b89500);
+      border-radius: 4px;
+      padding: 12px;
+      color: var(--vscode-inputValidation-warningForeground, #cca700);
+      font-size: 13px;
+      display: flex;
+      align-items: start;
+      gap: 8px;
+    }
+    
+    .warning-icon {
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    
+    .vm-info-box {
+      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      border: 1px solid var(--vscode-widget-border, #454545);
+      border-radius: 4px;
+      padding: 12px;
+      margin: 16px 0;
+    }
+    
+    .vm-info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      font-size: 13px;
+    }
+    
+    .vm-info-label {
+      color: var(--vscode-descriptionForeground, #8b8b8b);
+    }
+    
+    .vm-info-value {
+      color: var(--vscode-foreground, #cccccc);
+      font-weight: 500;
+    }
+    
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+    
+    .modal-btn {
+      padding: 8px 16px;
+      border-radius: 4px;
+      border: 1px solid;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .modal-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .modal-btn.cancel {
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      color: var(--vscode-button-secondaryForeground, #cccccc);
+      border-color: var(--vscode-button-border, #5a5a5a);
+    }
+    
+    .modal-btn.cancel:hover:not(:disabled) {
+      background: var(--vscode-button-secondaryHoverBackground, #45494e);
+    }
+    
+    .modal-btn.delete {
+      background: var(--vscode-inputValidation-errorBackground, #5a1d1d);
+      color: var(--vscode-inputValidation-errorForeground, #f48771);
+      border-color: var(--vscode-inputValidation-errorBorder, #be1100);
+    }
+    
+    .modal-btn.delete:hover:not(:disabled) {
+      background: var(--vscode-inputValidation-errorBorder, #be1100);
+    }
   `;
 
   override connectedCallback() {
@@ -666,10 +853,65 @@ export class VMDetailDrawer extends LitElement {
       this.loadVMDetails();
     }
   }
+  
+  override disconnectedCallback() {
+    super.disconnectedCallback();
+    this.stopMetricsRefresh();
+  }
 
   override updated(changedProperties: Map<string, any>) {
     if (changedProperties.has('vm') && this.vm) {
       this.loadVMDetails();
+    }
+    
+    // Handle tab changes
+    if (changedProperties.has('activeTab')) {
+      if (this.activeTab === 'metrics') {
+        // Start metrics refresh when metrics tab is active
+        this.startMetricsRefresh();
+      } else {
+        // Stop metrics refresh when leaving metrics tab
+        this.stopMetricsRefresh();
+      }
+    }
+    
+    // Handle drawer visibility changes
+    if (changedProperties.has('show')) {
+      if (!this.show) {
+        this.stopMetricsRefresh();
+      } else if (this.activeTab === 'metrics') {
+        this.startMetricsRefresh();
+      }
+    }
+  }
+  
+  private startMetricsRefresh() {
+    // Only start refresh if VM is running and we're not already refreshing
+    const currentState = this.vmDetails?.state || this.vm?.state;
+    if (currentState !== 'running' || this.metricsRefreshInterval) {
+      return;
+    }
+    
+    // Fetch immediately
+    if (this.vm) {
+      console.log('Starting metrics refresh for VM:', this.vm.id);
+      this.fetchVMMetrics(this.vm.id);
+    }
+    
+    // Then set up periodic refresh every 5 seconds
+    this.metricsRefreshInterval = setInterval(() => {
+      if (this.vm && this.activeTab === 'metrics' && this.show) {
+        console.log('Refreshing metrics for VM:', this.vm.id);
+        this.fetchVMMetrics(this.vm.id);
+      }
+    }, 5000);
+  }
+  
+  private stopMetricsRefresh() {
+    if (this.metricsRefreshInterval) {
+      console.log('Stopping metrics refresh');
+      clearInterval(this.metricsRefreshInterval);
+      this.metricsRefreshInterval = null;
     }
   }
 
@@ -677,7 +919,7 @@ export class VMDetailDrawer extends LitElement {
     if (!this.vm) return;
     
     this.isLoading = true;
-    this.error = null;
+    // this.error = null; // TODO: Display errors in UI
     
     try {
       // Fetch enhanced VM details from the API
@@ -686,16 +928,17 @@ export class VMDetailDrawer extends LitElement {
       if (response) {
         this.vmDetails = response;
         
-        // Process disks information
-        if (response.disks && response.disks.length > 0) {
-          this.disks = response.disks.map((disk, index) => ({
-            name: disk.target.dev || `disk${index}`,
-            path: disk.source.file || disk.source.dev || 'Unknown',
+        // Process disks information from storage object
+        if (response.storage?.disks && response.storage.disks.length > 0) {
+          this.disks = response.storage.disks.map((disk, index) => ({
+            name: disk.target || `disk${index}`,
+            path: disk.path || disk.source_path || 'Unknown',
             size: disk.size || 0,
             used: 0, // This would need to come from monitoring
-            format: disk.driver || 'raw',
-            bus: disk.target.bus || 'virtio',
+            format: disk.format || 'raw',
+            bus: disk.bus || 'virtio',
             readonly: disk.readonly || false,
+            device: disk.device || 'disk',
           }));
         } else {
           this.disks = [];
@@ -718,30 +961,76 @@ export class VMDetailDrawer extends LitElement {
           this.networkInterfaces = [];
         }
         
-        // Simulate metrics for now (replace with real metrics API later)
-        this.metrics = {
-          cpu_usage: Math.random() * 100,
-          memory_usage: Math.random() * 100,
-          disk_read: Math.random() * 1000000,
-          disk_write: Math.random() * 1000000,
-          network_rx: Math.random() * 10000000,
-          network_tx: Math.random() * 10000000,
-          uptime: Math.floor(Math.random() * 864000),
-        };
+        // Fetch real metrics if VM is running
+        if (this.vmDetails?.state === 'running' || this.vm.state === 'running') {
+          await this.fetchVMMetrics(this.vm.id);
+        } else {
+          this.metrics = null;
+        }
       }
     } catch (error) {
       console.error('Failed to load VM details:', error);
-      this.error = error instanceof Error ? error.message : 'Failed to load VM details';
+      // this.error = error instanceof Error ? error.message : 'Failed to load VM details'; // TODO: Display errors in UI
     } finally {
       this.isLoading = false;
     }
   }
 
+  private async fetchVMMetrics(vmId: string): Promise<void> {
+    // Don't fetch if already loading
+    if (this.isLoadingMetrics) {
+      console.log('Already loading metrics, skipping...');
+      return;
+    }
+    
+    this.isLoadingMetrics = true;
+    
+    try {
+      const authHeaders = auth.getAuthHeaders();
+      if (!authHeaders.Authorization) {
+        throw new Error('No authentication token found');
+      }
+
+      const apiUrl = getApiUrl(`/virtualization/computes/${vmId}/metrics`);
+      console.log('Fetching VM metrics from:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          ...authHeaders,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        console.error(`Failed to fetch VM metrics: ${response.statusText}`);
+        this.metrics = null;
+        return;
+      }
+
+      const data = await response.json();
+      console.log('VM metrics response:', data);
+      
+      if (data.status === 'success' && data.data) {
+        this.metrics = data.data;
+        console.log('Metrics updated:', this.metrics);
+      } else {
+        this.metrics = null;
+        console.warn('No metrics data in response');
+      }
+    } catch (error) {
+      console.error('Error fetching VM metrics:', error);
+      this.metrics = null;
+    } finally {
+      this.isLoadingMetrics = false;
+    }
+  }
+
   private async fetchVMEnhancedDetails(vmId: string): Promise<VMEnhancedDetails | null> {
     try {
-      // Get token from session storage
-      const token = sessionStorage.getItem('token');
-      if (!token) {
+      // Get authentication headers from AuthManager
+      const authHeaders = auth.getAuthHeaders();
+      if (!authHeaders.Authorization) {
         throw new Error('No authentication token found');
       }
 
@@ -749,7 +1038,7 @@ export class VMDetailDrawer extends LitElement {
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          ...authHeaders,
           'Content-Type': 'application/json',
         },
       });
@@ -785,16 +1074,206 @@ export class VMDetailDrawer extends LitElement {
     this.dispatchEvent(new CustomEvent('close'));
   }
 
-  private handlePowerAction(action: string) {
-    this.dispatchEvent(new CustomEvent('power-action', {
-      detail: { action, vm: this.vm }
+  private async handlePowerAction(action: string, force: boolean = false) {
+    if (!this.vm || this.isPowerActionLoading) return;
+    
+    this.isPowerActionLoading = true;
+    
+    try {
+      // Execute the power action via API
+      const success = await this.executePowerAction(this.vm.id, action, force);
+      
+      if (success) {
+        // Dispatch event for parent component to handle
+        this.dispatchEvent(new CustomEvent('power-action', {
+          detail: { action, vm: this.vm, success: true }
+        }));
+        
+        // Show success notification
+        this.showNotification(`${action.charAt(0).toUpperCase() + action.slice(1)} action initiated for ${this.vm.name}`, 'success');
+        
+        // Reload VM details after a short delay to get updated state
+        setTimeout(() => {
+          this.loadVMDetails();
+        }, 2000);
+      }
+    } catch (error) {
+      console.error(`Failed to execute power action ${action}:`, error);
+      this.showNotification(
+        `Failed to ${action} VM: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'error'
+      );
+    } finally {
+      this.isPowerActionLoading = false;
+    }
+  }
+  
+  private async executePowerAction(vmId: string, action: string, force: boolean = false): Promise<boolean> {
+    try {
+      // Get authentication headers
+      const authHeaders = auth.getAuthHeaders();
+      if (!authHeaders.Authorization) {
+        throw new Error('No authentication token found');
+      }
+
+      const apiUrl = getApiUrl(`/virtualization/computes/${vmId}/action`);
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          ...authHeaders,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: action,
+          force: force
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(
+          errorData?.message || 
+          errorData?.error || 
+          `Failed to execute ${action} action: ${response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+      return data.status === 'success';
+    } catch (error) {
+      console.error('Error executing power action:', error);
+      throw error;
+    }
+  }
+  
+  private showNotification(message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') {
+    // Dispatch event for notification
+    this.dispatchEvent(new CustomEvent('show-notification', {
+      detail: { message, type },
+      bubbles: true,
+      composed: true
     }));
   }
 
   private handleConsoleConnect() {
-    this.dispatchEvent(new CustomEvent('console-connect', {
+    // Check if VM is running
+    const currentState = this.vmDetails?.state || this.vm?.state;
+    if (currentState !== 'running') {
+      this.showNotification('Console is only available when VM is running', 'warning');
+      return;
+    }
+    
+    // Open console component
+    this.showConsole = true;
+  }
+  
+  private handleConsoleClose = () => {
+    this.showConsole = false;
+  }
+  
+  private handleCloneVM() {
+    // Clone functionality - dispatch event for parent to handle
+    this.dispatchEvent(new CustomEvent('clone-vm', {
       detail: { vm: this.vm }
     }));
+    this.showNotification('Clone functionality coming soon', 'info');
+  }
+  
+  private handleSnapshot() {
+    // Snapshot functionality - dispatch event for parent to handle
+    this.dispatchEvent(new CustomEvent('snapshot-vm', {
+      detail: { vm: this.vm }
+    }));
+    this.showNotification('Snapshot functionality coming soon', 'info');
+  }
+  
+  private handleDeleteVM() {
+    // Check if VM is running
+    const currentState = this.vmDetails?.state || this.vm?.state;
+    if (currentState === 'running') {
+      this.showNotification('Cannot delete a running VM. Please stop it first.', 'error');
+      return;
+    }
+    
+    // Show confirmation modal
+    this.showDeleteModal = true;
+  }
+  
+  private cancelDelete() {
+    this.showDeleteModal = false;
+    this.isDeleting = false;
+  }
+  
+  private async confirmDelete() {
+    if (!this.vm || this.isDeleting) return;
+    
+    this.isDeleting = true;
+    
+    try {
+      // Execute the delete operation
+      const success = await this.executeDeleteVM(this.vm.id);
+      
+      if (success) {
+        this.showNotification(`VM "${this.vm.name}" has been deleted successfully`, 'success');
+        
+        // Close modal and drawer
+        this.showDeleteModal = false;
+        
+        // Dispatch event for parent component to handle
+        this.dispatchEvent(new CustomEvent('vm-deleted', {
+          detail: { vm: this.vm },
+          bubbles: true,
+          composed: true
+        }));
+        
+        // Close the drawer after a short delay
+        setTimeout(() => {
+          this.handleClose();
+        }, 1000);
+      }
+    } catch (error) {
+      console.error('Failed to delete VM:', error);
+      this.showNotification(
+        `Failed to delete VM: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'error'
+      );
+    } finally {
+      this.isDeleting = false;
+    }
+  }
+  
+  private async executeDeleteVM(vmId: string): Promise<boolean> {
+    try {
+      // Get authentication headers
+      const authHeaders = auth.getAuthHeaders();
+      if (!authHeaders.Authorization) {
+        throw new Error('No authentication token found');
+      }
+
+      const apiUrl = getApiUrl(`/virtualization/computes/${vmId}`);
+      const response = await fetch(apiUrl, {
+        method: 'DELETE',
+        headers: {
+          ...authHeaders,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(
+          errorData?.message || 
+          errorData?.error || 
+          `Failed to delete VM: ${response.statusText}`
+        );
+      }
+
+      const data = await response.json().catch(() => ({ status: 'success' }));
+      return data.status === 'success' || response.ok;
+    } catch (error) {
+      console.error('Error deleting VM:', error);
+      throw error;
+    }
   }
 
   private formatBytes(bytes: number): string {
@@ -815,19 +1294,20 @@ export class VMDetailDrawer extends LitElement {
     return `${kb} KB`;
   }
 
-  private formatUptime(seconds: number): string {
-    const days = Math.floor(seconds / 86400);
-    const hours = Math.floor((seconds % 86400) / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    
-    if (days > 0) {
-      return `${days}d ${hours}h ${minutes}m`;
-    } else if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    } else {
-      return `${minutes}m`;
-    }
-  }
+  // Unused function - commented out for now
+  // private formatUptime(seconds: number): string {
+  //   const days = Math.floor(seconds / 86400);
+  //   const hours = Math.floor((seconds % 86400) / 3600);
+  //   const minutes = Math.floor((seconds % 3600) / 60);
+  //   
+  //   if (days > 0) {
+  //     return `${days}d ${hours}h ${minutes}m`;
+  //   } else if (hours > 0) {
+  //     return `${hours}h ${minutes}m`;
+  //   } else {
+  //     return `${minutes}m`;
+  //   }
+  // }
 
   private getProgressClass(value: number): string {
     if (value > 80) return 'high';
@@ -840,7 +1320,11 @@ export class VMDetailDrawer extends LitElement {
     
     // Use enhanced details if available, fallback to basic VM data
     const details = this.vmDetails || this.vm;
-    const osInfo = this.vmDetails?.os || {};
+    const osInfo = this.vmDetails?.os || {
+      type: undefined,
+      architecture: undefined,
+      machine: undefined
+    };
 
     return html`
       <div class="section">
@@ -917,7 +1401,7 @@ export class VMDetailDrawer extends LitElement {
         </div>
       </div>
 
-      ${this.vm.graphics ? html`
+      ${this.vm.graphics && Array.isArray(this.vm.graphics) ? html`
         <div class="section">
           <h3 class="section-title">Graphics Configuration</h3>
           <div class="info-grid">
@@ -946,7 +1430,24 @@ export class VMDetailDrawer extends LitElement {
   }
 
   private renderMetricsTab() {
-    if (!this.metrics) {
+    const currentState = this.vmDetails?.state || this.vm?.state;
+    
+    // Check if VM is not running
+    if (currentState !== 'running') {
+      return html`
+        <div class="empty-state">
+          <div class="empty-state-icon">📊</div>
+          <div class="empty-state-message">
+            Metrics are only available when the VM is running.
+            <br>
+            Current state: ${currentState === 'shutoff' ? 'Stopped' : currentState}
+          </div>
+        </div>
+      `;
+    }
+    
+    // Check if metrics are still loading (initial load)
+    if (!this.metrics && this.isLoadingMetrics) {
       return html`
         <div class="loading">
           <div class="spinner"></div>
@@ -954,6 +1455,37 @@ export class VMDetailDrawer extends LitElement {
         </div>
       `;
     }
+    
+    // Check if we have no metrics and not loading
+    if (!this.metrics) {
+      return html`
+        <div class="empty-state">
+          <div class="empty-state-icon">⚠️</div>
+          <div class="empty-state-message">
+            Unable to load metrics. Please ensure the VM is running and try refreshing.
+          </div>
+        </div>
+      `;
+    }
+    
+    // Calculate memory usage percentage based on actual memory allocation
+    // IMPORTANT: memory_used from API is in bytes, VM memory allocation is in MB!
+    const vmMemoryMB = this.vmDetails?.memory || this.vm?.memory || 0;
+    const vmMemoryBytes = vmMemoryMB * 1024 * 1024; // Convert MB to bytes
+    const memoryUsagePercent = vmMemoryBytes > 0 
+      ? (this.metrics.memory_used / vmMemoryBytes) * 100
+      : 0;
+    
+    // Log for debugging
+    console.log('Memory calculation:', {
+      memory_used_bytes: this.metrics.memory_used,
+      memory_used_formatted: this.formatBytes(this.metrics.memory_used),
+      vm_memory_mb: vmMemoryMB,
+      vm_memory_bytes: vmMemoryBytes,
+      vm_memory_formatted: this.formatMemory(vmMemoryMB * 1024), // formatMemory expects KB
+      usage_percent: memoryUsagePercent,
+      api_memory_usage_field: this.metrics.memory_usage
+    });
 
     return html`
       <div class="metrics-grid">
@@ -968,7 +1500,7 @@ export class VMDetailDrawer extends LitElement {
           </div>
           <div class="progress-bar">
             <div class="progress-fill ${this.getProgressClass(this.metrics.cpu_usage)}" 
-                 style="width: ${this.metrics.cpu_usage}%"></div>
+                 style="width: ${Math.min(this.metrics.cpu_usage, 100)}%"></div>
           </div>
         </div>
 
@@ -978,34 +1510,41 @@ export class VMDetailDrawer extends LitElement {
             <span class="metric-icon">🧠</span>
           </div>
           <div>
-            <span class="metric-value">${this.metrics.memory_usage.toFixed(1)}</span>
+            <span class="metric-value">${memoryUsagePercent.toFixed(1)}</span>
             <span class="metric-unit">%</span>
           </div>
           <div class="progress-bar">
-            <div class="progress-fill ${this.getProgressClass(this.metrics.memory_usage)}" 
-                 style="width: ${this.metrics.memory_usage}%"></div>
+            <div class="progress-fill ${this.getProgressClass(memoryUsagePercent)}" 
+                 style="width: ${Math.min(memoryUsagePercent, 100)}%"></div>
+          </div>
+          <div style="font-size: 11px; color: var(--vscode-descriptionForeground, #8b8b8b); margin-top: 4px;">
+            ${this.formatBytes(this.metrics.memory_used)} of ${this.formatMemory(vmMemoryMB * 1024)} used
           </div>
         </div>
 
         <div class="metric-card">
           <div class="metric-header">
-            <span class="metric-title">Disk I/O Read</span>
+            <span class="metric-title">Disk Read</span>
             <span class="metric-icon">📖</span>
           </div>
           <div>
-            <span class="metric-value">${(this.metrics.disk_read / 1000000).toFixed(1)}</span>
-            <span class="metric-unit">MB/s</span>
+            <span class="metric-value">${this.formatBytes(this.metrics.disk_read)}</span>
+          </div>
+          <div style="font-size: 11px; color: var(--vscode-descriptionForeground, #8b8b8b); margin-top: 4px;">
+            Total bytes read
           </div>
         </div>
 
         <div class="metric-card">
           <div class="metric-header">
-            <span class="metric-title">Disk I/O Write</span>
+            <span class="metric-title">Disk Write</span>
             <span class="metric-icon">✍️</span>
           </div>
           <div>
-            <span class="metric-value">${(this.metrics.disk_write / 1000000).toFixed(1)}</span>
-            <span class="metric-unit">MB/s</span>
+            <span class="metric-value">${this.formatBytes(this.metrics.disk_write)}</span>
+          </div>
+          <div style="font-size: 11px; color: var(--vscode-descriptionForeground, #8b8b8b); margin-top: 4px;">
+            Total bytes written
           </div>
         </div>
 
@@ -1015,8 +1554,10 @@ export class VMDetailDrawer extends LitElement {
             <span class="metric-icon">📥</span>
           </div>
           <div>
-            <span class="metric-value">${(this.metrics.network_rx / 1000000).toFixed(1)}</span>
-            <span class="metric-unit">Mbps</span>
+            <span class="metric-value">${this.formatBytes(this.metrics.network_rx)}</span>
+          </div>
+          <div style="font-size: 11px; color: var(--vscode-descriptionForeground, #8b8b8b); margin-top: 4px;">
+            Total received
           </div>
         </div>
 
@@ -1026,18 +1567,24 @@ export class VMDetailDrawer extends LitElement {
             <span class="metric-icon">📤</span>
           </div>
           <div>
-            <span class="metric-value">${(this.metrics.network_tx / 1000000).toFixed(1)}</span>
-            <span class="metric-unit">Mbps</span>
+            <span class="metric-value">${this.formatBytes(this.metrics.network_tx)}</span>
+          </div>
+          <div style="font-size: 11px; color: var(--vscode-descriptionForeground, #8b8b8b); margin-top: 4px;">
+            Total transmitted
           </div>
         </div>
 
         <div class="metric-card">
           <div class="metric-header">
-            <span class="metric-title">Uptime</span>
+            <span class="metric-title">CPU Time</span>
             <span class="metric-icon">⏱️</span>
           </div>
           <div>
-            <span class="metric-value">${this.formatUptime(this.metrics.uptime)}</span>
+            <span class="metric-value">${(this.metrics.cpu_time / 1000000000).toFixed(1)}</span>
+            <span class="metric-unit">s</span>
+          </div>
+          <div style="font-size: 11px; color: var(--vscode-descriptionForeground, #8b8b8b); margin-top: 4px;">
+            Total CPU time used
           </div>
         </div>
       </div>
@@ -1053,40 +1600,75 @@ export class VMDetailDrawer extends LitElement {
   }
 
   private renderStorageTab() {
+    const hasDisks = this.disks && this.disks.length > 0;
+    
     return html`
       <div class="section">
         <h3 class="section-title">Storage Devices</h3>
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Device</th>
-              <th>Path</th>
-              <th>Format</th>
-              <th>Bus</th>
-              <th>Size</th>
-              <th>Used</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${this.disks.map(disk => html`
+        ${hasDisks ? html`
+          <table class="data-table">
+            <thead>
               <tr>
-                <td><span class="monospace">${disk.name}</span></td>
-                <td><span class="monospace">${disk.path}</span></td>
-                <td>${disk.format.toUpperCase()}</td>
-                <td>${disk.bus.toUpperCase()}</td>
-                <td>${this.formatBytes(disk.size)}</td>
-                <td>${this.formatBytes(disk.used)} (${((disk.used / disk.size) * 100).toFixed(1)}%)</td>
-                <td>
-                  <span class="badge ${disk.readonly ? 'warning' : 'success'}">
-                    ${disk.readonly ? 'Read-Only' : 'Read/Write'}
-                  </span>
-                </td>
+                <th>Target</th>
+                <th>Type</th>
+                <th>Path</th>
+                <th>Format</th>
+                <th>Bus</th>
+                <th>Size</th>
+                <th>Status</th>
               </tr>
-            `)}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              ${this.disks.map(disk => html`
+                <tr>
+                  <td><span class="monospace">${disk.name}</span></td>
+                  <td>
+                    <span class="badge ${disk.device === 'cdrom' ? 'warning' : ''}">
+                      ${disk.device?.toUpperCase() || 'DISK'}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="monospace" style="font-size: 11px; word-break: break-all;">
+                      ${disk.path}
+                    </span>
+                  </td>
+                  <td>${disk.format.toUpperCase()}</td>
+                  <td>${disk.bus.toUpperCase()}</td>
+                  <td>${disk.size > 0 ? this.formatBytes(disk.size) : 'N/A'}</td>
+                  <td>
+                    <span class="badge ${disk.readonly ? 'warning' : 'success'}">
+                      ${disk.readonly ? 'Read-Only' : 'Read/Write'}
+                    </span>
+                  </td>
+                </tr>
+              `)}
+            </tbody>
+          </table>
+        ` : html`
+          <div class="empty-state">
+            <div class="empty-state-icon">💾</div>
+            <div class="empty-state-message">No storage devices attached</div>
+          </div>
+        `}
       </div>
+      
+      ${this.vmDetails?.storage ? html`
+        <div class="section">
+          <h3 class="section-title">Storage Configuration</h3>
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="info-label">Default Pool</span>
+              <span class="info-value">${this.vmDetails.storage.default_pool}</span>
+            </div>
+            ${this.vmDetails.storage.boot_iso ? html`
+              <div class="info-item">
+                <span class="info-label">Boot ISO</span>
+                <span class="info-value monospace">${this.vmDetails.storage.boot_iso}</span>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      ` : ''}
 
       ${this.vm?.disks ? html`
         <div class="section">
@@ -1185,19 +1767,19 @@ export class VMDetailDrawer extends LitElement {
         <div class="info-grid">
           <div class="info-item">
             <span class="info-label">Console Type</span>
-            <span class="info-value">${this.vm?.graphics?.[0]?.type?.toUpperCase() || 'VNC'}</span>
+            <span class="info-value">${(Array.isArray(this.vm?.graphics) ? this.vm?.graphics[0]?.type?.toUpperCase() : this.vm?.graphics?.type?.toUpperCase()) || 'VNC'}</span>
           </div>
           <div class="info-item">
             <span class="info-label">Port</span>
-            <span class="info-value">${this.vm?.graphics?.[0]?.port || 'Auto'}</span>
+            <span class="info-value">${(Array.isArray(this.vm?.graphics) ? this.vm?.graphics[0]?.port : this.vm?.graphics?.port) || 'Auto'}</span>
           </div>
           <div class="info-item">
             <span class="info-label">Listen Address</span>
-            <span class="info-value monospace">${this.vm?.graphics?.[0]?.listen || '0.0.0.0'}</span>
+            <span class="info-value monospace">${(Array.isArray(this.vm?.graphics) ? this.vm?.graphics[0]?.listen : (this.vm?.graphics as any)?.listen) || '0.0.0.0'}</span>
           </div>
           <div class="info-item">
             <span class="info-label">Password Protected</span>
-            <span class="info-value">${this.vm?.graphics?.[0]?.password ? 'Yes' : 'No'}</span>
+            <span class="info-value">${(Array.isArray(this.vm?.graphics) ? this.vm?.graphics[0]?.password : (this.vm?.graphics as any)?.password) ? 'Yes' : 'No'}</span>
           </div>
         </div>
       </div>
@@ -1219,8 +1801,11 @@ export class VMDetailDrawer extends LitElement {
   override render() {
     if (!this.vm) return html``;
 
-    const powerStateClass = this.vm.state.toLowerCase();
-    const powerStateText = this.vm.state.charAt(0).toUpperCase() + this.vm.state.slice(1);
+    // Use enhanced details state if available, fallback to basic VM state
+    const currentState = this.vmDetails?.state || this.vm.state;
+    const powerStateClass = currentState.toLowerCase().replace('shutoff', 'stopped');
+    const powerStateText = currentState === 'shutoff' ? 'Stopped' : 
+                           currentState.charAt(0).toUpperCase() + currentState.slice(1);
 
     return html`
       <div class="drawer">
@@ -1248,35 +1833,78 @@ export class VMDetailDrawer extends LitElement {
         </div>
 
         <div class="quick-actions">
-          ${this.vm.state === 'running' ? html`
-            <button class="action-btn" @click=${() => this.handlePowerAction('stop')}>
-              ⏹️ Stop
+          ${this.vm.state === 'running' || this.vmDetails?.state === 'running' ? html`
+            <button 
+              class="action-btn" 
+              @click=${() => this.handlePowerAction('stop')}
+              ?disabled=${this.isPowerActionLoading}
+            >
+              ${this.isPowerActionLoading ? html`<span class="spinner-small"></span>` : '⏹️'} Stop
             </button>
-            <button class="action-btn" @click=${() => this.handlePowerAction('restart')}>
-              🔄 Restart
+            <button 
+              class="action-btn" 
+              @click=${() => this.handlePowerAction('restart')}
+              ?disabled=${this.isPowerActionLoading}
+            >
+              ${this.isPowerActionLoading ? html`<span class="spinner-small"></span>` : '🔄'} Restart
             </button>
-            <button class="action-btn" @click=${() => this.handlePowerAction('pause')}>
-              ⏸️ Pause
+            <button 
+              class="action-btn" 
+              @click=${() => this.handlePowerAction('pause')}
+              ?disabled=${this.isPowerActionLoading}
+            >
+              ${this.isPowerActionLoading ? html`<span class="spinner-small"></span>` : '⏸️'} Pause
             </button>
-          ` : this.vm.state === 'paused' ? html`
-            <button class="action-btn primary" @click=${() => this.handlePowerAction('resume')}>
-              ▶️ Resume
+          ` : this.vm.state === 'paused' || this.vmDetails?.state === 'paused' ? html`
+            <button 
+              class="action-btn primary" 
+              @click=${() => this.handlePowerAction('resume')}
+              ?disabled=${this.isPowerActionLoading}
+            >
+              ${this.isPowerActionLoading ? html`<span class="spinner-small"></span>` : '▶️'} Resume
+            </button>
+            <button 
+              class="action-btn" 
+              @click=${() => this.handlePowerAction('stop')}
+              ?disabled=${this.isPowerActionLoading}
+            >
+              ${this.isPowerActionLoading ? html`<span class="spinner-small"></span>` : '⏹️'} Stop
             </button>
           ` : html`
-            <button class="action-btn primary" @click=${() => this.handlePowerAction('start')}>
-              ▶️ Start
+            <button 
+              class="action-btn primary" 
+              @click=${() => this.handlePowerAction('start')}
+              ?disabled=${this.isPowerActionLoading}
+            >
+              ${this.isPowerActionLoading ? html`<span class="spinner-small"></span>` : '▶️'} Start
             </button>
           `}
-          <button class="action-btn" @click=${this.handleConsoleConnect}>
+          <button 
+            class="action-btn" 
+            @click=${this.handleConsoleConnect}
+            ?disabled=${this.vm.state !== 'running' && this.vmDetails?.state !== 'running'}
+          >
             💻 Console
           </button>
-          <button class="action-btn" @click=${() => this.handlePowerAction('clone')}>
+          <button 
+            class="action-btn" 
+            @click=${() => this.handleCloneVM()}
+            ?disabled=${this.isPowerActionLoading}
+          >
             📋 Clone
           </button>
-          <button class="action-btn" @click=${() => this.handlePowerAction('snapshot')}>
+          <button 
+            class="action-btn" 
+            @click=${() => this.handleSnapshot()}
+            ?disabled=${this.isPowerActionLoading}
+          >
             📸 Snapshot
           </button>
-          <button class="action-btn danger" @click=${() => this.handlePowerAction('delete')}>
+          <button 
+            class="action-btn danger" 
+            @click=${() => this.handleDeleteVM()}
+            ?disabled=${this.isPowerActionLoading}
+          >
             🗑️ Delete
           </button>
         </div>
@@ -1325,6 +1953,86 @@ export class VMDetailDrawer extends LitElement {
           `}
         </div>
       </div>
+      
+      <!-- Delete Confirmation Modal -->
+      <div class="modal-overlay ${this.showDeleteModal ? 'show' : ''}">
+        <div class="modal">
+          <div class="modal-header">
+            <span class="modal-icon">⚠️</span>
+            <h3 class="modal-title">Delete Virtual Machine</h3>
+          </div>
+          
+          <div class="modal-body">
+            <p class="modal-message">
+              Are you sure you want to permanently delete this virtual machine?
+            </p>
+            
+            <div class="vm-info-box">
+              <div class="vm-info-row">
+                <span class="vm-info-label">Name:</span>
+                <span class="vm-info-value">${this.vm.name}</span>
+              </div>
+              <div class="vm-info-row">
+                <span class="vm-info-label">UUID:</span>
+                <span class="vm-info-value" style="font-family: monospace; font-size: 12px;">
+                  ${this.vmDetails?.uuid || this.vm.id}
+                </span>
+              </div>
+              <div class="vm-info-row">
+                <span class="vm-info-label">State:</span>
+                <span class="vm-info-value">${powerStateText}</span>
+              </div>
+              <div class="vm-info-row">
+                <span class="vm-info-label">Resources:</span>
+                <span class="vm-info-value">
+                  ${this.formatMemory(this.vmDetails?.memory || this.vm.memory)} RAM, 
+                  ${this.vmDetails?.vcpus || this.vm.vcpus} vCPUs
+                </span>
+              </div>
+            </div>
+            
+            <div class="warning-box">
+              <span class="warning-icon">⚠️</span>
+              <div>
+                <strong>Warning:</strong> This action cannot be undone. All data associated with this VM, 
+                including disks and snapshots, will be permanently deleted.
+              </div>
+            </div>
+          </div>
+          
+          <div class="modal-footer">
+            <button 
+              class="modal-btn cancel" 
+              @click=${this.cancelDelete}
+              ?disabled=${this.isDeleting}
+            >
+              Cancel
+            </button>
+            <button 
+              class="modal-btn delete" 
+              @click=${this.confirmDelete}
+              ?disabled=${this.isDeleting}
+            >
+              ${this.isDeleting ? html`
+                <span class="spinner-small"></span>
+                Deleting...
+              ` : html`
+                🗑️ Delete VM
+              `}
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- VM Console -->
+      ${this.showConsole && this.vm ? html`
+        <vm-console
+          .vmId=${this.vm.id}
+          .vmName=${this.vm.name}
+          .show=${this.showConsole}
+          @close=${this.handleConsoleClose}
+        ></vm-console>
+      ` : ''}
     `;
   }
 }
