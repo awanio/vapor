@@ -1,0 +1,45 @@
+type: object
+properties:
+  name:
+    type: string
+    description: Name of the storage volume
+    example: "vm01.qcow2"
+  type:
+    type: string
+    description: Type of the volume (file, block, dir)
+    enum: ["file", "block", "dir"]
+    example: "file"
+  capacity:
+    type: integer
+    format: int64
+    description: Total capacity of the volume in bytes
+    example: 10737418240
+  allocation:
+    type: integer
+    format: int64
+    description: Actual allocated space in bytes
+    example: 2147483648
+  path:
+    type: string
+    description: Full path to the volume on the host
+    example: "/var/lib/libvirt/images/vm01.qcow2"
+  format:
+    type: string
+    description: Volume format (qcow2, raw, vmdk, etc.)
+    example: "qcow2"
+  created_at:
+    type: string
+    format: date-time
+    description: Creation timestamp of the volume
+    example: "2024-08-22T10:30:00Z"
+  pool_name:
+    type: string
+    description: Name of the storage pool containing this volume
+    example: "default"
+required:
+  - name
+  - type
+  - capacity
+  - allocation
+  - path
+  - pool_name

@@ -81,3 +81,53 @@ func (s *Service) DeleteVolume(ctx context.Context, poolName, volumeName string)
 
 	return nil
 }
+
+// ListAllVolumes lists all volumes across all storage pools
+func (s *Service) ListAllVolumes(ctx context.Context) ([]StorageVolumeWithPool, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	// Get all storage pools
+	pools, err := s.conn.ListAllStoragePools(0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list storage pools: %w", err)
+	}
+
+	var allVolumes []StorageVolumeWithPool
+
+	// Iterate through each pool and get its volumes
+	for _, pool := range pools {
+		poolName, err := pool.GetName()
+		if err != nil {
+			pool.Free()
+			continue
+		}
+
+		// Get volumes in this pool
+		vols, err := pool.ListAllStorageVolumes(0)
+		if err != nil {
+			pool.Free()
+			continue // Skip pools that can't be accessed
+		}
+
+		// Convert each volume to our type
+		for _, vol := range vols {
+			sv, err := s.storageVolumeToType(&vol)
+			if err != nil {
+				vol.Free()
+				continue
+			}
+
+			volumeWithPool := StorageVolumeWithPool{
+				StorageVolume: *sv,
+				PoolName:      poolName,
+			}
+			allVolumes = append(allVolumes, volumeWithPool)
+			vol.Free()
+		}
+
+		pool.Free()
+	}
+
+	return allVolumes, nil
+}

@@ -269,6 +269,8 @@ paths:
     $ref: paths/virtualization_storages_pools_{pool_name}_volumes.yaml
   /virtualization/storages/pools/{pool_name}/volumes/{vol_name}:
     $ref: paths/virtualization_storages_pools_{pool_name}_volumes_{vol_name}.yaml
+  /virtualization/volumes:
+    $ref: paths/virtualization_volumes.yaml
   /virtualization/isos/upload:
     $ref: paths/virtualization_isos_upload.yaml
   /virtualization/isos/upload/{id}:
@@ -425,6 +427,10 @@ paths:
     $ref: paths/virtualization_computes_{id}_console_ws.yaml
   /virtualization/computes/{id}/console/stats:
     $ref: paths/virtualization_computes_{id}_console_stats.yaml
+  /virtualization/computes/{id}/metrics:
+    $ref: paths/virtualization_computes_{id}_metrics.yaml
+  /virtualization/computes/{id}/metrics/stream:
+    $ref: paths/virtualization_computes_{id}_metrics_stream.yaml
   /virtualization/computes/pci-devices:
     $ref: paths/virtualization_computes_pci-devices.yaml
   /virtualization/computes/{id}/pci-devices:

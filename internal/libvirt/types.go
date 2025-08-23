@@ -840,3 +840,9 @@ Interface string `json:"interface"`
 State     string `json:"state"`
 MAC       string `json:"mac,omitempty"`
 }
+
+// StorageVolumeWithPool includes volume info with its pool name
+type StorageVolumeWithPool struct {
+StorageVolume
+PoolName string `json:"pool_name"`
+}

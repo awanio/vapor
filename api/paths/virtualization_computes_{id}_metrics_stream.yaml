@@ -1,0 +1,91 @@
+get:
+  summary: Stream VM metrics via WebSocket
+  description: >
+    Establishes a WebSocket connection to stream real-time performance metrics
+    for a virtual machine.
+    
+    The server sends metrics at regular intervals as JSON messages.
+
+    **Protocol**: WebSocket (ws:// or wss://)
+
+    **Message Format**: JSON objects containing VMMetrics data
+
+    **Default Interval**: 5 seconds (configurable via query parameter)
+
+    **Client Messages**: Send any message to keep connection alive (ping/pong)
+
+    **Server Messages**: VMMetrics objects or error messages in JSON format
+  tags:
+    - Virtualization Compute
+  operationId: streamVMMetrics
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: VM ID (name or UUID)
+      schema:
+        type: string
+        example: "vm01"
+    - name: interval
+      in: query
+      required: false
+      description: Metrics update interval in seconds (minimum 1, default 5)
+      schema:
+        type: integer
+        minimum: 1
+        default: 5
+        example: 5
+  responses:
+    '101':
+      description: Switching Protocols - WebSocket connection established
+      headers:
+        Upgrade:
+          schema:
+            type: string
+            example: websocket
+        Connection:
+          schema:
+            type: string
+            example: Upgrade
+    '400':
+      description: Bad Request - Invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/APIError.yaml
+    '404':
+      description: Not Found - VM does not exist
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/APIError.yaml
+    '500':
+      description: Internal Server Error - Failed to upgrade connection
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/APIError.yaml
+  security:
+    - bearerAuth: []
+  x-websocket-message-examples:
+    server-to-client:
+      description: Metrics data sent by server
+      example:
+        uuid: "550e8400-e29b-41d4-a716-446655440000"
+        timestamp: "2024-08-22T10:30:00Z"
+        cpu_time: 1234567890000
+        cpu_usage: 45.2
+        memory_used: 2097152
+        memory_usage: 75.5
+        disk_read: 1073741824
+        disk_write: 536870912
+        network_rx: 104857600
+        network_tx: 52428800
+    error-message:
+      description: Error message sent by server
+      example:
+        error: "Failed to get VM metrics: domain not found"
+    client-to-server:
+      description: Keep-alive message from client (any content)
+      example:
+        type: "ping"

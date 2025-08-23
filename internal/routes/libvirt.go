@@ -125,6 +125,9 @@ func LibvirtRoutes(r *gin.RouterGroup, service *libvirt.Service) {
 		}
 	}
 
+	// Volumes (across all pools)
+	r.GET("/virtualization/volumes", listAllVolumes(service)) // List all volumes across all pools
+
 	// Network Management
 	networkGroup := r.Group("/virtualization/networks")
 	{
@@ -769,12 +772,33 @@ func getConsole(service *libvirt.Service) gin.HandlerFunc {
 		consoleType := c.DefaultQuery("type", "vnc")
 
 		console, err := service.GetConsole(c.Request.Context(), id, consoleType)
+
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			if strings.Contains(err.Error(), "not found") {
+				c.JSON(http.StatusNotFound, gin.H{
+					"status": "error",
+					"error": gin.H{
+						"code":    "VM_NOT_FOUND",
+						"message": "Virtual machine not found",
+						"details": err.Error(),
+					},
+				})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "GET_VM_CONSOLE_FAILED",
+					"message": "Failed to get virtual machine console",
+					"details": err.Error(),
+				},
+			})
 			return
 		}
-
-		c.JSON(http.StatusOK, console)
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data":   console,
+		})
 	}
 }
 
@@ -834,6 +858,7 @@ func vmConsoleWebSocket(service *libvirt.Service) gin.HandlerFunc {
 }
 
 func listTemplates(service *libvirt.Service) gin.HandlerFunc {
+
 	return func(c *gin.Context) {
 		templates, err := service.TemplateService.ListTemplates(c.Request.Context())
 		if err != nil {
@@ -913,8 +938,8 @@ func createTemplate(service *libvirt.Service) gin.HandlerFunc {
 				c.JSON(http.StatusNotFound, gin.H{
 					"status": "error",
 					"error": gin.H{
-						"code":    "VM_NOT_FOUND",
-						"message": "Virtual machine not found",
+						"code":    "TEMPLATE_NOT_FOUND",
+						"message": "Virtual machine template not found",
 						"details": err.Error(),
 					},
 				})
@@ -924,7 +949,7 @@ func createTemplate(service *libvirt.Service) gin.HandlerFunc {
 				"status": "error",
 				"error": gin.H{
 					"code":    "GET_VM_FAILED",
-					"message": "Failed to get virtual machine",
+					"message": "Failed to get virtual machine template",
 					"details": err.Error(),
 				},
 			})
@@ -1150,6 +1175,24 @@ func deleteStoragePool(service *libvirt.Service) gin.HandlerFunc {
 	}
 }
 
+// listAllVolumes returns all volumes across all storage pools
+func listAllVolumes(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		volumes, err := service.ListAllVolumes(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error":  err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data":   volumes,
+		})
+	}
+}
 func listVolumesInPool(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		poolName := c.Param("name")

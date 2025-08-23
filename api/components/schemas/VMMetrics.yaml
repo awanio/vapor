@@ -1,0 +1,65 @@
+type: object
+properties:
+  uuid:
+    type: string
+    format: uuid
+    description: UUID of the virtual machine
+    example: "550e8400-e29b-41d4-a716-446655440000"
+  timestamp:
+    type: string
+    format: date-time
+    description: Timestamp when metrics were collected
+    example: "2024-08-22T10:30:00Z"
+  cpu_time:
+    type: integer
+    format: int64
+    description: Total CPU time used in nanoseconds
+    example: 1234567890000
+  cpu_usage:
+    type: number
+    format: float
+    minimum: 0
+    maximum: 100
+    description: CPU usage percentage
+    example: 45.2
+  memory_used:
+    type: integer
+    format: int64
+    description: Memory used in kilobytes
+    example: 2097152
+  memory_usage:
+    type: number
+    format: float
+    minimum: 0
+    maximum: 100
+    description: Memory usage percentage
+    example: 75.5
+  disk_read:
+    type: integer
+    format: int64
+    description: Total bytes read from disk
+    example: 1073741824
+  disk_write:
+    type: integer
+    format: int64
+    description: Total bytes written to disk
+    example: 536870912
+  network_rx:
+    type: integer
+    format: int64
+    description: Total bytes received over network
+    example: 104857600
+  network_tx:
+    type: integer
+    format: int64
+    description: Total bytes transmitted over network
+    example: 52428800
+required:
+  - uuid
+  - timestamp
+  - cpu_time
+  - memory_used
+  - disk_read
+  - disk_write
+  - network_rx
+  - network_tx

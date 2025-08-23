@@ -1,0 +1,54 @@
+get:
+  summary: Get VM performance metrics
+  description: >
+    Retrieves current performance metrics for a virtual machine including CPU,
+    memory, disk I/O, and network statistics.
+  tags:
+    - Virtualization Compute
+  operationId: getVMMetrics
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: VM ID (name or UUID)
+      schema:
+        type: string
+        example: "vm01"
+  responses:
+    '200':
+      description: VM metrics retrieved successfully
+      content:
+        application/json:
+          schema:
+            allOf:
+              - type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                    example: success
+                  data:
+                    $ref: ../components/schemas/VMMetrics.yaml
+              - type: object
+                required:
+                  - status
+                  - data
+          example:
+            status: success
+            data:
+              uuid: "550e8400-e29b-41d4-a716-446655440000"
+              timestamp: "2024-08-22T10:30:00Z"
+              cpu_time: 1234567890000
+              cpu_usage: 45.2
+              memory_used: 2097152
+              memory_usage: 75.5
+              disk_read: 1073741824
+              disk_write: 536870912
+              network_rx: 104857600
+              network_tx: 52428800
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml
+  security:
+    - bearerAuth: []
