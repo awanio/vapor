@@ -8,15 +8,25 @@ import (
 	"strings"
 	"time"
 
+	"github.com/awanio/vapor/internal/auth"
 	"github.com/awanio/vapor/internal/libvirt"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
 
 // LibvirtRoutes sets up libvirt VM management routes
-func LibvirtRoutes(r *gin.RouterGroup, service *libvirt.Service) {
+func LibvirtRoutes(r *gin.RouterGroup, authService *auth.EnhancedService, service *libvirt.Service) {
+
+	// exclude from auth header token middleware
+	r.GET("/virtualization/computes/:id/console/ws", vmConsoleWebSocket(service)) // WebSocket console
+
+	r.Use(authService.AuthMiddleware())
+
 	vmGroup := r.Group("/virtualization/computes")
 	{
+		// Console Access
+		vmGroup.GET("/:id/console", getConsole(service)) // Get console connection info
+
 		// VM Management
 		vmGroup.GET("", listVMs(service))                               // List all VMs
 		vmGroup.GET("/:id", getVM(service))                             // Get VM details
@@ -26,6 +36,7 @@ func LibvirtRoutes(r *gin.RouterGroup, service *libvirt.Service) {
 		vmGroup.DELETE("/:id", deleteVM(service))                       // Delete VM
 		vmGroup.POST("/:id/action", vmAction(service))                  // VM actions (start, stop, etc.)
 		vmGroup.POST("/:id/network-link", setNetworkLinkState(service)) // Set network interface link state
+		vmGroup.GET("/:id/interfaces/:interface-name", getNetworkLinkState(service)) // Get network interface link state
 
 		// Snapshots
 		vmGroup.GET("/:id/snapshots/capabilities", getSnapshotCapabilities(service)) // Check snapshot capabilities
@@ -46,10 +57,6 @@ func LibvirtRoutes(r *gin.RouterGroup, service *libvirt.Service) {
 		// Metrics & Monitoring
 		vmGroup.GET("/:id/metrics", getVMMetrics(service))           // Get VM metrics
 		vmGroup.GET("/:id/metrics/stream", streamVMMetrics(service)) // Stream metrics via WebSocket
-
-		// Console Access
-		vmGroup.GET("/:id/console", getConsole(service))            // Get console connection info
-		vmGroup.GET("/:id/console/ws", vmConsoleWebSocket(service)) // WebSocket console
 
 		// Templates
 		vmGroup.GET("/templates", listTemplates(service))             // List VM templates
@@ -448,6 +455,49 @@ func setNetworkLinkState(service *libvirt.Service) gin.HandlerFunc {
 				"error": gin.H{
 					"code":    "INTERNAL_ERROR",
 					"message": "Failed to set network link state",
+					"details": err.Error(),
+				},
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, resp)
+	}
+}
+
+func getNetworkLinkState(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		interfaceName := c.Param("interface-name")
+		
+		if interfaceName == "" {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "INVALID_REQUEST",
+					"message": "Interface name is required",
+				},
+			})
+			return
+		}
+
+		resp, err := service.GetNetworkLinkState(c.Request.Context(), id, interfaceName)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				c.JSON(http.StatusNotFound, gin.H{
+					"status": "error",
+					"error": gin.H{
+						"code":    "NOT_FOUND",
+						"message": err.Error(),
+					},
+				})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "INTERNAL_ERROR",
+					"message": "Failed to get network link state",
 					"details": err.Error(),
 				},
 			})

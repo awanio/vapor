@@ -105,8 +105,22 @@ func main() {
 	router.POST("/api/v1/auth/challenge/verify", authService.VerifySSHChallenge)
 	router.GET("/api/v1/auth/users/:username/keys", authService.GetUserKeys)
 
-	// Protected API routes
 	api := router.Group("/api/v1")
+
+	// Libvirt VM management endpoints
+	libvirtURI := cfg.GetLibvirtURI() // You'll need to add this to config
+	libvirtService, err := libvirt.NewService(libvirtURI)
+	if err != nil {
+		log.Printf("Warning: Libvirt integration disabled: %v", err)
+	} else {
+		// Set database for backup tracking
+		libvirtService.SetDatabase(db.DB)
+		log.Printf("Libvirt integration initialized with URI: %s", libvirtURI)
+		routes.LibvirtRoutes(api, authService, libvirtService)
+		defer libvirtService.Close() // Close service when server shuts down
+	}
+
+	// Protected API routes
 	api.Use(authService.AuthMiddleware())
 	{
 		// Network routes
@@ -160,19 +174,6 @@ func main() {
 				routes.AnsibleRoutes(api, ansibleExec)
 				defer ansibleExec.Close() // Close executor when server shuts down
 			}
-		}
-
-		// Libvirt VM management endpoints
-		libvirtURI := cfg.GetLibvirtURI() // You'll need to add this to config
-		libvirtService, err := libvirt.NewService(libvirtURI)
-		if err != nil {
-			log.Printf("Warning: Libvirt integration disabled: %v", err)
-		} else {
-			// Set database for backup tracking
-			libvirtService.SetDatabase(db.DB)
-			log.Printf("Libvirt integration initialized with URI: %s", libvirtURI)
-			routes.LibvirtRoutes(api, libvirtService)
-			defer libvirtService.Close() // Close service when server shuts down
 		}
 	}
 
