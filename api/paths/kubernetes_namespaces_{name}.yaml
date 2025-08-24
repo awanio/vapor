@@ -1,6 +1,16 @@
 get:
-  summary: Get detailed namespace information
-  description: Get detailed information about a specific namespace
+  summary: Get detailed Namespace information
+  description: |
+    Get detailed information about a specific Namespace.
+    
+    Supports both JSON and YAML response formats based on the Accept header:
+    - `application/json` (default) - Returns Namespace wrapped in API response
+    - `application/yaml`, `text/yaml`, `application/x-yaml` - Returns raw Kubernetes YAML with cleaned metadata
+    
+    When YAML format is requested, the following fields are automatically removed for cleaner output:
+    - `metadata.managedFields` - Verbose internal field tracking
+    - `metadata.selfLink` - Deprecated field  
+    - `metadata.uid` - Auto-generated identifier
   tags:
     - Kubernetes
   security:
@@ -12,6 +22,29 @@ get:
       description: Namespace name
       schema:
         type: string
+    - name: Accept
+      in: header
+      required: false
+      description: |
+        Response format preference. Supported values:
+        - `application/json` (default)
+        - `application/yaml`
+        - `application/x-yaml`
+        - `application/yml`
+        - `text/yaml`
+        - `text/yml`
+        - `text/x-yaml`
+      schema:
+        type: string
+        default: application/json
+        enum:
+          - application/json
+          - application/yaml
+          - application/x-yaml
+          - application/yml
+          - text/yaml
+          - text/yml
+          - text/x-yaml
   responses:
     '200':
       description: Namespace details retrieved successfully
@@ -19,6 +52,24 @@ get:
         application/json:
           schema:
             $ref: ../components/schemas/NamespaceDetailResponse.yaml
+        application/yaml:
+          schema:
+            $ref: ../components/schemas/NamespaceYAML.yaml
+        application/x-yaml:
+          schema:
+            $ref: ../components/schemas/NamespaceYAML.yaml
+        text/yaml:
+          schema:
+            $ref: ../components/schemas/NamespaceYAML.yaml
+        text/x-yaml:
+          schema:
+            $ref: ../components/schemas/NamespaceYAML.yaml
+        application/yml:
+          schema:
+            $ref: ../components/schemas/NamespaceYAML.yaml
+        text/yml:
+          schema:
+            $ref: ../components/schemas/NamespaceYAML.yaml
     '401':
       $ref: ../components/responses/UnauthorizedError.yaml
     '404':
@@ -27,6 +78,24 @@ get:
         application/json:
           schema:
             $ref: ../components/schemas/ErrorResponse.yaml
+        application/yaml:
+          schema:
+            $ref: ../components/schemas/ErrorResponseYAML.yaml
+        text/yaml:
+          schema:
+            $ref: ../components/schemas/ErrorResponseYAML.yaml
+    '500':
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+        application/yaml:
+          schema:
+            $ref: ../components/schemas/ErrorResponseYAML.yaml
+        text/yaml:
+          schema:
+            $ref: ../components/schemas/ErrorResponseYAML.yaml
     '503':
       $ref: ../components/responses/KubernetesNotInstalledError.yaml
 put:

@@ -1,0 +1,36 @@
+type: string
+format: yaml
+description: |
+  Kubernetes ConfigMap object in YAML format with cleaned metadata.
+  The following fields are automatically removed for cleaner output:
+  - metadata.managedFields (verbose internal field tracking)
+  - metadata.selfLink (deprecated field)
+  - metadata.uid (auto-generated identifier)
+example: |
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: app-config
+    namespace: default
+    resourceVersion: '4567'
+    creationTimestamp: '2024-01-15T09:00:00Z'
+    labels:
+      app: myapp
+      environment: production
+    annotations:
+      description: Application configuration
+  data:
+    database.conf: |
+      host=db.example.com
+      port=5432
+      name=myapp
+    app.properties: |
+      logging.level=INFO
+      cache.enabled=true
+      cache.ttl=3600
+    config.json: |
+      {
+        "apiUrl": "https://api.example.com",
+        "timeout": 30,
+        "retries": 3
+      }

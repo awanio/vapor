@@ -289,17 +289,33 @@ func (h *Handler) ListConfigMapsGin(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"configmaps": configmaps, "count": len(configmaps)})
 }
 
+// GetConfigMapDetailGin handles requests to get configmap details
+// Supports both JSON and YAML responses based on Accept header
 func (h *Handler) GetConfigMapDetailGin(c *gin.Context) {
-	namespace := c.Param("namespace")
-	name := c.Param("name")
+namespace := c.Param("namespace")
+name := c.Param("name")
 
-	configmapDetail, err := h.service.GetConfigMapDetail(c.Request.Context(), namespace, name)
-	if err != nil {
-		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get configmap details", err.Error())
-		return
-	}
-	common.SendSuccess(c, gin.H{"configmap_detail": configmapDetail})
+configMapDetail, err := h.service.GetConfigMapDetail(c.Request.Context(), namespace, name)
+if err != nil {
+// Check if YAML response is requested for error responses
+if isYAMLRequested(c) {
+respondYAMLError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get configmap details", err.Error())
+return
 }
+common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get configmap details", err.Error())
+return
+}
+
+// Check Accept header for YAML response
+if isYAMLRequested(c) {
+respondYAML(c, configMapDetail)
+return
+}
+
+// Default JSON response
+common.SendSuccess(c, gin.H{"configmap_detail": configMapDetail})
+}
+
 
 func (h *Handler) ListNamespacesGin(c *gin.Context) {
 	namespaces, err := h.service.ListNamespaces(c.Request.Context(), nil)
@@ -310,16 +326,32 @@ func (h *Handler) ListNamespacesGin(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"namespaces": namespaces, "count": len(namespaces)})
 }
 
+// GetNamespaceDetailGin handles requests to get namespace details
+// Supports both JSON and YAML responses based on Accept header
 func (h *Handler) GetNamespaceDetailGin(c *gin.Context) {
-	name := c.Param("name")
+name := c.Param("name")
 
-	namespaceDetail, err := h.service.GetNamespaceDetail(c.Request.Context(), name)
-	if err != nil {
-		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get namespace details", err.Error())
-		return
-	}
-	common.SendSuccess(c, gin.H{"namespace_detail": namespaceDetail})
+namespaceDetail, err := h.service.GetNamespaceDetail(c.Request.Context(), name)
+if err != nil {
+// Check if YAML response is requested for error responses
+if isYAMLRequested(c) {
+respondYAMLError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get namespace details", err.Error())
+return
 }
+common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get namespace details", err.Error())
+return
+}
+
+// Check Accept header for YAML response
+if isYAMLRequested(c) {
+respondYAML(c, namespaceDetail)
+return
+}
+
+// Default JSON response
+common.SendSuccess(c, gin.H{"namespace_detail": namespaceDetail})
+}
+
 
 func (h *Handler) ListNodesGin(c *gin.Context) {
 	nodes, err := h.service.ListNodes(c.Request.Context(), nil)
@@ -330,16 +362,32 @@ func (h *Handler) ListNodesGin(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"nodes": nodes, "count": len(nodes)})
 }
 
+// GetNodeDetailGin handles requests to get node details
+// Supports both JSON and YAML responses based on Accept header
 func (h *Handler) GetNodeDetailGin(c *gin.Context) {
-	name := c.Param("name")
+name := c.Param("name")
 
-	nodeDetail, err := h.service.GetNodeDetail(c.Request.Context(), name)
-	if err != nil {
-		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get node details", err.Error())
-		return
-	}
-	common.SendSuccess(c, gin.H{"node_detail": nodeDetail})
+nodeDetail, err := h.service.GetNodeDetail(c.Request.Context(), name)
+if err != nil {
+// Check if YAML response is requested for error responses
+if isYAMLRequested(c) {
+respondYAMLError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get node details", err.Error())
+return
 }
+common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get node details", err.Error())
+return
+}
+
+// Check Accept header for YAML response
+if isYAMLRequested(c) {
+respondYAML(c, nodeDetail)
+return
+}
+
+// Default JSON response
+common.SendSuccess(c, gin.H{"node_detail": nodeDetail})
+}
+
 
 func (h *Handler) ListDaemonSetsGin(c *gin.Context) {
 	daemonsets, err := h.service.ListDaemonSets(c.Request.Context(), nil)
@@ -350,17 +398,33 @@ func (h *Handler) ListDaemonSetsGin(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"daemonsets": daemonsets, "count": len(daemonsets)})
 }
 
+// GetDaemonSetDetailGin handles requests to get daemonset details
+// Supports both JSON and YAML responses based on Accept header
 func (h *Handler) GetDaemonSetDetailGin(c *gin.Context) {
-	namespace := c.Param("namespace")
-	name := c.Param("name")
+namespace := c.Param("namespace")
+name := c.Param("name")
 
-	daemonsetDetail, err := h.service.GetDaemonSetDetail(c.Request.Context(), namespace, name)
-	if err != nil {
-		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get daemonset details", err.Error())
-		return
-	}
-	common.SendSuccess(c, gin.H{"daemonset_detail": daemonsetDetail})
+daemonSetDetail, err := h.service.GetDaemonSetDetail(c.Request.Context(), namespace, name)
+if err != nil {
+// Check if YAML response is requested for error responses
+if isYAMLRequested(c) {
+respondYAMLError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get daemonset details", err.Error())
+return
 }
+common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get daemonset details", err.Error())
+return
+}
+
+// Check Accept header for YAML response
+if isYAMLRequested(c) {
+respondYAML(c, daemonSetDetail)
+return
+}
+
+// Default JSON response
+common.SendSuccess(c, gin.H{"daemonset_detail": daemonSetDetail})
+}
+
 
 func (h *Handler) ListStatefulSetsGin(c *gin.Context) {
 	statefulsets, err := h.service.ListStatefulSets(c.Request.Context(), nil)
@@ -371,17 +435,33 @@ func (h *Handler) ListStatefulSetsGin(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"statefulsets": statefulsets, "count": len(statefulsets)})
 }
 
+// GetStatefulSetDetailGin handles requests to get statefulset details
+// Supports both JSON and YAML responses based on Accept header
 func (h *Handler) GetStatefulSetDetailGin(c *gin.Context) {
-	namespace := c.Param("namespace")
-	name := c.Param("name")
+namespace := c.Param("namespace")
+name := c.Param("name")
 
-	statefulsetDetail, err := h.service.GetStatefulSetDetail(c.Request.Context(), namespace, name)
-	if err != nil {
-		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get statefulset details", err.Error())
-		return
-	}
-	common.SendSuccess(c, gin.H{"statefulset_detail": statefulsetDetail})
+statefulSetDetail, err := h.service.GetStatefulSetDetail(c.Request.Context(), namespace, name)
+if err != nil {
+// Check if YAML response is requested for error responses
+if isYAMLRequested(c) {
+respondYAMLError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get statefulset details", err.Error())
+return
 }
+common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get statefulset details", err.Error())
+return
+}
+
+// Check Accept header for YAML response
+if isYAMLRequested(c) {
+respondYAML(c, statefulSetDetail)
+return
+}
+
+// Default JSON response
+common.SendSuccess(c, gin.H{"statefulset_detail": statefulSetDetail})
+}
+
 
 func (h *Handler) ListJobsGin(c *gin.Context) {
 	jobs, err := h.service.ListJobs(c.Request.Context(), nil)

@@ -1,0 +1,75 @@
+type: string
+format: yaml
+description: |
+  Kubernetes StatefulSet object in YAML format with cleaned metadata.
+  The following fields are automatically removed for cleaner output:
+  - metadata.managedFields (verbose internal field tracking)
+  - metadata.selfLink (deprecated field)
+  - metadata.uid (auto-generated identifier)
+example: |
+  apiVersion: apps/v1
+  kind: StatefulSet
+  metadata:
+    name: web
+    namespace: default
+    resourceVersion: '7890'
+    generation: 3
+    creationTimestamp: '2024-01-15T09:00:00Z'
+    labels:
+      app: nginx
+    annotations:
+      description: Stateful web application
+  spec:
+    serviceName: nginx
+    replicas: 3
+    selector:
+      matchLabels:
+        app: nginx
+    template:
+      metadata:
+        labels:
+          app: nginx
+      spec:
+        containers:
+        - name: nginx
+          image: nginx:1.21-alpine
+          ports:
+          - containerPort: 80
+            name: web
+          volumeMounts:
+          - name: www
+            mountPath: /usr/share/nginx/html
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+    volumeClaimTemplates:
+    - metadata:
+        name: www
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        storageClassName: standard
+        resources:
+          requests:
+            storage: 1Gi
+    updateStrategy:
+      type: RollingUpdate
+      rollingUpdate:
+        partition: 0
+    podManagementPolicy: OrderedReady
+    revisionHistoryLimit: 10
+    minReadySeconds: 10
+  status:
+    observedGeneration: 3
+    replicas: 3
+    readyReplicas: 3
+    currentReplicas: 3
+    updatedReplicas: 3
+    currentRevision: web-6b4f6b5d4f
+    updateRevision: web-6b4f6b5d4f
+    collisionCount: 0
+    availableReplicas: 3

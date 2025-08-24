@@ -1,0 +1,58 @@
+type: string
+format: yaml
+description: |
+  Kubernetes Node object in YAML format with cleaned metadata.
+  The following fields are automatically removed for cleaner output:
+  - metadata.managedFields (verbose internal field tracking)
+  - metadata.selfLink (deprecated field)
+  - metadata.uid (auto-generated identifier)
+example: |
+  apiVersion: v1
+  kind: Node
+  metadata:
+    name: worker-node-1
+    resourceVersion: '9876'
+    creationTimestamp: '2024-01-15T09:00:00Z'
+    labels:
+      kubernetes.io/hostname: worker-node-1
+      node-role.kubernetes.io/worker: 'true'
+      kubernetes.io/os: linux
+      kubernetes.io/arch: amd64
+    annotations:
+      kubeadm.alpha.kubernetes.io/cri-socket: /var/run/containerd/containerd.sock
+  spec:
+    podCIDR: 10.244.1.0/24
+    podCIDRs:
+    - 10.244.1.0/24
+    taints:
+    - key: node.kubernetes.io/unreachable
+      effect: NoSchedule
+  status:
+    capacity:
+      cpu: '8'
+      memory: 32Gi
+      pods: '110'
+    allocatable:
+      cpu: '7900m'
+      memory: 31Gi
+      pods: '110'
+    conditions:
+    - type: Ready
+      status: 'True'
+      lastHeartbeatTime: '2024-01-15T10:00:00Z'
+      lastTransitionTime: '2024-01-15T09:00:00Z'
+      reason: KubeletReady
+      message: kubelet is posting ready status
+    addresses:
+    - type: InternalIP
+      address: 192.168.1.10
+    - type: Hostname
+      address: worker-node-1
+    nodeInfo:
+      machineID: 1234567890abcdef
+      systemUUID: 1234567890abcdef
+      kernelVersion: 5.15.0-88-generic
+      osImage: Ubuntu 22.04.3 LTS
+      containerRuntimeVersion: containerd://1.7.2
+      kubeletVersion: v1.28.2
+      kubeProxyVersion: v1.28.2
