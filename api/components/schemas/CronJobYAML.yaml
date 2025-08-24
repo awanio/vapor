@@ -1,0 +1,70 @@
+type: string
+format: yaml
+description: |
+  Kubernetes CronJob object in YAML format with cleaned metadata.
+  The following fields are automatically removed for cleaner output:
+  - metadata.managedFields (verbose internal field tracking)
+  - metadata.selfLink (deprecated field)
+  - metadata.uid (auto-generated identifier)
+example: |
+  apiVersion: batch/v1
+  kind: CronJob
+  metadata:
+    name: backup-cronjob
+    namespace: default
+    resourceVersion: '4567'
+    generation: 2
+    creationTimestamp: '2024-01-15T09:00:00Z'
+    labels:
+      app: backup
+      type: scheduled
+    annotations:
+      description: Daily backup job
+  spec:
+    schedule: "0 2 * * *"
+    concurrencyPolicy: Forbid
+    successfulJobsHistoryLimit: 3
+    failedJobsHistoryLimit: 1
+    startingDeadlineSeconds: 200
+    suspend: false
+    jobTemplate:
+      metadata:
+        labels:
+          app: backup
+      spec:
+        backoffLimit: 3
+        activeDeadlineSeconds: 3600
+        ttlSecondsAfterFinished: 86400
+        template:
+          metadata:
+            labels:
+              app: backup
+          spec:
+            containers:
+            - name: backup
+              image: backup-tool:latest
+              command:
+              - /bin/sh
+              - -c
+              - echo "Running backup at $(date)" && /backup.sh
+              env:
+              - name: BACKUP_DESTINATION
+                value: /backup
+              volumeMounts:
+              - name: backup-storage
+                mountPath: /backup
+              resources:
+                requests:
+                  memory: "256Mi"
+                  cpu: "500m"
+                limits:
+                  memory: "512Mi"
+                  cpu: "1000m"
+            restartPolicy: OnFailure
+            volumes:
+            - name: backup-storage
+              persistentVolumeClaim:
+                claimName: backup-pvc
+  status:
+    lastScheduleTime: '2024-01-15T02:00:00Z'
+    lastSuccessfulTime: '2024-01-15T02:05:00Z'

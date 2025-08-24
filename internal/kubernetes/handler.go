@@ -472,17 +472,33 @@ func (h *Handler) ListJobsGin(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"jobs": jobs, "count": len(jobs)})
 }
 
+// GetJobDetailGin handles requests to get job details
+// Supports both JSON and YAML responses based on Accept header
 func (h *Handler) GetJobDetailGin(c *gin.Context) {
-	namespace := c.Param("namespace")
-	name := c.Param("name")
+namespace := c.Param("namespace")
+name := c.Param("name")
 
-	jobDetail, err := h.service.GetJobDetail(c.Request.Context(), namespace, name)
-	if err != nil {
-		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get job details", err.Error())
-		return
-	}
-	common.SendSuccess(c, gin.H{"job_detail": jobDetail})
+jobDetail, err := h.service.GetJobDetail(c.Request.Context(), namespace, name)
+if err != nil {
+// Check if YAML response is requested for error responses
+if isYAMLRequested(c) {
+respondYAMLError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get job details", err.Error())
+return
 }
+common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get job details", err.Error())
+return
+}
+
+// Check Accept header for YAML response
+if isYAMLRequested(c) {
+respondYAML(c, jobDetail)
+return
+}
+
+// Default JSON response
+common.SendSuccess(c, gin.H{"job_detail": jobDetail})
+}
+
 
 func (h *Handler) ListCronJobsGin(c *gin.Context) {
 	cronjobs, err := h.service.ListCronJobs(c.Request.Context(), nil)
@@ -493,17 +509,33 @@ func (h *Handler) ListCronJobsGin(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"cronjobs": cronjobs, "count": len(cronjobs)})
 }
 
+// GetCronJobDetailGin handles requests to get cronjob details
+// Supports both JSON and YAML responses based on Accept header
 func (h *Handler) GetCronJobDetailGin(c *gin.Context) {
-	namespace := c.Param("namespace")
-	name := c.Param("name")
+namespace := c.Param("namespace")
+name := c.Param("name")
 
-	cronjobDetail, err := h.service.GetCronJobDetail(c.Request.Context(), namespace, name)
-	if err != nil {
-		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get cronjob details", err.Error())
-		return
-	}
-	common.SendSuccess(c, gin.H{"cronjob_detail": cronjobDetail})
+cronJobDetail, err := h.service.GetCronJobDetail(c.Request.Context(), namespace, name)
+if err != nil {
+// Check if YAML response is requested for error responses
+if isYAMLRequested(c) {
+respondYAMLError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get cronjob details", err.Error())
+return
 }
+common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get cronjob details", err.Error())
+return
+}
+
+// Check Accept header for YAML response
+if isYAMLRequested(c) {
+respondYAML(c, cronJobDetail)
+return
+}
+
+// Default JSON response
+common.SendSuccess(c, gin.H{"cronjob_detail": cronJobDetail})
+}
+
 
 func (h *Handler) ListCRDsGin(c *gin.Context) {
 	crds, err := h.service.ListCRDs(c.Request.Context(), nil)
@@ -537,18 +569,34 @@ func (h *Handler) ListCRDObjectsGin(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"instances": crdObjects, "count": len(crdObjects)})
 }
 
+// GetCRDObjectDetailGin handles requests to get CRD object details
+// Supports both JSON and YAML responses based on Accept header
 func (h *Handler) GetCRDObjectDetailGin(c *gin.Context) {
-	crdName := c.Param("name")
-	namespace := c.Param("namespace")
-	objectName := c.Param("object-name")
+crdName := c.Param("name")
+namespace := c.Param("namespace")
+objectName := c.Param("object-name")
 
-	crdObjectDetail, err := h.service.GetCRDObjectDetail(c.Request.Context(), crdName, objectName, namespace)
-	if err != nil {
-		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get CRD object details", err.Error())
-		return
-	}
-	common.SendSuccess(c, gin.H{"instance_detail": crdObjectDetail})
+crdObject, err := h.service.GetCRDObjectDetail(c.Request.Context(), crdName, namespace, objectName)
+if err != nil {
+// Check if YAML response is requested for error responses
+if isYAMLRequested(c) {
+respondYAMLError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get CRD object details", err.Error())
+return
 }
+common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get CRD object details", err.Error())
+return
+}
+
+// Check Accept header for YAML response
+if isYAMLRequested(c) {
+respondYAML(c, crdObject)
+return
+}
+
+// Default JSON response
+common.SendSuccess(c, gin.H{"object": crdObject})
+}
+
 
 func (h *Handler) GetClusterInfoGin(c *gin.Context) {
 	clusterInfo, err := h.service.GetClusterInfo(c.Request.Context(), nil)
@@ -730,20 +778,32 @@ func (h *Handler) ListIngressClassesGin(c *gin.Context) {
 }
 
 // GetIngressClassDetailGin gets ingress class details
+// GetIngressClassDetailGin handles requests to get ingressclass details
+// Supports both JSON and YAML responses based on Accept header
 func (h *Handler) GetIngressClassDetailGin(c *gin.Context) {
-	name := c.Param("name")
+name := c.Param("name")
 
-	ingressClass, err := h.service.GetIngressClassDetail(c.Request.Context(), name)
-	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "IngressClass not found", err.Error())
-		} else {
-			common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get ingress class details", err.Error())
-		}
-		return
-	}
-	common.SendSuccess(c, gin.H{"ingressClass_detail": ingressClass})
+ingressClass, err := h.service.GetIngressClassDetail(c.Request.Context(), name)
+if err != nil {
+// Check if YAML response is requested for error responses
+if isYAMLRequested(c) {
+respondYAMLError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get ingress class details", err.Error())
+return
 }
+common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get ingress class details", err.Error())
+return
+}
+
+// Check Accept header for YAML response
+if isYAMLRequested(c) {
+respondYAML(c, ingressClass)
+return
+}
+
+// Default JSON response
+common.SendSuccess(c, gin.H{"ingress_class": ingressClass})
+}
+
 
 // DeleteIngressClassGin handles ingress class deletion
 func (h *Handler) DeleteIngressClassGin(c *gin.Context) {
@@ -877,21 +937,33 @@ func (h *Handler) ListNetworkPoliciesGin(c *gin.Context) {
 }
 
 // GetNetworkPolicyDetailGin gets network policy details
+// GetNetworkPolicyDetailGin handles requests to get networkpolicy details
+// Supports both JSON and YAML responses based on Accept header
 func (h *Handler) GetNetworkPolicyDetailGin(c *gin.Context) {
-	namespace := c.Param("namespace")
-	name := c.Param("name")
+namespace := c.Param("namespace")
+name := c.Param("name")
 
-	policy, err := h.service.GetNetworkPolicyDetail(c.Request.Context(), namespace, name)
-	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "NetworkPolicy not found", err.Error())
-		} else {
-			common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get network policy details", err.Error())
-		}
-		return
-	}
-	common.SendSuccess(c, gin.H{"networkPolicy_detail": policy})
+networkPolicy, err := h.service.GetNetworkPolicyDetail(c.Request.Context(), namespace, name)
+if err != nil {
+// Check if YAML response is requested for error responses
+if isYAMLRequested(c) {
+respondYAMLError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get network policy details", err.Error())
+return
 }
+common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get network policy details", err.Error())
+return
+}
+
+// Check Accept header for YAML response
+if isYAMLRequested(c) {
+respondYAML(c, networkPolicy)
+return
+}
+
+// Default JSON response
+common.SendSuccess(c, gin.H{"network_policy": networkPolicy})
+}
+
 
 // DeleteNetworkPolicyGin handles network policy deletion
 func (h *Handler) DeleteNetworkPolicyGin(c *gin.Context) {

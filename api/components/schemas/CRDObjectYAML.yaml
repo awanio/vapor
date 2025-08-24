@@ -1,0 +1,47 @@
+type: string
+format: yaml
+description: |
+  Custom Resource Definition (CRD) object instance in YAML format with cleaned metadata.
+  The following fields are automatically removed for cleaner output:
+  - metadata.managedFields (verbose internal field tracking)
+  - metadata.selfLink (deprecated field)
+  - metadata.uid (auto-generated identifier)
+  
+  Note: The actual structure depends on the specific CRD being used.
+example: |
+  apiVersion: example.com/v1
+  kind: MyCustomResource
+  metadata:
+    name: my-custom-object
+    namespace: default
+    resourceVersion: '6789'
+    generation: 1
+    creationTimestamp: '2024-01-15T09:00:00Z'
+    labels:
+      app: custom-app
+      environment: production
+    annotations:
+      description: Example custom resource instance
+    finalizers:
+    - example.com/finalizer
+  spec:
+    # Custom spec fields defined by the CRD
+    replicas: 3
+    version: v1.2.3
+    config:
+      setting1: value1
+      setting2: value2
+    resources:
+      memory: 256Mi
+      cpu: 500m
+  status:
+    # Custom status fields defined by the CRD
+    phase: Running
+    conditions:
+    - type: Ready
+      status: 'True'
+      lastTransitionTime: '2024-01-15T09:05:00Z'
+      reason: AllReplicasReady
+      message: All replicas are running
+    observedGeneration: 1
+    readyReplicas: 3

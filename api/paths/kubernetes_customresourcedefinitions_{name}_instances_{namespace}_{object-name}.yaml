@@ -1,9 +1,16 @@
 get:
-  summary: Get detailed CRD object information
-  description: >-
-    Get detailed information about a specific CRD object. For namespaced CRDs,
-    provide the actual namespace. For cluster-scoped CRDs, use '-' as the
-    namespace.
+  summary: Get CRD object instance
+  description: |
+    Get a specific instance of a Custom Resource Definition.
+    
+    Supports both JSON and YAML response formats based on the Accept header:
+    - `application/json` (default) - Returns CRD object wrapped in API response
+    - `application/yaml`, `text/yaml`, `application/x-yaml` - Returns raw Kubernetes YAML with cleaned metadata
+    
+    When YAML format is requested, the following fields are automatically removed for cleaner output:
+    - `metadata.managedFields` - Verbose internal field tracking
+    - `metadata.selfLink` - Deprecated field  
+    - `metadata.uid` - Auto-generated identifier
   tags:
     - Kubernetes
   security:
@@ -18,31 +25,88 @@ get:
     - name: namespace
       in: path
       required: true
-      description: >-
-        Namespace for the CRD object. Use '-' for cluster-scoped CRDs, or the
-        actual namespace name for namespaced CRDs.
+      description: Namespace
       schema:
         type: string
     - name: object-name
       in: path
       required: true
-      description: The name of the CRD object
+      description: Object name
       schema:
         type: string
+    - name: Accept
+      in: header
+      required: false
+      description: |
+        Response format preference. Supported values:
+        - `application/json` (default)
+        - `application/yaml`
+        - `application/x-yaml`
+        - `application/yml`
+        - `text/yaml`
+        - `text/yml`
+        - `text/x-yaml`
+      schema:
+        type: string
+        default: application/json
+        enum:
+          - application/json
+          - application/yaml
+          - application/x-yaml
+          - application/yml
+          - text/yaml
+          - text/yml
+          - text/x-yaml
   responses:
     '200':
-      description: CRD object details retrieved successfully
+      description: CRD object retrieved successfully
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/CRDObjectDetailResponse.yaml
+            $ref: ../components/schemas/CRDObjectResponse.yaml
+        application/yaml:
+          schema:
+            $ref: ../components/schemas/CRDObjectYAML.yaml
+        application/x-yaml:
+          schema:
+            $ref: ../components/schemas/CRDObjectYAML.yaml
+        text/yaml:
+          schema:
+            $ref: ../components/schemas/CRDObjectYAML.yaml
+        text/x-yaml:
+          schema:
+            $ref: ../components/schemas/CRDObjectYAML.yaml
+        application/yml:
+          schema:
+            $ref: ../components/schemas/CRDObjectYAML.yaml
+        text/yml:
+          schema:
+            $ref: ../components/schemas/CRDObjectYAML.yaml
     '401':
       $ref: ../components/responses/UnauthorizedError.yaml
     '404':
-      description: CRD or object not found
+      description: CRD object not found
       content:
         application/json:
           schema:
             $ref: ../components/schemas/ErrorResponse.yaml
+        application/yaml:
+          schema:
+            $ref: ../components/schemas/ErrorResponseYAML.yaml
+        text/yaml:
+          schema:
+            $ref: ../components/schemas/ErrorResponseYAML.yaml
+    '500':
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+        application/yaml:
+          schema:
+            $ref: ../components/schemas/ErrorResponseYAML.yaml
+        text/yaml:
+          schema:
+            $ref: ../components/schemas/ErrorResponseYAML.yaml
     '503':
       $ref: ../components/responses/KubernetesNotInstalledError.yaml

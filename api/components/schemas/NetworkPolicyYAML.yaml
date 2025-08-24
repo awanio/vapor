@@ -1,0 +1,61 @@
+type: string
+format: yaml
+description: |
+  Kubernetes NetworkPolicy object in YAML format with cleaned metadata.
+  The following fields are automatically removed for cleaner output:
+  - metadata.managedFields (verbose internal field tracking)
+  - metadata.selfLink (deprecated field)
+  - metadata.uid (auto-generated identifier)
+example: |
+  apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    name: web-netpolicy
+    namespace: default
+    resourceVersion: '5678'
+    generation: 1
+    creationTimestamp: '2024-01-15T09:00:00Z'
+    labels:
+      app: web
+    annotations:
+      description: Network policy for web tier
+  spec:
+    podSelector:
+      matchLabels:
+        app: web
+    policyTypes:
+    - Ingress
+    - Egress
+    ingress:
+    - from:
+      - podSelector:
+          matchLabels:
+            app: frontend
+      - namespaceSelector:
+          matchLabels:
+            name: production
+      - ipBlock:
+          cidr: 172.17.0.0/16
+          except:
+          - 172.17.1.0/24
+      ports:
+      - protocol: TCP
+        port: 80
+      - protocol: TCP
+        port: 443
+    egress:
+    - to:
+      - podSelector:
+          matchLabels:
+            app: database
+      ports:
+      - protocol: TCP
+        port: 5432
+    - to:
+      - ipBlock:
+          cidr: 0.0.0.0/0
+      ports:
+      - protocol: TCP
+        port: 53
+      - protocol: UDP
+        port: 53

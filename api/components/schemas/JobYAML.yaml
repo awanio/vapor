@@ -1,0 +1,53 @@
+type: string
+format: yaml
+description: |
+  Kubernetes Job object in YAML format with cleaned metadata.
+  The following fields are automatically removed for cleaner output:
+  - metadata.managedFields (verbose internal field tracking)
+  - metadata.selfLink (deprecated field)
+  - metadata.uid (auto-generated identifier)
+example: |
+  apiVersion: batch/v1
+  kind: Job
+  metadata:
+    name: pi-job
+    namespace: default
+    resourceVersion: '3456'
+    generation: 1
+    creationTimestamp: '2024-01-15T09:00:00Z'
+    labels:
+      app: pi-calculator
+    annotations:
+      description: Calculate Pi to 2000 decimal places
+  spec:
+    parallelism: 1
+    completions: 1
+    backoffLimit: 4
+    activeDeadlineSeconds: 600
+    ttlSecondsAfterFinished: 100
+    template:
+      metadata:
+        labels:
+          app: pi-calculator
+      spec:
+        containers:
+        - name: pi
+          image: perl:5.34
+          command: ["perl", "-Mbignum=bpi", "-wle", "print bpi(2000)"]
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "250m"
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+        restartPolicy: Never
+  status:
+    conditions:
+    - type: Complete
+      status: 'True'
+      lastProbeTime: '2024-01-15T09:02:00Z'
+      lastTransitionTime: '2024-01-15T09:02:00Z'
+    startTime: '2024-01-15T09:00:00Z'
+    completionTime: '2024-01-15T09:02:00Z'
+    succeeded: 1

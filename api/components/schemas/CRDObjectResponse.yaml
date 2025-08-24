@@ -1,0 +1,17 @@
+type: object
+properties:
+  status:
+    type: string
+    enum:
+      - success
+      - error
+  data:
+    type: object
+    properties:
+      object:
+        type: object
+        description: The CRD object instance
+        additionalProperties: true
+  error:
+    $ref: ./APIError.yaml
+    nullable: true
