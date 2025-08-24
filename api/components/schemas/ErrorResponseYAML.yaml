@@ -1,0 +1,10 @@
+type: string
+format: yaml
+description: Error response in YAML format
+example: |
+  status: error
+  data: null
+  error:
+    code: NOT_FOUND
+    message: Deployment not found
+    details: "Failed to get deployment details for default/nginx-deployment: deployments.apps \"nginx-deployment\" not found"

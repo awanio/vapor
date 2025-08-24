@@ -58,15 +58,31 @@ func (h *Handler) ListDeploymentsGin(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"deployments": deployments, "count": len(deployments)})
 }
 
+// GetDeploymentDetailGin handles requests to get deployment details
+// Supports both JSON and YAML responses based on Accept header
 func (h *Handler) GetDeploymentDetailGin(c *gin.Context) {
+
 	namespace := c.Param("namespace")
 	name := c.Param("name")
 
 	deploymentDetail, err := h.service.GetDeploymentDetail(c.Request.Context(), namespace, name)
 	if err != nil {
+		// Check if YAML response is requested for error responses
+		if isYAMLRequested(c) {
+			respondYAMLError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get deployment details", err.Error())
+			return
+		}
 		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get deployment details", err.Error())
 		return
 	}
+
+	// Check Accept header for YAML response
+	if isYAMLRequested(c) {
+		respondYAML(c, deploymentDetail)
+		return
+	}
+
+	// Default JSON response
 	common.SendSuccess(c, gin.H{"deployment_detail": deploymentDetail})
 }
 
@@ -861,4 +877,130 @@ func NoKubernetesHandler() gin.HandlerFunc {
 			"Kubernetes is not installed on this system",
 			"The kubelet service was not found on this system. Please install Kubernetes to use these features.")
 	}
+}
+
+// Helper functions for YAML response support
+
+// isYAMLRequested checks if the client requested YAML format
+func isYAMLRequested(c *gin.Context) bool {
+	accept := c.GetHeader("Accept")
+	accept = strings.ToLower(accept)
+
+	// Check for various YAML content types
+	yamlTypes := []string{
+		"application/yaml",
+		"application/x-yaml",
+		"application/yml",
+		"text/yaml",
+		"text/yml",
+		"text/x-yaml",
+	}
+
+	for _, yamlType := range yamlTypes {
+		if strings.Contains(accept, yamlType) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// respondYAML sends a YAML response
+
+// respondYAML sends a YAML response, removing managedFields from Kubernetes objects
+func respondYAML(c *gin.Context, data interface{}) {
+// Clean the data by removing managedFields
+cleanedData := removeManagedFields(data)
+
+yamlData, err := yaml.Marshal(cleanedData)
+if err != nil {
+// Fallback to JSON if YAML marshaling fails
+common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to marshal response to YAML", err.Error())
+return
+}
+
+c.Data(http.StatusOK, "application/yaml", yamlData)
+}
+
+// removeManagedFields removes the managedFields from Kubernetes objects
+// This field contains internal metadata that's usually not useful for clients
+func removeManagedFields(data interface{}) interface{} {
+// First, try to handle it as a Kubernetes object with TypeMeta
+// We'll use JSON marshaling/unmarshaling to work with a generic structure
+
+jsonBytes, err := json.Marshal(data)
+if err != nil {
+// If we can't marshal, return original data
+return data
+}
+
+// Try to unmarshal as a generic map
+var obj map[string]interface{}
+if err := json.Unmarshal(jsonBytes, &obj); err != nil {
+// If it's not a JSON object, return original data
+return data
+}
+
+// Clean the object
+cleanKubernetesObject(obj)
+
+return obj
+}
+
+// cleanKubernetesObject recursively removes managedFields from Kubernetes objects
+func cleanKubernetesObject(obj map[string]interface{}) {
+// Check if this object has metadata
+if metadata, ok := obj["metadata"].(map[string]interface{}); ok {
+// Remove managedFields
+delete(metadata, "managedFields")
+
+// Also remove other verbose fields that clutter the output
+// These fields are usually not needed when viewing/editing resources
+delete(metadata, "selfLink")        // deprecated field
+delete(metadata, "uid")              // unique identifier, auto-generated
+// Keep resourceVersion and generation as they might be needed for updates
+}
+
+// Handle lists (like PodList, DeploymentList, etc.)
+if items, ok := obj["items"].([]interface{}); ok {
+for _, item := range items {
+if itemMap, ok := item.(map[string]interface{}); ok {
+cleanKubernetesObject(itemMap)
+}
+}
+}
+
+// Handle nested objects that might contain Kubernetes resources
+for _, value := range obj {
+switch v := value.(type) {
+case map[string]interface{}:
+// Check if this looks like a Kubernetes object (has metadata)
+if _, hasMetadata := v["metadata"]; hasMetadata {
+cleanKubernetesObject(v)
+}
+case []interface{}:
+// Handle arrays of objects
+for _, item := range v {
+if itemMap, ok := item.(map[string]interface{}); ok {
+if _, hasMetadata := itemMap["metadata"]; hasMetadata {
+cleanKubernetesObject(itemMap)
+}
+}
+}
+}
+}
+}
+
+// respondYAMLError sends an error response in YAML format
+func respondYAMLError(c *gin.Context, statusCode int, code, message string, details ...string) {
+errResponse := common.ErrorResponse(code, message, details...)
+
+yamlData, err := yaml.Marshal(errResponse)
+if err != nil {
+// Fallback to JSON if YAML marshaling fails
+common.SendError(c, statusCode, code, message, details...)
+return
+}
+
+c.Data(statusCode, "application/yaml", yamlData)
 }
