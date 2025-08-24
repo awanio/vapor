@@ -1,0 +1,24 @@
+type: object
+required:
+  - interface
+  - state
+properties:
+  interface:
+    type: string
+    description: |
+      The network interface identifier. Can be either:
+      - Interface device name (e.g., "vnet0", "vnet1", "eth0")
+      - MAC address (e.g., "52:54:00:12:34:56")
+    examples:
+      - "vnet0"
+      - "52:54:00:ab:cd:ef"
+  state:
+    type: string
+    description: The desired link state
+    enum:
+      - up
+      - down
+    example: "down"
+example:
+  interface: "vnet0"
+  state: "down"

@@ -59,3 +59,4 @@ vapor-api
 local-vapor
 vapor.conf
 /exclude/
+*.backup*

@@ -1,0 +1,30 @@
+type: object
+properties:
+  status:
+    type: string
+    description: Operation status
+    example: "success"
+  message:
+    type: string
+    description: Human-readable message about the operation result
+    example: "Network interface vnet0 link state changed to down"
+  interface:
+    type: string
+    description: The actual interface name that was modified
+    example: "vnet0"
+  state:
+    type: string
+    description: The current link state after the operation
+    enum:
+      - up
+      - down
+    example: "down"
+  mac:
+    type: string
+    description: MAC address of the network interface
+    example: "52:54:00:12:34:56"
+required:
+  - status
+  - message
+  - interface
+  - state

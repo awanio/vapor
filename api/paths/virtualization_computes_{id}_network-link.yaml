@@ -1,0 +1,50 @@
+post:
+  summary: Set VM network interface link state
+  description: |
+    Change the link state of a virtual machine's network interface to disconnect (down) or reconnect (up).
+    This is equivalent to the virsh commands:
+    - `virsh domif-setlink <domain> <interface> down` - to disconnect
+    - `virsh domif-setlink <domain> <interface> up` - to reconnect
+    
+    The interface can be identified by either:
+    - Interface name (e.g., "vnet0", "vnet1")
+    - MAC address (e.g., "52:54:00:12:34:56")
+  tags:
+    - "Virtualization Compute"
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: VM name or UUID
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../components/schemas/NetworkLinkStateRequest.yaml'
+        examples:
+          disconnect:
+            summary: Disconnect interface
+            value:
+              interface: "vnet0"
+              state: "down"
+          reconnect:
+            summary: Reconnect interface
+            value:
+              interface: "vnet0"
+              state: "up"
+  responses:
+    '200':
+      description: Network link state changed successfully
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/NetworkLinkStateResponse.yaml'
+    '400':
+      $ref: '../components/responses/BadRequest.yaml'
+    '404':
+      $ref: '../components/responses/NotFound.yaml'

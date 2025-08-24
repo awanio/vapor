@@ -1,0 +1,60 @@
+get:
+  summary: Get VM network interface link state
+  description: |
+    Retrieve the current link state of a virtual machine's network interface.
+    This is equivalent to the virsh command:
+    - `virsh domif-getlink <domain> <interface>` - to check link state
+    
+    The interface can be identified by either:
+    - Interface name (e.g., "vnet0", "vnet1")
+    - MAC address (e.g., "52:54:00:12:34:56")
+    
+    Returns "up" if the interface is connected or "down" if disconnected.
+    If no explicit link state is set, the default is "up".
+  tags:
+    - "Virtualization Compute"
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: VM name or UUID
+    - name: interface-name
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Network interface name (e.g., "vnet0") or MAC address
+  responses:
+    '200':
+      description: Network link state retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/NetworkLinkStateResponse.yaml'
+          examples:
+            connected:
+              summary: Interface is connected
+              value:
+                status: "success"
+                message: "Network interface vnet0 link state retrieved"
+                interface: "vnet0"
+                state: "up"
+                mac: "52:54:00:12:34:56"
+            disconnected:
+              summary: Interface is disconnected
+              value:
+                status: "success"
+                message: "Network interface vnet0 link state retrieved"
+                interface: "vnet0"
+                state: "down"
+                mac: "52:54:00:12:34:56"
+    '400':
+      $ref: '../components/responses/BadRequest.yaml'
+    '404':
+      $ref: '../components/responses/NotFound.yaml'
+    '500':
+      $ref: ../components/responses/InternalError.yaml

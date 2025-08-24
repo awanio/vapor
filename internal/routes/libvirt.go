@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -28,15 +29,22 @@ func LibvirtRoutes(r *gin.RouterGroup, authService *auth.EnhancedService, servic
 		vmGroup.GET("/:id/console", getConsole(service)) // Get console connection info
 
 		// VM Management
-		vmGroup.GET("", listVMs(service))                               // List all VMs
-		vmGroup.GET("/:id", getVM(service))                             // Get VM details
-		vmGroup.GET("/:id/enhanced", getVMEnhanced(service))            // Get VM details
-		vmGroup.POST("", createVM(service))                             // Create new VM
-		vmGroup.PUT("/:id", updateVM(service))                          // Update VM config
-		vmGroup.DELETE("/:id", deleteVM(service))                       // Delete VM
-		vmGroup.POST("/:id/action", vmAction(service))                  // VM actions (start, stop, etc.)
-		vmGroup.POST("/:id/network-link", setNetworkLinkState(service)) // Set network interface link state
-		vmGroup.GET("/:id/interfaces/:interface-name", getNetworkLinkState(service)) // Get network interface link state
+		// vmGroup.GET("/:id", getVM(service))                                          // Get VM details
+		// vmGroup.POST("", createVM(service))                                          // Create new VM
+		// vmGroup.PUT("/:id", updateVM(service))                                       // Update VM config
+
+		// CRUD
+		vmGroup.GET("", listVMs(service))              // List all VMs
+		vmGroup.GET("/:id", getVMEnhanced(service))    // Get VM details
+		vmGroup.POST("", createVMEnhanced(service))    // Create VM with enhanced options
+		vmGroup.PUT("/:id", updateVMEnhanced(service)) // Update VM with enhanced options
+		vmGroup.DELETE("/:id", deleteVM(service))      // Delete VM
+
+		vmGroup.POST("/:id/action", vmAction(service)) // VM actions (start, stop, etc.)
+
+		// network
+		vmGroup.POST("/:id/network-link", setNetworkLinkState(service))                // Set network interface link state
+		vmGroup.GET("/:id/network-link/:interface-name", getNetworkLinkState(service)) // Get network interface link state
 
 		// Snapshots
 		vmGroup.GET("/:id/snapshots/capabilities", getSnapshotCapabilities(service)) // Check snapshot capabilities
@@ -77,9 +85,6 @@ func LibvirtRoutes(r *gin.RouterGroup, authService *auth.EnhancedService, servic
 
 		// Resource Hotplug
 		vmGroup.POST("/:id/hotplug", hotplugResource(service)) // Hotplug resources to VM
-
-		// Enhanced VM creation with multiple disks support
-		vmGroup.POST("/create-enhanced", createVMEnhanced(service)) // Create VM with enhanced options
 	}
 
 	// ISO Management
@@ -469,7 +474,7 @@ func getNetworkLinkState(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
 		interfaceName := c.Param("interface-name")
-		
+
 		if interfaceName == "" {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"status": "error",
@@ -1842,5 +1847,84 @@ func downloadISO(service *libvirt.Service) gin.HandlerFunc {
 		}
 
 		c.FileAttachment(isoPath, name)
+	}
+}
+
+// updateVMEnhanced handles enhanced VM update requests
+func updateVMEnhanced(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Get VM ID from URL parameter
+		vmID := c.Param("id")
+		if vmID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "INVALID_REQUEST",
+					"message": "VM ID is required",
+				},
+			})
+			return
+		}
+
+		// Parse request body
+		var req libvirt.VMCreateRequestEnhanced
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "INVALID_REQUEST",
+					"message": "Invalid update request",
+					"details": err.Error(),
+				},
+			})
+			return
+		}
+
+		// Call the UpdateVMEnhanced service method
+		vm, err := service.UpdateVMEnhanced(c.Request.Context(), vmID, &req)
+		if err != nil {
+			// Handle specific error cases
+			if strings.Contains(err.Error(), "not found") {
+				c.JSON(http.StatusNotFound, gin.H{
+					"status": "error",
+					"error": gin.H{
+						"code":    "VM_NOT_FOUND",
+						"message": fmt.Sprintf("VM '%s' not found", vmID),
+						"details": err.Error(),
+					},
+				})
+				return
+			}
+
+			if strings.Contains(err.Error(), "require VM to be stopped") {
+				c.JSON(http.StatusConflict, gin.H{
+					"status": "error",
+					"error": gin.H{
+						"code":    "VM_RUNNING",
+						"message": "Operation requires VM to be stopped",
+						"details": err.Error(),
+					},
+				})
+				return
+			}
+
+			// Generic error
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "UPDATE_FAILED",
+					"message": "Failed to update VM",
+					"details": err.Error(),
+				},
+			})
+			return
+		}
+
+		// Return success response with updated VM details
+		c.JSON(http.StatusOK, gin.H{
+			"status":  "success",
+			"message": fmt.Sprintf("VM '%s' updated successfully", vmID),
+			"data":    vm,
+		})
 	}
 }

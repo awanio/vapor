@@ -176,7 +176,7 @@ info:
 
     - **Server Resources**: Reduced memory usage with streaming uploads
 servers:
-  - url: http://localhost:8080/api/v1
+  - url: http://localhost:7770/api/v1
     description: Local development server
 paths:
   /auth/login:
@@ -357,128 +357,20 @@ paths:
     $ref: paths/ws_metrics.yaml
   /ws/logs:
     $ref: paths/ws_logs.yaml
+  
+  # VM endpoints
   /virtualization/computes:
-    $ref: paths/virtualization_computes.yaml
+    # $ref: paths/virtualization_computes.yaml
+    $ref: paths/virtualization_computes_create-enhanced.yaml
   /virtualization/computes/{id}:
     $ref: paths/virtualization_computes_{id}.yaml
   /virtualization/computes/{id}/action:
     $ref: paths/virtualization_computes_{id}_action.yaml
 
   /virtualization/computes/{id}/network-link:
-    post:
-      summary: Set VM network interface link state
-      description: |
-        Change the link state of a virtual machine's network interface to disconnect (down) or reconnect (up).
-        This is equivalent to the virsh commands:
-        - `virsh domif-setlink <domain> <interface> down` - to disconnect
-        - `virsh domif-setlink <domain> <interface> up` - to reconnect
-        
-        The interface can be identified by either:
-        - Interface name (e.g., "vnet0", "vnet1")
-        - MAC address (e.g., "52:54:00:12:34:56")
-      tags:
-        - "Virtualization Compute"
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: VM name or UUID
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/NetworkLinkStateRequest'
-            examples:
-              disconnect:
-                summary: Disconnect interface
-                value:
-                  interface: "vnet0"
-                  state: "down"
-              reconnect:
-                summary: Reconnect interface
-                value:
-                  interface: "vnet0"
-                  state: "up"
-      responses:
-        '200':
-          description: Network link state changed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NetworkLinkStateResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /virtualization/computes/{id}/interfaces/{interface-name}:
-    get:
-      summary: Get VM network interface link state
-      description: |
-        Retrieve the current link state of a virtual machine's network interface.
-        This is equivalent to the virsh command:
-        - `virsh domif-getlink <domain> <interface>` - to check link state
-        
-        The interface can be identified by either:
-        - Interface name (e.g., "vnet0", "vnet1")
-        - MAC address (e.g., "52:54:00:12:34:56")
-        
-        Returns "up" if the interface is connected or "down" if disconnected.
-        If no explicit link state is set, the default is "up".
-      tags:
-        - "Virtualization Compute"
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: VM name or UUID
-        - name: interface-name
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Network interface name (e.g., "vnet0") or MAC address
-      responses:
-        '200':
-          description: Network link state retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NetworkLinkStateResponse'
-              examples:
-                connected:
-                  summary: Interface is connected
-                  value:
-                    status: "success"
-                    message: "Network interface vnet0 link state retrieved"
-                    interface: "vnet0"
-                    state: "up"
-                    mac: "52:54:00:12:34:56"
-                disconnected:
-                  summary: Interface is disconnected
-                  value:
-                    status: "success"
-                    message: "Network interface vnet0 link state retrieved"
-                    interface: "vnet0"
-                    state: "down"
-                    mac: "52:54:00:12:34:56"
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalError'
-        '500':
-          $ref: '#/components/responses/InternalError'
+    $ref: paths/virtualization_computes_{id}_network-link.yaml
+  /virtualization/computes/{id}/network-link/{interface-name}:
+    $ref: paths/virtualization_computes_{id}_network-link_{interface-name}.yaml
   /virtualization/computes/{id}/migrate:
     $ref: paths/virtualization_computes_{id}_migrate.yaml
   /virtualization/computes/{id}/migration/status:
@@ -521,8 +413,8 @@ paths:
     $ref: paths/virtualization_computes_templates_{id}.yaml
   /virtualization/computes/from-template:
     $ref: paths/virtualization_computes_from-template.yaml
-  /virtualization/computes/create-enhanced:
-    $ref: paths/virtualization_computes_create-enhanced.yaml
+  # /virtualization/computes/create-enhanced:
+  #   $ref: paths/virtualization_computes_create-enhanced.yaml
   /virtualization/isos:
     $ref: paths/virtualization_isos.yaml
   /virtualization/isos/{id}:
@@ -658,83 +550,3 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-  schemas:
-    NetworkLinkStateRequest:
-      type: object
-      required:
-        - interface
-        - state
-      properties:
-        interface:
-          type: string
-          description: |
-            The network interface identifier. Can be either:
-            - Interface device name (e.g., "vnet0", "vnet1", "eth0")
-            - MAC address (e.g., "52:54:00:12:34:56")
-          examples:
-            - "vnet0"
-            - "52:54:00:ab:cd:ef"
-        state:
-          type: string
-          description: The desired link state
-          enum:
-            - up
-            - down
-          example: "down"
-      example:
-        interface: "vnet0"
-        state: "down"
-
-    NetworkLinkStateResponse:
-      type: object
-      properties:
-        status:
-          type: string
-          description: Operation status
-          example: "success"
-        message:
-          type: string
-          description: Human-readable message about the operation result
-          example: "Network interface vnet0 link state changed to down"
-        interface:
-          type: string
-          description: The actual interface name that was modified
-          example: "vnet0"
-        state:
-          type: string
-          description: The current link state after the operation
-          enum:
-            - up
-            - down
-          example: "down"
-        mac:
-          type: string
-          description: MAC address of the network interface
-          example: "52:54:00:12:34:56"
-      required:
-        - status
-        - message
-        - interface
-        - state
-
-    ErrorResponse:
-      type: object
-      properties:
-        status:
-          type: string
-          example: "error"
-        error:
-          type: object
-          properties:
-            code:
-              type: string
-              description: Error code
-              example: "NOT_FOUND"
-            message:
-              type: string
-              description: Error message
-              example: "Interface not found"
-            details:
-              type: string
-              description: Additional error details
-              example: "interface vnet99 not found on domain web-server-01"
