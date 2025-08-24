@@ -78,6 +78,24 @@ export interface Volume {
   format?: string;
 }
 
+// ============ Storage Volume Types (Enhanced) ============
+
+export interface StorageVolume {
+  name: string;
+  type: 'file' | 'dir' | 'block';
+  capacity: number;     // Bytes
+  allocation: number;   // Bytes 
+  path: string;
+  format: 'qcow2' | 'raw' | 'iso' | 'vmdk' | 'dir';
+  created_at: string;
+  pool_name: string;
+  // Additional optional fields
+  id?: string;          // Generated ID for UI purposes
+  used_percent?: number;
+  status?: 'available' | 'in-use' | 'locked';
+  vm_attached?: string; // VM ID if attached
+}
+
 export interface ISOImage {
   id: string;
   name: string;

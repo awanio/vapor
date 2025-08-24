@@ -130,6 +130,8 @@ export class CreateVMWizardEnhanced extends LitElement {
   @state() private currentStep = 1;
   @state() private availablePCIDevices: any[] = [];
   @state() private isLoadingPCIDevices = false;
+  @state() private editMode = false;
+  @state() private editingVmId: string | null = null;
   @state() private formData: Partial<EnhancedVMCreateRequest> = {
     memory: 2048,
     vcpus: 2,
@@ -785,40 +787,42 @@ export class CreateVMWizardEnhanced extends LitElement {
     this.isCreating = true;
 
     try {
-      const token = localStorage.getItem('jwt_token') || localStorage.getItem('auth_token') || localStorage.getItem('token');
-      const response = await fetch(getApiUrl('/virtualization/computes/create-enhanced'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : '',
-        },
-        body: JSON.stringify(this.formData),
-      });
-
-      if (response.ok) {
-        this.showNotification('Virtual machine created successfully', 'success');
-        wizardActions.closeWizard();
-        // Refresh VM list
-        vmActions.fetchAll();
+      if (this.editMode && this.editingVmId) {
+        // Update existing VM
+        await vmActions.update(this.editingVmId, this.formData as any);
+        this.showNotification('Virtual machine updated successfully', 'success');
       } else {
-        const error = await response.json();
-        // Handle new error format with status and error fields
-        if (error.status === 'error' && error.error) {
-          this.showNotification(
-            error.error.message || error.error.details || 'Failed to create virtual machine',
-            'error'
-          );
+        // Create new VM
+        const token = localStorage.getItem('jwt_token') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+        const response = await fetch(getApiUrl('/virtualization/computes/create-enhanced'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : '',
+          },
+          body: JSON.stringify(this.formData),
+        });
+
+        if (response.ok) {
+          this.showNotification('Virtual machine created successfully', 'success');
         } else {
-          this.showNotification(
-            error.message || 'Failed to create virtual machine',
-            'error'
-          );
+          const error = await response.json();
+          // Handle new error format with status and error fields
+          if (error.status === 'error' && error.error) {
+            throw new Error(error.error.message || error.error.details || 'Failed to create virtual machine');
+          } else {
+            throw new Error(error.message || 'Failed to create virtual machine');
+          }
         }
       }
+      
+      wizardActions.closeWizard();
+      // Refresh VM list
+      await vmActions.fetchAll();
     } catch (error) {
-      console.error('Failed to create VM:', error);
+      console.error(`Failed to ${this.editMode ? 'update' : 'create'} VM:`, error);
       this.showNotification(
-        error instanceof Error ? error.message : 'Failed to create virtual machine',
+        error instanceof Error ? error.message : `Failed to ${this.editMode ? 'update' : 'create'} virtual machine`,
         'error'
       );
     } finally {
@@ -1971,6 +1975,30 @@ export class CreateVMWizardEnhanced extends LitElement {
   override render() {
     const wizardState = this.wizardController.value;
     
+    // Update component state from wizard state
+    if ((wizardState as any).editMode !== undefined) {
+      this.editMode = (wizardState as any).editMode;
+      this.editingVmId = (wizardState as any).editingVmId || null;
+    }
+    
+    // Update form data from wizard state if in edit mode
+    if (this.editMode && wizardState.formData && Object.keys(wizardState.formData).length > 0) {
+      // Convert from VMCreateRequest format to EnhancedVMCreateRequest format
+      const vmFormData = wizardState.formData;
+      this.formData = {
+        ...vmFormData,
+        // Convert single network to array of networks
+        networks: vmFormData.network ? [{
+          type: vmFormData.network.type,
+          source: vmFormData.network.source,
+          model: vmFormData.network.model,
+          mac: vmFormData.network.mac,
+        }] : this.formData.networks,
+        // Convert single graphics to array
+        graphics: vmFormData.graphics ? [vmFormData.graphics] : this.formData.graphics,
+      } as Partial<EnhancedVMCreateRequest>;
+    }
+    
     if (wizardState.isOpen) {
       this.setAttribute('show', '');
     } else {
@@ -2014,7 +2042,7 @@ export class CreateVMWizardEnhanced extends LitElement {
         <div class="drawer-header">
           <h2 class="header-title">
             <span>🖥️</span>
-            Create Virtual Machine (Enhanced)
+            ${this.editMode ? 'Edit' : 'Create'} Virtual Machine (Enhanced)
           </h2>
           <button 
             class="close-button" 
@@ -2082,7 +2110,7 @@ export class CreateVMWizardEnhanced extends LitElement {
                 @click=${this.handleCreate}
                 ?disabled=${this.isCreating}
               >
-                ${this.isCreating ? 'Creating...' : 'Create VM'}
+                ${this.isCreating ? (this.editMode ? 'Updating...' : 'Creating...') : (this.editMode ? 'Update VM' : 'Create VM')}
               </button>
             `}
           </div>

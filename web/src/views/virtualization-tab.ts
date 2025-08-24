@@ -4,6 +4,7 @@ import './virtualization/virtualization-vms-enhanced';
 import './virtualization/virtualization-storage-pools';
 import './virtualization/virtualization-networks';
 import './virtualization/iso-management';
+import './virtualization/virtualization-volumes';
 
 /**
  * Virtualization Tab component that routes to specific Virtualization views
@@ -52,7 +53,7 @@ export class VirtualizationTab extends LitElement {
 
   private updateActiveView() {
     if (this.subRoute) {
-      const validViews = ['vms', 'storage-pools', 'networks', 'iso-images'];
+      const validViews = ['vms', 'storage-pools', 'networks', 'iso-images', 'volumes'];
       if (validViews.includes(this.subRoute)) {
         this.activeView = this.subRoute;
       }
@@ -61,7 +62,7 @@ export class VirtualizationTab extends LitElement {
       const path = window.location.pathname;
       if (path.includes('/virtualization/')) {
         const view = path.split('/virtualization/')[1]?.split('/')[0];
-        if (view && ['vms', 'storage-pools', 'networks', 'iso-images'].includes(view)) {
+        if (view && ['vms', 'storage-pools', 'networks', 'iso-images', 'volumes'].includes(view)) {
           this.activeView = view;
         }
       }
@@ -88,6 +89,8 @@ export class VirtualizationTab extends LitElement {
         return html`<virtualization-networks></virtualization-networks>`;
       case 'iso-images':
         return html`<iso-management></iso-management>`;
+      case 'volumes':
+        return html`<virtualization-volumes></virtualization-volumes>`;
       default:
         return html`
           <div class="error-message">

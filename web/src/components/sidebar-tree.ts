@@ -142,7 +142,7 @@ export class SidebarTree extends I18nLitElement {
     .icon-raid::before { content: '🗄️'; }
     .icon-containers::before { content: '📦'; }
     .icon-docker::before { content: '🐳'; }
-    .icon-images::before { content: '💿'; }
+    .icon-images::before { content: '💽'; }
     .icon-kubernetes::before { content: '☸️'; }
     .icon-workload::before { content: '⚙️'; }
     .icon-k8s-networks::before { content: '🔗'; }
@@ -160,6 +160,7 @@ export class SidebarTree extends I18nLitElement {
     .icon-vms::before { content: '💻'; }
     .icon-storage-pools::before { content: '🗄️'; }
     .icon-virt-networks::before { content: '🔗'; }
+    .icon-volumes::before { content: '📀'; }
 
     :host([collapsed]) .tree-item-label,
     :host([collapsed]) .tree-item-arrow,
@@ -381,6 +382,12 @@ export class SidebarTree extends I18nLitElement {
           label: 'virtualization.networks',
           icon: 'virt-networks',
           route: 'virtualization/networks'
+        },
+        {
+          id: 'virtualization-volumes',
+          label: 'virtualization.volumes',
+          icon: 'volumes',
+          route: 'virtualization/volumes'
         }
       ]
     },

@@ -94,29 +94,124 @@ export class VirtualizationVMsEnhanced extends LitElement {
     }
 
     .stats-bar {
-      display: flex;
-      gap: 2rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
       margin-bottom: 1.5rem;
-      padding: 12px 16px;
-      background: var(--vscode-editor-background);
-      border: 1px solid var(--vscode-editorWidget-border);
-      border-radius: 4px;
-      font-size: 13px;
     }
 
-    .stat-item {
+    .stat-widget {
+      display: flex;
+      flex-direction: column;
+      padding: 14px;
+      background: var(--vscode-editor-background);
+      border: 1px solid var(--vscode-widget-border, var(--vscode-input-border, var(--vscode-panel-border, #454545)));
+      border-radius: 8px;
+      transition: all 0.2s ease;
+      position: relative;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    }
+
+    .stat-widget:hover {
+      border-color: var(--vscode-focusBorder);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .stat-widget::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      border-radius: 8px 8px 0 0;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .stat-widget:hover::before {
+      opacity: 1;
+    }
+
+    .stat-widget:nth-child(1)::before {
+      background: var(--vscode-charts-blue);
+    }
+
+    .stat-widget:nth-child(2)::before {
+      background: var(--vscode-charts-green);
+    }
+
+    .stat-widget:nth-child(3)::before {
+      background: var(--vscode-charts-red);
+    }
+
+    .stat-widget:nth-child(4)::before {
+      background: var(--vscode-charts-purple);
+    }
+
+    .stat-widget:nth-child(5)::before {
+      background: var(--vscode-charts-orange);
+    }
+
+    .stat-widget:nth-child(6)::before {
+      background: var(--vscode-charts-yellow);
+    }
+
+    .stat-widget-header {
       display: flex;
       align-items: center;
       gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .stat-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      font-size: 14px;
+    }
+
+    .stat-icon.total {
+      color: var(--vscode-charts-blue);
+    }
+
+    .stat-icon.running {
+      color: var(--vscode-charts-green);
+    }
+
+    .stat-icon.stopped {
+      color: var(--vscode-charts-red);
+    }
+
+    .stat-icon.memory {
+      color: var(--vscode-charts-purple);
+    }
+
+    .stat-icon.cpu {
+      color: var(--vscode-charts-orange);
+    }
+
+    .stat-icon.storage {
+      color: var(--vscode-charts-yellow);
     }
 
     .stat-label {
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
       color: var(--vscode-descriptionForeground);
+      opacity: 0.8;
     }
 
     .stat-value {
+      font-size: 18px;
       font-weight: 600;
       color: var(--vscode-foreground);
+      line-height: 1.2;
     }
 
     .stat-value.running {
@@ -125,6 +220,13 @@ export class VirtualizationVMsEnhanced extends LitElement {
 
     .stat-value.stopped {
       color: var(--vscode-charts-red);
+    }
+
+    .stat-subtitle {
+      font-size: 10px;
+      color: var(--vscode-descriptionForeground);
+      margin-top: 2px;
+      opacity: 0.7;
     }
 
     .controls {
@@ -330,7 +432,10 @@ export class VirtualizationVMsEnhanced extends LitElement {
       { label: 'View Details', action: 'view', icon: 'info' }
     ];
 
-    switch (vm.state) {
+    // Normalize state to lowercase for comparison
+    const vmState = vm.state?.toLowerCase();
+
+    switch (vmState) {
       case 'running':
         actions.push(
           { label: 'Console', action: 'console', icon: 'terminal' },
@@ -340,9 +445,16 @@ export class VirtualizationVMsEnhanced extends LitElement {
         );
         break;
       case 'stopped':
+      case 'shutoff': // Handle both stopped and shutoff states
+      case 'stop':    // Some systems might use 'stop' instead of 'stopped'
         actions.push(
           { label: 'Start', action: 'start', icon: 'play' },
+          { label: 'Edit', action: 'edit', icon: 'edit' },
           { label: 'Clone', action: 'clone', icon: 'copy' }
+        );
+        // Add delete action for stopped VMs
+        actions.push(
+          { label: 'Delete', action: 'delete', icon: 'trash', danger: true }
         );
         break;
       case 'paused':
@@ -356,11 +468,14 @@ export class VirtualizationVMsEnhanced extends LitElement {
           { label: 'Resume', action: 'resume', icon: 'play' }
         );
         break;
+      default:
+        // For unknown states, at least allow viewing details
+        break;
     }
 
+    // Add snapshot action for all states
     actions.push(
-      { label: 'Snapshot', action: 'snapshot', icon: 'save' },
-      { label: 'Delete', action: 'delete', icon: 'trash', danger: true }
+      { label: 'Snapshot', action: 'snapshot', icon: 'save' }
     );
 
     return actions;
@@ -432,6 +547,9 @@ export class VirtualizationVMsEnhanced extends LitElement {
           await vmActions.restart(vm.id);
           this.showNotification(`Restarting VM: ${vm.name}`, 'success');
           break;
+        case 'edit':
+          await this.editVM(vm);
+          break;
         case 'clone':
           await this.cloneVM(vm);
           break;
@@ -467,6 +585,11 @@ export class VirtualizationVMsEnhanced extends LitElement {
     }
   }
 
+  private async editVM(vm: VirtualMachine) {
+    // Open the wizard in edit mode with the VM data
+    wizardActions.openWizardForEdit(vm);
+  }
+
   private async cloneVM(vm: VirtualMachine) {
     // TODO: Open clone dialog
     console.log('Clone VM:', vm.name);
@@ -480,8 +603,18 @@ export class VirtualizationVMsEnhanced extends LitElement {
   }
 
   private confirmDeleteVM(vm: VirtualMachine) {
+    // Check if VM is running and prevent deletion (case-insensitive)
+    const vmState = vm.state?.toLowerCase();
+    if (vmState === 'running') {
+      this.showNotification('Cannot delete a running VM. Please stop it first.', 'error');
+      return;
+    }
+    
     this.vmToDelete = vm;
     this.showDeleteModal = true;
+    
+    // Force a re-render to ensure modal shows
+    this.requestUpdate();
   }
 
   private async handleDelete() {
@@ -649,29 +782,58 @@ export class VirtualizationVMsEnhanced extends LitElement {
 
         <!-- Stats Bar -->
         <div class="stats-bar">
-          <div class="stat-item">
-            <span class="stat-label">Total VMs:</span>
-            <span class="stat-value">${stats.totalVMs}</span>
+          <div class="stat-widget">
+            <div class="stat-widget-header">
+              <span class="stat-icon total">🖥️</span>
+              <span class="stat-label">Total VMs</span>
+            </div>
+            <div class="stat-value">${stats.totalVMs}</div>
+            <div class="stat-subtitle">virtual machines</div>
           </div>
-          <div class="stat-item">
-            <span class="stat-label">Running:</span>
-            <span class="stat-value running">${stats.runningVMs}</span>
+          
+          <div class="stat-widget">
+            <div class="stat-widget-header">
+              <span class="stat-icon running">▶️</span>
+              <span class="stat-label">Running</span>
+            </div>
+            <div class="stat-value running">${stats.runningVMs}</div>
+            <div class="stat-subtitle">${Math.round((stats.runningVMs / stats.totalVMs) * 100) || 0}% active</div>
           </div>
-          <div class="stat-item">
-            <span class="stat-label">Stopped:</span>
-            <span class="stat-value stopped">${stats.stoppedVMs}</span>
+          
+          <div class="stat-widget">
+            <div class="stat-widget-header">
+              <span class="stat-icon stopped">⏹️</span>
+              <span class="stat-label">Stopped</span>
+            </div>
+            <div class="stat-value stopped">${stats.stoppedVMs}</div>
+            <div class="stat-subtitle">${Math.round((stats.stoppedVMs / stats.totalVMs) * 100) || 0}% inactive</div>
           </div>
-          <div class="stat-item">
-            <span class="stat-label">Total Memory:</span>
-            <span class="stat-value">${this.formatMemory(stats.totalMemory)}</span>
+          
+          <div class="stat-widget">
+            <div class="stat-widget-header">
+              <span class="stat-icon memory">🧠</span>
+              <span class="stat-label">Total Memory</span>
+            </div>
+            <div class="stat-value">${this.formatMemory(stats.totalMemory)}</div>
+            <div class="stat-subtitle">allocated RAM</div>
           </div>
-          <div class="stat-item">
-            <span class="stat-label">Total vCPUs:</span>
-            <span class="stat-value">${stats.totalVCPUs}</span>
+          
+          <div class="stat-widget">
+            <div class="stat-widget-header">
+              <span class="stat-icon cpu">⚡</span>
+              <span class="stat-label">Total vCPUs</span>
+            </div>
+            <div class="stat-value">${stats.totalVCPUs}</div>
+            <div class="stat-subtitle">processing cores</div>
           </div>
-          <div class="stat-item">
-            <span class="stat-label">Total Storage:</span>
-            <span class="stat-value">${this.formatDiskSize(stats.totalDiskSize)}</span>
+          
+          <div class="stat-widget">
+            <div class="stat-widget-header">
+              <span class="stat-icon storage">💾</span>
+              <span class="stat-label">Total Storage</span>
+            </div>
+            <div class="stat-value">${this.formatDiskSize(stats.totalDiskSize)}</div>
+            <div class="stat-subtitle">disk space</div>
           </div>
         </div>
 
@@ -760,21 +922,20 @@ export class VirtualizationVMsEnhanced extends LitElement {
         ></vm-detail-drawer>
 
         <!-- Delete Confirmation Modal -->
-        ${this.showDeleteModal && this.vmToDelete ? html`
-          <delete-modal
-            .show=${this.showDeleteModal}
-            .item={{
-              name: this.vmToDelete.name,
-              type: 'Virtual Machine'
-            }}
-            .loading=${this.isDeleting}
-            @confirm-delete=${this.handleDelete}
-            @cancel-delete=${() => { 
-              this.showDeleteModal = false;
-              this.vmToDelete = null;
-            }}
-          ></delete-modal>
-        ` : ''}
+        <delete-modal
+          .show=${this.showDeleteModal}
+          .item=${this.vmToDelete ? {
+            name: this.vmToDelete.name,
+            type: 'Virtual Machine'
+          } : null}
+          .loading=${this.isDeleting}
+          @confirm-delete=${this.handleDelete}
+          @cancel-delete=${() => { 
+            this.showDeleteModal = false;
+            this.vmToDelete = null;
+            this.requestUpdate();
+          }}
+        ></delete-modal>
 
         <!-- VM Creation Wizard -->
         ${this.useEnhancedWizard ? html`

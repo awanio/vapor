@@ -15,7 +15,8 @@ import type {
   VMCreateRequest,
   VMState,
   ConsoleInfo,
-  VirtualNetwork
+  VirtualNetwork,
+  StorageVolume
 } from '../../types/virtualization';
 
 // ============ API Client Helper ============
@@ -582,6 +583,117 @@ export const networkStore = {
   $error: baseNetworkStore.$error,
 };
 
+// ============ Volume Store ============
+// Extend StorageVolume with required id for store compatibility
+type StorageVolumeWithId = StorageVolume & { id: string };
+
+const baseVolumeStore = createStore<StorageVolumeWithId>({
+  name: 'virtualization-volumes',
+  idField: 'id',
+  endpoint: getApiUrl(`${API_BASE}/volumes`),
+  persistent: false,
+  debug: process.env.NODE_ENV === 'development',
+  transform: (data: any) => ({
+    ...data,
+    // Generate ID from path and pool_name
+    id: data.id || `${data.pool_name}:${data.name}`,
+  }),
+});
+
+// Transform function to map API response fields to StorageVolume interface
+function transformVolumeResponse(apiVolume: any): StorageVolumeWithId {
+  return {
+    id: apiVolume.id || `${apiVolume.pool_name}:${apiVolume.name}`,
+    name: apiVolume.name,
+    type: apiVolume.type as 'file' | 'dir' | 'block',
+    capacity: apiVolume.capacity || 0,
+    allocation: apiVolume.allocation || 0,
+    path: apiVolume.path,
+    format: apiVolume.format as 'qcow2' | 'raw' | 'iso' | 'vmdk' | 'dir',
+    created_at: apiVolume.created_at,
+    pool_name: apiVolume.pool_name,
+    // Calculate used percentage
+    used_percent: apiVolume.capacity > 0 ? Math.round((apiVolume.allocation / apiVolume.capacity) * 100) : 0,
+    status: 'available', // Default status, can be enhanced based on usage
+  };
+}
+
+// Extend the volume store with proper fetch implementation
+export const volumeStore = {
+  ...baseVolumeStore,
+  async fetch(): Promise<void> {
+    try {
+      baseVolumeStore.$loading.set(true);
+      baseVolumeStore.$error.set(null);
+      
+      // Make the actual API request to /volumes endpoint
+      const response = await apiRequest<any>('/volumes');
+      
+      // Handle the response structure
+      let volumes: StorageVolumeWithId[] = [];
+      
+      if (response && typeof response === 'object') {
+        // Check for data array (based on the example JSON)
+        if (response.data && Array.isArray(response.data)) {
+          volumes = response.data.map(transformVolumeResponse);
+        }
+        // Check if response is directly an array
+        else if (Array.isArray(response)) {
+          volumes = response.map(transformVolumeResponse);
+        }
+        // Check for volumes property
+        else if (response.volumes && Array.isArray(response.volumes)) {
+          volumes = response.volumes.map(transformVolumeResponse);
+        } else {
+          console.warn('Unexpected volume list response format:', response);
+        }
+      }
+      
+      // Update the store with fetched data
+      const items = new Map<string, StorageVolumeWithId>();
+      volumes.forEach(volume => {
+        items.set(volume.id, volume);
+      });
+      baseVolumeStore.$items.set(items);
+      
+      baseVolumeStore.emit({
+        type: StoreEventType.BATCH_UPDATED,
+        payload: volumes as any,
+        timestamp: Date.now(),
+      });
+      
+      console.log(`Fetched ${volumes.length} volumes from /volumes endpoint`);
+    } catch (error) {
+      const storeError = {
+        code: 'FETCH_ERROR',
+        message: error instanceof Error ? error.message : 'Failed to fetch volumes',
+        timestamp: Date.now(),
+      };
+      baseVolumeStore.$error.set(storeError);
+      baseVolumeStore.emit({
+        type: StoreEventType.ERROR,
+        payload: storeError as any,
+        timestamp: Date.now(),
+      });
+      throw error;
+    } finally {
+      baseVolumeStore.$loading.set(false);
+    }
+  },
+  
+  // Keep the original methods from baseVolumeStore
+  getById: baseVolumeStore.getById.bind(baseVolumeStore),
+  update: baseVolumeStore.update.bind(baseVolumeStore),
+  delete: baseVolumeStore.delete.bind(baseVolumeStore),
+  clear: baseVolumeStore.clear.bind(baseVolumeStore),
+  emit: baseVolumeStore.emit.bind(baseVolumeStore),
+  
+  // Expose the store atoms
+  $items: baseVolumeStore.$items,
+  $loading: baseVolumeStore.$loading,
+  $error: baseVolumeStore.$error,
+};
+
 // ============ UI State Atoms ============
 
 // Currently selected VM for details view
@@ -681,6 +793,24 @@ export const $isoFilterState = atom<{
   os_type?: string[];
   storage_pool?: string[];
 }>({});
+
+// ============ Volume UI State ============
+
+// Search query for volume filtering
+export const $volumeSearchQuery = atom<string>('');
+
+// Currently selected volume for details view
+export const $selectedVolumeId = atom<string | null>(null);
+
+// Volume list filter state
+export const $volumeFilterState = atom<{
+  format?: string[];
+  pool_name?: string[];
+  type?: ('file' | 'dir' | 'block')[];
+}>({});
+
+// Active tab in volume list view
+export const $activeVolumeTab = atom<'all' | 'disk-images' | 'iso-files' | 'directories'>('all');
 
 // ============ Computed Atoms ============
 
@@ -1213,6 +1343,153 @@ export const $isoStats = computed(
   }
 );
 
+// Get selected volume details
+export const $selectedVolume = computed(
+  [$selectedVolumeId, volumeStore.$items],
+  (id, volumes) => {
+    if (!id || !volumes) return null;
+    
+    // Handle both Map and plain object cases
+    if (volumes instanceof Map) {
+      return volumes.get(id) || null;
+    } else if (typeof volumes === 'object') {
+      return volumes[id] || null;
+    }
+    
+    return null;
+  }
+);
+
+// Filtered volumes based on search and filters
+export const $filteredVolumes = computed(
+  [volumeStore.$items, $volumeSearchQuery, $volumeFilterState, $activeVolumeTab],
+  (volumes, searchQuery, filters, activeTab) => {
+    if (!volumes) return [];
+    
+    // Handle both Map and plain object cases
+    let volumesArray: StorageVolume[];
+    if (volumes instanceof Map) {
+      volumesArray = Array.from(volumes.values());
+    } else if (typeof volumes === 'object') {
+      volumesArray = Object.values(volumes);
+    } else {
+      return [];
+    }
+    
+    // Filter by tab
+    if (activeTab !== 'all') {
+      switch (activeTab) {
+        case 'disk-images':
+          volumesArray = volumesArray.filter(vol => 
+            vol.type === 'file' && ['qcow2', 'raw', 'vmdk'].includes(vol.format)
+          );
+          break;
+        case 'iso-files':
+          volumesArray = volumesArray.filter(vol => 
+            vol.type === 'file' && vol.format === 'iso'
+          );
+          break;
+        case 'directories':
+          volumesArray = volumesArray.filter(vol => vol.type === 'dir');
+          break;
+      }
+    }
+    
+    // Filter by search query
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      volumesArray = volumesArray.filter(vol =>
+        vol.name.toLowerCase().includes(query) ||
+        vol.path.toLowerCase().includes(query) ||
+        vol.pool_name.toLowerCase().includes(query) ||
+        vol.format.toLowerCase().includes(query)
+      );
+    }
+    
+    // Apply additional filters
+    if (filters?.format && filters.format.length > 0) {
+      volumesArray = volumesArray.filter(vol => filters.format!.includes(vol.format));
+    }
+    
+    if (filters?.pool_name && filters.pool_name.length > 0) {
+      volumesArray = volumesArray.filter(vol => filters.pool_name!.includes(vol.pool_name));
+    }
+    
+    if (filters?.type && filters.type.length > 0) {
+      volumesArray = volumesArray.filter(vol => filters.type!.includes(vol.type));
+    }
+    
+    return volumesArray.sort((a, b) => a.name.localeCompare(b.name));
+  }
+);
+
+// Volume statistics
+export const $volumeStats = computed(
+  [volumeStore.$items],
+  (volumes) => {
+    if (!volumes) {
+      return {
+        totalVolumes: 0,
+        totalCapacity: 0,
+        totalAllocation: 0,
+        diskImages: 0,
+        isoFiles: 0,
+        directories: 0,
+        pools: [] as string[],
+      };
+    }
+    
+    // Handle both Map and plain object cases
+    let volumesArray: StorageVolume[];
+    if (volumes instanceof Map) {
+      volumesArray = Array.from(volumes.values());
+    } else if (typeof volumes === 'object') {
+      volumesArray = Object.values(volumes);
+    } else {
+      return {
+        totalVolumes: 0,
+        totalCapacity: 0,
+        totalAllocation: 0,
+        diskImages: 0,
+        isoFiles: 0,
+        directories: 0,
+        pools: [] as string[],
+      };
+    }
+    
+    const pools = new Set<string>();
+    let totalCapacity = 0;
+    let totalAllocation = 0;
+    let diskImages = 0;
+    let isoFiles = 0;
+    let directories = 0;
+    
+    volumesArray.forEach(vol => {
+      totalCapacity += vol.capacity || 0;
+      totalAllocation += vol.allocation || 0;
+      pools.add(vol.pool_name);
+      
+      if (vol.type === 'file' && ['qcow2', 'raw', 'vmdk'].includes(vol.format)) {
+        diskImages++;
+      } else if (vol.type === 'file' && vol.format === 'iso') {
+        isoFiles++;
+      } else if (vol.type === 'dir') {
+        directories++;
+      }
+    });
+    
+    return {
+      totalVolumes: volumesArray.length,
+      totalCapacity,
+      totalAllocation,
+      diskImages,
+      isoFiles,
+      directories,
+      pools: Array.from(pools).sort(),
+    };
+  }
+);
+
 // ============ Action Creators ============
 
 // VM Actions
@@ -1286,7 +1563,7 @@ export const vmActions = {
   },
   
   async delete(vmId: string) {
-    await apiRequest(`/virtualmachines/${vmId}`, { method: 'DELETE' });
+    await apiRequest(`/virtualization/computes/${vmId}`, { method: 'DELETE' });
     await vmStore.delete(vmId);
     
     // Clear selection if deleted VM was selected
@@ -1297,6 +1574,23 @@ export const vmActions = {
   
   async getConsoleInfo(vmId: string): Promise<ConsoleInfo> {
     return apiRequest<ConsoleInfo>(`/virtualmachines/${vmId}/console`);
+  },
+  
+  async update(vmId: string, vmData: Partial<VMCreateRequest>) {
+    const response = await apiRequest<VirtualMachine>(
+      `/virtualization/computes/${vmId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(vmData),
+      }
+    );
+    
+    // Update in store
+    const items = new Map(vmStore.$items.get());
+    items.set(response.id, response);
+    vmStore.$items.set(items);
+    
+    return { success: true, data: response };
   },
   
   selectVM(vmId: string | null) {
@@ -1320,6 +1614,53 @@ export const wizardActions = {
       },
       errors: {},
     });
+  },
+  
+  openWizardForEdit(vm: VirtualMachine) {
+    // Prepare the form data from existing VM
+    // Convert VM's disk info to DiskConfig format
+    const disks = vm.disks?.map(disk => ({
+      action: 'attach' as const,
+      path: disk.path,
+      // Convert vmdk to qcow2 since DiskConfig doesn't support vmdk
+      format: (disk.format === 'vmdk' ? 'qcow2' : disk.format) as 'qcow2' | 'raw',
+      size: disk.size,
+      bus: disk.bus,
+    })) || [{
+      action: 'create' as const,
+      size: 20,
+      format: 'qcow2' as const,
+    }];
+    
+    // Convert network interfaces if present
+    const network = vm.network_interfaces?.[0] ? {
+      type: vm.network_interfaces[0].type,
+      source: vm.network_interfaces[0].source,
+      model: vm.network_interfaces[0].model,
+      mac: vm.network_interfaces[0].mac,
+    } : undefined;
+    
+    const formData: Partial<VMCreateRequest> = {
+      name: vm.name,
+      memory: vm.memory,
+      vcpus: vm.vcpus,
+      storage: {
+        default_pool: 'default', // Will be populated from VM disks if available
+        disks: disks,
+      },
+      network: network,
+      graphics: vm.graphics,
+      metadata: vm.metadata,
+    };
+    
+    $vmWizardState.set({
+      isOpen: true,
+      currentStep: 1,
+      formData,
+      errors: {},
+      editMode: true,
+      editingVmId: vm.id,
+    } as any);
   },
   
   closeWizard() {
@@ -1537,6 +1878,39 @@ export const networkActions = {
   },
 };
 
+// Volume Actions
+export const volumeActions = {
+  async fetchAll() {
+    await volumeStore.fetch();
+  },
+  
+  async delete(volumeId: string) {
+    await apiRequest(`/volumes/${volumeId}`, { method: 'DELETE' });
+    await volumeStore.delete(volumeId);
+    
+    // Clear selection if deleted volume was selected
+    if ($selectedVolumeId.get() === volumeId) {
+      $selectedVolumeId.set(null);
+    }
+  },
+  
+  selectVolume(volumeId: string | null) {
+    $selectedVolumeId.set(volumeId);
+  },
+  
+  setSearchQuery(query: string) {
+    $volumeSearchQuery.set(query);
+  },
+  
+  setActiveTab(tab: 'all' | 'disk-images' | 'iso-files' | 'directories') {
+    $activeVolumeTab.set(tab);
+  },
+  
+  setFilters(filters: { format?: string[]; pool_name?: string[]; type?: ('file' | 'dir' | 'block')[] }) {
+    $volumeFilterState.set(filters);
+  },
+};
+
 // ISO Actions
 export const isoActions = {
   async fetchAll() {
@@ -1637,6 +2011,7 @@ export async function initializeVirtualizationStores() {
       isoStore.fetch(),
       templateStore.fetch(),
       networkStore.fetch(),
+      volumeStore.fetch(),
     ]);
   } catch (error) {
     console.error('Failed to initialize virtualization stores:', error);
@@ -1651,6 +2026,7 @@ export function cleanupVirtualizationStores() {
   isoStore.clear();
   templateStore.clear();
   networkStore.clear();
+  volumeStore.clear();
   
   // Reset UI state
   $selectedVMId.set(null);
@@ -1664,6 +2040,10 @@ export function cleanupVirtualizationStores() {
   $activeVMTab.set('all');
   $vmSearchQuery.set('');
   $vmFilterState.set({});
+  $selectedVolumeId.set(null);
+  $volumeSearchQuery.set('');
+  $volumeFilterState.set({});
+  $activeVolumeTab.set('all');
 }
 
 // ============ WebSocket Support ============
@@ -1697,6 +2077,7 @@ export default {
   isoStore,
   templateStore,
   networkStore,
+  volumeStore,
   
   // Atoms
   $selectedVMId,
@@ -1717,6 +2098,10 @@ export default {
   $isoSearchQuery,
   $selectedISOId,
   $isoFilterState,
+  $volumeSearchQuery,
+  $selectedVolumeId,
+  $volumeFilterState,
+  $activeVolumeTab,
   
   // Computed
   $selectedVM,
@@ -1734,6 +2119,9 @@ export default {
   $selectedStoragePool,
   $filteredStoragePools,
   $storagePoolStats,
+  $selectedVolume,
+  $filteredVolumes,
+  $volumeStats,
   
   // Actions
   vmActions,
@@ -1742,6 +2130,7 @@ export default {
   storagePoolActions,
   networkActions,
   isoActions,
+  volumeActions,
   
   // Lifecycle
   initializeVirtualizationStores,
