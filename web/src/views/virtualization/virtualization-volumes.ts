@@ -13,7 +13,6 @@ import '../../components/ui/notification-container.js';
 
 // Import types
 import type { Tab } from '../../components/tabs/tab-group.js';
-import type { Column } from '../../components/tables/resource-table.js';
 
 // Import utilities
 import { formatBytes, formatDate } from "../../utils/formatters";
@@ -535,55 +534,70 @@ export class VirtualizationVolumes extends LitElement {
   ];
 
   // Table columns configuration
-  private getColumns(): Column[] {
+  private getColumns() {
     return [
       {
         key: 'name',
         label: 'Name',
-        sortable: true,
-        render: (volume: StorageVolume) => {
-          const iconClass = volume.type === 'dir' ? 'dir' : 
-                           volume.format === 'iso' ? 'iso' : 'disk';
-          const icon = volume.type === 'dir' ? '📁' : 
-                      volume.format === 'iso' ? '💿' : '💾';
-          
-          return html`
-            <div class="volume-name">
-              <span class="volume-icon ${iconClass}">${icon}</span>
-              <div class="volume-details">
-                <div class="volume-title">${volume.name}</div>
-                <div class="volume-path">${volume.path}</div>
-              </div>
-            </div>
-          `;
-        }
+        type: 'custom' as const
       },
       {
         key: 'format',
         label: 'Format',
-        sortable: true,
-        render: (volume: StorageVolume) => html`
-          <span class="format-badge ${volume.format}">
-            ${volume.format}
-          </span>
-        `
+        type: 'custom' as const
       },
       {
         key: 'capacity',
         label: 'Capacity',
-        sortable: true,
-        render: (volume: StorageVolume) => html`
-          <div class="size-info">
-            <div class="size-value">${formatBytes(volume.capacity)}</div>
-            <div class="size-usage">${formatBytes(volume.allocation)} used</div>
-          </div>
-        `
+        type: 'custom' as const
       },
       {
         key: 'usage',
         label: 'Usage',
-        sortable: false,
-        render: (volume: StorageVolume) => html`
+        type: 'custom' as const
+      },
+      {
+        key: 'pool_name',
+        label: 'Pool'
+      },
+      {
+        key: 'created_at',
+        label: 'Created'
+      }
+    ];
+  }
+
+  // Transform volumes data for table display
+  private transformVolumeData(volumes: StorageVolume[]) {
+    return volumes.map(volume => {
+      const iconClass = volume.type === 'dir' ? 'dir' : 
+                       volume.format === 'iso' ? 'iso' : 'disk';
+      const icon = volume.type === 'dir' ? '📁' : 
+                  volume.format === 'iso' ? '💿' : '💾';
+      
+      return {
+        ...volume,
+        name: html`
+          <div class="volume-name">
+            <span class="volume-icon ${iconClass}">${icon}</span>
+            <div class="volume-details">
+              <div class="volume-title">${volume.name}</div>
+              <div class="volume-path">${volume.path}</div>
+            </div>
+          </div>
+        `,
+        format: html`
+          <span class="format-badge ${volume.format}">
+            ${volume.format}
+          </span>
+        `,
+        capacity: html`
+          <div class="size-info">
+            <div class="size-value">${formatBytes(volume.capacity)}</div>
+            <div class="size-usage">${formatBytes(volume.allocation)} used</div>
+          </div>
+        `,
+        usage: html`
           <div>
             <div class="usage-bar">
               <div 
@@ -593,27 +607,15 @@ export class VirtualizationVolumes extends LitElement {
             </div>
             <div class="usage-percent">${volume.used_percent || 0}%</div>
           </div>
-        `
-      },
-      {
-        key: 'pool_name',
-        label: 'Pool',
-        sortable: true,
-        render: (volume: StorageVolume) => html`
-          <span class="pool-badge">${volume.pool_name}</span>
-        `
-      },
-      {
-        key: 'created_at',
-        label: 'Created',
-        sortable: true,
-        render: (volume: StorageVolume) => formatDate(volume.created_at)
-      }
-    ];
+        `,
+        pool_name: html`<span class="pool-badge">${volume.pool_name}</span>`,
+        created_at: formatDate(volume.created_at)
+      };
+    });
   }
 
   // Table actions configuration
-  private getActions(volume: StorageVolume) {
+  private getActions(_volume: any) {
     return [
       {
         id: 'view',
@@ -842,8 +844,8 @@ export class VirtualizationVolumes extends LitElement {
           ` : html`
             <resource-table
               .columns=${this.getColumns()}
-              .data=${displayVolumes}
-              .actions=${(item: StorageVolume) => this.getActions(item)}
+              .data=${this.transformVolumeData(displayVolumes)}
+              .actions=${(item: any) => this.getActions(item)}
               @action=${this.handleAction}
             ></resource-table>
           `}

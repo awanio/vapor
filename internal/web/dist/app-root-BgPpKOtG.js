@@ -2,7 +2,7 @@ var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 var _a;
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-Ca9ipjry.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-CHw1F9Yk.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -17385,7 +17385,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-Ca9ipjry.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-CHw1F9Yk.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17430,7 +17430,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-Ca9ipjry.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-CHw1F9Yk.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17495,7 +17495,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-Ca9ipjry.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-CHw1F9Yk.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17605,7 +17605,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-Ca9ipjry.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-CHw1F9Yk.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -54599,6 +54599,30 @@ const storagePoolActions = {
     $storagePoolFilterState.set(filters);
   }
 };
+const volumeActions = {
+  async fetchAll() {
+    await volumeStore.fetch();
+  },
+  async delete(volumeId) {
+    await apiRequest$1(`/volumes/${volumeId}`, { method: "DELETE" });
+    await volumeStore.delete(volumeId);
+    if ($selectedVolumeId.get() === volumeId) {
+      $selectedVolumeId.set(null);
+    }
+  },
+  selectVolume(volumeId) {
+    $selectedVolumeId.set(volumeId);
+  },
+  setSearchQuery(query) {
+    $volumeSearchQuery.set(query);
+  },
+  setActiveTab(tab) {
+    $activeVolumeTab.set(tab);
+  },
+  setFilters(filters) {
+    $volumeFilterState.set(filters);
+  }
+};
 const storageActions = {
   async fetchPools() {
     await storagePoolStore.fetch();
@@ -58160,29 +58184,58 @@ let VirtualizationVMsEnhanced = class extends i$1 {
 
         <!-- Stats Bar -->
         <div class="stats-bar">
-          <div class="stat-item">
-            <span class="stat-label">Total VMs:</span>
-            <span class="stat-value">${stats.totalVMs}</span>
+          <div class="stat-widget">
+            <div class="stat-widget-header">
+              <span class="stat-icon total">🖥️</span>
+              <span class="stat-label">Total VMs</span>
+            </div>
+            <div class="stat-value">${stats.totalVMs}</div>
+            <div class="stat-subtitle">virtual machines</div>
           </div>
-          <div class="stat-item">
-            <span class="stat-label">Running:</span>
-            <span class="stat-value running">${stats.runningVMs}</span>
+          
+          <div class="stat-widget">
+            <div class="stat-widget-header">
+              <span class="stat-icon running">▶️</span>
+              <span class="stat-label">Running</span>
+            </div>
+            <div class="stat-value running">${stats.runningVMs}</div>
+            <div class="stat-subtitle">${Math.round(stats.runningVMs / stats.totalVMs * 100) || 0}% active</div>
           </div>
-          <div class="stat-item">
-            <span class="stat-label">Stopped:</span>
-            <span class="stat-value stopped">${stats.stoppedVMs}</span>
+          
+          <div class="stat-widget">
+            <div class="stat-widget-header">
+              <span class="stat-icon stopped">⏹️</span>
+              <span class="stat-label">Stopped</span>
+            </div>
+            <div class="stat-value stopped">${stats.stoppedVMs}</div>
+            <div class="stat-subtitle">${Math.round(stats.stoppedVMs / stats.totalVMs * 100) || 0}% inactive</div>
           </div>
-          <div class="stat-item">
-            <span class="stat-label">Total Memory:</span>
-            <span class="stat-value">${this.formatMemory(stats.totalMemory)}</span>
+          
+          <div class="stat-widget">
+            <div class="stat-widget-header">
+              <span class="stat-icon memory">🧠</span>
+              <span class="stat-label">Total Memory</span>
+            </div>
+            <div class="stat-value">${this.formatMemory(stats.totalMemory)}</div>
+            <div class="stat-subtitle">allocated RAM</div>
           </div>
-          <div class="stat-item">
-            <span class="stat-label">Total vCPUs:</span>
-            <span class="stat-value">${stats.totalVCPUs}</span>
+          
+          <div class="stat-widget">
+            <div class="stat-widget-header">
+              <span class="stat-icon cpu">⚡</span>
+              <span class="stat-label">Total vCPUs</span>
+            </div>
+            <div class="stat-value">${stats.totalVCPUs}</div>
+            <div class="stat-subtitle">processing cores</div>
           </div>
-          <div class="stat-item">
-            <span class="stat-label">Total Storage:</span>
-            <span class="stat-value">${this.formatDiskSize(stats.totalDiskSize)}</span>
+          
+          <div class="stat-widget">
+            <div class="stat-widget-header">
+              <span class="stat-icon storage">💾</span>
+              <span class="stat-label">Total Storage</span>
+            </div>
+            <div class="stat-value">${this.formatDiskSize(stats.totalDiskSize)}</div>
+            <div class="stat-subtitle">disk space</div>
           </div>
         </div>
 
@@ -58322,29 +58375,124 @@ VirtualizationVMsEnhanced.styles = i$4`
     }
 
     .stats-bar {
-      display: flex;
-      gap: 2rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
       margin-bottom: 1.5rem;
-      padding: 12px 16px;
-      background: var(--vscode-editor-background);
-      border: 1px solid var(--vscode-editorWidget-border);
-      border-radius: 4px;
-      font-size: 13px;
     }
 
-    .stat-item {
+    .stat-widget {
+      display: flex;
+      flex-direction: column;
+      padding: 14px;
+      background: var(--vscode-editor-background);
+      border: 1px solid var(--vscode-widget-border, var(--vscode-input-border, var(--vscode-panel-border, #454545)));
+      border-radius: 8px;
+      transition: all 0.2s ease;
+      position: relative;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    }
+
+    .stat-widget:hover {
+      border-color: var(--vscode-focusBorder);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .stat-widget::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      border-radius: 8px 8px 0 0;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .stat-widget:hover::before {
+      opacity: 1;
+    }
+
+    .stat-widget:nth-child(1)::before {
+      background: var(--vscode-charts-blue);
+    }
+
+    .stat-widget:nth-child(2)::before {
+      background: var(--vscode-charts-green);
+    }
+
+    .stat-widget:nth-child(3)::before {
+      background: var(--vscode-charts-red);
+    }
+
+    .stat-widget:nth-child(4)::before {
+      background: var(--vscode-charts-purple);
+    }
+
+    .stat-widget:nth-child(5)::before {
+      background: var(--vscode-charts-orange);
+    }
+
+    .stat-widget:nth-child(6)::before {
+      background: var(--vscode-charts-yellow);
+    }
+
+    .stat-widget-header {
       display: flex;
       align-items: center;
       gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .stat-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      font-size: 14px;
+    }
+
+    .stat-icon.total {
+      color: var(--vscode-charts-blue);
+    }
+
+    .stat-icon.running {
+      color: var(--vscode-charts-green);
+    }
+
+    .stat-icon.stopped {
+      color: var(--vscode-charts-red);
+    }
+
+    .stat-icon.memory {
+      color: var(--vscode-charts-purple);
+    }
+
+    .stat-icon.cpu {
+      color: var(--vscode-charts-orange);
+    }
+
+    .stat-icon.storage {
+      color: var(--vscode-charts-yellow);
     }
 
     .stat-label {
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
       color: var(--vscode-descriptionForeground);
+      opacity: 0.8;
     }
 
     .stat-value {
+      font-size: 18px;
       font-weight: 600;
       color: var(--vscode-foreground);
+      line-height: 1.2;
     }
 
     .stat-value.running {
@@ -58353,6 +58501,13 @@ VirtualizationVMsEnhanced.styles = i$4`
 
     .stat-value.stopped {
       color: var(--vscode-charts-red);
+    }
+
+    .stat-subtitle {
+      font-size: 10px;
+      color: var(--vscode-descriptionForeground);
+      margin-top: 2px;
+      opacity: 0.7;
     }
 
     .controls {
@@ -64909,38 +65064,6 @@ function formatDate(date) {
     minute: "2-digit"
   });
 }
-class StoreSubscriber {
-  constructor() {
-    this.subscriptions = [];
-  }
-  /**
-   * Subscribe to an atom
-   */
-  subscribe(atom2, callback2) {
-    const unsubscribe = atom2.subscribe(callback2);
-    this.subscriptions.push(unsubscribe);
-  }
-  /**
-   * Subscribe to an atom and immediately get its value
-   */
-  subscribeAndGet(atom2, callback2) {
-    callback2(atom2.get());
-    this.subscribe(atom2, callback2);
-  }
-  /**
-   * Unsubscribe from all atoms
-   */
-  unsubscribeAll() {
-    this.subscriptions.forEach((unsubscribe) => unsubscribe());
-    this.subscriptions = [];
-  }
-  /**
-   * Clean up all subscriptions (alias for unsubscribeAll)
-   */
-  dispose() {
-    this.unsubscribeAll();
-  }
-}
 var __defProp$b = Object.defineProperty;
 var __getOwnPropDesc$9 = Object.getOwnPropertyDescriptor;
 var __decorateClass$b = (decorators, target, key, kind) => {
@@ -64954,57 +65077,153 @@ var __decorateClass$b = (decorators, target, key, kind) => {
 let VirtualizationVolumes = class extends i$1 {
   constructor() {
     super(...arguments);
-    this.volumes = [];
-    this.loading = false;
-    this.searchQuery = "";
-    this.activeTab = "all";
-    this.stats = {
-      totalVolumes: 0,
-      totalCapacity: 0,
-      totalAllocation: 0,
-      diskImages: 0,
-      isoFiles: 0,
-      directories: 0,
-      pools: []
-    };
-    this.storeSubscriber = new StoreSubscriber();
+    this.poolFilter = "all";
+    this.storeController = new lib.StoreController(this, volumeStore.$state);
+    this.filteredVolumesController = new lib.StoreController(this, $filteredVolumes);
+    this.volumeStatsController = new lib.StoreController(this, $volumeStats);
+    this.searchQueryController = new lib.StoreController(this, $volumeSearchQuery);
+    this.activeTabController = new lib.StoreController(this, $activeVolumeTab);
+    this.tabs = [
+      { id: "all", label: "All Volumes" },
+      { id: "disk-images", label: "Disk Images" },
+      { id: "iso-files", label: "ISO Files" },
+      { id: "directories", label: "Directories" }
+    ];
   }
-  connectedCallback() {
+  // Table columns configuration
+  getColumns() {
+    return [
+      {
+        key: "name",
+        label: "Name",
+        type: "custom"
+      },
+      {
+        key: "format",
+        label: "Format",
+        type: "custom"
+      },
+      {
+        key: "capacity",
+        label: "Capacity",
+        type: "custom"
+      },
+      {
+        key: "usage",
+        label: "Usage",
+        type: "custom"
+      },
+      {
+        key: "pool_name",
+        label: "Pool"
+      },
+      {
+        key: "created_at",
+        label: "Created"
+      }
+    ];
+  }
+  // Transform volumes data for table display
+  transformVolumeData(volumes) {
+    return volumes.map((volume) => {
+      const iconClass = volume.type === "dir" ? "dir" : volume.format === "iso" ? "iso" : "disk";
+      const icon = volume.type === "dir" ? "📁" : volume.format === "iso" ? "💿" : "💾";
+      return {
+        ...volume,
+        name: x`
+          <div class="volume-name">
+            <span class="volume-icon ${iconClass}">${icon}</span>
+            <div class="volume-details">
+              <div class="volume-title">${volume.name}</div>
+              <div class="volume-path">${volume.path}</div>
+            </div>
+          </div>
+        `,
+        format: x`
+          <span class="format-badge ${volume.format}">
+            ${volume.format}
+          </span>
+        `,
+        capacity: x`
+          <div class="size-info">
+            <div class="size-value">${formatBytes(volume.capacity)}</div>
+            <div class="size-usage">${formatBytes(volume.allocation)} used</div>
+          </div>
+        `,
+        usage: x`
+          <div>
+            <div class="usage-bar">
+              <div 
+                class="usage-fill ${this.getUsageClass(volume.used_percent || 0)}"
+                style="width: ${volume.used_percent || 0}%"
+              ></div>
+            </div>
+            <div class="usage-percent">${volume.used_percent || 0}%</div>
+          </div>
+        `,
+        pool_name: x`<span class="pool-badge">${volume.pool_name}</span>`,
+        created_at: formatDate(volume.created_at)
+      };
+    });
+  }
+  // Table actions configuration
+  getActions(_volume) {
+    return [
+      {
+        id: "view",
+        label: "View Details",
+        icon: "👁️"
+      },
+      {
+        id: "delete",
+        label: "Delete",
+        icon: "🗑️",
+        danger: true
+      }
+    ];
+  }
+  async connectedCallback() {
     super.connectedCallback();
-    this.storeSubscriber.subscribeAndGet($filteredVolumes, (volumes) => {
-      this.volumes = volumes;
-    });
-    this.storeSubscriber.subscribeAndGet($volumeStats, (stats) => {
-      this.stats = stats;
-    });
-    this.storeSubscriber.subscribeAndGet($volumeSearchQuery, (query) => {
-      this.searchQuery = query;
-    });
-    this.storeSubscriber.subscribeAndGet($activeVolumeTab, (tab) => {
-      this.activeTab = tab;
-    });
-    this.storeSubscriber.subscribeAndGet(volumeStore.$loading, (loading) => {
-      this.loading = loading;
-    });
-    this.fetchVolumes();
+    await this.loadData();
   }
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    this.storeSubscriber.dispose();
-  }
-  async fetchVolumes() {
+  async loadData() {
     try {
-      await volumeStore.fetch();
+      await volumeActions.fetchAll();
     } catch (error) {
       console.error("Failed to fetch volumes:", error);
+      this.showNotification(
+        `Failed to load volumes: ${error instanceof Error ? error.message : "Unknown error"}`,
+        "error"
+      );
     }
   }
-  handleSearch(e3) {
-    const target = e3.target;
-    $volumeSearchQuery.set(target.value);
+  showNotification(message, type = "info") {
+    this.dispatchEvent(new CustomEvent("show-notification", {
+      detail: { message, type },
+      bubbles: true,
+      composed: true
+    }));
   }
-  handleTabChange(tab) {
-    $activeVolumeTab.set(tab);
+  handleSearchChange(e3) {
+    $volumeSearchQuery.set(e3.detail.value);
+  }
+  handleTabChange(e3) {
+    const tabId = e3.detail.tabId;
+    volumeActions.setActiveTab(tabId);
+  }
+  handlePoolFilterChange(e3) {
+    this.poolFilter = e3.detail.value;
+  }
+  handleAction(e3) {
+    const { action, item } = e3.detail;
+    if (action === "delete") {
+      this.handleDelete(item);
+    } else if (action === "view") {
+      console.log("View details for:", item);
+    }
+  }
+  async handleRefresh() {
+    await this.loadData();
   }
   async handleDelete(volume) {
     if (confirm(`Are you sure you want to delete volume "${volume.name}"?`)) {
@@ -65016,26 +65235,33 @@ let VirtualizationVolumes = class extends i$1 {
       }
     }
   }
-  getVolumeIcon(volume) {
-    if (volume.type === "dir") {
-      return '<i class="fas fa-folder"></i>';
-    } else if (volume.format === "iso") {
-      return '<i class="fas fa-compact-disc"></i>';
-    } else {
-      return '<i class="fas fa-hdd"></i>';
-    }
-  }
-  getIconClass(volume) {
-    if (volume.type === "dir") return "dir";
-    if (volume.format === "iso") return "iso";
-    return "disk";
-  }
   getUsageClass(percent) {
     if (percent >= 90) return "high";
     if (percent >= 70) return "medium";
     return "low";
   }
   render() {
+    const state2 = this.storeController.value;
+    const volumes = this.filteredVolumesController.value || [];
+    const stats = this.volumeStatsController.value || {
+      totalVolumes: 0,
+      totalCapacity: 0,
+      totalAllocation: 0,
+      diskImages: 0,
+      isoFiles: 0,
+      directories: 0,
+      pools: []
+    };
+    const activeTab = this.activeTabController.value || "all";
+    const searchQuery = this.searchQueryController.value || "";
+    const poolOptions = [
+      { value: "all", label: "All Pools" },
+      ...stats.pools.map((pool) => ({ value: pool, label: pool }))
+    ];
+    let displayVolumes = volumes;
+    if (this.poolFilter !== "all") {
+      displayVolumes = volumes.filter((v2) => v2.pool_name === this.poolFilter);
+    }
     return x`
       <div class="container">
         <div class="header">
@@ -65044,166 +65270,118 @@ let VirtualizationVolumes = class extends i$1 {
 
         <!-- Stats Bar -->
         <div class="stats-bar">
-          <div class="stat-item">
-            <span class="stat-label">Total:</span>
-            <span class="stat-value">${this.stats.totalVolumes}</span>
+          <div class="stat-widget">
+            <div class="stat-widget-header">
+              <span class="stat-icon total">📊</span>
+              <span class="stat-label">Total Volumes</span>
+            </div>
+            <div class="stat-value">${stats.totalVolumes}</div>
+            <div class="stat-subtitle">active volumes</div>
           </div>
-          <div class="stat-item">
-            <span class="stat-label">Capacity:</span>
-            <span class="stat-value">${formatBytes(this.stats.totalCapacity)}</span>
+          
+          <div class="stat-widget">
+            <div class="stat-widget-header">
+              <span class="stat-icon capacity">💾</span>
+              <span class="stat-label">Capacity</span>
+            </div>
+            <div class="stat-value">${formatBytes(stats.totalCapacity)}</div>
+            <div class="stat-subtitle">total space</div>
           </div>
-          <div class="stat-item">
-            <span class="stat-label">Allocated:</span>
-            <span class="stat-value">${formatBytes(this.stats.totalAllocation)}</span>
+          
+          <div class="stat-widget">
+            <div class="stat-widget-header">
+              <span class="stat-icon allocated">✅</span>
+              <span class="stat-label">Allocated</span>
+            </div>
+            <div class="stat-value">${formatBytes(stats.totalAllocation)}</div>
+            <div class="stat-subtitle">${Math.round(stats.totalAllocation / stats.totalCapacity * 100) || 0}% used</div>
           </div>
-          <div class="stat-item">
-            <span class="stat-label">Disk Images:</span>
-            <span class="stat-value">${this.stats.diskImages}</span>
+          
+          <div class="stat-widget">
+            <div class="stat-widget-header">
+              <span class="stat-icon disk">💿</span>
+              <span class="stat-label">Disk Images</span>
+            </div>
+            <div class="stat-value">${stats.diskImages}</div>
+            <div class="stat-subtitle">qcow2, raw, vmdk</div>
           </div>
-          <div class="stat-item">
-            <span class="stat-label">ISO Files:</span>
-            <span class="stat-value">${this.stats.isoFiles}</span>
+          
+          <div class="stat-widget">
+            <div class="stat-widget-header">
+              <span class="stat-icon iso">📀</span>
+              <span class="stat-label">ISO Files</span>
+            </div>
+            <div class="stat-value">${stats.isoFiles}</div>
+            <div class="stat-subtitle">installation media</div>
           </div>
-          <div class="stat-item">
-            <span class="stat-label">Directories:</span>
-            <span class="stat-value">${this.stats.directories}</span>
+          
+          <div class="stat-widget">
+            <div class="stat-widget-header">
+              <span class="stat-icon dir">📁</span>
+              <span class="stat-label">Directories</span>
+            </div>
+            <div class="stat-value">${stats.directories}</div>
+            <div class="stat-subtitle">folder volumes</div>
           </div>
         </div>
 
         <!-- Tabs -->
-        <div class="tabs">
-          <button 
-            class="tab ${this.activeTab === "all" ? "active" : ""}"
-            @click=${() => this.handleTabChange("all")}
-          >
-            All Volumes
-          </button>
-          <button 
-            class="tab ${this.activeTab === "disk-images" ? "active" : ""}"
-            @click=${() => this.handleTabChange("disk-images")}
-          >
-            Disk Images
-          </button>
-          <button 
-            class="tab ${this.activeTab === "iso-files" ? "active" : ""}"
-            @click=${() => this.handleTabChange("iso-files")}
-          >
-            ISO Files
-          </button>
-          <button 
-            class="tab ${this.activeTab === "directories" ? "active" : ""}"
-            @click=${() => this.handleTabChange("directories")}
-          >
-            Directories
-          </button>
-        </div>
+        <tab-group
+          .tabs=${this.tabs}
+          .activeTab=${activeTab}
+          @tab-change=${this.handleTabChange}
+        ></tab-group>
 
         <!-- Controls -->
         <div class="controls">
           <div class="filters-section">
-            <input
-              type="search"
-              class="search-input"
-              placeholder="Search volumes..."
-              .value=${this.searchQuery}
-              @input=${this.handleSearch}
-            />
+            <filter-dropdown
+              .options=${poolOptions}
+              .selectedValue=${this.poolFilter}
+              .label=${"Filter by Pool"}
+              @filter-change=${this.handlePoolFilterChange}
+            ></filter-dropdown>
+            <search-input
+              .placeholder=${"Search volumes..."}
+              .value=${searchQuery}
+              @search-change=${this.handleSearchChange}
+            ></search-input>
+          </div>
+          <div class="actions-section">
+            <button class="btn-refresh" @click=${this.handleRefresh} title="Refresh">
+              🔄
+            </button>
           </div>
         </div>
 
+        <!-- Content -->
         <div class="content">
-          ${this.loading ? x`
-            <div class="loading-container">
-              <div class="spinner">Loading...</div>
-            </div>
-          ` : this.volumes.length === 0 ? x`
-            <div class="empty-container">
-              <div class="empty-state">
-                <i class="fas fa-folder-open" style="font-size: 48px; color: var(--text-secondary);"></i>
-                <h3>No volumes found</h3>
-                <p>No storage volumes match your current filters</p>
-              </div>
-            </div>
+          ${state2.loading ? x`
+            <loading-state message="Loading storage volumes..."></loading-state>
+          ` : state2.error ? x`
+            <empty-state
+              icon="❌"
+              title="Error loading volumes"
+              description=${state2.error.message}
+            ></empty-state>
+          ` : displayVolumes.length === 0 ? x`
+            <empty-state
+              icon="📂"
+              title="No volumes found"
+              description=${searchQuery ? "No volumes match your search criteria" : "No storage volumes available"}
+            ></empty-state>
           ` : x`
-            <div class="volumes-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Volume</th>
-                    <th>Format</th>
-                    <th>Size</th>
-                    <th>Usage</th>
-                    <th>Pool</th>
-                    <th>Created</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${this.volumes.map((volume) => x`
-                    <tr>
-                      <td>
-                        <div class="volume-name">
-                          <div class="volume-icon ${this.getIconClass(volume)}">
-                            ${o(this.getVolumeIcon(volume))}
-                          </div>
-                          <div class="volume-details">
-                            <div class="volume-title">${volume.name}</div>
-                            <div class="volume-path">${volume.path}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <span class="format-badge ${volume.format}">
-                          ${volume.format}
-                        </span>
-                      </td>
-                      <td>
-                        <div class="size-info">
-                          <div class="size-value">${formatBytes(volume.capacity)}</div>
-                          <div class="size-usage">${formatBytes(volume.allocation)} used</div>
-                        </div>
-                      </td>
-                      <td>
-                        <div>
-                          <div class="usage-bar">
-                            <div 
-                              class="usage-fill ${this.getUsageClass(volume.used_percent || 0)}"
-                              style="width: ${volume.used_percent || 0}%"
-                            ></div>
-                          </div>
-                          <div class="usage-percent">${volume.used_percent || 0}%</div>
-                        </div>
-                      </td>
-                      <td>
-                        <span class="pool-badge">${volume.pool_name}</span>
-                      </td>
-                      <td>
-                        ${formatDate(volume.created_at)}
-                      </td>
-                      <td>
-                        <div class="actions">
-                          <button 
-                            class="action-btn"
-                            title="View details"
-                          >
-                            <i class="fas fa-eye"></i>
-                          </button>
-                          <button 
-                            class="action-btn danger"
-                            title="Delete volume"
-                            @click=${() => this.handleDelete(volume)}
-                          >
-                            <i class="fas fa-trash"></i>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  `)}
-                </tbody>
-              </table>
-            </div>
+            <resource-table
+              .columns=${this.getColumns()}
+              .data=${this.transformVolumeData(displayVolumes)}
+              .actions=${(item) => this.getActions(item)}
+              @action=${this.handleAction}
+            ></resource-table>
           `}
         </div>
+
+        <!-- Notification Container -->
+        <notification-container></notification-container>
       </div>
     `;
   }
@@ -65236,29 +65414,131 @@ VirtualizationVolumes.styles = i$4`
 
     /* Stats Bar */
     .stats-bar {
-      display: flex;
-      gap: 2rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
       margin-bottom: 1.5rem;
-      padding: 12px 16px;
-      background: var(--vscode-editor-background);
-      border: 1px solid var(--vscode-editorWidget-border);
-      border-radius: 4px;
-      font-size: 13px;
     }
 
-    .stat-item {
+    .stat-widget {
+      display: flex;
+      flex-direction: column;
+      padding: 14px;
+      background: var(--vscode-editor-background);
+      border: 1px solid var(--vscode-widget-border, var(--vscode-input-border, var(--vscode-panel-border, #454545)));
+      border-radius: 8px;
+      transition: all 0.2s ease;
+      position: relative;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    }
+
+    .stat-widget:hover {
+      border-color: var(--vscode-focusBorder);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .stat-widget::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      border-radius: 8px 8px 0 0;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .stat-widget:hover::before {
+      opacity: 1;
+    }
+
+    .stat-widget:nth-child(1)::before {
+      background: var(--vscode-charts-blue);
+    }
+
+    .stat-widget:nth-child(2)::before {
+      background: var(--vscode-charts-purple);
+    }
+
+    .stat-widget:nth-child(3)::before {
+      background: var(--vscode-charts-green);
+    }
+
+    .stat-widget:nth-child(4)::before {
+      background: var(--vscode-charts-orange);
+    }
+
+    .stat-widget:nth-child(5)::before {
+      background: var(--vscode-charts-yellow);
+    }
+
+    .stat-widget:nth-child(6)::before {
+      background: var(--vscode-charts-red);
+    }
+
+    .stat-widget-header {
       display: flex;
       align-items: center;
       gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .stat-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      font-size: 14px;
+    }
+
+    .stat-icon.total {
+      color: var(--vscode-charts-blue);
+    }
+
+    .stat-icon.capacity {
+      color: var(--vscode-charts-purple);
+    }
+
+    .stat-icon.allocated {
+      color: var(--vscode-charts-green);
+    }
+
+    .stat-icon.disk {
+      color: var(--vscode-charts-orange);
+    }
+
+    .stat-icon.iso {
+      color: var(--vscode-charts-yellow);
+    }
+
+    .stat-icon.dir {
+      color: var(--vscode-charts-red);
     }
 
     .stat-label {
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
       color: var(--vscode-descriptionForeground);
+      opacity: 0.8;
     }
 
     .stat-value {
+      font-size: 18px;
       font-weight: 600;
       color: var(--vscode-foreground);
+      line-height: 1.2;
+    }
+
+    .stat-subtitle {
+      font-size: 10px;
+      color: var(--vscode-descriptionForeground);
+      margin-top: 2px;
+      opacity: 0.7;
     }
 
     .controls {
@@ -65276,20 +65556,15 @@ VirtualizationVolumes.styles = i$4`
       flex: 1;
     }
 
-    .search-input {
-      flex: 1;
-      max-width: 400px;
-      padding: 6px 12px;
-      border: 1px solid var(--vscode-input-border);
-      background: var(--vscode-input-background);
-      color: var(--vscode-input-foreground);
-      border-radius: 4px;
-      font-size: 13px;
+    .actions-section {
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
-    .search-input:focus {
-      outline: none;
-      border-color: var(--vscode-focusBorder);
+    search-input {
+      flex: 1;
+      max-width: 400px;
     }
 
     .content {
@@ -65577,22 +65852,28 @@ VirtualizationVolumes.styles = i$4`
       font-size: 14px;
       color: var(--text-secondary);
     }
+
+    .btn-refresh {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 12px;
+      background: transparent;
+      color: var(--vscode-foreground);
+      border: 1px solid var(--vscode-button-border);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+
+    .btn-refresh:hover {
+      background: var(--vscode-button-secondaryHoverBackground);
+    }
   `;
 __decorateClass$b([
   r$1()
-], VirtualizationVolumes.prototype, "volumes", 2);
-__decorateClass$b([
-  r$1()
-], VirtualizationVolumes.prototype, "loading", 2);
-__decorateClass$b([
-  r$1()
-], VirtualizationVolumes.prototype, "searchQuery", 2);
-__decorateClass$b([
-  r$1()
-], VirtualizationVolumes.prototype, "activeTab", 2);
-__decorateClass$b([
-  r$1()
-], VirtualizationVolumes.prototype, "stats", 2);
+], VirtualizationVolumes.prototype, "poolFilter", 2);
 VirtualizationVolumes = __decorateClass$b([
   t$2("virtualization-volumes")
 ], VirtualizationVolumes);
@@ -71112,7 +71393,7 @@ _SidebarTree.styles = i$4`
     .icon-raid::before { content: '🗄️'; }
     .icon-containers::before { content: '📦'; }
     .icon-docker::before { content: '🐳'; }
-    .icon-images::before { content: '💿'; }
+    .icon-images::before { content: '💽'; }
     .icon-kubernetes::before { content: '☸️'; }
     .icon-workload::before { content: '⚙️'; }
     .icon-k8s-networks::before { content: '🔗'; }
@@ -71130,6 +71411,7 @@ _SidebarTree.styles = i$4`
     .icon-vms::before { content: '💻'; }
     .icon-storage-pools::before { content: '🗄️'; }
     .icon-virt-networks::before { content: '🔗'; }
+    .icon-volumes::before { content: '📀'; }
 
     :host([collapsed]) .tree-item-label,
     :host([collapsed]) .tree-item-arrow,
