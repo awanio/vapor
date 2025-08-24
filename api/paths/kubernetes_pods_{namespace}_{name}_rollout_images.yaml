@@ -1,0 +1,155 @@
+patch:
+  summary: Update container images in a Pod
+  description: |
+    Update one or more container images in a Pod specification.
+    
+    **Important limitations:**
+    - **Pods are immutable**: Once a Pod has started running, its container images cannot be changed
+    - **This endpoint only works for Pods in Pending state** that haven't started yet
+    - **Managed Pods**: If a Pod is managed by a controller (Deployment, StatefulSet, DaemonSet, etc.), 
+      this operation will be rejected. You should update the controller instead.
+    - **Manual Pods only**: This is primarily useful for standalone Pods not managed by any controller
+    
+    For running Pods, you must:
+    1. Delete the existing Pod
+    2. Create a new Pod with the updated images
+    
+    This is equivalent to running:
+    ```bash
+    kubectl set image pod/{name} container1=image1 container2=image2 -n {namespace}
+    ```
+    
+    **Note:** Unlike workload resources (Deployments, StatefulSets, DaemonSets), 
+    Pods do not support rollout operations like restart or undo since they are 
+    not managed by a controller and don't maintain revision history.
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: Pod namespace
+      schema:
+        type: string
+      example: default
+    - name: name
+      in: path
+      required: true
+      description: Pod name
+      schema:
+        type: string
+      example: standalone-pod
+  requestBody:
+    required: true
+    description: |
+      Array of container name to image mappings.
+      Each object in the array should have a single key-value pair where:
+      - Key: container name (must exist in the Pod's regular containers, not init containers)
+      - Value: new image to use (including tag)
+      
+      **Note:** This operation does not support updating init container images.
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties:
+              type: string
+          minItems: 1
+        example:
+          - nginx: "nginx:1.21.0"
+          - sidecar: "busybox:1.35.0"
+  responses:
+    '200':
+      description: Pod specification updated successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Successfully updated images for Pod default/standalone-pod"
+              warning:
+                type: string
+                description: Warning message if Pod needs to be recreated
+                example: "Pod image update was applied to the specification, but the Pod must be deleted and recreated for changes to take effect."
+              updated_images:
+                type: object
+                additionalProperties:
+                  type: string
+                description: Map of container names to their new images
+                example:
+                  nginx: "nginx:1.21.0"
+                  sidecar: "busybox:1.35.0"
+              pod:
+                $ref: ../components/schemas/PodDetail.yaml
+    '400':
+      description: Invalid request or Pod cannot be updated
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+          examples:
+            noImages:
+              summary: No images provided
+              value:
+                success: false
+                error:
+                  code: "BAD_REQUEST"
+                  message: "No image updates provided"
+                  details: "Please provide at least one container image to update"
+            managedPod:
+              summary: Pod is managed by a controller
+              value:
+                success: false
+                error:
+                  code: "BAD_REQUEST"
+                  message: "Cannot modify Pod managed by ReplicaSet"
+                  details: "This Pod is managed by a ReplicaSet. Please update the ReplicaSet instead to modify container images."
+            runningPod:
+              summary: Pod is already running
+              value:
+                success: false
+                error:
+                  code: "BAD_REQUEST"
+                  message: "Cannot update running Pod"
+                  details: "Pod is in Running state. Container images cannot be updated for Pods that have already started. You must delete and recreate the Pod with the new images."
+            invalidContainer:
+              summary: Container not found
+              value:
+                success: false
+                error:
+                  code: "BAD_REQUEST"
+                  message: "Container 'invalid-name' not found in Pod"
+                  details: "Please provide a valid container name that exists in the Pod"
+            initContainer:
+              summary: Attempting to update init container
+              value:
+                success: false
+                error:
+                  code: "BAD_REQUEST"
+                  message: "Container 'init-container' is an init container"
+                  details: "Updating init container images is not supported through this endpoint"
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: Pod not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      description: Failed to update Pod images
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

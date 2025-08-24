@@ -1,0 +1,68 @@
+patch:
+  summary: Restart StatefulSet pods
+  description: |
+    Trigger a rolling restart of all pods managed by a StatefulSet.
+    
+    This operation works by adding or updating a restart annotation 
+    (`kubectl.kubernetes.io/restartedAt`) on the StatefulSet's pod template,
+    which triggers Kubernetes to perform a rolling update with new pods.
+    
+    This is equivalent to running:
+    ```bash
+    kubectl rollout restart statefulset/{name} -n {namespace}
+    ```
+    
+    **Note:** StatefulSets update pods in order, one at a time, respecting the 
+    updateStrategy settings. Pods are updated in reverse ordinal order (from 
+    highest to lowest) by default.
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: StatefulSet namespace
+      schema:
+        type: string
+      example: default
+    - name: name
+      in: path
+      required: true
+      description: StatefulSet name
+      schema:
+        type: string
+      example: mysql
+  responses:
+    '200':
+      description: StatefulSet restart initiated successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "StatefulSet default/mysql has been restarted"
+              statefulset:
+                $ref: ../components/schemas/StatefulSetDetail.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: StatefulSet not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      description: Failed to restart StatefulSet
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

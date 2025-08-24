@@ -1,0 +1,82 @@
+patch:
+  summary: Rollback StatefulSet to previous revision
+  description: |
+    Rollback a StatefulSet to its previous revision.
+    
+    This operation retrieves the previous revision from the StatefulSet's 
+    ControllerRevisions and updates the StatefulSet to use the pod template 
+    from that previous revision. The rollback triggers an ordered update to 
+    replace current pods with pods from the previous configuration.
+    
+    This is equivalent to running:
+    ```bash
+    kubectl rollout undo statefulset/{name} -n {namespace}
+    ```
+    
+    **Note:** This operation requires at least one previous revision to exist.
+    StatefulSets use ControllerRevisions to track their history. Pods will be
+    updated in reverse ordinal order, maintaining the StatefulSet's ordering
+    guarantees.
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: StatefulSet namespace
+      schema:
+        type: string
+      example: default
+    - name: name
+      in: path
+      required: true
+      description: StatefulSet name
+      schema:
+        type: string
+      example: mysql
+  responses:
+    '200':
+      description: StatefulSet rolled back successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "StatefulSet default/mysql has been rolled back to revision 2"
+              statefulset:
+                $ref: ../components/schemas/StatefulSetDetail.yaml
+    '400':
+      description: No previous revision available
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+          example:
+            success: false
+            error:
+              code: "BAD_REQUEST"
+              message: "No previous revision available"
+              details: "The StatefulSet has no previous revision to rollback to"
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: StatefulSet not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      description: Failed to rollback StatefulSet
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

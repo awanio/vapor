@@ -1,0 +1,67 @@
+patch:
+  summary: Restart DaemonSet pods
+  description: |
+    Trigger a rolling restart of all pods managed by a DaemonSet.
+    
+    This operation works by adding or updating a restart annotation 
+    (`kubectl.kubernetes.io/restartedAt`) on the DaemonSet's pod template,
+    which triggers Kubernetes to perform a rolling update with new pods.
+    
+    This is equivalent to running:
+    ```bash
+    kubectl rollout restart daemonset/{name} -n {namespace}
+    ```
+    
+    **Note:** DaemonSets update pods on each node according to the update strategy.
+    By default, this is a rolling update that respects maxUnavailable settings.
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: DaemonSet namespace
+      schema:
+        type: string
+      example: kube-system
+    - name: name
+      in: path
+      required: true
+      description: DaemonSet name
+      schema:
+        type: string
+      example: fluentd
+  responses:
+    '200':
+      description: DaemonSet restart initiated successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "DaemonSet kube-system/fluentd has been restarted"
+              daemonset:
+                $ref: ../components/schemas/DaemonSetDetail.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: DaemonSet not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      description: Failed to restart DaemonSet
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

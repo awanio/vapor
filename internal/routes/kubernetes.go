@@ -42,12 +42,20 @@ func KubernetesRoutes(r *gin.RouterGroup) {
 	r.POST("/kubernetes/pods", k8sHandler.ApplyPodGin)
 	r.PUT("/kubernetes/pods/:namespace/:name", k8sHandler.UpdatePodGin)
 	
+	// Pod rollout routes (only set-image is supported for Pods)
+	r.PATCH("/kubernetes/pods/:namespace/:name/rollout/images", k8sHandler.RolloutSetImagePodGin)
+	
 	// Deployment routes
 	r.GET("/kubernetes/deployments", k8sHandler.ListDeploymentsGin)
 	r.GET("/kubernetes/deployments/:namespace/:name", k8sHandler.GetDeploymentDetailGin)
 	r.POST("/kubernetes/deployments", k8sHandler.ApplyDeploymentGin)
 	r.PUT("/kubernetes/deployments/:namespace/:name", k8sHandler.UpdateDeploymentGin)
 	r.DELETE("/kubernetes/deployments/:namespace/:name", k8sHandler.DeleteDeploymentGin)
+	
+	// Deployment rollout routes
+	r.PATCH("/kubernetes/deployments/:namespace/:name/rollout/restart", k8sHandler.RolloutRestartDeploymentGin)
+	r.PATCH("/kubernetes/deployments/:namespace/:name/rollout/undo", k8sHandler.RolloutUndoDeploymentGin)
+	r.PATCH("/kubernetes/deployments/:namespace/:name/rollout/images", k8sHandler.RolloutSetImageDeploymentGin)
 	
 	// Service routes
 	r.GET("/kubernetes/services", k8sHandler.ListServicesGin)
@@ -109,12 +117,22 @@ func KubernetesRoutes(r *gin.RouterGroup) {
 	r.PUT("/kubernetes/daemonsets/:namespace/:name", k8sHandler.UpdateDaemonSetGin)
 	r.DELETE("/kubernetes/daemonsets/:namespace/:name", k8sHandler.DeleteDaemonSetGin)
 	
+	// DaemonSet rollout routes
+	r.PATCH("/kubernetes/daemonsets/:namespace/:name/rollout/restart", k8sHandler.RolloutRestartDaemonSetGin)
+	r.PATCH("/kubernetes/daemonsets/:namespace/:name/rollout/undo", k8sHandler.RolloutUndoDaemonSetGin)
+	r.PATCH("/kubernetes/daemonsets/:namespace/:name/rollout/images", k8sHandler.RolloutSetImageDaemonSetGin)
+	
 	// StatefulSet routes
 	r.GET("/kubernetes/statefulsets", k8sHandler.ListStatefulSetsGin)
 	r.GET("/kubernetes/statefulsets/:namespace/:name", k8sHandler.GetStatefulSetDetailGin)
 	r.POST("/kubernetes/statefulsets", k8sHandler.ApplyStatefulSetGin)
 	r.PUT("/kubernetes/statefulsets/:namespace/:name", k8sHandler.UpdateStatefulSetGin)
 	r.DELETE("/kubernetes/statefulsets/:namespace/:name", k8sHandler.DeleteStatefulSetGin)
+	
+	// StatefulSet rollout routes
+	r.PATCH("/kubernetes/statefulsets/:namespace/:name/rollout/restart", k8sHandler.RolloutRestartStatefulSetGin)
+	r.PATCH("/kubernetes/statefulsets/:namespace/:name/rollout/undo", k8sHandler.RolloutUndoStatefulSetGin)
+	r.PATCH("/kubernetes/statefulsets/:namespace/:name/rollout/images", k8sHandler.RolloutSetImageStatefulSetGin)
 	
 	// Job routes
 	r.GET("/kubernetes/jobs", k8sHandler.ListJobsGin)
@@ -186,11 +204,15 @@ func registerNoKubernetesRoutes(r *gin.RouterGroup) {
 	r.DELETE("/kubernetes/pods/:namespace/:name", noK8sHandler)
 	r.POST("/kubernetes/pods", noK8sHandler)
 	r.PUT("/kubernetes/pods/:namespace/:name", noK8sHandler)
+	r.PATCH("/kubernetes/pods/:namespace/:name/rollout/images", noK8sHandler)
 	r.GET("/kubernetes/deployments", noK8sHandler)
 	r.GET("/kubernetes/deployments/:namespace/:name", noK8sHandler)
 	r.POST("/kubernetes/deployments", noK8sHandler)
 	r.PUT("/kubernetes/deployments/:namespace/:name", noK8sHandler)
 	r.DELETE("/kubernetes/deployments/:namespace/:name", noK8sHandler)
+	r.PATCH("/kubernetes/deployments/:namespace/:name/rollout/restart", noK8sHandler)
+	r.PATCH("/kubernetes/deployments/:namespace/:name/rollout/undo", noK8sHandler)
+	r.PATCH("/kubernetes/deployments/:namespace/:name/rollout/images", noK8sHandler)
 	r.GET("/kubernetes/services", noK8sHandler)
 	r.GET("/kubernetes/services/:namespace/:name", noK8sHandler)
 	r.POST("/kubernetes/services", noK8sHandler)
@@ -233,11 +255,17 @@ func registerNoKubernetesRoutes(r *gin.RouterGroup) {
 	r.POST("/kubernetes/daemonsets", noK8sHandler)
 	r.PUT("/kubernetes/daemonsets/:namespace/:name", noK8sHandler)
 	r.DELETE("/kubernetes/daemonsets/:namespace/:name", noK8sHandler)
+	r.PATCH("/kubernetes/daemonsets/:namespace/:name/rollout/restart", noK8sHandler)
+	r.PATCH("/kubernetes/daemonsets/:namespace/:name/rollout/undo", noK8sHandler)
+	r.PATCH("/kubernetes/daemonsets/:namespace/:name/rollout/images", noK8sHandler)
 	r.GET("/kubernetes/statefulsets", noK8sHandler)
 	r.GET("/kubernetes/statefulsets/:namespace/:name", noK8sHandler)
 	r.POST("/kubernetes/statefulsets", noK8sHandler)
 	r.PUT("/kubernetes/statefulsets/:namespace/:name", noK8sHandler)
 	r.DELETE("/kubernetes/statefulsets/:namespace/:name", noK8sHandler)
+	r.PATCH("/kubernetes/statefulsets/:namespace/:name/rollout/restart", noK8sHandler)
+	r.PATCH("/kubernetes/statefulsets/:namespace/:name/rollout/undo", noK8sHandler)
+	r.PATCH("/kubernetes/statefulsets/:namespace/:name/rollout/images", noK8sHandler)
 	r.GET("/kubernetes/jobs", noK8sHandler)
 	r.GET("/kubernetes/jobs/:namespace/:name", noK8sHandler)
 	r.POST("/kubernetes/jobs", noK8sHandler)

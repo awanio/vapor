@@ -470,10 +470,18 @@ paths:
     $ref: paths/kubernetes_networkpolicies_{namespace}_{name}.yaml
   /kubernetes/pods/{namespace}/{name}:
     $ref: paths/kubernetes_pods_{namespace}_{name}.yaml
+  /kubernetes/pods/{namespace}/{name}/rollout/images:
+    $ref: paths/kubernetes_pods_{namespace}_{name}_rollout_images.yaml
   /kubernetes/pods/{namespace}/{name}/logs:
     $ref: paths/kubernetes_pods_{namespace}_{name}_logs.yaml
   /kubernetes/deployments/{namespace}/{name}:
     $ref: paths/kubernetes_deployments_{namespace}_{name}.yaml
+  /kubernetes/deployments/{namespace}/{name}/rollout/restart:
+    $ref: paths/kubernetes_deployments_{namespace}_{name}_rollout_restart.yaml
+  /kubernetes/deployments/{namespace}/{name}/rollout/undo:
+    $ref: paths/kubernetes_deployments_{namespace}_{name}_rollout_undo.yaml
+  /kubernetes/deployments/{namespace}/{name}/rollout/images:
+    $ref: paths/kubernetes_deployments_{namespace}_{name}_rollout_images.yaml
   /kubernetes/services/{namespace}/{name}:
     $ref: paths/kubernetes_services_{namespace}_{name}.yaml
   /kubernetes/ingresses/{namespace}/{name}:
@@ -492,8 +500,20 @@ paths:
     $ref: paths/kubernetes_nodes_{name}.yaml
   /kubernetes/daemonsets/{namespace}/{name}:
     $ref: paths/kubernetes_daemonsets_{namespace}_{name}.yaml
+  /kubernetes/daemonsets/{namespace}/{name}/rollout/restart:
+    $ref: paths/kubernetes_daemonsets_{namespace}_{name}_rollout_restart.yaml
+  /kubernetes/daemonsets/{namespace}/{name}/rollout/undo:
+    $ref: paths/kubernetes_daemonsets_{namespace}_{name}_rollout_undo.yaml
+  /kubernetes/daemonsets/{namespace}/{name}/rollout/images:
+    $ref: paths/kubernetes_daemonsets_{namespace}_{name}_rollout_images.yaml
   /kubernetes/statefulsets/{namespace}/{name}:
     $ref: paths/kubernetes_statefulsets_{namespace}_{name}.yaml
+  /kubernetes/statefulsets/{namespace}/{name}/rollout/restart:
+    $ref: paths/kubernetes_statefulsets_{namespace}_{name}_rollout_restart.yaml
+  /kubernetes/statefulsets/{namespace}/{name}/rollout/undo:
+    $ref: paths/kubernetes_statefulsets_{namespace}_{name}_rollout_undo.yaml
+  /kubernetes/statefulsets/{namespace}/{name}/rollout/images:
+    $ref: paths/kubernetes_statefulsets_{namespace}_{name}_rollout_images.yaml
   /kubernetes/jobs/{namespace}/{name}:
     $ref: paths/kubernetes_jobs_{namespace}_{name}.yaml
   /kubernetes/cronjobs/{namespace}/{name}:

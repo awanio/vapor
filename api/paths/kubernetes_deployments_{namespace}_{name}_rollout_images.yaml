@@ -1,0 +1,116 @@
+patch:
+  summary: Update container images in a deployment
+  description: |
+    Update one or more container images in a deployment.
+    
+    This operation performs a strategic merge patch to update specific 
+    container images without affecting other deployment settings. The 
+    update triggers a rolling update to replace pods with the new images.
+    
+    This is equivalent to running:
+    ```bash
+    kubectl set image deployment/{name} container1=image1 container2=image2 -n {namespace}
+    ```
+    
+    **Note:** Container names must match existing containers in the deployment.
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: Deployment namespace
+      schema:
+        type: string
+      example: default
+    - name: name
+      in: path
+      required: true
+      description: Deployment name
+      schema:
+        type: string
+      example: nginx-deployment
+  requestBody:
+    required: true
+    description: |
+      Array of container name to image mappings.
+      Each object in the array should have a single key-value pair where:
+      - Key: container name (must exist in the deployment)
+      - Value: new image to use (including tag)
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties:
+              type: string
+          minItems: 1
+        example:
+          - nginx: "nginx:1.21.0"
+          - sidecar: "busybox:1.35.0"
+  responses:
+    '200':
+      description: Container images updated successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: "Successfully updated images for deployment default/nginx-deployment"
+              updated_images:
+                type: object
+                additionalProperties:
+                  type: string
+                description: Map of container names to their new images
+                example:
+                  nginx: "nginx:1.21.0"
+                  sidecar: "busybox:1.35.0"
+              deployment:
+                $ref: ../components/schemas/DeploymentDetail.yaml
+    '400':
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+          examples:
+            noImages:
+              summary: No images provided
+              value:
+                success: false
+                error:
+                  code: "BAD_REQUEST"
+                  message: "No image updates provided"
+                  details: "Please provide at least one container image to update"
+            invalidContainer:
+              summary: Container not found
+              value:
+                success: false
+                error:
+                  code: "BAD_REQUEST"
+                  message: "Container 'invalid-name' not found in deployment"
+                  details: "Please provide a valid container name that exists in the deployment"
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: Deployment not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      description: Failed to update deployment images
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml
