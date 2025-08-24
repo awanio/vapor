@@ -1,8 +1,112 @@
 get:
   summary: Get detailed PVC information
-  description: >-
-    Get detailed information about a specific persistent volume claim in a
-    namespace
+  description: |
+    Get detailed information about a specific PersistentVolumeClaim in a namespace.
+    
+    Supports both JSON and YAML response formats based on the Accept header:
+    - `application/json` (default) - Returns PVC wrapped in API response
+    - `application/yaml`, `text/yaml`, `application/x-yaml` - Returns raw Kubernetes YAML with cleaned metadata
+    
+    When YAML format is requested, the following fields are automatically removed for cleaner output:
+    - `metadata.managedFields` - Verbose internal field tracking
+    - `metadata.selfLink` - Deprecated field  
+    - `metadata.uid` - Auto-generated identifier
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: PVC namespace
+      schema:
+        type: string
+    - name: name
+      in: path
+      required: true
+      description: PVC name
+      schema:
+        type: string
+    - name: Accept
+      in: header
+      required: false
+      description: |
+        Response format preference. Supported values:
+        - `application/json` (default)
+        - `application/yaml`
+        - `application/x-yaml`
+        - `application/yml`
+        - `text/yaml`
+        - `text/yml`
+        - `text/x-yaml`
+      schema:
+        type: string
+        default: application/json
+        enum:
+          - application/json
+          - application/yaml
+          - application/x-yaml
+          - application/yml
+          - text/yaml
+          - text/yml
+          - text/x-yaml
+  responses:
+    '200':
+      description: PVC details retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/PVCDetailResponse.yaml
+        application/yaml:
+          schema:
+            $ref: ../components/schemas/PVCYAML.yaml
+        application/x-yaml:
+          schema:
+            $ref: ../components/schemas/PVCYAML.yaml
+        text/yaml:
+          schema:
+            $ref: ../components/schemas/PVCYAML.yaml
+        text/x-yaml:
+          schema:
+            $ref: ../components/schemas/PVCYAML.yaml
+        application/yml:
+          schema:
+            $ref: ../components/schemas/PVCYAML.yaml
+        text/yml:
+          schema:
+            $ref: ../components/schemas/PVCYAML.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: PVC not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+        application/yaml:
+          schema:
+            $ref: ../components/schemas/ErrorResponseYAML.yaml
+        text/yaml:
+          schema:
+            $ref: ../components/schemas/ErrorResponseYAML.yaml
+    '500':
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+        application/yaml:
+          schema:
+            $ref: ../components/schemas/ErrorResponseYAML.yaml
+        text/yaml:
+          schema:
+            $ref: ../components/schemas/ErrorResponseYAML.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml
+delete:
+  summary: Delete a PVC
+  description: Delete a specific PersistentVolumeClaim
   tags:
     - Kubernetes
   security:
@@ -22,11 +126,7 @@ get:
         type: string
   responses:
     '200':
-      description: PVC details retrieved successfully
-      content:
-        application/json:
-          schema:
-            $ref: ../components/schemas/PVCDetailResponse.yaml
+      description: PVC deleted successfully
     '401':
       $ref: ../components/responses/UnauthorizedError.yaml
     '404':
@@ -35,30 +135,5 @@ get:
         application/json:
           schema:
             $ref: ../components/schemas/ErrorResponse.yaml
-    '503':
-      $ref: ../components/responses/KubernetesNotInstalledError.yaml
-delete:
-  summary: Delete a PVC
-  description: Delete a specific PVC
-  tags:
-    - Kubernetes
-  security:
-    - bearerAuth: []
-  parameters:
-    - name: namespace
-      in: path
-      required: true
-      schema:
-        type: string
-    - name: name
-      in: path
-      required: true
-      schema:
-        type: string
-  responses:
-    '200':
-      description: PVC deleted successfully
-    '401':
-      $ref: ../components/responses/UnauthorizedError.yaml
     '503':
       $ref: ../components/responses/KubernetesNotInstalledError.yaml

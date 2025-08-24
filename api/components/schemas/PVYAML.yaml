@@ -1,0 +1,42 @@
+type: string
+format: yaml
+description: |
+  Kubernetes PersistentVolume object in YAML format with cleaned metadata.
+  The following fields are automatically removed for cleaner output:
+  - metadata.managedFields (verbose internal field tracking)
+  - metadata.selfLink (deprecated field)
+  - metadata.uid (auto-generated identifier)
+example: |
+  apiVersion: v1
+  kind: PersistentVolume
+  metadata:
+    name: pv-volume
+    resourceVersion: '7890'
+    creationTimestamp: '2024-01-15T09:00:00Z'
+    labels:
+      type: local
+    annotations:
+      pv.kubernetes.io/provisioned-by: kubernetes.io/aws-ebs
+    finalizers:
+    - kubernetes.io/pv-protection
+  spec:
+    capacity:
+      storage: 10Gi
+    accessModes:
+    - ReadWriteOnce
+    persistentVolumeReclaimPolicy: Retain
+    storageClassName: standard
+    volumeMode: Filesystem
+    hostPath:
+      path: /mnt/data
+      type: DirectoryOrCreate
+    nodeAffinity:
+      required:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/hostname
+            operator: In
+            values:
+            - node-1
+  status:
+    phase: Available

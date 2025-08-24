@@ -1,0 +1,43 @@
+type: string
+format: yaml
+description: |
+  Kubernetes Ingress object in YAML format with cleaned metadata.
+  The following fields are automatically removed for cleaner output:
+  - metadata.managedFields (verbose internal field tracking)
+  - metadata.selfLink (deprecated field)
+  - metadata.uid (auto-generated identifier)
+example: |
+  apiVersion: networking.k8s.io/v1
+  kind: Ingress
+  metadata:
+    name: nginx-ingress
+    namespace: default
+    resourceVersion: '5678'
+    generation: 2
+    creationTimestamp: '2024-01-15T09:00:00Z'
+    labels:
+      app: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/rewrite-target: /
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+  spec:
+    ingressClassName: nginx
+    tls:
+    - hosts:
+      - example.com
+      secretName: example-tls
+    rules:
+    - host: example.com
+      http:
+        paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: nginx-service
+              port:
+                number: 80
+  status:
+    loadBalancer:
+      ingress:
+      - ip: 192.168.1.100

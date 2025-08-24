@@ -1,6 +1,106 @@
 get:
   summary: Get detailed PV information
-  description: Get detailed information about a specific persistent volume
+  description: |
+    Get detailed information about a specific PersistentVolume.
+    
+    Supports both JSON and YAML response formats based on the Accept header:
+    - `application/json` (default) - Returns PV wrapped in API response
+    - `application/yaml`, `text/yaml`, `application/x-yaml` - Returns raw Kubernetes YAML with cleaned metadata
+    
+    When YAML format is requested, the following fields are automatically removed for cleaner output:
+    - `metadata.managedFields` - Verbose internal field tracking
+    - `metadata.selfLink` - Deprecated field  
+    - `metadata.uid` - Auto-generated identifier
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      description: PV name
+      schema:
+        type: string
+    - name: Accept
+      in: header
+      required: false
+      description: |
+        Response format preference. Supported values:
+        - `application/json` (default)
+        - `application/yaml`
+        - `application/x-yaml`
+        - `application/yml`
+        - `text/yaml`
+        - `text/yml`
+        - `text/x-yaml`
+      schema:
+        type: string
+        default: application/json
+        enum:
+          - application/json
+          - application/yaml
+          - application/x-yaml
+          - application/yml
+          - text/yaml
+          - text/yml
+          - text/x-yaml
+  responses:
+    '200':
+      description: PV details retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/PVDetailResponse.yaml
+        application/yaml:
+          schema:
+            $ref: ../components/schemas/PVYAML.yaml
+        application/x-yaml:
+          schema:
+            $ref: ../components/schemas/PVYAML.yaml
+        text/yaml:
+          schema:
+            $ref: ../components/schemas/PVYAML.yaml
+        text/x-yaml:
+          schema:
+            $ref: ../components/schemas/PVYAML.yaml
+        application/yml:
+          schema:
+            $ref: ../components/schemas/PVYAML.yaml
+        text/yml:
+          schema:
+            $ref: ../components/schemas/PVYAML.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: PV not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+        application/yaml:
+          schema:
+            $ref: ../components/schemas/ErrorResponseYAML.yaml
+        text/yaml:
+          schema:
+            $ref: ../components/schemas/ErrorResponseYAML.yaml
+    '500':
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+        application/yaml:
+          schema:
+            $ref: ../components/schemas/ErrorResponseYAML.yaml
+        text/yaml:
+          schema:
+            $ref: ../components/schemas/ErrorResponseYAML.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml
+delete:
+  summary: Delete a PV
+  description: Delete a specific PersistentVolume
   tags:
     - Kubernetes
   security:
@@ -14,11 +114,7 @@ get:
         type: string
   responses:
     '200':
-      description: PV details retrieved successfully
-      content:
-        application/json:
-          schema:
-            $ref: ../components/schemas/PVDetailResponse.yaml
+      description: PV deleted successfully
     '401':
       $ref: ../components/responses/UnauthorizedError.yaml
     '404':

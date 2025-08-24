@@ -95,17 +95,33 @@ func (h *Handler) ListServicesGin(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"services": services, "count": len(services)})
 }
 
+// GetServiceDetailGin handles requests to get service details
+// Supports both JSON and YAML responses based on Accept header
 func (h *Handler) GetServiceDetailGin(c *gin.Context) {
-	namespace := c.Param("namespace")
-	name := c.Param("name")
+namespace := c.Param("namespace")
+name := c.Param("name")
 
-	serviceDetail, err := h.service.GetServiceDetail(c.Request.Context(), namespace, name)
-	if err != nil {
-		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get service details", err.Error())
-		return
-	}
-	common.SendSuccess(c, gin.H{"service_detail": serviceDetail})
+serviceDetail, err := h.service.GetServiceDetail(c.Request.Context(), namespace, name)
+if err != nil {
+// Check if YAML response is requested for error responses
+if isYAMLRequested(c) {
+respondYAMLError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get service details", err.Error())
+return
 }
+common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get service details", err.Error())
+return
+}
+
+// Check Accept header for YAML response
+if isYAMLRequested(c) {
+respondYAML(c, serviceDetail)
+return
+}
+
+// Default JSON response
+common.SendSuccess(c, gin.H{"service_detail": serviceDetail})
+}
+
 
 func (h *Handler) ListIngressesGin(c *gin.Context) {
 	ingresses, err := h.service.ListIngresses(c.Request.Context(), nil)
@@ -116,17 +132,33 @@ func (h *Handler) ListIngressesGin(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"ingresses": ingresses, "count": len(ingresses)})
 }
 
+// GetIngressDetailGin handles requests to get ingress details
+// Supports both JSON and YAML responses based on Accept header
 func (h *Handler) GetIngressDetailGin(c *gin.Context) {
-	namespace := c.Param("namespace")
-	name := c.Param("name")
+namespace := c.Param("namespace")
+name := c.Param("name")
 
-	ingressDetail, err := h.service.GetIngressDetail(c.Request.Context(), namespace, name)
-	if err != nil {
-		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get ingress details", err.Error())
-		return
-	}
-	common.SendSuccess(c, gin.H{"ingress_detail": ingressDetail})
+ingressDetail, err := h.service.GetIngressDetail(c.Request.Context(), namespace, name)
+if err != nil {
+// Check if YAML response is requested for error responses
+if isYAMLRequested(c) {
+respondYAMLError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get ingress details", err.Error())
+return
 }
+common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get ingress details", err.Error())
+return
+}
+
+// Check Accept header for YAML response
+if isYAMLRequested(c) {
+respondYAML(c, ingressDetail)
+return
+}
+
+// Default JSON response
+common.SendSuccess(c, gin.H{"ingress_detail": ingressDetail})
+}
+
 
 func (h *Handler) ListPVCsGin(c *gin.Context) {
 	pvcs, err := h.service.ListPVCs(c.Request.Context(), nil)
@@ -137,29 +169,38 @@ func (h *Handler) ListPVCsGin(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"pvcs": pvcs, "count": len(pvcs)})
 }
 
+// GetPVCDetailGin handles requests to get PVC details
+// Supports both JSON and YAML responses based on Accept header
 func (h *Handler) GetPVCDetailGin(c *gin.Context) {
-	namespace := c.Param("namespace")
-	name := c.Param("name")
+namespace := c.Param("namespace")
+name := c.Param("name")
 
-	// Log the request details
-	fmt.Printf("[DEBUG] GetPVCDetailGin called with namespace=%s, name=%s\n", namespace, name)
+fmt.Printf("[DEBUG] GetPVCDetailGin called with namespace=%s, name=%s\n", namespace, name)
 
-	pvcDetail, err := h.service.GetPVCDetail(c.Request.Context(), namespace, name)
-	if err != nil {
-		// Log the error details
-		fmt.Printf("[ERROR] GetPVCDetailGin failed: namespace=%s, name=%s, error=%v\n", namespace, name, err)
-
-		// Check if it's a not found error
-		if strings.Contains(err.Error(), "not found") {
-			common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "PVC not found", err.Error())
-		} else {
-			common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get PVC details", err.Error())
-		}
-		return
-	}
-	fmt.Printf("[DEBUG] GetPVCDetailGin successful for namespace=%s, name=%s\n", namespace, name)
-	common.SendSuccess(c, gin.H{"pvc_detail": pvcDetail})
+pvcDetail, err := h.service.GetPVCDetail(c.Request.Context(), namespace, name)
+if err != nil {
+fmt.Printf("[ERROR] GetPVCDetailGin failed: namespace=%s, name=%s, error=%v\n", namespace, name, err)
+// Check if YAML response is requested for error responses
+if isYAMLRequested(c) {
+respondYAMLError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get PVC details", err.Error())
+return
 }
+common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get PVC details", err.Error())
+return
+}
+
+fmt.Printf("[DEBUG] GetPVCDetailGin successful for namespace=%s, name=%s\n", namespace, name)
+
+// Check Accept header for YAML response
+if isYAMLRequested(c) {
+respondYAML(c, pvcDetail)
+return
+}
+
+// Default JSON response
+common.SendSuccess(c, gin.H{"pvc_detail": pvcDetail})
+}
+
 
 func (h *Handler) ListPVsGin(c *gin.Context) {
 	pvs, err := h.service.ListPVs(c.Request.Context(), nil)
@@ -170,28 +211,37 @@ func (h *Handler) ListPVsGin(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"pvs": pvs, "count": len(pvs)})
 }
 
+// GetPVDetailGin handles requests to get PV details
+// Supports both JSON and YAML responses based on Accept header
 func (h *Handler) GetPVDetailGin(c *gin.Context) {
-	name := c.Param("name")
+name := c.Param("name")
 
-	// Log the request details
-	fmt.Printf("[DEBUG] GetPVDetailGin called with name=%s\n", name)
+fmt.Printf("[DEBUG] GetPVDetailGin called with name=%s\n", name)
 
-	pvDetail, err := h.service.GetPVDetail(c.Request.Context(), name)
-	if err != nil {
-		// Log the error details
-		fmt.Printf("[ERROR] GetPVDetailGin failed: name=%s, error=%v\n", name, err)
-
-		// Check if it's a not found error
-		if strings.Contains(err.Error(), "not found") {
-			common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "PV not found", err.Error())
-		} else {
-			common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get PV details", err.Error())
-		}
-		return
-	}
-	fmt.Printf("[DEBUG] GetPVDetailGin successful for name=%s\n", name)
-	common.SendSuccess(c, gin.H{"pv_detail": pvDetail})
+pvDetail, err := h.service.GetPVDetail(c.Request.Context(), name)
+if err != nil {
+fmt.Printf("[ERROR] GetPVDetailGin failed: name=%s, error=%v\n", name, err)
+// Check if YAML response is requested for error responses
+if isYAMLRequested(c) {
+respondYAMLError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get PV details", err.Error())
+return
 }
+common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get PV details", err.Error())
+return
+}
+
+fmt.Printf("[DEBUG] GetPVDetailGin successful for name=%s\n", name)
+
+// Check Accept header for YAML response
+if isYAMLRequested(c) {
+respondYAML(c, pvDetail)
+return
+}
+
+// Default JSON response
+common.SendSuccess(c, gin.H{"pv_detail": pvDetail})
+}
+
 
 func (h *Handler) ListSecretsGin(c *gin.Context) {
 	secrets, err := h.service.ListSecrets(c.Request.Context(), nil)
@@ -202,17 +252,33 @@ func (h *Handler) ListSecretsGin(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"secrets": secrets, "count": len(secrets)})
 }
 
+// GetSecretDetailGin handles requests to get secret details
+// Supports both JSON and YAML responses based on Accept header
 func (h *Handler) GetSecretDetailGin(c *gin.Context) {
-	namespace := c.Param("namespace")
-	name := c.Param("name")
+namespace := c.Param("namespace")
+name := c.Param("name")
 
-	secretDetail, err := h.service.GetSecretDetail(c.Request.Context(), namespace, name)
-	if err != nil {
-		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get secret details", err.Error())
-		return
-	}
-	common.SendSuccess(c, gin.H{"secret_detail": secretDetail})
+secretDetail, err := h.service.GetSecretDetail(c.Request.Context(), namespace, name)
+if err != nil {
+// Check if YAML response is requested for error responses
+if isYAMLRequested(c) {
+respondYAMLError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get secret details", err.Error())
+return
 }
+common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get secret details", err.Error())
+return
+}
+
+// Check Accept header for YAML response
+if isYAMLRequested(c) {
+respondYAML(c, secretDetail)
+return
+}
+
+// Default JSON response
+common.SendSuccess(c, gin.H{"secret_detail": secretDetail})
+}
+
 
 func (h *Handler) ListConfigMapsGin(c *gin.Context) {
 	configmaps, err := h.service.ListConfigMaps(c.Request.Context(), nil)

@@ -1,0 +1,37 @@
+type: string
+format: yaml
+description: |
+  Kubernetes PersistentVolumeClaim object in YAML format with cleaned metadata.
+  The following fields are automatically removed for cleaner output:
+  - metadata.managedFields (verbose internal field tracking)
+  - metadata.selfLink (deprecated field)
+  - metadata.uid (auto-generated identifier)
+example: |
+  apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    name: nginx-pvc
+    namespace: default
+    resourceVersion: '3456'
+    creationTimestamp: '2024-01-15T09:00:00Z'
+    labels:
+      app: nginx
+    annotations:
+      volume.beta.kubernetes.io/storage-class: standard
+    finalizers:
+    - kubernetes.io/pvc-protection
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    resources:
+      requests:
+        storage: 10Gi
+    storageClassName: standard
+    volumeMode: Filesystem
+  status:
+    phase: Bound
+    accessModes:
+    - ReadWriteOnce
+    capacity:
+      storage: 10Gi
+    volumeName: pvc-12345678-1234-1234-1234-123456789012
