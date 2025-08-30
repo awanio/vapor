@@ -34,6 +34,54 @@ func KubernetesRoutes(r *gin.RouterGroup) {
 	r.GET("/kubernetes/customresourcedefinitions/:name/instances", k8sHandler.ListCRDObjectsGin)
 	r.GET("/kubernetes/customresourcedefinitions/:name/instances/:namespace/:object-name", k8sHandler.GetCRDObjectDetailGin)
 	
+	// ====== NAMESPACE-SCOPED LIST ROUTES ======
+	// These routes allow listing resources filtered by a specific namespace
+	
+	// Pod namespace-scoped routes
+	r.GET("/kubernetes/pods/:namespace", k8sHandler.ListPodsByNamespaceGin)
+	
+	// Deployment namespace-scoped routes
+	r.GET("/kubernetes/deployments/:namespace", k8sHandler.ListDeploymentsByNamespaceGin)
+	
+	// Service namespace-scoped routes
+	r.GET("/kubernetes/services/:namespace", k8sHandler.ListServicesByNamespaceGin)
+	
+	// Ingress namespace-scoped routes
+	r.GET("/kubernetes/ingresses/:namespace", k8sHandler.ListIngressesByNamespaceGin)
+	
+	// PVC namespace-scoped routes
+	r.GET("/kubernetes/persistentvolumeclaims/:namespace", k8sHandler.ListPVCsByNamespaceGin)
+	
+	// Secret namespace-scoped routes
+	r.GET("/kubernetes/secrets/:namespace", k8sHandler.ListSecretsByNamespaceGin)
+	
+	// ConfigMap namespace-scoped routes
+	r.GET("/kubernetes/configmaps/:namespace", k8sHandler.ListConfigMapsByNamespaceGin)
+	
+	// DaemonSet namespace-scoped routes
+	r.GET("/kubernetes/daemonsets/:namespace", k8sHandler.ListDaemonSetsByNamespaceGin)
+	
+	// StatefulSet namespace-scoped routes
+	r.GET("/kubernetes/statefulsets/:namespace", k8sHandler.ListStatefulSetsByNamespaceGin)
+	
+	// Job namespace-scoped routes
+	r.GET("/kubernetes/jobs/:namespace", k8sHandler.ListJobsByNamespaceGin)
+	
+	// CronJob namespace-scoped routes
+	r.GET("/kubernetes/cronjobs/:namespace", k8sHandler.ListCronJobsByNamespaceGin)
+	
+	// NetworkPolicy namespace-scoped routes
+	r.GET("/kubernetes/networkpolicies/:namespace", k8sHandler.ListNetworkPoliciesByNamespaceGin)
+	
+	// Additional namespaced resources
+	r.GET("/kubernetes/replicasets/:namespace", k8sHandler.ListReplicaSetsByNamespaceGin)
+	r.GET("/kubernetes/serviceaccounts/:namespace", k8sHandler.ListServiceAccountsByNamespaceGin)
+	r.GET("/kubernetes/roles/:namespace", k8sHandler.ListRolesByNamespaceGin)
+	r.GET("/kubernetes/rolebindings/:namespace", k8sHandler.ListRoleBindingsByNamespaceGin)
+	r.GET("/kubernetes/horizontalpodautoscalers/:namespace", k8sHandler.ListHorizontalPodAutoscalersByNamespaceGin)
+	
+	// ====== END NAMESPACE-SCOPED LIST ROUTES ======
+	
 	// Pod routes
 	r.GET("/kubernetes/pods", k8sHandler.ListPodsGin)
 	r.GET("/kubernetes/pods/:namespace/:name", k8sHandler.GetPodDetailGin)
@@ -199,6 +247,24 @@ func registerNoKubernetesRoutes(r *gin.RouterGroup) {
 	r.GET("/kubernetes/customresourcedefinitions/:name/instances", noK8sHandler)
 	r.GET("/kubernetes/customresourcedefinitions/:name/instances/:namespace/:object-name", noK8sHandler)
 	r.GET("/kubernetes/pods", noK8sHandler)
+	// Namespace-scoped routes
+	r.GET("/kubernetes/pods/:namespace", noK8sHandler)
+	r.GET("/kubernetes/deployments/:namespace", noK8sHandler)
+	r.GET("/kubernetes/services/:namespace", noK8sHandler)
+	r.GET("/kubernetes/ingresses/:namespace", noK8sHandler)
+	r.GET("/kubernetes/persistentvolumeclaims/:namespace", noK8sHandler)
+	r.GET("/kubernetes/secrets/:namespace", noK8sHandler)
+	r.GET("/kubernetes/configmaps/:namespace", noK8sHandler)
+	r.GET("/kubernetes/daemonsets/:namespace", noK8sHandler)
+	r.GET("/kubernetes/statefulsets/:namespace", noK8sHandler)
+	r.GET("/kubernetes/jobs/:namespace", noK8sHandler)
+	r.GET("/kubernetes/cronjobs/:namespace", noK8sHandler)
+	r.GET("/kubernetes/networkpolicies/:namespace", noK8sHandler)
+	r.GET("/kubernetes/replicasets/:namespace", noK8sHandler)
+	r.GET("/kubernetes/serviceaccounts/:namespace", noK8sHandler)
+	r.GET("/kubernetes/roles/:namespace", noK8sHandler)
+	r.GET("/kubernetes/rolebindings/:namespace", noK8sHandler)
+	r.GET("/kubernetes/horizontalpodautoscalers/:namespace", noK8sHandler)
 	r.GET("/kubernetes/pods/:namespace/:name", noK8sHandler)
 	r.GET("/kubernetes/pods/:namespace/:name/logs", noK8sHandler)
 	r.DELETE("/kubernetes/pods/:namespace/:name", noK8sHandler)

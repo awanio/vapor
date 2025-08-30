@@ -3,9 +3,9 @@ package kubernetes
 import (
 	"context"
 	"fmt"
+	"strings"
 	"os"
 	"os/exec"
-	"strings"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -2097,4 +2097,112 @@ func (s *Service) UpdateCronJob(ctx context.Context, namespace, name string, cro
 	}
 
 	return updatedCronJob, nil
+}
+
+// Helper functions for namespace-scoped methods
+
+func getExternalIPs(service corev1.Service) string {
+if len(service.Status.LoadBalancer.Ingress) > 0 {
+return service.Status.LoadBalancer.Ingress[0].IP
+}
+if len(service.Spec.ExternalIPs) > 0 {
+return service.Spec.ExternalIPs[0]
+}
+return ""
+}
+
+func formatPorts(ports []corev1.ServicePort) string {
+if len(ports) == 0 {
+return ""
+}
+var portStrings []string
+for _, port := range ports {
+portStr := fmt.Sprintf("%d", port.Port)
+if port.NodePort != 0 {
+portStr = fmt.Sprintf("%d:%d", port.Port, port.NodePort)
+}
+if port.Name != "" {
+portStr = fmt.Sprintf("%s(%s)", portStr, port.Name)
+}
+portStrings = append(portStrings, portStr)
+}
+return strings.Join(portStrings, ",")
+}
+
+func extractIngressHosts(ingress networkingv1.Ingress) string {
+var hosts []string
+for _, rule := range ingress.Spec.Rules {
+if rule.Host != "" {
+hosts = append(hosts, rule.Host)
+}
+}
+return strings.Join(hosts, ",")
+}
+
+func extractIngressAddress(ingress networkingv1.Ingress) string {
+if len(ingress.Status.LoadBalancer.Ingress) > 0 {
+return ingress.Status.LoadBalancer.Ingress[0].IP
+}
+return ""
+}
+
+func getPVCCapacity(pvc corev1.PersistentVolumeClaim) string {
+if pvc.Status.Capacity != nil {
+if capacity, ok := pvc.Status.Capacity[corev1.ResourceStorage]; ok {
+return capacity.String()
+}
+}
+return ""
+}
+
+func convertAccessModes(modes []corev1.PersistentVolumeAccessMode) []string {
+var result []string
+for _, mode := range modes {
+result = append(result, string(mode))
+}
+return result
+}
+
+func getStorageClassName(pvc corev1.PersistentVolumeClaim) string {
+if pvc.Spec.StorageClassName != nil {
+return *pvc.Spec.StorageClassName
+}
+return ""
+}
+
+func getCompletions(job batchv1.Job) string {
+completions := int32(1)
+if job.Spec.Completions != nil {
+completions = *job.Spec.Completions
+}
+return fmt.Sprintf("%d/%d", job.Status.Succeeded, completions)
+}
+
+func extractIngressHostsArray(ingress networkingv1.Ingress) []string {
+var hosts []string
+for _, rule := range ingress.Spec.Rules {
+if rule.Host != "" {
+hosts = append(hosts, rule.Host)
+}
+}
+return hosts
+}
+
+func formatAccessModes(modes []corev1.PersistentVolumeAccessMode) string {
+var result []string
+for _, mode := range modes {
+result = append(result, string(mode))
+}
+return strings.Join(result, ",")
+}
+
+func formatPodSelector(selector map[string]string) string {
+if len(selector) == 0 {
+return ""
+}
+var parts []string
+for k, v := range selector {
+parts = append(parts, fmt.Sprintf("%s=%s", k, v))
+}
+return strings.Join(parts, ",")
 }

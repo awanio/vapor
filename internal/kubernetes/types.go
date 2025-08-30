@@ -360,6 +360,7 @@ type DaemonSetInfo struct {
 	Available         int32             `json:"available"`
 	Age               string            `json:"age"`
 	Labels            map[string]string `json:"labels"`
+	NodeSelector      map[string]string `json:"nodeSelector,omitempty"`
 	CreationTimestamp time.Time         `json:"creationTimestamp"`
 }
 
@@ -1049,4 +1050,55 @@ type CronJobDetail struct {
 	Spec              CronJobSpec       `json:"spec"`
 	Status            CronJobStatus     `json:"status"`
 	Age               string            `json:"age"`
+}
+
+// ReplicaSetInfo contains basic information about a ReplicaSet
+type ReplicaSetInfo struct {
+Name      string            `json:"name"`
+Namespace string            `json:"namespace"`
+Desired   int32             `json:"desired"`
+Current   int32             `json:"current"`
+Ready     int32             `json:"ready"`
+Age       string            `json:"age"`
+Labels    map[string]string `json:"labels,omitempty"`
+}
+
+// ServiceAccountInfo contains basic information about a ServiceAccount
+type ServiceAccountInfo struct {
+Name      string            `json:"name"`
+Namespace string            `json:"namespace"`
+Secrets   int               `json:"secrets"`
+Age       string            `json:"age"`
+Labels    map[string]string `json:"labels,omitempty"`
+}
+
+// RoleInfo contains basic information about a Role
+type RoleInfo struct {
+Name      string            `json:"name"`
+Namespace string            `json:"namespace"`
+Rules     int               `json:"rules"`
+Age       string            `json:"age"`
+Labels    map[string]string `json:"labels,omitempty"`
+}
+
+// RoleBindingInfo contains basic information about a RoleBinding
+type RoleBindingInfo struct {
+Name      string            `json:"name"`
+Namespace string            `json:"namespace"`
+RoleRef   string            `json:"roleRef"`
+Subjects  int               `json:"subjects"`
+Age       string            `json:"age"`
+Labels    map[string]string `json:"labels,omitempty"`
+}
+
+// HorizontalPodAutoscalerInfo contains basic information about a HorizontalPodAutoscaler
+type HorizontalPodAutoscalerInfo struct {
+Name            string            `json:"name"`
+Namespace       string            `json:"namespace"`
+Reference       string            `json:"reference"`
+MinReplicas     int32             `json:"minReplicas"`
+MaxReplicas     int32             `json:"maxReplicas"`
+CurrentReplicas int32             `json:"currentReplicas"`
+Age             string            `json:"age"`
+Labels          map[string]string `json:"labels,omitempty"`
 }
