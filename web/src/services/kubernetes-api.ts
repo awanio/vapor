@@ -216,51 +216,67 @@ export class KubernetesApi {
 
   // Workloads
   static async getPods(namespace?: string): Promise<KubernetesPod[]> {
-    const params = namespace && namespace !== 'all' ? { namespace } : {};
-    const response = await Api.get<{ pods: KubernetesPod[] }>('/kubernetes/pods', params);
+    const url = namespace && namespace !== 'all' 
+      ? `/kubernetes/pods/${namespace}`
+      : '/kubernetes/pods';
+    const response = await Api.get<{ pods: KubernetesPod[] }>(url);
     return response.pods || [];
   }
 
   static async getDeployments(namespace?: string): Promise<KubernetesDeployment[]> {
-    const params = namespace && namespace !== 'all' ? { namespace } : {};
-    const response = await Api.get<{ deployments: KubernetesDeployment[] }>('/kubernetes/deployments', params);
+    const url = namespace && namespace !== 'all' 
+      ? `/kubernetes/deployments/${namespace}`
+      : '/kubernetes/deployments';
+    const response = await Api.get<{ deployments: KubernetesDeployment[] }>(url);
     return response.deployments || [];
   }
 
   static async getStatefulSets(namespace?: string): Promise<KubernetesStatefulSet[]> {
-    const params = namespace && namespace !== 'all' ? { namespace } : {};
-    const response = await Api.get<{ statefulsets: KubernetesStatefulSet[] }>('/kubernetes/statefulsets', params);
+    const url = namespace && namespace !== 'all' 
+      ? `/kubernetes/statefulsets/${namespace}`
+      : '/kubernetes/statefulsets';
+    const response = await Api.get<{ statefulsets: KubernetesStatefulSet[] }>(url);
     return response.statefulsets || [];
   }
 
   static async getDaemonSets(namespace?: string): Promise<KubernetesDaemonSet[]> {
-    const params = namespace && namespace !== 'all' ? { namespace } : {};
-    const response = await Api.get<{ daemonsets: KubernetesDaemonSet[] }>('/kubernetes/daemonsets', params);
+    const url = namespace && namespace !== 'all' 
+      ? `/kubernetes/daemonsets/${namespace}`
+      : '/kubernetes/daemonsets';
+    const response = await Api.get<{ daemonsets: KubernetesDaemonSet[] }>(url);
     return response.daemonsets || [];
   }
 
   static async getJobs(namespace?: string): Promise<KubernetesJob[]> {
-    const params = namespace && namespace !== 'all' ? { namespace } : {};
-    const response = await Api.get<{ jobs: KubernetesJob[] }>('/kubernetes/jobs', params);
+    const url = namespace && namespace !== 'all' 
+      ? `/kubernetes/jobs/${namespace}`
+      : '/kubernetes/jobs';
+    const response = await Api.get<{ jobs: KubernetesJob[] }>(url);
     return response.jobs || [];
   }
 
   static async getCronJobs(namespace?: string): Promise<KubernetesCronJob[]> {
-    const params = namespace && namespace !== 'all' ? { namespace } : {};
-    const response = await Api.get<{ cronjobs: KubernetesCronJob[] }>('/kubernetes/cronjobs', params);
+    const url = namespace && namespace !== 'all' 
+      ? `/kubernetes/cronjobs/${namespace}`
+      : '/kubernetes/cronjobs';
+    const response = await Api.get<{ cronjobs: KubernetesCronJob[] }>(url);
     return response.cronjobs || [];
   }
 
   // Networks
   static async getServices(namespace?: string): Promise<KubernetesService[]> {
-    const params = namespace && namespace !== 'all' ? { namespace } : {};
-    const response = await Api.get<{ services: KubernetesService[] }>('/kubernetes/services', params);
+    const url = namespace && namespace !== 'all' 
+      ? `/kubernetes/services/${namespace}`
+      : '/kubernetes/services';
+    const response = await Api.get<{ services: KubernetesService[] }>(url);
     return response.services || [];
   }
 
   static async getIngresses(namespace?: string): Promise<KubernetesIngress[]> {
-    const params = namespace && namespace !== 'all' ? { namespace } : {};
-    const response = await Api.get<{ ingresses: KubernetesIngress[] }>('/kubernetes/ingresses', params);
+    const url = namespace && namespace !== 'all' 
+      ? `/kubernetes/ingresses/${namespace}`
+      : '/kubernetes/ingresses';
+    const response = await Api.get<{ ingresses: KubernetesIngress[] }>(url);
     return response.ingresses || [];
   }
 
@@ -270,8 +286,10 @@ export class KubernetesApi {
   }
 
   static async getNetworkPolicies(namespace?: string): Promise<KubernetesNetworkPolicy[]> {
-    const params = namespace && namespace !== 'all' ? { namespace } : {};
-    const response = await Api.get<{ networkPolicies: KubernetesNetworkPolicy[] }>('/kubernetes/networkpolicies', params);
+    const url = namespace && namespace !== 'all' 
+      ? `/kubernetes/networkpolicies/${namespace}`
+      : '/kubernetes/networkpolicies';
+    const response = await Api.get<{ networkPolicies: KubernetesNetworkPolicy[] }>(url);
     return response.networkPolicies || [];
   }
 
@@ -289,21 +307,27 @@ export class KubernetesApi {
   }
 
   static async getPersistentVolumeClaims(namespace?: string): Promise<KubernetesPersistentVolumeClaim[]> {
-    const params = namespace && namespace !== 'all' ? { namespace } : {};
-    const response = await Api.get<{ pvcs: KubernetesPersistentVolumeClaim[] }>('/kubernetes/persistentvolumeclaims', params);
+    const url = namespace && namespace !== 'all' 
+      ? `/kubernetes/persistentvolumeclaims/${namespace}`
+      : '/kubernetes/persistentvolumeclaims';
+    const response = await Api.get<{ pvcs: KubernetesPersistentVolumeClaim[] }>(url);
     return response.pvcs || [];
   }
 
   // Configurations
   static async getConfigMaps(namespace?: string): Promise<KubernetesConfigMap[]> {
-    const params = namespace && namespace !== 'all' ? { namespace } : {};
-    const response = await Api.get<{ configmaps: KubernetesConfigMap[] }>('/kubernetes/configmaps', params);
+    const url = namespace && namespace !== 'all' 
+      ? `/kubernetes/configmaps/${namespace}`
+      : '/kubernetes/configmaps';
+    const response = await Api.get<{ configmaps: KubernetesConfigMap[] }>(url);
     return response.configmaps || [];
   }
 
   static async getSecrets(namespace?: string): Promise<KubernetesSecret[]> {
-    const params = namespace && namespace !== 'all' ? { namespace } : {};
-    const response = await Api.get<{ secrets: KubernetesSecret[] }>('/kubernetes/secrets', params);
+    const url = namespace && namespace !== 'all' 
+      ? `/kubernetes/secrets/${namespace}`
+      : '/kubernetes/secrets';
+    const response = await Api.get<{ secrets: KubernetesSecret[] }>(url);
     return response.secrets || [];
   }
 
@@ -332,8 +356,10 @@ export class KubernetesApi {
 
   // Helm
   static async getHelmReleases(namespace?: string): Promise<HelmRelease[]> {
-    const params = namespace && namespace !== 'all' ? { namespace } : {};
-    const response = await Api.get<KubernetesListResponse<HelmRelease>>('/kubernetes/helm/releases', params);
+    const url = namespace && namespace !== 'all' 
+      ? `/kubernetes/helm/releases/${namespace}`
+      : '/kubernetes/helm/releases';
+    const response = await Api.get<KubernetesListResponse<HelmRelease>>(url);
     return response.items || [];
   }
 
