@@ -57,7 +57,7 @@ export class KubernetesWorkloads extends LitElement {
   @state() private logsError = '';
   @state() private logsPodName = '';
   @state() private logsNamespace = '';
-  @state() private editResourceFormat: 'yaml' | 'json' = 'yaml';
+  @state() private resourceFormat: 'yaml' | 'json' = 'yaml';
   @state() private isEditMode = false;
   @state() private editingResource: WorkloadResource | null = null;
 
@@ -279,17 +279,19 @@ export class KubernetesWorkloads extends LitElement {
     this.editingResource = item;
     this.isEditMode = true;
     this.createDrawerTitle = `Edit ${this.getResourceType()}`;
+    // Always start with YAML format for editing
+    this.resourceFormat = 'yaml';
     this.showCreateDrawer = true;
     this.isCreating = true;
     
     try {
-      // Fetch the resource in the selected format
+      // Fetch the resource in YAML format by default
       const resourceType = this.getResourceType();
       const resourceContent = await KubernetesApi.getResourceRaw(
         resourceType,
         item.name,
         item.namespace,
-        this.editResourceFormat
+        'yaml'  // Always fetch as YAML initially
       );
       
       this.createResourceValue = resourceContent;
@@ -349,6 +351,8 @@ export class KubernetesWorkloads extends LitElement {
   private handleCreate() {
     this.isEditMode = false;
     this.editingResource = null;
+    // Reset to YAML format for new resources
+    this.resourceFormat = 'yaml';
     const ns = this.selectedNamespace === 'All Namespaces' ? 'default' : this.selectedNamespace;
     switch ((this.activeTab || '').toLowerCase()) {
       case 'pods':
@@ -603,11 +607,12 @@ export class KubernetesWorkloads extends LitElement {
           .value="${this.createResourceValue}"
           .submitLabel="${this.isEditMode ? 'Update' : 'Apply'}"
           .loading="${this.isCreating}"
-          .format="${this.editResourceFormat}"
+          .format="${this.resourceFormat}"
           @close="${() => { 
             this.showCreateDrawer = false; 
             this.isEditMode = false;
             this.editingResource = null;
+            this.resourceFormat = 'yaml';  // Reset format
           }}"
           @create="${this.handleCreateResource}"
         ></create-resource-drawer>
