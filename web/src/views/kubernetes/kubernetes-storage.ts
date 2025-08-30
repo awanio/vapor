@@ -16,6 +16,8 @@ import '../../components/tables/resource-table.js';
 import '../../components/drawers/detail-drawer.js';
 import '../../components/modals/delete-modal.js';
 import '../../components/kubernetes/resource-detail-view.js';
+import '../../components/drawers/create-resource-drawer';
+import '../../components/ui/notification-container';
 import type { Tab } from '../../components/tabs/tab-group.js';
 import type { Column } from '../../components/tables/resource-table.js';
 import type { ActionItem } from '../../components/ui/action-dropdown.js';
@@ -40,6 +42,15 @@ export class KubernetesStorage extends LitElement {
   @state() private showDeleteModal = false;
   @state() private itemToDelete: DeleteItem | null = null;
   @state() private isDeleting = false;
+
+  // Create/Edit drawer state
+  @state() private showCreateDrawer = false;
+  @state() private createResourceValue = '';
+  @state() private createDrawerTitle = 'Create Resource';
+  @state() private isCreating = false;
+  @state() private resourceFormat: 'yaml' | 'json' = 'yaml';
+  @state() private isEditMode = false;
+  @state() private editingResource: StorageResource | null = null;
 
   static override styles = css`
     :host {
@@ -263,9 +274,42 @@ export class KubernetesStorage extends LitElement {
     }
   }
 
-  private editItem(item: StorageResource) {
-    console.log('Edit item:', item);
-    // TODO: Implement edit functionality
+  private async editItem(item: StorageResource) {
+    this.editingResource = item;
+    this.isEditMode = true;
+    this.createDrawerTitle = `Edit ${this.getResourceType()}`;
+    // Always start with YAML format for editing
+    this.resourceFormat = 'yaml';
+    this.showCreateDrawer = true;
+    this.isCreating = true;
+    
+    try {
+      // Fetch the resource in YAML format by default
+      const resourceType = this.getResourceType();
+      // PersistentVolume doesn't have namespace, PersistentVolumeClaim does
+      const namespace = 'namespace' in item ? item.namespace : undefined;
+      const resourceContent = await KubernetesApi.getResourceRaw(
+        resourceType,
+        item.name,
+        namespace,
+        'yaml'  // Always fetch as YAML initially
+      );
+      
+      this.createResourceValue = resourceContent;
+      this.isCreating = false;
+    } catch (error: any) {
+      console.error('Failed to fetch resource for editing:', error);
+      this.isCreating = false;
+      this.showCreateDrawer = false;
+      
+      const nc = this.shadowRoot?.querySelector('notification-container') as any;
+      if (nc && typeof nc.addNotification === 'function') {
+        nc.addNotification({ 
+          type: 'error', 
+          message: `Failed to fetch resource: ${error.message || 'Unknown error'}` 
+        });
+      }
+    }
   }
 
   private deleteItem(item: StorageResource) {
@@ -307,8 +351,78 @@ export class KubernetesStorage extends LitElement {
   }
 
   private handleCreate() {
-    console.log('Create new resource');
-    // TODO: Implement create functionality
+    this.isEditMode = false;
+    this.editingResource = null;
+    // Reset to YAML format for new resources
+    this.resourceFormat = 'yaml';
+    const ns = this.selectedNamespace === 'All Namespaces' ? 'default' : this.selectedNamespace;
+    
+    if (this.activeTab === 'pvs') {
+      this.createDrawerTitle = 'Create PersistentVolume';
+      this.createResourceValue = `apiVersion: v1\nkind: PersistentVolume\nmetadata:\n  name: my-pv\nspec:\n  capacity:\n    storage: 10Gi\n  accessModes:\n    - ReadWriteOnce\n  persistentVolumeReclaimPolicy: Retain\n  storageClassName: standard\n  hostPath:\n    path: /mnt/data`;
+    } else {
+      this.createDrawerTitle = 'Create PersistentVolumeClaim';
+      this.createResourceValue = `apiVersion: v1\nkind: PersistentVolumeClaim\nmetadata:\n  name: my-pvc\n  namespace: ${ns}\nspec:\n  accessModes:\n    - ReadWriteOnce\n  resources:\n    requests:\n      storage: 5Gi\n  storageClassName: standard`;
+    }
+    this.showCreateDrawer = true;
+  }
+
+  private async handleCreateResource(event: CustomEvent) {
+    const { resource, format } = event.detail as { resource: any; format: 'yaml' | 'json' };
+    let content = '';
+    try {
+      if (format === 'json') {
+        content = JSON.stringify(resource);
+      } else {
+        content = resource.yaml as string;
+      }
+      this.isCreating = true;
+      
+      if (this.isEditMode && this.editingResource) {
+        // Update existing resource
+        const resourceType = this.getResourceType();
+        // PersistentVolume doesn't have namespace, PersistentVolumeClaim does
+        const namespace = 'namespace' in this.editingResource ? this.editingResource.namespace : undefined;
+        await KubernetesApi.updateResource(
+          resourceType,
+          this.editingResource.name,
+          namespace,
+          content,
+          format
+        );
+      } else {
+        // Create new resource
+        await KubernetesApi.createResource(content, format);
+      }
+      
+      // Refresh data
+      await this.fetchData();
+      
+      // Close drawer and reset
+      this.showCreateDrawer = false;
+      this.createResourceValue = '';
+      this.isEditMode = false;
+      this.editingResource = null;
+      
+      const nc = this.shadowRoot?.querySelector('notification-container') as any;
+      if (nc && typeof nc.addNotification === 'function') {
+        const resourceType = this.getResourceType();
+        nc.addNotification({ 
+          type: 'success', 
+          message: this.isEditMode ? `${resourceType} updated successfully` : `${resourceType} created successfully`
+        });
+      }
+    } catch (err: any) {
+      const nc = this.shadowRoot?.querySelector('notification-container') as any;
+      if (nc && typeof nc.addNotification === 'function') {
+        nc.addNotification({ 
+          type: 'error', 
+          message: `Failed to ${this.isEditMode ? 'update' : 'create'} resource: ${err?.message || 'Unknown error'}` 
+        });
+      }
+    } finally {
+      this.isCreating = false;
+    }
   }
 
   private handleDetailsClose() {
@@ -434,6 +548,25 @@ export class KubernetesStorage extends LitElement {
           @confirm-delete="${this.handleConfirmDelete}"
           @cancel-delete="${this.handleCancelDelete}"
         ></delete-modal>
+
+        <create-resource-drawer
+          .show="${this.showCreateDrawer}"
+          ?show="${this.showCreateDrawer}"
+          .title="${this.createDrawerTitle}"
+          .value="${this.createResourceValue}"
+          .submitLabel="${this.isEditMode ? 'Update' : 'Apply'}"
+          .loading="${this.isCreating}"
+          .format="${this.resourceFormat}"
+          @close="${() => { 
+            this.showCreateDrawer = false; 
+            this.isEditMode = false;
+            this.editingResource = null;
+            this.resourceFormat = 'yaml';  // Reset format
+          }}"
+          @create="${this.handleCreateResource}"
+        ></create-resource-drawer>
+
+        <notification-container></notification-container>
       </div>
     `;
   }

@@ -416,10 +416,10 @@ export class KubernetesApi {
         return `/kubernetes/customresourcedefinitions/${name}`;
       case 'persistentvolumeclaim':
       case 'pvc':
-        return `/kubernetes/pvcs/${namespace}/${name}`;
+        return `/kubernetes/persistentvolumeclaims/${namespace}/${name}`;
       case 'persistentvolume':
       case 'pv':
-        return `/kubernetes/pvs/${name}`;
+        return `/kubernetes/persistentvolumes/${name}`;
       case 'configmap':
         return `/kubernetes/configmaps/${namespace}/${name}`;
       case 'secret':
