@@ -45,11 +45,14 @@ export class KubernetesNetworks extends LitElement {
   @state() private itemToDelete: DeleteItem | null = null;
   @state() private isDeleting = false;
 
-  // Create drawer state
+  // Create/Edit drawer state
   @state() private showCreateDrawer = false;
   @state() private createResourceValue = '';
   @state() private createDrawerTitle = 'Create Resource';
   @state() private isCreating = false;
+  @state() private resourceFormat: 'yaml' | 'json' = 'yaml';
+  @state() private isEditMode = false;
+  @state() private editingResource: NetworkResource | null = null;
 
   static override styles = css`
     :host {
@@ -272,9 +275,42 @@ export class KubernetesNetworks extends LitElement {
     }
   }
 
-  private editItem(item: NetworkResource) {
-    console.log('Edit item:', item);
-    // Implement edit functionality
+  private async editItem(item: NetworkResource) {
+    this.editingResource = item;
+    this.isEditMode = true;
+    this.createDrawerTitle = `Edit ${this.getResourceType()}`;
+    // Always start with YAML format for editing
+    this.resourceFormat = 'yaml';
+    this.showCreateDrawer = true;
+    this.isCreating = true;
+    
+    try {
+      // Fetch the resource in YAML format by default
+      const resourceType = this.getResourceType();
+      // IngressClass doesn't have namespace
+      const namespace = 'namespace' in item ? item.namespace : undefined;
+      const resourceContent = await KubernetesApi.getResourceRaw(
+        resourceType,
+        item.name,
+        namespace,
+        'yaml'  // Always fetch as YAML initially
+      );
+      
+      this.createResourceValue = resourceContent;
+      this.isCreating = false;
+    } catch (error: any) {
+      console.error('Failed to fetch resource for editing:', error);
+      this.isCreating = false;
+      this.showCreateDrawer = false;
+      
+      const nc = this.shadowRoot?.querySelector('notification-container') as any;
+      if (nc && typeof nc.addNotification === 'function') {
+        nc.addNotification({ 
+          type: 'error', 
+          message: `Failed to fetch resource: ${error.message || 'Unknown error'}` 
+        });
+      }
+    }
   }
 
   private deleteItem(item: NetworkResource) {
@@ -316,6 +352,10 @@ export class KubernetesNetworks extends LitElement {
   }
 
   private handleCreate() {
+    this.isEditMode = false;
+    this.editingResource = null;
+    // Reset to YAML format for new resources
+    this.resourceFormat = 'yaml';
     const ns = this.selectedNamespace === 'All Namespaces' ? 'default' : this.selectedNamespace;
     if (this.activeTab === 'services') {
       this.createDrawerTitle = 'Create Service';
@@ -340,21 +380,54 @@ export class KubernetesNetworks extends LitElement {
     const { resource, format } = event.detail as { resource: any; format: 'yaml' | 'json' };
     let content = '';
     try {
-      content = format === 'json' ? JSON.stringify(resource) : (resource.yaml as string);
+      if (format === 'json') {
+        content = JSON.stringify(resource);
+      } else {
+        content = resource.yaml as string;
+      }
       this.isCreating = true;
-      await KubernetesApi.createResource(content, format);
+      
+      if (this.isEditMode && this.editingResource) {
+        // Update existing resource
+        const resourceType = this.getResourceType();
+        // IngressClass doesn't have namespace
+        const namespace = 'namespace' in this.editingResource ? this.editingResource.namespace : undefined;
+        await KubernetesApi.updateResource(
+          resourceType,
+          this.editingResource.name,
+          namespace,
+          content,
+          format
+        );
+      } else {
+        // Create new resource
+        await KubernetesApi.createResource(content, format);
+      }
+      
+      // Refresh data
       await this.fetchData();
+      
+      // Close drawer and reset
       this.showCreateDrawer = false;
       this.createResourceValue = '';
+      this.isEditMode = false;
+      this.editingResource = null;
+      
       const nc = this.shadowRoot?.querySelector('notification-container') as any;
       if (nc && typeof nc.addNotification === 'function') {
-        const createdType = this.getResourceType();
-        nc.addNotification({ type: 'success', message: `${createdType} created successfully` });
+        const resourceType = this.getResourceType();
+        nc.addNotification({ 
+          type: 'success', 
+          message: this.isEditMode ? `${resourceType} updated successfully` : `${resourceType} created successfully`
+        });
       }
     } catch (err: any) {
       const nc = this.shadowRoot?.querySelector('notification-container') as any;
       if (nc && typeof nc.addNotification === 'function') {
-        nc.addNotification({ type: 'error', message: `Failed to create resource: ${err?.message || 'Unknown error'}` });
+        nc.addNotification({ 
+          type: 'error', 
+          message: `Failed to ${this.isEditMode ? 'update' : 'create'} resource: ${err?.message || 'Unknown error'}` 
+        });
       }
     } finally {
       this.isCreating = false;
@@ -485,11 +558,18 @@ export class KubernetesNetworks extends LitElement {
 
         <create-resource-drawer
           .show="${this.showCreateDrawer}"
+          ?show="${this.showCreateDrawer}"
           .title="${this.createDrawerTitle}"
           .value="${this.createResourceValue}"
-          .submitLabel="Apply"
+          .submitLabel="${this.isEditMode ? 'Update' : 'Apply'}"
           .loading="${this.isCreating}"
-          @close="${() => { this.showCreateDrawer = false; }}"
+          .format="${this.resourceFormat}"
+          @close="${() => { 
+            this.showCreateDrawer = false; 
+            this.isEditMode = false;
+            this.editingResource = null;
+            this.resourceFormat = 'yaml';  // Reset format
+          }}"
           @create="${this.handleCreateResource}"
         ></create-resource-drawer>
 
