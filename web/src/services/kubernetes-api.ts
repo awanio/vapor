@@ -462,12 +462,12 @@ export class KubernetesApi {
   }
 
   static async getPVCDetails(namespace: string, name: string): Promise<KubernetesResourceDetails> {
-    const response = await Api.get<any>(`/kubernetes/pvcs/${namespace}/${name}`);
+    const response = await Api.get<any>(`/kubernetes/persistentvolumeclaims/${namespace}/${name}`);
     return response.pvc_detail || response;
   }
 
   static async getPVDetails(name: string): Promise<KubernetesResourceDetails> {
-    const response = await Api.get<any>(`/kubernetes/pvs/${name}`);
+    const response = await Api.get<any>(`/kubernetes/persistentvolumes/${name}`);
     return response.pv_detail || response;
   }
 
