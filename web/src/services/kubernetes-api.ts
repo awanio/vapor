@@ -1,4 +1,6 @@
 import { Api } from '../api';
+import { getAuthHeaders } from '../stores/auth';
+import { getApiUrl } from '../config';
 
 // Kubernetes resource types
 export interface KubernetesNamespace {
@@ -363,6 +365,70 @@ export class KubernetesApi {
     return response.items || [];
   }
 
+  // Get raw resource in specified format (JSON or YAML)
+  static async getResourceRaw(kind: string, name: string, namespace: string | undefined, format: 'json' | 'yaml' = 'json'): Promise<string> {
+    const endpoint = this.getResourceEndpoint(kind, name, namespace);
+    const contentType = format === 'yaml' ? 'application/yaml' : 'application/json';
+    
+    const authHeaders = getAuthHeaders();
+    const url = getApiUrl(endpoint);
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': contentType,
+        ...authHeaders,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch resource: ${response.statusText}`);
+    }
+
+    return response.text();
+  }
+
+  // Helper to get the correct endpoint for a resource
+  private static getResourceEndpoint(kind: string, name: string, namespace?: string): string {
+    switch (kind.toLowerCase()) {
+      case 'pod':
+        return `/kubernetes/pods/${namespace}/${name}`;
+      case 'deployment':
+        return `/kubernetes/deployments/${namespace}/${name}`;
+      case 'statefulset':
+        return `/kubernetes/statefulsets/${namespace}/${name}`;
+      case 'daemonset':
+        return `/kubernetes/daemonsets/${namespace}/${name}`;
+      case 'job':
+        return `/kubernetes/jobs/${namespace}/${name}`;
+      case 'cronjob':
+        return `/kubernetes/cronjobs/${namespace}/${name}`;
+      case 'service':
+        return `/kubernetes/services/${namespace}/${name}`;
+      case 'ingress':
+        return `/kubernetes/ingresses/${namespace}/${name}`;
+      case 'ingressclass':
+        return `/kubernetes/ingressclasses/${name}`;
+      case 'networkpolicy':
+        return `/kubernetes/networkpolicies/${namespace}/${name}`;
+      case 'crd':
+      case 'customresourcedefinition':
+        return `/kubernetes/customresourcedefinitions/${name}`;
+      case 'persistentvolumeclaim':
+      case 'pvc':
+        return `/kubernetes/pvcs/${namespace}/${name}`;
+      case 'persistentvolume':
+      case 'pv':
+        return `/kubernetes/pvs/${name}`;
+      case 'configmap':
+        return `/kubernetes/configmaps/${namespace}/${name}`;
+      case 'secret':
+        return `/kubernetes/secrets/${namespace}/${name}`;
+      default:
+        throw new Error(`Unsupported resource kind: ${kind}`);
+    }
+  }
+
   // Resource Details
   static async getResourceDetails(kind: string, name: string, namespace?: string): Promise<KubernetesResourceDetails> {
     // Map resource kinds to specific detail methods
@@ -549,10 +615,8 @@ export class KubernetesApi {
 
   static async updateResource(kind: string, name: string, namespace: string | undefined, content: string, contentType: 'json' | 'yaml' = 'yaml'): Promise<any> {
     const mimeType = contentType === 'json' ? 'application/json' : 'application/yaml';
-    const endpoint = namespace 
-      ? `/kubernetes/resource/${kind}/${namespace}/${name}`
-      : `/kubernetes/resource/${kind}/${name}`;
-    return Api.postResource(endpoint, content, mimeType);
+    const endpoint = this.getResourceEndpoint(kind, name, namespace);
+    return Api.put(endpoint, content);
   }
 
   // Pod Logs

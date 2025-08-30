@@ -57,6 +57,9 @@ export class KubernetesWorkloads extends LitElement {
   @state() private logsError = '';
   @state() private logsPodName = '';
   @state() private logsNamespace = '';
+  @state() private editResourceFormat: 'yaml' | 'json' = 'yaml';
+  @state() private isEditMode = false;
+  @state() private editingResource: WorkloadResource | null = null;
 
   static override styles = css`
     :host {
@@ -272,9 +275,38 @@ export class KubernetesWorkloads extends LitElement {
     }
   }
 
-  private editItem(item: WorkloadResource) {
-    console.log('Edit item:', item);
-    // Implement edit functionality
+  private async editItem(item: WorkloadResource) {
+    this.editingResource = item;
+    this.isEditMode = true;
+    this.createDrawerTitle = `Edit ${this.getResourceType()}`;
+    this.showCreateDrawer = true;
+    this.isCreating = true;
+    
+    try {
+      // Fetch the resource in the selected format
+      const resourceType = this.getResourceType();
+      const resourceContent = await KubernetesApi.getResourceRaw(
+        resourceType,
+        item.name,
+        item.namespace,
+        this.editResourceFormat
+      );
+      
+      this.createResourceValue = resourceContent;
+      this.isCreating = false;
+    } catch (error: any) {
+      console.error('Failed to fetch resource for editing:', error);
+      this.isCreating = false;
+      this.showCreateDrawer = false;
+      
+      const nc = this.shadowRoot?.querySelector('notification-container') as any;
+      if (nc && typeof nc.addNotification === 'function') {
+        nc.addNotification({ 
+          type: 'error', 
+          message: `Failed to fetch resource: ${error.message || 'Unknown error'}` 
+        });
+      }
+    }
   }
 
   private deleteItem(item: WorkloadResource) {
@@ -315,6 +347,8 @@ export class KubernetesWorkloads extends LitElement {
   }
 
   private handleCreate() {
+    this.isEditMode = false;
+    this.editingResource = null;
     const ns = this.selectedNamespace === 'All Namespaces' ? 'default' : this.selectedNamespace;
     switch ((this.activeTab || '').toLowerCase()) {
       case 'pods':
@@ -362,20 +396,45 @@ export class KubernetesWorkloads extends LitElement {
         content = resource.yaml as string;
       }
       this.isCreating = true;
-      await KubernetesApi.createResource(content, format);
-      // Refresh pods
+      
+      if (this.isEditMode && this.editingResource) {
+        // Update existing resource
+        const resourceType = this.getResourceType();
+        await KubernetesApi.updateResource(
+          resourceType,
+          this.editingResource.name,
+          this.editingResource.namespace,
+          content,
+          format
+        );
+      } else {
+        // Create new resource
+        await KubernetesApi.createResource(content, format);
+      }
+      
+      // Refresh data
       await this.fetchData();
+      
       // Close drawer and reset
       this.showCreateDrawer = false;
       this.createResourceValue = '';
+      this.isEditMode = false;
+      this.editingResource = null;
+      
       const nc = this.shadowRoot?.querySelector('notification-container') as any;
       if (nc && typeof nc.addNotification === 'function') {
-        nc.addNotification({ type: 'success', message: 'Resource applied successfully' });
+        nc.addNotification({ 
+          type: 'success', 
+          message: this.isEditMode ? 'Resource updated successfully' : 'Resource created successfully' 
+        });
       }
     } catch (err: any) {
       const nc = this.shadowRoot?.querySelector('notification-container') as any;
       if (nc && typeof nc.addNotification === 'function') {
-        nc.addNotification({ type: 'error', message: `Failed to apply resource: ${err?.message || 'Unknown error'}` });
+        nc.addNotification({ 
+          type: 'error', 
+          message: `Failed to ${this.isEditMode ? 'update' : 'create'} resource: ${err?.message || 'Unknown error'}` 
+        });
       }
     } finally {
       this.isCreating = false;
@@ -542,9 +601,14 @@ export class KubernetesWorkloads extends LitElement {
           ?show="${this.showCreateDrawer}"
           .title="${this.createDrawerTitle}"
           .value="${this.createResourceValue}"
-          .submitLabel="Apply"
+          .submitLabel="${this.isEditMode ? 'Update' : 'Apply'}"
           .loading="${this.isCreating}"
-          @close="${() => { this.showCreateDrawer = false; }}"
+          .format="${this.editResourceFormat}"
+          @close="${() => { 
+            this.showCreateDrawer = false; 
+            this.isEditMode = false;
+            this.editingResource = null;
+          }}"
           @create="${this.handleCreateResource}"
         ></create-resource-drawer>
 
