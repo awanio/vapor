@@ -16,6 +16,8 @@ import '../../components/tables/resource-table.js';
 import '../../components/drawers/detail-drawer.js';
 import '../../components/modals/delete-modal.js';
 import '../../components/kubernetes/resource-detail-view.js';
+import '../../components/drawers/create-resource-drawer';
+import '../../components/ui/notification-container';
 import type { Tab } from '../../components/tabs/tab-group.js';
 import type { Column } from '../../components/tables/resource-table.js';
 import type { ActionItem } from '../../components/ui/action-dropdown.js';
@@ -40,6 +42,15 @@ export class KubernetesConfigurations extends LitElement {
   @state() private showDeleteModal = false;
   @state() private itemToDelete: DeleteItem | null = null;
   @state() private isDeleting = false;
+
+  // Create/Edit drawer state
+  @state() private showCreateDrawer = false;
+  @state() private createResourceValue = '';
+  @state() private createDrawerTitle = 'Create Resource';
+  @state() private isCreating = false;
+  @state() private resourceFormat: 'yaml' | 'json' = 'yaml';
+  @state() private isEditMode = false;
+  @state() private editingResource: ConfigResource | null = null;
 
   static override styles = css`
     :host {
@@ -304,9 +315,40 @@ export class KubernetesConfigurations extends LitElement {
     }
   }
 
-  private editItem(item: ConfigResource) {
-    console.log('Edit item:', item);
-    // TODO: Implement edit functionality
+  private async editItem(item: ConfigResource) {
+    this.editingResource = item;
+    this.isEditMode = true;
+    this.createDrawerTitle = `Edit ${this.getResourceType()}`;
+    // Always start with YAML format for editing
+    this.resourceFormat = 'yaml';
+    this.showCreateDrawer = true;
+    this.isCreating = true;
+    
+    try {
+      // Fetch the resource in YAML format by default
+      const resourceType = this.getResourceType();
+      const resourceContent = await KubernetesApi.getResourceRaw(
+        resourceType,
+        item.name,
+        item.namespace,
+        'yaml'  // Always fetch as YAML initially
+      );
+      
+      this.createResourceValue = resourceContent;
+      this.isCreating = false;
+    } catch (error: any) {
+      console.error('Failed to fetch resource for editing:', error);
+      this.isCreating = false;
+      this.showCreateDrawer = false;
+      
+      const nc = this.shadowRoot?.querySelector('notification-container') as any;
+      if (nc && typeof nc.addNotification === 'function') {
+        nc.addNotification({ 
+          type: 'error', 
+          message: `Failed to fetch resource: ${error.message || 'Unknown error'}` 
+        });
+      }
+    }
   }
 
   private deleteItem(item: ConfigResource) {
@@ -346,8 +388,76 @@ export class KubernetesConfigurations extends LitElement {
   }
 
   private handleCreate() {
-    console.log('Create new resource');
-    // TODO: Implement create functionality
+    this.isEditMode = false;
+    this.editingResource = null;
+    // Reset to YAML format for new resources
+    this.resourceFormat = 'yaml';
+    const ns = this.selectedNamespace === 'All Namespaces' ? 'default' : this.selectedNamespace;
+    
+    if (this.activeTab === 'configmaps') {
+      this.createDrawerTitle = 'Create ConfigMap';
+      this.createResourceValue = `apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: my-config\n  namespace: ${ns}\ndata:\n  config.yaml: |\n    server:\n      port: 8080\n      host: localhost\n    database:\n      host: db.example.com\n      port: 5432\n  app.properties: |\n    app.name=MyApp\n    app.version=1.0.0\n    debug=true`;
+    } else {
+      this.createDrawerTitle = 'Create Secret';
+      this.createResourceValue = `apiVersion: v1\nkind: Secret\nmetadata:\n  name: my-secret\n  namespace: ${ns}\ntype: Opaque\ndata:\n  # Note: Values must be base64 encoded\n  # Example: echo -n 'admin' | base64\n  username: YWRtaW4=\n  password: cGFzc3dvcmQ=`;
+    }
+    this.showCreateDrawer = true;
+  }
+
+  private async handleCreateResource(event: CustomEvent) {
+    const { resource, format } = event.detail as { resource: any; format: 'yaml' | 'json' };
+    let content = '';
+    try {
+      if (format === 'json') {
+        content = JSON.stringify(resource);
+      } else {
+        content = resource.yaml as string;
+      }
+      this.isCreating = true;
+      
+      if (this.isEditMode && this.editingResource) {
+        // Update existing resource
+        const resourceType = this.getResourceType();
+        await KubernetesApi.updateResource(
+          resourceType,
+          this.editingResource.name,
+          this.editingResource.namespace,
+          content,
+          format
+        );
+      } else {
+        // Create new resource
+        await KubernetesApi.createResource(content, format);
+      }
+      
+      // Refresh data
+      await this.fetchData();
+      
+      // Close drawer and reset
+      this.showCreateDrawer = false;
+      this.createResourceValue = '';
+      this.isEditMode = false;
+      this.editingResource = null;
+      
+      const nc = this.shadowRoot?.querySelector('notification-container') as any;
+      if (nc && typeof nc.addNotification === 'function') {
+        const resourceType = this.getResourceType();
+        nc.addNotification({ 
+          type: 'success', 
+          message: this.isEditMode ? `${resourceType} updated successfully` : `${resourceType} created successfully`
+        });
+      }
+    } catch (err: any) {
+      const nc = this.shadowRoot?.querySelector('notification-container') as any;
+      if (nc && typeof nc.addNotification === 'function') {
+        nc.addNotification({ 
+          type: 'error', 
+          message: `Failed to ${this.isEditMode ? 'update' : 'create'} resource: ${err?.message || 'Unknown error'}` 
+        });
+      }
+    } finally {
+      this.isCreating = false;
+    }
   }
 
   private handleDetailsClose() {
@@ -469,6 +579,25 @@ export class KubernetesConfigurations extends LitElement {
           @confirm-delete="${this.handleConfirmDelete}"
           @cancel-delete="${this.handleCancelDelete}"
         ></delete-modal>
+
+        <create-resource-drawer
+          .show="${this.showCreateDrawer}"
+          ?show="${this.showCreateDrawer}"
+          .title="${this.createDrawerTitle}"
+          .value="${this.createResourceValue}"
+          .submitLabel="${this.isEditMode ? 'Update' : 'Apply'}"
+          .loading="${this.isCreating}"
+          .format="${this.resourceFormat}"
+          @close="${() => { 
+            this.showCreateDrawer = false; 
+            this.isEditMode = false;
+            this.editingResource = null;
+            this.resourceFormat = 'yaml';  // Reset format
+          }}"
+          @create="${this.handleCreateResource}"
+        ></create-resource-drawer>
+
+        <notification-container></notification-container>
       </div>
     `;
   }
