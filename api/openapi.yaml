@@ -468,6 +468,41 @@ paths:
     $ref: paths/kubernetes_networkpolicies.yaml
   /kubernetes/networkpolicies/{namespace}/{name}:
     $ref: paths/kubernetes_networkpolicies_{namespace}_{name}.yaml
+  # Namespace-scoped list endpoints
+  /kubernetes/pods/{namespace}:
+    $ref: paths/kubernetes_pods_{namespace}.yaml
+  /kubernetes/deployments/{namespace}:
+    $ref: paths/kubernetes_deployments_{namespace}.yaml
+  /kubernetes/services/{namespace}:
+    $ref: paths/kubernetes_services_{namespace}.yaml
+  /kubernetes/ingresses/{namespace}:
+    $ref: paths/kubernetes_ingresses_{namespace}.yaml
+  /kubernetes/persistentvolumeclaims/{namespace}:
+    $ref: paths/kubernetes_persistentvolumeclaims_{namespace}.yaml
+  /kubernetes/secrets/{namespace}:
+    $ref: paths/kubernetes_secrets_{namespace}.yaml
+  /kubernetes/configmaps/{namespace}:
+    $ref: paths/kubernetes_configmaps_{namespace}.yaml
+  /kubernetes/daemonsets/{namespace}:
+    $ref: paths/kubernetes_daemonsets_{namespace}.yaml
+  /kubernetes/statefulsets/{namespace}:
+    $ref: paths/kubernetes_statefulsets_{namespace}.yaml
+  /kubernetes/jobs/{namespace}:
+    $ref: paths/kubernetes_jobs_{namespace}.yaml
+  /kubernetes/cronjobs/{namespace}:
+    $ref: paths/kubernetes_cronjobs_{namespace}.yaml
+  /kubernetes/networkpolicies/{namespace}:
+    $ref: paths/kubernetes_networkpolicies_{namespace}.yaml
+  /kubernetes/replicasets/{namespace}:
+    $ref: paths/kubernetes_replicasets_{namespace}.yaml
+  /kubernetes/serviceaccounts/{namespace}:
+    $ref: paths/kubernetes_serviceaccounts_{namespace}.yaml
+  /kubernetes/roles/{namespace}:
+    $ref: paths/kubernetes_roles_{namespace}.yaml
+  /kubernetes/rolebindings/{namespace}:
+    $ref: paths/kubernetes_rolebindings_{namespace}.yaml
+  /kubernetes/horizontalpodautoscalers/{namespace}:
+    $ref: paths/kubernetes_horizontalpodautoscalers_{namespace}.yaml
   /kubernetes/pods/{namespace}/{name}:
     $ref: paths/kubernetes_pods_{namespace}_{name}.yaml
   /kubernetes/pods/{namespace}/{name}/rollout/images:

@@ -1,0 +1,43 @@
+get:
+  summary: List persistent in a specific namespace
+  description: List all persistent in the specified namespace
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: The namespace to list persistent from
+      schema:
+        type: string
+  responses:
+    '200':
+      description: persistent listed successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              data:
+                type: object
+                properties:
+                  persistentvolumeclaims:
+                    type: array
+                    items:
+                      $ref: ../components/schemas/PVCInfo.yaml
+                  count:
+                    type: integer
+                    description: Total number of persistent in the namespace
+                  namespace:
+                    type: string
+                    description: The namespace that was queried
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

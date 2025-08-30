@@ -1,0 +1,43 @@
+get:
+  summary: List jobs in a specific namespace
+  description: List all jobs in the specified namespace
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: The namespace to list jobs from
+      schema:
+        type: string
+  responses:
+    '200':
+      description: jobs listed successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              data:
+                type: object
+                properties:
+                  jobs:
+                    type: array
+                    items:
+                      $ref: ../components/schemas/JobInfo.yaml
+                  count:
+                    type: integer
+                    description: Total number of jobs in the namespace
+                  namespace:
+                    type: string
+                    description: The namespace that was queried
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

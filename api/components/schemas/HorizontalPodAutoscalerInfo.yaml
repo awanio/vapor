@@ -1,0 +1,31 @@
+type: object
+properties:
+  name:
+    type: string
+    description: Name of the HorizontalPodAutoscaler
+  namespace:
+    type: string
+    description: Namespace of the HorizontalPodAutoscaler
+  reference:
+    type: string
+    description: Reference to the resource being autoscaled
+  minReplicas:
+    type: integer
+    format: int32
+    description: Minimum number of replicas
+  maxReplicas:
+    type: integer
+    format: int32
+    description: Maximum number of replicas
+  currentReplicas:
+    type: integer
+    format: int32
+    description: Current number of replicas
+  age:
+    type: string
+    description: Age of the HorizontalPodAutoscaler
+  labels:
+    type: object
+    additionalProperties:
+      type: string
+    description: Labels attached to the HorizontalPodAutoscaler

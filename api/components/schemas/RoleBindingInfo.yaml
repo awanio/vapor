@@ -1,0 +1,22 @@
+type: object
+properties:
+  name:
+    type: string
+    description: Name of the RoleBinding
+  namespace:
+    type: string
+    description: Namespace of the RoleBinding
+  roleRef:
+    type: string
+    description: Reference to the Role being bound
+  subjects:
+    type: integer
+    description: Number of subjects in the RoleBinding
+  age:
+    type: string
+    description: Age of the RoleBinding
+  labels:
+    type: object
+    additionalProperties:
+      type: string
+    description: Labels attached to the RoleBinding

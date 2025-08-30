@@ -1,0 +1,43 @@
+get:
+  summary: List roles in a specific namespace
+  description: List all roles in the specified namespace
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: The namespace to list roles from
+      schema:
+        type: string
+  responses:
+    '200':
+      description: roles listed successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              data:
+                type: object
+                properties:
+                  roles:
+                    type: array
+                    items:
+                      $ref: ../components/schemas/RoleInfo.yaml
+                  count:
+                    type: integer
+                    description: Total number of roles in the namespace
+                  namespace:
+                    type: string
+                    description: The namespace that was queried
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

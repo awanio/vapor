@@ -1,0 +1,43 @@
+get:
+  summary: List pods in a specific namespace
+  description: List all pods in the specified namespace
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: The namespace to list pods from
+      schema:
+        type: string
+  responses:
+    '200':
+      description: pods listed successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              data:
+                type: object
+                properties:
+                  pods:
+                    type: array
+                    items:
+                      $ref: ../components/schemas/PodInfo.yaml
+                  count:
+                    type: integer
+                    description: Total number of pods in the namespace
+                  namespace:
+                    type: string
+                    description: The namespace that was queried
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

@@ -1,0 +1,19 @@
+type: object
+properties:
+  name:
+    type: string
+    description: Name of the Role
+  namespace:
+    type: string
+    description: Namespace of the Role
+  rules:
+    type: integer
+    description: Number of rules defined in the Role
+  age:
+    type: string
+    description: Age of the Role
+  labels:
+    type: object
+    additionalProperties:
+      type: string
+    description: Labels attached to the Role

@@ -1,0 +1,28 @@
+type: object
+properties:
+  name:
+    type: string
+    description: Name of the ReplicaSet
+  namespace:
+    type: string
+    description: Namespace of the ReplicaSet
+  desired:
+    type: integer
+    format: int32
+    description: Desired number of replicas
+  current:
+    type: integer
+    format: int32
+    description: Current number of replicas
+  ready:
+    type: integer
+    format: int32
+    description: Number of ready replicas
+  age:
+    type: string
+    description: Age of the ReplicaSet
+  labels:
+    type: object
+    additionalProperties:
+      type: string
+    description: Labels attached to the ReplicaSet

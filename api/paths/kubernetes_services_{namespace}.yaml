@@ -1,0 +1,43 @@
+get:
+  summary: List services in a specific namespace
+  description: List all services in the specified namespace
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: namespace
+      in: path
+      required: true
+      description: The namespace to list services from
+      schema:
+        type: string
+  responses:
+    '200':
+      description: services listed successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              data:
+                type: object
+                properties:
+                  services:
+                    type: array
+                    items:
+                      $ref: ../components/schemas/ServiceInfo.yaml
+                  count:
+                    type: integer
+                    description: Total number of services in the namespace
+                  namespace:
+                    type: string
+                    description: The namespace that was queried
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml
