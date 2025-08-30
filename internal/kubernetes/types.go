@@ -24,6 +24,8 @@ type ResourceList struct {
 
 // PodInfo represents simplified pod information
 type PodInfo struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
 	Name              string            `json:"name"`
 	Namespace         string            `json:"namespace"`
 	Status            string            `json:"status"`
@@ -85,6 +87,8 @@ type PodDetail struct {
 
 // DeploymentInfo represents simplified deployment information
 type DeploymentInfo struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
 	Name              string            `json:"name"`
 	Namespace         string            `json:"namespace"`
 	Ready             string            `json:"ready"`
@@ -251,6 +255,8 @@ type DeploymentDetail struct {
 
 // ServiceInfo represents simplified service information
 type ServiceInfo struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
 	Name              string            `json:"name"`
 	Namespace         string            `json:"namespace"`
 	Type              string            `json:"type"`
@@ -264,6 +270,8 @@ type ServiceInfo struct {
 
 // IngressInfo represents simplified ingress information
 type IngressInfo struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
 	Name              string            `json:"name"`
 	Namespace         string            `json:"namespace"`
 	Hosts             []string          `json:"hosts"`
@@ -276,6 +284,8 @@ type IngressInfo struct {
 
 // PVCInfo represents simplified PVC information
 type PVCInfo struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
 	Name              string            `json:"name"`
 	Namespace         string            `json:"namespace"`
 	Status            string            `json:"status"`
@@ -290,6 +300,8 @@ type PVCInfo struct {
 
 // PVInfo represents simplified PV information
 type PVInfo struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
 	Name              string            `json:"name"`
 	Capacity          string            `json:"capacity"`
 	AccessModes       string            `json:"accessModes"`
@@ -305,6 +317,8 @@ type PVInfo struct {
 
 // SecretInfo represents simplified secret information
 type SecretInfo struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
 	Name              string            `json:"name"`
 	Namespace         string            `json:"namespace"`
 	Type              string            `json:"type"`
@@ -316,6 +330,8 @@ type SecretInfo struct {
 
 // ConfigMapInfo represents simplified configmap information
 type ConfigMapInfo struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
 	Name              string            `json:"name"`
 	Namespace         string            `json:"namespace"`
 	Data              int               `json:"data"`
@@ -326,6 +342,8 @@ type ConfigMapInfo struct {
 
 // NamespaceInfo represents simplified namespace information
 type NamespaceInfo struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
 	Name              string            `json:"name"`
 	Status            string            `json:"status"`
 	Age               string            `json:"age"`
@@ -335,11 +353,14 @@ type NamespaceInfo struct {
 
 // NodeInfo represents simplified node information
 type NodeInfo struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
 	Name              string            `json:"name"`
 	Status            string            `json:"status"`
 	Roles             string            `json:"roles"`
 	Age               string            `json:"age"`
 	Version           string            `json:"version"`
+	ResourceKind      string            `json:"resourceKind"`
 	InternalIP        string            `json:"internalIP"`
 	ExternalIP        string            `json:"externalIP"`
 	OS                string            `json:"os"`
@@ -351,6 +372,8 @@ type NodeInfo struct {
 
 // DaemonSetInfo represents simplified daemonset information
 type DaemonSetInfo struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
 	Name              string            `json:"name"`
 	Namespace         string            `json:"namespace"`
 	Desired           int32             `json:"desired"`
@@ -366,6 +389,8 @@ type DaemonSetInfo struct {
 
 // StatefulSetInfo represents simplified statefulset information
 type StatefulSetInfo struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
 	Name              string            `json:"name"`
 	Namespace         string            `json:"namespace"`
 	Ready             string            `json:"ready"`
@@ -376,6 +401,8 @@ type StatefulSetInfo struct {
 
 // JobInfo represents simplified job information
 type JobInfo struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
 	Name              string            `json:"name"`
 	Namespace         string            `json:"namespace"`
 	Completions       string            `json:"completions"`
@@ -387,6 +414,8 @@ type JobInfo struct {
 
 // CronJobInfo represents simplified cronjob information
 type CronJobInfo struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
 	Name              string            `json:"name"`
 	Namespace         string            `json:"namespace"`
 	Schedule          string            `json:"schedule"`
@@ -492,10 +521,12 @@ type StatefulSetDetail struct {
 
 // CRDInfo represents simplified Custom Resource Definition information
 type CRDInfo struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
 	Name              string            `json:"name"`
 	Group             string            `json:"group"`
 	Version           string            `json:"version"`
-	Kind              string            `json:"kind"`
+	ResourceKind      string            `json:"resourceKind"`
 	Scope             string            `json:"scope"`
 	Names             []string          `json:"names"`
 	Age               string            `json:"age"`
@@ -505,6 +536,8 @@ type CRDInfo struct {
 
 // IngressClassInfo represents simplified ingress class information
 type IngressClassInfo struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
 	Name              string            `json:"name"`
 	Controller        string            `json:"controller"`
 	IsDefault         bool              `json:"isDefault"`
@@ -515,6 +548,8 @@ type IngressClassInfo struct {
 
 // NetworkPolicyInfo represents simplified network policy information
 type NetworkPolicyInfo struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
 	Name              string            `json:"name"`
 	Namespace         string            `json:"namespace"`
 	PodSelector       string            `json:"podSelector"`
@@ -1054,6 +1089,8 @@ type CronJobDetail struct {
 
 // ReplicaSetInfo contains basic information about a ReplicaSet
 type ReplicaSetInfo struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
 Name      string            `json:"name"`
 Namespace string            `json:"namespace"`
 Desired   int32             `json:"desired"`
@@ -1065,6 +1102,8 @@ Labels    map[string]string `json:"labels,omitempty"`
 
 // ServiceAccountInfo contains basic information about a ServiceAccount
 type ServiceAccountInfo struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
 Name      string            `json:"name"`
 Namespace string            `json:"namespace"`
 Secrets   int               `json:"secrets"`
@@ -1074,6 +1113,8 @@ Labels    map[string]string `json:"labels,omitempty"`
 
 // RoleInfo contains basic information about a Role
 type RoleInfo struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
 Name      string            `json:"name"`
 Namespace string            `json:"namespace"`
 Rules     int               `json:"rules"`
@@ -1083,6 +1124,8 @@ Labels    map[string]string `json:"labels,omitempty"`
 
 // RoleBindingInfo contains basic information about a RoleBinding
 type RoleBindingInfo struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
 Name      string            `json:"name"`
 Namespace string            `json:"namespace"`
 RoleRef   string            `json:"roleRef"`
@@ -1093,6 +1136,8 @@ Labels    map[string]string `json:"labels,omitempty"`
 
 // HorizontalPodAutoscalerInfo contains basic information about a HorizontalPodAutoscaler
 type HorizontalPodAutoscalerInfo struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
 Name            string            `json:"name"`
 Namespace       string            `json:"namespace"`
 Reference       string            `json:"reference"`

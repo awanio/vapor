@@ -147,6 +147,8 @@ func (s *Service) ListDeployments(ctx context.Context, opts interface{}) ([]Depl
 	deploymentList := make([]DeploymentInfo, 0, len(deployments.Items))
 	for _, d := range deployments.Items {
 		deploymentList = append(deploymentList, DeploymentInfo{
+			APIVersion: "apps/v1",
+			Kind:       "Deployment",
 			Name:      d.Name,
 			Namespace: d.Namespace,
 			Ready:     fmt.Sprintf("%d/%d", d.Status.ReadyReplicas, d.Status.Replicas),
@@ -170,6 +172,8 @@ func (s *Service) ListServices(ctx context.Context, opts interface{}) ([]Service
 	serviceList := make([]ServiceInfo, 0, len(services.Items))
 	for _, svc := range services.Items {
 		serviceList = append(serviceList, ServiceInfo{
+			APIVersion: "v1",
+			Kind:       "Service",
 			Name:      svc.Name,
 			Namespace: svc.Namespace,
 			Type:      string(svc.Spec.Type),
@@ -197,6 +201,8 @@ func (s *Service) ListIngresses(ctx context.Context, opts interface{}) ([]Ingres
 		}
 
 		ingressList = append(ingressList, IngressInfo{
+			APIVersion: "networking.k8s.io/v1",
+			Kind:       "Ingress",
 			Name:      ing.Name,
 			Namespace: ing.Namespace,
 			Hosts:     hosts,
@@ -217,6 +223,8 @@ func (s *Service) ListPVCs(ctx context.Context, opts interface{}) ([]PVCInfo, er
 	pvcList := make([]PVCInfo, 0, len(pvcs.Items))
 	for _, pvc := range pvcs.Items {
 		pvcList = append(pvcList, PVCInfo{
+			APIVersion: "v1",
+			Kind:       "PersistentVolumeClaim",
 			Name:      pvc.Name,
 			Namespace: pvc.Namespace,
 			Status:    string(pvc.Status.Phase),
@@ -237,6 +245,8 @@ func (s *Service) ListPVs(ctx context.Context, opts interface{}) ([]PVInfo, erro
 	pvList := make([]PVInfo, 0, len(pvs.Items))
 	for _, pv := range pvs.Items {
 		pvList = append(pvList, PVInfo{
+			APIVersion: "v1",
+			Kind:       "PersistentVolume",
 			Name: pv.Name,
 		})
 	}
@@ -254,6 +264,8 @@ func (s *Service) ListSecrets(ctx context.Context, opts interface{}) ([]SecretIn
 	secretList := make([]SecretInfo, 0, len(secrets.Items))
 	for _, secret := range secrets.Items {
 		secretList = append(secretList, SecretInfo{
+			APIVersion: "v1",
+			Kind:       "Secret",
 			Name:      secret.Name,
 			Namespace: secret.Namespace,
 		})
@@ -272,6 +284,8 @@ func (s *Service) ListConfigMaps(ctx context.Context, opts interface{}) ([]Confi
 	configMapList := make([]ConfigMapInfo, 0, len(configmaps.Items))
 	for _, configmap := range configmaps.Items {
 		configMapList = append(configMapList, ConfigMapInfo{
+			APIVersion: "v1",
+			Kind:       "ConfigMap",
 			Name:      configmap.Name,
 			Namespace: configmap.Namespace,
 		})
@@ -290,6 +304,8 @@ func (s *Service) ListNamespaces(ctx context.Context, opts interface{}) ([]Names
 	namespaceList := make([]NamespaceInfo, 0, len(namespaces.Items))
 	for _, namespace := range namespaces.Items {
 		namespaceList = append(namespaceList, NamespaceInfo{
+			APIVersion: "v1",
+			Kind:       "Namespace",
 			Name: namespace.Name,
 		})
 	}
@@ -346,6 +362,8 @@ func (s *Service) ListNodes(ctx context.Context, opts interface{}) ([]NodeInfo, 
 		nodeInfo := node.Status.NodeInfo
 
 		nodeList = append(nodeList, NodeInfo{
+			APIVersion: "v1",
+			Kind:       "Node",
 			Name:              node.Name,
 			Status:            status,
 			Roles:             rolesStr,
@@ -374,6 +392,8 @@ func (s *Service) ListDaemonSets(ctx context.Context, opts interface{}) ([]Daemo
 	daemonSetList := make([]DaemonSetInfo, 0, len(daemonSets.Items))
 	for _, ds := range daemonSets.Items {
 		daemonSetList = append(daemonSetList, DaemonSetInfo{
+			APIVersion: "apps/v1",
+			Kind:       "DaemonSet",
 			Name:      ds.Name,
 			Namespace: ds.Namespace,
 			Desired:   ds.Status.DesiredNumberScheduled,
@@ -399,6 +419,8 @@ func (s *Service) ListStatefulSets(ctx context.Context, opts interface{}) ([]Sta
 	statefulSetList := make([]StatefulSetInfo, 0, len(statefulSets.Items))
 	for _, sts := range statefulSets.Items {
 		statefulSetList = append(statefulSetList, StatefulSetInfo{
+			APIVersion: "apps/v1",
+			Kind:       "StatefulSet",
 			Name:      sts.Name,
 			Namespace: sts.Namespace,
 			Ready:     fmt.Sprintf("%d/%d", sts.Status.ReadyReplicas, sts.Status.Replicas),
@@ -425,6 +447,8 @@ func (s *Service) ListJobs(ctx context.Context, opts interface{}) ([]JobInfo, er
 		}
 
 		jobList = append(jobList, JobInfo{
+			APIVersion: "batch/v1",
+			Kind:       "Job",
 			Name:        job.Name,
 			Namespace:   job.Namespace,
 			Completions: completions,
@@ -451,6 +475,8 @@ func (s *Service) ListCronJobs(ctx context.Context, opts interface{}) ([]CronJob
 		}
 
 		cronJobList = append(cronJobList, CronJobInfo{
+			APIVersion: "batch/v1",
+			Kind:       "CronJob",
 			Name:         cj.Name,
 			Namespace:    cj.Namespace,
 			Schedule:     cj.Spec.Schedule,
@@ -471,6 +497,8 @@ func (s *Service) GetCRDDetail(ctx context.Context, name string) (*apiextensions
 	if err != nil {
 		return nil, fmt.Errorf("failed to get CRD detail: %w", err)
 	}
+	crd.APIVersion = "apiextensions.k8s.io/v1"
+	crd.Kind = "CustomResourceDefinition"
 	return crd, nil
 }
 
@@ -589,6 +617,8 @@ func (s *Service) ListPods(ctx context.Context, opts interface{}) ([]PodInfo, er
 	podList := make([]PodInfo, 0, len(pods.Items))
 	for _, pod := range pods.Items {
 		podList = append(podList, PodInfo{
+			APIVersion: "v1",
+			Kind:       "Pod",
 			Name:      pod.Name,
 			Namespace: pod.Namespace,
 			Status:    string(pod.Status.Phase),
@@ -610,6 +640,8 @@ func (s *Service) GetPodDetail(ctx context.Context, namespace, name string) (*co
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pod details for %s/%s: %w", namespace, name, err)
 	}
+	pod.APIVersion = "v1"
+	pod.Kind = "Pod"
 	return pod, nil
 }
 
@@ -619,6 +651,8 @@ func (s *Service) GetDeploymentDetail(ctx context.Context, namespace, name strin
 	if err != nil {
 		return nil, fmt.Errorf("failed to get deployment details for %s/%s: %w", namespace, name, err)
 	}
+	deployment.APIVersion = "apps/v1"
+	deployment.Kind = "Deployment"
 	return deployment, nil
 }
 
@@ -628,6 +662,8 @@ func (s *Service) GetServiceDetail(ctx context.Context, namespace, name string) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get service details for %s/%s: %w", namespace, name, err)
 	}
+	service.APIVersion = "v1"
+	service.Kind = "Service"
 	return service, nil
 }
 
@@ -637,6 +673,8 @@ func (s *Service) GetIngressDetail(ctx context.Context, namespace, name string) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get ingress details for %s/%s: %w", namespace, name, err)
 	}
+	ingress.APIVersion = "networking.k8s.io/v1"
+	ingress.Kind = "Ingress"
 	return ingress, nil
 }
 
@@ -651,6 +689,8 @@ func (s *Service) GetPVCDetail(ctx context.Context, namespace, name string) (*co
 	}
 
 	fmt.Printf("[DEBUG] Successfully retrieved PVC: namespace=%s, name=%s\n", namespace, name)
+	pvc.APIVersion = "v1"
+	pvc.Kind = "PersistentVolumeClaim"
 	return pvc, nil
 }
 
@@ -665,6 +705,8 @@ func (s *Service) GetPVDetail(ctx context.Context, name string) (*corev1.Persist
 	}
 
 	fmt.Printf("[DEBUG] Successfully retrieved PV: name=%s\n", name)
+	pv.APIVersion = "v1"
+	pv.Kind = "PersistentVolume"
 	return pv, nil
 }
 
@@ -674,6 +716,8 @@ func (s *Service) GetSecretDetail(ctx context.Context, namespace, name string) (
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secret details for %s/%s: %w", namespace, name, err)
 	}
+	secret.APIVersion = "v1"
+	secret.Kind = "Secret"
 	return secret, nil
 }
 
@@ -683,6 +727,10 @@ func (s *Service) GetConfigMapDetail(ctx context.Context, namespace, name string
 	if err != nil {
 		return nil, fmt.Errorf("failed to get configmap details for %s/%s: %w", namespace, name, err)
 	}
+	configmap.APIVersion = "v1"
+	configmap.Kind = "ConfigMap"
+	configmap.APIVersion = "v1"
+	configmap.Kind = "ConfigMap"
 	return configmap, nil
 }
 
@@ -692,6 +740,8 @@ func (s *Service) GetNamespaceDetail(ctx context.Context, name string) (*corev1.
 	if err != nil {
 		return nil, fmt.Errorf("failed to get namespace details for %s: %w", name, err)
 	}
+	namespace.APIVersion = "v1"
+	namespace.Kind = "Namespace"
 	return namespace, nil
 }
 
@@ -701,6 +751,8 @@ func (s *Service) GetNodeDetail(ctx context.Context, name string) (*corev1.Node,
 	if err != nil {
 		return nil, fmt.Errorf("failed to get node details for %s: %w", name, err)
 	}
+	node.APIVersion = "v1"
+	node.Kind = "Node"
 	return node, nil
 }
 
@@ -710,6 +762,8 @@ func (s *Service) GetDaemonSetDetail(ctx context.Context, namespace, name string
 	if err != nil {
 		return nil, fmt.Errorf("failed to get daemonset details for %s/%s: %w", namespace, name, err)
 	}
+	daemonset.APIVersion = "apps/v1"
+	daemonset.Kind = "DaemonSet"
 	return daemonset, nil
 }
 
@@ -719,6 +773,10 @@ func (s *Service) GetStatefulSetDetail(ctx context.Context, namespace, name stri
 	if err != nil {
 		return nil, fmt.Errorf("failed to get statefulset details for %s/%s: %w", namespace, name, err)
 	}
+	statefulset.APIVersion = "apps/v1"
+	statefulset.Kind = "StatefulSet"
+	statefulset.APIVersion = "apps/v1"
+	statefulset.Kind = "StatefulSet"
 	return statefulset, nil
 }
 
@@ -728,6 +786,8 @@ func (s *Service) GetJobDetail(ctx context.Context, namespace, name string) (*ba
 	if err != nil {
 		return nil, fmt.Errorf("failed to get job details for %s/%s: %w", namespace, name, err)
 	}
+	job.APIVersion = "batch/v1"
+	job.Kind = "Job"
 	return job, nil
 }
 
@@ -737,6 +797,10 @@ func (s *Service) GetCronJobDetail(ctx context.Context, namespace, name string) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cronjob details for %s/%s: %w", namespace, name, err)
 	}
+	cronjob.APIVersion = "batch/v1"
+	cronjob.Kind = "CronJob"
+	cronjob.APIVersion = "batch/v1"
+	cronjob.Kind = "CronJob"
 	return cronjob, nil
 }
 
@@ -778,10 +842,12 @@ func (s *Service) ListCRDs(ctx context.Context, opts interface{}) ([]CRDInfo, er
 		}
 
 		crdList = append(crdList, CRDInfo{
+			APIVersion: "apiextensions.k8s.io/v1",
+			Kind:       "CustomResourceDefinition",
 			Name:    crd.Name,
 			Group:   crd.Spec.Group,
 			Version: latestVersion,
-			Kind:    crd.Spec.Names.Kind,
+			ResourceKind:    crd.Spec.Names.Kind,
 			Scope:   scope,
 			Names:   names,
 			Age:     calculateAge(crd.CreationTimestamp.Time),
@@ -2102,107 +2168,106 @@ func (s *Service) UpdateCronJob(ctx context.Context, namespace, name string, cro
 // Helper functions for namespace-scoped methods
 
 func getExternalIPs(service corev1.Service) string {
-if len(service.Status.LoadBalancer.Ingress) > 0 {
-return service.Status.LoadBalancer.Ingress[0].IP
-}
-if len(service.Spec.ExternalIPs) > 0 {
-return service.Spec.ExternalIPs[0]
-}
-return ""
-}
+	if len(service.Status.LoadBalancer.Ingress) > 0 {
+	return service.Status.LoadBalancer.Ingress[0].IP
+	}
+	if len(service.Spec.ExternalIPs) > 0 {
+	return service.Spec.ExternalIPs[0]
+	}
+	return ""
+	}
 
 func formatPorts(ports []corev1.ServicePort) string {
-if len(ports) == 0 {
-return ""
-}
-var portStrings []string
-for _, port := range ports {
-portStr := fmt.Sprintf("%d", port.Port)
-if port.NodePort != 0 {
-portStr = fmt.Sprintf("%d:%d", port.Port, port.NodePort)
-}
-if port.Name != "" {
-portStr = fmt.Sprintf("%s(%s)", portStr, port.Name)
-}
-portStrings = append(portStrings, portStr)
-}
-return strings.Join(portStrings, ",")
-}
+	if len(ports) == 0 {
+	return ""
+	}
+	var portStrings []string
+	for _, port := range ports {
+	portStr := fmt.Sprintf("%d", port.Port)
+	if port.NodePort != 0 {
+	portStr = fmt.Sprintf("%d:%d", port.Port, port.NodePort)
+	}
+	if port.Name != "" {
+	portStr = fmt.Sprintf("%s(%s)", portStr, port.Name)
+	}
+	portStrings = append(portStrings, portStr)
+	}
+	return strings.Join(portStrings, ",")
+	}
 
 func extractIngressHosts(ingress networkingv1.Ingress) string {
-var hosts []string
-for _, rule := range ingress.Spec.Rules {
-if rule.Host != "" {
-hosts = append(hosts, rule.Host)
-}
-}
-return strings.Join(hosts, ",")
+	var hosts []string
+	for _, rule := range ingress.Spec.Rules {
+	if rule.Host != "" {
+	hosts = append(hosts, rule.Host)
+		}
+	}
+	return strings.Join(hosts, ",")
 }
 
 func extractIngressAddress(ingress networkingv1.Ingress) string {
-if len(ingress.Status.LoadBalancer.Ingress) > 0 {
-return ingress.Status.LoadBalancer.Ingress[0].IP
-}
-return ""
-}
-
+	if len(ingress.Status.LoadBalancer.Ingress) > 0 {
+	return ingress.Status.LoadBalancer.Ingress[0].IP
+	}
+	return ""
+	}
+	
 func getPVCCapacity(pvc corev1.PersistentVolumeClaim) string {
-if pvc.Status.Capacity != nil {
-if capacity, ok := pvc.Status.Capacity[corev1.ResourceStorage]; ok {
-return capacity.String()
+		if pvc.Status.Capacity != nil {
+		if capacity, ok := pvc.Status.Capacity[corev1.ResourceStorage]; ok {
+		return capacity.String()
+		}
+	}
+	return ""
 }
-}
-return ""
-}
-
 func convertAccessModes(modes []corev1.PersistentVolumeAccessMode) []string {
-var result []string
-for _, mode := range modes {
-result = append(result, string(mode))
-}
-return result
-}
-
+	var result []string
+	for _, mode := range modes {
+	result = append(result, string(mode))
+	}
+	return result
+	}
+	
 func getStorageClassName(pvc corev1.PersistentVolumeClaim) string {
-if pvc.Spec.StorageClassName != nil {
-return *pvc.Spec.StorageClassName
-}
-return ""
-}
-
+		if pvc.Spec.StorageClassName != nil {
+		return *pvc.Spec.StorageClassName
+		}
+		return ""
+		}
+	
 func getCompletions(job batchv1.Job) string {
-completions := int32(1)
-if job.Spec.Completions != nil {
-completions = *job.Spec.Completions
-}
-return fmt.Sprintf("%d/%d", job.Status.Succeeded, completions)
-}
-
+	completions := int32(1)
+	if job.Spec.Completions != nil {
+	completions = *job.Spec.Completions
+	}
+	return fmt.Sprintf("%d/%d", job.Status.Succeeded, completions)
+	}
+	
 func extractIngressHostsArray(ingress networkingv1.Ingress) []string {
-var hosts []string
-for _, rule := range ingress.Spec.Rules {
-if rule.Host != "" {
-hosts = append(hosts, rule.Host)
+		var hosts []string
+		for _, rule := range ingress.Spec.Rules {
+		if rule.Host != "" {
+		hosts = append(hosts, rule.Host)
+		}
+	}
+	return hosts
 }
-}
-return hosts
-}
-
+	
 func formatAccessModes(modes []corev1.PersistentVolumeAccessMode) string {
-var result []string
-for _, mode := range modes {
-result = append(result, string(mode))
-}
-return strings.Join(result, ",")
-}
-
+	var result []string
+	for _, mode := range modes {
+	result = append(result, string(mode))
+	}
+	return strings.Join(result, ",")
+	}
+	
 func formatPodSelector(selector map[string]string) string {
-if len(selector) == 0 {
-return ""
-}
-var parts []string
-for k, v := range selector {
-parts = append(parts, fmt.Sprintf("%s=%s", k, v))
-}
-return strings.Join(parts, ",")
-}
+		if len(selector) == 0 {
+	return ""
+	}
+	var parts []string
+	for k, v := range selector {
+	parts = append(parts, fmt.Sprintf("%s=%s", k, v))
+	}
+	return strings.Join(parts, ",")
+	}

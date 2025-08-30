@@ -19,6 +19,8 @@ return nil, fmt.Errorf("failed to list pods in namespace %s: %w", namespace, err
 podList := make([]PodInfo, 0, len(pods.Items))
 for _, pod := range pods.Items {
 podList = append(podList, PodInfo{
+			APIVersion: "v1",
+			Kind:       "Pod",
 Name:      pod.Name,
 Namespace: pod.Namespace,
 Status:    string(pod.Status.Phase),
@@ -44,6 +46,8 @@ return nil, fmt.Errorf("failed to list deployments in namespace %s: %w", namespa
 deploymentList := make([]DeploymentInfo, 0, len(deployments.Items))
 for _, deployment := range deployments.Items {
 deploymentList = append(deploymentList, DeploymentInfo{
+			APIVersion: "apps/v1",
+			Kind:       "Deployment",
 Name:      deployment.Name,
 Namespace: deployment.Namespace,
 Ready:     fmt.Sprintf("%d/%d", deployment.Status.ReadyReplicas, *deployment.Spec.Replicas),
@@ -66,6 +70,8 @@ return nil, fmt.Errorf("failed to list services in namespace %s: %w", namespace,
 serviceList := make([]ServiceInfo, 0, len(services.Items))
 for _, service := range services.Items {
 serviceList = append(serviceList, ServiceInfo{
+			APIVersion: "v1",
+			Kind:       "Service",
 Name:       service.Name,
 Namespace:  service.Namespace,
 Type:       string(service.Spec.Type),
@@ -90,6 +96,8 @@ return nil, fmt.Errorf("failed to list ingresses in namespace %s: %w", namespace
 ingressList := make([]IngressInfo, 0, len(ingresses.Items))
 for _, ingress := range ingresses.Items {
 ingressList = append(ingressList, IngressInfo{
+			APIVersion: "networking.k8s.io/v1",
+			Kind:       "Ingress",
 Name:      ingress.Name,
 Namespace: ingress.Namespace,
 Hosts:     extractIngressHostsArray(ingress),
@@ -112,6 +120,8 @@ return nil, fmt.Errorf("failed to list PVCs in namespace %s: %w", namespace, err
 pvcList := make([]PVCInfo, 0, len(pvcs.Items))
 for _, pvc := range pvcs.Items {
 pvcList = append(pvcList, PVCInfo{
+			APIVersion: "v1",
+			Kind:       "PersistentVolumeClaim",
 Name:         pvc.Name,
 Namespace:    pvc.Namespace,
 Status:       string(pvc.Status.Phase),
@@ -137,6 +147,8 @@ return nil, fmt.Errorf("failed to list secrets in namespace %s: %w", namespace, 
 secretList := make([]SecretInfo, 0, len(secrets.Items))
 for _, secret := range secrets.Items {
 secretList = append(secretList, SecretInfo{
+			APIVersion: "v1",
+			Kind:       "Secret",
 Name:      secret.Name,
 Namespace: secret.Namespace,
 Type:      string(secret.Type),
@@ -159,6 +171,8 @@ return nil, fmt.Errorf("failed to list config maps in namespace %s: %w", namespa
 configMapList := make([]ConfigMapInfo, 0, len(configMaps.Items))
 for _, cm := range configMaps.Items {
 configMapList = append(configMapList, ConfigMapInfo{
+			APIVersion: "v1",
+			Kind:       "ConfigMap",
 Name:      cm.Name,
 Namespace: cm.Namespace,
 Data:      len(cm.Data),
@@ -180,6 +194,8 @@ return nil, fmt.Errorf("failed to list daemon sets in namespace %s: %w", namespa
 daemonSetList := make([]DaemonSetInfo, 0, len(daemonSets.Items))
 for _, ds := range daemonSets.Items {
 daemonSetList = append(daemonSetList, DaemonSetInfo{
+			APIVersion: "apps/v1",
+			Kind:       "DaemonSet",
 Name:        ds.Name,
 Namespace:   ds.Namespace,
 Desired:     ds.Status.DesiredNumberScheduled,
@@ -206,6 +222,8 @@ return nil, fmt.Errorf("failed to list stateful sets in namespace %s: %w", names
 statefulSetList := make([]StatefulSetInfo, 0, len(statefulSets.Items))
 for _, ss := range statefulSets.Items {
 statefulSetList = append(statefulSetList, StatefulSetInfo{
+			APIVersion: "apps/v1",
+			Kind:       "StatefulSet",
 Name:      ss.Name,
 Namespace: ss.Namespace,
 Ready:     fmt.Sprintf("%d/%d", ss.Status.ReadyReplicas, *ss.Spec.Replicas),
@@ -227,6 +245,8 @@ return nil, fmt.Errorf("failed to list jobs in namespace %s: %w", namespace, err
 jobList := make([]JobInfo, 0, len(jobs.Items))
 for _, job := range jobs.Items {
 jobList = append(jobList, JobInfo{
+			APIVersion: "batch/v1",
+			Kind:       "Job",
 Name:        job.Name,
 Namespace:   job.Namespace,
 Completions: getCompletions(job),
@@ -248,6 +268,8 @@ return nil, fmt.Errorf("failed to list cron jobs in namespace %s: %w", namespace
 cronJobList := make([]CronJobInfo, 0, len(cronJobs.Items))
 for _, cj := range cronJobs.Items {
 cronJobList = append(cronJobList, CronJobInfo{
+			APIVersion: "batch/v1",
+			Kind:       "CronJob",
 Name:      cj.Name,
 Namespace: cj.Namespace,
 Schedule:  cj.Spec.Schedule,
@@ -277,6 +299,8 @@ return nil, fmt.Errorf("failed to list network policies in namespace %s: %w", na
 networkPolicyList := make([]NetworkPolicyInfo, 0, len(networkPolicies.Items))
 for _, np := range networkPolicies.Items {
 networkPolicyList = append(networkPolicyList, NetworkPolicyInfo{
+			APIVersion: "networking.k8s.io/v1",
+			Kind:       "NetworkPolicy",
 Name:      np.Name,
 Namespace: np.Namespace,
 PodSelector: formatPodSelector(np.Spec.PodSelector.MatchLabels),
@@ -305,6 +329,8 @@ return nil, fmt.Errorf("failed to list replica sets in namespace %s: %w", namesp
 replicaSetList := make([]ReplicaSetInfo, 0, len(replicaSets.Items))
 for _, rs := range replicaSets.Items {
 replicaSetList = append(replicaSetList, ReplicaSetInfo{
+			APIVersion: "apps/v1",
+			Kind:       "ReplicaSet",
 Name:      rs.Name,
 Namespace: rs.Namespace,
 Desired:   *rs.Spec.Replicas,
@@ -328,6 +354,8 @@ return nil, fmt.Errorf("failed to list service accounts in namespace %s: %w", na
 serviceAccountList := make([]ServiceAccountInfo, 0, len(serviceAccounts.Items))
 for _, sa := range serviceAccounts.Items {
 serviceAccountList = append(serviceAccountList, ServiceAccountInfo{
+			APIVersion: "v1",
+			Kind:       "ServiceAccount",
 Name:      sa.Name,
 Namespace: sa.Namespace,
 Secrets:   len(sa.Secrets),
@@ -349,6 +377,8 @@ return nil, fmt.Errorf("failed to list roles in namespace %s: %w", namespace, er
 roleList := make([]RoleInfo, 0, len(roles.Items))
 for _, role := range roles.Items {
 roleList = append(roleList, RoleInfo{
+			APIVersion: "rbac.authorization.k8s.io/v1",
+			Kind:       "Role",
 Name:      role.Name,
 Namespace: role.Namespace,
 Rules:     len(role.Rules),
@@ -370,6 +400,8 @@ return nil, fmt.Errorf("failed to list role bindings in namespace %s: %w", names
 roleBindingList := make([]RoleBindingInfo, 0, len(roleBindings.Items))
 for _, rb := range roleBindings.Items {
 roleBindingList = append(roleBindingList, RoleBindingInfo{
+			APIVersion: "rbac.authorization.k8s.io/v1",
+			Kind:       "RoleBinding",
 Name:      rb.Name,
 Namespace: rb.Namespace,
 RoleRef:   rb.RoleRef.Name,
@@ -392,6 +424,8 @@ return nil, fmt.Errorf("failed to list horizontal pod autoscalers in namespace %
 hpaList := make([]HorizontalPodAutoscalerInfo, 0, len(hpas.Items))
 for _, hpa := range hpas.Items {
 hpaList = append(hpaList, HorizontalPodAutoscalerInfo{
+			APIVersion: "autoscaling/v2",
+			Kind:       "HorizontalPodAutoscaler",
 Name:      hpa.Name,
 Namespace: hpa.Namespace,
 Reference: hpa.Spec.ScaleTargetRef.Name,
