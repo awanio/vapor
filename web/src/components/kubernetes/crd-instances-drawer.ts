@@ -31,6 +31,7 @@ export class CRDInstancesDrawer extends LitElement {
   @property({ type: String }) crdVersion = '';
   @property({ type: String }) crdScope = 'Namespaced';
   @property({ type: Boolean }) loading = false;
+  @property({ type: String }) width = '80%';
   
   @state() private searchQuery = '';
   @state() private selectedNamespace = 'All Namespaces';
@@ -48,8 +49,7 @@ export class CRDInstancesDrawer extends LitElement {
       top: 0;
       right: 0;
       bottom: 0;
-      width: 60%;
-      max-width: 900px;
+      width: var(--drawer-width, 60%);
       background: var(--vscode-sideBar-background, #252526);
       border-left: 1px solid var(--vscode-widget-border, #303031);
       transform: translateX(100%);
@@ -433,6 +433,11 @@ export class CRDInstancesDrawer extends LitElement {
       this.searchQuery = '';
       this.selectedNamespace = 'All Namespaces';
       this.error = null;
+    }
+    
+    // Update CSS variable when width property changes
+    if (changedProperties.has('width')) {
+      this.style.setProperty('--drawer-width', this.width);
     }
   }
 

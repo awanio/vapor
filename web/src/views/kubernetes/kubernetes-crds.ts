@@ -138,7 +138,7 @@ export class KubernetesCRDs extends LitElement {
 
   private handleCellClick(event: CustomEvent) {
     const item = event.detail.item as KubernetesCRD;
-    this.viewDetails(item);
+    this.viewInstances(item);
   }
 
   private handleAction(event: CustomEvent) {
