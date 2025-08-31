@@ -2,7 +2,7 @@ var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 var _a;
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-B7fTF7az.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-DSAomvIJ.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -17426,7 +17426,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-B7fTF7az.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-DSAomvIJ.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17471,7 +17471,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-B7fTF7az.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-DSAomvIJ.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17536,7 +17536,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-B7fTF7az.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-DSAomvIJ.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17646,7 +17646,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-B7fTF7az.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-DSAomvIJ.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -36052,7 +36052,7 @@ NamespaceDropdown.styles = i$5`
 
     .search-input {
       width: 100%;
-      padding: 8px 12px;
+      padding: 4px 0 4px 4px;
       background: var(--input-bg, #1a1d23);
       color: var(--input-color, #e0e0e0);
       border: 1px solid var(--input-border, #3a3d4a);
