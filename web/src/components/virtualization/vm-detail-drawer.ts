@@ -852,11 +852,15 @@ export class VMDetailDrawer extends LitElement {
     if (this.vm) {
       this.loadVMDetails();
     }
+    // Add escape key listener
+    document.addEventListener('keydown', this.handleKeyDown);
   }
   
   override disconnectedCallback() {
     super.disconnectedCallback();
     this.stopMetricsRefresh();
+    // Remove escape key listener
+    document.removeEventListener('keydown', this.handleKeyDown);
   }
 
   override updated(changedProperties: Map<string, any>) {
@@ -1072,6 +1076,26 @@ export class VMDetailDrawer extends LitElement {
   private handleClose() {
     this.show = false;
     this.dispatchEvent(new CustomEvent('close'));
+  }
+
+  private handleKeyDown = (event: KeyboardEvent) => {
+    // Only handle escape key when drawer is visible
+    if (this.show && event.key === 'Escape') {
+      // Check if console is open - if it is, close console first
+      if (this.showConsole) {
+        this.showConsole = false;
+        return;
+      }
+      
+      // Check if delete modal is open - if it is, close modal first
+      if (this.showDeleteModal) {
+        this.cancelDelete();
+        return;
+      }
+      
+      // Otherwise close the drawer
+      this.handleClose();
+    }
   }
 
   private async handlePowerAction(action: string, force: boolean = false) {

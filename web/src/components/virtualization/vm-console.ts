@@ -465,7 +465,7 @@ export class VMConsole extends LitElement {
 
       // Build WebSocket URL with the console token as query parameter
       const baseUrl = getApiUrl('').replace(/^http/, 'ws'); // Convert http to ws
-      const wsUrl = `${baseUrl}/virtualization/computes/${this.vmId}/console/ws?token=${encodeURIComponent(consoleToken.token)}`;
+      const wsUrl = `${baseUrl}virtualization/computes/${this.vmId}/console/ws?token=${encodeURIComponent(consoleToken.token)}`;
       
       console.log('Connecting to VM console WebSocket:', wsUrl.replace(consoleToken.token, '[REDACTED]'));
       console.log('Console type:', consoleToken.type, 'Host:', consoleToken.host, 'Port:', consoleToken.port);
