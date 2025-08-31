@@ -1,15 +1,20 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { KubernetesApi } from '../../services/kubernetes-api.js';
+import { Api } from '../../api.js';
+import YAML from 'yaml';
 import '../ui/search-input.js';
 import '../ui/namespace-dropdown.js';
 import '../ui/empty-state.js';
 import '../ui/loading-state.js';
 import '../tables/resource-table.js';
 import '../drawers/detail-drawer.js';
+import '../drawers/create-resource-drawer.js';
+import '../modals/delete-modal.js';
 import '../kubernetes/resource-detail-view.js';
 import type { Column } from '../tables/resource-table.js';
 import type { ActionItem } from '../ui/action-dropdown.js';
+import type { DeleteItem } from '../modals/delete-modal.js';
 
 export interface CRDInstance {
   name: string;
@@ -41,6 +46,13 @@ export class CRDInstancesDrawer extends LitElement {
   @state() private instanceDetailsData: any = null;
   @state() private loadingDetails = false;
   @state() private error: string | null = null;
+  @state() private showEditDrawer = false;
+  @state() private editResourceContent = '';
+  @state() private editResourceFormat: 'yaml' | 'json' = 'yaml';
+  @state() private loadingEdit = false;
+  @state() private deleting = false;
+  @state() private showDeleteModal = false;
+  @state() private deleteItem: DeleteItem | null = null;
 
   static override styles = css`
     :host {
@@ -342,7 +354,7 @@ export class CRDInstancesDrawer extends LitElement {
   private getActions(_item: CRDInstance): ActionItem[] {
     return [
       { label: 'View Details', action: 'view' },
-      { label: 'Edit YAML', action: 'edit' },
+      { label: 'Edit', action: 'edit' },
       { label: 'Delete', action: 'delete', danger: true }
     ];
   }
@@ -387,18 +399,39 @@ export class CRDInstancesDrawer extends LitElement {
         await this.viewInstanceDetails(item);
         break;
       case 'edit':
-        console.log('Edit YAML for:', item.name);
-        // TODO: Implement edit functionality
+        await this.editInstance(item);
         break;
       case 'delete':
-        if (confirm(`Are you sure you want to delete ${item.name}?`)) {
-          await this.deleteInstance(item);
-        }
+        this.showDeleteConfirmation(item);
         break;
     }
   }
 
-  private async deleteInstance(instance: CRDInstance) {
+  private showDeleteConfirmation(instance: CRDInstance) {
+    this.deleteItem = {
+      type: this.crdKind,
+      name: instance.name,
+      namespace: instance.namespace
+    };
+    this.showDeleteModal = true;
+  }
+
+  private async handleConfirmDelete(event: CustomEvent) {
+    const { item } = event.detail;
+    
+    // Find the instance to delete
+    const instance = this.instances.find(i => 
+      i.name === item.name && 
+      (item.namespace ? i.namespace === item.namespace : true)
+    );
+    
+    if (!instance) {
+      console.error('Instance not found for deletion');
+      return;
+    }
+    
+    this.deleting = true;
+    
     try {
       const isNamespaced = this.crdScope === 'Namespaced';
       await KubernetesApi.deleteCRDInstance(
@@ -407,21 +440,158 @@ export class CRDInstancesDrawer extends LitElement {
         isNamespaced ? instance.namespace : undefined
       );
       
+      // Close the delete modal
+      this.showDeleteModal = false;
+      this.deleteItem = null;
+      
       // Refresh the instances list
       await this.fetchInstances();
       
-      // Show success message or notification
-      console.log(`Successfully deleted ${instance.name}`);
+      // Show success notification
+      this.dispatchEvent(new CustomEvent('notification', {
+        detail: {
+          type: 'success',
+          message: `Successfully deleted ${instance.name}`
+        },
+        bubbles: true,
+        composed: true
+      }));
     } catch (err: any) {
       console.error('Failed to delete instance:', err);
-      alert(`Failed to delete instance: ${err?.message || 'Unknown error'}`);
+      
+      // Keep the modal open to show error state
+      this.dispatchEvent(new CustomEvent('notification', {
+        detail: {
+          type: 'error',
+          message: `Failed to delete instance: ${err?.message || 'Unknown error'}`
+        },
+        bubbles: true,
+        composed: true
+      }));
+    } finally {
+      this.deleting = false;
     }
+  }
+
+  private handleCancelDelete() {
+    this.showDeleteModal = false;
+    this.deleteItem = null;
+    this.deleting = false;
   }
 
   private async viewInstanceDetails(instance: CRDInstance) {
     this.selectedInstance = instance;
     this.showInstanceDetails = true;
     await this.fetchInstanceDetails(instance);
+  }
+
+  private async editInstance(instance: CRDInstance) {
+    this.selectedInstance = instance;
+    this.loadingEdit = true;
+    this.showEditDrawer = true;
+    
+    try {
+      // Fetch the full resource manifest
+      const isNamespaced = this.crdScope === 'Namespaced';
+      const response = await KubernetesApi.getCRDInstanceDetails(
+        this.crdName,
+        instance.name,
+        isNamespaced ? instance.namespace : undefined
+      );
+      
+      // Try to get the resource in YAML format by default
+      try {
+        // Convert the response to YAML format
+        this.editResourceContent = YAML.stringify(response);
+        this.editResourceFormat = 'yaml';
+      } catch (yamlError) {
+        // If YAML conversion fails, use JSON
+        this.editResourceContent = JSON.stringify(response, null, 2);
+        this.editResourceFormat = 'json';
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch resource for editing:', err);
+      this.showEditDrawer = false;
+      this.dispatchEvent(new CustomEvent('notification', {
+        detail: {
+          type: 'error',
+          message: `Failed to load resource: ${err?.message || 'Unknown error'}`
+        },
+        bubbles: true,
+        composed: true
+      }));
+    } finally {
+      this.loadingEdit = false;
+    }
+  }
+
+  private handleEditDrawerClose(event?: Event) {
+    // Stop event propagation to prevent parent drawer from closing
+    if (event) {
+      event.stopPropagation();
+    }
+    
+    this.showEditDrawer = false;
+    this.selectedInstance = null;
+    this.editResourceContent = '';
+    this.loadingEdit = false;
+  }
+
+  private async handleUpdateResource(event: CustomEvent) {
+    const { resource, format } = event.detail;
+    
+    if (!this.selectedInstance) {
+      console.error('No instance selected for update');
+      return;
+    }
+    
+    try {
+      const isNamespaced = this.crdScope === 'Namespaced';
+      
+      // Prepare the content for the API
+      let content: string;
+      if (format === 'json') {
+        // If it's already a JSON object, stringify it
+        content = typeof resource === 'string' ? resource : JSON.stringify(resource);
+      } else {
+        // For YAML, it should already be a string or we need to convert
+        content = resource.yaml || resource;
+      }
+      
+      // Build the endpoint for updating CRD instance
+      const endpoint = isNamespaced
+        ? `/kubernetes/customresourcedefinitions/${this.crdName}/instances/${this.selectedInstance.namespace}/${this.selectedInstance.name}`
+        : `/kubernetes/customresourcedefinitions/${this.crdName}/instances/-/${this.selectedInstance.name}`;
+      
+      // Update the resource
+      await Api.putResource(endpoint, content, format === 'json' ? 'application/json' : 'application/yaml');
+      
+      // Close the edit drawer
+      this.handleEditDrawerClose();
+      
+      // Refresh the instances list
+      await this.fetchInstances();
+      
+      // Show success notification
+      this.dispatchEvent(new CustomEvent('notification', {
+        detail: {
+          type: 'success',
+          message: `Successfully updated ${this.selectedInstance.name}`
+        },
+        bubbles: true,
+        composed: true
+      }));
+    } catch (err: any) {
+      console.error('Failed to update resource:', err);
+      this.dispatchEvent(new CustomEvent('notification', {
+        detail: {
+          type: 'error',
+          message: `Failed to update resource: ${err?.message || 'Unknown error'}`
+        },
+        bubbles: true,
+        composed: true
+      }));
+    }
   }
 
   private handleInstanceDetailsClose(event?: Event) {
@@ -607,6 +777,25 @@ export class CRDInstancesDrawer extends LitElement {
           <resource-detail-view .resource=${this.instanceDetailsData}></resource-detail-view>
         ` : ''}
       </detail-drawer>
+
+      <create-resource-drawer
+        .show=${this.showEditDrawer}
+        .title=${`Edit ${this.selectedInstance?.name || 'Resource'}`}
+        .value=${this.editResourceContent}
+        .format=${this.editResourceFormat}
+        .submitLabel="Update"
+        .loading=${this.loadingEdit}
+        @close=${(e: Event) => this.handleEditDrawerClose(e)}
+        @create=${this.handleUpdateResource}
+      ></create-resource-drawer>
+
+      <delete-modal
+        .show=${this.showDeleteModal}
+        .item=${this.deleteItem}
+        .loading=${this.deleting}
+        @confirm-delete=${this.handleConfirmDelete}
+        @cancel-delete=${this.handleCancelDelete}
+      ></delete-modal>
     `;
   }
 }
