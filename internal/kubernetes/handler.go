@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/yaml"
 )
 
@@ -596,6 +597,151 @@ func (h *Handler) GetCRDObjectDetailGin(c *gin.Context) {
 
 	// Default JSON response
 	common.SendSuccess(c, gin.H{"object": crdObject})
+}
+
+// CreateCRDObjectGin handles creating a new CRD object instance
+func (h *Handler) CreateCRDObjectGin(c *gin.Context) {
+	crdName := c.Param("name")
+	namespace := c.Query("namespace")
+	if namespace == "" {
+		namespace = c.Param("namespace")
+	}
+
+	var object *unstructured.Unstructured
+
+	// Check Content-Type header for YAML input
+	contentType := c.GetHeader("Content-Type")
+	if strings.Contains(contentType, "application/yaml") || strings.Contains(contentType, "text/yaml") {
+		// Read raw body for YAML parsing
+		body, err := c.GetRawData()
+		if err != nil {
+			common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to read request body", err.Error())
+			return
+		}
+
+		// Parse YAML to unstructured
+		var data map[string]interface{}
+		if err := yaml.Unmarshal(body, &data); err != nil {
+			common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Invalid YAML format", err.Error())
+			return
+		}
+		object = &unstructured.Unstructured{Object: data}
+	} else {
+		// Default to JSON parsing
+		var data map[string]interface{}
+		if err := c.ShouldBindJSON(&data); err != nil {
+			common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Invalid JSON format", err.Error())
+			return
+		}
+		object = &unstructured.Unstructured{Object: data}
+	}
+
+	createdObject, err := h.service.CreateCRDObject(c.Request.Context(), crdName, namespace, object)
+	if err != nil {
+		if isYAMLRequested(c) {
+			respondYAMLError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to create CRD object", err.Error())
+			return
+		}
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to create CRD object", err.Error())
+		return
+	}
+
+	// Check Accept header for YAML response
+	if isYAMLRequested(c) {
+		c.Status(http.StatusCreated)
+		respondYAML(c, createdObject)
+		return
+	}
+
+	// Default JSON response
+	c.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"data": gin.H{
+			"object": createdObject,
+		},
+	})
+}
+
+// UpdateCRDObjectGin handles updating an existing CRD object instance
+func (h *Handler) UpdateCRDObjectGin(c *gin.Context) {
+	crdName := c.Param("name")
+	namespace := c.Param("namespace")
+	objectName := c.Param("object-name")
+
+	var object *unstructured.Unstructured
+
+	// Check Content-Type header for YAML input
+	contentType := c.GetHeader("Content-Type")
+	if strings.Contains(contentType, "application/yaml") || strings.Contains(contentType, "text/yaml") {
+		// Read raw body for YAML parsing
+		body, err := c.GetRawData()
+		if err != nil {
+			common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to read request body", err.Error())
+			return
+		}
+
+		// Parse YAML to unstructured
+		var data map[string]interface{}
+		if err := yaml.Unmarshal(body, &data); err != nil {
+			common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Invalid YAML format", err.Error())
+			return
+		}
+		object = &unstructured.Unstructured{Object: data}
+	} else {
+		// Default to JSON parsing
+		var data map[string]interface{}
+		if err := c.ShouldBindJSON(&data); err != nil {
+			common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Invalid JSON format", err.Error())
+			return
+		}
+		object = &unstructured.Unstructured{Object: data}
+	}
+
+	updatedObject, err := h.service.UpdateCRDObject(c.Request.Context(), crdName, namespace, objectName, object)
+	if err != nil {
+		if isYAMLRequested(c) {
+			respondYAMLError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to update CRD object", err.Error())
+			return
+		}
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to update CRD object", err.Error())
+		return
+	}
+
+	// Check Accept header for YAML response
+	if isYAMLRequested(c) {
+		respondYAML(c, updatedObject)
+		return
+	}
+
+	// Default JSON response
+	common.SendSuccess(c, gin.H{"object": updatedObject})
+}
+
+// DeleteCRDObjectGin handles deleting a CRD object instance
+func (h *Handler) DeleteCRDObjectGin(c *gin.Context) {
+	crdName := c.Param("name")
+	namespace := c.Param("namespace")
+	objectName := c.Param("object-name")
+
+	err := h.service.DeleteCRDObject(c.Request.Context(), crdName, namespace, objectName)
+	if err != nil {
+		if isYAMLRequested(c) {
+			respondYAMLError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to delete CRD object", err.Error())
+			return
+		}
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to delete CRD object", err.Error())
+		return
+	}
+
+	// Check Accept header for YAML response
+	if isYAMLRequested(c) {
+		yamlData, _ := yaml.Marshal(gin.H{"success": true, "message": "CRD object deleted successfully"})
+		c.Data(http.StatusOK, "application/yaml", yamlData)
+		return
+	}
+
+	// Default JSON response
+	common.SendSuccess(c, gin.H{"message": "CRD object deleted successfully"})
 }
 
 func (h *Handler) GetClusterInfoGin(c *gin.Context) {

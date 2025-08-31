@@ -110,3 +110,315 @@ get:
             $ref: ../components/schemas/ErrorResponseYAML.yaml
     '503':
       $ref: ../components/responses/KubernetesNotInstalledError.yaml
+put:
+  summary: Update a CRD object instance
+  description: |
+    Update an existing instance of a Custom Resource Definition.
+    
+    Supports both JSON and YAML request formats based on the Content-Type header:
+    - `application/json` - JSON format
+    - `application/yaml`, `text/yaml` - YAML format
+    
+    For namespaced CRDs, the namespace must be specified in the path.
+    For cluster-scoped CRDs, use "-" as the namespace parameter.
+    
+    The object name in the path must match the metadata.name in the request body.
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      description: CRD name (e.g., mycrds.example.com)
+      schema:
+        type: string
+    - name: namespace
+      in: path
+      required: true
+      description: |
+        Namespace of the CRD instance. Use "-" for cluster-scoped CRDs.
+      schema:
+        type: string
+    - name: object-name
+      in: path
+      required: true
+      description: Name of the CRD object instance
+      schema:
+        type: string
+  requestBody:
+    required: true
+    description: Updated CRD object specification in JSON or YAML format
+    content:
+      application/json:
+        schema:
+          type: object
+          description: Kubernetes unstructured object
+          additionalProperties: true
+        example:
+          apiVersion: example.com/v1
+          kind: MyCRD
+          metadata:
+            name: my-instance
+          spec:
+            field1: updated-value1
+            field2: updated-value2
+      application/yaml:
+        schema:
+          type: string
+          description: Kubernetes object in YAML format
+        example: |
+          apiVersion: example.com/v1
+          kind: MyCRD
+          metadata:
+            name: my-instance
+          spec:
+            field1: updated-value1
+            field2: updated-value2
+      text/yaml:
+        schema:
+          type: string
+          description: Kubernetes object in YAML format
+  responses:
+    '200':
+      description: CRD object updated successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              data:
+                type: object
+                properties:
+                  object:
+                    type: object
+                    description: The updated CRD object
+                    additionalProperties: true
+        application/yaml:
+          schema:
+            type: string
+            description: The updated CRD object in YAML format
+        text/yaml:
+          schema:
+            type: string
+            description: The updated CRD object in YAML format
+    '400':
+      description: Bad request - Invalid JSON/YAML format or missing required fields
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+        application/yaml:
+          schema:
+            $ref: ../components/schemas/ErrorResponseYAML.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: CRD or object not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      description: Internal server error - Failed to update CRD object
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+        application/yaml:
+          schema:
+            $ref: ../components/schemas/ErrorResponseYAML.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml
+patch:
+  summary: Patch a CRD object instance
+  description: |
+    Partially update an existing instance of a Custom Resource Definition.
+    
+    This endpoint behaves identically to PUT for CRD objects, performing a full update.
+    Both JSON and YAML formats are supported based on the Content-Type header.
+    
+    For namespaced CRDs, the namespace must be specified in the path.
+    For cluster-scoped CRDs, use "-" as the namespace parameter.
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      description: CRD name (e.g., mycrds.example.com)
+      schema:
+        type: string
+    - name: namespace
+      in: path
+      required: true
+      description: |
+        Namespace of the CRD instance. Use "-" for cluster-scoped CRDs.
+      schema:
+        type: string
+    - name: object-name
+      in: path
+      required: true
+      description: Name of the CRD object instance
+      schema:
+        type: string
+  requestBody:
+    required: true
+    description: Partial or full CRD object specification in JSON or YAML format
+    content:
+      application/json:
+        schema:
+          type: object
+          description: Kubernetes unstructured object (partial or full)
+          additionalProperties: true
+      application/yaml:
+        schema:
+          type: string
+          description: Kubernetes object in YAML format
+      text/yaml:
+        schema:
+          type: string
+          description: Kubernetes object in YAML format
+  responses:
+    '200':
+      description: CRD object patched successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              data:
+                type: object
+                properties:
+                  object:
+                    type: object
+                    description: The updated CRD object
+                    additionalProperties: true
+        application/yaml:
+          schema:
+            type: string
+            description: The updated CRD object in YAML format
+        text/yaml:
+          schema:
+            type: string
+            description: The updated CRD object in YAML format
+    '400':
+      description: Bad request - Invalid JSON/YAML format
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+        application/yaml:
+          schema:
+            $ref: ../components/schemas/ErrorResponseYAML.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: CRD or object not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      description: Internal server error - Failed to patch CRD object
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+        application/yaml:
+          schema:
+            $ref: ../components/schemas/ErrorResponseYAML.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml
+delete:
+  summary: Delete a CRD object instance
+  description: |
+    Delete an existing instance of a Custom Resource Definition.
+    
+    For namespaced CRDs, the namespace must be specified in the path.
+    For cluster-scoped CRDs, use "-" as the namespace parameter.
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      description: CRD name (e.g., mycrds.example.com)
+      schema:
+        type: string
+    - name: namespace
+      in: path
+      required: true
+      description: |
+        Namespace of the CRD instance. Use "-" for cluster-scoped CRDs.
+      schema:
+        type: string
+    - name: object-name
+      in: path
+      required: true
+      description: Name of the CRD object instance to delete
+      schema:
+        type: string
+  responses:
+    '200':
+      description: CRD object deleted successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              data:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: CRD object deleted successfully
+        application/yaml:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              message:
+                type: string
+        text/yaml:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              message:
+                type: string
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: CRD or object not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      description: Internal server error - Failed to delete CRD object
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+        application/yaml:
+          schema:
+            $ref: ../components/schemas/ErrorResponseYAML.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

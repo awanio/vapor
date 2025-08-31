@@ -33,6 +33,11 @@ func KubernetesRoutes(r *gin.RouterGroup) {
 	r.GET("/kubernetes/customresourcedefinitions/:name", k8sHandler.GetCRDDetailGin)
 	r.GET("/kubernetes/customresourcedefinitions/:name/instances", k8sHandler.ListCRDObjectsGin)
 	r.GET("/kubernetes/customresourcedefinitions/:name/instances/:namespace/:object-name", k8sHandler.GetCRDObjectDetailGin)
+	// CRD instance manipulation routes
+	r.POST("/kubernetes/customresourcedefinitions/:name/instances", k8sHandler.CreateCRDObjectGin)
+	r.PUT("/kubernetes/customresourcedefinitions/:name/instances/:namespace/:object-name", k8sHandler.UpdateCRDObjectGin)
+	r.PATCH("/kubernetes/customresourcedefinitions/:name/instances/:namespace/:object-name", k8sHandler.UpdateCRDObjectGin)
+	r.DELETE("/kubernetes/customresourcedefinitions/:name/instances/:namespace/:object-name", k8sHandler.DeleteCRDObjectGin)
 	
 	// ====== NAMESPACE-SCOPED LIST ROUTES ======
 	// These routes allow listing resources filtered by a specific namespace
@@ -246,6 +251,10 @@ func registerNoKubernetesRoutes(r *gin.RouterGroup) {
 	r.GET("/kubernetes/customresourcedefinitions/:name", noK8sHandler)
 	r.GET("/kubernetes/customresourcedefinitions/:name/instances", noK8sHandler)
 	r.GET("/kubernetes/customresourcedefinitions/:name/instances/:namespace/:object-name", noK8sHandler)
+	r.POST("/kubernetes/customresourcedefinitions/:name/instances", noK8sHandler)
+	r.PUT("/kubernetes/customresourcedefinitions/:name/instances/:namespace/:object-name", noK8sHandler)
+	r.PATCH("/kubernetes/customresourcedefinitions/:name/instances/:namespace/:object-name", noK8sHandler)
+	r.DELETE("/kubernetes/customresourcedefinitions/:name/instances/:namespace/:object-name", noK8sHandler)
 	r.GET("/kubernetes/pods", noK8sHandler)
 	// Namespace-scoped routes
 	r.GET("/kubernetes/pods/:namespace", noK8sHandler)

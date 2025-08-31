@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/awanio/vapor/internal/common"
+	"github.com/gin-gonic/gin"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	"sigs.k8s.io/yaml"
@@ -17,20 +17,20 @@ import (
 func (h *Handler) ApplyDaemonSetGin(c *gin.Context) {
 	contentType := c.GetHeader("Content-Type")
 	contentType = strings.ToLower(strings.TrimSpace(contentType))
-	
+
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to read request body", err.Error())
 		return
 	}
-	
+
 	if len(body) == 0 {
 		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Request body is empty", "Please provide a valid DaemonSet specification")
 		return
 	}
-	
+
 	var daemonset appsv1.DaemonSet
-	
+
 	switch {
 	case strings.Contains(contentType, "application/yaml") || strings.Contains(contentType, "text/yaml"):
 		err = yaml.Unmarshal(body, &daemonset)
@@ -45,19 +45,19 @@ func (h *Handler) ApplyDaemonSetGin(c *gin.Context) {
 			return
 		}
 	default:
-		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, 
-			"Unsupported content type", 
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest,
+			"Unsupported content type",
 			"Content-Type must be 'application/json', 'application/yaml', or 'text/yaml'")
 		return
 	}
-	
+
 	if daemonset.Name == "" && daemonset.ObjectMeta.Name == "" {
-		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, 
-			"Invalid daemonset specification", 
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest,
+			"Invalid daemonset specification",
 			"DaemonSet name is required in metadata.name")
 		return
 	}
-	
+
 	appliedDaemonSet, err := h.service.ApplyDaemonSet(c.Request.Context(), &daemonset)
 	if err != nil {
 		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to apply daemonset", err.Error())
@@ -70,23 +70,23 @@ func (h *Handler) ApplyDaemonSetGin(c *gin.Context) {
 func (h *Handler) UpdateDaemonSetGin(c *gin.Context) {
 	namespace := c.Param("namespace")
 	name := c.Param("name")
-	
+
 	contentType := c.GetHeader("Content-Type")
 	contentType = strings.ToLower(strings.TrimSpace(contentType))
-	
+
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to read request body", err.Error())
 		return
 	}
-	
+
 	if len(body) == 0 {
 		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Request body is empty", "Please provide a valid DaemonSet specification")
 		return
 	}
-	
+
 	var daemonset appsv1.DaemonSet
-	
+
 	switch {
 	case strings.Contains(contentType, "application/yaml") || strings.Contains(contentType, "text/yaml"):
 		err = yaml.Unmarshal(body, &daemonset)
@@ -101,12 +101,12 @@ func (h *Handler) UpdateDaemonSetGin(c *gin.Context) {
 			return
 		}
 	default:
-		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, 
-			"Unsupported content type", 
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest,
+			"Unsupported content type",
 			"Content-Type must be 'application/json', 'application/yaml', or 'text/yaml'")
 		return
 	}
-	
+
 	updatedDaemonSet, err := h.service.UpdateDaemonSet(c.Request.Context(), namespace, name, &daemonset)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
@@ -123,7 +123,7 @@ func (h *Handler) UpdateDaemonSetGin(c *gin.Context) {
 func (h *Handler) DeleteDaemonSetGin(c *gin.Context) {
 	namespace := c.Param("namespace")
 	name := c.Param("name")
-	
+
 	err := h.service.DeleteDaemonSet(c.Request.Context(), namespace, name)
 	if err != nil {
 		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to delete daemonset", err.Error())
@@ -136,20 +136,20 @@ func (h *Handler) DeleteDaemonSetGin(c *gin.Context) {
 func (h *Handler) ApplyStatefulSetGin(c *gin.Context) {
 	contentType := c.GetHeader("Content-Type")
 	contentType = strings.ToLower(strings.TrimSpace(contentType))
-	
+
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to read request body", err.Error())
 		return
 	}
-	
+
 	if len(body) == 0 {
 		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Request body is empty", "Please provide a valid StatefulSet specification")
 		return
 	}
-	
+
 	var statefulset appsv1.StatefulSet
-	
+
 	switch {
 	case strings.Contains(contentType, "application/yaml") || strings.Contains(contentType, "text/yaml"):
 		err = yaml.Unmarshal(body, &statefulset)
@@ -164,19 +164,19 @@ func (h *Handler) ApplyStatefulSetGin(c *gin.Context) {
 			return
 		}
 	default:
-		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, 
-			"Unsupported content type", 
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest,
+			"Unsupported content type",
 			"Content-Type must be 'application/json', 'application/yaml', or 'text/yaml'")
 		return
 	}
-	
+
 	if statefulset.Name == "" && statefulset.ObjectMeta.Name == "" {
-		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, 
-			"Invalid statefulset specification", 
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest,
+			"Invalid statefulset specification",
 			"StatefulSet name is required in metadata.name")
 		return
 	}
-	
+
 	appliedStatefulSet, err := h.service.ApplyStatefulSet(c.Request.Context(), &statefulset)
 	if err != nil {
 		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to apply statefulset", err.Error())
@@ -189,23 +189,23 @@ func (h *Handler) ApplyStatefulSetGin(c *gin.Context) {
 func (h *Handler) UpdateStatefulSetGin(c *gin.Context) {
 	namespace := c.Param("namespace")
 	name := c.Param("name")
-	
+
 	contentType := c.GetHeader("Content-Type")
 	contentType = strings.ToLower(strings.TrimSpace(contentType))
-	
+
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to read request body", err.Error())
 		return
 	}
-	
+
 	if len(body) == 0 {
 		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Request body is empty", "Please provide a valid StatefulSet specification")
 		return
 	}
-	
+
 	var statefulset appsv1.StatefulSet
-	
+
 	switch {
 	case strings.Contains(contentType, "application/yaml") || strings.Contains(contentType, "text/yaml"):
 		err = yaml.Unmarshal(body, &statefulset)
@@ -220,12 +220,12 @@ func (h *Handler) UpdateStatefulSetGin(c *gin.Context) {
 			return
 		}
 	default:
-		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, 
-			"Unsupported content type", 
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest,
+			"Unsupported content type",
 			"Content-Type must be 'application/json', 'application/yaml', or 'text/yaml'")
 		return
 	}
-	
+
 	updatedStatefulSet, err := h.service.UpdateStatefulSet(c.Request.Context(), namespace, name, &statefulset)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
@@ -242,7 +242,7 @@ func (h *Handler) UpdateStatefulSetGin(c *gin.Context) {
 func (h *Handler) DeleteStatefulSetGin(c *gin.Context) {
 	namespace := c.Param("namespace")
 	name := c.Param("name")
-	
+
 	err := h.service.DeleteStatefulSet(c.Request.Context(), namespace, name)
 	if err != nil {
 		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to delete statefulset", err.Error())
@@ -255,20 +255,20 @@ func (h *Handler) DeleteStatefulSetGin(c *gin.Context) {
 func (h *Handler) ApplyJobGin(c *gin.Context) {
 	contentType := c.GetHeader("Content-Type")
 	contentType = strings.ToLower(strings.TrimSpace(contentType))
-	
+
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to read request body", err.Error())
 		return
 	}
-	
+
 	if len(body) == 0 {
 		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Request body is empty", "Please provide a valid Job specification")
 		return
 	}
-	
+
 	var job batchv1.Job
-	
+
 	switch {
 	case strings.Contains(contentType, "application/yaml") || strings.Contains(contentType, "text/yaml"):
 		err = yaml.Unmarshal(body, &job)
@@ -283,19 +283,19 @@ func (h *Handler) ApplyJobGin(c *gin.Context) {
 			return
 		}
 	default:
-		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, 
-			"Unsupported content type", 
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest,
+			"Unsupported content type",
 			"Content-Type must be 'application/json', 'application/yaml', or 'text/yaml'")
 		return
 	}
-	
+
 	if job.Name == "" && job.ObjectMeta.Name == "" {
-		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, 
-			"Invalid job specification", 
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest,
+			"Invalid job specification",
 			"Job name is required in metadata.name")
 		return
 	}
-	
+
 	appliedJob, err := h.service.ApplyJob(c.Request.Context(), &job)
 	if err != nil {
 		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to apply job", err.Error())
@@ -308,23 +308,23 @@ func (h *Handler) ApplyJobGin(c *gin.Context) {
 func (h *Handler) UpdateJobGin(c *gin.Context) {
 	namespace := c.Param("namespace")
 	name := c.Param("name")
-	
+
 	contentType := c.GetHeader("Content-Type")
 	contentType = strings.ToLower(strings.TrimSpace(contentType))
-	
+
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to read request body", err.Error())
 		return
 	}
-	
+
 	if len(body) == 0 {
 		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Request body is empty", "Please provide a valid Job specification")
 		return
 	}
-	
+
 	var job batchv1.Job
-	
+
 	switch {
 	case strings.Contains(contentType, "application/yaml") || strings.Contains(contentType, "text/yaml"):
 		err = yaml.Unmarshal(body, &job)
@@ -339,12 +339,12 @@ func (h *Handler) UpdateJobGin(c *gin.Context) {
 			return
 		}
 	default:
-		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, 
-			"Unsupported content type", 
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest,
+			"Unsupported content type",
 			"Content-Type must be 'application/json', 'application/yaml', or 'text/yaml'")
 		return
 	}
-	
+
 	updatedJob, err := h.service.UpdateJob(c.Request.Context(), namespace, name, &job)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
@@ -361,7 +361,7 @@ func (h *Handler) UpdateJobGin(c *gin.Context) {
 func (h *Handler) DeleteJobGin(c *gin.Context) {
 	namespace := c.Param("namespace")
 	name := c.Param("name")
-	
+
 	err := h.service.DeleteJob(c.Request.Context(), namespace, name)
 	if err != nil {
 		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to delete job", err.Error())
@@ -374,20 +374,20 @@ func (h *Handler) DeleteJobGin(c *gin.Context) {
 func (h *Handler) ApplyCronJobGin(c *gin.Context) {
 	contentType := c.GetHeader("Content-Type")
 	contentType = strings.ToLower(strings.TrimSpace(contentType))
-	
+
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to read request body", err.Error())
 		return
 	}
-	
+
 	if len(body) == 0 {
 		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Request body is empty", "Please provide a valid CronJob specification")
 		return
 	}
-	
+
 	var cronjob batchv1.CronJob
-	
+
 	switch {
 	case strings.Contains(contentType, "application/yaml") || strings.Contains(contentType, "text/yaml"):
 		err = yaml.Unmarshal(body, &cronjob)
@@ -402,19 +402,19 @@ func (h *Handler) ApplyCronJobGin(c *gin.Context) {
 			return
 		}
 	default:
-		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, 
-			"Unsupported content type", 
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest,
+			"Unsupported content type",
 			"Content-Type must be 'application/json', 'application/yaml', or 'text/yaml'")
 		return
 	}
-	
+
 	if cronjob.Name == "" && cronjob.ObjectMeta.Name == "" {
-		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, 
-			"Invalid cronjob specification", 
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest,
+			"Invalid cronjob specification",
 			"CronJob name is required in metadata.name")
 		return
 	}
-	
+
 	appliedCronJob, err := h.service.ApplyCronJob(c.Request.Context(), &cronjob)
 	if err != nil {
 		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to apply cronjob", err.Error())
@@ -427,23 +427,23 @@ func (h *Handler) ApplyCronJobGin(c *gin.Context) {
 func (h *Handler) UpdateCronJobGin(c *gin.Context) {
 	namespace := c.Param("namespace")
 	name := c.Param("name")
-	
+
 	contentType := c.GetHeader("Content-Type")
 	contentType = strings.ToLower(strings.TrimSpace(contentType))
-	
+
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to read request body", err.Error())
 		return
 	}
-	
+
 	if len(body) == 0 {
 		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Request body is empty", "Please provide a valid CronJob specification")
 		return
 	}
-	
+
 	var cronjob batchv1.CronJob
-	
+
 	switch {
 	case strings.Contains(contentType, "application/yaml") || strings.Contains(contentType, "text/yaml"):
 		err = yaml.Unmarshal(body, &cronjob)
@@ -458,12 +458,12 @@ func (h *Handler) UpdateCronJobGin(c *gin.Context) {
 			return
 		}
 	default:
-		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, 
-			"Unsupported content type", 
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest,
+			"Unsupported content type",
 			"Content-Type must be 'application/json', 'application/yaml', or 'text/yaml'")
 		return
 	}
-	
+
 	updatedCronJob, err := h.service.UpdateCronJob(c.Request.Context(), namespace, name, &cronjob)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
@@ -480,7 +480,7 @@ func (h *Handler) UpdateCronJobGin(c *gin.Context) {
 func (h *Handler) DeleteCronJobGin(c *gin.Context) {
 	namespace := c.Param("namespace")
 	name := c.Param("name")
-	
+
 	err := h.service.DeleteCronJob(c.Request.Context(), namespace, name)
 	if err != nil {
 		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to delete cronjob", err.Error())

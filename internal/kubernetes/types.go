@@ -6,11 +6,11 @@ import (
 
 // ClusterInfo represents Kubernetes cluster information
 type ClusterInfo struct {
-	Version      string `json:"version"`
-	Platform     string `json:"platform"`
-	IsControlPlane bool `json:"isControlPlane"`
-	NodeName     string `json:"nodeName"`
-	NodeRole     string `json:"nodeRole"`
+	Version        string `json:"version"`
+	Platform       string `json:"platform"`
+	IsControlPlane bool   `json:"isControlPlane"`
+	NodeName       string `json:"nodeName"`
+	NodeRole       string `json:"nodeRole"`
 }
 
 // ResourceList represents a generic list of Kubernetes resources
@@ -24,8 +24,8 @@ type ResourceList struct {
 
 // PodInfo represents simplified pod information
 type PodInfo struct {
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
+	APIVersion        string            `json:"apiVersion"`
+	Kind              string            `json:"kind"`
 	Name              string            `json:"name"`
 	Namespace         string            `json:"namespace"`
 	Status            string            `json:"status"`
@@ -60,35 +60,35 @@ type PodCondition struct {
 
 // PodDetail represents detailed pod information
 type PodDetail struct {
-	Name              string                 `json:"name"`
-	Namespace         string                 `json:"namespace"`
-	UID               string                 `json:"uid"`
-	ResourceVersion   string                 `json:"resourceVersion"`
-	Labels            map[string]string      `json:"labels"`
-	Annotations       map[string]string      `json:"annotations"`
-	Status            string                 `json:"status"`
-	Phase             string                 `json:"phase"`
-	IP                string                 `json:"ip"`
-	HostIP            string                 `json:"hostIP"`
-	Node              string                 `json:"node"`
-	ServiceAccount    string                 `json:"serviceAccount"`
-	RestartPolicy     string                 `json:"restartPolicy"`
-	DNSPolicy         string                 `json:"dnsPolicy"`
-	NodeSelector      map[string]string      `json:"nodeSelector,omitempty"`
+	Name              string                   `json:"name"`
+	Namespace         string                   `json:"namespace"`
+	UID               string                   `json:"uid"`
+	ResourceVersion   string                   `json:"resourceVersion"`
+	Labels            map[string]string        `json:"labels"`
+	Annotations       map[string]string        `json:"annotations"`
+	Status            string                   `json:"status"`
+	Phase             string                   `json:"phase"`
+	IP                string                   `json:"ip"`
+	HostIP            string                   `json:"hostIP"`
+	Node              string                   `json:"node"`
+	ServiceAccount    string                   `json:"serviceAccount"`
+	RestartPolicy     string                   `json:"restartPolicy"`
+	DNSPolicy         string                   `json:"dnsPolicy"`
+	NodeSelector      map[string]string        `json:"nodeSelector,omitempty"`
 	Tolerations       []map[string]interface{} `json:"tolerations,omitempty"`
-	Containers        []ContainerInfo        `json:"containers"`
-	InitContainers    []ContainerInfo        `json:"initContainers,omitempty"`
-	Conditions        []PodCondition         `json:"conditions"`
-	QOSClass          string                 `json:"qosClass"`
-	StartTime         *time.Time             `json:"startTime,omitempty"`
-	CreationTimestamp time.Time              `json:"creationTimestamp"`
-	Age               string                 `json:"age"`
+	Containers        []ContainerInfo          `json:"containers"`
+	InitContainers    []ContainerInfo          `json:"initContainers,omitempty"`
+	Conditions        []PodCondition           `json:"conditions"`
+	QOSClass          string                   `json:"qosClass"`
+	StartTime         *time.Time               `json:"startTime,omitempty"`
+	CreationTimestamp time.Time                `json:"creationTimestamp"`
+	Age               string                   `json:"age"`
 }
 
 // DeploymentInfo represents simplified deployment information
 type DeploymentInfo struct {
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
+	APIVersion        string            `json:"apiVersion"`
+	Kind              string            `json:"kind"`
 	Name              string            `json:"name"`
 	Namespace         string            `json:"namespace"`
 	Ready             string            `json:"ready"`
@@ -169,8 +169,8 @@ type DeploymentStrategy struct {
 
 // LabelSelector represents a label selector
 type LabelSelector struct {
-	MatchLabels      map[string]string          `json:"matchLabels,omitempty"`
-	MatchExpressions []map[string]interface{}   `json:"matchExpressions,omitempty"`
+	MatchLabels      map[string]string        `json:"matchLabels,omitempty"`
+	MatchExpressions []map[string]interface{} `json:"matchExpressions,omitempty"`
 }
 
 // PodTemplateSpec describes the pod that will be created
@@ -240,23 +240,23 @@ type DeploymentStatus struct {
 
 // DeploymentDetail represents comprehensive deployment information
 type DeploymentDetail struct {
-	Name              string               `json:"name"`
-	Namespace         string               `json:"namespace"`
-	UID               string               `json:"uid"`
-	ResourceVersion   string               `json:"resourceVersion"`
-	Generation        int64                `json:"generation"`
-	CreationTimestamp time.Time            `json:"creationTimestamp"`
-	Labels            map[string]string    `json:"labels,omitempty"`
-	Annotations       map[string]string    `json:"annotations,omitempty"`
-	Spec              DeploymentSpec       `json:"spec"`
-	Status            DeploymentStatus     `json:"status"`
-	Age               string               `json:"age"`
+	Name              string            `json:"name"`
+	Namespace         string            `json:"namespace"`
+	UID               string            `json:"uid"`
+	ResourceVersion   string            `json:"resourceVersion"`
+	Generation        int64             `json:"generation"`
+	CreationTimestamp time.Time         `json:"creationTimestamp"`
+	Labels            map[string]string `json:"labels,omitempty"`
+	Annotations       map[string]string `json:"annotations,omitempty"`
+	Spec              DeploymentSpec    `json:"spec"`
+	Status            DeploymentStatus  `json:"status"`
+	Age               string            `json:"age"`
 }
 
 // ServiceInfo represents simplified service information
 type ServiceInfo struct {
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
+	APIVersion        string            `json:"apiVersion"`
+	Kind              string            `json:"kind"`
 	Name              string            `json:"name"`
 	Namespace         string            `json:"namespace"`
 	Type              string            `json:"type"`
@@ -270,8 +270,8 @@ type ServiceInfo struct {
 
 // IngressInfo represents simplified ingress information
 type IngressInfo struct {
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
+	APIVersion        string            `json:"apiVersion"`
+	Kind              string            `json:"kind"`
 	Name              string            `json:"name"`
 	Namespace         string            `json:"namespace"`
 	Hosts             []string          `json:"hosts"`
@@ -284,8 +284,8 @@ type IngressInfo struct {
 
 // PVCInfo represents simplified PVC information
 type PVCInfo struct {
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
+	APIVersion        string            `json:"apiVersion"`
+	Kind              string            `json:"kind"`
 	Name              string            `json:"name"`
 	Namespace         string            `json:"namespace"`
 	Status            string            `json:"status"`
@@ -300,8 +300,8 @@ type PVCInfo struct {
 
 // PVInfo represents simplified PV information
 type PVInfo struct {
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
+	APIVersion        string            `json:"apiVersion"`
+	Kind              string            `json:"kind"`
 	Name              string            `json:"name"`
 	Capacity          string            `json:"capacity"`
 	AccessModes       string            `json:"accessModes"`
@@ -317,8 +317,8 @@ type PVInfo struct {
 
 // SecretInfo represents simplified secret information
 type SecretInfo struct {
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
+	APIVersion        string            `json:"apiVersion"`
+	Kind              string            `json:"kind"`
 	Name              string            `json:"name"`
 	Namespace         string            `json:"namespace"`
 	Type              string            `json:"type"`
@@ -330,8 +330,8 @@ type SecretInfo struct {
 
 // ConfigMapInfo represents simplified configmap information
 type ConfigMapInfo struct {
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
+	APIVersion        string            `json:"apiVersion"`
+	Kind              string            `json:"kind"`
 	Name              string            `json:"name"`
 	Namespace         string            `json:"namespace"`
 	Data              int               `json:"data"`
@@ -342,8 +342,8 @@ type ConfigMapInfo struct {
 
 // NamespaceInfo represents simplified namespace information
 type NamespaceInfo struct {
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
+	APIVersion        string            `json:"apiVersion"`
+	Kind              string            `json:"kind"`
 	Name              string            `json:"name"`
 	Status            string            `json:"status"`
 	Age               string            `json:"age"`
@@ -353,8 +353,8 @@ type NamespaceInfo struct {
 
 // NodeInfo represents simplified node information
 type NodeInfo struct {
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
+	APIVersion        string            `json:"apiVersion"`
+	Kind              string            `json:"kind"`
 	Name              string            `json:"name"`
 	Status            string            `json:"status"`
 	Roles             string            `json:"roles"`
@@ -372,8 +372,8 @@ type NodeInfo struct {
 
 // DaemonSetInfo represents simplified daemonset information
 type DaemonSetInfo struct {
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
+	APIVersion        string            `json:"apiVersion"`
+	Kind              string            `json:"kind"`
 	Name              string            `json:"name"`
 	Namespace         string            `json:"namespace"`
 	Desired           int32             `json:"desired"`
@@ -389,8 +389,8 @@ type DaemonSetInfo struct {
 
 // StatefulSetInfo represents simplified statefulset information
 type StatefulSetInfo struct {
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
+	APIVersion        string            `json:"apiVersion"`
+	Kind              string            `json:"kind"`
 	Name              string            `json:"name"`
 	Namespace         string            `json:"namespace"`
 	Ready             string            `json:"ready"`
@@ -401,8 +401,8 @@ type StatefulSetInfo struct {
 
 // JobInfo represents simplified job information
 type JobInfo struct {
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
+	APIVersion        string            `json:"apiVersion"`
+	Kind              string            `json:"kind"`
 	Name              string            `json:"name"`
 	Namespace         string            `json:"namespace"`
 	Completions       string            `json:"completions"`
@@ -414,8 +414,8 @@ type JobInfo struct {
 
 // CronJobInfo represents simplified cronjob information
 type CronJobInfo struct {
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
+	APIVersion        string            `json:"apiVersion"`
+	Kind              string            `json:"kind"`
 	Name              string            `json:"name"`
 	Namespace         string            `json:"namespace"`
 	Schedule          string            `json:"schedule"`
@@ -429,28 +429,28 @@ type CronJobInfo struct {
 
 // StatefulSetSpec represents the specification of a statefulset
 type StatefulSetSpec struct {
-	Replicas             *int32                        `json:"replicas,omitempty"`
-	Selector             LabelSelector                 `json:"selector"`
-	Template             PodTemplateSpec               `json:"template"`
-	ServiceName          string                        `json:"serviceName"`
-	PodManagementPolicy  string                        `json:"podManagementPolicy,omitempty"`
-	UpdateStrategy       StatefulSetUpdateStrategy     `json:"updateStrategy,omitempty"`
-	RevisionHistoryLimit *int32                        `json:"revisionHistoryLimit,omitempty"`
-	MinReadySeconds      int32                         `json:"minReadySeconds,omitempty"`
-	PersistentVolumeClaimRetentionPolicy *PVCRetentionPolicy `json:"persistentVolumeClaimRetentionPolicy,omitempty"`
-	Ordinals             *StatefulSetOrdinals          `json:"ordinals,omitempty"`
+	Replicas                             *int32                    `json:"replicas,omitempty"`
+	Selector                             LabelSelector             `json:"selector"`
+	Template                             PodTemplateSpec           `json:"template"`
+	ServiceName                          string                    `json:"serviceName"`
+	PodManagementPolicy                  string                    `json:"podManagementPolicy,omitempty"`
+	UpdateStrategy                       StatefulSetUpdateStrategy `json:"updateStrategy,omitempty"`
+	RevisionHistoryLimit                 *int32                    `json:"revisionHistoryLimit,omitempty"`
+	MinReadySeconds                      int32                     `json:"minReadySeconds,omitempty"`
+	PersistentVolumeClaimRetentionPolicy *PVCRetentionPolicy       `json:"persistentVolumeClaimRetentionPolicy,omitempty"`
+	Ordinals                             *StatefulSetOrdinals      `json:"ordinals,omitempty"`
 }
 
 // StatefulSetUpdateStrategy describes the strategy for updating pods in a StatefulSet
 type StatefulSetUpdateStrategy struct {
-	Type          string                        `json:"type,omitempty"`
+	Type          string                            `json:"type,omitempty"`
 	RollingUpdate *RollingUpdateStatefulSetStrategy `json:"rollingUpdate,omitempty"`
 }
 
 // RollingUpdateStatefulSetStrategy is used to control the rolling update of a statefulset
 type RollingUpdateStatefulSetStrategy struct {
-	Partition       *int32 `json:"partition,omitempty"`
-	MaxUnavailable  string `json:"maxUnavailable,omitempty"`
+	Partition      *int32 `json:"partition,omitempty"`
+	MaxUnavailable string `json:"maxUnavailable,omitempty"`
 }
 
 // PVCRetentionPolicy describes the policy for retaining/deleting persistent volume claims
@@ -466,16 +466,16 @@ type StatefulSetOrdinals struct {
 
 // StatefulSetStatus represents the current status of a statefulset
 type StatefulSetStatus struct {
-	ObservedGeneration   int64                          `json:"observedGeneration,omitempty"`
-	Replicas             int32                          `json:"replicas"`
-	ReadyReplicas        int32                          `json:"readyReplicas,omitempty"`
-	CurrentReplicas      int32                          `json:"currentReplicas,omitempty"`
-	UpdatedReplicas      int32                          `json:"updatedReplicas,omitempty"`
-	CurrentRevision      string                         `json:"currentRevision,omitempty"`
-	UpdateRevision       string                         `json:"updateRevision,omitempty"`
-	CollisionCount       *int32                         `json:"collisionCount,omitempty"`
-	Conditions           []StatefulSetCondition         `json:"conditions,omitempty"`
-	AvailableReplicas    int32                          `json:"availableReplicas,omitempty"`
+	ObservedGeneration int64                  `json:"observedGeneration,omitempty"`
+	Replicas           int32                  `json:"replicas"`
+	ReadyReplicas      int32                  `json:"readyReplicas,omitempty"`
+	CurrentReplicas    int32                  `json:"currentReplicas,omitempty"`
+	UpdatedReplicas    int32                  `json:"updatedReplicas,omitempty"`
+	CurrentRevision    string                 `json:"currentRevision,omitempty"`
+	UpdateRevision     string                 `json:"updateRevision,omitempty"`
+	CollisionCount     *int32                 `json:"collisionCount,omitempty"`
+	Conditions         []StatefulSetCondition `json:"conditions,omitempty"`
+	AvailableReplicas  int32                  `json:"availableReplicas,omitempty"`
 }
 
 // StatefulSetCondition describes the state of a statefulset at a certain point
@@ -495,9 +495,9 @@ type VolumeClaimTemplate struct {
 		Annotations map[string]string `json:"annotations,omitempty"`
 	} `json:"metadata,omitempty"`
 	Spec struct {
-		AccessModes []string               `json:"accessModes,omitempty"`
-		StorageClassName *string         `json:"storageClassName,omitempty"`
-		Resources   struct {
+		AccessModes      []string `json:"accessModes,omitempty"`
+		StorageClassName *string  `json:"storageClassName,omitempty"`
+		Resources        struct {
 			Requests map[string]string `json:"requests,omitempty"`
 		} `json:"resources,omitempty"`
 	} `json:"spec,omitempty"`
@@ -505,24 +505,24 @@ type VolumeClaimTemplate struct {
 
 // StatefulSetDetail represents comprehensive statefulset information
 type StatefulSetDetail struct {
-	Name                    string                 `json:"name"`
-	Namespace               string                 `json:"namespace"`
-	UID                     string                 `json:"uid"`
-	ResourceVersion         string                 `json:"resourceVersion"`
-	Generation              int64                  `json:"generation"`
-	CreationTimestamp       time.Time              `json:"creationTimestamp"`
-	Labels                  map[string]string      `json:"labels,omitempty"`
-	Annotations             map[string]string      `json:"annotations,omitempty"`
-	Spec                    StatefulSetSpec        `json:"spec"`
-	Status                  StatefulSetStatus      `json:"status"`
-	Age                     string                 `json:"age"`
-	VolumeClaimTemplates    []VolumeClaimTemplate  `json:"volumeClaimTemplates,omitempty"`
+	Name                 string                `json:"name"`
+	Namespace            string                `json:"namespace"`
+	UID                  string                `json:"uid"`
+	ResourceVersion      string                `json:"resourceVersion"`
+	Generation           int64                 `json:"generation"`
+	CreationTimestamp    time.Time             `json:"creationTimestamp"`
+	Labels               map[string]string     `json:"labels,omitempty"`
+	Annotations          map[string]string     `json:"annotations,omitempty"`
+	Spec                 StatefulSetSpec       `json:"spec"`
+	Status               StatefulSetStatus     `json:"status"`
+	Age                  string                `json:"age"`
+	VolumeClaimTemplates []VolumeClaimTemplate `json:"volumeClaimTemplates,omitempty"`
 }
 
 // CRDInfo represents simplified Custom Resource Definition information
 type CRDInfo struct {
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
+	APIVersion        string            `json:"apiVersion"`
+	Kind              string            `json:"kind"`
 	Name              string            `json:"name"`
 	Group             string            `json:"group"`
 	Version           string            `json:"version"`
@@ -536,8 +536,8 @@ type CRDInfo struct {
 
 // IngressClassInfo represents simplified ingress class information
 type IngressClassInfo struct {
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
+	APIVersion        string            `json:"apiVersion"`
+	Kind              string            `json:"kind"`
 	Name              string            `json:"name"`
 	Controller        string            `json:"controller"`
 	IsDefault         bool              `json:"isDefault"`
@@ -548,8 +548,8 @@ type IngressClassInfo struct {
 
 // NetworkPolicyInfo represents simplified network policy information
 type NetworkPolicyInfo struct {
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
+	APIVersion        string            `json:"apiVersion"`
+	Kind              string            `json:"kind"`
 	Name              string            `json:"name"`
 	Namespace         string            `json:"namespace"`
 	PodSelector       string            `json:"podSelector"`
@@ -587,25 +587,25 @@ type ServicePort struct {
 
 // ServiceSpec represents the specification of a service
 type ServiceSpec struct {
-	Type                     string            `json:"type"`
-	ClusterIP                string            `json:"clusterIP,omitempty"`
-	ClusterIPs               []string          `json:"clusterIPs,omitempty"`
-	Ports                    []ServicePort     `json:"ports,omitempty"`
-	Selector                 map[string]string `json:"selector,omitempty"`
-	ExternalIPs              []string          `json:"externalIPs,omitempty"`
-	SessionAffinity          string            `json:"sessionAffinity,omitempty"`
-	LoadBalancerIP           string            `json:"loadBalancerIP,omitempty"`
-	LoadBalancerSourceRanges []string          `json:"loadBalancerSourceRanges,omitempty"`
-	ExternalName             string            `json:"externalName,omitempty"`
-	ExternalTrafficPolicy    string            `json:"externalTrafficPolicy,omitempty"`
-	HealthCheckNodePort      int32             `json:"healthCheckNodePort,omitempty"`
-	PublishNotReadyAddresses bool              `json:"publishNotReadyAddresses,omitempty"`
-	SessionAffinityConfig    interface{}       `json:"sessionAffinityConfig,omitempty"`
-	IPFamilies               []string          `json:"ipFamilies,omitempty"`
-	IPFamilyPolicy           string            `json:"ipFamilyPolicy,omitempty"`
-	AllocateLoadBalancerNodePorts *bool       `json:"allocateLoadBalancerNodePorts,omitempty"`
-	LoadBalancerClass        *string           `json:"loadBalancerClass,omitempty"`
-	InternalTrafficPolicy    *string           `json:"internalTrafficPolicy,omitempty"`
+	Type                          string            `json:"type"`
+	ClusterIP                     string            `json:"clusterIP,omitempty"`
+	ClusterIPs                    []string          `json:"clusterIPs,omitempty"`
+	Ports                         []ServicePort     `json:"ports,omitempty"`
+	Selector                      map[string]string `json:"selector,omitempty"`
+	ExternalIPs                   []string          `json:"externalIPs,omitempty"`
+	SessionAffinity               string            `json:"sessionAffinity,omitempty"`
+	LoadBalancerIP                string            `json:"loadBalancerIP,omitempty"`
+	LoadBalancerSourceRanges      []string          `json:"loadBalancerSourceRanges,omitempty"`
+	ExternalName                  string            `json:"externalName,omitempty"`
+	ExternalTrafficPolicy         string            `json:"externalTrafficPolicy,omitempty"`
+	HealthCheckNodePort           int32             `json:"healthCheckNodePort,omitempty"`
+	PublishNotReadyAddresses      bool              `json:"publishNotReadyAddresses,omitempty"`
+	SessionAffinityConfig         interface{}       `json:"sessionAffinityConfig,omitempty"`
+	IPFamilies                    []string          `json:"ipFamilies,omitempty"`
+	IPFamilyPolicy                string            `json:"ipFamilyPolicy,omitempty"`
+	AllocateLoadBalancerNodePorts *bool             `json:"allocateLoadBalancerNodePorts,omitempty"`
+	LoadBalancerClass             *string           `json:"loadBalancerClass,omitempty"`
+	InternalTrafficPolicy         *string           `json:"internalTrafficPolicy,omitempty"`
 }
 
 // ServiceStatus represents the current status of a service
@@ -652,21 +652,21 @@ type HTTPIngressRuleValue struct {
 
 // HTTPIngressPath represents a path in an HTTP ingress rule
 type HTTPIngressPath struct {
-	Path     string                  `json:"path,omitempty"`
-	PathType string                  `json:"pathType"`
-	Backend  IngressBackend          `json:"backend"`
+	Path     string         `json:"path,omitempty"`
+	PathType string         `json:"pathType"`
+	Backend  IngressBackend `json:"backend"`
 }
 
 // IngressBackend represents the backend handling matched requests
 type IngressBackend struct {
-	Service  *IngressServiceBackend  `json:"service,omitempty"`
-	Resource *interface{}            `json:"resource,omitempty"`
+	Service  *IngressServiceBackend `json:"service,omitempty"`
+	Resource *interface{}           `json:"resource,omitempty"`
 }
 
 // IngressServiceBackend represents a Kubernetes Service used as backend
 type IngressServiceBackend struct {
-	Name string                `json:"name"`
-	Port ServiceBackendPort    `json:"port"`
+	Name string             `json:"name"`
+	Port ServiceBackendPort `json:"port"`
 }
 
 // ServiceBackendPort represents a port in a service backend
@@ -716,14 +716,14 @@ type IngressDetail struct {
 
 // PVCSpec represents the specification of a PVC
 type PVCSpec struct {
-	AccessModes      []string               `json:"accessModes,omitempty"`
-	Selector         *LabelSelector         `json:"selector,omitempty"`
-	Resources        ResourceRequirements   `json:"resources,omitempty"`
-	VolumeName       string                 `json:"volumeName,omitempty"`
-	StorageClassName *string                `json:"storageClassName,omitempty"`
-	VolumeMode       *string                `json:"volumeMode,omitempty"`
-	DataSource       interface{}            `json:"dataSource,omitempty"`
-	DataSourceRef    interface{}            `json:"dataSourceRef,omitempty"`
+	AccessModes      []string             `json:"accessModes,omitempty"`
+	Selector         *LabelSelector       `json:"selector,omitempty"`
+	Resources        ResourceRequirements `json:"resources,omitempty"`
+	VolumeName       string               `json:"volumeName,omitempty"`
+	StorageClassName *string              `json:"storageClassName,omitempty"`
+	VolumeMode       *string              `json:"volumeMode,omitempty"`
+	DataSource       interface{}          `json:"dataSource,omitempty"`
+	DataSourceRef    interface{}          `json:"dataSourceRef,omitempty"`
 }
 
 // PVCStatus represents the current status of a PVC
@@ -759,15 +759,15 @@ type PVCDetail struct {
 
 // PVSpec represents the specification of a PV
 type PVSpec struct {
-	Capacity                      map[string]string       `json:"capacity,omitempty"`
-	PersistentVolumeSource        interface{}             `json:"persistentVolumeSource,omitempty"`
-	AccessModes                   []string                `json:"accessModes,omitempty"`
-	ClaimRef                      *ObjectReference        `json:"claimRef,omitempty"`
-	PersistentVolumeReclaimPolicy string                  `json:"persistentVolumeReclaimPolicy,omitempty"`
-	StorageClassName              string                  `json:"storageClassName,omitempty"`
-	MountOptions                  []string                `json:"mountOptions,omitempty"`
-	VolumeMode                    *string                 `json:"volumeMode,omitempty"`
-	NodeAffinity                  interface{}             `json:"nodeAffinity,omitempty"`
+	Capacity                      map[string]string `json:"capacity,omitempty"`
+	PersistentVolumeSource        interface{}       `json:"persistentVolumeSource,omitempty"`
+	AccessModes                   []string          `json:"accessModes,omitempty"`
+	ClaimRef                      *ObjectReference  `json:"claimRef,omitempty"`
+	PersistentVolumeReclaimPolicy string            `json:"persistentVolumeReclaimPolicy,omitempty"`
+	StorageClassName              string            `json:"storageClassName,omitempty"`
+	MountOptions                  []string          `json:"mountOptions,omitempty"`
+	VolumeMode                    *string           `json:"volumeMode,omitempty"`
+	NodeAffinity                  interface{}       `json:"nodeAffinity,omitempty"`
 }
 
 // ObjectReference contains enough information to let you inspect or modify the referred object
@@ -838,7 +838,7 @@ type NamespaceSpec struct {
 
 // NamespaceStatus represents the current status of a namespace
 type NamespaceStatus struct {
-	Phase      string     `json:"phase,omitempty"`
+	Phase      string `json:"phase,omitempty"`
 	Conditions []struct {
 		Type               string    `json:"type"`
 		Status             string    `json:"status"`
@@ -879,12 +879,12 @@ type NodeCondition struct {
 
 // NodeSpec represents the specification of a node
 type NodeSpec struct {
-	PodCIDR            string              `json:"podCIDR,omitempty"`
-	PodCIDRs           []string            `json:"podCIDRs,omitempty"`
-	ProviderID         string              `json:"providerID,omitempty"`
-	Unschedulable      bool                `json:"unschedulable,omitempty"`
-	Taints             []map[string]interface{} `json:"taints,omitempty"`
-	ConfigSource       interface{}         `json:"configSource,omitempty"`
+	PodCIDR       string                   `json:"podCIDR,omitempty"`
+	PodCIDRs      []string                 `json:"podCIDRs,omitempty"`
+	ProviderID    string                   `json:"providerID,omitempty"`
+	Unschedulable bool                     `json:"unschedulable,omitempty"`
+	Taints        []map[string]interface{} `json:"taints,omitempty"`
+	ConfigSource  interface{}              `json:"configSource,omitempty"`
 }
 
 // NodeStatus represents the current status of a node
@@ -892,8 +892,8 @@ type NodeStatus struct {
 	Capacity        map[string]string `json:"capacity,omitempty"`
 	Allocatable     map[string]string `json:"allocatable,omitempty"`
 	Phase           string            `json:"phase,omitempty"`
-	Conditions      []NodeCondition  `json:"conditions,omitempty"`
-	Addresses       []NodeAddress    `json:"addresses,omitempty"`
+	Conditions      []NodeCondition   `json:"conditions,omitempty"`
+	Addresses       []NodeAddress     `json:"addresses,omitempty"`
 	DaemonEndpoints struct {
 		KubeletEndpoint struct {
 			Port int32 `json:"port"`
@@ -911,10 +911,10 @@ type NodeStatus struct {
 		OperatingSystem         string `json:"operatingSystem"`
 		Architecture            string `json:"architecture"`
 	} `json:"nodeInfo,omitempty"`
-	Images                     []interface{} `json:"images,omitempty"`
-	VolumesInUse               []string      `json:"volumesInUse,omitempty"`
-	VolumesAttached            []interface{} `json:"volumesAttached,omitempty"`
-	Config                     interface{}   `json:"config,omitempty"`
+	Images          []interface{} `json:"images,omitempty"`
+	VolumesInUse    []string      `json:"volumesInUse,omitempty"`
+	VolumesAttached []interface{} `json:"volumesAttached,omitempty"`
+	Config          interface{}   `json:"config,omitempty"`
 }
 
 // NodeDetail represents comprehensive node information
@@ -932,17 +932,17 @@ type NodeDetail struct {
 
 // DaemonSetSpec represents the specification of a daemonset
 type DaemonSetSpec struct {
-	Selector             LabelSelector          `json:"selector"`
-	Template             PodTemplateSpec        `json:"template"`
+	Selector             LabelSelector           `json:"selector"`
+	Template             PodTemplateSpec         `json:"template"`
 	UpdateStrategy       DaemonSetUpdateStrategy `json:"updateStrategy,omitempty"`
-	MinReadySeconds      int32                  `json:"minReadySeconds,omitempty"`
-	RevisionHistoryLimit *int32                 `json:"revisionHistoryLimit,omitempty"`
+	MinReadySeconds      int32                   `json:"minReadySeconds,omitempty"`
+	RevisionHistoryLimit *int32                  `json:"revisionHistoryLimit,omitempty"`
 }
 
 // DaemonSetUpdateStrategy describes the strategy for updating pods in a DaemonSet
 type DaemonSetUpdateStrategy struct {
-	Type          string                             `json:"type,omitempty"`
-	RollingUpdate *RollingUpdateDaemonSet            `json:"rollingUpdate,omitempty"`
+	Type          string                  `json:"type,omitempty"`
+	RollingUpdate *RollingUpdateDaemonSet `json:"rollingUpdate,omitempty"`
 }
 
 // RollingUpdateDaemonSet is used to control the rolling update of a daemonset
@@ -953,16 +953,16 @@ type RollingUpdateDaemonSet struct {
 
 // DaemonSetStatus represents the current status of a daemonset
 type DaemonSetStatus struct {
-	CurrentNumberScheduled int32                   `json:"currentNumberScheduled"`
-	NumberMisscheduled     int32                   `json:"numberMisscheduled"`
-	DesiredNumberScheduled int32                   `json:"desiredNumberScheduled"`
-	NumberReady            int32                   `json:"numberReady"`
-	ObservedGeneration     int64                   `json:"observedGeneration,omitempty"`
-	UpdatedNumberScheduled int32                   `json:"updatedNumberScheduled,omitempty"`
-	NumberAvailable        int32                   `json:"numberAvailable,omitempty"`
-	NumberUnavailable      int32                   `json:"numberUnavailable,omitempty"`
-	CollisionCount         *int32                  `json:"collisionCount,omitempty"`
-	Conditions             []DaemonSetCondition    `json:"conditions,omitempty"`
+	CurrentNumberScheduled int32                `json:"currentNumberScheduled"`
+	NumberMisscheduled     int32                `json:"numberMisscheduled"`
+	DesiredNumberScheduled int32                `json:"desiredNumberScheduled"`
+	NumberReady            int32                `json:"numberReady"`
+	ObservedGeneration     int64                `json:"observedGeneration,omitempty"`
+	UpdatedNumberScheduled int32                `json:"updatedNumberScheduled,omitempty"`
+	NumberAvailable        int32                `json:"numberAvailable,omitempty"`
+	NumberUnavailable      int32                `json:"numberUnavailable,omitempty"`
+	CollisionCount         *int32               `json:"collisionCount,omitempty"`
+	Conditions             []DaemonSetCondition `json:"conditions,omitempty"`
 }
 
 // DaemonSetCondition describes the state of a daemonset at a certain point
@@ -991,32 +991,32 @@ type DaemonSetDetail struct {
 
 // JobSpec represents the specification of a job
 type JobSpec struct {
-	Parallelism             *int32               `json:"parallelism,omitempty"`
-	Completions             *int32               `json:"completions,omitempty"`
-	ActiveDeadlineSeconds   *int64               `json:"activeDeadlineSeconds,omitempty"`
-	PodFailurePolicy        interface{}          `json:"podFailurePolicy,omitempty"`
-	BackoffLimit            *int32               `json:"backoffLimit,omitempty"`
-	Selector                *LabelSelector       `json:"selector,omitempty"`
-	ManualSelector          *bool                `json:"manualSelector,omitempty"`
-	Template                PodTemplateSpec      `json:"template"`
-	TTLSecondsAfterFinished *int32               `json:"ttlSecondsAfterFinished,omitempty"`
-	CompletionMode          *string              `json:"completionMode,omitempty"`
-	Suspend                 *bool                `json:"suspend,omitempty"`
+	Parallelism             *int32          `json:"parallelism,omitempty"`
+	Completions             *int32          `json:"completions,omitempty"`
+	ActiveDeadlineSeconds   *int64          `json:"activeDeadlineSeconds,omitempty"`
+	PodFailurePolicy        interface{}     `json:"podFailurePolicy,omitempty"`
+	BackoffLimit            *int32          `json:"backoffLimit,omitempty"`
+	Selector                *LabelSelector  `json:"selector,omitempty"`
+	ManualSelector          *bool           `json:"manualSelector,omitempty"`
+	Template                PodTemplateSpec `json:"template"`
+	TTLSecondsAfterFinished *int32          `json:"ttlSecondsAfterFinished,omitempty"`
+	CompletionMode          *string         `json:"completionMode,omitempty"`
+	Suspend                 *bool           `json:"suspend,omitempty"`
 }
 
 // JobStatus represents the current status of a job
 type JobStatus struct {
-	Conditions         []JobCondition `json:"conditions,omitempty"`
-	StartTime          *time.Time     `json:"startTime,omitempty"`
-	CompletionTime     *time.Time     `json:"completionTime,omitempty"`
-	Active             int32          `json:"active,omitempty"`
-	Succeeded          int32          `json:"succeeded,omitempty"`
-	Failed             int32          `json:"failed,omitempty"`
-	Terminating        *int32         `json:"terminating,omitempty"`
-	CompletedIndexes   string         `json:"completedIndexes,omitempty"`
-	FailedIndexes      *string        `json:"failedIndexes,omitempty"`
-	UncountedTerminatedPods interface{} `json:"uncountedTerminatedPods,omitempty"`
-	Ready              *int32         `json:"ready,omitempty"`
+	Conditions              []JobCondition `json:"conditions,omitempty"`
+	StartTime               *time.Time     `json:"startTime,omitempty"`
+	CompletionTime          *time.Time     `json:"completionTime,omitempty"`
+	Active                  int32          `json:"active,omitempty"`
+	Succeeded               int32          `json:"succeeded,omitempty"`
+	Failed                  int32          `json:"failed,omitempty"`
+	Terminating             *int32         `json:"terminating,omitempty"`
+	CompletedIndexes        string         `json:"completedIndexes,omitempty"`
+	FailedIndexes           *string        `json:"failedIndexes,omitempty"`
+	UncountedTerminatedPods interface{}    `json:"uncountedTerminatedPods,omitempty"`
+	Ready                   *int32         `json:"ready,omitempty"`
 }
 
 // JobCondition describes the state of a job at a certain point
@@ -1046,14 +1046,14 @@ type JobDetail struct {
 
 // CronJobSpec represents the specification of a cronjob
 type CronJobSpec struct {
-	Schedule                   string               `json:"schedule"`
-	TimeZone                   *string              `json:"timeZone,omitempty"`
-	StartingDeadlineSeconds    *int64               `json:"startingDeadlineSeconds,omitempty"`
-	ConcurrencyPolicy          string               `json:"concurrencyPolicy,omitempty"`
-	Suspend                    *bool                `json:"suspend,omitempty"`
-	JobTemplate                JobTemplateSpec      `json:"jobTemplate"`
-	SuccessfulJobsHistoryLimit *int32               `json:"successfulJobsHistoryLimit,omitempty"`
-	FailedJobsHistoryLimit     *int32               `json:"failedJobsHistoryLimit,omitempty"`
+	Schedule                   string          `json:"schedule"`
+	TimeZone                   *string         `json:"timeZone,omitempty"`
+	StartingDeadlineSeconds    *int64          `json:"startingDeadlineSeconds,omitempty"`
+	ConcurrencyPolicy          string          `json:"concurrencyPolicy,omitempty"`
+	Suspend                    *bool           `json:"suspend,omitempty"`
+	JobTemplate                JobTemplateSpec `json:"jobTemplate"`
+	SuccessfulJobsHistoryLimit *int32          `json:"successfulJobsHistoryLimit,omitempty"`
+	FailedJobsHistoryLimit     *int32          `json:"failedJobsHistoryLimit,omitempty"`
 }
 
 // JobTemplateSpec describes the data a Job should have when created from a template
@@ -1089,61 +1089,61 @@ type CronJobDetail struct {
 
 // ReplicaSetInfo contains basic information about a ReplicaSet
 type ReplicaSetInfo struct {
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
-Name      string            `json:"name"`
-Namespace string            `json:"namespace"`
-Desired   int32             `json:"desired"`
-Current   int32             `json:"current"`
-Ready     int32             `json:"ready"`
-Age       string            `json:"age"`
-Labels    map[string]string `json:"labels,omitempty"`
+	APIVersion string            `json:"apiVersion"`
+	Kind       string            `json:"kind"`
+	Name       string            `json:"name"`
+	Namespace  string            `json:"namespace"`
+	Desired    int32             `json:"desired"`
+	Current    int32             `json:"current"`
+	Ready      int32             `json:"ready"`
+	Age        string            `json:"age"`
+	Labels     map[string]string `json:"labels,omitempty"`
 }
 
 // ServiceAccountInfo contains basic information about a ServiceAccount
 type ServiceAccountInfo struct {
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
-Name      string            `json:"name"`
-Namespace string            `json:"namespace"`
-Secrets   int               `json:"secrets"`
-Age       string            `json:"age"`
-Labels    map[string]string `json:"labels,omitempty"`
+	APIVersion string            `json:"apiVersion"`
+	Kind       string            `json:"kind"`
+	Name       string            `json:"name"`
+	Namespace  string            `json:"namespace"`
+	Secrets    int               `json:"secrets"`
+	Age        string            `json:"age"`
+	Labels     map[string]string `json:"labels,omitempty"`
 }
 
 // RoleInfo contains basic information about a Role
 type RoleInfo struct {
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
-Name      string            `json:"name"`
-Namespace string            `json:"namespace"`
-Rules     int               `json:"rules"`
-Age       string            `json:"age"`
-Labels    map[string]string `json:"labels,omitempty"`
+	APIVersion string            `json:"apiVersion"`
+	Kind       string            `json:"kind"`
+	Name       string            `json:"name"`
+	Namespace  string            `json:"namespace"`
+	Rules      int               `json:"rules"`
+	Age        string            `json:"age"`
+	Labels     map[string]string `json:"labels,omitempty"`
 }
 
 // RoleBindingInfo contains basic information about a RoleBinding
 type RoleBindingInfo struct {
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
-Name      string            `json:"name"`
-Namespace string            `json:"namespace"`
-RoleRef   string            `json:"roleRef"`
-Subjects  int               `json:"subjects"`
-Age       string            `json:"age"`
-Labels    map[string]string `json:"labels,omitempty"`
+	APIVersion string            `json:"apiVersion"`
+	Kind       string            `json:"kind"`
+	Name       string            `json:"name"`
+	Namespace  string            `json:"namespace"`
+	RoleRef    string            `json:"roleRef"`
+	Subjects   int               `json:"subjects"`
+	Age        string            `json:"age"`
+	Labels     map[string]string `json:"labels,omitempty"`
 }
 
 // HorizontalPodAutoscalerInfo contains basic information about a HorizontalPodAutoscaler
 type HorizontalPodAutoscalerInfo struct {
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
-Name            string            `json:"name"`
-Namespace       string            `json:"namespace"`
-Reference       string            `json:"reference"`
-MinReplicas     int32             `json:"minReplicas"`
-MaxReplicas     int32             `json:"maxReplicas"`
-CurrentReplicas int32             `json:"currentReplicas"`
-Age             string            `json:"age"`
-Labels          map[string]string `json:"labels,omitempty"`
+	APIVersion      string            `json:"apiVersion"`
+	Kind            string            `json:"kind"`
+	Name            string            `json:"name"`
+	Namespace       string            `json:"namespace"`
+	Reference       string            `json:"reference"`
+	MinReplicas     int32             `json:"minReplicas"`
+	MaxReplicas     int32             `json:"maxReplicas"`
+	CurrentReplicas int32             `json:"currentReplicas"`
+	Age             string            `json:"age"`
+	Labels          map[string]string `json:"labels,omitempty"`
 }

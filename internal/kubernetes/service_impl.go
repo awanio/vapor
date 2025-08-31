@@ -2292,3 +2292,172 @@ func formatPodSelector(selector map[string]string) string {
 	}
 	return strings.Join(parts, ",")
 }
+
+// CreateCRDObject creates a new instance of a CRD object
+func (s *Service) CreateCRDObject(ctx context.Context, crdName, namespace string, object *unstructured.Unstructured) (*unstructured.Unstructured, error) {
+	// First, get the CRD to extract necessary information
+	crd, err := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, crdName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get CRD %s: %w", crdName, err)
+	}
+
+	// Find the served version
+	var version string
+	for _, v := range crd.Spec.Versions {
+		if v.Served {
+			version = v.Name
+			break
+		}
+	}
+	if version == "" && len(crd.Spec.Versions) > 0 {
+		version = crd.Spec.Versions[0].Name
+	}
+
+	// Create GroupVersionResource
+	gvr := schema.GroupVersionResource{
+		Group:    crd.Spec.Group,
+		Version:  version,
+		Resource: crd.Spec.Names.Plural,
+	}
+
+	// Set the APIVersion and Kind if not already set
+	if object.GetAPIVersion() == "" {
+		object.SetAPIVersion(fmt.Sprintf("%s/%s", crd.Spec.Group, version))
+	}
+	if object.GetKind() == "" {
+		object.SetKind(crd.Spec.Names.Kind)
+	}
+
+	// Create object using dynamic client
+	var createdObj *unstructured.Unstructured
+	if crd.Spec.Scope == "Namespaced" {
+		// For namespaced resources, namespace is required
+		if namespace == "" || namespace == "-" {
+			return nil, fmt.Errorf("namespace is required for namespaced CRD %s", crdName)
+		}
+		createdObj, err = s.dynamicClient.Resource(gvr).Namespace(namespace).Create(ctx, object, metav1.CreateOptions{})
+	} else {
+		// For cluster-scoped resources
+		if namespace != "" && namespace != "-" {
+			return nil, fmt.Errorf("cluster-scoped CRD %s does not use namespaces", crdName)
+		}
+		createdObj, err = s.dynamicClient.Resource(gvr).Create(ctx, object, metav1.CreateOptions{})
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create object for CRD %s: %w", crdName, err)
+	}
+
+	return createdObj, nil
+}
+
+// UpdateCRDObject updates an existing instance of a CRD object
+func (s *Service) UpdateCRDObject(ctx context.Context, crdName, namespace, objectName string, object *unstructured.Unstructured) (*unstructured.Unstructured, error) {
+	// First, get the CRD to extract necessary information
+	crd, err := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, crdName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get CRD %s: %w", crdName, err)
+	}
+
+	// Find the served version
+	var version string
+	for _, v := range crd.Spec.Versions {
+		if v.Served {
+			version = v.Name
+			break
+		}
+	}
+	if version == "" && len(crd.Spec.Versions) > 0 {
+		version = crd.Spec.Versions[0].Name
+	}
+
+	// Create GroupVersionResource
+	gvr := schema.GroupVersionResource{
+		Group:    crd.Spec.Group,
+		Version:  version,
+		Resource: crd.Spec.Names.Plural,
+	}
+
+	// Set the name to ensure it matches the objectName parameter
+	object.SetName(objectName)
+
+	// Set the APIVersion and Kind if not already set
+	if object.GetAPIVersion() == "" {
+		object.SetAPIVersion(fmt.Sprintf("%s/%s", crd.Spec.Group, version))
+	}
+	if object.GetKind() == "" {
+		object.SetKind(crd.Spec.Names.Kind)
+	}
+
+	// Update object using dynamic client
+	var updatedObj *unstructured.Unstructured
+	if crd.Spec.Scope == "Namespaced" {
+		// For namespaced resources, namespace is required
+		if namespace == "" || namespace == "-" {
+			return nil, fmt.Errorf("namespace is required for namespaced CRD %s", crdName)
+		}
+		object.SetNamespace(namespace)
+		updatedObj, err = s.dynamicClient.Resource(gvr).Namespace(namespace).Update(ctx, object, metav1.UpdateOptions{})
+	} else {
+		// For cluster-scoped resources
+		if namespace != "" && namespace != "-" {
+			return nil, fmt.Errorf("cluster-scoped CRD %s does not use namespaces", crdName)
+		}
+		updatedObj, err = s.dynamicClient.Resource(gvr).Update(ctx, object, metav1.UpdateOptions{})
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to update object %s for CRD %s: %w", objectName, crdName, err)
+	}
+
+	return updatedObj, nil
+}
+
+// DeleteCRDObject deletes an instance of a CRD object
+func (s *Service) DeleteCRDObject(ctx context.Context, crdName, namespace, objectName string) error {
+	// First, get the CRD to extract necessary information
+	crd, err := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, crdName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get CRD %s: %w", crdName, err)
+	}
+
+	// Find the served version
+	var version string
+	for _, v := range crd.Spec.Versions {
+		if v.Served {
+			version = v.Name
+			break
+		}
+	}
+	if version == "" && len(crd.Spec.Versions) > 0 {
+		version = crd.Spec.Versions[0].Name
+	}
+
+	// Create GroupVersionResource
+	gvr := schema.GroupVersionResource{
+		Group:    crd.Spec.Group,
+		Version:  version,
+		Resource: crd.Spec.Names.Plural,
+	}
+
+	// Delete object using dynamic client
+	if crd.Spec.Scope == "Namespaced" {
+		// For namespaced resources, namespace is required
+		if namespace == "" || namespace == "-" {
+			return fmt.Errorf("namespace is required for namespaced CRD %s", crdName)
+		}
+		err = s.dynamicClient.Resource(gvr).Namespace(namespace).Delete(ctx, objectName, metav1.DeleteOptions{})
+	} else {
+		// For cluster-scoped resources
+		if namespace != "" && namespace != "-" {
+			return fmt.Errorf("cluster-scoped CRD %s does not use namespaces", crdName)
+		}
+		err = s.dynamicClient.Resource(gvr).Delete(ctx, objectName, metav1.DeleteOptions{})
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed to delete object %s for CRD %s: %w", objectName, crdName, err)
+	}
+
+	return nil
+}

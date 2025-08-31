@@ -33,6 +33,9 @@ type KubernetesService interface {
 	ListCRDObjects(ctx context.Context, crdName, namespace string) ([]CRDObject, error)
 	GetCRDObjectDetail(ctx context.Context, crdName, objectName, namespace string) (*unstructured.Unstructured, error)
 	GetPodDetail(ctx context.Context, namespace, name string) (*corev1.Pod, error)
+	CreateCRDObject(ctx context.Context, crdName, namespace string, object *unstructured.Unstructured) (*unstructured.Unstructured, error)
+	UpdateCRDObject(ctx context.Context, crdName, namespace, objectName string, object *unstructured.Unstructured) (*unstructured.Unstructured, error)
+	DeleteCRDObject(ctx context.Context, crdName, namespace, objectName string) error
 	GetClusterInfo(ctx context.Context, opts interface{}) (ClusterInfo, error)
 	GetDeploymentDetail(ctx context.Context, namespace, name string) (*appsv1.Deployment, error)
 	GetServiceDetail(ctx context.Context, namespace, name string) (*corev1.Service, error)
@@ -53,74 +56,74 @@ type KubernetesService interface {
 	DeletePod(ctx context.Context, namespace, name string) error
 	ApplyPod(ctx context.Context, pod *corev1.Pod) (*corev1.Pod, error)
 	UpdatePod(ctx context.Context, namespace, name string, pod *corev1.Pod) (*corev1.Pod, error)
-	
+
 	// Deployment management methods
 	DeleteDeployment(ctx context.Context, namespace, name string) error
 	ApplyDeployment(ctx context.Context, deployment *appsv1.Deployment) (*appsv1.Deployment, error)
 	UpdateDeployment(ctx context.Context, namespace, name string, deployment *appsv1.Deployment) (*appsv1.Deployment, error)
-	
+
 	// Service management methods
 	DeleteService(ctx context.Context, namespace, name string) error
 	ApplyService(ctx context.Context, service *corev1.Service) (*corev1.Service, error)
 	UpdateService(ctx context.Context, namespace, name string, service *corev1.Service) (*corev1.Service, error)
-	
+
 	// Ingress management methods
 	DeleteIngress(ctx context.Context, namespace, name string) error
 	ApplyIngress(ctx context.Context, ingress *networkingv1.Ingress) (*networkingv1.Ingress, error)
 	UpdateIngress(ctx context.Context, namespace, name string, ingress *networkingv1.Ingress) (*networkingv1.Ingress, error)
-	
+
 	// PVC management methods
 	DeletePVC(ctx context.Context, namespace, name string) error
 	ApplyPVC(ctx context.Context, pvc *corev1.PersistentVolumeClaim) (*corev1.PersistentVolumeClaim, error)
 	UpdatePVC(ctx context.Context, namespace, name string, pvc *corev1.PersistentVolumeClaim) (*corev1.PersistentVolumeClaim, error)
-	
+
 	// PV management methods
 	DeletePV(ctx context.Context, name string) error
 	ApplyPV(ctx context.Context, pv *corev1.PersistentVolume) (*corev1.PersistentVolume, error)
 	UpdatePV(ctx context.Context, name string, pv *corev1.PersistentVolume) (*corev1.PersistentVolume, error)
-	
+
 	// Secret management methods
 	DeleteSecret(ctx context.Context, namespace, name string) error
 	ApplySecret(ctx context.Context, secret *corev1.Secret) (*corev1.Secret, error)
 	UpdateSecret(ctx context.Context, namespace, name string, secret *corev1.Secret) (*corev1.Secret, error)
-	
+
 	// ConfigMap management methods
 	DeleteConfigMap(ctx context.Context, namespace, name string) error
 	ApplyConfigMap(ctx context.Context, configmap *corev1.ConfigMap) (*corev1.ConfigMap, error)
 	UpdateConfigMap(ctx context.Context, namespace, name string, configmap *corev1.ConfigMap) (*corev1.ConfigMap, error)
-	
+
 	// Namespace management methods
 	DeleteNamespace(ctx context.Context, name string) error
 	ApplyNamespace(ctx context.Context, namespace *corev1.Namespace) (*corev1.Namespace, error)
 	UpdateNamespace(ctx context.Context, name string, namespace *corev1.Namespace) (*corev1.Namespace, error)
-	
+
 	// DaemonSet management methods
 	DeleteDaemonSet(ctx context.Context, namespace, name string) error
 	ApplyDaemonSet(ctx context.Context, daemonset *appsv1.DaemonSet) (*appsv1.DaemonSet, error)
 	UpdateDaemonSet(ctx context.Context, namespace, name string, daemonset *appsv1.DaemonSet) (*appsv1.DaemonSet, error)
-	
+
 	// StatefulSet management methods
 	DeleteStatefulSet(ctx context.Context, namespace, name string) error
 	ApplyStatefulSet(ctx context.Context, statefulset *appsv1.StatefulSet) (*appsv1.StatefulSet, error)
 	UpdateStatefulSet(ctx context.Context, namespace, name string, statefulset *appsv1.StatefulSet) (*appsv1.StatefulSet, error)
-	
+
 	// Job management methods
 	DeleteJob(ctx context.Context, namespace, name string) error
 	ApplyJob(ctx context.Context, job *batchv1.Job) (*batchv1.Job, error)
 	UpdateJob(ctx context.Context, namespace, name string, job *batchv1.Job) (*batchv1.Job, error)
-	
+
 	// CronJob management methods
 	DeleteCronJob(ctx context.Context, namespace, name string) error
 	ApplyCronJob(ctx context.Context, cronjob *batchv1.CronJob) (*batchv1.CronJob, error)
 	UpdateCronJob(ctx context.Context, namespace, name string, cronjob *batchv1.CronJob) (*batchv1.CronJob, error)
-	
+
 	// IngressClass methods
 	ListIngressClasses(ctx context.Context, opts interface{}) ([]IngressClassInfo, error)
 	GetIngressClassDetail(ctx context.Context, name string) (*networkingv1.IngressClass, error)
 	DeleteIngressClass(ctx context.Context, name string) error
 	ApplyIngressClass(ctx context.Context, ingressClass *networkingv1.IngressClass) (*networkingv1.IngressClass, error)
 	UpdateIngressClass(ctx context.Context, name string, ingressClass *networkingv1.IngressClass) (*networkingv1.IngressClass, error)
-	
+
 	// NetworkPolicy methods
 	ListNetworkPolicies(ctx context.Context, opts interface{}) ([]NetworkPolicyInfo, error)
 	GetNetworkPolicyDetail(ctx context.Context, namespace, name string) (*networkingv1.NetworkPolicy, error)

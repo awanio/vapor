@@ -38,3 +38,122 @@ get:
             $ref: ../components/schemas/ErrorResponse.yaml
     '503':
       $ref: ../components/responses/KubernetesNotInstalledError.yaml
+post:
+  summary: Create a CRD object instance
+  description: |
+    Create a new instance of a Custom Resource Definition.
+    
+    Supports both JSON and YAML request formats based on the Content-Type header:
+    - `application/json` - JSON format
+    - `application/yaml`, `text/yaml` - YAML format
+    
+    The namespace can be specified either:
+    - As a query parameter for namespaced CRDs
+    - Omitted for cluster-scoped CRDs
+    
+    The API will automatically set the appropriate apiVersion and kind if not provided.
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      description: CRD name (e.g., mycrds.example.com)
+      schema:
+        type: string
+    - name: namespace
+      in: query
+      required: false
+      description: |
+        Namespace for the CRD instance. Required for namespaced CRDs, must be omitted for cluster-scoped CRDs.
+      schema:
+        type: string
+  requestBody:
+    required: true
+    description: CRD object specification in JSON or YAML format
+    content:
+      application/json:
+        schema:
+          type: object
+          description: Kubernetes unstructured object
+          additionalProperties: true
+        example:
+          apiVersion: example.com/v1
+          kind: MyCRD
+          metadata:
+            name: my-instance
+          spec:
+            field1: value1
+            field2: value2
+      application/yaml:
+        schema:
+          type: string
+          description: Kubernetes object in YAML format
+        example: |
+          apiVersion: example.com/v1
+          kind: MyCRD
+          metadata:
+            name: my-instance
+          spec:
+            field1: value1
+            field2: value2
+      text/yaml:
+        schema:
+          type: string
+          description: Kubernetes object in YAML format
+  responses:
+    '201':
+      description: CRD object created successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+              data:
+                type: object
+                properties:
+                  object:
+                    type: object
+                    description: The created CRD object
+                    additionalProperties: true
+        application/yaml:
+          schema:
+            type: string
+            description: The created CRD object in YAML format
+        text/yaml:
+          schema:
+            type: string
+            description: The created CRD object in YAML format
+    '400':
+      description: Bad request - Invalid JSON/YAML format or missing required fields
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+        application/yaml:
+          schema:
+            $ref: ../components/schemas/ErrorResponseYAML.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: CRD not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      description: Internal server error - Failed to create CRD object
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+        application/yaml:
+          schema:
+            $ref: ../components/schemas/ErrorResponseYAML.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

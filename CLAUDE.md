@@ -103,6 +103,10 @@ type RuntimeClient interface {
 }
 ```
 
+### Code Verification
+•  Use go fmt for code formatting
+•  use go vet for static analysis
+
 ## Development Environment
 
 ### Build Commands
