@@ -88,7 +88,7 @@ export class NamespaceDropdown extends LitElement {
 
     .search-input {
       width: 100%;
-      padding: 8px 12px;
+      padding: 4px 0 4px 4px;
       background: var(--input-bg, #1a1d23);
       color: var(--input-color, #e0e0e0);
       border: 1px solid var(--input-border, #3a3d4a);
