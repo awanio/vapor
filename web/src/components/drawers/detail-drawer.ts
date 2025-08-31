@@ -23,7 +23,7 @@ export class DetailDrawer extends LitElement {
       background: var(--vscode-editor-background, var(--vscode-bg-light));
       border-left: 0.5px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
-      z-index: 1001;
+      z-index: 2000;
       display: flex;
       flex-direction: column;
       animation: slideIn 0.3s ease-out;

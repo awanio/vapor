@@ -57,6 +57,7 @@ export class CRDInstancesDrawer extends LitElement {
       z-index: 1000;
       display: flex;
       flex-direction: column;
+      overflow: visible;
     }
 
     :host([show]) {
@@ -130,7 +131,20 @@ export class CRDInstancesDrawer extends LitElement {
     .content {
       flex: 1;
       overflow-y: auto;
+      overflow-x: visible;
       padding: 1rem;
+      position: relative;
+    }
+    
+    /* Fix for action dropdown visibility */
+    .table-wrapper {
+      position: relative;
+      min-height: 100px;
+    }
+    
+    /* Ensure dropdowns from resource-table are visible */
+    resource-table {
+      position: static !important;
     }
 
     .stats {
@@ -318,7 +332,7 @@ export class CRDInstancesDrawer extends LitElement {
     }
     
     columns.push(
-      { key: 'status', label: 'Status', type: 'custom' },
+      { key: 'status', label: 'Status' },
       { key: 'age', label: 'Age' }
     );
     
@@ -420,8 +434,30 @@ export class CRDInstancesDrawer extends LitElement {
     this.dispatchEvent(new CustomEvent('close'));
   }
 
+  private handleKeyDown = (event: KeyboardEvent) => {
+    // Close drawer on Escape key press when drawer is shown
+    if (event.key === 'Escape' && this.show) {
+      // Check if the detail drawer is open first
+      if (this.showInstanceDetails) {
+        // Close the detail drawer instead of the main drawer
+        this.handleInstanceDetailsClose();
+      } else {
+        // Close the main drawer
+        this.handleClose();
+      }
+    }
+  };
+
   override connectedCallback() {
     super.connectedCallback();
+    // Add keyboard event listener for Escape key
+    document.addEventListener('keydown', this.handleKeyDown);
+  }
+
+  override disconnectedCallback() {
+    super.disconnectedCallback();
+    // Clean up keyboard event listener
+    document.removeEventListener('keydown', this.handleKeyDown);
   }
 
   override updated(changedProperties: Map<string, any>) {
@@ -534,35 +570,36 @@ export class CRDInstancesDrawer extends LitElement {
             icon="📦"
           ></empty-state>
         ` : html`
-          <resource-table
-            .columns="${this.getColumns()}"
-            .data="${filteredInstances}"
-            .getActions="${(item: CRDInstance) => this.getActions(item)}"
-            .customRenderers="${{
-              status: (value: string) => {
-                const statusClass = value?.toLowerCase() || 'unknown';
-                return html`
-                  <span class="status-badge ${statusClass}">
-                    ${value || 'Unknown'}
-                  </span>
-                `;
-              }
-            }}"
-            @cell-click="${this.handleCellClick}"
-            @action="${this.handleAction}"
-          ></resource-table>
+          <div class="table-wrapper">
+            <resource-table
+              .columns=${this.getColumns()}
+              .data=${filteredInstances}
+              .getActions=${(item: CRDInstance) => this.getActions(item)}
+              .customRenderers=${{                status: (value: string) => {
+                  const statusClass = value?.toLowerCase() || 'unknown';
+                  return html`
+                    <span class="status-badge ${statusClass}">
+                      ${value || 'Unknown'}
+                    </span>
+                  `;
+                }
+              }}
+              @cell-click=${this.handleCellClick}
+              @action=${this.handleAction}
+            ></resource-table>
+          </div>
         `}
       </div>
 
       <detail-drawer
-        .show="${this.showInstanceDetails}"
-        title="${this.selectedInstance?.name || ''} Details"
-        @close="${this.handleInstanceDetailsClose}"
+        .show=${this.showInstanceDetails}
+        .title=${`${this.selectedInstance?.name || ''} Details`}
+        @close=${this.handleInstanceDetailsClose}
       >
         ${this.loadingDetails ? html`
           <loading-state message="Loading instance details..."></loading-state>
         ` : this.instanceDetailsData ? html`
-          <resource-detail-view .resource="${this.instanceDetailsData}"></resource-detail-view>
+          <resource-detail-view .resource=${this.instanceDetailsData}></resource-detail-view>
         ` : ''}
       </detail-drawer>
     `;

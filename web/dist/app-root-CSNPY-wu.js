@@ -2,7 +2,7 @@ var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 var _a;
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-CHw1F9Yk.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-DGK59e_o.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -17385,7 +17385,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-CHw1F9Yk.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-DGK59e_o.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17430,7 +17430,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-CHw1F9Yk.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-DGK59e_o.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17495,7 +17495,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-CHw1F9Yk.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-DGK59e_o.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17605,7 +17605,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-CHw1F9Yk.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-DGK59e_o.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -35047,44 +35047,44 @@ class KubernetesApi {
   }
   // Workloads
   static async getPods(namespace) {
-    const params = namespace && namespace !== "all" ? { namespace } : {};
-    const response = await Api.get("/kubernetes/pods", params);
+    const url = namespace && namespace !== "all" ? `/kubernetes/pods/${namespace}` : "/kubernetes/pods";
+    const response = await Api.get(url);
     return response.pods || [];
   }
   static async getDeployments(namespace) {
-    const params = namespace && namespace !== "all" ? { namespace } : {};
-    const response = await Api.get("/kubernetes/deployments", params);
+    const url = namespace && namespace !== "all" ? `/kubernetes/deployments/${namespace}` : "/kubernetes/deployments";
+    const response = await Api.get(url);
     return response.deployments || [];
   }
   static async getStatefulSets(namespace) {
-    const params = namespace && namespace !== "all" ? { namespace } : {};
-    const response = await Api.get("/kubernetes/statefulsets", params);
+    const url = namespace && namespace !== "all" ? `/kubernetes/statefulsets/${namespace}` : "/kubernetes/statefulsets";
+    const response = await Api.get(url);
     return response.statefulsets || [];
   }
   static async getDaemonSets(namespace) {
-    const params = namespace && namespace !== "all" ? { namespace } : {};
-    const response = await Api.get("/kubernetes/daemonsets", params);
+    const url = namespace && namespace !== "all" ? `/kubernetes/daemonsets/${namespace}` : "/kubernetes/daemonsets";
+    const response = await Api.get(url);
     return response.daemonsets || [];
   }
   static async getJobs(namespace) {
-    const params = namespace && namespace !== "all" ? { namespace } : {};
-    const response = await Api.get("/kubernetes/jobs", params);
+    const url = namespace && namespace !== "all" ? `/kubernetes/jobs/${namespace}` : "/kubernetes/jobs";
+    const response = await Api.get(url);
     return response.jobs || [];
   }
   static async getCronJobs(namespace) {
-    const params = namespace && namespace !== "all" ? { namespace } : {};
-    const response = await Api.get("/kubernetes/cronjobs", params);
+    const url = namespace && namespace !== "all" ? `/kubernetes/cronjobs/${namespace}` : "/kubernetes/cronjobs";
+    const response = await Api.get(url);
     return response.cronjobs || [];
   }
   // Networks
   static async getServices(namespace) {
-    const params = namespace && namespace !== "all" ? { namespace } : {};
-    const response = await Api.get("/kubernetes/services", params);
+    const url = namespace && namespace !== "all" ? `/kubernetes/services/${namespace}` : "/kubernetes/services";
+    const response = await Api.get(url);
     return response.services || [];
   }
   static async getIngresses(namespace) {
-    const params = namespace && namespace !== "all" ? { namespace } : {};
-    const response = await Api.get("/kubernetes/ingresses", params);
+    const url = namespace && namespace !== "all" ? `/kubernetes/ingresses/${namespace}` : "/kubernetes/ingresses";
+    const response = await Api.get(url);
     return response.ingresses || [];
   }
   static async getIngressClasses() {
@@ -35092,8 +35092,8 @@ class KubernetesApi {
     return response.ingressClasses || [];
   }
   static async getNetworkPolicies(namespace) {
-    const params = namespace && namespace !== "all" ? { namespace } : {};
-    const response = await Api.get("/kubernetes/networkpolicies", params);
+    const url = namespace && namespace !== "all" ? `/kubernetes/networkpolicies/${namespace}` : "/kubernetes/networkpolicies";
+    const response = await Api.get(url);
     return response.networkPolicies || [];
   }
   // CRDs
@@ -35107,19 +35107,19 @@ class KubernetesApi {
     return response.pvs || [];
   }
   static async getPersistentVolumeClaims(namespace) {
-    const params = namespace && namespace !== "all" ? { namespace } : {};
-    const response = await Api.get("/kubernetes/persistentvolumeclaims", params);
+    const url = namespace && namespace !== "all" ? `/kubernetes/persistentvolumeclaims/${namespace}` : "/kubernetes/persistentvolumeclaims";
+    const response = await Api.get(url);
     return response.pvcs || [];
   }
   // Configurations
   static async getConfigMaps(namespace) {
-    const params = namespace && namespace !== "all" ? { namespace } : {};
-    const response = await Api.get("/kubernetes/configmaps", params);
+    const url = namespace && namespace !== "all" ? `/kubernetes/configmaps/${namespace}` : "/kubernetes/configmaps";
+    const response = await Api.get(url);
     return response.configmaps || [];
   }
   static async getSecrets(namespace) {
-    const params = namespace && namespace !== "all" ? { namespace } : {};
-    const response = await Api.get("/kubernetes/secrets", params);
+    const url = namespace && namespace !== "all" ? `/kubernetes/secrets/${namespace}` : "/kubernetes/secrets";
+    const response = await Api.get(url);
     return response.secrets || [];
   }
   // Nodes
@@ -35141,9 +35141,67 @@ class KubernetesApi {
   }
   // Helm
   static async getHelmReleases(namespace) {
-    const params = namespace && namespace !== "all" ? { namespace } : {};
-    const response = await Api.get("/kubernetes/helm/releases", params);
+    const url = namespace && namespace !== "all" ? `/kubernetes/helm/releases/${namespace}` : "/kubernetes/helm/releases";
+    const response = await Api.get(url);
     return response.items || [];
+  }
+  // Get raw resource in specified format (JSON or YAML)
+  static async getResourceRaw(kind, name, namespace, format = "json") {
+    const endpoint = this.getResourceEndpoint(kind, name, namespace);
+    const contentType = format === "yaml" ? "application/yaml" : "application/json";
+    const authHeaders = getAuthHeaders();
+    const url = getApiUrl(endpoint);
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Accept": contentType,
+        ...authHeaders
+      }
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch resource: ${response.statusText}`);
+    }
+    return response.text();
+  }
+  // Helper to get the correct endpoint for a resource
+  static getResourceEndpoint(kind, name, namespace) {
+    switch (kind.toLowerCase()) {
+      case "pod":
+        return `/kubernetes/pods/${namespace}/${name}`;
+      case "deployment":
+        return `/kubernetes/deployments/${namespace}/${name}`;
+      case "statefulset":
+        return `/kubernetes/statefulsets/${namespace}/${name}`;
+      case "daemonset":
+        return `/kubernetes/daemonsets/${namespace}/${name}`;
+      case "job":
+        return `/kubernetes/jobs/${namespace}/${name}`;
+      case "cronjob":
+        return `/kubernetes/cronjobs/${namespace}/${name}`;
+      case "service":
+        return `/kubernetes/services/${namespace}/${name}`;
+      case "ingress":
+        return `/kubernetes/ingresses/${namespace}/${name}`;
+      case "ingressclass":
+        return `/kubernetes/ingressclasses/${name}`;
+      case "networkpolicy":
+        return `/kubernetes/networkpolicies/${namespace}/${name}`;
+      case "crd":
+      case "customresourcedefinition":
+        return `/kubernetes/customresourcedefinitions/${name}`;
+      case "persistentvolumeclaim":
+      case "pvc":
+        return `/kubernetes/persistentvolumeclaims/${namespace}/${name}`;
+      case "persistentvolume":
+      case "pv":
+        return `/kubernetes/persistentvolumes/${name}`;
+      case "configmap":
+        return `/kubernetes/configmaps/${namespace}/${name}`;
+      case "secret":
+        return `/kubernetes/secrets/${namespace}/${name}`;
+      default:
+        throw new Error(`Unsupported resource kind: ${kind}`);
+    }
   }
   // Resource Details
   static async getResourceDetails(kind, name, namespace) {
@@ -35231,11 +35289,11 @@ class KubernetesApi {
     return response.crd || response;
   }
   static async getPVCDetails(namespace, name) {
-    const response = await Api.get(`/kubernetes/pvcs/${namespace}/${name}`);
+    const response = await Api.get(`/kubernetes/persistentvolumeclaims/${namespace}/${name}`);
     return response.pvc_detail || response;
   }
   static async getPVDetails(name) {
-    const response = await Api.get(`/kubernetes/pvs/${name}`);
+    const response = await Api.get(`/kubernetes/persistentvolumes/${name}`);
     return response.pv_detail || response;
   }
   static async getConfigMapDetails(namespace, name) {
@@ -35308,9 +35366,8 @@ class KubernetesApi {
     return Api.postResource("/kubernetes/resource", content, mimeType);
   }
   static async updateResource(kind, name, namespace, content, contentType = "yaml") {
-    const mimeType = contentType === "json" ? "application/json" : "application/yaml";
-    const endpoint = namespace ? `/kubernetes/resource/${kind}/${namespace}/${name}` : `/kubernetes/resource/${kind}/${name}`;
-    return Api.postResource(endpoint, content, mimeType);
+    const endpoint = this.getResourceEndpoint(kind, name, namespace);
+    return Api.put(endpoint, content);
   }
   // Pod Logs
   static async getPodLogs(name, namespace, container, follow = false, tailLines = 100) {
@@ -36073,6 +36130,34 @@ let ActionDropdown = class extends i$1 {
         this.isOpen = false;
       }
     };
+    this.toggleMenu = (event) => {
+      event.stopPropagation();
+      console.log("toggleMenu called, current isOpen:", this.isOpen);
+      console.log("actions:", this.actions);
+      if (!this.isOpen) {
+        const button = event.currentTarget;
+        const rect = button.getBoundingClientRect();
+        const top = rect.bottom + 4;
+        const left = rect.left - 100;
+        this.dropdownPosition = { top, left };
+        console.log("Dropdown position calculated:", { top, left });
+        console.log("Button rect:", rect);
+        console.log("Window dimensions:", { width: window.innerWidth, height: window.innerHeight });
+        setTimeout(() => {
+          var _a2;
+          const dropdown = (_a2 = this.shadowRoot) == null ? void 0 : _a2.querySelector(".action-dropdown.show");
+          if (dropdown) {
+            console.log("Dropdown element found:", dropdown);
+            console.log("Dropdown computed style:", window.getComputedStyle(dropdown));
+          } else {
+            console.log("Dropdown element NOT found in shadow DOM");
+          }
+        }, 0);
+      }
+      this.isOpen = !this.isOpen;
+      console.log("isOpen after toggle:", this.isOpen);
+      this.requestUpdate();
+    };
   }
   connectedCallback() {
     super.connectedCallback();
@@ -36086,28 +36171,6 @@ let ActionDropdown = class extends i$1 {
     window.removeEventListener("scroll", this.handleScroll, true);
     window.removeEventListener("resize", this.handleResize);
   }
-  toggleMenu(event) {
-    event.stopPropagation();
-    if (!this.isOpen) {
-      const button = event.currentTarget;
-      const rect = button.getBoundingClientRect();
-      const dropdownWidth = 160;
-      let left = rect.right - dropdownWidth;
-      if (left < 10) {
-        left = 10;
-      }
-      if (rect.right > window.innerWidth - 10) {
-        left = window.innerWidth - dropdownWidth - 10;
-      }
-      let top = rect.bottom + 4;
-      const dropdownHeight = this.actions.length * 40;
-      if (top + dropdownHeight > window.innerHeight - 10) {
-        top = rect.top - dropdownHeight - 4;
-      }
-      this.dropdownPosition = { top, left };
-    }
-    this.isOpen = !this.isOpen;
-  }
   handleAction(event, action) {
     event.stopPropagation();
     if (action.disabled) return;
@@ -36119,7 +36182,9 @@ let ActionDropdown = class extends i$1 {
     }));
   }
   render() {
-    const dropdownStyle = this.isOpen ? `top: ${this.dropdownPosition.top}px; left: ${this.dropdownPosition.left}px;` : "";
+    console.log("action-dropdown render, actions:", this.actions, "isOpen:", this.isOpen);
+    console.log("Dropdown position in render:", this.dropdownPosition);
+    const dropdownStyle = this.isOpen ? `top: ${this.dropdownPosition.top}px; left: ${this.dropdownPosition.left}px; display: block !important;` : "";
     return x`
       <button class="action-dots" @click=${this.toggleMenu}>⋮</button>
       <div 
@@ -36152,11 +36217,13 @@ ActionDropdown.styles = i$4`
       border: none;
       cursor: pointer;
       padding: 4px 8px;
-      color: var(--text-secondary);
+      color: var(--vscode-foreground, #cccccc);
       font-size: 18px;
       line-height: 1;
       transition: background-color 0.2s;
       border-radius: 4px;
+      position: relative;
+      z-index: 1;
     }
 
     .action-dots:hover {
@@ -36164,18 +36231,21 @@ ActionDropdown.styles = i$4`
     }
 
     .action-dropdown {
-      position: fixed;
+      position: fixed !important;
       background: var(--vscode-dropdown-background, var(--vscode-menu-background, var(--vscode-bg-light, #252526)));
-      border: 1px solid var(--vscode-dropdown-border, var(--vscode-menu-border, var(--border-color, #454545)));
+      border: 2px solid red !important; /* Temporary: make border visible for debugging */
       border-radius: 4px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
       min-width: 160px;
-      z-index: 10000;
+      z-index: 99999 !important;
       display: none;
+      pointer-events: auto !important;
     }
 
     .action-dropdown.show {
-      display: block;
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
     }
 
     .action-dropdown button {
@@ -36321,6 +36391,7 @@ let ResourceTable = class extends i$1 {
     this.emptyMessage = "No resources found";
     this.showActions = true;
     this.getActions = null;
+    this.customRenderers = {};
   }
   handleCellClick(_event, item, column) {
     if (column.type === "link") {
@@ -36339,7 +36410,12 @@ let ResourceTable = class extends i$1 {
     }));
   }
   renderCell(item, column) {
+    var _a2;
     const value = item[column.key];
+    const customRenderer = (_a2 = this.customRenderers) == null ? void 0 : _a2[column.key];
+    if (customRenderer) {
+      return customRenderer(value);
+    }
     switch (column.type) {
       case "status":
         return x`<status-badge status="${(value == null ? void 0 : value.toLowerCase()) || "unknown"}"></status-badge>`;
@@ -36383,9 +36459,9 @@ let ResourceTable = class extends i$1 {
               ${this.showActions ? x`
                 <td class="actions-cell">
                   <action-dropdown
-                    .actions="${this.getActions ? this.getActions(item) : defaultActions}"
-                    menuId="menu-${index2}"
-                    @action-click="${(e3) => this.handleActionClick(e3, item)}"
+                    .actions=${this.getActions ? this.getActions(item) : defaultActions}
+                    .menuId=${`menu-${index2}`}
+                    @action-click=${(e3) => this.handleActionClick(e3, item)}
                   ></action-dropdown>
                 </td>
               ` : ""}
@@ -36475,6 +36551,9 @@ __decorateClass$A([
 __decorateClass$A([
   n2({ type: Function })
 ], ResourceTable.prototype, "getActions", 2);
+__decorateClass$A([
+  n2({ type: Object })
+], ResourceTable.prototype, "customRenderers", 2);
 ResourceTable = __decorateClass$A([
   t$2("resource-table")
 ], ResourceTable);
@@ -36545,7 +36624,7 @@ DetailDrawer.styles = i$4`
       background: var(--vscode-editor-background, var(--vscode-bg-light));
       border-left: 0.5px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
-      z-index: 1001;
+      z-index: 2000;
       display: flex;
       flex-direction: column;
       animation: slideIn 0.3s ease-out;
@@ -45580,6 +45659,9 @@ let KubernetesWorkloads = class extends i$1 {
     this.logsError = "";
     this.logsPodName = "";
     this.logsNamespace = "";
+    this.resourceFormat = "yaml";
+    this.isEditMode = false;
+    this.editingResource = null;
     this.tabs = [
       { id: "pods", label: "Pods" },
       { id: "deployments", label: "Deployments" },
@@ -45702,8 +45784,37 @@ let KubernetesWorkloads = class extends i$1 {
       this.logsLoading = false;
     }
   }
-  editItem(item) {
-    console.log("Edit item:", item);
+  async editItem(item) {
+    var _a2;
+    this.editingResource = item;
+    this.isEditMode = true;
+    this.createDrawerTitle = `Edit ${this.getResourceType()}`;
+    this.resourceFormat = "yaml";
+    this.showCreateDrawer = true;
+    this.isCreating = true;
+    try {
+      const resourceType = this.getResourceType();
+      const resourceContent = await KubernetesApi.getResourceRaw(
+        resourceType,
+        item.name,
+        item.namespace,
+        "yaml"
+        // Always fetch as YAML initially
+      );
+      this.createResourceValue = resourceContent;
+      this.isCreating = false;
+    } catch (error) {
+      console.error("Failed to fetch resource for editing:", error);
+      this.isCreating = false;
+      this.showCreateDrawer = false;
+      const nc = (_a2 = this.shadowRoot) == null ? void 0 : _a2.querySelector("notification-container");
+      if (nc && typeof nc.addNotification === "function") {
+        nc.addNotification({
+          type: "error",
+          message: `Failed to fetch resource: ${error.message || "Unknown error"}`
+        });
+      }
+    }
   }
   deleteItem(item) {
     const resourceType = this.getResourceType();
@@ -45734,6 +45845,9 @@ let KubernetesWorkloads = class extends i$1 {
   }
   handleCreate() {
     var _a2;
+    this.isEditMode = false;
+    this.editingResource = null;
+    this.resourceFormat = "yaml";
     const ns = this.selectedNamespace === "All Namespaces" ? "default" : this.selectedNamespace;
     switch ((this.activeTab || "").toLowerCase()) {
       case "pods":
@@ -45873,18 +45987,37 @@ spec:
         content = resource.yaml;
       }
       this.isCreating = true;
-      await KubernetesApi.createResource(content, format);
+      if (this.isEditMode && this.editingResource) {
+        const resourceType = this.getResourceType();
+        await KubernetesApi.updateResource(
+          resourceType,
+          this.editingResource.name,
+          this.editingResource.namespace,
+          content,
+          format
+        );
+      } else {
+        await KubernetesApi.createResource(content, format);
+      }
       await this.fetchData();
       this.showCreateDrawer = false;
       this.createResourceValue = "";
+      this.isEditMode = false;
+      this.editingResource = null;
       const nc = (_a2 = this.shadowRoot) == null ? void 0 : _a2.querySelector("notification-container");
       if (nc && typeof nc.addNotification === "function") {
-        nc.addNotification({ type: "success", message: "Resource applied successfully" });
+        nc.addNotification({
+          type: "success",
+          message: this.isEditMode ? "Resource updated successfully" : "Resource created successfully"
+        });
       }
     } catch (err) {
       const nc = (_b = this.shadowRoot) == null ? void 0 : _b.querySelector("notification-container");
       if (nc && typeof nc.addNotification === "function") {
-        nc.addNotification({ type: "error", message: `Failed to apply resource: ${(err == null ? void 0 : err.message) || "Unknown error"}` });
+        nc.addNotification({
+          type: "error",
+          message: `Failed to ${this.isEditMode ? "update" : "create"} resource: ${(err == null ? void 0 : err.message) || "Unknown error"}`
+        });
       }
     } finally {
       this.isCreating = false;
@@ -46038,10 +46171,14 @@ spec:
           ?show="${this.showCreateDrawer}"
           .title="${this.createDrawerTitle}"
           .value="${this.createResourceValue}"
-          .submitLabel="Apply"
+          .submitLabel="${this.isEditMode ? "Update" : "Apply"}"
           .loading="${this.isCreating}"
+          .format="${this.resourceFormat}"
           @close="${() => {
       this.showCreateDrawer = false;
+      this.isEditMode = false;
+      this.editingResource = null;
+      this.resourceFormat = "yaml";
     }}"
           @create="${this.handleCreateResource}"
         ></create-resource-drawer>
@@ -46201,6 +46338,15 @@ __decorateClass$t([
 __decorateClass$t([
   r$1()
 ], KubernetesWorkloads.prototype, "logsNamespace", 2);
+__decorateClass$t([
+  r$1()
+], KubernetesWorkloads.prototype, "resourceFormat", 2);
+__decorateClass$t([
+  r$1()
+], KubernetesWorkloads.prototype, "isEditMode", 2);
+__decorateClass$t([
+  r$1()
+], KubernetesWorkloads.prototype, "editingResource", 2);
 KubernetesWorkloads = __decorateClass$t([
   t$2("kubernetes-workloads")
 ], KubernetesWorkloads);
@@ -46235,6 +46381,9 @@ let KubernetesNetworks = class extends i$1 {
     this.createResourceValue = "";
     this.createDrawerTitle = "Create Resource";
     this.isCreating = false;
+    this.resourceFormat = "yaml";
+    this.isEditMode = false;
+    this.editingResource = null;
     this.tabs = [
       { id: "services", label: "Services" },
       { id: "ingresses", label: "Ingresses" },
@@ -46363,8 +46512,38 @@ let KubernetesNetworks = class extends i$1 {
       this.loadingDetails = false;
     }
   }
-  editItem(item) {
-    console.log("Edit item:", item);
+  async editItem(item) {
+    var _a2;
+    this.editingResource = item;
+    this.isEditMode = true;
+    this.createDrawerTitle = `Edit ${this.getResourceType()}`;
+    this.resourceFormat = "yaml";
+    this.showCreateDrawer = true;
+    this.isCreating = true;
+    try {
+      const resourceType = this.getResourceType();
+      const namespace = "namespace" in item ? item.namespace : void 0;
+      const resourceContent = await KubernetesApi.getResourceRaw(
+        resourceType,
+        item.name,
+        namespace,
+        "yaml"
+        // Always fetch as YAML initially
+      );
+      this.createResourceValue = resourceContent;
+      this.isCreating = false;
+    } catch (error) {
+      console.error("Failed to fetch resource for editing:", error);
+      this.isCreating = false;
+      this.showCreateDrawer = false;
+      const nc = (_a2 = this.shadowRoot) == null ? void 0 : _a2.querySelector("notification-container");
+      if (nc && typeof nc.addNotification === "function") {
+        nc.addNotification({
+          type: "error",
+          message: `Failed to fetch resource: ${error.message || "Unknown error"}`
+        });
+      }
+    }
   }
   deleteItem(item) {
     const resourceType = this.getResourceType();
@@ -46395,6 +46574,9 @@ let KubernetesNetworks = class extends i$1 {
     this.itemToDelete = null;
   }
   handleCreate() {
+    this.isEditMode = false;
+    this.editingResource = null;
+    this.resourceFormat = "yaml";
     const ns = this.selectedNamespace === "All Namespaces" ? "default" : this.selectedNamespace;
     if (this.activeTab === "services") {
       this.createDrawerTitle = "Create Service";
@@ -46481,21 +46663,45 @@ spec:
     const { resource, format } = event.detail;
     let content = "";
     try {
-      content = format === "json" ? JSON.stringify(resource) : resource.yaml;
+      if (format === "json") {
+        content = JSON.stringify(resource);
+      } else {
+        content = resource.yaml;
+      }
       this.isCreating = true;
-      await KubernetesApi.createResource(content, format);
+      if (this.isEditMode && this.editingResource) {
+        const resourceType = this.getResourceType();
+        const namespace = "namespace" in this.editingResource ? this.editingResource.namespace : void 0;
+        await KubernetesApi.updateResource(
+          resourceType,
+          this.editingResource.name,
+          namespace,
+          content,
+          format
+        );
+      } else {
+        await KubernetesApi.createResource(content, format);
+      }
       await this.fetchData();
       this.showCreateDrawer = false;
       this.createResourceValue = "";
+      this.isEditMode = false;
+      this.editingResource = null;
       const nc = (_a2 = this.shadowRoot) == null ? void 0 : _a2.querySelector("notification-container");
       if (nc && typeof nc.addNotification === "function") {
-        const createdType = this.getResourceType();
-        nc.addNotification({ type: "success", message: `${createdType} created successfully` });
+        const resourceType = this.getResourceType();
+        nc.addNotification({
+          type: "success",
+          message: this.isEditMode ? `${resourceType} updated successfully` : `${resourceType} created successfully`
+        });
       }
     } catch (err) {
       const nc = (_b = this.shadowRoot) == null ? void 0 : _b.querySelector("notification-container");
       if (nc && typeof nc.addNotification === "function") {
-        nc.addNotification({ type: "error", message: `Failed to create resource: ${(err == null ? void 0 : err.message) || "Unknown error"}` });
+        nc.addNotification({
+          type: "error",
+          message: `Failed to ${this.isEditMode ? "update" : "create"} resource: ${(err == null ? void 0 : err.message) || "Unknown error"}`
+        });
       }
     } finally {
       this.isCreating = false;
@@ -46616,12 +46822,17 @@ spec:
 
         <create-resource-drawer
           .show="${this.showCreateDrawer}"
+          ?show="${this.showCreateDrawer}"
           .title="${this.createDrawerTitle}"
           .value="${this.createResourceValue}"
-          .submitLabel="Apply"
+          .submitLabel="${this.isEditMode ? "Update" : "Apply"}"
           .loading="${this.isCreating}"
+          .format="${this.resourceFormat}"
           @close="${() => {
       this.showCreateDrawer = false;
+      this.isEditMode = false;
+      this.editingResource = null;
+      this.resourceFormat = "yaml";
     }}"
           @create="${this.handleCreateResource}"
         ></create-resource-drawer>
@@ -46752,6 +46963,15 @@ __decorateClass$s([
 __decorateClass$s([
   r$1()
 ], KubernetesNetworks.prototype, "isCreating", 2);
+__decorateClass$s([
+  r$1()
+], KubernetesNetworks.prototype, "resourceFormat", 2);
+__decorateClass$s([
+  r$1()
+], KubernetesNetworks.prototype, "isEditMode", 2);
+__decorateClass$s([
+  r$1()
+], KubernetesNetworks.prototype, "editingResource", 2);
 KubernetesNetworks = __decorateClass$s([
   t$2("kubernetes-networks")
 ], KubernetesNetworks);
@@ -46782,6 +47002,13 @@ let KubernetesStorage = class extends i$1 {
     this.showDeleteModal = false;
     this.itemToDelete = null;
     this.isDeleting = false;
+    this.showCreateDrawer = false;
+    this.createResourceValue = "";
+    this.createDrawerTitle = "Create Resource";
+    this.isCreating = false;
+    this.resourceFormat = "yaml";
+    this.isEditMode = false;
+    this.editingResource = null;
     this.tabs = [
       { id: "pvs", label: "Persistent Volumes" },
       { id: "pvcs", label: "Persistent Volume Claims" }
@@ -46887,8 +47114,38 @@ let KubernetesStorage = class extends i$1 {
       this.loadingDetails = false;
     }
   }
-  editItem(item) {
-    console.log("Edit item:", item);
+  async editItem(item) {
+    var _a2;
+    this.editingResource = item;
+    this.isEditMode = true;
+    this.createDrawerTitle = `Edit ${this.getResourceType()}`;
+    this.resourceFormat = "yaml";
+    this.showCreateDrawer = true;
+    this.isCreating = true;
+    try {
+      const resourceType = this.getResourceType();
+      const namespace = "namespace" in item ? item.namespace : void 0;
+      const resourceContent = await KubernetesApi.getResourceRaw(
+        resourceType,
+        item.name,
+        namespace,
+        "yaml"
+        // Always fetch as YAML initially
+      );
+      this.createResourceValue = resourceContent;
+      this.isCreating = false;
+    } catch (error) {
+      console.error("Failed to fetch resource for editing:", error);
+      this.isCreating = false;
+      this.showCreateDrawer = false;
+      const nc = (_a2 = this.shadowRoot) == null ? void 0 : _a2.querySelector("notification-container");
+      if (nc && typeof nc.addNotification === "function") {
+        nc.addNotification({
+          type: "error",
+          message: `Failed to fetch resource: ${error.message || "Unknown error"}`
+        });
+      }
+    }
   }
   deleteItem(item) {
     const resourceType = this.getResourceType();
@@ -46920,7 +47177,90 @@ let KubernetesStorage = class extends i$1 {
     this.itemToDelete = null;
   }
   handleCreate() {
-    console.log("Create new resource");
+    this.isEditMode = false;
+    this.editingResource = null;
+    this.resourceFormat = "yaml";
+    const ns = this.selectedNamespace === "All Namespaces" ? "default" : this.selectedNamespace;
+    if (this.activeTab === "pvs") {
+      this.createDrawerTitle = "Create PersistentVolume";
+      this.createResourceValue = `apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: my-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: standard
+  hostPath:
+    path: /mnt/data`;
+    } else {
+      this.createDrawerTitle = "Create PersistentVolumeClaim";
+      this.createResourceValue = `apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-pvc
+  namespace: ${ns}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: standard`;
+    }
+    this.showCreateDrawer = true;
+  }
+  async handleCreateResource(event) {
+    var _a2, _b;
+    const { resource, format } = event.detail;
+    let content = "";
+    try {
+      if (format === "json") {
+        content = JSON.stringify(resource);
+      } else {
+        content = resource.yaml;
+      }
+      this.isCreating = true;
+      if (this.isEditMode && this.editingResource) {
+        const resourceType = this.getResourceType();
+        const namespace = "namespace" in this.editingResource ? this.editingResource.namespace : void 0;
+        await KubernetesApi.updateResource(
+          resourceType,
+          this.editingResource.name,
+          namespace,
+          content,
+          format
+        );
+      } else {
+        await KubernetesApi.createResource(content, format);
+      }
+      await this.fetchData();
+      this.showCreateDrawer = false;
+      this.createResourceValue = "";
+      this.isEditMode = false;
+      this.editingResource = null;
+      const nc = (_a2 = this.shadowRoot) == null ? void 0 : _a2.querySelector("notification-container");
+      if (nc && typeof nc.addNotification === "function") {
+        const resourceType = this.getResourceType();
+        nc.addNotification({
+          type: "success",
+          message: this.isEditMode ? `${resourceType} updated successfully` : `${resourceType} created successfully`
+        });
+      }
+    } catch (err) {
+      const nc = (_b = this.shadowRoot) == null ? void 0 : _b.querySelector("notification-container");
+      if (nc && typeof nc.addNotification === "function") {
+        nc.addNotification({
+          type: "error",
+          message: `Failed to ${this.isEditMode ? "update" : "create"} resource: ${(err == null ? void 0 : err.message) || "Unknown error"}`
+        });
+      }
+    } finally {
+      this.isCreating = false;
+    }
   }
   handleDetailsClose() {
     this.showDetails = false;
@@ -47035,6 +47375,25 @@ let KubernetesStorage = class extends i$1 {
           @confirm-delete="${this.handleConfirmDelete}"
           @cancel-delete="${this.handleCancelDelete}"
         ></delete-modal>
+
+        <create-resource-drawer
+          .show="${this.showCreateDrawer}"
+          ?show="${this.showCreateDrawer}"
+          .title="${this.createDrawerTitle}"
+          .value="${this.createResourceValue}"
+          .submitLabel="${this.isEditMode ? "Update" : "Apply"}"
+          .loading="${this.isCreating}"
+          .format="${this.resourceFormat}"
+          @close="${() => {
+      this.showCreateDrawer = false;
+      this.isEditMode = false;
+      this.editingResource = null;
+      this.resourceFormat = "yaml";
+    }}"
+          @create="${this.handleCreateResource}"
+        ></create-resource-drawer>
+
+        <notification-container></notification-container>
       </div>
     `;
   }
@@ -47181,6 +47540,27 @@ __decorateClass$r([
 __decorateClass$r([
   r$1()
 ], KubernetesStorage.prototype, "isDeleting", 2);
+__decorateClass$r([
+  r$1()
+], KubernetesStorage.prototype, "showCreateDrawer", 2);
+__decorateClass$r([
+  r$1()
+], KubernetesStorage.prototype, "createResourceValue", 2);
+__decorateClass$r([
+  r$1()
+], KubernetesStorage.prototype, "createDrawerTitle", 2);
+__decorateClass$r([
+  r$1()
+], KubernetesStorage.prototype, "isCreating", 2);
+__decorateClass$r([
+  r$1()
+], KubernetesStorage.prototype, "resourceFormat", 2);
+__decorateClass$r([
+  r$1()
+], KubernetesStorage.prototype, "isEditMode", 2);
+__decorateClass$r([
+  r$1()
+], KubernetesStorage.prototype, "editingResource", 2);
 KubernetesStorage = __decorateClass$r([
   t$2("kubernetes-storage")
 ], KubernetesStorage);
@@ -47211,6 +47591,13 @@ let KubernetesConfigurations = class extends i$1 {
     this.showDeleteModal = false;
     this.itemToDelete = null;
     this.isDeleting = false;
+    this.showCreateDrawer = false;
+    this.createResourceValue = "";
+    this.createDrawerTitle = "Create Resource";
+    this.isCreating = false;
+    this.resourceFormat = "yaml";
+    this.isEditMode = false;
+    this.editingResource = null;
     this.tabs = [
       { id: "configmaps", label: "ConfigMaps" },
       { id: "secrets", label: "Secrets" }
@@ -47316,8 +47703,37 @@ let KubernetesConfigurations = class extends i$1 {
       this.loadingDetails = false;
     }
   }
-  editItem(item) {
-    console.log("Edit item:", item);
+  async editItem(item) {
+    var _a2;
+    this.editingResource = item;
+    this.isEditMode = true;
+    this.createDrawerTitle = `Edit ${this.getResourceType()}`;
+    this.resourceFormat = "yaml";
+    this.showCreateDrawer = true;
+    this.isCreating = true;
+    try {
+      const resourceType = this.getResourceType();
+      const resourceContent = await KubernetesApi.getResourceRaw(
+        resourceType,
+        item.name,
+        item.namespace,
+        "yaml"
+        // Always fetch as YAML initially
+      );
+      this.createResourceValue = resourceContent;
+      this.isCreating = false;
+    } catch (error) {
+      console.error("Failed to fetch resource for editing:", error);
+      this.isCreating = false;
+      this.showCreateDrawer = false;
+      const nc = (_a2 = this.shadowRoot) == null ? void 0 : _a2.querySelector("notification-container");
+      if (nc && typeof nc.addNotification === "function") {
+        nc.addNotification({
+          type: "error",
+          message: `Failed to fetch resource: ${error.message || "Unknown error"}`
+        });
+      }
+    }
   }
   deleteItem(item) {
     const resourceType = this.getResourceType();
@@ -47347,7 +47763,92 @@ let KubernetesConfigurations = class extends i$1 {
     this.itemToDelete = null;
   }
   handleCreate() {
-    console.log("Create new resource");
+    this.isEditMode = false;
+    this.editingResource = null;
+    this.resourceFormat = "yaml";
+    const ns = this.selectedNamespace === "All Namespaces" ? "default" : this.selectedNamespace;
+    if (this.activeTab === "configmaps") {
+      this.createDrawerTitle = "Create ConfigMap";
+      this.createResourceValue = `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-config
+  namespace: ${ns}
+data:
+  config.yaml: |
+    server:
+      port: 8080
+      host: localhost
+    database:
+      host: db.example.com
+      port: 5432
+  app.properties: |
+    app.name=MyApp
+    app.version=1.0.0
+    debug=true`;
+    } else {
+      this.createDrawerTitle = "Create Secret";
+      this.createResourceValue = `apiVersion: v1
+kind: Secret
+metadata:
+  name: my-secret
+  namespace: ${ns}
+type: Opaque
+data:
+  # Note: Values must be base64 encoded
+  # Example: echo -n 'admin' | base64
+  username: YWRtaW4=
+  password: cGFzc3dvcmQ=`;
+    }
+    this.showCreateDrawer = true;
+  }
+  async handleCreateResource(event) {
+    var _a2, _b;
+    const { resource, format } = event.detail;
+    let content = "";
+    try {
+      if (format === "json") {
+        content = JSON.stringify(resource);
+      } else {
+        content = resource.yaml;
+      }
+      this.isCreating = true;
+      if (this.isEditMode && this.editingResource) {
+        const resourceType = this.getResourceType();
+        await KubernetesApi.updateResource(
+          resourceType,
+          this.editingResource.name,
+          this.editingResource.namespace,
+          content,
+          format
+        );
+      } else {
+        await KubernetesApi.createResource(content, format);
+      }
+      await this.fetchData();
+      this.showCreateDrawer = false;
+      this.createResourceValue = "";
+      this.isEditMode = false;
+      this.editingResource = null;
+      const nc = (_a2 = this.shadowRoot) == null ? void 0 : _a2.querySelector("notification-container");
+      if (nc && typeof nc.addNotification === "function") {
+        const resourceType = this.getResourceType();
+        nc.addNotification({
+          type: "success",
+          message: this.isEditMode ? `${resourceType} updated successfully` : `${resourceType} created successfully`
+        });
+      }
+    } catch (err) {
+      const nc = (_b = this.shadowRoot) == null ? void 0 : _b.querySelector("notification-container");
+      if (nc && typeof nc.addNotification === "function") {
+        nc.addNotification({
+          type: "error",
+          message: `Failed to ${this.isEditMode ? "update" : "create"} resource: ${(err == null ? void 0 : err.message) || "Unknown error"}`
+        });
+      }
+    } finally {
+      this.isCreating = false;
+    }
   }
   handleDetailsClose() {
     this.showDetails = false;
@@ -47461,6 +47962,25 @@ let KubernetesConfigurations = class extends i$1 {
           @confirm-delete="${this.handleConfirmDelete}"
           @cancel-delete="${this.handleCancelDelete}"
         ></delete-modal>
+
+        <create-resource-drawer
+          .show="${this.showCreateDrawer}"
+          ?show="${this.showCreateDrawer}"
+          .title="${this.createDrawerTitle}"
+          .value="${this.createResourceValue}"
+          .submitLabel="${this.isEditMode ? "Update" : "Apply"}"
+          .loading="${this.isCreating}"
+          .format="${this.resourceFormat}"
+          @close="${() => {
+      this.showCreateDrawer = false;
+      this.isEditMode = false;
+      this.editingResource = null;
+      this.resourceFormat = "yaml";
+    }}"
+          @create="${this.handleCreateResource}"
+        ></create-resource-drawer>
+
+        <notification-container></notification-container>
       </div>
     `;
   }
@@ -47647,6 +48167,27 @@ __decorateClass$q([
 __decorateClass$q([
   r$1()
 ], KubernetesConfigurations.prototype, "isDeleting", 2);
+__decorateClass$q([
+  r$1()
+], KubernetesConfigurations.prototype, "showCreateDrawer", 2);
+__decorateClass$q([
+  r$1()
+], KubernetesConfigurations.prototype, "createResourceValue", 2);
+__decorateClass$q([
+  r$1()
+], KubernetesConfigurations.prototype, "createDrawerTitle", 2);
+__decorateClass$q([
+  r$1()
+], KubernetesConfigurations.prototype, "isCreating", 2);
+__decorateClass$q([
+  r$1()
+], KubernetesConfigurations.prototype, "resourceFormat", 2);
+__decorateClass$q([
+  r$1()
+], KubernetesConfigurations.prototype, "isEditMode", 2);
+__decorateClass$q([
+  r$1()
+], KubernetesConfigurations.prototype, "editingResource", 2);
 KubernetesConfigurations = __decorateClass$q([
   t$2("kubernetes-configurations")
 ], KubernetesConfigurations);
@@ -48804,6 +49345,7 @@ let CRDInstancesDrawer = class extends i$1 {
     this.crdVersion = "";
     this.crdScope = "Namespaced";
     this.loading = false;
+    this.width = "80%";
     this.searchQuery = "";
     this.selectedNamespace = "All Namespaces";
     this.instances = [];
@@ -48812,6 +49354,15 @@ let CRDInstancesDrawer = class extends i$1 {
     this.instanceDetailsData = null;
     this.loadingDetails = false;
     this.error = null;
+    this.handleKeyDown = (event) => {
+      if (event.key === "Escape" && this.show) {
+        if (this.showInstanceDetails) {
+          this.handleInstanceDetailsClose();
+        } else {
+          this.handleClose();
+        }
+      }
+    };
   }
   async fetchInstances() {
     this.loading = true;
@@ -48908,7 +49459,7 @@ let CRDInstancesDrawer = class extends i$1 {
       columns.push({ key: "namespace", label: "Namespace" });
     }
     columns.push(
-      { key: "status", label: "Status", type: "custom" },
+      { key: "status", label: "Status" },
       { key: "age", label: "Age" }
     );
     return columns;
@@ -48991,6 +49542,11 @@ let CRDInstancesDrawer = class extends i$1 {
   }
   connectedCallback() {
     super.connectedCallback();
+    document.addEventListener("keydown", this.handleKeyDown);
+  }
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    document.removeEventListener("keydown", this.handleKeyDown);
   }
   updated(changedProperties) {
     super.updated(changedProperties);
@@ -48999,6 +49555,9 @@ let CRDInstancesDrawer = class extends i$1 {
       this.searchQuery = "";
       this.selectedNamespace = "All Namespaces";
       this.error = null;
+    }
+    if (changedProperties.has("width")) {
+      this.style.setProperty("--drawer-width", this.width);
     }
   }
   render() {
@@ -49091,35 +49650,37 @@ let CRDInstancesDrawer = class extends i$1 {
             icon="📦"
           ></empty-state>
         ` : x`
-          <resource-table
-            .columns="${this.getColumns()}"
-            .data="${filteredInstances}"
-            .getActions="${(item) => this.getActions(item)}"
-            .customRenderers="${{
+          <div class="table-wrapper">
+            <resource-table
+              .columns=${this.getColumns()}
+              .data=${filteredInstances}
+              .getActions=${(item) => this.getActions(item)}
+              .customRenderers=${{
       status: (value) => {
         const statusClass = (value == null ? void 0 : value.toLowerCase()) || "unknown";
         return x`
-                  <span class="status-badge ${statusClass}">
-                    ${value || "Unknown"}
-                  </span>
-                `;
+                    <span class="status-badge ${statusClass}">
+                      ${value || "Unknown"}
+                    </span>
+                  `;
       }
-    }}"
-            @cell-click="${this.handleCellClick}"
-            @action="${this.handleAction}"
-          ></resource-table>
+    }}
+              @cell-click=${this.handleCellClick}
+              @action=${this.handleAction}
+            ></resource-table>
+          </div>
         `}
       </div>
 
       <detail-drawer
-        .show="${this.showInstanceDetails}"
-        title="${((_a2 = this.selectedInstance) == null ? void 0 : _a2.name) || ""} Details"
-        @close="${this.handleInstanceDetailsClose}"
+        .show=${this.showInstanceDetails}
+        .title=${`${((_a2 = this.selectedInstance) == null ? void 0 : _a2.name) || ""} Details`}
+        @close=${this.handleInstanceDetailsClose}
       >
         ${this.loadingDetails ? x`
           <loading-state message="Loading instance details..."></loading-state>
         ` : this.instanceDetailsData ? x`
-          <resource-detail-view .resource="${this.instanceDetailsData}"></resource-detail-view>
+          <resource-detail-view .resource=${this.instanceDetailsData}></resource-detail-view>
         ` : ""}
       </detail-drawer>
     `;
@@ -49132,8 +49693,7 @@ CRDInstancesDrawer.styles = i$4`
       top: 0;
       right: 0;
       bottom: 0;
-      width: 60%;
-      max-width: 900px;
+      width: var(--drawer-width, 60%);
       background: var(--vscode-sideBar-background, #252526);
       border-left: 1px solid var(--vscode-widget-border, #303031);
       transform: translateX(100%);
@@ -49141,6 +49701,7 @@ CRDInstancesDrawer.styles = i$4`
       z-index: 1000;
       display: flex;
       flex-direction: column;
+      overflow: visible;
     }
 
     :host([show]) {
@@ -49214,7 +49775,20 @@ CRDInstancesDrawer.styles = i$4`
     .content {
       flex: 1;
       overflow-y: auto;
+      overflow-x: visible;
       padding: 1rem;
+      position: relative;
+    }
+    
+    /* Fix for action dropdown visibility */
+    .table-wrapper {
+      position: relative;
+      min-height: 100px;
+    }
+    
+    /* Ensure dropdowns from resource-table are visible */
+    resource-table {
+      position: static !important;
     }
 
     .stats {
@@ -49312,6 +49886,9 @@ __decorateClass$n([
   n2({ type: Boolean })
 ], CRDInstancesDrawer.prototype, "loading", 2);
 __decorateClass$n([
+  n2({ type: String })
+], CRDInstancesDrawer.prototype, "width", 2);
+__decorateClass$n([
   r$1()
 ], CRDInstancesDrawer.prototype, "searchQuery", 2);
 __decorateClass$n([
@@ -49398,7 +49975,7 @@ let KubernetesCRDs = class extends i$1 {
   }
   handleCellClick(event) {
     const item = event.detail.item;
-    this.viewDetails(item);
+    this.viewInstances(item);
   }
   handleAction(event) {
     const { action, item } = event.detail;

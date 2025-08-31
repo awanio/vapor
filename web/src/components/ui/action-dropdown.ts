@@ -15,6 +15,7 @@ export class ActionDropdown extends LitElement {
   @property({ type: String }) menuId: string = '';
   @state() private isOpen = false;
   @state() private dropdownPosition = { top: 0, left: 0 };
+  private dropdownElement: HTMLDivElement | null = null;
 
   static override styles = css`
     :host {
@@ -27,62 +28,17 @@ export class ActionDropdown extends LitElement {
       border: none;
       cursor: pointer;
       padding: 4px 8px;
-      color: var(--text-secondary);
+      color: var(--vscode-foreground, #cccccc);
       font-size: 18px;
       line-height: 1;
       transition: background-color 0.2s;
       border-radius: 4px;
+      position: relative;
+      z-index: 1;
     }
 
     .action-dots:hover {
       background-color: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.1)));
-    }
-
-    .action-dropdown {
-      position: fixed;
-      background: var(--vscode-dropdown-background, var(--vscode-menu-background, var(--vscode-bg-light, #252526)));
-      border: 1px solid var(--vscode-dropdown-border, var(--vscode-menu-border, var(--border-color, #454545)));
-      border-radius: 4px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-      min-width: 160px;
-      z-index: 10000;
-      display: none;
-    }
-
-    .action-dropdown.show {
-      display: block;
-    }
-
-    .action-dropdown button {
-      display: block;
-      width: 100%;
-      text-align: left;
-      padding: 8px 16px;
-      border: none;
-      background: none;
-      color: var(--vscode-menu-foreground, var(--vscode-foreground, var(--vscode-text, #cccccc)));
-      cursor: pointer;
-      font-size: 13px;
-      transition: background-color 0.2s;
-    }
-
-    .action-dropdown button:hover:not(:disabled) {
-      background-color: var(--vscode-list-hoverBackground, var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.08)));
-      color: var(--vscode-list-hoverForeground, var(--vscode-foreground));
-    }
-
-    .action-dropdown button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .action-dropdown button.danger {
-      color: var(--vscode-error);
-    }
-
-    .icon {
-      margin-right: 8px;
-      font-size: 14px;
     }
   `;
 
@@ -98,100 +54,143 @@ export class ActionDropdown extends LitElement {
     document.removeEventListener('click', this.handleOutsideClick);
     window.removeEventListener('scroll', this.handleScroll, true);
     window.removeEventListener('resize', this.handleResize);
+    this.removeDropdown();
   }
 
   private handleOutsideClick = (event: MouseEvent) => {
-    if (!this.contains(event.target as Node)) {
-      this.isOpen = false;
+    const target = event.target as Node;
+    if (!this.contains(target) && !this.dropdownElement?.contains(target)) {
+      this.closeDropdown();
     }
   };
 
   private handleScroll = () => {
     // Close dropdown on scroll to prevent position mismatch
     if (this.isOpen) {
-      this.isOpen = false;
+      this.closeDropdown();
     }
   };
 
   private handleResize = () => {
     // Close dropdown on resize to prevent position mismatch
     if (this.isOpen) {
-      this.isOpen = false;
+      this.closeDropdown();
     }
   };
 
-  private toggleMenu(event: MouseEvent) {
+  private createDropdown() {
+    if (this.dropdownElement) return;
+
+    this.dropdownElement = document.createElement('div');
+    this.dropdownElement.className = 'action-dropdown-portal';
+    this.dropdownElement.style.cssText = `
+      position: fixed;
+      top: ${this.dropdownPosition.top}px;
+      left: ${this.dropdownPosition.left}px;
+      background: #252526;
+      border: 1px solid #464647;
+      border-radius: 4px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      min-width: 160px;
+      z-index: 99999;
+      display: block;
+      overflow: hidden;
+    `;
+
+    this.dropdownElement.innerHTML = this.actions.map(action => `
+      <button 
+        data-action="${action.action}"
+        class="${action.danger ? 'danger' : ''}"
+        ${action.disabled ? 'disabled' : ''}
+        style="
+          display: block;
+          width: 100%;
+          text-align: left;
+          padding: 8px 16px;
+          border: none;
+          background: none;
+          color: ${action.danger ? '#f14c4c' : '#cccccc'};
+          cursor: ${action.disabled ? 'not-allowed' : 'pointer'};
+          font-size: 13px;
+          opacity: ${action.disabled ? '0.5' : '1'};
+        "
+      >
+        ${action.icon ? `<span style="margin-right: 8px;">${action.icon}</span>` : ''}
+        ${action.label}
+      </button>
+    `).join('');
+
+    // Add event listeners to buttons
+    this.dropdownElement.querySelectorAll('button').forEach(button => {
+      button.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const actionName = button.getAttribute('data-action');
+        if (actionName && !button.hasAttribute('disabled')) {
+          this.handleActionClick(actionName);
+        }
+      });
+      button.addEventListener('mouseenter', () => {
+        if (!button.hasAttribute('disabled')) {
+          button.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+        }
+      });
+      button.addEventListener('mouseleave', () => {
+        button.style.backgroundColor = 'transparent';
+      });
+    });
+
+    document.body.appendChild(this.dropdownElement);
+  }
+
+  private removeDropdown() {
+    if (this.dropdownElement) {
+      this.dropdownElement.remove();
+      this.dropdownElement = null;
+    }
+  }
+
+  private closeDropdown() {
+    this.isOpen = false;
+    this.removeDropdown();
+  }
+
+  private handleActionClick(action: string) {
+    this.closeDropdown();
+    this.dispatchEvent(new CustomEvent('action-click', {
+      detail: { action },
+      bubbles: true,
+      composed: true
+    }));
+  }
+
+  private toggleMenu = (event: MouseEvent) => {
     event.stopPropagation();
     
     if (!this.isOpen) {
       // Calculate position for fixed dropdown
       const button = event.currentTarget as HTMLElement;
       const rect = button.getBoundingClientRect();
-      const dropdownWidth = 160; // min-width of dropdown
       
-      // Calculate left position to align with right edge of button
-      let left = rect.right - dropdownWidth;
-      
-      // Ensure dropdown doesn't go off-screen on the left
-      if (left < 10) {
-        left = 10;
-      }
-      
-      // Ensure dropdown doesn't go off-screen on the right
-      if (rect.right > window.innerWidth - 10) {
-        left = window.innerWidth - dropdownWidth - 10;
-      }
-      
-      // Position dropdown below the button
-      let top = rect.bottom + 4;
-      
-      // If dropdown would go off-screen at bottom, position it above the button
-      const dropdownHeight = this.actions.length * 40; // Approximate height
-      if (top + dropdownHeight > window.innerHeight - 10) {
-        top = rect.top - dropdownHeight - 4;
-      }
+      // Simple positioning - just put it below and to the left of the button
+      const top = rect.bottom + 4;
+      const left = rect.left - 100; // Position to the left of the button
       
       this.dropdownPosition = { top, left };
+      
+      this.isOpen = true;
+      // Create dropdown in light DOM
+      setTimeout(() => this.createDropdown(), 0);
+    } else {
+      this.closeDropdown();
     }
-    
-    this.isOpen = !this.isOpen;
   }
 
-  private handleAction(event: MouseEvent, action: ActionItem) {
-    event.stopPropagation();
-    if (action.disabled) return;
-    
-    this.isOpen = false;
-    this.dispatchEvent(new CustomEvent('action-click', {
-      detail: { action: action.action },
-      bubbles: true,
-      composed: true
-    }));
-  }
+  // This method is now replaced by handleActionClick
 
   override render() {
-    const dropdownStyle = this.isOpen 
-      ? `top: ${this.dropdownPosition.top}px; left: ${this.dropdownPosition.left}px;` 
-      : '';
-    
+    // Dropdown is now rendered in light DOM via createDropdown()
     return html`
       <button class="action-dots" @click=${this.toggleMenu}>⋮</button>
-      <div 
-        class="action-dropdown ${this.isOpen ? 'show' : ''}" 
-        id="${this.menuId}"
-        style="${dropdownStyle}"
-      >
-        ${this.actions.map(action => html`
-          <button 
-            class="${action.danger ? 'danger' : ''}"
-            ?disabled=${action.disabled}
-            @click=${(e: MouseEvent) => this.handleAction(e, action)}
-          >
-            ${action.icon ? html`<span class="icon">${action.icon}</span>` : ''}
-            ${action.label}
-          </button>
-        `)}
-      </div>
     `;
   }
 }

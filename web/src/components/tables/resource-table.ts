@@ -23,6 +23,7 @@ export class ResourceTable extends LitElement {
   @property({ type: String }) emptyMessage = 'No resources found';
   @property({ type: Boolean }) showActions = true;
   @property({ type: Function }) getActions: ((item: ResourceData) => ActionItem[]) | null = null;
+  @property({ type: Object }) customRenderers: { [key: string]: (value: any) => any } = {};
 
   static override styles = css`
     .table {
@@ -109,6 +110,12 @@ export class ResourceTable extends LitElement {
 
   private renderCell(item: ResourceData, column: Column) {
     const value = item[column.key];
+    
+    // Check for custom renderer first
+    const customRenderer = this.customRenderers?.[column.key];
+    if (customRenderer) {
+      return customRenderer(value);
+    }
 
     switch (column.type) {
       case 'status':
@@ -159,9 +166,9 @@ export class ResourceTable extends LitElement {
               ${this.showActions ? html`
                 <td class="actions-cell">
                   <action-dropdown
-                    .actions="${this.getActions ? this.getActions(item) : defaultActions}"
-                    menuId="menu-${index}"
-                    @action-click="${(e: CustomEvent) => this.handleActionClick(e, item)}"
+                    .actions=${this.getActions ? this.getActions(item) : defaultActions}
+                    .menuId=${`menu-${index}`}
+                    @action-click=${(e: CustomEvent) => this.handleActionClick(e, item)}
                   ></action-dropdown>
                 </td>
               ` : ''}
