@@ -10,6 +10,8 @@ export class DetailDrawer extends LitElement {
 
   private handleKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'Escape' && this.show) {
+      // Stop propagation to prevent parent drawer from also closing
+      event.stopPropagation();
       this.handleClose();
     }
   };
@@ -79,9 +81,14 @@ export class DetailDrawer extends LitElement {
     }
   `;
 
-  private handleClose() {
+  private handleClose(event?: Event) {
+    // Stop propagation if this was triggered by a UI event
+    if (event) {
+      event.stopPropagation();
+    }
+    
     this.dispatchEvent(new CustomEvent('close', {
-      bubbles: true,
+      bubbles: false,  // Don't bubble to prevent parent drawer from closing
       composed: true
     }));
   }
@@ -104,7 +111,7 @@ export class DetailDrawer extends LitElement {
     return html`
       <div class="drawer" style="width: ${this.width}px">
         <div class="drawer-header">
-          <button class="close-button" @click=${this.handleClose}>×</button>
+          <button class="close-button" @click=${(e: Event) => this.handleClose(e)}>×</button>
           <h2>${this.title}</h2>
         </div>
         <div class="drawer-content">

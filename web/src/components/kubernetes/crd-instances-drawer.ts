@@ -424,7 +424,12 @@ export class CRDInstancesDrawer extends LitElement {
     await this.fetchInstanceDetails(instance);
   }
 
-  private handleInstanceDetailsClose() {
+  private handleInstanceDetailsClose(event?: Event) {
+    // Stop event propagation to prevent parent drawer from closing
+    if (event) {
+      event.stopPropagation();
+    }
+    
     this.showInstanceDetails = false;
     this.selectedInstance = null;
     this.instanceDetailsData = null;
@@ -594,7 +599,7 @@ export class CRDInstancesDrawer extends LitElement {
       <detail-drawer
         .show=${this.showInstanceDetails}
         .title=${`${this.selectedInstance?.name || ''} Details`}
-        @close=${this.handleInstanceDetailsClose}
+        @close=${(e: Event) => this.handleInstanceDetailsClose(e)}
       >
         ${this.loadingDetails ? html`
           <loading-state message="Loading instance details..."></loading-state>
