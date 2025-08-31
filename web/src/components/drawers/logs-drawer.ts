@@ -171,10 +171,8 @@ export class LogsDrawer extends LitElement {
     }
 
     .log-line {
-      white-space: pre-wrap;
       word-break: break-all;
       margin: 0;
-      padding: 4px 0;
     }
 
     .log-line:hover {

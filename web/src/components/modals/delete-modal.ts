@@ -10,8 +10,12 @@ export interface DeleteItem {
 @customElement('delete-modal')
 export class DeleteModal extends LitElement {
   @property({ type: Object }) item: DeleteItem | null = null;
-  @property({ type: Boolean }) show = false;
+  @property({ type: Boolean, reflect: true }) show = false;
   @property({ type: Boolean }) loading = false;
+  @property({ type: String, attribute: 'modal-title' }) modalTitle = 'Confirm Delete';
+  @property({ type: String, attribute: 'message' }) message = '';
+  @property({ type: String, attribute: 'confirm-label' }) confirmLabel = 'Delete';
+  @property({ type: String, attribute: 'confirm-button-class' }) confirmButtonClass = 'delete';
 
   static override styles = css`
     .modal-overlay {
@@ -133,6 +137,17 @@ export class DeleteModal extends LitElement {
       border-color: #d32f2f;
     }
 
+    .modal-button.confirm {
+      background: var(--vscode-button-background, #007acc);
+      color: var(--vscode-button-foreground, white);
+      border-color: var(--vscode-button-background, #007acc);
+    }
+
+    .modal-button.confirm:hover {
+      background: var(--vscode-button-hoverBackground, #005a9e);
+      border-color: var(--vscode-button-hoverBackground, #005a9e);
+    }
+
     .modal-button:disabled {
       opacity: 0.6;
       cursor: not-allowed;
@@ -160,26 +175,53 @@ export class DeleteModal extends LitElement {
     }));
   }
 
+  override willUpdate(changedProperties: Map<PropertyKey, unknown>) {
+    // Log property changes for debugging
+    if (changedProperties.has('show') && this.show) {
+      console.log('Modal opening with properties:', {
+        modalTitle: this.modalTitle,
+        message: this.message,
+        confirmLabel: this.confirmLabel,
+        confirmButtonClass: this.confirmButtonClass
+      });
+    }
+  }
+
   override render() {
     if (!this.show || !this.item) {
       return '';
     }
+
+    // Debug logging
+    console.log('Delete Modal Rendering with:', {
+      modalTitle: this.modalTitle,
+      message: this.message,
+      confirmLabel: this.confirmLabel,
+      confirmButtonClass: this.confirmButtonClass,
+      item: this.item
+    });
 
     return html`
       <div class="modal-overlay" @click=${this.handleOverlayClick}>
         <div class="modal">
           <div class="modal-header">
             <span class="modal-icon warning">⚠️</span>
-            <h3 class="modal-title">Confirm Delete</h3>
+            <h3 class="modal-title">${this.modalTitle}</h3>
           </div>
           <div class="modal-body">
-            <p>Are you sure you want to delete this ${this.item.type.toLowerCase()}?</p>
+            ${this.message && this.message.length > 0 ? html`
+              <p>${this.message}</p>
+            ` : html`
+              <p>Are you sure you want to delete this ${this.item.type.toLowerCase()}?</p>
+            `}
             <div class="modal-resource-info">
               <div><strong>Type:</strong> ${this.item.type}</div>
               <div><strong>Name:</strong> ${this.item.name}</div>
               ${this.item.namespace ? html`<div><strong>Namespace:</strong> ${this.item.namespace}</div>` : ''}
             </div>
-            <p><strong>This action cannot be undone.</strong></p>
+            ${this.confirmButtonClass === 'delete' ? html`
+              <p><strong>This action cannot be undone.</strong></p>
+            ` : ''}
           </div>
           <div class="modal-footer">
             <button 
@@ -190,11 +232,11 @@ export class DeleteModal extends LitElement {
               Cancel
             </button>
             <button 
-              class="modal-button delete" 
+              class="modal-button ${this.confirmButtonClass}" 
               @click=${this.handleConfirm}
               ?disabled=${this.loading}
             >
-              ${this.loading ? 'Deleting...' : 'Delete'}
+              ${this.loading ? html`${this.confirmLabel}ing...` : this.confirmLabel}
             </button>
           </div>
         </div>

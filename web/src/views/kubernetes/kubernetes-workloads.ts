@@ -1,4 +1,5 @@
 import { LitElement, html, css } from 'lit';
+import { keyed } from 'lit/directives/keyed.js';
 import { customElement, property, state } from 'lit/decorators.js';
 import { KubernetesApi } from '../../services/kubernetes-api.js';
 import type {
@@ -20,6 +21,7 @@ import '../../components/tables/resource-table.js';
 import '../../components/drawers/detail-drawer.js';
 import '../../components/drawers/logs-drawer.js';
 import '../../components/modals/delete-modal.js';
+import '../../components/modals/set-image-modal.js';
 import '../../components/kubernetes/resource-detail-view.js';
 import '../../components/drawers/create-resource-drawer';
 import '../../components/ui/notification-container';
@@ -27,6 +29,7 @@ import type { Tab } from '../../components/tabs/tab-group.js';
 import type { Column } from '../../components/tables/resource-table.js';
 import type { ActionItem } from '../../components/ui/action-dropdown.js';
 import type { DeleteItem } from '../../components/modals/delete-modal.js';
+import type { ContainerImage } from '../../components/modals/set-image-modal.js';
 
 type WorkloadResource = KubernetesPod | KubernetesDeployment | KubernetesStatefulSet | KubernetesDaemonSet | KubernetesJob | KubernetesCronJob;
 
@@ -60,6 +63,14 @@ export class KubernetesWorkloads extends LitElement {
   @state() private resourceFormat: 'yaml' | 'json' = 'yaml';
   @state() private isEditMode = false;
   @state() private editingResource: WorkloadResource | null = null;
+  @state() private showRestartModal = false;
+  @state() private showRollbackModal = false;
+  @state() private showSetImageModal = false;
+  @state() private workloadToRestart: WorkloadResource | null = null;
+  @state() private workloadToRollback: WorkloadResource | null = null;
+  @state() private workloadForSetImage: WorkloadResource | null = null;
+  @state() private containerImages: ContainerImage[] = [];
+  @state() private isPerformingAction = false;
 
   static override styles = css`
     :host {
@@ -166,6 +177,17 @@ export class KubernetesWorkloads extends LitElement {
 
     if ('status' in item && item.type === 'Pod') {
       actions.push({ label: 'View Logs', action: 'logs' });
+      // Add Set Image action for Pods (no restart/rollback for pods)
+      actions.push({ label: 'Set Image', action: 'set-image' });
+    }
+
+    // Add rollout actions for deployable resources
+    if (item.type === 'Deployment' || item.type === 'StatefulSet' || item.type === 'DaemonSet') {
+      actions.push(
+        { label: 'Restart', action: 'restart' },
+        { label: 'Rollback', action: 'rollback' },
+        { label: 'Set Image', action: 'set-image' }
+      );
     }
 
     actions.push(
@@ -234,6 +256,15 @@ export class KubernetesWorkloads extends LitElement {
         break;
       case 'delete':
         this.deleteItem(item);
+        break;
+      case 'restart':
+        this.restartWorkload(item);
+        break;
+      case 'rollback':
+        this.rollbackWorkload(item);
+        break;
+      case 'set-image':
+        this.setWorkloadImage(item);
         break;
     }
   }
@@ -457,6 +488,282 @@ export class KubernetesWorkloads extends LitElement {
     this.logsError = '';
   }
 
+  // Workload rollout actions
+  private restartWorkload(workload: WorkloadResource) {
+    this.workloadToRestart = workload;
+    this.showRestartModal = true;
+    
+    // Force update modal properties via direct query
+    this.updateComplete.then(() => {
+      const modal = this.shadowRoot?.querySelector('#restart-modal') as any;
+      if (modal) {
+        modal.modalTitle = `Restart ${workload.type}`;
+        modal.message = `Are you sure you want to restart this ${workload.type?.toLowerCase()}? All pods will be recreated.`;
+        modal.confirmLabel = 'Restart';
+        modal.confirmButtonClass = 'confirm';
+        modal.requestUpdate();
+      }
+    });
+  }
+
+  private async handleConfirmRestart() {
+    if (!this.workloadToRestart) return;
+
+    this.isPerformingAction = true;
+    
+    try {
+      // Call the appropriate API method based on workload type
+      if (this.workloadToRestart.type === 'Deployment') {
+        await KubernetesApi.restartDeployment(
+          this.workloadToRestart.namespace,
+          this.workloadToRestart.name
+        );
+      } else if (this.workloadToRestart.type === 'StatefulSet') {
+        await KubernetesApi.restartStatefulSet(
+          this.workloadToRestart.namespace,
+          this.workloadToRestart.name
+        );
+      } else if (this.workloadToRestart.type === 'DaemonSet') {
+        await KubernetesApi.restartDaemonSet(
+          this.workloadToRestart.namespace,
+          this.workloadToRestart.name
+        );
+      }
+      
+      // Refresh data
+      await this.fetchData();
+      
+      // Show success notification
+      const workloadName = this.workloadToRestart.name;
+      const workloadType = this.workloadToRestart.type;
+      
+      // Close modal
+      this.showRestartModal = false;
+      this.workloadToRestart = null;
+      const nc = this.shadowRoot?.querySelector('notification-container') as any;
+      if (nc && typeof nc.addNotification === 'function') {
+        nc.addNotification({ 
+          type: 'success', 
+          message: `${workloadType} ${workloadName} restarted successfully` 
+        });
+      }
+    } catch (error: any) {
+      console.error('Failed to restart workload:', error);
+      const nc = this.shadowRoot?.querySelector('notification-container') as any;
+      if (nc && typeof nc.addNotification === 'function') {
+        nc.addNotification({ 
+          type: 'error', 
+          message: `Failed to restart ${this.workloadToRestart?.type?.toLowerCase() || 'workload'}: ${error.message || 'Unknown error'}` 
+        });
+      }
+    } finally {
+      this.isPerformingAction = false;
+    }
+  }
+
+  private handleCancelRestart() {
+    this.showRestartModal = false;
+    this.workloadToRestart = null;
+    // Force update to reset modal
+    this.requestUpdate();
+  }
+
+  private rollbackWorkload(workload: WorkloadResource) {
+    this.workloadToRollback = workload;
+    this.showRollbackModal = true;
+    
+    // Force update modal properties via direct query
+    this.updateComplete.then(() => {
+      const modal = this.shadowRoot?.querySelector('#rollback-modal') as any;
+      if (modal) {
+        modal.modalTitle = `Rollback ${workload.type}`;
+        modal.message = `Are you sure you want to rollback this ${workload.type?.toLowerCase()} to the previous revision?`;
+        modal.confirmLabel = 'Rollback';
+        modal.confirmButtonClass = 'confirm';
+        modal.requestUpdate();
+      }
+    });
+  }
+
+  private async handleConfirmRollback() {
+    if (!this.workloadToRollback) return;
+
+    this.isPerformingAction = true;
+    
+    try {
+      // Call the appropriate API method based on workload type
+      if (this.workloadToRollback.type === 'Deployment') {
+        await KubernetesApi.rollbackDeployment(
+          this.workloadToRollback.namespace,
+          this.workloadToRollback.name
+        );
+      } else if (this.workloadToRollback.type === 'StatefulSet') {
+        await KubernetesApi.rollbackStatefulSet(
+          this.workloadToRollback.namespace,
+          this.workloadToRollback.name
+        );
+      } else if (this.workloadToRollback.type === 'DaemonSet') {
+        await KubernetesApi.rollbackDaemonSet(
+          this.workloadToRollback.namespace,
+          this.workloadToRollback.name
+        );
+      }
+      
+      // Refresh data
+      await this.fetchData();
+      
+      // Show success notification
+      const workloadName = this.workloadToRollback.name;
+      const workloadType = this.workloadToRollback.type;
+      
+      // Close modal
+      this.showRollbackModal = false;
+      this.workloadToRollback = null;
+      const nc = this.shadowRoot?.querySelector('notification-container') as any;
+      if (nc && typeof nc.addNotification === 'function') {
+        nc.addNotification({ 
+          type: 'success', 
+          message: `${workloadType} ${workloadName} rolled back successfully` 
+        });
+      }
+    } catch (error: any) {
+      console.error('Failed to rollback workload:', error);
+      const nc = this.shadowRoot?.querySelector('notification-container') as any;
+      if (nc && typeof nc.addNotification === 'function') {
+        nc.addNotification({ 
+          type: 'error', 
+          message: `Failed to rollback ${this.workloadToRollback?.type?.toLowerCase() || 'workload'}: ${error.message || 'Unknown error'}` 
+        });
+      }
+    } finally {
+      this.isPerformingAction = false;
+    }
+  }
+
+  private handleCancelRollback() {
+    this.showRollbackModal = false;
+    this.workloadToRollback = null;
+    // Force update to reset modal
+    this.requestUpdate();
+  }
+
+  private async setWorkloadImage(workload: WorkloadResource) {
+    console.log('Setting workload image for:', workload);
+    this.workloadForSetImage = workload;
+    
+    try {
+      // Fetch container information based on workload type
+      let containers: Array<{name: string, image: string}> = [];
+      
+      if (workload.type === 'Pod') {
+        containers = await KubernetesApi.getPodContainers(
+          workload.namespace,
+          workload.name
+        );
+      } else if (workload.type === 'Deployment') {
+        containers = await KubernetesApi.getDeploymentContainers(
+          workload.namespace,
+          workload.name
+        );
+      } else if (workload.type === 'StatefulSet') {
+        containers = await KubernetesApi.getStatefulSetContainers(
+          workload.namespace,
+          workload.name
+        );
+      } else if (workload.type === 'DaemonSet') {
+        containers = await KubernetesApi.getDaemonSetContainers(
+          workload.namespace,
+          workload.name
+        );
+      }
+      
+      console.log('Fetched containers:', containers);
+      this.containerImages = containers;
+      this.showSetImageModal = true;
+      console.log('Modal should be visible now, showSetImageModal:', this.showSetImageModal);
+    } catch (error: any) {
+      console.error('Failed to fetch workload containers:', error);
+      const nc = this.shadowRoot?.querySelector('notification-container') as any;
+      if (nc && typeof nc.addNotification === 'function') {
+        nc.addNotification({ 
+          type: 'error', 
+          message: `Failed to fetch ${workload.type?.toLowerCase()} containers: ${error.message || 'Unknown error'}` 
+        });
+      }
+    }
+  }
+
+  private async handleConfirmSetImage(event: CustomEvent) {
+    if (!this.workloadForSetImage) return;
+
+    const { images } = event.detail;
+    this.isPerformingAction = true;
+    
+    try {
+      // Call the appropriate API method based on workload type
+      if (this.workloadForSetImage.type === 'Pod') {
+        await KubernetesApi.setPodImages(
+          this.workloadForSetImage.namespace,
+          this.workloadForSetImage.name,
+          images
+        );
+      } else if (this.workloadForSetImage.type === 'Deployment') {
+        await KubernetesApi.setDeploymentImages(
+          this.workloadForSetImage.namespace,
+          this.workloadForSetImage.name,
+          images
+        );
+      } else if (this.workloadForSetImage.type === 'StatefulSet') {
+        await KubernetesApi.setStatefulSetImages(
+          this.workloadForSetImage.namespace,
+          this.workloadForSetImage.name,
+          images
+        );
+      } else if (this.workloadForSetImage.type === 'DaemonSet') {
+        await KubernetesApi.setDaemonSetImages(
+          this.workloadForSetImage.namespace,
+          this.workloadForSetImage.name,
+          images
+        );
+      }
+      
+      // Refresh data
+      await this.fetchData();
+      
+      // Show success notification
+      const workloadType = this.workloadForSetImage?.type || 'Workload';
+      const nc = this.shadowRoot?.querySelector('notification-container') as any;
+      if (nc && typeof nc.addNotification === 'function') {
+        nc.addNotification({ 
+          type: 'success', 
+          message: `${workloadType} images updated successfully` 
+        });
+      }
+      
+      // Close modal
+      this.showSetImageModal = false;
+      this.workloadForSetImage = null;
+      this.containerImages = [];
+    } catch (error: any) {
+      console.error('Failed to set workload images:', error);
+      const nc = this.shadowRoot?.querySelector('notification-container') as any;
+      if (nc && typeof nc.addNotification === 'function') {
+        nc.addNotification({ 
+          type: 'error', 
+          message: `Failed to update ${this.workloadForSetImage?.type?.toLowerCase() || 'workload'} images: ${error.message || 'Unknown error'}` 
+        });
+      }
+    } finally {
+      this.isPerformingAction = false;
+    }
+  }
+
+  private handleCancelSetImage() {
+    this.showSetImageModal = false;
+    this.workloadForSetImage = null;
+    this.containerImages = [];
+  }
+
   private async handleLogsRefresh() {
     if (!this.logsPodName || !this.logsNamespace) return;
     
@@ -593,13 +900,71 @@ export class KubernetesWorkloads extends LitElement {
           ` : ''}
         </detail-drawer>
 
-        <delete-modal
-          .show="${this.showDeleteModal}"
-          .item="${this.itemToDelete}"
-          .loading="${this.isDeleting}"
-          @confirm-delete="${this.handleConfirmDelete}"
-          @cancel-delete="${this.handleCancelDelete}"
-        ></delete-modal>
+        ${keyed('delete-modal', html`
+          <delete-modal
+            id="delete-modal"
+            .show="${this.showDeleteModal}"
+            .item="${this.itemToDelete}"
+            .loading="${this.isDeleting}"
+            @confirm-delete="${this.handleConfirmDelete}"
+            @cancel-delete="${this.handleCancelDelete}"
+          ></delete-modal>
+        `)}
+
+        <!-- Restart Confirmation Modal -->
+        ${keyed('restart-modal', html`
+          <delete-modal
+            id="restart-modal"
+            .show="${this.showRestartModal}"
+          .item="${
+            this.workloadToRestart ? {
+              type: this.workloadToRestart.type || 'Workload',
+              name: this.workloadToRestart.name,
+              namespace: this.workloadToRestart.namespace
+            } : null
+          }"
+          .loading="${this.isPerformingAction}"
+          .confirmLabel="Restart"
+          .confirmButtonClass="confirm"
+          .modalTitle="${this.workloadToRestart ? `Restart ${this.workloadToRestart.type}` : 'Restart'}"
+          .message="${this.workloadToRestart ? `Are you sure you want to restart this ${this.workloadToRestart.type?.toLowerCase()}? All pods will be recreated.` : ''}"
+          @confirm-delete="${this.handleConfirmRestart}"
+          @cancel-delete="${this.handleCancelRestart}"
+          ></delete-modal>
+        `)}
+
+        <!-- Rollback Confirmation Modal -->
+        ${keyed('rollback-modal', html`
+          <delete-modal
+            id="rollback-modal"
+            .show="${this.showRollbackModal}"
+          .item="${
+            this.workloadToRollback ? {
+              type: this.workloadToRollback.type || 'Workload',
+              name: this.workloadToRollback.name,
+              namespace: this.workloadToRollback.namespace
+            } : null
+          }"
+          .loading="${this.isPerformingAction}"
+          .confirmLabel="Rollback"
+          .confirmButtonClass="confirm"
+          .modalTitle="${this.workloadToRollback ? `Rollback ${this.workloadToRollback.type}` : 'Rollback'}"
+          .message="${this.workloadToRollback ? `Are you sure you want to rollback this ${this.workloadToRollback.type?.toLowerCase()} to the previous revision?` : ''}"
+          @confirm-delete="${this.handleConfirmRollback}"
+          @cancel-delete="${this.handleCancelRollback}"
+          ></delete-modal>
+        `)}
+
+        <!-- Set Image Modal -->
+        <set-image-modal
+          .show="${this.showSetImageModal}"
+          .loading="${this.isPerformingAction}"
+          .deploymentName="${this.workloadForSetImage?.name || ''}"
+          .namespace="${this.workloadForSetImage?.namespace || ''}"
+          .containers="${this.containerImages}"
+          @confirm-set-image="${this.handleConfirmSetImage}"
+          @cancel-set-image="${this.handleCancelSetImage}"
+        ></set-image-modal>
         <create-resource-drawer
           .show="${this.showCreateDrawer}"
           ?show="${this.showCreateDrawer}"

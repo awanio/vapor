@@ -1034,7 +1034,7 @@ export class VMDetailDrawer extends LitElement {
         throw new Error('No authentication token found');
       }
 
-      const apiUrl = getApiUrl(`/virtualization/computes/${vmId}/enhanced`);
+      const apiUrl = getApiUrl(`/virtualization/computes/${vmId}`);
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {

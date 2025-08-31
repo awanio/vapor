@@ -547,6 +547,118 @@ export class KubernetesApi {
     return response.secret_detail || response;
   }
 
+  // Deployment Rollout Operations
+  static async restartDeployment(namespace: string, name: string): Promise<void> {
+    await Api.patch(`/kubernetes/deployments/${namespace}/${name}/rollout/restart`, {});
+  }
+
+  static async rollbackDeployment(namespace: string, name: string): Promise<void> {
+    await Api.patch(`/kubernetes/deployments/${namespace}/${name}/rollout/undo`, {});
+  }
+
+  static async setDeploymentImages(namespace: string, name: string, images: Array<{[key: string]: string}>): Promise<void> {
+    await Api.patch(`/kubernetes/deployments/${namespace}/${name}/rollout/images`, images);
+  }
+
+  // Get deployment containers info (for set image operation)
+  static async getDeploymentContainers(namespace: string, name: string): Promise<Array<{name: string, image: string}>> {
+    const details = await this.getDeploymentDetails(namespace, name);
+    const containers: Array<{name: string, image: string}> = [];
+    
+    if (details.spec?.template?.spec?.containers) {
+      for (const container of details.spec.template.spec.containers) {
+        containers.push({
+          name: container.name,
+          image: container.image
+        });
+      }
+    }
+    
+    return containers;
+  }
+
+  // StatefulSet Rollout Operations
+  static async restartStatefulSet(namespace: string, name: string): Promise<void> {
+    await Api.patch(`/kubernetes/statefulsets/${namespace}/${name}/rollout/restart`, {});
+  }
+
+  static async rollbackStatefulSet(namespace: string, name: string): Promise<void> {
+    await Api.patch(`/kubernetes/statefulsets/${namespace}/${name}/rollout/undo`, {});
+  }
+
+  static async setStatefulSetImages(namespace: string, name: string, images: Array<{[key: string]: string}>): Promise<void> {
+    await Api.patch(`/kubernetes/statefulsets/${namespace}/${name}/rollout/images`, images);
+  }
+
+  // Get StatefulSet containers info (for set image operation)
+  static async getStatefulSetContainers(namespace: string, name: string): Promise<Array<{name: string, image: string}>> {
+    const details = await this.getStatefulSetDetails(namespace, name);
+    const containers: Array<{name: string, image: string}> = [];
+    
+    if (details.spec?.template?.spec?.containers) {
+      for (const container of details.spec.template.spec.containers) {
+        containers.push({
+          name: container.name,
+          image: container.image
+        });
+      }
+    }
+    
+    return containers;
+  }
+
+  // DaemonSet Rollout Operations
+  static async restartDaemonSet(namespace: string, name: string): Promise<void> {
+    await Api.patch(`/kubernetes/daemonsets/${namespace}/${name}/rollout/restart`, {});
+  }
+
+  static async rollbackDaemonSet(namespace: string, name: string): Promise<void> {
+    await Api.patch(`/kubernetes/daemonsets/${namespace}/${name}/rollout/undo`, {});
+  }
+
+  static async setDaemonSetImages(namespace: string, name: string, images: Array<{[key: string]: string}>): Promise<void> {
+    await Api.patch(`/kubernetes/daemonsets/${namespace}/${name}/rollout/images`, images);
+  }
+
+  // Get DaemonSet containers info (for set image operation)
+  static async getDaemonSetContainers(namespace: string, name: string): Promise<Array<{name: string, image: string}>> {
+    const details = await this.getDaemonSetDetails(namespace, name);
+    const containers: Array<{name: string, image: string}> = [];
+    
+    if (details.spec?.template?.spec?.containers) {
+      for (const container of details.spec.template.spec.containers) {
+        containers.push({
+          name: container.name,
+          image: container.image
+        });
+      }
+    }
+    
+    return containers;
+  }
+
+  // Pod Set Image Operations
+  static async setPodImages(namespace: string, name: string, images: Array<{[key: string]: string}>): Promise<void> {
+    await Api.patch(`/kubernetes/pods/${namespace}/${name}/images`, images);
+  }
+
+  // Get Pod containers info (for set image operation)
+  static async getPodContainers(namespace: string, name: string): Promise<Array<{name: string, image: string}>> {
+    const details = await this.getPodDetails(namespace, name);
+    const containers: Array<{name: string, image: string}> = [];
+    
+    if (details.spec?.containers) {
+      for (const container of details.spec.containers) {
+        containers.push({
+          name: container.name,
+          image: container.image
+        });
+      }
+    }
+    
+    return containers;
+  }
+
   // Resource Operations
   static async deleteResource(kind: string, name: string, namespace?: string): Promise<void> {
     // Map resource kinds to specific delete endpoints
