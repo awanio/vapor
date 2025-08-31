@@ -2,7 +2,7 @@ var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 var _a;
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-DYpxt9B3.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-B_7WjivX.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -17426,7 +17426,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-DYpxt9B3.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-B_7WjivX.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17471,7 +17471,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-DYpxt9B3.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-B_7WjivX.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17536,7 +17536,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-DYpxt9B3.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-B_7WjivX.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17646,7 +17646,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-DYpxt9B3.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-B_7WjivX.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -36606,13 +36606,18 @@ let DetailDrawer = class extends i$1 {
     this.width = 600;
     this.handleKeyDown = (event) => {
       if (event.key === "Escape" && this.show) {
+        event.stopPropagation();
         this.handleClose();
       }
     };
   }
-  handleClose() {
+  handleClose(event) {
+    if (event) {
+      event.stopPropagation();
+    }
     this.dispatchEvent(new CustomEvent("close", {
-      bubbles: true,
+      bubbles: false,
+      // Don't bubble to prevent parent drawer from closing
       composed: true
     }));
   }
@@ -36631,7 +36636,7 @@ let DetailDrawer = class extends i$1 {
     return x`
       <div class="drawer" style="width: ${this.width}px">
         <div class="drawer-header">
-          <button class="close-button" @click=${this.handleClose}>×</button>
+          <button class="close-button" @click=${(e3) => this.handleClose(e3)}>×</button>
           <h2>${this.title}</h2>
         </div>
         <div class="drawer-content">
@@ -49384,6 +49389,13 @@ let CRDInstancesDrawer = class extends i$1 {
     this.instanceDetailsData = null;
     this.loadingDetails = false;
     this.error = null;
+    this.showEditDrawer = false;
+    this.editResourceContent = "";
+    this.editResourceFormat = "yaml";
+    this.loadingEdit = false;
+    this.deleting = false;
+    this.showDeleteModal = false;
+    this.deleteItem = null;
     this.handleKeyDown = (event) => {
       if (event.key === "Escape" && this.show) {
         if (this.showInstanceDetails) {
@@ -49497,7 +49509,7 @@ let CRDInstancesDrawer = class extends i$1 {
   getActions(_item) {
     return [
       { label: "View Details", action: "view" },
-      { label: "Edit YAML", action: "edit" },
+      { label: "Edit", action: "edit" },
       { label: "Delete", action: "delete", danger: true }
     ];
   }
@@ -49533,16 +49545,31 @@ let CRDInstancesDrawer = class extends i$1 {
         await this.viewInstanceDetails(item);
         break;
       case "edit":
-        console.log("Edit YAML for:", item.name);
+        await this.editInstance(item);
         break;
       case "delete":
-        if (confirm(`Are you sure you want to delete ${item.name}?`)) {
-          await this.deleteInstance(item);
-        }
+        this.showDeleteConfirmation(item);
         break;
     }
   }
-  async deleteInstance(instance) {
+  showDeleteConfirmation(instance) {
+    this.deleteItem = {
+      type: this.crdKind,
+      name: instance.name,
+      namespace: instance.namespace
+    };
+    this.showDeleteModal = true;
+  }
+  async handleConfirmDelete(event) {
+    const { item } = event.detail;
+    const instance = this.instances.find(
+      (i3) => i3.name === item.name && (item.namespace ? i3.namespace === item.namespace : true)
+    );
+    if (!instance) {
+      console.error("Instance not found for deletion");
+      return;
+    }
+    this.deleting = true;
     try {
       const isNamespaced = this.crdScope === "Namespaced";
       await KubernetesApi.deleteCRDInstance(
@@ -49550,19 +49577,125 @@ let CRDInstancesDrawer = class extends i$1 {
         instance.name,
         isNamespaced ? instance.namespace : void 0
       );
+      this.showDeleteModal = false;
+      this.deleteItem = null;
       await this.fetchInstances();
-      console.log(`Successfully deleted ${instance.name}`);
+      this.dispatchEvent(new CustomEvent("notification", {
+        detail: {
+          type: "success",
+          message: `Successfully deleted ${instance.name}`
+        },
+        bubbles: true,
+        composed: true
+      }));
     } catch (err) {
       console.error("Failed to delete instance:", err);
-      alert(`Failed to delete instance: ${(err == null ? void 0 : err.message) || "Unknown error"}`);
+      this.dispatchEvent(new CustomEvent("notification", {
+        detail: {
+          type: "error",
+          message: `Failed to delete instance: ${(err == null ? void 0 : err.message) || "Unknown error"}`
+        },
+        bubbles: true,
+        composed: true
+      }));
+    } finally {
+      this.deleting = false;
     }
+  }
+  handleCancelDelete() {
+    this.showDeleteModal = false;
+    this.deleteItem = null;
+    this.deleting = false;
   }
   async viewInstanceDetails(instance) {
     this.selectedInstance = instance;
     this.showInstanceDetails = true;
     await this.fetchInstanceDetails(instance);
   }
-  handleInstanceDetailsClose() {
+  async editInstance(instance) {
+    this.selectedInstance = instance;
+    this.loadingEdit = true;
+    this.showEditDrawer = true;
+    try {
+      const isNamespaced = this.crdScope === "Namespaced";
+      const response = await KubernetesApi.getCRDInstanceDetails(
+        this.crdName,
+        instance.name,
+        isNamespaced ? instance.namespace : void 0
+      );
+      try {
+        this.editResourceContent = YAML.stringify(response);
+        this.editResourceFormat = "yaml";
+      } catch (yamlError) {
+        this.editResourceContent = JSON.stringify(response, null, 2);
+        this.editResourceFormat = "json";
+      }
+    } catch (err) {
+      console.error("Failed to fetch resource for editing:", err);
+      this.showEditDrawer = false;
+      this.dispatchEvent(new CustomEvent("notification", {
+        detail: {
+          type: "error",
+          message: `Failed to load resource: ${(err == null ? void 0 : err.message) || "Unknown error"}`
+        },
+        bubbles: true,
+        composed: true
+      }));
+    } finally {
+      this.loadingEdit = false;
+    }
+  }
+  handleEditDrawerClose(event) {
+    if (event) {
+      event.stopPropagation();
+    }
+    this.showEditDrawer = false;
+    this.selectedInstance = null;
+    this.editResourceContent = "";
+    this.loadingEdit = false;
+  }
+  async handleUpdateResource(event) {
+    const { resource, format } = event.detail;
+    if (!this.selectedInstance) {
+      console.error("No instance selected for update");
+      return;
+    }
+    try {
+      const isNamespaced = this.crdScope === "Namespaced";
+      let content;
+      if (format === "json") {
+        content = typeof resource === "string" ? resource : JSON.stringify(resource);
+      } else {
+        content = resource.yaml || resource;
+      }
+      const endpoint = isNamespaced ? `/kubernetes/customresourcedefinitions/${this.crdName}/instances/${this.selectedInstance.namespace}/${this.selectedInstance.name}` : `/kubernetes/customresourcedefinitions/${this.crdName}/instances/-/${this.selectedInstance.name}`;
+      await Api.putResource(endpoint, content, format === "json" ? "application/json" : "application/yaml");
+      this.handleEditDrawerClose();
+      await this.fetchInstances();
+      this.dispatchEvent(new CustomEvent("notification", {
+        detail: {
+          type: "success",
+          message: `Successfully updated ${this.selectedInstance.name}`
+        },
+        bubbles: true,
+        composed: true
+      }));
+    } catch (err) {
+      console.error("Failed to update resource:", err);
+      this.dispatchEvent(new CustomEvent("notification", {
+        detail: {
+          type: "error",
+          message: `Failed to update resource: ${(err == null ? void 0 : err.message) || "Unknown error"}`
+        },
+        bubbles: true,
+        composed: true
+      }));
+    }
+  }
+  handleInstanceDetailsClose(event) {
+    if (event) {
+      event.stopPropagation();
+    }
     this.showInstanceDetails = false;
     this.selectedInstance = null;
     this.instanceDetailsData = null;
@@ -49591,7 +49724,7 @@ let CRDInstancesDrawer = class extends i$1 {
     }
   }
   render() {
-    var _a2;
+    var _a2, _b;
     const filteredInstances = this.getFilteredInstances();
     const totalInstances = this.instances.length;
     const namespacesSet = new Set(this.instances.map((i3) => i3.namespace).filter(Boolean));
@@ -49705,7 +49838,7 @@ let CRDInstancesDrawer = class extends i$1 {
       <detail-drawer
         .show=${this.showInstanceDetails}
         .title=${`${((_a2 = this.selectedInstance) == null ? void 0 : _a2.name) || ""} Details`}
-        @close=${this.handleInstanceDetailsClose}
+        @close=${(e3) => this.handleInstanceDetailsClose(e3)}
       >
         ${this.loadingDetails ? x`
           <loading-state message="Loading instance details..."></loading-state>
@@ -49713,6 +49846,25 @@ let CRDInstancesDrawer = class extends i$1 {
           <resource-detail-view .resource=${this.instanceDetailsData}></resource-detail-view>
         ` : ""}
       </detail-drawer>
+
+      <create-resource-drawer
+        .show=${this.showEditDrawer}
+        .title=${`Edit ${((_b = this.selectedInstance) == null ? void 0 : _b.name) || "Resource"}`}
+        .value=${this.editResourceContent}
+        .format=${this.editResourceFormat}
+        .submitLabel="Update"
+        .loading=${this.loadingEdit}
+        @close=${(e3) => this.handleEditDrawerClose(e3)}
+        @create=${this.handleUpdateResource}
+      ></create-resource-drawer>
+
+      <delete-modal
+        .show=${this.showDeleteModal}
+        .item=${this.deleteItem}
+        .loading=${this.deleting}
+        @confirm-delete=${this.handleConfirmDelete}
+        @cancel-delete=${this.handleCancelDelete}
+      ></delete-modal>
     `;
   }
 };
@@ -49942,6 +50094,27 @@ __decorateClass$n([
 __decorateClass$n([
   r$1()
 ], CRDInstancesDrawer.prototype, "error", 2);
+__decorateClass$n([
+  r$1()
+], CRDInstancesDrawer.prototype, "showEditDrawer", 2);
+__decorateClass$n([
+  r$1()
+], CRDInstancesDrawer.prototype, "editResourceContent", 2);
+__decorateClass$n([
+  r$1()
+], CRDInstancesDrawer.prototype, "editResourceFormat", 2);
+__decorateClass$n([
+  r$1()
+], CRDInstancesDrawer.prototype, "loadingEdit", 2);
+__decorateClass$n([
+  r$1()
+], CRDInstancesDrawer.prototype, "deleting", 2);
+__decorateClass$n([
+  r$1()
+], CRDInstancesDrawer.prototype, "showDeleteModal", 2);
+__decorateClass$n([
+  r$1()
+], CRDInstancesDrawer.prototype, "deleteItem", 2);
 CRDInstancesDrawer = __decorateClass$n([
   t$2("crd-instances-drawer")
 ], CRDInstancesDrawer);
