@@ -614,9 +614,9 @@ export class KubernetesApi {
   }
 
   static async updateResource(kind: string, name: string, namespace: string | undefined, content: string, contentType: 'json' | 'yaml' = 'yaml'): Promise<any> {
-    const mimeType = contentType === 'json' ? 'application/json' : 'application/yaml';
     const endpoint = this.getResourceEndpoint(kind, name, namespace);
-    return Api.put(endpoint, content);
+    const mimeType = contentType === 'json' ? 'application/json' : 'application/yaml';
+    return Api.putResource(endpoint, content, mimeType);
   }
 
   // Pod Logs

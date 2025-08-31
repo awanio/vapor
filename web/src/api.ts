@@ -174,6 +174,56 @@ export class Api {
       );
     }
   }
+
+  // Special method for updating Kubernetes resources with custom content type
+  static async putResource<T = any>(endpoint: string, content: string, contentType: 'application/json' | 'application/yaml'): Promise<T> {
+    const authHeaders = getAuthHeaders();
+    const url = getApiUrl(endpoint);
+    
+    try {
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': contentType,
+          ...authHeaders,
+        },
+        body: content,
+      });
+
+      // Handle non-JSON responses
+      const responseContentType = response.headers.get('content-type');
+      if (!responseContentType?.includes('application/json')) {
+        if (!response.ok) {
+          throw new ApiError(`HTTP error! status: ${response.status}`, undefined, undefined, response.status);
+        }
+        return response.text() as any;
+      }
+
+      // Parse JSON response
+      const data: APIResponse<T> = await response.json();
+
+      // Handle API errors
+      if (!response.ok || data.status === 'error') {
+        throw new ApiError(
+          data.error?.message || 'An error occurred',
+          data.error?.code,
+          data.error?.details,
+          response.status
+        );
+      }
+
+      // Return data
+      return data.data as T;
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(
+        error instanceof Error ? error.message : 'Network error',
+        'NETWORK_ERROR'
+      );
+    }
+  }
 }
 
 // WebSocket Manager

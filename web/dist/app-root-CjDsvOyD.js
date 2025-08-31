@@ -2,7 +2,7 @@ var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 var _a;
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-DGK59e_o.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-DYpxt9B3.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -17068,6 +17068,47 @@ class Api {
       );
     }
   }
+  // Special method for updating Kubernetes resources with custom content type
+  static async putResource(endpoint, content, contentType) {
+    var _a2, _b, _c;
+    const authHeaders = getAuthHeaders();
+    const url = getApiUrl(endpoint);
+    try {
+      const response = await fetch(url, {
+        method: "PUT",
+        headers: {
+          "Content-Type": contentType,
+          ...authHeaders
+        },
+        body: content
+      });
+      const responseContentType = response.headers.get("content-type");
+      if (!(responseContentType == null ? void 0 : responseContentType.includes("application/json"))) {
+        if (!response.ok) {
+          throw new ApiError(`HTTP error! status: ${response.status}`, void 0, void 0, response.status);
+        }
+        return response.text();
+      }
+      const data = await response.json();
+      if (!response.ok || data.status === "error") {
+        throw new ApiError(
+          ((_a2 = data.error) == null ? void 0 : _a2.message) || "An error occurred",
+          (_b = data.error) == null ? void 0 : _b.code,
+          (_c = data.error) == null ? void 0 : _c.details,
+          response.status
+        );
+      }
+      return data.data;
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(
+        error instanceof Error ? error.message : "Network error",
+        "NETWORK_ERROR"
+      );
+    }
+  }
 }
 class WebSocketManager2 {
   constructor(path) {
@@ -17385,7 +17426,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-DGK59e_o.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-DYpxt9B3.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17430,7 +17471,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-DGK59e_o.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-DYpxt9B3.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17495,7 +17536,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-DGK59e_o.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-DYpxt9B3.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17605,7 +17646,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-DGK59e_o.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-DYpxt9B3.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -35367,7 +35408,8 @@ class KubernetesApi {
   }
   static async updateResource(kind, name, namespace, content, contentType = "yaml") {
     const endpoint = this.getResourceEndpoint(kind, name, namespace);
-    return Api.put(endpoint, content);
+    const mimeType = contentType === "json" ? "application/json" : "application/yaml";
+    return Api.putResource(endpoint, content, mimeType);
   }
   // Pod Logs
   static async getPodLogs(name, namespace, container, follow = false, tailLines = 100) {
@@ -36115,48 +36157,37 @@ let ActionDropdown = class extends i$1 {
     this.menuId = "";
     this.isOpen = false;
     this.dropdownPosition = { top: 0, left: 0 };
+    this.dropdownElement = null;
     this.handleOutsideClick = (event) => {
-      if (!this.contains(event.target)) {
-        this.isOpen = false;
+      var _a2;
+      const target = event.target;
+      if (!this.contains(target) && !((_a2 = this.dropdownElement) == null ? void 0 : _a2.contains(target))) {
+        this.closeDropdown();
       }
     };
     this.handleScroll = () => {
       if (this.isOpen) {
-        this.isOpen = false;
+        this.closeDropdown();
       }
     };
     this.handleResize = () => {
       if (this.isOpen) {
-        this.isOpen = false;
+        this.closeDropdown();
       }
     };
     this.toggleMenu = (event) => {
       event.stopPropagation();
-      console.log("toggleMenu called, current isOpen:", this.isOpen);
-      console.log("actions:", this.actions);
       if (!this.isOpen) {
         const button = event.currentTarget;
         const rect = button.getBoundingClientRect();
         const top = rect.bottom + 4;
         const left = rect.left - 100;
         this.dropdownPosition = { top, left };
-        console.log("Dropdown position calculated:", { top, left });
-        console.log("Button rect:", rect);
-        console.log("Window dimensions:", { width: window.innerWidth, height: window.innerHeight });
-        setTimeout(() => {
-          var _a2;
-          const dropdown = (_a2 = this.shadowRoot) == null ? void 0 : _a2.querySelector(".action-dropdown.show");
-          if (dropdown) {
-            console.log("Dropdown element found:", dropdown);
-            console.log("Dropdown computed style:", window.getComputedStyle(dropdown));
-          } else {
-            console.log("Dropdown element NOT found in shadow DOM");
-          }
-        }, 0);
+        this.isOpen = true;
+        setTimeout(() => this.createDropdown(), 0);
+      } else {
+        this.closeDropdown();
       }
-      this.isOpen = !this.isOpen;
-      console.log("isOpen after toggle:", this.isOpen);
-      this.requestUpdate();
     };
   }
   connectedCallback() {
@@ -36170,39 +36201,88 @@ let ActionDropdown = class extends i$1 {
     document.removeEventListener("click", this.handleOutsideClick);
     window.removeEventListener("scroll", this.handleScroll, true);
     window.removeEventListener("resize", this.handleResize);
+    this.removeDropdown();
   }
-  handleAction(event, action) {
-    event.stopPropagation();
-    if (action.disabled) return;
+  createDropdown() {
+    if (this.dropdownElement) return;
+    this.dropdownElement = document.createElement("div");
+    this.dropdownElement.className = "action-dropdown-portal";
+    this.dropdownElement.style.cssText = `
+      position: fixed;
+      top: ${this.dropdownPosition.top}px;
+      left: ${this.dropdownPosition.left}px;
+      background: #252526;
+      border: 1px solid #464647;
+      border-radius: 4px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      min-width: 160px;
+      z-index: 99999;
+      display: block;
+      overflow: hidden;
+    `;
+    this.dropdownElement.innerHTML = this.actions.map((action) => `
+      <button 
+        data-action="${action.action}"
+        class="${action.danger ? "danger" : ""}"
+        ${action.disabled ? "disabled" : ""}
+        style="
+          display: block;
+          width: 100%;
+          text-align: left;
+          padding: 8px 16px;
+          border: none;
+          background: none;
+          color: ${action.danger ? "#f14c4c" : "#cccccc"};
+          cursor: ${action.disabled ? "not-allowed" : "pointer"};
+          font-size: 13px;
+          opacity: ${action.disabled ? "0.5" : "1"};
+        "
+      >
+        ${action.icon ? `<span style="margin-right: 8px;">${action.icon}</span>` : ""}
+        ${action.label}
+      </button>
+    `).join("");
+    this.dropdownElement.querySelectorAll("button").forEach((button) => {
+      button.addEventListener("click", (e3) => {
+        e3.stopPropagation();
+        const actionName = button.getAttribute("data-action");
+        if (actionName && !button.hasAttribute("disabled")) {
+          this.handleActionClick(actionName);
+        }
+      });
+      button.addEventListener("mouseenter", () => {
+        if (!button.hasAttribute("disabled")) {
+          button.style.backgroundColor = "rgba(255, 255, 255, 0.08)";
+        }
+      });
+      button.addEventListener("mouseleave", () => {
+        button.style.backgroundColor = "transparent";
+      });
+    });
+    document.body.appendChild(this.dropdownElement);
+  }
+  removeDropdown() {
+    if (this.dropdownElement) {
+      this.dropdownElement.remove();
+      this.dropdownElement = null;
+    }
+  }
+  closeDropdown() {
     this.isOpen = false;
+    this.removeDropdown();
+  }
+  handleActionClick(action) {
+    this.closeDropdown();
     this.dispatchEvent(new CustomEvent("action-click", {
-      detail: { action: action.action },
+      detail: { action },
       bubbles: true,
       composed: true
     }));
   }
+  // This method is now replaced by handleActionClick
   render() {
-    console.log("action-dropdown render, actions:", this.actions, "isOpen:", this.isOpen);
-    console.log("Dropdown position in render:", this.dropdownPosition);
-    const dropdownStyle = this.isOpen ? `top: ${this.dropdownPosition.top}px; left: ${this.dropdownPosition.left}px; display: block !important;` : "";
     return x`
       <button class="action-dots" @click=${this.toggleMenu}>⋮</button>
-      <div 
-        class="action-dropdown ${this.isOpen ? "show" : ""}" 
-        id="${this.menuId}"
-        style="${dropdownStyle}"
-      >
-        ${this.actions.map((action) => x`
-          <button 
-            class="${action.danger ? "danger" : ""}"
-            ?disabled=${action.disabled}
-            @click=${(e3) => this.handleAction(e3, action)}
-          >
-            ${action.icon ? x`<span class="icon">${action.icon}</span>` : ""}
-            ${action.label}
-          </button>
-        `)}
-      </div>
     `;
   }
 };
@@ -36228,56 +36308,6 @@ ActionDropdown.styles = i$4`
 
     .action-dots:hover {
       background-color: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.1)));
-    }
-
-    .action-dropdown {
-      position: fixed !important;
-      background: var(--vscode-dropdown-background, var(--vscode-menu-background, var(--vscode-bg-light, #252526)));
-      border: 2px solid red !important; /* Temporary: make border visible for debugging */
-      border-radius: 4px;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
-      min-width: 160px;
-      z-index: 99999 !important;
-      display: none;
-      pointer-events: auto !important;
-    }
-
-    .action-dropdown.show {
-      display: block !important;
-      visibility: visible !important;
-      opacity: 1 !important;
-    }
-
-    .action-dropdown button {
-      display: block;
-      width: 100%;
-      text-align: left;
-      padding: 8px 16px;
-      border: none;
-      background: none;
-      color: var(--vscode-menu-foreground, var(--vscode-foreground, var(--vscode-text, #cccccc)));
-      cursor: pointer;
-      font-size: 13px;
-      transition: background-color 0.2s;
-    }
-
-    .action-dropdown button:hover:not(:disabled) {
-      background-color: var(--vscode-list-hoverBackground, var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.08)));
-      color: var(--vscode-list-hoverForeground, var(--vscode-foreground));
-    }
-
-    .action-dropdown button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .action-dropdown button.danger {
-      color: var(--vscode-error);
-    }
-
-    .icon {
-      margin-right: 8px;
-      font-size: 14px;
     }
   `;
 __decorateClass$C([
