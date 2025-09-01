@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VNC Console</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            overflow: hidden;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        
+        #screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #screen canvas {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto !important;
+            height: auto !important;
+        }
+        
+        .status {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #fff;
+            background: rgba(0,0,0,0.7);
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 10;
+        }
+        
+        .error {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #f48771;
+            text-align: center;
+            max-width: 400px;
+            padding: 20px;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 5px;
+            z-index: 10;
+        }
+        
+        .control-btn {
+            padding: 5px 10px;
+            background: rgba(60, 60, 60, 0.9);
+            color: #fff;
+            border: 1px solid #5a5a5a;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .control-btn:hover {
+            background: rgba(69, 73, 78, 0.9);
+        }
+    </style>
+</head>
+<body>
+    <div id="screen"></div>
+    <div class="status" id="status">Initializing...</div>
+    <div class="controls">
+        <button class="control-btn" id="sendCAD">Ctrl+Alt+Del</button>
+        <button class="control-btn" id="toggleScale">Scale</button>
+    </div>
+    <div class="error" id="error" style="display: none;"></div>
+
+    <!-- Load noVNC locally - No CDN dependency -->
+    <script src="/rfb.min.js"></script>
+    
+    <script>
+        // Get parameters from parent
+        const params = new URLSearchParams(window.location.search);
+        const wsUrl = params.get('url');
+        const token = params.get('token');
+        
+        if (!wsUrl) {
+            showError('No WebSocket URL provided');
+        } else {
+            initVNC();
+        }
+        
+        function initVNC() {
+            try {
+                updateStatus('Connecting...');
+                
+                // Get RFB from the bundled noVNC global
+                const RFB = window.noVNC && window.noVNC.default;
+                if (!RFB) {
+                    throw new Error('RFB class not found. Make sure rfb.min.js is loaded correctly.');
+                }
+                
+                // Initialize RFB client
+                const rfb = new RFB(document.getElementById('screen'), wsUrl);
+                
+                // Configure display options
+                rfb.scaleViewport = true;
+                rfb.resizeSession = false;
+                rfb.viewOnly = false;
+                
+                // Event handlers
+                rfb.addEventListener('connect', () => {
+                    updateStatus('Connected');
+                    console.log('VNC Connected');
+                });
+                
+                rfb.addEventListener('disconnect', (e) => {
+                    if (e.detail.clean) {
+                        updateStatus('Disconnected');
+                    } else {
+                        showError('Connection lost: ' + (e.detail.reason || 'Unknown error'));
+                    }
+                });
+                
+                rfb.addEventListener('securityfailure', (e) => {
+                    showError('Security failure: ' + (e.detail.status || 'Unknown'));
+                });
+                
+                // Control buttons
+                document.getElementById('sendCAD').onclick = () => {
+                    rfb.sendCtrlAltDel();
+                };
+                
+                document.getElementById('toggleScale').onclick = () => {
+                    rfb.scaleViewport = !rfb.scaleViewport;
+                    document.getElementById('toggleScale').textContent = 
+                        rfb.scaleViewport ? 'Unscale' : 'Scale';
+                };
+                
+                // Store RFB instance for parent access if needed
+                window.rfbClient = rfb;
+                
+                // Notify parent that we're ready
+                if (window.parent !== window) {
+                    window.parent.postMessage({ type: 'vnc-ready' }, '*');
+                }
+                
+            } catch (error) {
+                showError('Failed to initialize VNC: ' + error.message);
+            }
+        }
+        
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+        }
+        
+        function showError(message) {
+            document.getElementById('error').textContent = message;
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('status').style.display = 'none';
+        }
+        
+        // Listen for messages from parent
+        window.addEventListener('message', (event) => {
+            if (!window.rfbClient) return;
+            const { type } = event.data || {};
+            if (type === 'disconnect') {
+                window.rfbClient.disconnect();
+            } else if (type === 'sendCAD') {
+                try { window.rfbClient.sendCtrlAltDel(); } catch (e) { console.error(e); }
+            } else if (type === 'toggleScale') {
+                try { window.rfbClient.scaleViewport = !window.rfbClient.scaleViewport; } catch (e) { console.error(e); }
+            }
+        });
+    </script>
+</body>
+</html>

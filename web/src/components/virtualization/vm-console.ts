@@ -1,19 +1,10 @@
 /**
  * VM Console Component
- * Provides terminal interface to virtual machines via WebSocket connection
+ * Provides graphical console to virtual machines via VNC (noVNC in iframe)
  */
 
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-// @ts-ignore - xterm types
-import { Terminal } from 'xterm';
-// @ts-ignore - xterm addon types
-import { FitAddon } from 'xterm-addon-fit';
-// @ts-ignore - xterm addon types
-import { WebLinksAddon } from 'xterm-addon-web-links';
-// @ts-ignore - xterm addon types
-import { AttachAddon } from 'xterm-addon-attach';
-import 'xterm/css/xterm.css';
 import { auth } from '../../auth';
 import { getApiUrl } from '../../config';
 
@@ -43,13 +34,9 @@ export class VMConsole extends LitElement {
   @state() private isWSConnected = false;  // Renamed to avoid conflict with LitElement's isConnected
   @state() private error: string | null = null;
   @state() private connectionStatus = 'Connecting...';
+  @state() private scaleViewport = true;
   
-  private terminal: Terminal | null = null;
-  private fitAddon: FitAddon | null = null;
-  private webLinksAddon: WebLinksAddon | null = null;
-  private attachAddon: AttachAddon | null = null;
-  private ws: WebSocket | null = null;
-  private terminalContainer: HTMLElement | null = null;
+  private vncIframe: HTMLIFrameElement | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectTimeout: NodeJS.Timeout | null = null;
@@ -233,13 +220,16 @@ export class VMConsole extends LitElement {
       overflow: hidden;
     }
 
-    .terminal-container {
+    .vnc-iframe {
       position: absolute;
       top: 0;
       left: 0;
       right: 0;
       bottom: 0;
-      padding: 8px;
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #000;
     }
 
     .loading-overlay {
@@ -352,9 +342,13 @@ export class VMConsole extends LitElement {
       font-size: 11px;
     }
 
-    /* Override xterm styles for better integration */
-    :host ::part(xterm) {
-      height: 100%;
+    /* noVNC canvas will be injected into .vnc-canvas-wrapper */
+    .vnc-canvas-wrapper canvas {
+      width: 100% !important;
+      height: 100% !important;
+      image-rendering: pixelated;
+      outline: none;
+      display: block;
     }
   `;
 
@@ -382,59 +376,11 @@ export class VMConsole extends LitElement {
   }
 
   private async initConsole() {
-    if (this.terminal) return; // Already initialized
-
-    this.terminalContainer = this.shadowRoot?.querySelector('.terminal-container') as HTMLElement;
-    if (!this.terminalContainer) {
-      console.error('Terminal container not found');
-      return;
-    }
+    if (this.vncIframe) return; // Already initialized
 
     try {
-      // Create terminal instance
-      this.terminal = new Terminal({
-        cursorBlink: true,
-        fontSize: 14,
-        fontFamily: 'Monaco, Menlo, Consolas, "Courier New", monospace',
-        theme: {
-          foreground: '#ffffff',
-          background: '#000000',
-          cursor: '#ffffff',
-          black: '#000000',
-          red: '#cd3131',
-          green: '#0dbc79',
-          yellow: '#e5e510',
-          blue: '#2472c8',
-          magenta: '#bc3fbc',
-          cyan: '#11a8cd',
-          white: '#e5e5e5',
-          brightBlack: '#666666',
-          brightRed: '#f14c4c',
-          brightGreen: '#23d18b',
-          brightYellow: '#f5f543',
-          brightBlue: '#3b8eea',
-          brightMagenta: '#d670d6',
-          brightCyan: '#29b8db',
-          brightWhite: '#ffffff'
-        }
-      });
-
-      // Add addons
-      this.fitAddon = new FitAddon();
-      this.terminal.loadAddon(this.fitAddon);
-
-      this.webLinksAddon = new WebLinksAddon();
-      this.terminal.loadAddon(this.webLinksAddon);
-
-      // Open terminal in container
-      this.terminal.open(this.terminalContainer);
-      this.fitAddon.fit();
-
-      // Handle window resize
-      window.addEventListener('resize', this.handleResize);
-
-      // Connect to WebSocket
-      await this.connectWebSocket();
+      // Connect to VNC via iframe
+      await this.connectVNC();
     } catch (error) {
       console.error('Failed to initialize console:', error);
       this.error = error instanceof Error ? error.message : 'Failed to initialize console';
@@ -442,7 +388,7 @@ export class VMConsole extends LitElement {
     }
   }
 
-  private async connectWebSocket() {
+  private async connectVNC() {
     if (!this.vmId) {
       this.error = 'No VM ID provided';
       this.isConnecting = false;
@@ -461,76 +407,49 @@ export class VMConsole extends LitElement {
         throw new Error('Failed to obtain console access token');
       }
 
-      this.connectionStatus = 'Connecting to console...';
+      this.connectionStatus = 'Loading VNC console...';
 
       // Build WebSocket URL with the console token as query parameter
-      const baseUrl = getApiUrl('').replace(/^http/, 'ws'); // Convert http to ws
-      const wsUrl = `${baseUrl}virtualization/computes/${this.vmId}/console/ws?token=${encodeURIComponent(consoleToken.token)}`;
+      const baseUrl = getApiUrl('').replace(/^http/, 'ws'); // Convert http to ws/wss
+      const wsUrl = `${baseUrl}virtualization/computes/${this.vmId}/console/vnc/ws?token=${encodeURIComponent(consoleToken.token)}`;
       
-      console.log('Connecting to VM console WebSocket:', wsUrl.replace(consoleToken.token, '[REDACTED]'));
-      console.log('Console type:', consoleToken.type, 'Host:', consoleToken.host, 'Port:', consoleToken.port);
+      console.log('Connecting to VM VNC via iframe:', wsUrl.replace(consoleToken.token, '[REDACTED]'));
 
-      // Create WebSocket connection
-      this.ws = new WebSocket(wsUrl);
+      // Create iframe with VNC console
+      this.vncIframe = document.createElement('iframe');
+      this.vncIframe.className = 'vnc-iframe';
+      this.vncIframe.src = `/vnc-console.html?url=${encodeURIComponent(wsUrl)}`;
       
-      this.ws.onopen = () => {
-        console.log('WebSocket connection established');
-        this.isConnecting = false;
-        this.isWSConnected = true;
-        this.connectionStatus = 'Connected';
-        this.reconnectAttempts = 0;
-
-        // Attach WebSocket to terminal
-        if (this.terminal && this.ws) {
-          this.attachAddon = new AttachAddon(this.ws);
-          this.terminal.loadAddon(this.attachAddon);
-          
-          // Focus terminal
-          this.terminal.focus();
-          
-          // Send initial size to server
-          this.sendTerminalSize();
+      // Listen for messages from iframe
+      const messageHandler = (event: MessageEvent) => {
+        if (event.data.type === 'vnc-ready') {
+          console.log('VNC iframe ready');
+          this.isConnecting = false;
+          this.isWSConnected = true;
+          this.connectionStatus = 'Connected';
+          this.reconnectAttempts = 0;
         }
       };
-
-      this.ws.onmessage = (event) => {
-        // AttachAddon handles the data, but we can log for debugging
-        if (event.data instanceof Blob) {
-          event.data.text().then(text => {
-            console.debug('Received console data:', text.length, 'bytes');
-          });
+      
+      window.addEventListener('message', messageHandler);
+      
+      // Inject iframe into shadow DOM
+      const container = this.shadowRoot?.querySelector('.vnc-container');
+      if (container) {
+        container.appendChild(this.vncIframe);
+      }
+      
+      // Set a timeout in case the iframe doesn't load
+      setTimeout(() => {
+        if (this.isConnecting) {
+          this.error = 'Failed to load VNC console';
+          this.isConnecting = false;
         }
-      };
-
-      this.ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        this.error = 'Connection error occurred';
-        this.isConnecting = false;
-        this.isWSConnected = false;
-        this.connectionStatus = 'Connection error';
-      };
-
-      this.ws.onclose = (event) => {
-        console.log('WebSocket closed:', event.code, event.reason);
-        this.isWSConnected = false;
-        this.connectionStatus = 'Disconnected';
-        
-        // Clean up attach addon
-        if (this.attachAddon) {
-          this.attachAddon.dispose();
-          this.attachAddon = null;
-        }
-
-        // Attempt reconnection if not manually closed
-        if (event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
-          this.attemptReconnect();
-        } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-          this.error = 'Failed to establish connection after multiple attempts';
-        }
-      };
+      }, 10000);
+      
     } catch (error) {
-      console.error('Failed to connect to console:', error);
-      this.error = error instanceof Error ? error.message : 'Failed to connect to console';
+      console.error('Failed to connect to VNC:', error);
+      this.error = error instanceof Error ? error.message : 'Failed to connect to VNC';
       this.isConnecting = false;
       this.isWSConnected = false;
       this.connectionStatus = 'Failed to connect';
@@ -544,7 +463,7 @@ export class VMConsole extends LitElement {
         throw new Error('No authentication token available');
       }
 
-      const apiUrl = getApiUrl(`/virtualization/computes/${this.vmId}/console`);
+      const apiUrl = getApiUrl(`/virtualization/computes/${this.vmId}/console/vnc`);
       console.log('Fetching console token from:', apiUrl);
       
       const response = await fetch(apiUrl, {
@@ -575,78 +494,30 @@ export class VMConsole extends LitElement {
     }
   }
 
-  private attemptReconnect() {
-    this.reconnectAttempts++;
-    this.connectionStatus = `Reconnecting... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`;
-    
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout);
-    }
-
-    this.reconnectTimeout = setTimeout(() => {
-      console.log(`Attempting reconnection ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
-      this.connectWebSocket();
-    }, 2000 * this.reconnectAttempts); // Exponential backoff
-  }
-
-  private sendTerminalSize() {
-    if (!this.terminal || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
-
-    const cols = this.terminal.cols;
-    const rows = this.terminal.rows;
-    
-    // Send resize command to server
-    const resizeCommand = JSON.stringify({
-      type: 'resize',
-      cols: cols,
-      rows: rows
-    });
-    
-    this.ws.send(resizeCommand);
-    console.log(`Sent terminal resize: ${cols}x${rows}`);
-  }
 
   private handleResize = () => {
-    if (this.fitAddon && this.terminal) {
-      this.fitAddon.fit();
-      this.sendTerminalSize();
+    // Iframe handles resize automatically
+  };
+
+  private handleSendCAD = () => {
+    // Send message to iframe to trigger Ctrl+Alt+Del
+    if (this.vncIframe?.contentWindow) {
+      this.vncIframe.contentWindow.postMessage({ type: 'sendCAD' }, '*');
     }
   };
 
-  private handleCopy = () => {
-    if (this.terminal) {
-      const selection = this.terminal.getSelection();
-      if (selection) {
-        navigator.clipboard.writeText(selection);
-        // Show brief notification
-        this.showNotification('Copied to clipboard');
-      }
-    }
-  };
-
-  private handlePaste = async () => {
-    if (this.terminal && this.ws && this.ws.readyState === WebSocket.OPEN) {
-      try {
-        const text = await navigator.clipboard.readText();
-        if (text) {
-          this.ws.send(text);
-        }
-      } catch (error) {
-        console.error('Failed to paste:', error);
-      }
-    }
-  };
-
-  private handleClear = () => {
-    if (this.terminal) {
-      this.terminal.clear();
+  private handleToggleScale = () => {
+    // Toggle scale in iframe
+    this.scaleViewport = !this.scaleViewport;
+    if (this.vncIframe?.contentWindow) {
+      this.vncIframe.contentWindow.postMessage({ type: 'toggleScale' }, '*');
     }
   };
 
   private handleReconnect = () => {
     this.reconnectAttempts = 0;
     this.error = null;
-    this.connectWebSocket();
+    this.connectVNC();
   };
 
   private handleClose = () => {
@@ -656,32 +527,15 @@ export class VMConsole extends LitElement {
   };
 
   private cleanup() {
-    // Close WebSocket
-    if (this.ws) {
-      this.ws.close(1000, 'User closed console');
-      this.ws = null;
+    // Send disconnect message to iframe
+    if (this.vncIframe?.contentWindow) {
+      this.vncIframe.contentWindow.postMessage({ type: 'disconnect' }, '*');
     }
-
-    // Dispose addons
-    if (this.attachAddon) {
-      this.attachAddon.dispose();
-      this.attachAddon = null;
-    }
-
-    if (this.fitAddon) {
-      this.fitAddon.dispose();
-      this.fitAddon = null;
-    }
-
-    if (this.webLinksAddon) {
-      this.webLinksAddon.dispose();
-      this.webLinksAddon = null;
-    }
-
-    // Dispose terminal
-    if (this.terminal) {
-      this.terminal.dispose();
-      this.terminal = null;
+    
+    // Remove iframe
+    if (this.vncIframe) {
+      this.vncIframe.remove();
+      this.vncIframe = null;
     }
 
     // Remove event listeners
@@ -699,16 +553,6 @@ export class VMConsole extends LitElement {
     this.error = null;
     this.connectionStatus = 'Disconnected';
     this.reconnectAttempts = 0;
-  }
-
-  private showNotification(message: string) {
-    // Simple notification - could be enhanced
-    const event = new CustomEvent('show-notification', {
-      detail: { message, type: 'info' },
-      bubbles: true,
-      composed: true
-    });
-    this.dispatchEvent(event);
   }
 
   override render() {
@@ -729,27 +573,18 @@ export class VMConsole extends LitElement {
             <div class="console-actions">
               <button 
                 class="action-btn" 
-                @click=${this.handleCopy}
+                @click=${this.handleSendCAD}
                 ?disabled=${!this.isWSConnected}
-                title="Copy (Ctrl+Shift+C)"
+                title="Send Ctrl+Alt+Del"
               >
-                📋 Copy
+                ⌨️ Ctrl+Alt+Del
               </button>
               <button 
                 class="action-btn" 
-                @click=${this.handlePaste}
-                ?disabled=${!this.isWSConnected}
-                title="Paste (Ctrl+Shift+V)"
+                @click=${this.handleToggleScale}
+                title="${this.scaleViewport ? 'Disable Fit' : 'Fit to Window'}"
               >
-                📝 Paste
-              </button>
-              <button 
-                class="action-btn" 
-                @click=${this.handleClear}
-                ?disabled=${!this.isWSConnected}
-                title="Clear Terminal"
-              >
-                🗑️ Clear
+                ${this.scaleViewport ? '🧩 Unfit' : '🧩 Fit'}
               </button>
               <button class="close-btn" @click=${this.handleClose} title="Close">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
@@ -760,7 +595,9 @@ export class VMConsole extends LitElement {
           </div>
 
           <div class="console-body">
-            <div class="terminal-container"></div>
+            <div class="vnc-container">
+              <!-- iframe will be injected here -->
+            </div>
             
             ${this.isConnecting ? html`
               <div class="loading-overlay">
@@ -785,20 +622,16 @@ export class VMConsole extends LitElement {
           <div class="console-footer">
             <div class="keyboard-shortcuts">
               <div class="shortcut">
-                <span class="key">Ctrl</span>+<span class="key">Shift</span>+<span class="key">C</span>
-                <span>Copy</span>
+                <span class="key">Click</span>
+                <span>Focus console for keyboard input</span>
               </div>
               <div class="shortcut">
-                <span class="key">Ctrl</span>+<span class="key">Shift</span>+<span class="key">V</span>
-                <span>Paste</span>
-              </div>
-              <div class="shortcut">
-                <span class="key">Esc</span>
-                <span>Close</span>
+                <span class="key">⌘</span> / <span class="key">Ctrl</span>
+                <span>may be captured by guest</span>
               </div>
             </div>
             <div>
-              Terminal: ${this.terminal ? `${this.terminal.cols}×${this.terminal.rows}` : 'Not initialized'}
+              noVNC client ready
             </div>
           </div>
         </div>

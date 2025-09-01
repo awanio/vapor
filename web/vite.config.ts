@@ -21,7 +21,9 @@ export default defineConfig(({ mode }) => {
       '__BUILD_MODE__': JSON.stringify(mode),
       // Fix for libraries that check process.env.NODE_ENV (like nanostores)
       // This is required for production builds to work correctly
-      'process.env.NODE_ENV': JSON.stringify(mode)
+      'process.env.NODE_ENV': JSON.stringify(mode),
+      // Define global for CommonJS modules in browser
+      global: 'globalThis',
     },
     
     build: {
@@ -34,6 +36,8 @@ export default defineConfig(({ mode }) => {
           main: resolve(__dirname, 'index.html')
         }
       },
+      // Support top-level await for noVNC
+      target: 'es2022',
       // Optimize build for production
       minify: isProduction ? 'terser' : false,
       sourcemap: isDevelopment,
@@ -87,7 +91,12 @@ export default defineConfig(({ mode }) => {
         'xterm-addon-web-links',
         'xterm-addon-attach',
         'chart.js'
-      ]
+      ],
+      // Configure esbuild to support modern features
+      esbuildOptions: {
+        target: 'es2022',
+        format: 'esm'
+      }
     }
   };
 });
