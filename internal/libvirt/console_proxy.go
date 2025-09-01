@@ -24,8 +24,9 @@ func (cp *ConsoleProxy) HandleWebSocket(ws *websocket.Conn, token string) error 
 	// Create unique connection ID
 	connID := uuid.New().String()
 
-	// Create context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), cp.config.ConnectionTimeout)
+	// Create context without timeout for the proxy session
+	// The timeout will only be used for the initial TCP connection
+	ctx, cancel := context.WithCancel(context.Background())
 
 	// Create proxy connection
 	proxyConn := &ProxyConnection{
@@ -59,11 +60,15 @@ func (cp *ConsoleProxy) HandleWebSocket(ws *websocket.Conn, token string) error 
 	// Connect to VNC/SPICE server
 	tcpAddr := fmt.Sprintf("%s:%d", tokenInfo.Host, tokenInfo.Port)
 
+	// Use a separate context with timeout for the initial connection only
+	dialCtx, dialCancel := context.WithTimeout(context.Background(), cp.config.ConnectionTimeout)
+	defer dialCancel()
+
 	dialer := &net.Dialer{
 		Timeout: cp.config.ConnectionTimeout,
 	}
 
-	tcpConn, err := dialer.DialContext(ctx, "tcp", tcpAddr)
+	tcpConn, err := dialer.DialContext(dialCtx, "tcp", tcpAddr)
 	if err != nil {
 		return &ConsoleError{
 			Code:    ErrCodeConnectionFailed,
