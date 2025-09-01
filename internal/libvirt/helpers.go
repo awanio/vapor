@@ -324,9 +324,8 @@ func (s *Service) generateDomainXML(req *VMCreateRequest) (string, error) {
 	if req.Architecture == "" {
 		req.Architecture = "x86_64"
 	}
-	if req.OSType == "" {
-		req.OSType = "hvm"
-	}
+	// Always use hvm for QEMU/KVM
+	req.OSType = "hvm"
 
 	xml := fmt.Sprintf(`
 <domain type='kvm'>
@@ -362,6 +361,284 @@ func (s *Service) generateDomainXML(req *VMCreateRequest) (string, error) {
 
 	return xml, nil
 }
+
+// generateEnhancedDomainXML generates libvirt domain XML with enhanced options including OS metadata
+func (s *Service) generateEnhancedDomainXML(req *VMCreateRequestEnhanced, diskConfigs []PreparedDisk) (string, error) {
+	// Generate a UUID for the VM
+	uuid, err := generateRandomID(16)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate UUID: %w", err)
+	}
+
+	// Format UUID properly (8-4-4-4-12)
+	formattedUUID := fmt.Sprintf("%s-%s-%s-%s-%s",
+		uuid[0:8], uuid[8:12], uuid[12:16], uuid[16:20], uuid[20:32])
+
+	// Default values
+	if req.Architecture == "" {
+		req.Architecture = "x86_64"
+	}
+
+	// Always use hvm for QEMU/KVM
+	osType := "hvm"
+
+	// Start building the XML
+	xml := fmt.Sprintf(`<domain type='kvm'>
+<name>%s</name>
+<uuid>%s</uuid>
+<memory unit='MiB'>%d</memory>
+<vcpu>%d</vcpu>`, req.Name, formattedUUID, req.Memory, req.VCPUs)
+
+	// Add metadata if OS info is provided
+	if req.OSInfo != nil {
+		xml += `
+<metadata>`
+
+		// Add libosinfo metadata if variant is specified
+		if req.OSInfo.Variant != "" {
+			// Construct the libosinfo ID based on the variant
+			libosinfoID := ""
+			if req.OSInfo.Distro == "ubuntu" {
+				libosinfoID = fmt.Sprintf("http://ubuntu.com/ubuntu/%s", req.OSInfo.Version)
+			} else if req.OSInfo.Distro == "fedora" {
+				libosinfoID = fmt.Sprintf("http://fedoraproject.org/fedora/%s", req.OSInfo.Version)
+			} else if req.OSInfo.Distro == "centos" {
+				libosinfoID = fmt.Sprintf("http://centos.org/centos/%s", req.OSInfo.Version)
+			} else if req.OSInfo.Family == "windows" {
+				// Windows variants like win10, win11, win2k19, etc.
+				libosinfoID = fmt.Sprintf("http://microsoft.com/win/%s", req.OSInfo.Variant)
+			} else {
+				// Generic format for other distros
+				libosinfoID = fmt.Sprintf("http://%s.org/%s/%s", req.OSInfo.Distro, req.OSInfo.Distro, req.OSInfo.Version)
+			}
+
+			xml += fmt.Sprintf(`
+<libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
+<libosinfo:os id="%s"/>
+</libosinfo:libosinfo>`, libosinfoID)
+		}
+
+		// Add custom Vapor metadata
+		xml += `
+<vapor:os xmlns:vapor="http://vapor.io/xmlns/libvirt/domain/1.0">`
+
+		if req.OSInfo.Family != "" {
+			xml += fmt.Sprintf(`
+<vapor:family>%s</vapor:family>`, req.OSInfo.Family)
+		}
+		if req.OSInfo.Distro != "" {
+			xml += fmt.Sprintf(`
+<vapor:distro>%s</vapor:distro>`, req.OSInfo.Distro)
+		}
+		if req.OSInfo.Version != "" {
+			xml += fmt.Sprintf(`
+<vapor:version>%s</vapor:version>`, req.OSInfo.Version)
+		}
+		if req.OSInfo.Codename != "" {
+			xml += fmt.Sprintf(`
+<vapor:codename>%s</vapor:codename>`, req.OSInfo.Codename)
+		}
+		if req.OSInfo.Variant != "" {
+			xml += fmt.Sprintf(`
+<vapor:variant>%s</vapor:variant>`, req.OSInfo.Variant)
+		}
+
+		xml += `
+</vapor:os>`
+		xml += `
+</metadata>`
+	}
+
+	// OS configuration
+	xml += fmt.Sprintf(`
+<os>
+<type arch='%s'>%s</type>`, req.Architecture, osType)
+
+	// Add boot order based on disks
+	for _, disk := range diskConfigs {
+		if disk.Config.BootOrder > 0 {
+			if disk.Config.Device == "cdrom" {
+				xml += `
+<boot dev='cdrom'/>`
+			} else {
+				xml += `
+<boot dev='hd'/>`
+			}
+		}
+	}
+
+	// Default boot device if no specific boot order
+	if len(diskConfigs) > 0 {
+		hasBootOrder := false
+		for _, disk := range diskConfigs {
+			if disk.Config.BootOrder > 0 {
+				hasBootOrder = true
+				break
+			}
+		}
+		if !hasBootOrder {
+			xml += `
+<boot dev='hd'/>`
+		}
+	}
+
+	xml += `
+</os>`
+
+	// Features
+	xml += `
+<features>
+<acpi/>
+<apic/>`
+
+	if req.UEFI {
+		xml += `
+<firmware>
+<feature enabled='yes' name='efi'/>`
+		if req.SecureBoot {
+			xml += `
+<feature enabled='yes' name='secure-boot'/>`
+		}
+		xml += `
+</firmware>`
+	}
+
+	xml += `
+</features>`
+
+	// Clock
+	xml += `
+<clock offset='utc'/>`
+
+	// Devices
+	xml += `
+<devices>
+<emulator>/usr/bin/qemu-system-` + req.Architecture + `</emulator>`
+
+	// Add disks
+	for _, disk := range diskConfigs {
+		deviceType := "disk"
+		if disk.Config.Device != "" {
+			deviceType = disk.Config.Device
+		}
+
+		busType := string(disk.Config.Bus)
+		if busType == "" {
+			busType = "virtio"
+		}
+
+		xml += fmt.Sprintf(`
+<disk type='file' device='%s'>
+<driver name='qemu' type='%s'/>
+<source file='%s'/>
+<target dev='%s' bus='%s'/>`,
+			deviceType, disk.Config.Format, disk.Path, disk.Config.Target, busType)
+
+		if disk.Config.ReadOnly {
+			xml += `
+<readonly/>`
+		}
+
+		if disk.Config.BootOrder > 0 {
+			xml += fmt.Sprintf(`
+<boot order='%d'/>`, disk.Config.BootOrder)
+		}
+
+		xml += `
+</disk>`
+	}
+
+	// Add networks
+	if len(req.Networks) > 0 {
+		for _, net := range req.Networks {
+			netType := string(net.Type)
+			if netType == "" {
+				netType = "network"
+			}
+
+			model := net.Model
+			if model == "" {
+				model = "virtio"
+			}
+
+			xml += fmt.Sprintf(`
+<interface type='%s'>`, netType)
+
+			if netType == "bridge" {
+				xml += fmt.Sprintf(`
+<source bridge='%s'/>`, net.Source)
+			} else {
+				xml += fmt.Sprintf(`
+<source network='%s'/>`, net.Source)
+			}
+
+			xml += fmt.Sprintf(`
+<model type='%s'/>
+</interface>`, model)
+		}
+	}
+
+	// Console
+	xml += `
+<console type='pty'>
+<target type='serial' port='0'/>
+</console>`
+
+	// Graphics
+	if len(req.Graphics) > 0 {
+		for _, graphics := range req.Graphics {
+			graphicsType := graphics.Type
+			if graphicsType == "" {
+				graphicsType = "vnc"
+			}
+
+			port := graphics.Port
+			if port == 0 {
+				port = -1
+			}
+
+			autoport := "yes"
+			if !graphics.AutoPort && port > 0 {
+				autoport = "no"
+			}
+
+			listen := graphics.Listen
+			if listen == "" {
+				listen = "0.0.0.0"
+			}
+
+			xml += fmt.Sprintf(`
+<graphics type='%s' port='%d' autoport='%s' listen='%s'`,
+				graphicsType, port, autoport, listen)
+
+			if graphics.Password != "" {
+				xml += fmt.Sprintf(` passwd='%s'`, graphics.Password)
+			}
+
+			xml += `/>`
+		}
+	} else {
+		// Default graphics if none specified
+		xml += `
+<graphics type='vnc' port='-1' autoport='yes' listen='0.0.0.0'/>`
+	}
+
+	// TPM device if requested
+	if req.TPM {
+		xml += `
+<tpm model='tpm-tis'>
+<backend type='emulator' version='2.0'/>
+</tpm>`
+	}
+
+	xml += `
+</devices>
+</domain>`
+
+	return xml, nil
+}
+
+// generateEnhancedDomainXML generates libvirt domain XML with enhanced options including OS metadata
 
 // generateStoragePoolXML generates libvirt storage pool XML
 func (s *Service) generateStoragePoolXML(req *StoragePoolCreateRequest) string {

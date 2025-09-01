@@ -60,3 +60,4 @@ local-vapor
 vapor.conf
 /exclude/
 *.backup*
+*.bak

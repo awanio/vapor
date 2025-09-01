@@ -23,6 +23,9 @@ type VMCreateRequestEnhanced struct {
 	Storage *StorageConfig `json:"storage" binding:"required"`
 
 	// OS configuration
+	// Detailed OS information for metadata
+	OSInfo *OSInfoEnhanced `json:"os_info,omitempty"`
+
 	OSType       string `json:"os_type"`              // linux, windows, etc
 	OSVariant    string `json:"os_variant,omitempty"` // ubuntu20.04, win10, etc
 	Architecture string `json:"architecture"`         // x86_64 by default
@@ -145,52 +148,8 @@ func (s *Service) CreateVMEnhanced(ctx context.Context, req *VMCreateRequestEnha
 		}
 	}
 
-	// For now, use the existing createDisk method for the primary disk
-	// This is a temporary measure until we implement the full XML generation
-	var primaryDiskPath string
-	if len(diskConfigs) > 0 && diskConfigs[0].Created {
-		primaryDiskPath = diskConfigs[0].Path
-	}
-
-	// Convert to basic request for now (until full XML generation is implemented)
-	basicReq := &VMCreateRequest{
-		Name:         req.Name,
-		Memory:       req.Memory,
-		VCPUs:        req.VCPUs,
-		OSType:       req.OSType,
-		Architecture: req.Architecture,
-		DiskPath:     primaryDiskPath,
-		AutoStart:    req.AutoStart,
-		Metadata:     req.Metadata,
-	}
-
-	// Set network config if available
-	if len(req.Networks) > 0 {
-		basicReq.Network = req.Networks[0]
-	}
-
-	// Set graphics config if available
-	if len(req.Graphics) > 0 {
-		basicReq.Graphics = GraphicsConfig{
-			Type:     req.Graphics[0].Type,
-			Port:     req.Graphics[0].Port,
-			Password: req.Graphics[0].Password,
-		}
-	}
-
-	// Set cloud-init if available
-	basicReq.CloudInit = req.CloudInit
-
-	// Handle ISO path
-	for _, disk := range diskConfigs {
-		if disk.IsBootISO {
-			basicReq.ISOPath = disk.Path
-			break
-		}
-	}
-
-	// Generate domain XML
-	domainXML, err := s.generateDomainXML(basicReq)
+	// Generate enhanced domain XML with OS metadata
+domainXML, err := s.generateEnhancedDomainXML(req, diskConfigs)
 	if err != nil {
 		log.Printf("CreateVMEnhanced error generating domain XML: %v\n", err)
 		// Clean up any created disks on failure
@@ -219,7 +178,15 @@ func (s *Service) CreateVMEnhanced(ctx context.Context, req *VMCreateRequestEnha
 	}
 
 	// Start the VM if boot ISO is provided (for installation)
-	if basicReq.ISOPath != "" {
+	// Start the VM if boot ISO is provided
+	hasBootISO := false
+	for _, disk := range diskConfigs {
+		if disk.IsBootISO {
+			hasBootISO = true
+			break
+		}
+	}
+	if hasBootISO {
 		if err := domain.Create(); err != nil {
 			log.Printf("CreateVMEnhanced warning - failed to start VM: %v\n", err)
 		}
@@ -228,18 +195,10 @@ func (s *Service) CreateVMEnhanced(ctx context.Context, req *VMCreateRequestEnha
 	return s.domainToVM(domain)
 }
 
-// preparedDisk represents a disk that has been prepared for VM creation
-type preparedDisk struct {
-	Path        string
-	Config      DiskCreateConfig
-	Created     bool   // Whether we created this disk (for cleanup on failure)
-	IsBootISO   bool   // Whether this disk was created from boot_iso field
-	StoragePool string // Resolved storage pool for this disk
-}
 
 // prepareEnhancedStorageConfig validates and prepares the storage configuration
-func (s *Service) prepareEnhancedStorageConfig(ctx context.Context, req *VMCreateRequestEnhanced) ([]preparedDisk, error) {
-	var disks []preparedDisk
+func (s *Service) prepareEnhancedStorageConfig(ctx context.Context, req *VMCreateRequestEnhanced) ([]PreparedDisk, error) {
+	var disks []PreparedDisk
 
 	// Validate default pool exists
 	if err := s.validateStoragePool(ctx, req.Storage.DefaultPool); err != nil {
@@ -292,7 +251,7 @@ func (s *Service) prepareEnhancedStorageConfig(ctx context.Context, req *VMCreat
 		}
 
 		// Prepare the disk based on action
-		var prepDisk preparedDisk
+		var prepDisk PreparedDisk
 		prepDisk.StoragePool = poolName
 		prepDisk.Config = diskConfig
 
@@ -354,21 +313,21 @@ func (s *Service) prepareEnhancedStorageConfig(ctx context.Context, req *VMCreat
 }
 
 // prepareBootISO converts boot_iso field to a disk configuration
-func (s *Service) prepareBootISO(ctx context.Context, bootISO string, defaultPool string) (preparedDisk, error) {
+func (s *Service) prepareBootISO(ctx context.Context, bootISO string, defaultPool string) (PreparedDisk, error) {
 	// Resolve the ISO path
 	isoPath, err := s.resolveEnhancedDiskPath(ctx, bootISO, defaultPool)
 	if err != nil {
 		log.Printf("prepareBootISO: error in operation for isoPath, err :: %v\n", err)
-		return preparedDisk{}, fmt.Errorf("failed to resolve boot ISO path: %w", err)
+		return PreparedDisk{}, fmt.Errorf("failed to resolve boot ISO path: %w", err)
 	}
 
 	// Verify the file exists and is readable
 	if _, err := os.Stat(isoPath); err != nil {
-		return preparedDisk{}, fmt.Errorf("boot ISO not found at %s: %w", isoPath, err)
+		return PreparedDisk{}, fmt.Errorf("boot ISO not found at %s: %w", isoPath, err)
 	}
 
 	// Create a disk configuration for the ISO
-	return preparedDisk{
+	return PreparedDisk{
 		Path:      isoPath,
 		IsBootISO: true,
 		Config: DiskCreateConfig{
@@ -442,7 +401,7 @@ func (s *Service) generateDiskTarget(bus DiskBus, index int) string {
 }
 
 // cleanupCreatedDisks removes any disks that were created during failed VM creation
-func (s *Service) cleanupCreatedDisks(disks []preparedDisk) {
+func (s *Service) cleanupCreatedDisks(disks []PreparedDisk) {
 	for _, disk := range disks {
 		if disk.Created {
 			os.Remove(disk.Path)
@@ -516,6 +475,7 @@ func (s *Service) applyVMTemplate(ctx context.Context, req *VMCreateRequestEnhan
 	}
 
 	// OS configuration
+
 	if req.OSType == "" {
 		req.OSType = template.OSType
 	}

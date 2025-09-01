@@ -50,6 +50,7 @@ type VM struct {
 	VCPUs      uint               `json:"vcpus"`
 	MaxVCPUs   uint               `json:"max_vcpus"`
 	OS         OSInfo             `json:"os"`
+	OSInfoDetail *OSInfoEnhanced    `json:"os_info,omitempty"`
 	Disks      []DiskAttachment   `json:"disks"`
 	Networks   []NetworkInterface `json:"networks"`
 	Graphics   []GraphicsDevice   `json:"graphics,omitempty"`
@@ -60,6 +61,15 @@ type VM struct {
 	Persistent bool               `json:"persistent"`
 }
 
+
+// OSInfoEnhanced contains detailed operating system information
+type OSInfoEnhanced struct {
+	Family   string `json:"family,omitempty"`   // linux, windows, bsd, etc
+	Distro   string `json:"distro,omitempty"`   // ubuntu, fedora, centos, windows, etc
+	Version  string `json:"version,omitempty"`  // 20.04, 10, 8.5, etc
+	Codename string `json:"codename,omitempty"` // focal, bullseye, etc
+	Variant  string `json:"variant,omitempty"`  // ubuntu20.04, win10, etc (libosinfo ID)
+}
 // OSInfo contains operating system information
 type OSInfo struct {
 	Type         string   `json:"type"`         // hvm or linux
@@ -679,6 +689,7 @@ type VMEnhanced struct {
 	Storage *StorageConfigDetail `json:"storage"`
 
 	// OS configuration
+	OSInfo *OSInfoEnhanced `json:"os_info,omitempty"`
 	OSType       string `json:"os_type"`
 	OSVariant    string `json:"os_variant,omitempty"`
 	Architecture string `json:"architecture"`
@@ -845,4 +856,13 @@ type NetworkLinkStateResponse struct {
 type StorageVolumeWithPool struct {
 	StorageVolume
 	PoolName string `json:"pool_name"`
+}
+
+// PreparedDisk represents a disk that has been prepared for VM creation
+type PreparedDisk struct {
+Path        string
+Config      DiskCreateConfig
+Created     bool   // Whether we created this disk (for cleanup on failure)
+IsBootISO   bool   // Whether this disk was created from boot_iso field
+StoragePool string // Resolved storage pool for this disk
 }

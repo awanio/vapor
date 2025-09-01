@@ -1,0 +1,23 @@
+type: object
+description: Detailed operating system information with distribution metadata
+properties:
+  family:
+    type: string
+    description: OS family (e.g., linux, windows, bsd)
+    example: linux
+  distro:
+    type: string
+    description: Distribution name (e.g., ubuntu, fedora, centos, windows)
+    example: ubuntu
+  version:
+    type: string
+    description: OS version number
+    example: "20.04"
+  codename:
+    type: string
+    description: Version codename if applicable
+    example: focal
+  variant:
+    type: string
+    description: OS variant identifier for libosinfo compatibility
+    example: ubuntu20.04

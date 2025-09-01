@@ -999,6 +999,60 @@ func (s *Service) GetVMMetrics(ctx context.Context, nameOrUUID string) (*VMMetri
 
 // GetConsole returns console access information
 // GetConsole returns console connection information for a VM
+// parseOSMetadata parses the OS metadata from domain XML
+func (s *Service) parseOSMetadata(xmlDesc string) *OSInfoEnhanced {
+// Define structs for XML parsing
+type VaporOS struct {
+XMLName  xml.Name `xml:"os"`
+Family   string   `xml:"family"`
+Distro   string   `xml:"distro"`
+Version  string   `xml:"version"`
+Codename string   `xml:"codename"`
+Variant  string   `xml:"variant"`
+}
+
+type LibOSInfo struct {
+XMLName xml.Name `xml:"libosinfo"`
+OS      struct {
+ID string `xml:"id,attr"`
+} `xml:"os"`
+}
+
+type Metadata struct {
+XMLName   xml.Name  `xml:"metadata"`
+VaporOS   VaporOS   `xml:"http://vapor.io/xmlns/libvirt/domain/1.0 os"`
+LibOSInfo LibOSInfo `xml:"http://libosinfo.org/xmlns/libvirt/domain/1.0 libosinfo"`
+}
+
+type Domain struct {
+XMLName  xml.Name `xml:"domain"`
+Metadata Metadata `xml:"metadata"`
+}
+
+var domain Domain
+if err := xml.Unmarshal([]byte(xmlDesc), &domain); err != nil {
+// If parsing fails, return nil
+return nil
+}
+
+// If no vapor metadata found, return nil
+if domain.Metadata.VaporOS.Family == "" && 
+   domain.Metadata.VaporOS.Distro == "" && 
+   domain.Metadata.VaporOS.Version == "" {
+return nil
+}
+
+// Return the parsed OS info
+return &OSInfoEnhanced{
+Family:   domain.Metadata.VaporOS.Family,
+Distro:   domain.Metadata.VaporOS.Distro,
+Version:  domain.Metadata.VaporOS.Version,
+Codename: domain.Metadata.VaporOS.Codename,
+Variant:  domain.Metadata.VaporOS.Variant,
+}
+}
+
+
 func (s *Service) domainToVM(domain *libvirt.Domain) (*VM, error) {
 	name, err := domain.GetName()
 	if err != nil {
@@ -1043,16 +1097,18 @@ func (s *Service) domainToVM(domain *libvirt.Domain) (*VM, error) {
 		UpdatedAt:  time.Now(),
 	}
 
-	// Parse XML for additional details
-	_, err = domain.GetXMLDesc(0)
-	if err == nil {
-		// Parse OS, disks, networks, etc. from XML
-		// This would require proper XML parsing
-		vm.OS = OSInfo{
-			Type:         "hvm",
-			Architecture: "x86_64",
-		}
-	}
+// Parse XML for additional details including OS metadata
+xmlDesc, err := domain.GetXMLDesc(0)
+if err == nil {
+// Parse OS metadata
+vm.OSInfoDetail = s.parseOSMetadata(xmlDesc)
+
+// Parse basic OS info from XML
+vm.OS = OSInfo{
+Type:         "hvm",
+Architecture: "x86_64",
+}
+}
 
 	return vm, nil
 }

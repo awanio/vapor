@@ -30,6 +30,9 @@ properties:
     type: string
     description: Operating system variant
     example: ubuntu20.04
+  os_info:
+    $ref: ./OSInfoEnhanced.yaml
+    description: Detailed OS information for metadata and optimization
   architecture:
     type: string
     description: System architecture
