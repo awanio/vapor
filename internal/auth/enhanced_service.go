@@ -37,8 +37,8 @@ type EnhancedLoginRequest struct {
 
 // EnhancedLoginResponse includes user information
 type EnhancedLoginResponse struct {
-	Token     string   `json:"token"`
-	ExpiresAt int64    `json:"expires_at"`
+	Token     string    `json:"token"`
+	ExpiresAt int64     `json:"expires_at"`
 	User      *UserInfo `json:"user"`
 }
 
@@ -95,7 +95,7 @@ func (s *EnhancedService) EnhancedLogin(c *gin.Context) {
 	}
 
 	var authenticated bool
-	
+
 	switch req.AuthType {
 	case "password":
 		authenticated = s.validatePasswordAuth(req.Username, req.Password)
@@ -103,14 +103,14 @@ func (s *EnhancedService) EnhancedLogin(c *gin.Context) {
 			common.SendError(c, http.StatusUnauthorized, common.ErrCodeUnauthorized, "Invalid username or password")
 			return
 		}
-		
+
 	case "ssh_key":
 		authenticated = s.validateSSHKeyAuth(req.Username, req.PrivateKey, req.Passphrase)
 		if !authenticated {
 			common.SendError(c, http.StatusUnauthorized, common.ErrCodeUnauthorized, "SSH key authentication failed")
 			return
 		}
-		
+
 	default:
 		common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Invalid authentication type")
 		return
@@ -263,7 +263,7 @@ func (s *EnhancedService) VerifySSHChallenge(c *gin.Context) {
 // GetUserKeys returns the user's authorized SSH keys
 func (s *EnhancedService) GetUserKeys(c *gin.Context) {
 	username := c.Param("username")
-	
+
 	// Verify user exists
 	if !s.userExists(username) {
 		common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "User not found")
@@ -271,7 +271,7 @@ func (s *EnhancedService) GetUserKeys(c *gin.Context) {
 	}
 
 	keys := s.getUserAuthorizedKeys(username)
-	
+
 	common.SendSuccess(c, gin.H{
 		"username": username,
 		"keys":     keys,
@@ -346,46 +346,46 @@ func (s *EnhancedService) RefreshToken(c *gin.Context) {
 		// Check if token is expired but was valid
 		// In JWT v5, we check if the error contains the expired token error
 		if errors.Is(err, jwt.ErrTokenExpired) {
-				// Token is expired, but we can still extract claims
-				if claims.ExpiresAt != nil {
-					expiredTime := claims.ExpiresAt.Time
-					// Allow refresh if token expired within the last 7 days
-					if time.Since(expiredTime) <= 7*24*time.Hour {
-						// Get user info
-						userInfo := s.getUserInfo(claims.Username)
-						if userInfo == nil {
-							common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get user information")
-							return
-						}
-
-						// Create new token with same claims but new expiration
-						newExpirationTime := time.Now().Add(24 * time.Hour)
-						newClaims := &Claims{
-							Username: claims.Username,
-							Role:     claims.Role,
-							RegisteredClaims: jwt.RegisteredClaims{
-								ExpiresAt: jwt.NewNumericDate(newExpirationTime),
-								IssuedAt:  jwt.NewNumericDate(time.Now()),
-								Issuer:    claims.Issuer,
-							},
-						}
-
-						newToken := jwt.NewWithClaims(jwt.SigningMethodHS256, newClaims)
-						newTokenString, err := newToken.SignedString(s.jwtSecret)
-						if err != nil {
-							common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to generate new token")
-							return
-						}
-
-						common.SendSuccess(c, EnhancedLoginResponse{
-							Token:     newTokenString,
-							ExpiresAt: newExpirationTime.Unix(),
-							User:      userInfo,
-						})
+			// Token is expired, but we can still extract claims
+			if claims.ExpiresAt != nil {
+				expiredTime := claims.ExpiresAt.Time
+				// Allow refresh if token expired within the last 7 days
+				if time.Since(expiredTime) <= 7*24*time.Hour {
+					// Get user info
+					userInfo := s.getUserInfo(claims.Username)
+					if userInfo == nil {
+						common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get user information")
 						return
 					}
+
+					// Create new token with same claims but new expiration
+					newExpirationTime := time.Now().Add(24 * time.Hour)
+					newClaims := &Claims{
+						Username: claims.Username,
+						Role:     claims.Role,
+						RegisteredClaims: jwt.RegisteredClaims{
+							ExpiresAt: jwt.NewNumericDate(newExpirationTime),
+							IssuedAt:  jwt.NewNumericDate(time.Now()),
+							Issuer:    claims.Issuer,
+						},
+					}
+
+					newToken := jwt.NewWithClaims(jwt.SigningMethodHS256, newClaims)
+					newTokenString, err := newToken.SignedString(s.jwtSecret)
+					if err != nil {
+						common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to generate new token")
+						return
+					}
+
+					common.SendSuccess(c, EnhancedLoginResponse{
+						Token:     newTokenString,
+						ExpiresAt: newExpirationTime.Unix(),
+						User:      userInfo,
+					})
+					return
 				}
-				common.SendError(c, http.StatusUnauthorized, common.ErrCodeUnauthorized, "Token expired beyond refresh window")
+			}
+			common.SendError(c, http.StatusUnauthorized, common.ErrCodeUnauthorized, "Token expired beyond refresh window")
 			return
 		}
 		common.SendError(c, http.StatusUnauthorized, common.ErrCodeUnauthorized, "Invalid token")
@@ -440,7 +440,7 @@ func (s *EnhancedService) validateSSHKeyAuth(username, privateKeyStr, passphrase
 	// Parse the private key
 	var signer ssh.Signer
 	var err error
-	
+
 	block, _ := pem.Decode([]byte(privateKeyStr))
 	if block == nil {
 		return false
@@ -452,7 +452,7 @@ func (s *EnhancedService) validateSSHKeyAuth(username, privateKeyStr, passphrase
 	} else {
 		signer, err = ssh.ParsePrivateKey([]byte(privateKeyStr))
 	}
-	
+
 	if err != nil {
 		return false
 	}

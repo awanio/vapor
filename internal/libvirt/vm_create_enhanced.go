@@ -10,7 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"libvirt.org/go/libvirt")
+	"libvirt.org/go/libvirt"
+)
 
 // VMCreateRequestEnhanced represents an enhanced request to create a new VM
 type VMCreateRequestEnhanced struct {
@@ -242,7 +243,7 @@ func (s *Service) prepareEnhancedStorageConfig(ctx context.Context, req *VMCreat
 
 	// Validate default pool exists
 	if err := s.validateStoragePool(ctx, req.Storage.DefaultPool); err != nil {
- 	log.Printf("prepareEnhancedStorageConfig: error validating storage pool: %v\n", err)
+		log.Printf("prepareEnhancedStorageConfig: error validating storage pool: %v\n", err)
 		return nil, fmt.Errorf("default storage pool '%s' not found: %w", req.Storage.DefaultPool, err)
 	}
 
@@ -250,7 +251,7 @@ func (s *Service) prepareEnhancedStorageConfig(ctx context.Context, req *VMCreat
 	if req.Storage.BootISO != "" {
 		bootDisk, err := s.prepareBootISO(ctx, req.Storage.BootISO, req.Storage.DefaultPool)
 		if err != nil {
-  	log.Printf("prepareEnhancedStorageConfig: error in operation for bootDisk, err :: %v\n", err)
+			log.Printf("prepareEnhancedStorageConfig: error in operation for bootDisk, err :: %v\n", err)
 			return nil, fmt.Errorf("failed to prepare boot ISO: %w", err)
 		}
 		disks = append(disks, bootDisk)
@@ -285,7 +286,7 @@ func (s *Service) prepareEnhancedStorageConfig(ctx context.Context, req *VMCreat
 			poolName = diskConfig.StoragePool
 			// Validate the override pool exists
 			if err := s.validateStoragePool(ctx, poolName); err != nil {
-   	log.Printf("prepareEnhancedStorageConfig: error validating storage pool: %v\n", err)
+				log.Printf("prepareEnhancedStorageConfig: error validating storage pool: %v\n", err)
 				return nil, fmt.Errorf("storage pool '%s' not found for disk %d: %w", poolName, i, err)
 			}
 		}
@@ -299,7 +300,7 @@ func (s *Service) prepareEnhancedStorageConfig(ctx context.Context, req *VMCreat
 		case "create":
 			path, err := s.createEnhancedDisk(ctx, diskConfig, poolName, fmt.Sprintf("%s-disk%d", req.Name, i))
 			if err != nil {
-   	log.Printf("prepareEnhancedStorageConfig: warning - in operation for path, err :: %v\n", err)
+				log.Printf("prepareEnhancedStorageConfig: warning - in operation for path, err :: %v\n", err)
 				// Clean up any previously created disks
 				s.cleanupCreatedDisks(disks)
 				return nil, fmt.Errorf("failed to create disk %d: %w", i, err)
@@ -310,7 +311,7 @@ func (s *Service) prepareEnhancedStorageConfig(ctx context.Context, req *VMCreat
 		case "attach":
 			path, err := s.resolveEnhancedDiskPath(ctx, diskConfig.Path, poolName)
 			if err != nil {
-   	log.Printf("prepareEnhancedStorageConfig: error in operation for path, err :: %v\n", err)
+				log.Printf("prepareEnhancedStorageConfig: error in operation for path, err :: %v\n", err)
 				return nil, fmt.Errorf("failed to resolve path for disk %d: %w", i, err)
 			}
 			prepDisk.Path = path
@@ -318,12 +319,12 @@ func (s *Service) prepareEnhancedStorageConfig(ctx context.Context, req *VMCreat
 		case "clone":
 			sourcePath, err := s.resolveEnhancedDiskPath(ctx, diskConfig.CloneFrom, poolName)
 			if err != nil {
-   	log.Printf("prepareEnhancedStorageConfig: error in operation for sourcePath, err :: %v\n", err)
+				log.Printf("prepareEnhancedStorageConfig: error in operation for sourcePath, err :: %v\n", err)
 				return nil, fmt.Errorf("failed to resolve clone source for disk %d: %w", i, err)
 			}
 			targetPath, err := s.cloneEnhancedDisk(ctx, sourcePath, poolName, fmt.Sprintf("%s-disk%d", req.Name, i))
 			if err != nil {
-   	log.Printf("prepareEnhancedStorageConfig: warning - in operation for targetPath, err :: %v\n", err)
+				log.Printf("prepareEnhancedStorageConfig: warning - in operation for targetPath, err :: %v\n", err)
 				s.cleanupCreatedDisks(disks)
 				return nil, fmt.Errorf("failed to clone disk %d: %w", i, err)
 			}
@@ -357,7 +358,7 @@ func (s *Service) prepareBootISO(ctx context.Context, bootISO string, defaultPoo
 	// Resolve the ISO path
 	isoPath, err := s.resolveEnhancedDiskPath(ctx, bootISO, defaultPool)
 	if err != nil {
- 	log.Printf("prepareBootISO: error in operation for isoPath, err :: %v\n", err)
+		log.Printf("prepareBootISO: error in operation for isoPath, err :: %v\n", err)
 		return preparedDisk{}, fmt.Errorf("failed to resolve boot ISO path: %w", err)
 	}
 
@@ -403,7 +404,7 @@ func (s *Service) validateStoragePool(ctx context.Context, poolName string) erro
 	}
 	pool, err := s.conn.LookupStoragePoolByName(poolName)
 	if err != nil {
- 	log.Printf("validateStoragePool: error in operation for pool, err :: %v\n", err)
+		log.Printf("validateStoragePool: error in operation for pool, err :: %v\n", err)
 		return err
 	}
 	defer pool.Free()
@@ -454,13 +455,13 @@ func (s *Service) validatePCIDevices(ctx context.Context, devices []PCIDeviceCon
 	for i, device := range devices {
 		// Check if device exists
 		if err := s.checkPCIDeviceExists(device.HostAddress); err != nil {
-  	log.Printf("validatePCIDevices: error in operation: %v\n", err)
+			log.Printf("validatePCIDevices: error in operation: %v\n", err)
 			return fmt.Errorf("device %d (%s): %w", i, device.HostAddress, err)
 		}
 
 		// Check IOMMU group
 		if err := s.checkIOMMUGroup(device.HostAddress); err != nil {
-  	log.Printf("validatePCIDevices: error in operation: %v\n", err)
+			log.Printf("validatePCIDevices: error in operation: %v\n", err)
 			return fmt.Errorf("device %d (%s) IOMMU check failed: %w", i, device.HostAddress, err)
 		}
 
@@ -480,7 +481,7 @@ func (s *Service) checkPCIDeviceExists(address string) error {
 	cmd := fmt.Sprintf("lspci -s %s", address)
 	output, err := s.executeSystemCommandWithOutput(cmd)
 	if err != nil || output == "" {
- 	log.Printf("checkPCIDeviceExists: error in operation for output, err :: %v\n", err)
+		log.Printf("checkPCIDeviceExists: error in operation for output, err :: %v\n", err)
 		return fmt.Errorf("PCI device not found")
 	}
 	return nil
@@ -501,7 +502,7 @@ func (s *Service) applyVMTemplate(ctx context.Context, req *VMCreateRequestEnhan
 	// Get template by name
 	template, err := s.TemplateService.GetTemplateByName(ctx, req.Template)
 	if err != nil {
- 	log.Printf("applyVMTemplate: error in operation for template, err :: %v\n", err)
+		log.Printf("applyVMTemplate: error in operation for template, err :: %v\n", err)
 		return fmt.Errorf("template '%s' not found: %w", req.Template, err)
 	}
 
@@ -608,14 +609,14 @@ func (s *Service) UploadISO(ctx context.Context, req *ISOUploadRequest) (*ISOIma
 	// Verify the file exists
 	fileInfo, err := os.Stat(isoPath)
 	if err != nil {
- 	log.Printf("UploadISO: error checking file status: %v\n", err)
+		log.Printf("UploadISO: error checking file status: %v\n", err)
 		return nil, fmt.Errorf("ISO file not found: %w", err)
 	}
 
 	// Generate a unique ID
 	imageID, err := generateRandomID(8)
 	if err != nil {
- 	log.Printf("UploadISO: error in operation for imageID, err :: %v\n", err)
+		log.Printf("UploadISO: error in operation for imageID, err :: %v\n", err)
 		return nil, fmt.Errorf("failed to generate ID: %w", err)
 	}
 
@@ -647,7 +648,7 @@ func (s *Service) UploadISO(ctx context.Context, req *ISOUploadRequest) (*ISOIma
 			iso.Description, iso.CreatedAt,
 		)
 		if err != nil {
-  	log.Printf("UploadISO: error in operation: %v\n", err)
+			log.Printf("UploadISO: error in operation: %v\n", err)
 			return nil, fmt.Errorf("failed to store ISO in database: %w", err)
 		}
 	}
@@ -672,7 +673,7 @@ func (s *Service) ListISOs(ctx context.Context) ([]ISOImage, error) {
 		ORDER BY uploaded_at DESC
 	`)
 	if err != nil {
- 	log.Printf("ListISOs: error in operation: %v\n", err)
+		log.Printf("ListISOs: error in operation: %v\n", err)
 		return nil, fmt.Errorf("failed to query ISOs: %w", err)
 	}
 	defer rows.Close()
@@ -687,7 +688,7 @@ func (s *Service) ListISOs(ctx context.Context) ([]ISOImage, error) {
 			&iso.Description, &iso.CreatedAt, &iso.MD5Hash, &iso.SHA256Hash,
 		)
 		if err != nil {
-  	log.Printf("ListISOs: error in operation: %v\n", err)
+			log.Printf("ListISOs: error in operation: %v\n", err)
 			return nil, fmt.Errorf("failed to scan ISO row: %w", err)
 		}
 		// Convert numeric ID to string image_id
@@ -717,14 +718,14 @@ func (s *Service) DeleteISO(ctx context.Context, isoID string) error {
 	var isoPath string
 	err := s.db.QueryRowContext(ctx, "SELECT path FROM iso_images WHERE id = ?", numericID).Scan(&isoPath)
 	if err != nil {
- 	log.Printf("DeleteISO: error in operation for err :: %v\n", err)
+		log.Printf("DeleteISO: error in operation for err :: %v\n", err)
 		return fmt.Errorf("ISO not found: %w", err)
 	}
 
 	// Delete from database
 	_, err = s.db.ExecContext(ctx, "DELETE FROM iso_images WHERE id = ?", numericID)
 	if err != nil {
- 	log.Printf("DeleteISO: error in operation for _, err: %v\n", err)
+		log.Printf("DeleteISO: error in operation for _, err: %v\n", err)
 		return fmt.Errorf("failed to delete ISO record: %w", err)
 	}
 
@@ -769,7 +770,7 @@ func (s *Service) GetISO(ctx context.Context, isoID string) (ISOImage, error) {
 		&iso.OSType, &iso.OSVersion, &iso.Architecture,
 		&iso.Description, &iso.CreatedAt, &iso.MD5Hash, &iso.SHA256Hash)
 	if err != nil {
- 	log.Printf("GetISO: error in operation: %v\n", err)
+		log.Printf("GetISO: error in operation: %v\n", err)
 		return ISOImage{}, fmt.Errorf("ISO not found: %w", err)
 	}
 
@@ -795,7 +796,7 @@ func (s *Service) DownloadISO(ctx context.Context, isoID string) (string, string
 	var isoPath, name string
 	err := s.db.QueryRowContext(ctx, "SELECT path, name FROM iso_images WHERE id = ?", numericID).Scan(&isoPath, &name)
 	if err != nil {
- 	log.Printf("DownloadISO: error in operation for err :: %v\n", err)
+		log.Printf("DownloadISO: error in operation for err :: %v\n", err)
 		return "", "", fmt.Errorf("ISO not found: %w", err)
 	}
 
@@ -812,156 +813,156 @@ func (s *Service) DownloadISO(ctx context.Context, isoID string) (string, string
 // UpdateVMEnhanced updates an existing VM with enhanced configuration options
 // It accepts the same payload as CreateVMEnhanced but applies changes to an existing VM
 func (s *Service) UpdateVMEnhanced(ctx context.Context, nameOrUUID string, req *VMCreateRequestEnhanced) (*VM, error) {
-s.mu.Lock()
-defer s.mu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-log.Printf("UpdateVMEnhanced: starting update for VM %s", nameOrUUID)
+	log.Printf("UpdateVMEnhanced: starting update for VM %s", nameOrUUID)
 
-// Look up the existing domain
-domain, err := s.lookupDomain(nameOrUUID)
-if err != nil {
-log.Printf("UpdateVMEnhanced error looking up domain: %v\n", err)
-return nil, fmt.Errorf("failed to find VM: %w", err)
-}
-defer domain.Free()
+	// Look up the existing domain
+	domain, err := s.lookupDomain(nameOrUUID)
+	if err != nil {
+		log.Printf("UpdateVMEnhanced error looking up domain: %v\n", err)
+		return nil, fmt.Errorf("failed to find VM: %w", err)
+	}
+	defer domain.Free()
 
-// Check if VM is running
-state, _, err := domain.GetState()
-if err != nil {
-log.Printf("UpdateVMEnhanced error getting domain state: %v\n", err)
-return nil, fmt.Errorf("failed to get VM state: %w", err)
-}
+	// Check if VM is running
+	state, _, err := domain.GetState()
+	if err != nil {
+		log.Printf("UpdateVMEnhanced error getting domain state: %v\n", err)
+		return nil, fmt.Errorf("failed to get VM state: %w", err)
+	}
 
-isRunning := state == libvirt.DOMAIN_RUNNING
-requiresRestart := false
+	isRunning := state == libvirt.DOMAIN_RUNNING
+	requiresRestart := false
 
-// Update memory if specified (can be hot-plugged if supported)
-if req.Memory > 0 {
-memoryKB := req.Memory * 1024
-if isRunning {
-// Try live memory update
-if err := domain.SetMemory(memoryKB); err != nil {
-log.Printf("UpdateVMEnhanced warning - live memory update failed, updating config: %v\n", err)
-// Update config for next boot
-if err := domain.SetMemoryFlags(memoryKB, libvirt.DomainMemoryModFlags(libvirt.DOMAIN_AFFECT_CONFIG)); err != nil {
-log.Printf("UpdateVMEnhanced error updating memory config: %v\n", err)
-return nil, fmt.Errorf("failed to update memory configuration: %w", err)
-}
-requiresRestart = true
-}
-} else {
-if err := domain.SetMemoryFlags(memoryKB, libvirt.DomainMemoryModFlags(libvirt.DOMAIN_AFFECT_CONFIG)); err != nil {
-log.Printf("UpdateVMEnhanced error updating memory config: %v\n", err)
-return nil, fmt.Errorf("failed to update memory configuration: %w", err)
-}
-}
-}
+	// Update memory if specified (can be hot-plugged if supported)
+	if req.Memory > 0 {
+		memoryKB := req.Memory * 1024
+		if isRunning {
+			// Try live memory update
+			if err := domain.SetMemory(memoryKB); err != nil {
+				log.Printf("UpdateVMEnhanced warning - live memory update failed, updating config: %v\n", err)
+				// Update config for next boot
+				if err := domain.SetMemoryFlags(memoryKB, libvirt.DomainMemoryModFlags(libvirt.DOMAIN_AFFECT_CONFIG)); err != nil {
+					log.Printf("UpdateVMEnhanced error updating memory config: %v\n", err)
+					return nil, fmt.Errorf("failed to update memory configuration: %w", err)
+				}
+				requiresRestart = true
+			}
+		} else {
+			if err := domain.SetMemoryFlags(memoryKB, libvirt.DomainMemoryModFlags(libvirt.DOMAIN_AFFECT_CONFIG)); err != nil {
+				log.Printf("UpdateVMEnhanced error updating memory config: %v\n", err)
+				return nil, fmt.Errorf("failed to update memory configuration: %w", err)
+			}
+		}
+	}
 
-// Update vCPUs if specified
-if req.VCPUs > 0 {
-if isRunning {
-// Try hot-plug vCPUs
-if err := domain.SetVcpus(req.VCPUs); err != nil {
-log.Printf("UpdateVMEnhanced warning - vCPU hot-plug failed, updating config: %v\n", err)
-// Update config for next boot
-if err := domain.SetVcpusFlags(req.VCPUs, libvirt.DomainVcpuFlags(libvirt.DOMAIN_AFFECT_CONFIG)); err != nil {
-log.Printf("UpdateVMEnhanced error updating vCPUs config: %v\n", err)
-return nil, fmt.Errorf("failed to update vCPUs configuration: %w", err)
-}
-requiresRestart = true
-}
-} else {
-if err := domain.SetVcpusFlags(req.VCPUs, libvirt.DomainVcpuFlags(libvirt.DOMAIN_AFFECT_CONFIG)); err != nil {
-log.Printf("UpdateVMEnhanced error updating vCPUs config: %v\n", err)
-return nil, fmt.Errorf("failed to update vCPUs configuration: %w", err)
-}
-}
-}
+	// Update vCPUs if specified
+	if req.VCPUs > 0 {
+		if isRunning {
+			// Try hot-plug vCPUs
+			if err := domain.SetVcpus(req.VCPUs); err != nil {
+				log.Printf("UpdateVMEnhanced warning - vCPU hot-plug failed, updating config: %v\n", err)
+				// Update config for next boot
+				if err := domain.SetVcpusFlags(req.VCPUs, libvirt.DomainVcpuFlags(libvirt.DOMAIN_AFFECT_CONFIG)); err != nil {
+					log.Printf("UpdateVMEnhanced error updating vCPUs config: %v\n", err)
+					return nil, fmt.Errorf("failed to update vCPUs configuration: %w", err)
+				}
+				requiresRestart = true
+			}
+		} else {
+			if err := domain.SetVcpusFlags(req.VCPUs, libvirt.DomainVcpuFlags(libvirt.DOMAIN_AFFECT_CONFIG)); err != nil {
+				log.Printf("UpdateVMEnhanced error updating vCPUs config: %v\n", err)
+				return nil, fmt.Errorf("failed to update vCPUs configuration: %w", err)
+			}
+		}
+	}
 
-// Update autostart setting
-if err := domain.SetAutostart(req.AutoStart); err != nil {
-log.Printf("UpdateVMEnhanced warning - failed to update autostart: %v\n", err)
-}
+	// Update autostart setting
+	if err := domain.SetAutostart(req.AutoStart); err != nil {
+		log.Printf("UpdateVMEnhanced warning - failed to update autostart: %v\n", err)
+	}
 
-// Handle storage updates if specified
-// Note: Most storage changes require VM to be stopped
-if req.Storage != nil && !isRunning {
-log.Printf("UpdateVMEnhanced: Processing storage updates")
-// Storage updates are complex and typically require rebuilding domain XML
-// For now, we log the intent
-if len(req.Storage.Disks) > 0 {
-log.Printf("UpdateVMEnhanced: Storage disk updates requested - %d disks", len(req.Storage.Disks))
-requiresRestart = true
-}
-} else if req.Storage != nil && isRunning {
-log.Printf("UpdateVMEnhanced warning: Storage changes require VM to be stopped")
-requiresRestart = true
-}
+	// Handle storage updates if specified
+	// Note: Most storage changes require VM to be stopped
+	if req.Storage != nil && !isRunning {
+		log.Printf("UpdateVMEnhanced: Processing storage updates")
+		// Storage updates are complex and typically require rebuilding domain XML
+		// For now, we log the intent
+		if len(req.Storage.Disks) > 0 {
+			log.Printf("UpdateVMEnhanced: Storage disk updates requested - %d disks", len(req.Storage.Disks))
+			requiresRestart = true
+		}
+	} else if req.Storage != nil && isRunning {
+		log.Printf("UpdateVMEnhanced warning: Storage changes require VM to be stopped")
+		requiresRestart = true
+	}
 
-// Handle network updates if specified
-if len(req.Networks) > 0 {
-log.Printf("UpdateVMEnhanced: Processing network updates - %d networks", len(req.Networks))
-// Network interfaces can potentially be hot-plugged
-// For now, we mark it as requiring restart for safety
-if isRunning {
-log.Printf("UpdateVMEnhanced warning: Network changes may require restart")
-requiresRestart = true
-}
-}
+	// Handle network updates if specified
+	if len(req.Networks) > 0 {
+		log.Printf("UpdateVMEnhanced: Processing network updates - %d networks", len(req.Networks))
+		// Network interfaces can potentially be hot-plugged
+		// For now, we mark it as requiring restart for safety
+		if isRunning {
+			log.Printf("UpdateVMEnhanced warning: Network changes may require restart")
+			requiresRestart = true
+		}
+	}
 
-// Handle PCI device updates if specified
-if len(req.PCIDevices) > 0 {
-if isRunning {
-log.Printf("UpdateVMEnhanced error: PCI device changes require VM to be stopped")
-return nil, fmt.Errorf("PCI device changes require VM to be stopped")
-}
-log.Printf("UpdateVMEnhanced: Processing PCI device updates - %d devices", len(req.PCIDevices))
-}
+	// Handle PCI device updates if specified
+	if len(req.PCIDevices) > 0 {
+		if isRunning {
+			log.Printf("UpdateVMEnhanced error: PCI device changes require VM to be stopped")
+			return nil, fmt.Errorf("PCI device changes require VM to be stopped")
+		}
+		log.Printf("UpdateVMEnhanced: Processing PCI device updates - %d devices", len(req.PCIDevices))
+	}
 
-// Handle graphics configuration updates if specified
-if len(req.Graphics) > 0 {
-log.Printf("UpdateVMEnhanced: Processing graphics updates")
-if isRunning {
-log.Printf("UpdateVMEnhanced warning: Graphics changes will take effect after restart")
-requiresRestart = true
-}
-}
+	// Handle graphics configuration updates if specified
+	if len(req.Graphics) > 0 {
+		log.Printf("UpdateVMEnhanced: Processing graphics updates")
+		if isRunning {
+			log.Printf("UpdateVMEnhanced warning: Graphics changes will take effect after restart")
+			requiresRestart = true
+		}
+	}
 
-// Handle cloud-init updates if specified
-if req.CloudInit != nil {
-log.Printf("UpdateVMEnhanced: Cloud-init updates requested")
-if isRunning {
-log.Printf("UpdateVMEnhanced warning: Cloud-init changes will take effect after restart")
-requiresRestart = true
-}
-}
+	// Handle cloud-init updates if specified
+	if req.CloudInit != nil {
+		log.Printf("UpdateVMEnhanced: Cloud-init updates requested")
+		if isRunning {
+			log.Printf("UpdateVMEnhanced warning: Cloud-init changes will take effect after restart")
+			requiresRestart = true
+		}
+	}
 
-// Handle UEFI/SecureBoot/TPM changes if specified
-if req.UEFI || req.SecureBoot || req.TPM {
-if isRunning {
-log.Printf("UpdateVMEnhanced error: Firmware changes require VM to be stopped")
-return nil, fmt.Errorf("firmware changes (UEFI/SecureBoot/TPM) require VM to be stopped")
-}
-log.Printf("UpdateVMEnhanced: Firmware configuration updates requested")
-}
+	// Handle UEFI/SecureBoot/TPM changes if specified
+	if req.UEFI || req.SecureBoot || req.TPM {
+		if isRunning {
+			log.Printf("UpdateVMEnhanced error: Firmware changes require VM to be stopped")
+			return nil, fmt.Errorf("firmware changes (UEFI/SecureBoot/TPM) require VM to be stopped")
+		}
+		log.Printf("UpdateVMEnhanced: Firmware configuration updates requested")
+	}
 
-// Update metadata if provided
-if req.Metadata != nil {
-log.Printf("UpdateVMEnhanced: Updating metadata with %d entries", len(req.Metadata))
-// Metadata updates would typically be stored in a database
-// For now, we just log them
-for key, value := range req.Metadata {
-log.Printf("UpdateVMEnhanced: Metadata[%s] = %s", key, value)
-}
-}
+	// Update metadata if provided
+	if req.Metadata != nil {
+		log.Printf("UpdateVMEnhanced: Updating metadata with %d entries", len(req.Metadata))
+		// Metadata updates would typically be stored in a database
+		// For now, we just log them
+		for key, value := range req.Metadata {
+			log.Printf("UpdateVMEnhanced: Metadata[%s] = %s", key, value)
+		}
+	}
 
-// If changes require restart and VM is running, notify
-if requiresRestart && isRunning {
-log.Printf("UpdateVMEnhanced: Some changes will take effect after VM restart")
-}
+	// If changes require restart and VM is running, notify
+	if requiresRestart && isRunning {
+		log.Printf("UpdateVMEnhanced: Some changes will take effect after VM restart")
+	}
 
-log.Printf("UpdateVMEnhanced: Successfully processed updates for VM %s", nameOrUUID)
+	log.Printf("UpdateVMEnhanced: Successfully processed updates for VM %s", nameOrUUID)
 
-// Return the updated VM information
-return s.domainToVM(domain)
+	// Return the updated VM information
+	return s.domainToVM(domain)
 }

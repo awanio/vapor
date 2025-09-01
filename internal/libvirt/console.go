@@ -1,12 +1,10 @@
 package libvirt
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/xml"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -93,134 +91,134 @@ func (cp *ConsoleProxy) cleanup() {
 }
 
 // GetConsoleInfo retrieves console information for a VM
-func (s *Service) GetConsoleInfo(ctx context.Context, nameOrUUID string) (*ConsoleInfo, error) {
-	// Get domain
-	domain, err := s.getDomainByNameOrUUID(nameOrUUID)
-	if err != nil {
-		return nil, &ConsoleError{
-			Code:    ErrCodeVMNotFound,
-			Message: "VM not found",
-			Err:     err,
-		}
-	}
-	defer domain.Free()
+// func (s *Service) GetConsoleInfo(ctx context.Context, nameOrUUID string) (*ConsoleInfo, error) {
+// 	// Get domain
+// 	domain, err := s.getDomainByNameOrUUID(nameOrUUID)
+// 	if err != nil {
+// 		return nil, &ConsoleError{
+// 			Code:    ErrCodeVMNotFound,
+// 			Message: "VM not found",
+// 			Err:     err,
+// 		}
+// 	}
+// 	defer domain.Free()
+//
+// 	// Get domain name and UUID
+// 	name, err := domain.GetName()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+//
+// 	uuid, err := domain.GetUUIDString()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+//
+// 	// Get XML description
+// 	xmlDesc, err := domain.GetXMLDesc(0)
+// 	if err != nil {
+// 		return nil, &ConsoleError{
+// 			Code:    ErrCodeInternalError,
+// 			Message: "Failed to get domain XML",
+// 			Err:     err,
+// 		}
+// 	}
+//
+// 	// Parse XML to get graphics devices
+// 	graphics, err := parseGraphicsDevices(xmlDesc)
+// 	if err != nil {
+// 		return nil, &ConsoleError{
+// 			Code:    ErrCodeInternalError,
+// 			Message: "Failed to parse graphics devices",
+// 			Err:     err,
+// 		}
+// 	}
+//
+// 	if len(graphics) == 0 {
+// 		return nil, &ConsoleError{
+// 			Code:    ErrCodeNoConsole,
+// 			Message: "No console available for this VM",
+// 		}
+// 	}
+//
+// 	// Use the first graphics device (usually primary)
+// 	g := graphics[0]
+//
+// 	// Parse port
+// 	port, err := strconv.Atoi(g.Port)
+// 	if err != nil || port <= 0 {
+// 		// Port might be -1 for autoport, need to get runtime info
+// 		port = getAutoPort(domain, g.Type)
+// 		if port <= 0 {
+// 			return nil, &ConsoleError{
+// 				Code:    ErrCodeNoConsole,
+// 				Message: "Console port not available",
+// 			}
+// 		}
+// 	}
+//
+// 	// Determine listen address
+// 	listenAddr := g.Listen
+// 	if listenAddr == "" || listenAddr == "0.0.0.0" {
+// 		listenAddr = "localhost" // For security, default to localhost
+// 	}
+//
+// 	// Parse TLS port if available
+// 	tlsPort := 0
+// 	if g.TLSPort != "" {
+// 		tlsPort, _ = strconv.Atoi(g.TLSPort)
+// 	}
+//
+// 	// Generate access token
+// 	token, err := generateSecureToken()
+// 	if err != nil {
+// 		return nil, &ConsoleError{
+// 			Code:    ErrCodeInternalError,
+// 			Message: "Failed to generate access token",
+// 			Err:     err,
+// 		}
+// 	}
+//
+// 	// Determine console type
+// 	consoleType := ConsoleTypeVNC
+// 	if strings.ToLower(g.Type) == "spice" {
+// 		consoleType = ConsoleTypeSPICE
+// 	}
+//
+// 	// Store token with console information
+// 	if s.consoleProxy != nil {
+// 		s.consoleProxy.StoreToken(&ConsoleToken{
+// 			Token:       token,
+// 			VMName:      name,
+// 			VMUuid:      uuid,
+// 			ConsoleType: consoleType,
+// 			Host:        listenAddr,
+// 			Port:        port,
+// 			Password:    g.Password,
+// 			ExpiresAt:   time.Now().Add(s.consoleProxy.config.TokenTTL),
+// 			Used:        false,
+// 		})
+// 	}
+//
+// 	// Build console info response
+// 	info := &ConsoleInfo{
+// 		Type:       consoleType,
+// 		Host:       listenAddr,
+// 		Port:       port,
+// 		Token:      token,
+// 		WSPath:     fmt.Sprintf("/api/v1/virtualization/computes/%s/console/ws", nameOrUUID),
+// 		ExpiresAt:  time.Now().Add(5 * time.Minute),
+// 		TLSEnabled: tlsPort > 0,
+// 		TLSPort:    tlsPort,
+// 	}
 
-	// Get domain name and UUID
-	name, err := domain.GetName()
-	if err != nil {
-		return nil, err
-	}
-
-	uuid, err := domain.GetUUIDString()
-	if err != nil {
-		return nil, err
-	}
-
-	// Get XML description
-	xmlDesc, err := domain.GetXMLDesc(0)
-	if err != nil {
-		return nil, &ConsoleError{
-			Code:    ErrCodeInternalError,
-			Message: "Failed to get domain XML",
-			Err:     err,
-		}
-	}
-
-	// Parse XML to get graphics devices
-	graphics, err := parseGraphicsDevices(xmlDesc)
-	if err != nil {
-		return nil, &ConsoleError{
-			Code:    ErrCodeInternalError,
-			Message: "Failed to parse graphics devices",
-			Err:     err,
-		}
-	}
-
-	if len(graphics) == 0 {
-		return nil, &ConsoleError{
-			Code:    ErrCodeNoConsole,
-			Message: "No console available for this VM",
-		}
-	}
-
-	// Use the first graphics device (usually primary)
-	g := graphics[0]
-
-	// Parse port
-	port, err := strconv.Atoi(g.Port)
-	if err != nil || port <= 0 {
-		// Port might be -1 for autoport, need to get runtime info
-		port = getAutoPort(domain, g.Type)
-		if port <= 0 {
-			return nil, &ConsoleError{
-				Code:    ErrCodeNoConsole,
-				Message: "Console port not available",
-			}
-		}
-	}
-
-	// Determine listen address
-	listenAddr := g.Listen
-	if listenAddr == "" || listenAddr == "0.0.0.0" {
-		listenAddr = "localhost" // For security, default to localhost
-	}
-
-	// Parse TLS port if available
-	tlsPort := 0
-	if g.TLSPort != "" {
-		tlsPort, _ = strconv.Atoi(g.TLSPort)
-	}
-
-	// Generate access token
-	token, err := generateSecureToken()
-	if err != nil {
-		return nil, &ConsoleError{
-			Code:    ErrCodeInternalError,
-			Message: "Failed to generate access token",
-			Err:     err,
-		}
-	}
-
-	// Determine console type
-	consoleType := ConsoleTypeVNC
-	if strings.ToLower(g.Type) == "spice" {
-		consoleType = ConsoleTypeSPICE
-	}
-
-	// Store token with console information
-	if s.consoleProxy != nil {
-		s.consoleProxy.StoreToken(&ConsoleToken{
-			Token:       token,
-			VMName:      name,
-			VMUuid:      uuid,
-			ConsoleType: consoleType,
-			Host:        listenAddr,
-			Port:        port,
-			Password:    g.Password,
-			ExpiresAt:   time.Now().Add(s.consoleProxy.config.TokenTTL),
-			Used:        false,
-		})
-	}
-
-	// Build console info response
-	info := &ConsoleInfo{
-		Type:       consoleType,
-		Host:       listenAddr,
-		Port:       port,
-		Token:      token,
-		WSPath:     fmt.Sprintf("/api/v1/virtualization/computes/%s/console/ws", nameOrUUID),
-		ExpiresAt:  time.Now().Add(5 * time.Minute),
-		TLSEnabled: tlsPort > 0,
-		TLSPort:    tlsPort,
-	}
-
-	// Don't expose password directly in response for security
-	if g.Password != "" {
-		info.Password = "********" // Indicate password is set but don't reveal it
-	}
-
-	return info, nil
-}
+// 	// Don't expose password directly in response for security
+// 	if g.Password != "" {
+// 		info.Password = "********" // Indicate password is set but don't reveal it
+// 	}
+//
+// 	return info, nil
+// }
 
 // parseGraphicsDevices parses graphics devices from domain XML
 func parseGraphicsDevices(xmlDesc string) ([]GraphicsDevice, error) {

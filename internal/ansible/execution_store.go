@@ -24,30 +24,29 @@ func NewExecutionStore(db *database.DB) (*ExecutionStore, error) {
 		inMemCache:   make(map[string]*ExecutionResult),
 		maxCacheSize: 100, // Keep last 100 executions in memory
 	}
-	
+
 	// Load recent executions into cache
 	if err := store.loadRecentToCache(); err != nil {
 		return nil, fmt.Errorf("failed to load cache: %w", err)
 	}
-	
+
 	// Start background cleanup routine
 	go store.startCleanupRoutine()
-	
+
 	return store, nil
 }
-
 
 // GetExecution retrieves a single execution by ID
 func (es *ExecutionStore) GetExecution(id string) (*ExecutionResult, error) {
 	es.mu.RLock()
-	
+
 	// Check cache first
 	if result, ok := es.inMemCache[id]; ok {
 		es.mu.RUnlock()
 		return result, nil
 	}
 	es.mu.RUnlock()
-	
+
 	// Query from database
 	result := &ExecutionResult{}
 	err := es.db.QueryRow(`
@@ -60,11 +59,11 @@ func (es *ExecutionStore) GetExecution(id string) (*ExecutionResult, error) {
 		&result.StartTime, &result.EndTime,
 		&result.Duration, &result.ExitCode, &result.Changed,
 	)
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Load output if exists
 	rows, err := es.db.Query(`
 		SELECT content FROM execution_output
@@ -81,7 +80,7 @@ func (es *ExecutionStore) GetExecution(id string) (*ExecutionResult, error) {
 			}
 		}
 	}
-	
+
 	// Load stats
 	statRows, err := es.db.Query(`
 		SELECT host, ok, changed, unreachable, failed, skipped
@@ -108,7 +107,7 @@ func (es *ExecutionStore) GetExecution(id string) (*ExecutionResult, error) {
 			result.Stats = stats
 		}
 	}
-	
+
 	// Load failed/unreachable hosts
 	failRows, err := es.db.Query(`
 		SELECT DISTINCT host, failure_type
@@ -128,7 +127,7 @@ func (es *ExecutionStore) GetExecution(id string) (*ExecutionResult, error) {
 			}
 		}
 	}
-	
+
 	return result, nil
 }
 
@@ -141,42 +140,42 @@ func (es *ExecutionStore) ListExecutions(filters ExecutionFilters) ([]*Execution
 		WHERE 1=1
 	`
 	args := []interface{}{}
-	
+
 	if filters.Status != "" {
 		query += " AND status = ?"
 		args = append(args, filters.Status)
 	}
-	
+
 	if filters.Type != "" {
 		query += " AND type = ?"
 		args = append(args, filters.Type)
 	}
-	
+
 	if filters.Playbook != "" {
 		query += " AND playbook = ?"
 		args = append(args, filters.Playbook)
 	}
-	
+
 	if !filters.StartDate.IsZero() {
 		query += " AND start_time >= ?"
 		args = append(args, filters.StartDate)
 	}
-	
+
 	if !filters.EndDate.IsZero() {
 		query += " AND start_time <= ?"
 		args = append(args, filters.EndDate)
 	}
-	
+
 	if filters.OnlyFailed {
 		query += " AND status = 'failed'"
 	}
-	
+
 	if filters.OnlyChanged {
 		query += " AND changed = 1"
 	}
-	
+
 	query += " ORDER BY start_time DESC"
-	
+
 	if filters.Limit > 0 {
 		query += " LIMIT ?"
 		args = append(args, filters.Limit)
@@ -185,13 +184,13 @@ func (es *ExecutionStore) ListExecutions(filters ExecutionFilters) ([]*Execution
 			args = append(args, filters.Offset)
 		}
 	}
-	
+
 	rows, err := es.db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	results := []*ExecutionResult{}
 	for rows.Next() {
 		result := &ExecutionResult{}
@@ -204,7 +203,7 @@ func (es *ExecutionStore) ListExecutions(filters ExecutionFilters) ([]*Execution
 			results = append(results, result)
 		}
 	}
-	
+
 	return results, nil
 }
 
@@ -212,21 +211,21 @@ func (es *ExecutionStore) ListExecutions(filters ExecutionFilters) ([]*Execution
 func (es *ExecutionStore) SaveExecution(result *ExecutionResult, req *PlaybookRequest) error {
 	es.mu.Lock()
 	defer es.mu.Unlock()
-	
+
 	// Start transaction
 	tx, err := es.db.Begin()
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
-	
+
 	// Determine playbook and inventory values
 	var playbook, inventory string
 	if req != nil {
 		playbook = req.Playbook
 		inventory = req.Inventory
 	}
-	
+
 	// Save main execution record
 	_, err = tx.Exec(`
 		INSERT INTO executions (
@@ -249,13 +248,13 @@ func (es *ExecutionStore) SaveExecution(result *ExecutionResult, req *PlaybookRe
 	if err != nil {
 		return fmt.Errorf("failed to save execution: %w", err)
 	}
-	
+
 	// Save metadata if this is a new execution
 	if result.Status == "running" && req != nil {
 		tagsJSON, _ := json.Marshal(req.Tags)
 		skipTagsJSON, _ := json.Marshal(req.SkipTags)
 		extraVarsJSON, _ := json.Marshal(req.ExtraVars)
-		
+
 		_, err = tx.Exec(`
 			INSERT OR IGNORE INTO execution_metadata (
 				execution_id, tags, skip_tags, limit_hosts, extra_vars,
@@ -267,10 +266,10 @@ func (es *ExecutionStore) SaveExecution(result *ExecutionResult, req *PlaybookRe
 			req.Become, req.BecomeUser, req.Timeout,
 		)
 		if err != nil {
-		return fmt.Errorf("failed to save metadata: %w", err)
+			return fmt.Errorf("failed to save metadata: %w", err)
 		}
 	}
-	
+
 	// Save output lines if present
 	if len(result.Output) > 0 {
 		stmt, err := tx.Prepare(`
@@ -281,7 +280,7 @@ func (es *ExecutionStore) SaveExecution(result *ExecutionResult, req *PlaybookRe
 			return fmt.Errorf("failed to prepare output statement: %w", err)
 		}
 		defer stmt.Close()
-		
+
 		for i, line := range result.Output {
 			_, err = stmt.Exec(result.ID, i+1, line)
 			if err != nil {
@@ -289,7 +288,7 @@ func (es *ExecutionStore) SaveExecution(result *ExecutionResult, req *PlaybookRe
 			}
 		}
 	}
-	
+
 	// Save stats if present
 	if result.Stats != nil {
 		for host, hostStatsInterface := range result.Stats {
@@ -310,7 +309,7 @@ func (es *ExecutionStore) SaveExecution(result *ExecutionResult, req *PlaybookRe
 			}
 		}
 	}
-	
+
 	// Save failed/unreachable hosts
 	for _, host := range result.Failed {
 		_, err = tx.Exec(`
@@ -322,7 +321,7 @@ func (es *ExecutionStore) SaveExecution(result *ExecutionResult, req *PlaybookRe
 			return fmt.Errorf("failed to save failed host: %w", err)
 		}
 	}
-	
+
 	for _, host := range result.Unreachable {
 		_, err = tx.Exec(`
 			INSERT OR REPLACE INTO execution_failures (
@@ -333,14 +332,14 @@ func (es *ExecutionStore) SaveExecution(result *ExecutionResult, req *PlaybookRe
 			return fmt.Errorf("failed to save unreachable host: %w", err)
 		}
 	}
-	
+
 	// Save output (only last 1000 lines to prevent bloat)
 	if len(result.Output) > 0 {
 		startIdx := 0
 		if len(result.Output) > 1000 {
 			startIdx = len(result.Output) - 1000
 		}
-		
+
 		for i, line := range result.Output[startIdx:] {
 			_, err = tx.Exec(`
 				INSERT OR REPLACE INTO execution_output (execution_id, line_number, content)
@@ -351,7 +350,7 @@ func (es *ExecutionStore) SaveExecution(result *ExecutionResult, req *PlaybookRe
 			}
 		}
 	}
-	
+
 	// Save statistics
 	if result.Stats != nil {
 		for host, stats := range result.Stats {
@@ -374,7 +373,7 @@ func (es *ExecutionStore) SaveExecution(result *ExecutionResult, req *PlaybookRe
 			}
 		}
 	}
-	
+
 	// Save failed/unreachable hosts
 	for _, host := range result.Failed {
 		_, err = tx.Exec(`
@@ -385,7 +384,7 @@ func (es *ExecutionStore) SaveExecution(result *ExecutionResult, req *PlaybookRe
 			return fmt.Errorf("failed to save failures: %w", err)
 		}
 	}
-	
+
 	for _, host := range result.Unreachable {
 		_, err = tx.Exec(`
 			INSERT OR REPLACE INTO execution_failures (execution_id, host, failure_type)
@@ -395,23 +394,23 @@ func (es *ExecutionStore) SaveExecution(result *ExecutionResult, req *PlaybookRe
 			return fmt.Errorf("failed to save unreachable: %w", err)
 		}
 	}
-	
+
 	// Commit transaction
 	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
-	
+
 	// Update cache
 	es.inMemCache[result.ID] = result
 	es.pruneCache()
-	
+
 	return nil
 }
 
 // GetStatistics returns execution statistics
 func (es *ExecutionStore) GetStatistics(period string) (*ExecutionStatistics, error) {
 	stats := &ExecutionStatistics{}
-	
+
 	// Determine time range
 	var since time.Time
 	switch period {
@@ -426,7 +425,7 @@ func (es *ExecutionStore) GetStatistics(period string) (*ExecutionStatistics, er
 	default:
 		since = time.Now().Add(-24 * time.Hour)
 	}
-	
+
 	// Get overall statistics
 	err := es.db.QueryRow(`
 		SELECT 
@@ -443,15 +442,15 @@ func (es *ExecutionStore) GetStatistics(period string) (*ExecutionStatistics, er
 		&stats.Total, &stats.Success, &stats.Failed, &stats.Running,
 		&stats.AvgDuration, &stats.MaxDuration, &stats.MinDuration,
 	)
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if stats.Total > 0 {
 		stats.SuccessRate = float64(stats.Success) / float64(stats.Total) * 100
 	}
-	
+
 	// Get most failed hosts
 	rows, err := es.db.Query(`
 		SELECT host, COUNT(*) as fail_count
@@ -468,7 +467,7 @@ func (es *ExecutionStore) GetStatistics(period string) (*ExecutionStatistics, er
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	stats.TopFailedHosts = make(map[string]int)
 	for rows.Next() {
 		var host string
@@ -477,7 +476,7 @@ func (es *ExecutionStore) GetStatistics(period string) (*ExecutionStatistics, er
 			stats.TopFailedHosts[host] = count
 		}
 	}
-	
+
 	// Get most run playbooks
 	pbRows, err := es.db.Query(`
 		SELECT playbook, COUNT(*) as run_count
@@ -491,7 +490,7 @@ func (es *ExecutionStore) GetStatistics(period string) (*ExecutionStatistics, er
 		return nil, err
 	}
 	defer pbRows.Close()
-	
+
 	stats.TopPlaybooks = make(map[string]int)
 	for pbRows.Next() {
 		var playbook string
@@ -500,29 +499,29 @@ func (es *ExecutionStore) GetStatistics(period string) (*ExecutionStatistics, er
 			stats.TopPlaybooks[playbook] = count
 		}
 	}
-	
+
 	return stats, nil
 }
 
 // CleanupOldExecutions removes executions older than retention period
 func (es *ExecutionStore) CleanupOldExecutions(retentionDays int) error {
 	cutoff := time.Now().AddDate(0, 0, -retentionDays)
-	
+
 	result, err := es.db.Exec(`
 		DELETE FROM executions 
 		WHERE start_time < ? AND status != 'running'
 	`, cutoff)
-	
+
 	if err != nil {
 		return err
 	}
-	
+
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected > 0 {
 		// Vacuum to reclaim space
 		_ = es.db.Vacuum()
 	}
-	
+
 	return nil
 }
 
@@ -536,12 +535,12 @@ func (es *ExecutionStore) loadRecentToCache() error {
 		ORDER BY start_time DESC
 		LIMIT ?
 	`, es.maxCacheSize)
-	
+
 	if err != nil {
 		return err
 	}
 	defer rows.Close()
-	
+
 	for rows.Next() {
 		result := &ExecutionResult{}
 		err := rows.Scan(
@@ -553,7 +552,7 @@ func (es *ExecutionStore) loadRecentToCache() error {
 			es.inMemCache[result.ID] = result
 		}
 	}
-	
+
 	return nil
 }
 
@@ -562,7 +561,7 @@ func (es *ExecutionStore) pruneCache() {
 	if len(es.inMemCache) <= es.maxCacheSize {
 		return
 	}
-	
+
 	// Remove completed executions older than 1 hour
 	cutoff := time.Now().Add(-1 * time.Hour)
 	for id, result := range es.inMemCache {
@@ -576,11 +575,11 @@ func (es *ExecutionStore) pruneCache() {
 func (es *ExecutionStore) startCleanupRoutine() {
 	ticker := time.NewTicker(24 * time.Hour) // Run daily
 	defer ticker.Stop()
-	
+
 	for range ticker.C {
 		// Cleanup executions older than 30 days by default
 		_ = es.CleanupOldExecutions(30)
-		
+
 		// Optimize database
 		_ = es.db.Optimize()
 	}
@@ -620,26 +619,26 @@ type ExecutionStatistics struct {
 
 // StoreExecution stores an execution result
 func (es *ExecutionStore) StoreExecution(result *ExecutionResult) {
-es.mu.Lock()
-defer es.mu.Unlock()
+	es.mu.Lock()
+	defer es.mu.Unlock()
 
-es.inMemCache[result.ID] = result
+	es.inMemCache[result.ID] = result
 
-// Trim cache if it exceeds max size
-if len(es.inMemCache) > es.maxCacheSize {
-// Remove oldest entry
-var oldestID string
-var oldestTime time.Time
-for id, exec := range es.inMemCache {
-if oldestID == "" || exec.StartTime.Before(oldestTime) {
-oldestID = id
-oldestTime = exec.StartTime
-}
-}
-if oldestID != "" {
-delete(es.inMemCache, oldestID)
-}
-}
+	// Trim cache if it exceeds max size
+	if len(es.inMemCache) > es.maxCacheSize {
+		// Remove oldest entry
+		var oldestID string
+		var oldestTime time.Time
+		for id, exec := range es.inMemCache {
+			if oldestID == "" || exec.StartTime.Before(oldestTime) {
+				oldestID = id
+				oldestTime = exec.StartTime
+			}
+		}
+		if oldestID != "" {
+			delete(es.inMemCache, oldestID)
+		}
+	}
 }
 
 // ListExecutions returns a list of executions

@@ -162,7 +162,7 @@ func (e *Executor) RunPlaybook(ctx context.Context, req *PlaybookRequest) (*Exec
 
 	// Build ansible-playbook command
 	args := []string{}
-	
+
 	// Add playbook path
 	playbookPath := filepath.Join(e.playbookDir, req.Playbook)
 	if _, err := os.Stat(playbookPath); err != nil {
@@ -335,7 +335,7 @@ func (e *Executor) executeCommand(ctx context.Context, command string, args []st
 
 	// Create command
 	cmd := exec.CommandContext(ctx, command, args...)
-	
+
 	// Set environment variables
 	cmd.Env = append(os.Environ(),
 		"ANSIBLE_HOST_KEY_CHECKING=False",
@@ -396,7 +396,7 @@ func (e *Executor) executeCommand(ctx context.Context, command string, args []st
 
 	// Wait for command to finish
 	err = cmd.Wait()
-	
+
 	endTime := time.Now()
 	result.EndTime = &endTime
 	result.Duration = endTime.Sub(result.StartTime).Seconds()
@@ -436,7 +436,7 @@ func (e *Executor) executeCommand(ctx context.Context, command string, args []st
 // parsePlaybookStats extracts statistics from playbook output
 func (e *Executor) parsePlaybookStats(result *ExecutionResult) {
 	stats := make(map[string]interface{})
-	
+
 	for _, line := range result.Output {
 		// Look for PLAY RECAP
 		if strings.Contains(line, "ok=") && strings.Contains(line, "changed=") {
@@ -444,7 +444,7 @@ func (e *Executor) parsePlaybookStats(result *ExecutionResult) {
 			if len(parts) > 0 {
 				host := strings.TrimSuffix(parts[0], ":")
 				hostStats := make(map[string]int)
-				
+
 				for _, part := range parts[1:] {
 					if strings.Contains(part, "=") {
 						kv := strings.Split(part, "=")
@@ -452,7 +452,7 @@ func (e *Executor) parsePlaybookStats(result *ExecutionResult) {
 							var value int
 							fmt.Sscanf(kv[1], "%d", &value)
 							hostStats[kv[0]] = value
-							
+
 							if kv[0] == "changed" && value > 0 {
 								result.Changed = true
 							}
@@ -469,7 +469,7 @@ func (e *Executor) parsePlaybookStats(result *ExecutionResult) {
 			}
 		}
 	}
-	
+
 	if len(stats) > 0 {
 		result.Stats = stats
 	}
@@ -489,7 +489,7 @@ func (e *Executor) GetExecution(id string) (*ExecutionResult, bool) {
 func (e *Executor) GetOutputStream(id string) (chan string, bool) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	
+
 	stream, ok := e.outputStreams[id]
 	return stream, ok
 }
@@ -514,18 +514,18 @@ func (e *Executor) GenerateDynamicInventory(hosts []InventoryHost) (*DynamicInve
 	inventory := &DynamicInventory{
 		Groups: make(map[string]InventoryGroup),
 	}
-	
+
 	inventory.Meta.HostVars = make(map[string]map[string]interface{})
 	inventory.All.Hosts = []string{}
 	inventory.All.Vars = map[string]interface{}{
 		"ansible_python_interpreter": "/usr/bin/python3",
 	}
-	
+
 	// Process hosts
 	for _, host := range hosts {
 		// Add to all hosts
 		inventory.All.Hosts = append(inventory.All.Hosts, host.Hostname)
-		
+
 		// Add host variables
 		hostVars := make(map[string]interface{})
 		hostVars["ansible_host"] = host.IP
@@ -539,7 +539,7 @@ func (e *Executor) GenerateDynamicInventory(hosts []InventoryHost) (*DynamicInve
 			hostVars[k] = v
 		}
 		inventory.Meta.HostVars[host.Hostname] = hostVars
-		
+
 		// Add to groups
 		for _, group := range host.Groups {
 			if g, exists := inventory.Groups[group]; exists {
@@ -553,59 +553,59 @@ func (e *Executor) GenerateDynamicInventory(hosts []InventoryHost) (*DynamicInve
 			}
 		}
 	}
-	
+
 	// Add groups as children
 	inventory.All.Children = make([]string, 0, len(inventory.Groups))
 	for group := range inventory.Groups {
 		inventory.All.Children = append(inventory.All.Children, group)
 	}
-	
+
 	return inventory, nil
 }
 
 // SaveInventory saves a dynamic inventory to a file
 func (e *Executor) SaveInventory(name string, inventory *DynamicInventory) error {
 	inventoryPath := filepath.Join(e.inventoryDir, name+".json")
-	
+
 	data, err := json.MarshalIndent(inventory, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal inventory: %w", err)
 	}
-	
+
 	if err := os.WriteFile(inventoryPath, data, 0644); err != nil {
 		return fmt.Errorf("failed to write inventory file: %w", err)
 	}
-	
+
 	// Make it executable for dynamic inventory
 	if err := os.Chmod(inventoryPath, 0755); err != nil {
 		return fmt.Errorf("failed to chmod inventory file: %w", err)
 	}
-	
+
 	return nil
 }
 
 // SavePlaybook saves a playbook content to a file
 func (e *Executor) SavePlaybook(name string, content string) error {
 	playbookPath := filepath.Join(e.playbookDir, name)
-	
+
 	if err := os.WriteFile(playbookPath, []byte(content), 0644); err != nil {
 		return fmt.Errorf("failed to write playbook file: %w", err)
 	}
-	
+
 	return nil
 }
 
 // ValidatePlaybook validates a playbook syntax
 func (e *Executor) ValidatePlaybook(name string) error {
 	playbookPath := filepath.Join(e.playbookDir, name)
-	
+
 	cmd := exec.Command("ansible-playbook", "--syntax-check", playbookPath)
 	output, err := cmd.CombinedOutput()
-	
+
 	if err != nil {
 		return fmt.Errorf("playbook validation failed: %s", string(output))
 	}
-	
+
 	return nil
 }
 
@@ -615,13 +615,13 @@ func (e *Executor) createTempVaultPass(password string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	
+
 	if _, err := tmpFile.WriteString(password); err != nil {
 		tmpFile.Close()
 		os.Remove(tmpFile.Name())
 		return "", err
 	}
-	
+
 	tmpFile.Close()
 	return tmpFile.Name(), nil
 }
@@ -632,18 +632,18 @@ func (e *Executor) StreamOutput(id string, writer io.Writer) error {
 	if !ok {
 		return fmt.Errorf("execution %s not found or stream closed", id)
 	}
-	
+
 	for line := range outputChan {
 		if _, err := fmt.Fprintf(writer, "%s\n", line); err != nil {
 			return err
 		}
-		
+
 		// Flush if the writer supports it
 		if flusher, ok := writer.(interface{ Flush() }); ok {
 			flusher.Flush()
 		}
 	}
-	
+
 	return nil
 }
 
@@ -651,65 +651,65 @@ func (e *Executor) StreamOutput(id string, writer io.Writer) error {
 func (e *Executor) Close() error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	
+
 	// Close all output streams
 	for _, stream := range e.outputStreams {
 		close(stream)
 	}
-	
+
 	// Note: We don't close the store here as it uses a shared database connection
 	return nil
 }
 
 // CancelExecution cancels a running execution
 func (e *Executor) CancelExecution(id string) error {
-e.mu.Lock()
-defer e.mu.Unlock()
+	e.mu.Lock()
+	defer e.mu.Unlock()
 
-if cancel, exists := e.cancelFuncs[id]; exists {
-cancel()
-delete(e.cancelFuncs, id)
+	if cancel, exists := e.cancelFuncs[id]; exists {
+		cancel()
+		delete(e.cancelFuncs, id)
 
-// Update execution status
-if result, ok := e.results[id]; ok {
-result.Status = "cancelled"
-now := time.Now()
-result.EndTime = &now
-result.Duration = now.Sub(result.StartTime).Seconds()
-}
+		// Update execution status
+		if result, ok := e.results[id]; ok {
+			result.Status = "cancelled"
+			now := time.Now()
+			result.EndTime = &now
+			result.Duration = now.Sub(result.StartTime).Seconds()
+		}
 
-return nil
-}
+		return nil
+	}
 
-return fmt.Errorf("execution not found")
+	return fmt.Errorf("execution not found")
 }
 
 // GetInventory retrieves a saved inventory by name
 func (e *Executor) GetInventory(name string) (*DynamicInventory, error) {
-inventoryPath := filepath.Join(e.inventoryDir, name+".json")
+	inventoryPath := filepath.Join(e.inventoryDir, name+".json")
 
-data, err := os.ReadFile(inventoryPath)
-if err != nil {
-return nil, err
-}
+	data, err := os.ReadFile(inventoryPath)
+	if err != nil {
+		return nil, err
+	}
 
-var inventory DynamicInventory
-if err := json.Unmarshal(data, &inventory); err != nil {
-return nil, fmt.Errorf("failed to parse inventory: %w", err)
-}
+	var inventory DynamicInventory
+	if err := json.Unmarshal(data, &inventory); err != nil {
+		return nil, fmt.Errorf("failed to parse inventory: %w", err)
+	}
 
-return &inventory, nil
+	return &inventory, nil
 }
 
 // StoreExecution stores an execution result
 func (e *Executor) StoreExecution(result *ExecutionResult) {
-e.mu.Lock()
-defer e.mu.Unlock()
+	e.mu.Lock()
+	defer e.mu.Unlock()
 
-e.results[result.ID] = result
+	e.results[result.ID] = result
 
-// Also store in the persistent store if available
-if e.store != nil {
-e.store.StoreExecution(result)
-}
+	// Also store in the persistent store if available
+	if e.store != nil {
+		e.store.StoreExecution(result)
+	}
 }

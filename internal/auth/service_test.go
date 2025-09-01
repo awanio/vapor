@@ -16,7 +16,7 @@ import (
 func TestNewService(t *testing.T) {
 	secret := "test-secret"
 	service := NewService(secret)
-	
+
 	assert.NotNil(t, service)
 	assert.Equal(t, []byte(secret), service.jwtSecret)
 }
@@ -154,7 +154,7 @@ func TestAuthMiddleware(t *testing.T) {
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Request = httptest.NewRequest("GET", "/test", nil)
-			
+
 			if tt.authHeader != "" {
 				c.Request.Header.Set("Authorization", tt.authHeader)
 			}

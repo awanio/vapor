@@ -1,22 +1,22 @@
 package ansible
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 	"text/template"
-	"bytes"
+	"time"
 )
 
 // TemplateManager manages user-defined and system templates
 type TemplateManager struct {
 	systemTemplatesDir string
 	userTemplatesDir   string
-	executor          *Executor
+	executor           *Executor
 }
 
 // NewTemplateManager creates a new template manager
@@ -25,7 +25,7 @@ func NewTemplateManager(exec *Executor) *TemplateManager {
 	return &TemplateManager{
 		systemTemplatesDir: filepath.Join(baseDir, "templates", "system"),
 		userTemplatesDir:   filepath.Join(baseDir, "templates", "user"),
-		executor:          exec,
+		executor:           exec,
 	}
 }
 
@@ -38,27 +38,27 @@ func (tm *TemplateManager) Initialize() error {
 	if err := os.MkdirAll(tm.userTemplatesDir, 0755); err != nil {
 		return fmt.Errorf("failed to create user templates dir: %w", err)
 	}
-	
+
 	// Initialize system templates if they don't exist
 	return tm.initializeSystemTemplates()
 }
 
 // UserTemplate represents a user-created template
 type UserTemplate struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Category    string                 `json:"category"`
-	Description string                 `json:"description"`
-	Author      string                 `json:"author"`
-	Version     string                 `json:"version"`
-	Icon        string                 `json:"icon,omitempty"`
-	Tags        []string              `json:"tags"`
-	Variables   map[string]Variable   `json:"variables"`
-	Content     string                `json:"content"`
-	IsSystem    bool                  `json:"is_system"`
-	IsPublic    bool                  `json:"is_public"`
-	CreatedAt   time.Time            `json:"created_at"`
-	UpdatedAt   time.Time            `json:"updated_at"`
+	ID          string              `json:"id"`
+	Name        string              `json:"name"`
+	Category    string              `json:"category"`
+	Description string              `json:"description"`
+	Author      string              `json:"author"`
+	Version     string              `json:"version"`
+	Icon        string              `json:"icon,omitempty"`
+	Tags        []string            `json:"tags"`
+	Variables   map[string]Variable `json:"variables"`
+	Content     string              `json:"content"`
+	IsSystem    bool                `json:"is_system"`
+	IsPublic    bool                `json:"is_public"`
+	CreatedAt   time.Time           `json:"created_at"`
+	UpdatedAt   time.Time           `json:"updated_at"`
 }
 
 // Variable represents a template variable with validation
@@ -84,26 +84,26 @@ type Validation struct {
 // ListTemplates returns all templates (system + user)
 func (tm *TemplateManager) ListTemplates(filter *TemplateFilter) ([]*UserTemplate, error) {
 	var templates []*UserTemplate
-	
+
 	// Load system templates
 	systemTemplates, err := tm.loadTemplatesFromDir(tm.systemTemplatesDir, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load system templates: %w", err)
 	}
 	templates = append(templates, systemTemplates...)
-	
+
 	// Load user templates
 	userTemplates, err := tm.loadTemplatesFromDir(tm.userTemplatesDir, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load user templates: %w", err)
 	}
 	templates = append(templates, userTemplates...)
-	
+
 	// Apply filters
 	if filter != nil {
 		templates = tm.applyFilters(templates, filter)
 	}
-	
+
 	return templates, nil
 }
 
@@ -114,13 +114,13 @@ func (tm *TemplateManager) GetTemplate(id string) (*UserTemplate, error) {
 	if _, err := os.Stat(systemPath); err == nil {
 		return tm.loadTemplate(systemPath, true)
 	}
-	
+
 	// Check user templates
 	userPath := filepath.Join(tm.userTemplatesDir, id+".json")
 	if _, err := os.Stat(userPath); err == nil {
 		return tm.loadTemplate(userPath, false)
 	}
-	
+
 	return nil, fmt.Errorf("template not found: %s", id)
 }
 
@@ -130,18 +130,18 @@ func (tm *TemplateManager) CreateTemplate(template *UserTemplate) error {
 	if err := tm.validateTemplate(template); err != nil {
 		return fmt.Errorf("template validation failed: %w", err)
 	}
-	
+
 	// Generate ID if not provided
 	if template.ID == "" {
 		template.ID = tm.generateTemplateID(template.Name)
 	}
-	
+
 	// Set timestamps
 	now := time.Now()
 	template.CreatedAt = now
 	template.UpdatedAt = now
 	template.IsSystem = false
-	
+
 	// Save template
 	templatePath := filepath.Join(tm.userTemplatesDir, template.ID+".json")
 	return tm.saveTemplate(template, templatePath)
@@ -154,22 +154,22 @@ func (tm *TemplateManager) UpdateTemplate(id string, template *UserTemplate) err
 	if err != nil {
 		return err
 	}
-	
+
 	if existing.IsSystem {
 		return fmt.Errorf("cannot modify system template")
 	}
-	
+
 	// Validate template
 	if err := tm.validateTemplate(template); err != nil {
 		return fmt.Errorf("template validation failed: %w", err)
 	}
-	
+
 	// Preserve original creation time
 	template.CreatedAt = existing.CreatedAt
 	template.UpdatedAt = time.Now()
 	template.ID = id
 	template.IsSystem = false
-	
+
 	// Save updated template
 	templatePath := filepath.Join(tm.userTemplatesDir, id+".json")
 	return tm.saveTemplate(template, templatePath)
@@ -182,11 +182,11 @@ func (tm *TemplateManager) DeleteTemplate(id string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	if template.IsSystem {
 		return fmt.Errorf("cannot delete system template")
 	}
-	
+
 	// Delete template file
 	templatePath := filepath.Join(tm.userTemplatesDir, id+".json")
 	return os.Remove(templatePath)
@@ -199,26 +199,26 @@ func (tm *TemplateManager) RenderTemplate(templateID string, variables map[strin
 	if err != nil {
 		return "", err
 	}
-	
+
 	// Validate variables
 	if err := tm.validateVariables(tmpl, variables); err != nil {
 		return "", fmt.Errorf("variable validation failed: %w", err)
 	}
-	
+
 	// Merge with defaults
 	mergedVars := tm.mergeWithDefaults(tmpl, variables)
-	
+
 	// Use Go's text/template for advanced rendering
 	t, err := template.New(templateID).Parse(tmpl.Content)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse template: %w", err)
 	}
-	
+
 	var buf bytes.Buffer
 	if err := t.Execute(&buf, mergedVars); err != nil {
 		return "", fmt.Errorf("failed to render template: %w", err)
 	}
-	
+
 	return buf.String(), nil
 }
 
@@ -229,7 +229,7 @@ func (tm *TemplateManager) CloneTemplate(sourceID, newID, newName string) error 
 	if err != nil {
 		return err
 	}
-	
+
 	// Create new template
 	clone := *source
 	clone.ID = newID
@@ -237,14 +237,14 @@ func (tm *TemplateManager) CloneTemplate(sourceID, newID, newName string) error 
 	clone.IsSystem = false
 	clone.Author = "cloned"
 	clone.Version = "1.0.0"
-	
+
 	return tm.CreateTemplate(&clone)
 }
 
 // ImportTemplate imports a template from YAML/JSON
 func (tm *TemplateManager) ImportTemplate(data []byte, format string) error {
 	var template UserTemplate
-	
+
 	switch format {
 	case "json":
 		if err := json.Unmarshal(data, &template); err != nil {
@@ -257,7 +257,7 @@ func (tm *TemplateManager) ImportTemplate(data []byte, format string) error {
 	default:
 		return fmt.Errorf("unsupported format: %s", format)
 	}
-	
+
 	return tm.CreateTemplate(&template)
 }
 
@@ -267,7 +267,7 @@ func (tm *TemplateManager) ExportTemplate(id string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return json.MarshalIndent(template, "", "  ")
 }
 
@@ -279,11 +279,11 @@ func (tm *TemplateManager) ShareTemplate(id string, repository string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	// Save to shared directory
 	sharedDir := filepath.Join(tm.executor.baseDir, "templates", "shared")
 	os.MkdirAll(sharedDir, 0755)
-	
+
 	sharedPath := filepath.Join(sharedDir, id+".json")
 	return ioutil.WriteFile(sharedPath, data, 0644)
 }
@@ -292,7 +292,7 @@ func (tm *TemplateManager) ShareTemplate(id string, repository string) error {
 
 func (tm *TemplateManager) loadTemplatesFromDir(dir string, isSystem bool) ([]*UserTemplate, error) {
 	var templates []*UserTemplate
-	
+
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -300,7 +300,7 @@ func (tm *TemplateManager) loadTemplatesFromDir(dir string, isSystem bool) ([]*U
 		}
 		return nil, err
 	}
-	
+
 	for _, file := range files {
 		if strings.HasSuffix(file.Name(), ".json") {
 			path := filepath.Join(dir, file.Name())
@@ -311,7 +311,7 @@ func (tm *TemplateManager) loadTemplatesFromDir(dir string, isSystem bool) ([]*U
 			templates = append(templates, template)
 		}
 	}
-	
+
 	return templates, nil
 }
 
@@ -320,12 +320,12 @@ func (tm *TemplateManager) loadTemplate(path string, isSystem bool) (*UserTempla
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var template UserTemplate
 	if err := json.Unmarshal(data, &template); err != nil {
 		return nil, err
 	}
-	
+
 	template.IsSystem = isSystem
 	return &template, nil
 }
@@ -335,7 +335,7 @@ func (tm *TemplateManager) saveTemplate(template *UserTemplate, path string) err
 	if err != nil {
 		return err
 	}
-	
+
 	return ioutil.WriteFile(path, data, 0644)
 }
 
@@ -343,38 +343,38 @@ func (tm *TemplateManager) validateTemplate(userTemplate *UserTemplate) error {
 	if userTemplate.Name == "" {
 		return fmt.Errorf("template name is required")
 	}
-	
+
 	if userTemplate.Content == "" {
 		return fmt.Errorf("template content is required")
 	}
-	
+
 	// Validate template syntax (basic check)
 	tmpl := template.New("test")
 	if _, err := tmpl.Parse(userTemplate.Content); err != nil {
 		return fmt.Errorf("invalid template syntax: %w", err)
 	}
-	
+
 	return nil
 }
 
 func (tm *TemplateManager) validateVariables(template *UserTemplate, variables map[string]interface{}) error {
 	for name, varDef := range template.Variables {
 		value, exists := variables[name]
-		
+
 		// Check required variables
 		if varDef.Required && !exists {
 			return fmt.Errorf("required variable missing: %s", name)
 		}
-		
+
 		if !exists {
 			continue
 		}
-		
+
 		// Type validation
 		if err := tm.validateVariableType(value, varDef.Type); err != nil {
 			return fmt.Errorf("variable %s: %w", name, err)
 		}
-		
+
 		// Additional validation rules
 		if varDef.Validation != nil {
 			if err := tm.applyValidationRules(value, varDef.Validation); err != nil {
@@ -382,7 +382,7 @@ func (tm *TemplateManager) validateVariables(template *UserTemplate, variables m
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -412,14 +412,14 @@ func (tm *TemplateManager) validateVariableType(value interface{}, expectedType 
 			return fmt.Errorf("expected object, got %T", value)
 		}
 	}
-	
+
 	return nil
 }
 
 func (tm *TemplateManager) applyValidationRules(value interface{}, validation *Validation) error {
 	// Implement validation rules based on type
 	// This is a simplified version
-	
+
 	if str, ok := value.(string); ok {
 		if validation.MinLength != nil && len(str) < *validation.MinLength {
 			return fmt.Errorf("string too short (min: %d)", *validation.MinLength)
@@ -440,27 +440,27 @@ func (tm *TemplateManager) applyValidationRules(value interface{}, validation *V
 			}
 		}
 	}
-	
+
 	// Add more validation logic as needed
-	
+
 	return nil
 }
 
 func (tm *TemplateManager) mergeWithDefaults(template *UserTemplate, variables map[string]interface{}) map[string]interface{} {
 	merged := make(map[string]interface{})
-	
+
 	// Start with defaults
 	for name, varDef := range template.Variables {
 		if varDef.Default != nil {
 			merged[name] = varDef.Default
 		}
 	}
-	
+
 	// Override with provided values
 	for name, value := range variables {
 		merged[name] = value
 	}
-	
+
 	return merged
 }
 
@@ -469,7 +469,7 @@ func (tm *TemplateManager) generateTemplateID(name string) string {
 	id := strings.ToLower(name)
 	id = strings.ReplaceAll(id, " ", "-")
 	id = strings.ReplaceAll(id, "_", "-")
-	
+
 	// Remove non-alphanumeric characters except hyphens
 	var result []rune
 	for _, r := range id {
@@ -477,19 +477,19 @@ func (tm *TemplateManager) generateTemplateID(name string) string {
 			result = append(result, r)
 		}
 	}
-	
+
 	return string(result)
 }
 
 func (tm *TemplateManager) applyFilters(templates []*UserTemplate, filter *TemplateFilter) []*UserTemplate {
 	var filtered []*UserTemplate
-	
+
 	for _, template := range templates {
 		// Apply category filter
 		if filter.Category != "" && template.Category != filter.Category {
 			continue
 		}
-		
+
 		// Apply tag filter
 		if len(filter.Tags) > 0 {
 			hasTag := false
@@ -508,12 +508,12 @@ func (tm *TemplateManager) applyFilters(templates []*UserTemplate, filter *Templ
 				continue
 			}
 		}
-		
+
 		// Apply author filter
 		if filter.Author != "" && template.Author != filter.Author {
 			continue
 		}
-		
+
 		// Apply system/user filter
 		if filter.OnlySystem && !template.IsSystem {
 			continue
@@ -521,10 +521,10 @@ func (tm *TemplateManager) applyFilters(templates []*UserTemplate, filter *Templ
 		if filter.OnlyUser && template.IsSystem {
 			continue
 		}
-		
+
 		filtered = append(filtered, template)
 	}
-	
+
 	return filtered
 }
 
@@ -541,21 +541,21 @@ type TemplateFilter struct {
 func (tm *TemplateManager) initializeSystemTemplates() error {
 	// Create default system templates if they don't exist
 	systemTemplates := tm.getDefaultSystemTemplates()
-	
+
 	for _, template := range systemTemplates {
 		templatePath := filepath.Join(tm.systemTemplatesDir, template.ID+".json")
-		
+
 		// Skip if already exists
 		if _, err := os.Stat(templatePath); err == nil {
 			continue
 		}
-		
+
 		// Save system template
 		if err := tm.saveTemplate(template, templatePath); err != nil {
 			return fmt.Errorf("failed to initialize system template %s: %w", template.ID, err)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -738,54 +738,54 @@ func (tm *TemplateManager) getDefaultSystemTemplates() []*UserTemplate {
 
 // SaveUserTemplate saves a user template
 func (tm *TemplateManager) SaveUserTemplate(template *UserTemplate) error {
-// Ensure directory exists
-if err := os.MkdirAll(tm.userTemplatesDir, 0755); err != nil {
-return fmt.Errorf("failed to create user templates directory: %w", err)
-}
+	// Ensure directory exists
+	if err := os.MkdirAll(tm.userTemplatesDir, 0755); err != nil {
+		return fmt.Errorf("failed to create user templates directory: %w", err)
+	}
 
-// Save template as JSON
-templatePath := filepath.Join(tm.userTemplatesDir, template.ID+".json")
-data, err := json.MarshalIndent(template, "", "  ")
-if err != nil {
-return fmt.Errorf("failed to marshal template: %w", err)
-}
+	// Save template as JSON
+	templatePath := filepath.Join(tm.userTemplatesDir, template.ID+".json")
+	data, err := json.MarshalIndent(template, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal template: %w", err)
+	}
 
-if err := os.WriteFile(templatePath, data, 0644); err != nil {
-return fmt.Errorf("failed to save template: %w", err)
-}
+	if err := os.WriteFile(templatePath, data, 0644); err != nil {
+		return fmt.Errorf("failed to save template: %w", err)
+	}
 
-return nil
+	return nil
 }
 
 // ListUserTemplates lists all user templates
 func (tm *TemplateManager) ListUserTemplates() ([]*UserTemplate, error) {
-templates := []*UserTemplate{}
+	templates := []*UserTemplate{}
 
-// Read user templates directory
-entries, err := os.ReadDir(tm.userTemplatesDir)
-if err != nil {
-if os.IsNotExist(err) {
-return templates, nil
-}
-return nil, fmt.Errorf("failed to read user templates: %w", err)
-}
+	// Read user templates directory
+	entries, err := os.ReadDir(tm.userTemplatesDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return templates, nil
+		}
+		return nil, fmt.Errorf("failed to read user templates: %w", err)
+	}
 
-for _, entry := range entries {
-if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".json") {
-templatePath := filepath.Join(tm.userTemplatesDir, entry.Name())
-data, err := os.ReadFile(templatePath)
-if err != nil {
-continue
-}
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".json") {
+			templatePath := filepath.Join(tm.userTemplatesDir, entry.Name())
+			data, err := os.ReadFile(templatePath)
+			if err != nil {
+				continue
+			}
 
-var template UserTemplate
-if err := json.Unmarshal(data, &template); err != nil {
-continue
-}
+			var template UserTemplate
+			if err := json.Unmarshal(data, &template); err != nil {
+				continue
+			}
 
-templates = append(templates, &template)
-}
-}
+			templates = append(templates, &template)
+		}
+	}
 
-return templates, nil
+	return templates, nil
 }

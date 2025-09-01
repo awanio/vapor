@@ -69,7 +69,7 @@ func TestTUSProtocolHeaders(t *testing.T) {
 			method:         "HEAD",
 			path:           "/upload/test-id",
 			expectedStatus: http.StatusNotFound, // Will be not found since no upload exists
-			checkHeaders:   []string{},           // No headers expected on error
+			checkHeaders:   []string{},          // No headers expected on error
 		},
 	}
 
@@ -162,7 +162,7 @@ func TestCORSHeaders(t *testing.T) {
 	assert.Contains(t, w.Header().Get("Access-Control-Allow-Methods"), "PATCH")
 	assert.Contains(t, w.Header().Get("Access-Control-Allow-Methods"), "DELETE")
 	assert.Contains(t, w.Header().Get("Access-Control-Allow-Methods"), "OPTIONS")
-	
+
 	// Check that TUS-specific headers are exposed
 	exposeHeaders := w.Header().Get("Access-Control-Expose-Headers")
 	assert.Contains(t, exposeHeaders, "Upload-Offset")
@@ -196,7 +196,7 @@ func TestUploadExpiresHeader(t *testing.T) {
 	// Check that Upload-Expires header is present and valid
 	uploadExpires := w.Header().Get("Upload-Expires")
 	assert.NotEmpty(t, uploadExpires, "Upload-Expires header should be present")
-	
+
 	// The header should be in RFC3339 format
 	assert.True(t, strings.Contains(uploadExpires, "T"), "Upload-Expires should be in RFC3339 format")
 	assert.True(t, strings.Contains(uploadExpires, "Z") || strings.Contains(uploadExpires, "+"), "Upload-Expires should have timezone info")

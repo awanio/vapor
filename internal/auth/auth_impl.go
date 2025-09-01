@@ -43,37 +43,37 @@ func authenticateWithSu(username, password string) bool {
 	// Use 'su' with a simple command to test authentication
 	// The -c flag runs a command, and we just echo a success message
 	cmd := exec.Command("su", "-", username, "-c", "echo auth_success")
-	
+
 	// Create pipes for stdin and stdout
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return false
 	}
-	
+
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return false
 	}
-	
+
 	// Start the command
 	if err := cmd.Start(); err != nil {
 		return false
 	}
-	
+
 	// Write the password to stdin
 	fmt.Fprintf(stdin, "%s\n", password)
 	stdin.Close()
-	
+
 	// Read the output
 	scanner := bufio.NewScanner(stdout)
 	var output string
 	if scanner.Scan() {
 		output = scanner.Text()
 	}
-	
+
 	// Wait for the command to complete
 	err = cmd.Wait()
-	
+
 	// Check if authentication was successful
 	// If authentication succeeds, su will execute the command and output "auth_success"
 	// If it fails, su will exit with an error

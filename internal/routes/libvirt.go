@@ -18,16 +18,26 @@ import (
 // LibvirtRoutes sets up libvirt VM management routes
 func LibvirtRoutes(r *gin.RouterGroup, authService *auth.EnhancedService, service *libvirt.Service) {
 
-	// exclude from auth header token middleware
-	r.GET("/virtualization/computes/:id/console/ws", vmConsoleWebSocket(service)) // WebSocket console
+	// Exclude from auth header token middleware (WebSocket endpoints)
+	// Legacy WebSocket endpoint (backward compatibility)
+	r.GET("/virtualization/computes/:id/console/ws", vmConsoleWebSocket(service))
+
+	// New specific WebSocket endpoints for VNC and SPICE
+	r.GET("/virtualization/computes/:id/console/vnc/ws", vmVNCWebSocket(service))
+	r.GET("/virtualization/computes/:id/console/spice/ws", vmSPICEWebSocket(service))
 
 	r.Use(authService.AuthMiddleware())
 
 	vmGroup := r.Group("/virtualization/computes")
 	{
 		// Console Access
-		vmGroup.GET("/:id/console", getConsole(service)) // Get console connection info
+		// Legacy endpoint (backward compatibility) - returns all available consoles if no type specified
+		vmGroup.GET("/:id/console", getConsole(service))
 
+		// New improved endpoints
+		vmGroup.GET("/:id/consoles", getAvailableConsoles(service)) // Get all available console types
+		vmGroup.GET("/:id/console/vnc", getVNCConsole(service))     // Get VNC console info
+		vmGroup.GET("/:id/console/spice", getSPICEConsole(service)) // Get SPICE console info
 		// VM Management
 		// vmGroup.GET("/:id", getVM(service))                                          // Get VM details
 		// vmGroup.POST("", createVM(service))                                          // Create new VM
@@ -815,99 +825,6 @@ func streamVMMetrics(service *libvirt.Service) gin.HandlerFunc {
 			case <-done:
 				return
 			}
-		}
-	}
-}
-
-// Console handlers
-
-func getConsole(service *libvirt.Service) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		id := c.Param("id")
-		consoleType := c.DefaultQuery("type", "vnc")
-
-		console, err := service.GetConsole(c.Request.Context(), id, consoleType)
-
-		if err != nil {
-			if strings.Contains(err.Error(), "not found") {
-				c.JSON(http.StatusNotFound, gin.H{
-					"status": "error",
-					"error": gin.H{
-						"code":    "VM_NOT_FOUND",
-						"message": "Virtual machine not found",
-						"details": err.Error(),
-					},
-				})
-				return
-			}
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"status": "error",
-				"error": gin.H{
-					"code":    "GET_VM_CONSOLE_FAILED",
-					"message": "Failed to get virtual machine console",
-					"details": err.Error(),
-				},
-			})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{
-			"status": "success",
-			"data":   console,
-		})
-	}
-}
-
-func vmConsoleWebSocket(service *libvirt.Service) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// id parameter not used in WebSocket connection
-		token := c.Query("token")
-
-		// Validate token is provided
-		if token == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "missing token",
-				"code":  "MISSING_TOKEN",
-			})
-			return
-		}
-
-		// Get console proxy from service
-		consoleProxy := service.GetConsoleProxy()
-		if consoleProxy == nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "console proxy not initialized",
-				"code":  "PROXY_UNAVAILABLE",
-			})
-			return
-		}
-
-		// Upgrade to WebSocket
-		ws, err := consoleProxy.WebSocketUpgrader().Upgrade(c.Writer, c.Request, nil)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "failed to upgrade to WebSocket",
-				"code":  "UPGRADE_FAILED",
-			})
-			return
-		}
-		defer ws.Close()
-
-		// Handle the WebSocket connection through the console proxy
-		if err := consoleProxy.HandleWebSocket(ws, token); err != nil {
-			// Send error to client before closing
-			if consoleErr, ok := err.(*libvirt.ConsoleError); ok {
-				ws.WriteJSON(gin.H{
-					"type":  "error",
-					"code":  consoleErr.Code,
-					"error": consoleErr.Message,
-				})
-			} else {
-				ws.WriteJSON(gin.H{
-					"type":  "error",
-					"error": err.Error(),
-				})
-			}
-			return
 		}
 	}
 }

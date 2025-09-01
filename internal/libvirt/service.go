@@ -2152,71 +2152,71 @@ func (s *Service) SetNetworkLinkState(ctx context.Context, nameOrUUID string, re
 
 // GetNetworkLinkState retrieves the current link state of a VM's network interface
 func (s *Service) GetNetworkLinkState(ctx context.Context, nameOrUUID string, interfaceName string) (*NetworkLinkStateResponse, error) {
-s.mu.RLock()
-defer s.mu.RUnlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-domain, err := s.lookupDomain(nameOrUUID)
-if err != nil {
-return nil, err
-}
-defer domain.Free()
+	domain, err := s.lookupDomain(nameOrUUID)
+	if err != nil {
+		return nil, err
+	}
+	defer domain.Free()
 
-// Get domain XML to find the interface
-xmlDesc, err := domain.GetXMLDesc(0)
-if err != nil {
-return nil, fmt.Errorf("failed to get domain XML: %w", err)
-}
+	// Get domain XML to find the interface
+	xmlDesc, err := domain.GetXMLDesc(0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get domain XML: %w", err)
+	}
 
-// Parse XML to find interface and get its details
-var domainXML struct {
-XMLName xml.Name `xml:"domain"`
-Devices struct {
-Interfaces []struct {
-XMLName xml.Name `xml:"interface"`
-Type    string   `xml:"type,attr"`
-Target  struct {
-Dev string `xml:"dev,attr"`
-} `xml:"target"`
-MAC struct {
-Address string `xml:"address,attr"`
-} `xml:"mac"`
-Source struct {
-Bridge  string `xml:"bridge,attr,omitempty"`
-Network string `xml:"network,attr,omitempty"`
-Dev     string `xml:"dev,attr,omitempty"`
-} `xml:"source"`
-Model struct {
-Type string `xml:"type,attr,omitempty"`
-} `xml:"model"`
-Link struct {
-State string `xml:"state,attr,omitempty"`
-} `xml:"link"`
-} `xml:"interface"`
-} `xml:"devices"`
-}
+	// Parse XML to find interface and get its details
+	var domainXML struct {
+		XMLName xml.Name `xml:"domain"`
+		Devices struct {
+			Interfaces []struct {
+				XMLName xml.Name `xml:"interface"`
+				Type    string   `xml:"type,attr"`
+				Target  struct {
+					Dev string `xml:"dev,attr"`
+				} `xml:"target"`
+				MAC struct {
+					Address string `xml:"address,attr"`
+				} `xml:"mac"`
+				Source struct {
+					Bridge  string `xml:"bridge,attr,omitempty"`
+					Network string `xml:"network,attr,omitempty"`
+					Dev     string `xml:"dev,attr,omitempty"`
+				} `xml:"source"`
+				Model struct {
+					Type string `xml:"type,attr,omitempty"`
+				} `xml:"model"`
+				Link struct {
+					State string `xml:"state,attr,omitempty"`
+				} `xml:"link"`
+			} `xml:"interface"`
+		} `xml:"devices"`
+	}
 
-if err := xml.Unmarshal([]byte(xmlDesc), &domainXML); err != nil {
-return nil, fmt.Errorf("failed to parse domain XML: %w", err)
-}
+	if err := xml.Unmarshal([]byte(xmlDesc), &domainXML); err != nil {
+		return nil, fmt.Errorf("failed to parse domain XML: %w", err)
+	}
 
-// Find the interface by name or MAC
-for _, iface := range domainXML.Devices.Interfaces {
-if iface.Target.Dev == interfaceName || iface.MAC.Address == interfaceName {
-// Default link state is "up" if not explicitly set
-linkState := iface.Link.State
-if linkState == "" {
-linkState = "up"
-}
+	// Find the interface by name or MAC
+	for _, iface := range domainXML.Devices.Interfaces {
+		if iface.Target.Dev == interfaceName || iface.MAC.Address == interfaceName {
+			// Default link state is "up" if not explicitly set
+			linkState := iface.Link.State
+			if linkState == "" {
+				linkState = "up"
+			}
 
-return &NetworkLinkStateResponse{
-Status:    "success",
-Message:   fmt.Sprintf("Network interface %s link state retrieved", iface.Target.Dev),
-Interface: iface.Target.Dev,
-State:     linkState,
-MAC:       iface.MAC.Address,
-}, nil
-}
-}
+			return &NetworkLinkStateResponse{
+				Status:    "success",
+				Message:   fmt.Sprintf("Network interface %s link state retrieved", iface.Target.Dev),
+				Interface: iface.Target.Dev,
+				State:     linkState,
+				MAC:       iface.MAC.Address,
+			}, nil
+		}
+	}
 
-return nil, fmt.Errorf("interface %s not found", interfaceName)
+	return nil, fmt.Errorf("interface %s not found", interfaceName)
 }

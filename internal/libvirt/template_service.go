@@ -1,4 +1,3 @@
-
 package libvirt
 
 import (
