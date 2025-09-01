@@ -53,38 +53,11 @@
             max-width: 400px;
             padding: 20px;
         }
-        
-        .controls {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            display: flex;
-            gap: 5px;
-            z-index: 10;
-        }
-        
-        .control-btn {
-            padding: 5px 10px;
-            background: rgba(60, 60, 60, 0.9);
-            color: #fff;
-            border: 1px solid #5a5a5a;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-        
-        .control-btn:hover {
-            background: rgba(69, 73, 78, 0.9);
-        }
     </style>
 </head>
 <body>
     <div id="screen"></div>
     <div class="status" id="status">Initializing...</div>
-    <div class="controls">
-        <button class="control-btn" id="sendCAD">Ctrl+Alt+Del</button>
-        <button class="control-btn" id="toggleScale">Scale</button>
-    </div>
     <div class="error" id="error" style="display: none;"></div>
 
     <!-- Load noVNC locally - No CDN dependency -->
@@ -137,17 +110,6 @@
                 rfb.addEventListener('securityfailure', (e) => {
                     showError('Security failure: ' + (e.detail.status || 'Unknown'));
                 });
-                
-                // Control buttons
-                document.getElementById('sendCAD').onclick = () => {
-                    rfb.sendCtrlAltDel();
-                };
-                
-                document.getElementById('toggleScale').onclick = () => {
-                    rfb.scaleViewport = !rfb.scaleViewport;
-                    document.getElementById('toggleScale').textContent = 
-                        rfb.scaleViewport ? 'Unscale' : 'Scale';
-                };
                 
                 // Store RFB instance for parent access if needed
                 window.rfbClient = rfb;
