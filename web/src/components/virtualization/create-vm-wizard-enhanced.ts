@@ -1200,7 +1200,7 @@ export class CreateVMWizardEnhanced extends LitElement {
             >
               <option value="">No ISO</option>
               ${isos.map(iso => html`
-                <option value=${iso.name}>${iso.name}</option>
+                <option value=${iso.path}>${iso.name}</option>
               `)}
             </select>
           </div>
