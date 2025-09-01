@@ -156,7 +156,7 @@ export class VirtualizationAPI {
    * Create a new virtual machine (enhanced with wizard data)
    */
   async createVMEnhanced(config: VMCreateRequest): Promise<VMCreateResponse> {
-    return apiRequest<VMCreateResponse>('/virtualmachines/create-enhanced', {
+    return apiRequest<VMCreateResponse>('/virtualmachines', {
       method: 'POST',
       body: JSON.stringify(config),
     });

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>VNC Console</title>
     <style>
         body {
@@ -11,6 +11,10 @@
             background: #000;
             overflow: hidden;
             font-family: system-ui, -apple-system, sans-serif;
+        }
+        
+        body.fullscreen {
+            padding-top: 40px;
         }
         
         #screen {
@@ -22,6 +26,10 @@
             display: flex;
             align-items: center;
             justify-content: center;
+        }
+        
+        body.fullscreen #screen {
+            top: 40px;
         }
         
         #screen canvas {
@@ -43,6 +51,10 @@
             z-index: 10;
         }
         
+        body.fullscreen .status {
+            top: 50px;
+        }
+        
         .error {
             position: absolute;
             top: 50%;
@@ -53,12 +65,214 @@
             max-width: 400px;
             padding: 20px;
         }
+        
+        .fullscreen-controls {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #1e1e1e;
+            border-bottom: 1px solid #454545;
+            padding: 0 10px;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 100;
+        }
+        
+        body.fullscreen .fullscreen-controls {
+            display: flex;
+        }
+        
+        .control-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .fs-title {
+            color: #ccc;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .fs-vm-name {
+            color: #3794ff;
+        }
+        
+        .fs-btn {
+            padding: 5px 10px;
+            background: #3c3c3c;
+            color: #ccc;
+            border: 1px solid #5a5a5a;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .fs-btn:hover {
+            background: #45494e;
+        }
+        
+        .virtual-keyboard {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #2d2d2d;
+            border-top: 1px solid #454545;
+            padding: 10px;
+            z-index: 100;
+        }
+        
+        .virtual-keyboard.show {
+            display: block;
+        }
+        
+        .keyboard-row {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 5px;
+            justify-content: center;
+        }
+        
+        .kbd-key {
+            min-width: 30px;
+            padding: 8px 12px;
+            background: #3c3c3c;
+            color: #ccc;
+            border: 1px solid #5a5a5a;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            text-align: center;
+            user-select: none;
+        }
+        
+        .kbd-key:hover {
+            background: #45494e;
+        }
+        
+        .kbd-key:active {
+            background: #0e639c;
+        }
+        
+        .kbd-key.wide {
+            min-width: 60px;
+        }
+        
+        .kbd-key.space {
+            min-width: 200px;
+        }
     </style>
 </head>
 <body>
+    <!-- Fullscreen controls (only visible in fullscreen mode) -->
+    <div class="fullscreen-controls">
+        <div class="control-group">
+            <span class="fs-title">VNC Console - <span class="fs-vm-name" id="vmName">VM</span></span>
+        </div>
+        <div class="control-group">
+            <button class="fs-btn" id="fsCAD">Ctrl+Alt+Del</button>
+            <button class="fs-btn" id="fsKeyboard">Virtual Keyboard</button>
+            <button class="fs-btn" id="fsScale">Toggle Scale</button>
+            <button class="fs-btn" id="fsFullscreen">Exit Fullscreen</button>
+        </div>
+    </div>
+    
     <div id="screen"></div>
     <div class="status" id="status">Initializing...</div>
     <div class="error" id="error" style="display: none;"></div>
+    
+    <!-- Virtual Keyboard -->
+    <div class="virtual-keyboard" id="virtualKeyboard">
+        <div class="keyboard-row">
+            <div class="kbd-key" data-key="Escape">ESC</div>
+            <div class="kbd-key" data-key="F1">F1</div>
+            <div class="kbd-key" data-key="F2">F2</div>
+            <div class="kbd-key" data-key="F3">F3</div>
+            <div class="kbd-key" data-key="F4">F4</div>
+            <div class="kbd-key" data-key="F5">F5</div>
+            <div class="kbd-key" data-key="F6">F6</div>
+            <div class="kbd-key" data-key="F7">F7</div>
+            <div class="kbd-key" data-key="F8">F8</div>
+            <div class="kbd-key" data-key="F9">F9</div>
+            <div class="kbd-key" data-key="F10">F10</div>
+            <div class="kbd-key" data-key="F11">F11</div>
+            <div class="kbd-key" data-key="F12">F12</div>
+        </div>
+        <div class="keyboard-row">
+            <div class="kbd-key" data-key="`">`</div>
+            <div class="kbd-key" data-key="1">1</div>
+            <div class="kbd-key" data-key="2">2</div>
+            <div class="kbd-key" data-key="3">3</div>
+            <div class="kbd-key" data-key="4">4</div>
+            <div class="kbd-key" data-key="5">5</div>
+            <div class="kbd-key" data-key="6">6</div>
+            <div class="kbd-key" data-key="7">7</div>
+            <div class="kbd-key" data-key="8">8</div>
+            <div class="kbd-key" data-key="9">9</div>
+            <div class="kbd-key" data-key="0">0</div>
+            <div class="kbd-key" data-key="-">-</div>
+            <div class="kbd-key" data-key="=">=</div>
+            <div class="kbd-key wide" data-key="Backspace">⌫</div>
+        </div>
+        <div class="keyboard-row">
+            <div class="kbd-key wide" data-key="Tab">Tab</div>
+            <div class="kbd-key" data-key="q">Q</div>
+            <div class="kbd-key" data-key="w">W</div>
+            <div class="kbd-key" data-key="e">E</div>
+            <div class="kbd-key" data-key="r">R</div>
+            <div class="kbd-key" data-key="t">T</div>
+            <div class="kbd-key" data-key="y">Y</div>
+            <div class="kbd-key" data-key="u">U</div>
+            <div class="kbd-key" data-key="i">I</div>
+            <div class="kbd-key" data-key="o">O</div>
+            <div class="kbd-key" data-key="p">P</div>
+            <div class="kbd-key" data-key="[">[</div>
+            <div class="kbd-key" data-key="]">]</div>
+            <div class="kbd-key" data-key="\\"\\</div>
+        </div>
+        <div class="keyboard-row">
+            <div class="kbd-key wide" data-key="CapsLock">Caps</div>
+            <div class="kbd-key" data-key="a">A</div>
+            <div class="kbd-key" data-key="s">S</div>
+            <div class="kbd-key" data-key="d">D</div>
+            <div class="kbd-key" data-key="f">F</div>
+            <div class="kbd-key" data-key="g">G</div>
+            <div class="kbd-key" data-key="h">H</div>
+            <div class="kbd-key" data-key="j">J</div>
+            <div class="kbd-key" data-key="k">K</div>
+            <div class="kbd-key" data-key="l">L</div>
+            <div class="kbd-key" data-key=";">;</div>
+            <div class="kbd-key" data-key="'">'</div>
+            <div class="kbd-key wide" data-key="Enter">Enter</div>
+        </div>
+        <div class="keyboard-row">
+            <div class="kbd-key wide" data-key="Shift">Shift</div>
+            <div class="kbd-key" data-key="z">Z</div>
+            <div class="kbd-key" data-key="x">X</div>
+            <div class="kbd-key" data-key="c">C</div>
+            <div class="kbd-key" data-key="v">V</div>
+            <div class="kbd-key" data-key="b">B</div>
+            <div class="kbd-key" data-key="n">N</div>
+            <div class="kbd-key" data-key="m">M</div>
+            <div class="kbd-key" data-key=",">,</div>
+            <div class="kbd-key" data-key=".">.</div>
+            <div class="kbd-key" data-key="/">/</div>
+            <div class="kbd-key wide" data-key="Shift">Shift</div>
+        </div>
+        <div class="keyboard-row">
+            <div class="kbd-key wide" data-key="Control">Ctrl</div>
+            <div class="kbd-key wide" data-key="Meta">⌘/Win</div>
+            <div class="kbd-key wide" data-key="Alt">Alt</div>
+            <div class="kbd-key space" data-key=" ">Space</div>
+            <div class="kbd-key wide" data-key="Alt">Alt</div>
+            <div class="kbd-key wide" data-key="Control">Ctrl</div>
+        </div>
+    </div>
 
     <!-- Load noVNC locally - No CDN dependency -->
     <script src="/rfb.min.js"></script>
@@ -68,6 +282,16 @@
         const params = new URLSearchParams(window.location.search);
         const wsUrl = params.get('url');
         const token = params.get('token');
+        const isFullscreen = params.get('fullscreen') === 'true';
+        const vmName = params.get('vmName') || 'VM';
+        
+        // Setup fullscreen mode if requested
+        if (isFullscreen) {
+            document.body.classList.add('fullscreen');
+            document.getElementById('vmName').textContent = vmName;
+            setupFullscreenControls();
+            requestFullscreen();
+        }
         
         if (!wsUrl) {
             showError('No WebSocket URL provided');
@@ -137,15 +361,130 @@
         // Listen for messages from parent
         window.addEventListener('message', (event) => {
             if (!window.rfbClient) return;
-            const { type } = event.data || {};
+            const { type, show } = event.data || {};
             if (type === 'disconnect') {
                 window.rfbClient.disconnect();
             } else if (type === 'sendCAD') {
                 try { window.rfbClient.sendCtrlAltDel(); } catch (e) { console.error(e); }
             } else if (type === 'toggleScale') {
                 try { window.rfbClient.scaleViewport = !window.rfbClient.scaleViewport; } catch (e) { console.error(e); }
+            } else if (type === 'toggleKeyboard') {
+                toggleVirtualKeyboard(show);
             }
         });
+        
+        // Fullscreen functions
+        function requestFullscreen() {
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen();
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen();
+            } else if (elem.msRequestFullscreen) {
+                elem.msRequestFullscreen();
+            }
+        }
+        
+        function exitFullscreen() {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
+        }
+        
+        function setupFullscreenControls() {
+            // Ctrl+Alt+Del button
+            document.getElementById('fsCAD')?.addEventListener('click', () => {
+                if (window.rfbClient) {
+                    window.rfbClient.sendCtrlAltDel();
+                }
+            });
+            
+            // Virtual Keyboard toggle
+            document.getElementById('fsKeyboard')?.addEventListener('click', () => {
+                toggleVirtualKeyboard();
+            });
+            
+            // Scale toggle
+            document.getElementById('fsScale')?.addEventListener('click', () => {
+                if (window.rfbClient) {
+                    window.rfbClient.scaleViewport = !window.rfbClient.scaleViewport;
+                }
+            });
+            
+            // Exit fullscreen
+            document.getElementById('fsFullscreen')?.addEventListener('click', () => {
+                exitFullscreen();
+                document.body.classList.remove('fullscreen');
+            });
+        }
+        
+        // Virtual Keyboard functions
+        function toggleVirtualKeyboard(show) {
+            const keyboard = document.getElementById('virtualKeyboard');
+            if (show === undefined) {
+                keyboard.classList.toggle('show');
+            } else {
+                keyboard.classList.toggle('show', show);
+            }
+        }
+        
+        function setupVirtualKeyboard() {
+            const keys = document.querySelectorAll('.kbd-key');
+            keys.forEach(key => {
+                key.addEventListener('click', (e) => {
+                    const keyValue = e.target.getAttribute('data-key');
+                    if (window.rfbClient && keyValue) {
+                        // Send key press to VNC
+                        sendKey(keyValue);
+                    }
+                });
+            });
+        }
+        
+        function sendKey(key) {
+            if (!window.rfbClient) return;
+            
+            // Map special keys to keysyms
+            const keyMap = {
+                'Escape': 0xFF1B,
+                'F1': 0xFFBE,
+                'F2': 0xFFBF,
+                'F3': 0xFFC0,
+                'F4': 0xFFC1,
+                'F5': 0xFFC2,
+                'F6': 0xFFC3,
+                'F7': 0xFFC4,
+                'F8': 0xFFC5,
+                'F9': 0xFFC6,
+                'F10': 0xFFC7,
+                'F11': 0xFFC8,
+                'F12': 0xFFC9,
+                'Tab': 0xFF09,
+                'Enter': 0xFF0D,
+                'Backspace': 0xFF08,
+                'Shift': 0xFFE1,
+                'Control': 0xFFE3,
+                'Alt': 0xFFE9,
+                'Meta': 0xFFEB,
+                'CapsLock': 0xFFE5,
+                ' ': 0x0020
+            };
+            
+            const keysym = keyMap[key] || key.charCodeAt(0);
+            
+            // Send key down and up
+            window.rfbClient.sendKey(keysym, null, true);
+            setTimeout(() => {
+                window.rfbClient.sendKey(keysym, null, false);
+            }, 100);
+        }
+        
+        // Initialize virtual keyboard
+        setupVirtualKeyboard();
     </script>
 </body>
 </html>

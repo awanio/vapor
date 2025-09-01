@@ -35,6 +35,7 @@ export class VMConsole extends LitElement {
   @state() private error: string | null = null;
   @state() private connectionStatus = 'Connecting...';
   @state() private scaleViewport = true;
+  @state() private showVirtualKeyboard = false;
   
   private vncIframe: HTMLIFrameElement | null = null;
   private reconnectAttempts = 0;
@@ -514,6 +515,35 @@ export class VMConsole extends LitElement {
     }
   };
 
+  private handleFullscreen = async () => {
+    // Open console in new tab/window in fullscreen mode
+    try {
+      const consoleToken = await this.fetchConsoleToken();
+      if (!consoleToken) {
+        throw new Error('Failed to obtain console access token');
+      }
+
+      // Build WebSocket URL
+      const baseUrl = getApiUrl('').replace(/^http/, 'ws');
+      const wsUrl = `${baseUrl}virtualization/computes/${this.vmId}/console/vnc/ws?token=${encodeURIComponent(consoleToken.token)}`;
+      
+      // Open in new tab with fullscreen parameter
+      const vncUrl = `/vnc-console.html?url=${encodeURIComponent(wsUrl)}&fullscreen=true&vmName=${encodeURIComponent(this.vmName || this.vmId)}`;
+      window.open(vncUrl, '_blank');
+    } catch (error) {
+      console.error('Failed to open fullscreen console:', error);
+      this.error = error instanceof Error ? error.message : 'Failed to open fullscreen console';
+    }
+  };
+
+  private handleToggleKeyboard = () => {
+    // Toggle virtual keyboard in iframe
+    this.showVirtualKeyboard = !this.showVirtualKeyboard;
+    if (this.vncIframe?.contentWindow) {
+      this.vncIframe.contentWindow.postMessage({ type: 'toggleKeyboard', show: this.showVirtualKeyboard }, '*');
+    }
+  };
+
   private handleReconnect = () => {
     this.reconnectAttempts = 0;
     this.error = null;
@@ -581,10 +611,24 @@ export class VMConsole extends LitElement {
               </button>
               <button 
                 class="action-btn" 
+                @click=${this.handleToggleKeyboard}
+                title="${this.showVirtualKeyboard ? 'Hide Virtual Keyboard' : 'Show Virtual Keyboard'}"
+              >
+                ${this.showVirtualKeyboard ? '⌨️ Hide Keyboard' : '⌨️ Show Keyboard'}
+              </button>
+              <button 
+                class="action-btn" 
                 @click=${this.handleToggleScale}
                 title="${this.scaleViewport ? 'Disable Fit' : 'Fit to Window'}"
               >
                 ${this.scaleViewport ? '🧩 Unfit' : '🧩 Fit'}
+              </button>
+              <button 
+                class="action-btn" 
+                @click=${this.handleFullscreen}
+                title="Open in New Tab (Fullscreen)"
+              >
+                🖥️ Fullscreen
               </button>
               <button class="close-btn" @click=${this.handleClose} title="Close">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">

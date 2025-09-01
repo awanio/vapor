@@ -1,4 +1,4 @@
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-DrviFd_Z.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-qIBaAmd6.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -17388,7 +17388,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-DrviFd_Z.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-qIBaAmd6.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17433,7 +17433,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-DrviFd_Z.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-qIBaAmd6.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17497,7 +17497,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-DrviFd_Z.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-qIBaAmd6.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17607,7 +17607,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-DrviFd_Z.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-qIBaAmd6.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -51637,6 +51637,7 @@ let VMConsole = class extends i$2 {
     this.error = null;
     this.connectionStatus = "Connecting...";
     this.scaleViewport = true;
+    this.showVirtualKeyboard = false;
     this.vncIframe = null;
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
@@ -51652,6 +51653,27 @@ let VMConsole = class extends i$2 {
       this.scaleViewport = !this.scaleViewport;
       if (this.vncIframe?.contentWindow) {
         this.vncIframe.contentWindow.postMessage({ type: "toggleScale" }, "*");
+      }
+    };
+    this.handleFullscreen = async () => {
+      try {
+        const consoleToken = await this.fetchConsoleToken();
+        if (!consoleToken) {
+          throw new Error("Failed to obtain console access token");
+        }
+        const baseUrl = getApiUrl("").replace(/^http/, "ws");
+        const wsUrl = `${baseUrl}virtualization/computes/${this.vmId}/console/vnc/ws?token=${encodeURIComponent(consoleToken.token)}`;
+        const vncUrl = `/vnc-console.html?url=${encodeURIComponent(wsUrl)}&fullscreen=true&vmName=${encodeURIComponent(this.vmName || this.vmId)}`;
+        window.open(vncUrl, "_blank");
+      } catch (error) {
+        console.error("Failed to open fullscreen console:", error);
+        this.error = error instanceof Error ? error.message : "Failed to open fullscreen console";
+      }
+    };
+    this.handleToggleKeyboard = () => {
+      this.showVirtualKeyboard = !this.showVirtualKeyboard;
+      if (this.vncIframe?.contentWindow) {
+        this.vncIframe.contentWindow.postMessage({ type: "toggleKeyboard", show: this.showVirtualKeyboard }, "*");
       }
     };
     this.handleReconnect = () => {
@@ -51819,10 +51841,24 @@ let VMConsole = class extends i$2 {
               </button>
               <button 
                 class="action-btn" 
+                @click=${this.handleToggleKeyboard}
+                title="${this.showVirtualKeyboard ? "Hide Virtual Keyboard" : "Show Virtual Keyboard"}"
+              >
+                ${this.showVirtualKeyboard ? "⌨️ Hide Keyboard" : "⌨️ Show Keyboard"}
+              </button>
+              <button 
+                class="action-btn" 
                 @click=${this.handleToggleScale}
                 title="${this.scaleViewport ? "Disable Fit" : "Fit to Window"}"
               >
                 ${this.scaleViewport ? "🧩 Unfit" : "🧩 Fit"}
+              </button>
+              <button 
+                class="action-btn" 
+                @click=${this.handleFullscreen}
+                title="Open in New Tab (Fullscreen)"
+              >
+                🖥️ Fullscreen
               </button>
               <button class="close-btn" @click=${this.handleClose} title="Close">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
@@ -52211,6 +52247,9 @@ __decorateClass$j([
 __decorateClass$j([
   r$1()
 ], VMConsole.prototype, "scaleViewport", 2);
+__decorateClass$j([
+  r$1()
+], VMConsole.prototype, "showVirtualKeyboard", 2);
 VMConsole = __decorateClass$j([
   t$2("vm-console")
 ], VMConsole);
@@ -55617,7 +55656,7 @@ const vmActions = {
   },
   async create(vmData) {
     const response = await apiRequest$1(
-      "/virtualmachines/create-enhanced",
+      "/virtualmachines",
       {
         method: "POST",
         body: JSON.stringify(vmData)
@@ -57278,7 +57317,7 @@ let CreateVMWizardEnhanced = class extends i$2 {
         this.showNotification("Virtual machine updated successfully", "success");
       } else {
         const token = localStorage.getItem("jwt_token") || localStorage.getItem("auth_token") || localStorage.getItem("token");
-        const response = await fetch(getApiUrl("/virtualization/computes/create-enhanced"), {
+        const response = await fetch(getApiUrl("/virtualization/computes"), {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -60476,7 +60515,7 @@ class VirtualizationAPI {
    * Create a new virtual machine (enhanced with wizard data)
    */
   async createVMEnhanced(config) {
-    return apiRequest("/virtualmachines/create-enhanced", {
+    return apiRequest("/virtualmachines", {
       method: "POST",
       body: JSON.stringify(config)
     });

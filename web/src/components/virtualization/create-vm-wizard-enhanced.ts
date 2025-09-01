@@ -794,7 +794,7 @@ export class CreateVMWizardEnhanced extends LitElement {
       } else {
         // Create new VM
         const token = localStorage.getItem('jwt_token') || localStorage.getItem('auth_token') || localStorage.getItem('token');
-        const response = await fetch(getApiUrl('/virtualization/computes/create-enhanced'), {
+        const response = await fetch(getApiUrl('/virtualization/computes'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

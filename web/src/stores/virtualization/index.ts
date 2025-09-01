@@ -1500,7 +1500,7 @@ export const vmActions = {
   
   async create(vmData: VMCreateRequest) {
     const response = await apiRequest<VirtualMachine>(
-      '/virtualmachines/create-enhanced',
+      '/virtualmachines',
       {
         method: 'POST',
         body: JSON.stringify(vmData),
