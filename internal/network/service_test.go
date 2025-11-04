@@ -7,9 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/awanio/vapor/internal/common"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
-	"github.com/awanio/vapor/internal/common"
 )
 
 func setupRouter() *gin.Engine {
@@ -337,7 +337,7 @@ func TestInvalidRequests(t *testing.T) {
 			err := json.Unmarshal(w.Body.Bytes(), &response)
 			assert.NoError(t, err)
 			assert.Equal(t, "error", response.Status)
-			
+
 			if tt.endpoint == "/api/v1/network/interfaces/eth0/address" && w.Code == http.StatusNotFound {
 				assert.Equal(t, common.ErrCodeNotFound, response.Error.Code)
 			} else {

@@ -1,0 +1,53 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        required:
+          - message
+          - successfully_added
+          - total_requested
+          - total_added
+        properties:
+          message:
+            type: string
+            description: Success message
+            example: "Bridge br0 created"
+          successfully_added:
+            type: array
+            description: List of interfaces successfully added to the bridge
+            items:
+              type: string
+            example: ["eth1", "eth2"]
+          total_requested:
+            type: integer
+            description: Total number of interfaces requested to be added
+            example: 3
+          total_added:
+            type: integer
+            description: Total number of interfaces successfully added
+            example: 2
+          failed:
+            type: array
+            description: List of interfaces that failed to be added (optional, only present if there are failures)
+            items:
+              type: object
+              properties:
+                interface:
+                  type: string
+                  description: Interface name
+                reason:
+                  type: string
+                  description: Failure reason
+            example:
+              - interface: "eth3"
+                reason: "Interface not found"
+          warning:
+            type: string
+            description: Warning message if some interfaces failed (optional)
+            example: "1 out of 3 interfaces could not be added"
+          persistence_warning:
+            type: string
+            description: Warning if configuration could not be persisted to disk (optional)
+            example: "Configuration applied but not persisted to disk. Changes will be lost on reboot."

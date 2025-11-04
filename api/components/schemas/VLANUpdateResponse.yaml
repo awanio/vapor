@@ -1,0 +1,23 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        required:
+          - message
+        properties:
+          message:
+            type: string
+            description: Success message
+            example: "VLAN vlan100 updated successfully"
+          warnings:
+            type: array
+            description: List of warning messages (optional)
+            items:
+              type: string
+            example: ["Failed to restore 1 IP address(es)", "Failed to bring interface up"]
+          persistence_warning:
+            type: string
+            description: Warning if configuration could not be persisted to disk (optional)
+            example: "Configuration applied but not persisted to disk. Changes will be lost on reboot."

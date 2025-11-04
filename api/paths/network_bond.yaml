@@ -12,11 +12,11 @@ post:
           $ref: ../components/schemas/BondRequest.yaml
   responses:
     '200':
-      description: Bond created
+      description: Bond created successfully with detailed information about member interfaces
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/MessageResponse.yaml
+            $ref: ../components/schemas/BondCreateResponse.yaml
     '401':
       $ref: ../components/responses/UnauthorizedError.yaml
     '409':

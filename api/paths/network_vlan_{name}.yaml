@@ -1,5 +1,6 @@
 put:
-  summary: Update VLAN interface
+  summary: Update network VLAN
+  description: Updates VLAN configuration using delete and recreate pattern to change VLAN ID
   tags:
     - Network
   security:
@@ -10,6 +11,7 @@ put:
       required: true
       schema:
         type: string
+      description: VLAN name
   requestBody:
     required: true
     content:
@@ -18,11 +20,11 @@ put:
           $ref: ../components/schemas/VLANRequest.yaml
   responses:
     '200':
-      description: VLAN updated
+      description: VLAN updated successfully
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/MessageResponse.yaml
+            $ref: ../components/schemas/VLANUpdateResponse.yaml
     '400':
       description: Not a VLAN interface
     '401':
@@ -30,7 +32,7 @@ put:
     '404':
       description: VLAN not found
 delete:
-  summary: Delete VLAN interface
+  summary: Delete network VLAN
   tags:
     - Network
   security:
@@ -41,6 +43,7 @@ delete:
       required: true
       schema:
         type: string
+      description: VLAN name
   responses:
     '200':
       description: VLAN deleted

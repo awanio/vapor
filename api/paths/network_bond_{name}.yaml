@@ -1,5 +1,6 @@
 put:
   summary: Update network bond
+  description: Updates bond configuration by removing old members and adding new ones
   tags:
     - Network
   security:
@@ -10,6 +11,7 @@ put:
       required: true
       schema:
         type: string
+      description: Bond name
   requestBody:
     required: true
     content:
@@ -18,11 +20,11 @@ put:
           $ref: ../components/schemas/BondRequest.yaml
   responses:
     '200':
-      description: Bond updated
+      description: Bond updated successfully with detailed information about member interfaces
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/MessageResponse.yaml
+            $ref: ../components/schemas/BondUpdateResponse.yaml
     '400':
       description: Not a bond interface
     '401':
@@ -41,6 +43,7 @@ delete:
       required: true
       schema:
         type: string
+      description: Bond name
   responses:
     '200':
       description: Bond deleted

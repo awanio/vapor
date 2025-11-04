@@ -2,32 +2,79 @@ package network
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/awanio/vapor/internal/common"
+	"github.com/gin-gonic/gin"
 	"github.com/vishvananda/netlink"
 )
 
 // Service handles network operations
-type Service struct{}
+type Service struct {
+	persistence        PersistenceBackend
+	persistenceEnabled bool
+}
 
 // NewService creates a new network service
 func NewService() *Service {
-	return &Service{}
+	// Phase 2: Enable persistence by default with auto-detection
+	persistenceEnabled := true
+	backendType := "auto"
+
+	var backend PersistenceBackend
+	if persistenceEnabled {
+		// Auto-detect backend type
+		if backendType == "auto" {
+			detected := DetectNetworkBackend()
+			backendType = string(detected)
+			log.Printf("Network: Auto-detected backend: %s", backendType)
+		}
+
+		var err error
+		backend, err = NewPersistenceBackend(NetworkBackendType(backendType))
+		if err != nil {
+			log.Printf("Network: Failed to initialize persistence backend %s: %v. Using NoOp backend.", backendType, err)
+			backend = &NoOpBackend{}
+		}
+	} else {
+		backend = &NoOpBackend{}
+	}
+
+	log.Printf("Network: Persistence enabled: %v, backend: %s", persistenceEnabled, backend.BackendType())
+
+	return &Service{
+		persistence:        backend,
+		persistenceEnabled: persistenceEnabled,
+	}
+}
+
+// persistConfig saves configuration and returns warning message if it fails
+// This is a non-blocking operation - it will not cause API requests to fail
+func (s *Service) persistConfig(persistFunc func() error) (warning string) {
+	if s.persistence == nil || !s.persistenceEnabled {
+		return ""
+	}
+
+	if err := persistFunc(); err != nil {
+		log.Printf("Network: Failed to persist configuration: %v", err)
+		return "Configuration applied but not persisted to disk. Changes will be lost on reboot."
+	}
+
+	return ""
 }
 
 // Interface represents a network interface
 type Interface struct {
-	Name        string   `json:"name"`
-	MAC         string   `json:"mac"`
-	MTU         int      `json:"mtu"`
-	State       string   `json:"state"`
-	Type        string   `json:"type"`
-	Addresses   []string `json:"addresses"`
-	Statistics  *Stats   `json:"statistics"`
+	Name       string   `json:"name"`
+	MAC        string   `json:"mac"`
+	MTU        int      `json:"mtu"`
+	State      string   `json:"state"`
+	Type       string   `json:"type"`
+	Addresses  []string `json:"addresses"`
+	Statistics *Stats   `json:"statistics"`
 }
 
 // Stats represents network interface statistics
@@ -144,7 +191,7 @@ func (s *Service) GetVLANs(c *gin.Context) {
 // InterfaceUp brings an interface up
 func (s *Service) InterfaceUp(c *gin.Context) {
 	name := c.Param("name")
-	
+
 	link, err := netlink.LinkByName(name)
 	if err != nil {
 		common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "Interface not found", err.Error())
@@ -162,7 +209,7 @@ func (s *Service) InterfaceUp(c *gin.Context) {
 // InterfaceDown brings an interface down
 func (s *Service) InterfaceDown(c *gin.Context) {
 	name := c.Param("name")
-	
+
 	link, err := netlink.LinkByName(name)
 	if err != nil {
 		common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "Interface not found", err.Error())
@@ -180,7 +227,7 @@ func (s *Service) InterfaceDown(c *gin.Context) {
 // SetInterfaceAddress configures IP address on interface
 func (s *Service) SetInterfaceAddress(c *gin.Context) {
 	name := c.Param("name")
-	
+
 	var req AddressRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Invalid request", err.Error())
@@ -200,11 +247,17 @@ func (s *Service) SetInterfaceAddress(c *gin.Context) {
 		return
 	}
 
+	// Determine address family (IPv4 = 32 bits, IPv6 = 128 bits)
+	bits := 32
+	if ip.To4() == nil {
+		bits = 128
+	}
+
 	// Create address
 	addr := &netlink.Addr{
 		IPNet: &net.IPNet{
 			IP:   ip,
-			Mask: net.CIDRMask(req.Netmask, 32),
+			Mask: net.CIDRMask(req.Netmask, bits),
 		},
 	}
 
@@ -222,20 +275,43 @@ func (s *Service) SetInterfaceAddress(c *gin.Context) {
 			return
 		}
 
+		// Add default route via gateway
+		_, defaultNet, _ := net.ParseCIDR("0.0.0.0/0")
 		route := &netlink.Route{
 			LinkIndex: link.Attrs().Index,
+			Dst:       defaultNet,
 			Gw:        gw,
 		}
 
 		if err := netlink.RouteAdd(route); err != nil {
-			common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to add route", err.Error())
+			common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to add default route", err.Error())
 			return
 		}
 	}
 
-	common.SendSuccess(c, gin.H{"message": fmt.Sprintf("Address %s/%d configured on %s", req.Address, req.Netmask, name)})
+	// Persist configuration
+	warning := s.persistConfig(func() error {
+		config := InterfaceConfig{
+			Name: name,
+			Addresses: []AddressConfig{{
+				Address: req.Address,
+				Netmask: req.Netmask,
+			}},
+			Gateway:   req.Gateway,
+			AutoStart: true,
+		}
+		return s.persistence.SaveInterface(config)
+	})
+
+	response := gin.H{"message": fmt.Sprintf("Address %s/%d configured on %s", req.Address, req.Netmask, name)}
+	if warning != "" {
+		response["persistence_warning"] = warning
+	}
+
+	common.SendSuccess(c, response)
 }
 
+// CreateBridge creates a network bridge
 // CreateBridge creates a network bridge
 func (s *Service) CreateBridge(c *gin.Context) {
 	var req BridgeRequest
@@ -260,19 +336,103 @@ func (s *Service) CreateBridge(c *gin.Context) {
 		return
 	}
 
+	// Track success and failures
+	var successfullyAdded []string
+	var failed []map[string]string
+
 	// Add interfaces to bridge
 	for _, ifaceName := range req.Interfaces {
 		iface, err := netlink.LinkByName(ifaceName)
 		if err != nil {
+			failed = append(failed, map[string]string{
+				"interface": ifaceName,
+				"reason":    "Interface not found",
+			})
 			continue
 		}
-		netlink.LinkSetMaster(iface, bridge)
+
+		// Check if interface is already enslaved
+		if iface.Attrs().MasterIndex != 0 {
+			masterLink, _ := netlink.LinkByIndex(iface.Attrs().MasterIndex)
+			masterName := "unknown"
+			if masterLink != nil {
+				masterName = masterLink.Attrs().Name
+			}
+			failed = append(failed, map[string]string{
+				"interface": ifaceName,
+				"reason":    fmt.Sprintf("Already enslaved to %s", masterName),
+			})
+			continue
+		}
+
+		// Bring interface down before adding to bridge
+		if err := netlink.LinkSetDown(iface); err != nil {
+			failed = append(failed, map[string]string{
+				"interface": ifaceName,
+				"reason":    "Failed to bring interface down",
+			})
+			continue
+		}
+
+		// Add to bridge
+		if err := netlink.LinkSetMaster(iface, bridge); err != nil {
+			failed = append(failed, map[string]string{
+				"interface": ifaceName,
+				"reason":    fmt.Sprintf("Failed to add to bridge: %v", err),
+			})
+			netlink.LinkSetUp(iface) // Try to restore interface state
+			continue
+		}
+
+		successfullyAdded = append(successfullyAdded, ifaceName)
 	}
 
 	// Bring bridge up
-	netlink.LinkSetUp(bridge)
+	if err := netlink.LinkSetUp(bridge); err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Bridge created but failed to bring up", err.Error())
+		return
+	}
 
-	common.SendSuccess(c, gin.H{"message": fmt.Sprintf("Bridge %s created", req.Name)})
+	// Persist configuration
+	warning := s.persistConfig(func() error {
+		config := BridgeConfig{
+			Name:      req.Name,
+			Members:   successfullyAdded,
+			STP:       false,
+			Addresses: []AddressConfig{},
+			AutoStart: true,
+		}
+		return s.persistence.SaveBridge(config)
+	})
+
+	// Prepare response
+	response := gin.H{
+		"message":            fmt.Sprintf("Bridge %s created", req.Name),
+		"successfully_added": successfullyAdded,
+		"total_requested":    len(req.Interfaces),
+		"total_added":        len(successfullyAdded),
+	}
+
+	// Add failure information if any
+	if len(failed) > 0 {
+		response["failed"] = failed
+		response["warning"] = fmt.Sprintf("%d out of %d interfaces could not be added", len(failed), len(req.Interfaces))
+	}
+
+	// Add persistence warning if any
+	if warning != "" {
+		response["persistence_warning"] = warning
+	}
+	if warning != "" {
+		response["persistence_warning"] = warning
+	}
+
+	// Add persistence warning if any
+	if warning != "" {
+		response["persistence_warning"] = warning
+	}
+
+	common.SendSuccess(c, response)
 }
 
 // UpdateBridge updates a network bridge
@@ -296,16 +456,139 @@ func (s *Service) UpdateBridge(c *gin.Context) {
 		return
 	}
 
-	// Update bridge interfaces
-	netlink.LinkSetDown(bridge)
-	for _, ifaceName := range req.Interfaces {
-		iface, err := netlink.LinkByName(ifaceName)
-		if err == nil {
-			netlink.LinkSetMaster(iface, bridge)
+	// Bring bridge down before modification
+	if err := netlink.LinkSetDown(bridge); err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to bring bridge down", err.Error())
+		return
+	}
+
+	// Step 1: Remove all existing members
+	allLinks, err := netlink.LinkList()
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to list interfaces", err.Error())
+		return
+	}
+
+	// Track member removal failures
+	var removalFailures []string
+
+	for _, link := range allLinks {
+		if link.Attrs().MasterIndex == bridge.Attrs().Index {
+			if err := netlink.LinkSetNoMaster(link); err != nil {
+				removalFailures = append(removalFailures, link.Attrs().Name)
+			}
 		}
 	}
-	netlink.LinkSetUp(bridge)
-	common.SendSuccess(c, gin.H{"message": fmt.Sprintf("Bridge %s updated", req.Name)})
+
+	// Step 2: Validate and add new members
+	var successfullyAdded []string
+	var failed []map[string]string
+	var alreadyEnslaved []string
+
+	for _, ifaceName := range req.Interfaces {
+		// Get the interface
+		iface, err := netlink.LinkByName(ifaceName)
+		if err != nil {
+			failed = append(failed, map[string]string{
+				"interface": ifaceName,
+				"reason":    "Interface not found",
+			})
+			continue
+		}
+
+		// Check if interface is already enslaved to another master
+		if iface.Attrs().MasterIndex != 0 && iface.Attrs().MasterIndex != bridge.Attrs().Index {
+			// Get master name for better error message
+			masterLink, _ := netlink.LinkByIndex(iface.Attrs().MasterIndex)
+			masterName := "unknown"
+			if masterLink != nil {
+				masterName = masterLink.Attrs().Name
+			}
+			alreadyEnslaved = append(alreadyEnslaved, ifaceName)
+			failed = append(failed, map[string]string{
+				"interface": ifaceName,
+				"reason":    fmt.Sprintf("Already enslaved to %s", masterName),
+			})
+			continue
+		}
+
+		// Bring interface down before adding to bridge (recommended practice)
+		if err := netlink.LinkSetDown(iface); err != nil {
+			failed = append(failed, map[string]string{
+				"interface": ifaceName,
+				"reason":    "Failed to bring interface down",
+			})
+			continue
+		}
+
+		// Add to bridge
+		if err := netlink.LinkSetMaster(iface, bridge); err != nil {
+			failed = append(failed, map[string]string{
+				"interface": ifaceName,
+				"reason":    fmt.Sprintf("Failed to add to bridge: %v", err),
+			})
+			// Try to bring the interface back up since we failed
+			netlink.LinkSetUp(iface)
+			continue
+		}
+
+		successfullyAdded = append(successfullyAdded, ifaceName)
+	}
+
+	// Bring bridge up
+	if err := netlink.LinkSetUp(bridge); err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Bridge updated but failed to bring up", err.Error())
+		return
+	}
+
+	// Persist configuration
+	warning := s.persistConfig(func() error {
+		config := BridgeConfig{
+			Name:      name,
+			Members:   successfullyAdded,
+			STP:       false,
+			Addresses: []AddressConfig{},
+			AutoStart: true,
+		}
+		return s.persistence.SaveBridge(config)
+	})
+
+	// Prepare response with detailed information
+	response := gin.H{
+		"message":            fmt.Sprintf("Bridge %s updated", name),
+		"successfully_added": successfullyAdded,
+		"total_requested":    len(req.Interfaces),
+		"total_added":        len(successfullyAdded),
+	}
+
+	// Add failure information if any
+	if len(failed) > 0 {
+		response["failed"] = failed
+		response["warning"] = fmt.Sprintf("%d out of %d interfaces could not be added", len(failed), len(req.Interfaces))
+	}
+
+	// Add persistence warning if any
+	if warning != "" {
+		response["persistence_warning"] = warning
+	}
+
+	// Add member removal warning if any failures
+	if len(removalFailures) > 0 {
+		if response["warning"] != nil {
+			response["warning"] = fmt.Sprintf("%s. Also failed to remove %d old member(s): %s",
+				response["warning"], len(removalFailures), strings.Join(removalFailures, ", "))
+		} else {
+			response["removal_failures"] = removalFailures
+			response["warning"] = fmt.Sprintf("Failed to remove %d old member(s): %s",
+				len(removalFailures), strings.Join(removalFailures, ", "))
+		}
+	}
+	common.SendSuccess(c, response)
+
+	// Add persistence warning if any
+	if warning != "" {
+		response["persistence_warning"] = warning
+	}
 }
 
 // DeleteBridge deletes a network bridge
@@ -316,7 +599,7 @@ func (s *Service) DeleteBridge(c *gin.Context) {
 		common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "Bridge not found", err.Error())
 		return
 	}
-	
+
 	if err := netlink.LinkDel(link); err != nil {
 		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to delete bridge", err.Error())
 		return
@@ -324,6 +607,8 @@ func (s *Service) DeleteBridge(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"message": fmt.Sprintf("Bridge %s deleted", name)})
 }
 
+// UpdateBond updates a network bond
+// UpdateBond updates a network bond
 // UpdateBond updates a network bond
 func (s *Service) UpdateBond(c *gin.Context) {
 	name := c.Param("name")
@@ -345,17 +630,145 @@ func (s *Service) UpdateBond(c *gin.Context) {
 		return
 	}
 
-	// Update bond mode and interfaces
-	bond.Mode = netlink.StringToBondMode(req.Mode)
-	netlink.LinkSetDown(bond)
-	for _, ifaceName := range req.Interfaces {
-		iface, err := netlink.LinkByName(ifaceName)
-		if err == nil {
-			netlink.LinkSetMasterByIndex(iface, bond.Index)
+	// Update bond mode if specified
+	if req.Mode != "" {
+		bond.Mode = netlink.StringToBondMode(req.Mode)
+	}
+
+	// Bring bond down before modification
+	if err := netlink.LinkSetDown(bond); err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to bring bond down", err.Error())
+		return
+	}
+
+	// Step 1: Remove all existing members
+	allLinks, err := netlink.LinkList()
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to list interfaces", err.Error())
+		return
+	}
+
+	// Track member removal failures
+	var removalFailures []string
+
+	for _, link := range allLinks {
+		if link.Attrs().MasterIndex == bond.Attrs().Index {
+			if err := netlink.LinkSetNoMaster(link); err != nil {
+				removalFailures = append(removalFailures, link.Attrs().Name)
+			}
 		}
 	}
-	netlink.LinkSetUp(bond)
-	common.SendSuccess(c, gin.H{"message": fmt.Sprintf("Bond %s updated", req.Name)})
+
+	// Step 2: Validate and add new members
+	var successfullyAdded []string
+	var failed []map[string]string
+	var alreadyEnslaved []string
+
+	for _, ifaceName := range req.Interfaces {
+		// Get the interface
+		iface, err := netlink.LinkByName(ifaceName)
+		if err != nil {
+			failed = append(failed, map[string]string{
+				"interface": ifaceName,
+				"reason":    "Interface not found",
+			})
+			continue
+		}
+
+		// Check if interface is already enslaved to another master
+		if iface.Attrs().MasterIndex != 0 && iface.Attrs().MasterIndex != bond.Attrs().Index {
+			// Get master name for better error message
+			masterLink, _ := netlink.LinkByIndex(iface.Attrs().MasterIndex)
+			masterName := "unknown"
+			if masterLink != nil {
+				masterName = masterLink.Attrs().Name
+			}
+			alreadyEnslaved = append(alreadyEnslaved, ifaceName)
+			failed = append(failed, map[string]string{
+				"interface": ifaceName,
+				"reason":    fmt.Sprintf("Already enslaved to %s", masterName),
+			})
+			continue
+		}
+
+		// Bring interface down before adding to bond (recommended practice)
+		if err := netlink.LinkSetDown(iface); err != nil {
+			failed = append(failed, map[string]string{
+				"interface": ifaceName,
+				"reason":    "Failed to bring interface down",
+			})
+			continue
+		}
+
+		// Add to bond
+		if err := netlink.LinkSetMaster(iface, bond); err != nil {
+			failed = append(failed, map[string]string{
+				"interface": ifaceName,
+				"reason":    fmt.Sprintf("Failed to add to bond: %v", err),
+			})
+			// Try to bring the interface back up since we failed
+			netlink.LinkSetUp(iface)
+			continue
+		}
+
+		successfullyAdded = append(successfullyAdded, ifaceName)
+	}
+
+	// Bring bond up
+	if err := netlink.LinkSetUp(bond); err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Bond updated but failed to bring up", err.Error())
+		return
+	}
+
+	// Persist configuration
+	warning := s.persistConfig(func() error {
+		config := BondConfig{
+			Name:      name,
+			Mode:      req.Mode,
+			Members:   successfullyAdded,
+			Addresses: []AddressConfig{},
+			AutoStart: true,
+		}
+		return s.persistence.SaveBond(config)
+	})
+
+	// Prepare response with detailed information
+	response := gin.H{
+		"message":            fmt.Sprintf("Bond %s updated", name),
+		"successfully_added": successfullyAdded,
+		"total_requested":    len(req.Interfaces),
+		"total_added":        len(successfullyAdded),
+	}
+
+	// Add failure information if any
+	if len(failed) > 0 {
+		response["failed"] = failed
+		response["warning"] = fmt.Sprintf("%d out of %d interfaces could not be added", len(failed), len(req.Interfaces))
+	}
+
+	// Add persistence warning if any
+	if warning != "" {
+		response["persistence_warning"] = warning
+	}
+
+	// Add member removal warning if any failures
+	if len(removalFailures) > 0 {
+		if response["warning"] != nil {
+			response["warning"] = fmt.Sprintf("%s. Also failed to remove %d old member(s): %s",
+				response["warning"], len(removalFailures), strings.Join(removalFailures, ", "))
+		} else {
+			response["removal_failures"] = removalFailures
+			response["warning"] = fmt.Sprintf("Failed to remove %d old member(s): %s",
+				len(removalFailures), strings.Join(removalFailures, ", "))
+		}
+	}
+	common.SendSuccess(c, response)
+
+	// Add persistence warning if any
+	if warning != "" {
+		response["persistence_warning"] = warning
+	}
+
 }
 
 // DeleteBond deletes a network bond
@@ -366,7 +779,7 @@ func (s *Service) DeleteBond(c *gin.Context) {
 		common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "Bond not found", err.Error())
 		return
 	}
-	
+
 	if err := netlink.LinkDel(link); err != nil {
 		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to delete bond", err.Error())
 		return
@@ -374,7 +787,9 @@ func (s *Service) DeleteBond(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"message": fmt.Sprintf("Bond %s deleted", name)})
 }
 
-// UpdateVLAN updates a VLAN interface
+// UpdateVLAN updates a VLAN interface by recreating it
+// Note: Due to Linux kernel limitations, VLAN parameters cannot be changed in-place.
+// This implementation deletes the old VLAN and recreates it with new parameters.
 func (s *Service) UpdateVLAN(c *gin.Context) {
 	name := c.Param("name")
 	var req VLANRequest
@@ -383,21 +798,171 @@ func (s *Service) UpdateVLAN(c *gin.Context) {
 		return
 	}
 
-	link, err := netlink.LinkByName(name)
+	// Get the existing VLAN to verify it exists and get current configuration
+	oldLink, err := netlink.LinkByName(name)
 	if err != nil {
 		common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "VLAN not found", err.Error())
 		return
 	}
 
-	vlan, ok := link.(*netlink.Vlan)
+	oldVlan, ok := oldLink.(*netlink.Vlan)
 	if !ok {
 		common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Not a VLAN interface")
 		return
 	}
 
-	// Update VLAN ID
-	vlan.VlanId = req.VLANID
-	common.SendSuccess(c, gin.H{"message": fmt.Sprintf("VLAN %s updated", req.Name)})
+	// Save current state (addresses, up/down status, MTU, etc.)
+	wasUp := oldLink.Attrs().Flags&net.FlagUp != 0
+	currentMTU := oldLink.Attrs().MTU
+	oldParentIndex := oldVlan.ParentIndex
+	oldVlanId := oldVlan.VlanId
+	oldName := oldLink.Attrs().Name
+
+	// Get current IP addresses
+	addrs, err := netlink.AddrList(oldLink, 0)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to get addresses", err.Error())
+		return
+	}
+
+	// Get parent interface for recreation
+	parent, err := netlink.LinkByName(req.Interface)
+	if err != nil {
+		common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "Parent interface not found", err.Error())
+		return
+	}
+
+	// Step 1: Bring the VLAN down
+	if wasUp {
+		if err := netlink.LinkSetDown(oldVlan); err != nil {
+			common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to bring VLAN down", err.Error())
+			return
+		}
+	}
+
+	// Step 2: Delete the old VLAN
+	if err := netlink.LinkDel(oldVlan); err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to delete old VLAN", err.Error())
+		return
+	}
+
+	// Step 3: Create new VLAN with updated parameters
+	newVlanName := req.Name
+	if newVlanName == "" {
+		newVlanName = name // Use the same name if not specified
+	}
+
+	newVlan := &netlink.Vlan{
+		LinkAttrs: netlink.LinkAttrs{
+			Name:        newVlanName,
+			ParentIndex: parent.Attrs().Index,
+			MTU:         currentMTU,
+		},
+		VlanId: req.VLANID,
+	}
+
+	if err := netlink.LinkAdd(newVlan); err != nil {
+		// Critical: VLAN deleted but recreation failed
+		// Attempt to rollback by recreating the old VLAN
+		rollbackVlan := &netlink.Vlan{
+			LinkAttrs: netlink.LinkAttrs{
+				Name:        oldName,
+				ParentIndex: oldParentIndex,
+				MTU:         currentMTU,
+			},
+			VlanId: oldVlanId,
+		}
+
+		rollbackErr := netlink.LinkAdd(rollbackVlan)
+		if rollbackErr == nil {
+			// Rollback successful - restore addresses and state
+			rollbackLink, _ := netlink.LinkByName(oldName)
+			if rollbackLink != nil {
+				// Restore IP addresses
+				for _, addr := range addrs {
+					netlink.AddrAdd(rollbackLink, &addr)
+				}
+				// Restore up state
+				if wasUp {
+					netlink.LinkSetUp(rollbackLink)
+				}
+			}
+			common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal,
+				"Failed to create new VLAN. Original VLAN has been restored",
+				fmt.Sprintf("New VLAN creation error: %v", err))
+		} else {
+			// Rollback also failed - worst case
+			common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal,
+				"Failed to recreate VLAN and rollback failed. Old VLAN was deleted but could not be restored",
+				fmt.Sprintf("Creation error: %v, Rollback error: %v", err, rollbackErr))
+		}
+		return
+	}
+
+	// Step 4: Restore IP addresses
+	// Get the newly created link
+	newLink, err := netlink.LinkByName(newVlanName)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "VLAN created but failed to retrieve it", err.Error())
+		return
+	}
+
+	// Track address restoration failures
+	var addressFailures []string
+	for _, addr := range addrs {
+		if err := netlink.AddrAdd(newLink, &addr); err != nil {
+			addressFailures = append(addressFailures, addr.IPNet.String())
+		}
+	}
+
+	// Step 5: Bring the VLAN up if it was up before
+	var upWarning string
+	if wasUp {
+		if err := netlink.LinkSetUp(newLink); err != nil {
+			upWarning = "VLAN created but failed to bring up"
+		}
+	}
+
+	// Persist configuration
+	persistWarning := s.persistConfig(func() error {
+		config := VLANConfig{
+			Name:            newVlanName,
+			ParentInterface: req.Interface,
+			VLANID:          req.VLANID,
+			Addresses:       []AddressConfig{},
+			AutoStart:       true,
+		}
+		return s.persistence.SaveVLAN(config)
+	})
+
+	// Prepare response
+	response := gin.H{
+		"message": fmt.Sprintf("VLAN %s updated successfully", newVlanName),
+	}
+
+	// Add warnings if any
+	var warnings []string
+	if len(addressFailures) > 0 {
+		warnings = append(warnings, fmt.Sprintf("Failed to restore %d IP address(es): %s",
+			len(addressFailures), strings.Join(addressFailures, ", ")))
+		response["address_restoration_failures"] = addressFailures
+	}
+	if upWarning != "" {
+		warnings = append(warnings, upWarning)
+	}
+	if len(warnings) > 0 {
+		response["warning"] = strings.Join(warnings, ". ")
+	}
+
+	if persistWarning != "" {
+		if response["warning"] != nil {
+			response["warning"] = fmt.Sprintf("%s. %s", response["warning"], persistWarning)
+		} else {
+			response["warning"] = persistWarning
+		}
+	}
+
+	common.SendSuccess(c, response)
 }
 
 // DeleteVLAN deletes a VLAN interface
@@ -408,7 +973,7 @@ func (s *Service) DeleteVLAN(c *gin.Context) {
 		common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "VLAN not found", err.Error())
 		return
 	}
-	
+
 	if err := netlink.LinkDel(link); err != nil {
 		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to delete VLAN", err.Error())
 		return
@@ -416,7 +981,8 @@ func (s *Service) DeleteVLAN(c *gin.Context) {
 	common.SendSuccess(c, gin.H{"message": fmt.Sprintf("VLAN %s deleted", name)})
 }
 
-
+// CreateBond creates a network bond
+// CreateBond creates a network bond
 // CreateBond creates a network bond
 func (s *Service) CreateBond(c *gin.Context) {
 	var req BondRequest
@@ -443,27 +1009,107 @@ func (s *Service) CreateBond(c *gin.Context) {
 	}
 
 	// Get bond link for adding interfaces
-	bondLink, _ := netlink.LinkByName(req.Name)
-	
+	bondLink, err := netlink.LinkByName(req.Name)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Bond created but failed to retrieve it", err.Error())
+		return
+	}
+
+	// Track success and failures
+	var successfullyAdded []string
+	var failed []map[string]string
+
 	// Add interfaces to bond
 	for _, ifaceName := range req.Interfaces {
 		iface, err := netlink.LinkByName(ifaceName)
 		if err != nil {
+			failed = append(failed, map[string]string{
+				"interface": ifaceName,
+				"reason":    "Interface not found",
+			})
 			continue
 		}
-		netlink.LinkSetMasterByIndex(iface, bondLink.Attrs().Index)
+
+		// Check if interface is already enslaved
+		if iface.Attrs().MasterIndex != 0 {
+			masterLink, _ := netlink.LinkByIndex(iface.Attrs().MasterIndex)
+			masterName := "unknown"
+			if masterLink != nil {
+				masterName = masterLink.Attrs().Name
+			}
+			failed = append(failed, map[string]string{
+				"interface": ifaceName,
+				"reason":    fmt.Sprintf("Already enslaved to %s", masterName),
+			})
+			continue
+		}
+
+		// Bring interface down before adding to bond
+		if err := netlink.LinkSetDown(iface); err != nil {
+			failed = append(failed, map[string]string{
+				"interface": ifaceName,
+				"reason":    "Failed to bring interface down",
+			})
+			continue
+		}
+
+		// Add to bond
+		if err := netlink.LinkSetMaster(iface, bondLink); err != nil {
+			failed = append(failed, map[string]string{
+				"interface": ifaceName,
+				"reason":    fmt.Sprintf("Failed to add to bond: %v", err),
+			})
+			netlink.LinkSetUp(iface) // Try to restore interface state
+			continue
+		}
+
+		successfullyAdded = append(successfullyAdded, ifaceName)
 	}
 
 	// Bring bond up
-	netlink.LinkSetUp(bond)
+	if err := netlink.LinkSetUp(bond); err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Bond created but failed to bring up", err.Error())
+		return
+	}
 
-	common.SendSuccess(c, gin.H{"message": fmt.Sprintf("Bond %s created", req.Name)})
+	// Persist configuration
+	warning := s.persistConfig(func() error {
+		config := BondConfig{
+			Name:      req.Name,
+			Mode:      req.Mode,
+			Members:   successfullyAdded,
+			Addresses: []AddressConfig{},
+			AutoStart: true,
+		}
+		return s.persistence.SaveBond(config)
+	})
+
+	// Prepare response
+	response := gin.H{
+		"message":            fmt.Sprintf("Bond %s created", req.Name),
+		"successfully_added": successfullyAdded,
+		"total_requested":    len(req.Interfaces),
+		"total_added":        len(successfullyAdded),
+	}
+
+	// Add failure information if any
+	if len(failed) > 0 {
+		response["failed"] = failed
+		response["warning"] = fmt.Sprintf("%d out of %d interfaces could not be added", len(failed), len(req.Interfaces))
+	}
+
+	// Add persistence warning if any
+	if warning != "" {
+		response["persistence_warning"] = warning
+	}
+
+	common.SendSuccess(c, response)
 }
 
 // UpdateInterfaceAddress updates the IP address of an interface
 func (s *Service) UpdateInterfaceAddress(c *gin.Context) {
 	name := c.Param("name")
-	
+
 	var req AddressRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Invalid request", err.Error())
@@ -483,11 +1129,17 @@ func (s *Service) UpdateInterfaceAddress(c *gin.Context) {
 		return
 	}
 
+	// Determine address family (IPv4 = 32 bits, IPv6 = 128 bits)
+	bits := 32
+	if ip.To4() == nil {
+		bits = 128
+	}
+
 	// Create address
 	addr := &netlink.Addr{
 		IPNet: &net.IPNet{
 			IP:   ip,
-			Mask: net.CIDRMask(req.Netmask, 32),
+			Mask: net.CIDRMask(req.Netmask, bits),
 		},
 	}
 
@@ -538,7 +1190,8 @@ func (s *Service) DeleteInterfaceAddress(c *gin.Context) {
 	common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "Address not found")
 }
 
-
+// CreateVLAN creates a VLAN interface
+// CreateVLAN creates a VLAN interface
 // CreateVLAN creates a VLAN interface
 func (s *Service) CreateVLAN(c *gin.Context) {
 	var req VLANRequest
@@ -579,15 +1232,35 @@ func (s *Service) CreateVLAN(c *gin.Context) {
 	}
 
 	// Bring VLAN up
-	netlink.LinkSetUp(vlan)
+	if err := netlink.LinkSetUp(vlan); err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "VLAN created but failed to bring up", err.Error())
+		return
+	}
 
-	common.SendSuccess(c, gin.H{"message": fmt.Sprintf("VLAN %s created", vlanName)})
+	// Persist configuration
+	warning := s.persistConfig(func() error {
+		config := VLANConfig{
+			Name:            vlanName,
+			ParentInterface: req.Interface,
+			VLANID:          req.VLANID,
+			Addresses:       []AddressConfig{},
+			AutoStart:       true,
+		}
+		return s.persistence.SaveVLAN(config)
+	})
+
+	response := gin.H{"message": fmt.Sprintf("VLAN %s created", vlanName)}
+	if warning != "" {
+		response["persistence_warning"] = warning
+	}
+
+	common.SendSuccess(c, response)
 }
 
 // linkToInterface converts netlink.Link to Interface
 func (s *Service) linkToInterface(link netlink.Link) Interface {
 	attrs := link.Attrs()
-	
+
 	iface := Interface{
 		Name:  attrs.Name,
 		MAC:   attrs.HardwareAddr.String(),

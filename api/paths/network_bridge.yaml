@@ -12,11 +12,11 @@ post:
           $ref: ../components/schemas/BridgeRequest.yaml
   responses:
     '200':
-      description: Bridge created
+      description: Bridge created successfully with detailed information about member interfaces
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/MessageResponse.yaml
+            $ref: ../components/schemas/BridgeCreateResponse.yaml
     '401':
       $ref: ../components/responses/UnauthorizedError.yaml
     '409':

@@ -1,0 +1,8 @@
+allOf:
+  - $ref: ./BridgeUpdateResponse.yaml
+  - type: object
+    properties:
+      data:
+        properties:
+          message:
+            example: "Bond bond0 updated"
