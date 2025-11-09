@@ -40,6 +40,9 @@ build-linux: embed-web
 run-dev: embed-web
 	go run cmd/vapor/main.go -config ./vapor.conf.example
 
+run-dev-web:
+	cd web && npm run dev
+
 update-systemd:
 	@echo "Update Vapor daemon service in systemd"
 	go build -o bin/$(BINARY_NAME) $(MAIN_PATH)

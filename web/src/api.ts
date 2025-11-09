@@ -1,5 +1,5 @@
 import { getAuthHeaders, $token, $isAuthenticated } from './stores/auth';
-import { getApiUrl } from './config';
+import { getApiUrl, getWsUrl } from './config';
 import type { APIResponse, WSMessage } from './types/api';
 
 // HTTP Methods
@@ -129,7 +129,7 @@ export class Api {
   static async postResource<T = any>(endpoint: string, content: string, contentType: 'application/json' | 'application/yaml'): Promise<T> {
     const authHeaders = getAuthHeaders();
     const url = getApiUrl(endpoint);
-    
+
     try {
       const response = await fetch(url, {
         method: 'POST',
@@ -179,7 +179,7 @@ export class Api {
   static async putResource<T = any>(endpoint: string, content: string, contentType: 'application/json' | 'application/yaml'): Promise<T> {
     const authHeaders = getAuthHeaders();
     const url = getApiUrl(endpoint);
-    
+
     try {
       const response = await fetch(url, {
         method: 'PUT',
@@ -229,7 +229,7 @@ export class Api {
 // WebSocket Manager
 export class WebSocketManager {
   private ws: WebSocket | null = null;
-  private url: string;
+  // private url: string;
   private reconnectInterval: number = 5000;
   private maxReconnectAttempts: number = 5;
   private reconnectAttempts: number = 0;
@@ -239,7 +239,7 @@ export class WebSocketManager {
   private intentionalDisconnect: boolean = false;
 
   constructor(private path: string) {
-    this.url = '';
+
   }
 
   connect(): Promise<void> {
@@ -248,8 +248,7 @@ export class WebSocketManager {
         // Reset intentional disconnect flag when connecting
         this.intentionalDisconnect = false;
         // WebSocket URL doesn't need auth in query string anymore
-        this.url = `${getApiUrl('').replace(/^http/, 'ws')}${this.path}`;
-        this.ws = new WebSocket(this.url);
+        this.ws = new WebSocket(getWsUrl(this.path));
 
         this.ws.onopen = () => {
           console.log(`WebSocket connected to ${this.path}`);
@@ -276,7 +275,7 @@ export class WebSocketManager {
         this.ws.onclose = (event) => {
           console.log('WebSocket closed', { code: event.code, reason: event.reason });
           this.authenticated = false;
-          
+
           // Only reconnect if not intentionally disconnected and not a normal closure
           if (!this.intentionalDisconnect && event.code !== 1000) {
             this.scheduleReconnect();
@@ -341,7 +340,7 @@ export class WebSocketManager {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
       console.log(`Scheduling reconnect attempt ${this.reconnectAttempts}...`);
-      
+
       this.reconnectTimer = window.setTimeout(() => {
         if ($isAuthenticated.get()) {
           this.connect().catch(console.error);
@@ -387,18 +386,18 @@ export class WebSocketManager {
   disconnect(): void {
     // Mark as intentional disconnect to prevent reconnection
     this.intentionalDisconnect = true;
-    
+
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
-    
+
     if (this.ws) {
       // Close with normal closure code to indicate intentional disconnect
       this.ws.close(1000, 'Normal closure');
       this.ws = null;
     }
-    
+
     this.messageHandlers.clear();
     this.authenticated = false;
   }
