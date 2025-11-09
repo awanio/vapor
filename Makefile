@@ -37,6 +37,9 @@ build-linux: embed-web
 	@echo "Building for Linux x86_64..."
 	go build -o bin/$(BINARY_NAME)-linux-amd64 $(MAIN_PATH)
 
+run-dev: embed-web
+	go run cmd/vapor/main.go -config ./vapor.conf.example
+
 update-systemd:
 	@echo "Update Vapor daemon service in systemd"
 	go build -o bin/$(BINARY_NAME) $(MAIN_PATH)

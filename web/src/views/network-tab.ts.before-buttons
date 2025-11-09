@@ -23,7 +23,6 @@ import {
 // Define BondMode locally until it's exported from api types
 type BondMode = 'balance-rr' | 'active-backup' | 'balance-xor' | 'broadcast' | '802.3ad' | 'balance-tlb' | 'balance-alb';
 import '../components/modal-dialog';
-import '../components/ui/operation-warning';
 
 export class NetworkTab extends I18nLitElement {
   @property({ type: String })
@@ -835,14 +834,6 @@ export class NetworkTab extends I18nLitElement {
   @state()
   private editingVlanName: string | null = null;
 
-
-  @state()
-  private operationWarning: { 
-    type: 'warning' | 'partial-success' | 'persistence'; 
-    message: string; 
-    failures?: any[]; 
-    successItems?: string[] 
-  } | null = null;
   @state()
   private configureNetworkInterface: NetworkInterface | null = null;
 
@@ -1110,19 +1101,6 @@ export class NetworkTab extends I18nLitElement {
     );
   }
 
-
-  // Helper to show operation warnings
-  showOperationWarning(type: 'warning' | 'partial-success' | 'persistence', message: string, failures?: any[], successItems?: string[]) {
-    this.operationWarning = { type, message, failures, successItems };
-    // Auto-dismiss after 10 seconds
-    setTimeout(() => {
-      this.operationWarning = null;
-    }, 10000);
-  }
-
-  dismissOperationWarning() {
-    this.operationWarning = null;
-  }
   showConfirmDialog(title: string, message: string, action: () => void) {
     this.confirmTitle = title;
     this.confirmMessage = message;
@@ -1160,9 +1138,9 @@ export class NetworkTab extends I18nLitElement {
   }
 
   closeVLANDrawer() {
-    this.showVLANDrawer = false;
     this.isEditingVlan = false;
     this.editingVlanName = null;
+    this.showVLANDrawer = false;
     this.vlanFormData = {
       interface: '',
       vlanId: 0,
@@ -1277,16 +1255,10 @@ export class NetworkTab extends I18nLitElement {
       
       // Handle response warnings if present
       if (response.warning) {
-        this.showOperationWarning('warning', response.warning);
+        console.warn('IP address update warning:', response.warning);
       }
       if (response.persistence_warning) {
-        this.showOperationWarning('persistence', response.persistence_warning);
-      }
-      if (response.failed && response.failed.length > 0) {
-        this.showOperationWarning('partial-success', 
-          response.warning || 'Some operations failed', 
-          response.failed, 
-          response.successfully_added);
+        console.warn('Persistence warning:', response.persistence_warning);
       }
       
       // Refresh interfaces and update selected interface
@@ -1352,16 +1324,8 @@ export class NetworkTab extends I18nLitElement {
     };
 
     try {
-      const response: any = await api.post(`/network/interfaces/${this.selectedInterface.name}/address`, request);
+      await api.post(`/network/interfaces/${this.selectedInterface.name}/address`, request);
       
-      
-      // Handle warnings if present
-      if (response?.warning) {
-        this.showOperationWarning('warning', response.warning);
-      }
-      if (response?.persistence_warning) {
-        this.showOperationWarning('persistence', response.persistence_warning);
-      }
       // Refresh interfaces and update selected interface
       await this.fetchInterfaces();
       const updatedInterface = this.interfaces.find(i => i.name === this.selectedInterface?.name);
@@ -1385,9 +1349,9 @@ export class NetworkTab extends I18nLitElement {
   }
 
   closeBridgeDrawer() {
-    this.showBridgeDrawer = false;
     this.isEditingBridge = false;
     this.editingBridgeName = null;
+    this.showBridgeDrawer = false;
     this.bridgeFormData = {
       name: '',
       interfaces: ''
@@ -1404,49 +1368,46 @@ export class NetworkTab extends I18nLitElement {
   }
 
   closeBondDrawer() {
-    this.showBondDrawer = false;
     this.isEditingBond = false;
     this.editingBondName = null;
+    this.showBondDrawer = false;
     this.bondFormData = {
       name: '',
       mode: 'balance-rr' as BondMode,
       interfaces: ''
     };
   }
-  // Edit methods for Bridge
-  openEditBridgeDrawer(bridge: any) {
+
+  openEditBridgeDrawer(bridge: NetworkInterface) {
     this.isEditingBridge = true;
     this.editingBridgeName = bridge.name;
     this.showBridgeDrawer = true;
-    // Prefill form with existing data
     this.bridgeFormData = {
       name: bridge.name,
-      interfaces: bridge.interfaces ? bridge.interfaces.join(',') : ''
+      interfaces: (bridge as any).interfaces?.join(', ') || ''
     };
   }
 
-  // Edit methods for Bond
-  openEditBondDrawer(bond: any) {
+  openEditBondDrawer(bond: NetworkInterface) {
     this.isEditingBond = true;
     this.editingBondName = bond.name;
     this.showBondDrawer = true;
-    // Prefill form with existing data
     this.bondFormData = {
       name: bond.name,
-      mode: bond.mode || 'balance-rr',
-      interfaces: bond.interfaces ? bond.interfaces.join(',') : ''
+      mode: (bond as any).mode || 'balance-rr',
+      interfaces: (bond as any).interfaces?.join(', ') || ''
     };
   }
 
-  // Edit methods for VLAN
-  openEditVlanDrawer(vlan: any) {
+  openEditVlanDrawer(vlan: NetworkInterface) {
     this.isEditingVlan = true;
     this.editingVlanName = vlan.name;
     this.showVLANDrawer = true;
-    // Prefill form with existing data
+    // Extract interface and vlan_id from vlan name (typically format: eth0.100)
+    const parts = vlan.name.split('.');
     this.vlanFormData = {
-      interface: vlan.interface || '',
-      vlanId: vlan.vlan_id || 0,
+      interface: (vlan as any).interface || parts[0] || '',
+      vlanId: (vlan as any).vlan_id || (parts[1] ? parseInt(parts[1]) : 0),
       name: vlan.name
     };
   }
@@ -1456,29 +1417,18 @@ export class NetworkTab extends I18nLitElement {
       return;
     }
 
-    const request = {
-      name: this.bridgeFormData.name,
-      interfaces: this.bridgeFormData.interfaces.split(',').map(item => item.trim()).filter(Boolean)
-    };
-    let response;
-    if (this.isEditingBridge) {
-      response = await networkActions.updateBridge(this.editingBridgeName!, { interfaces: request.interfaces });
-    } else {
-    response = await networkActions.createBridge(request);
-    }
+    const interfaces = this.bridgeFormData.interfaces.split(',').map(item => item.trim()).filter(Boolean);
     
-    // Handle warnings
-    if (response?.warning) {
-      this.showOperationWarning('warning', response.warning);
-    }
-    if (response?.persistence_warning) {
-      this.showOperationWarning('persistence', response.persistence_warning);
-    }
-    if (response?.failed && response.failed.length > 0) {
-      this.showOperationWarning('partial-success',
-        response.warning || 'Some interfaces failed to add',
-        response.failed,
-        response.successfully_added);
+    if (this.isEditingBridge) {
+      // Update existing bridge
+      await networkActions.updateBridge(this.editingBridgeName!, { interfaces });
+    } else {
+      // Create new bridge
+      const request = {
+        name: this.bridgeFormData.name,
+        interfaces
+      };
+      await networkActions.createBridge(request);
     }
     this.closeBridgeDrawer();
   }
@@ -1488,30 +1438,22 @@ export class NetworkTab extends I18nLitElement {
       return;
     }
 
-    const request = {
-      name: this.bondFormData.name,
-      mode: this.bondFormData.mode,
-      interfaces: this.bondFormData.interfaces.split(',').map(item => item.trim()).filter(Boolean)
-    };
-    let response;
-    if (this.isEditingBond) {
-      response = await networkActions.updateBond(this.editingBondName!, { mode: request.mode, interfaces: request.interfaces });
-    } else {
-    response = await networkActions.createBond(request);
-    }
+    const interfaces = this.bondFormData.interfaces.split(',').map(item => item.trim()).filter(Boolean);
     
-    // Handle warnings
-    if (response?.warning) {
-      this.showOperationWarning('warning', response.warning);
-    }
-    if (response?.persistence_warning) {
-      this.showOperationWarning('persistence', response.persistence_warning);
-    }
-    if (response?.failed && response.failed.length > 0) {
-      this.showOperationWarning('partial-success',
-        response.warning || 'Some interfaces failed to add',
-        response.failed,
-        response.successfully_added);
+    if (this.isEditingBond) {
+      // Update existing bond
+      await networkActions.updateBond(this.editingBondName!, {
+        mode: this.bondFormData.mode,
+        interfaces
+      });
+    } else {
+      // Create new bond
+      const request = {
+        name: this.bondFormData.name,
+        mode: this.bondFormData.mode,
+        interfaces
+      };
+      await networkActions.createBond(request);
     }
     this.closeBondDrawer();
   }
@@ -1526,25 +1468,13 @@ export class NetworkTab extends I18nLitElement {
       vlan_id: this.vlanFormData.vlanId,
       name: this.vlanFormData.name || `${this.vlanFormData.interface}.${this.vlanFormData.vlanId}`
     };
-    let response;
-    if (this.isEditingVlan) {
-      response = await networkActions.updateVlan(this.editingVlanName!, { vlan_id: request.vlan_id });
-    } else {
-    response = await networkActions.createVlan(request);
-    }
     
-    // Handle warnings
-    if (response?.warning) {
-      this.showOperationWarning('warning', response.warning);
-    }
-    if (response?.persistence_warning) {
-      this.showOperationWarning('persistence', response.persistence_warning);
-    }
-    if (response?.failed && response.failed.length > 0) {
-      this.showOperationWarning('partial-success',
-        response.warning || 'Some operations failed',
-        response.failed,
-        response.successfully_added);
+    if (this.isEditingVlan) {
+      // Update existing VLAN
+      await networkActions.updateVlan(this.editingVlanName!, request);
+    } else {
+      // Create new VLAN
+      await networkActions.createVlan(request);
     }
     this.closeVLANDrawer();
   }
@@ -1629,16 +1559,6 @@ export class NetworkTab extends I18nLitElement {
     return html`
       <div class="tab-container">
         <h1>${this.getPageTitle()}</h1>
-
-        ${this.operationWarning ? html`
-          <operation-warning
-            .type=${this.operationWarning.type}
-            .message=${this.operationWarning.message}
-            .failures=${this.operationWarning.failures || []}
-            .successfulItems=${this.operationWarning.successItems || []}
-            @close=${this.dismissOperationWarning}
-          ></operation-warning>
-        ` : ''}
         <div class="tab-content">
           ${this.activeTab === 'interfaces' ? html`
             <div class="filter-container">
@@ -1760,7 +1680,7 @@ ${this.interfaces.length > 0 ? html`
                 />
               </div>
               <button class="action-button primary" @click="${this.openBridgeDrawer}">
-                ${this.isEditingBridge ? t('common.update') : t('network.createBridge')}
+                ${t('network.createBridge')}
               </button>
             </div>
             
@@ -1786,10 +1706,10 @@ ${this.interfaces.length > 0 ? html`
                         <div class="action-menu">
                           <button class="action-dots" @click=${(e: Event) => this.toggleActionMenu(e, `bridge-${index}`)}>${'⋮'}</button>
                           <div class="action-dropdown" id="bridge-${index}">
+                            <button class="danger" @click=${() => { this.closeAllMenus(); this.deleteBridge(bridge.name); }}>
                             <button @click=${() => { this.closeAllMenus(); this.openEditBridgeDrawer(bridge); }}>
                               ${t('common.edit')}
                             </button>
-                            <button class="danger" @click=${() => { this.closeAllMenus(); this.deleteBridge(bridge.name); }}>
                               ${t('common.delete')}
                             </button>
                           </div>
@@ -1818,7 +1738,7 @@ ${this.interfaces.length > 0 ? html`
                 />
               </div>
               <button class="action-button primary" @click="${this.openBondDrawer}">
-                ${this.isEditingBond ? t('common.update') : t('network.createBond')}
+                ${t('network.createBond')}
               </button>
             </div>
             
@@ -1846,9 +1766,6 @@ ${this.interfaces.length > 0 ? html`
                         <div class="action-menu">
                           <button class="action-dots" @click=${(e: Event) => this.toggleActionMenu(e, `bond-${index}`)}>${'⋮'}</button>
                           <div class="action-dropdown" id="bond-${index}">
-                            <button @click=${() => { this.closeAllMenus(); this.openEditBondDrawer(bond); }}>
-                              ${t('common.edit')}
-                            </button>
                             <button class="danger" @click=${() => { this.closeAllMenus(); this.deleteBond(bond.name); }}>
                               ${t('common.delete')}
                             </button>
@@ -1878,7 +1795,7 @@ ${this.interfaces.length > 0 ? html`
                 />
               </div>
               <button class="action-button primary" @click="${this.openVLANDrawer}">
-                ${this.isEditingVlan ? t('common.update') : t('network.createVLAN')}
+                ${t('network.createVLAN')}
               </button>
             </div>
             
@@ -1904,9 +1821,6 @@ ${this.interfaces.length > 0 ? html`
                         <div class="action-menu">
                           <button class="action-dots" @click=${(e: Event) => this.toggleActionMenu(e, `vlan-${index}`)}>${'⋮'}</button>
                           <div class="action-dropdown" id="vlan-${index}">
-                            <button @click=${() => { this.closeAllMenus(); this.openEditVlanDrawer(vlan); }}>
-                              ${t('common.edit')}
-                            </button>
                             <button class="danger" @click=${() => { this.closeAllMenus(); this.deleteVlan(vlan.name); }}>
                               ${t('common.delete')}
                             </button>
@@ -2013,7 +1927,7 @@ ${this.interfaces.length > 0 ? html`
         <div class="drawer">
           <button class="close-btn" @click="${() => this.closeBridgeDrawer()}">×</button>
           <div class="drawer-content">
-            <h2>${this.isEditingBridge ? t('network.editBridgeTitle') : t('network.createBridgeTitle')}</h2>
+            <h2>${t('network.createBridgeTitle')}</h2>
             <form @submit=${(e: Event) => { e.preventDefault(); this.handleCreateBridge(); }}>
               <div class="form-group">
                 <label class="form-label" for="bridge-name">${t('network.bridgeNameRequired')}</label>
@@ -2025,7 +1939,6 @@ ${this.interfaces.length > 0 ? html`
                   .value=${this.bridgeFormData.name}
                   @input=${(e: Event) => this.bridgeFormData.name = (e.target as HTMLInputElement).value}
                   required
-                  ?disabled=${this.isEditingBridge}
                 />
               </div>
               
@@ -2050,7 +1963,7 @@ ${this.interfaces.length > 0 ? html`
                   ${t('common.cancel')}
                 </button>
                 <button type="submit" class="action-button primary">
-                  ${this.isEditingBridge ? t('common.update') : t('network.createBridge')}
+                  ${t('network.createBridge')}
                 </button>
               </div>
             </form>
@@ -2062,7 +1975,7 @@ ${this.interfaces.length > 0 ? html`
         <div class="drawer">
           <button class="close-btn" @click="${() => this.closeBondDrawer()}">×</button>
           <div class="drawer-content">
-            <h2>${this.isEditingBond ? t('network.editBondTitle') : t('network.createBondTitle')}</h2>
+            <h2>${t('network.createBondTitle')}</h2>
             <form @submit=${(e: Event) => { e.preventDefault(); this.handleCreateBond(); }}>
               <div class="form-group">
                 <label class="form-label" for="bond-name">${t('network.bondNameRequired')}</label>
@@ -2074,7 +1987,6 @@ ${this.interfaces.length > 0 ? html`
                   .value=${this.bondFormData.name}
                   @input=${(e: Event) => this.bondFormData.name = (e.target as HTMLInputElement).value}
                   required
-                  ?disabled=${this.isEditingBond}
                 />
               </div>
               
@@ -2118,7 +2030,7 @@ ${this.interfaces.length > 0 ? html`
                   ${t('common.cancel')}
                 </button>
                 <button type="submit" class="action-button primary">
-                  ${this.isEditingBond ? t('common.update') : t('network.createBond')}
+                  ${t('network.createBond')}
                 </button>
               </div>
             </form>
@@ -2130,7 +2042,7 @@ ${this.interfaces.length > 0 ? html`
         <div class="drawer">
           <button class="close-btn" @click="${() => this.closeVLANDrawer()}">×</button>
           <div class="drawer-content">
-            <h2>${this.isEditingVlan ? t('network.editVlanTitle') : t('network.createVlanTitle')}</h2>
+            <h2>${t('network.createVlanTitle')}</h2>
             <form @submit=${(e: Event) => { e.preventDefault(); this.handleCreateVLANInterface(); }}>
               <div class="form-group">
                 <label class="form-label" for="vlan-interface">${t('network.baseInterfaceRequired')}</label>
@@ -2140,7 +2052,6 @@ ${this.interfaces.length > 0 ? html`
                   type="text" 
                   placeholder="eth0"
                   .value=${this.vlanFormData.interface}
-                  ?disabled=${this.isEditingVlan}
                   @input=${(e: Event) => this.vlanFormData.interface = (e.target as HTMLInputElement).value}
                   required
                 />
@@ -2170,7 +2081,6 @@ ${this.interfaces.length > 0 ? html`
                   placeholder="eth0.100"
                   .value=${this.vlanFormData.name}
                   @input=${(e: Event) => this.vlanFormData.name = (e.target as HTMLInputElement).value}
-                  ?disabled=${this.isEditingVlan}
                 />
                 <small style="display: block; margin-top: 0.25rem; color: var(--text-secondary); font-size: 0.75rem;">
                   ${t('network.vlanNameDefault')}
@@ -2182,7 +2092,7 @@ ${this.interfaces.length > 0 ? html`
                   ${t('common.cancel')}
                 </button>
                 <button type="submit" class="action-button primary">
-                  ${this.isEditingVlan ? t('common.update') : t('network.createVLAN')}
+                  ${t('network.createVLAN')}
                 </button>
               </div>
             </form>

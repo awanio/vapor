@@ -8,7 +8,12 @@ import type {
   AddressRequest, 
   BridgeRequest, 
   BondRequest, 
-  VLANRequest 
+  VLANRequest,
+  BridgeUpdateRequest,
+  BondUpdateRequest,
+  VLANUpdateRequest,
+  AddressUpdateRequest,
+  NetworkOperationResponse
 } from '../types/api';
 import { api } from '../api';
 
@@ -326,17 +331,17 @@ export const networkActions = {
   },
 
   // Create bridge
-  async createBridge(request: BridgeRequest): Promise<boolean> {
+  async createBridge(request: BridgeRequest): Promise<NetworkOperationResponse> {
     try {
-      await api.post('/network/bridge', request);
+      const response = await api.post<NetworkOperationResponse>('/network/bridge', request);
       await Promise.all([
         this.fetchBridges(),
         this.fetchInterfaces(),
       ]);
-      return true;
+      return response || {};
     } catch (error) {
       console.error('Error creating bridge:', error);
-      return false;
+      throw error;
     }
   },
 
@@ -353,17 +358,17 @@ export const networkActions = {
   },
 
   // Create bond
-  async createBond(request: BondRequest): Promise<boolean> {
+  async createBond(request: BondRequest): Promise<NetworkOperationResponse> {
     try {
-      await api.post('/network/bond', request);
+      const response = await api.post<NetworkOperationResponse>('/network/bond', request);
       await Promise.all([
         this.fetchBonds(),
         this.fetchInterfaces(),
       ]);
-      return true;
+      return response || {};
     } catch (error) {
       console.error('Error creating bond:', error);
-      return false;
+      throw error;
     }
   },
 
@@ -380,17 +385,17 @@ export const networkActions = {
   },
 
   // Create VLAN
-  async createVlan(request: VLANRequest): Promise<boolean> {
+  async createVlan(request: VLANRequest): Promise<NetworkOperationResponse> {
     try {
-      await api.post('/network/vlan', request);
+      const response = await api.post<NetworkOperationResponse>('/network/vlan', request);
       await Promise.all([
         this.fetchVlans(),
         this.fetchInterfaces(),
       ]);
-      return true;
+      return response || {};
     } catch (error) {
       console.error('Error creating VLAN:', error);
-      return false;
+      throw error;
     }
   },
 
@@ -405,6 +410,64 @@ export const networkActions = {
       return false;
     }
   },
+
+  // Update bridge
+  async updateBridge(name: string, request: BridgeUpdateRequest): Promise<NetworkOperationResponse> {
+    try {
+      const response = await api.put<NetworkOperationResponse>(`/network/bridge/${name}`, request);
+      await Promise.all([
+        this.fetchBridges(),
+        this.fetchInterfaces(),
+      ]);
+      return response || {};
+    } catch (error) {
+      console.error('Error updating bridge:', error);
+      throw error;
+    }
+  },
+
+  // Update bond
+  async updateBond(name: string, request: BondUpdateRequest): Promise<NetworkOperationResponse> {
+    try {
+      const response = await api.put<NetworkOperationResponse>(`/network/bond/${name}`, request);
+      await Promise.all([
+        this.fetchBonds(),
+        this.fetchInterfaces(),
+      ]);
+      return response || {};
+    } catch (error) {
+      console.error('Error updating bond:', error);
+      throw error;
+    }
+  },
+
+  // Update VLAN
+  async updateVlan(name: string, request: VLANUpdateRequest): Promise<NetworkOperationResponse> {
+    try {
+      const response = await api.put<NetworkOperationResponse>(`/network/vlan/${name}`, request);
+      await Promise.all([
+        this.fetchVlans(),
+        this.fetchInterfaces(),
+      ]);
+      return response || {};
+    } catch (error) {
+      console.error('Error updating VLAN:', error);
+      throw error;
+    }
+  },
+
+  // Update interface address
+  async updateInterfaceAddress(interfaceName: string, request: AddressUpdateRequest): Promise<NetworkOperationResponse> {
+    try {
+      const response = await api.put<NetworkOperationResponse>(`/network/interfaces/${interfaceName}/address`, request);
+      await this.fetchInterfaces();
+      return response || {};
+    } catch (error) {
+      console.error('Error updating interface address:', error);
+      throw error;
+    }
+  },
+
 
   // UI Actions
   selectInterface(iface: NetworkInterface | null) {

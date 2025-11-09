@@ -168,6 +168,39 @@ export interface VLANRequest {
   name?: string;
 }
 
+// Network Operation Response Types
+export interface NetworkOperationFailure {
+  interface: string;
+  reason: string;
+}
+
+export interface NetworkOperationResponse {
+  message?: string;
+  successfully_added?: string[];
+  failed?: NetworkOperationFailure[];
+  warning?: string;
+  persistence_warning?: string;
+}
+
+export interface BridgeUpdateRequest {
+  interfaces?: string[];
+}
+
+export interface BondUpdateRequest {
+  mode?: string;
+  interfaces?: string[];
+}
+
+export interface VLANUpdateRequest {
+  vlan_id?: number;
+}
+
+export interface AddressUpdateRequest {
+  address: string;
+  netmask: number;
+  gateway?: string;
+}
+
 // Storage Types
 export interface Disk {
   name: string;

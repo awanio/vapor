@@ -1,4 +1,4 @@
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-qIBaAmd6.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-95oGaZQs.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -1215,14 +1215,14 @@ class I18nLitElement extends i$2 {
     }
   }
 }
-var __defProp$R = Object.defineProperty;
-var __getOwnPropDesc$J = Object.getOwnPropertyDescriptor;
-var __decorateClass$S = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$J(target, key) : target;
+var __defProp$S = Object.defineProperty;
+var __getOwnPropDesc$K = Object.getOwnPropertyDescriptor;
+var __decorateClass$T = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$K(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$R(target, key, result);
+  if (kind && result) __defProp$S(target, key, result);
   return result;
 };
 let LoginPage = class extends I18nLitElement {
@@ -1484,22 +1484,22 @@ LoginPage.styles = i$5`
       fill: var(--primary);
     }
   `;
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], LoginPage.prototype, "username", 2);
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], LoginPage.prototype, "password", 2);
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], LoginPage.prototype, "loading", 2);
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], LoginPage.prototype, "error", 2);
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], LoginPage.prototype, "showPassword", 2);
-LoginPage = __decorateClass$S([
+LoginPage = __decorateClass$T([
   t$2("login-page")
 ], LoginPage);
 /*!
@@ -2064,7 +2064,7 @@ class Color {
   }
 }
 /*!
- * Chart.js v4.5.0
+ * Chart.js v4.5.1
  * https://www.chartjs.org
  * (c) 2025 Chart.js Contributors
  * Released under the MIT License
@@ -4015,10 +4015,10 @@ function getMaximumSize(canvas, bbWidth, bbHeight, aspectRatio) {
 }
 function retinaScale(chart, forceRatio, forceStyle) {
   const pixelRatio = forceRatio || 1;
-  const deviceHeight = Math.floor(chart.height * pixelRatio);
-  const deviceWidth = Math.floor(chart.width * pixelRatio);
-  chart.height = Math.floor(chart.height);
-  chart.width = Math.floor(chart.width);
+  const deviceHeight = round1(chart.height * pixelRatio);
+  const deviceWidth = round1(chart.width * pixelRatio);
+  chart.height = round1(chart.height);
+  chart.width = round1(chart.width);
   const canvas = chart.canvas;
   if (canvas.style && (forceStyle || !canvas.style.height && !canvas.style.width)) {
     canvas.style.height = `${chart.height}px`;
@@ -4462,7 +4462,7 @@ function getDatasetClipArea(chart, meta) {
   };
 }
 /*!
- * Chart.js v4.5.0
+ * Chart.js v4.5.1
  * https://www.chartjs.org
  * (c) 2025 Chart.js Contributors
  * Released under the MIT License
@@ -6309,19 +6309,24 @@ class DoughnutController extends DatasetController {
         labels: {
           generateLabels(chart) {
             const data = chart.data;
+            const { labels: { pointStyle, textAlign, color: color2, useBorderRadius, borderRadius } } = chart.legend.options;
             if (data.labels.length && data.datasets.length) {
-              const { labels: { pointStyle, color: color2 } } = chart.legend.options;
               return data.labels.map((label, i4) => {
                 const meta = chart.getDatasetMeta(0);
                 const style = meta.controller.getStyle(i4);
                 return {
                   text: label,
                   fillStyle: style.backgroundColor,
-                  strokeStyle: style.borderColor,
                   fontColor: color2,
-                  lineWidth: style.borderWidth,
-                  pointStyle,
                   hidden: !chart.getDataVisibility(i4),
+                  lineDash: style.borderDash,
+                  lineDashOffset: style.borderDashOffset,
+                  lineJoin: style.borderJoinStyle,
+                  lineWidth: style.borderWidth,
+                  strokeStyle: style.borderColor,
+                  textAlign,
+                  pointStyle,
+                  borderRadius: useBorderRadius && (borderRadius || style.borderRadius),
                   index: i4
                 };
               });
@@ -9531,18 +9536,22 @@ class Registry {
 var registry = /* @__PURE__ */ new Registry();
 class PluginService {
   constructor() {
-    this._init = [];
+    this._init = void 0;
   }
   notify(chart, hook, args, filter) {
     if (hook === "beforeInit") {
       this._init = this._createDescriptors(chart, true);
       this._notify(this._init, chart, "install");
     }
+    if (this._init === void 0) {
+      return;
+    }
     const descriptors2 = filter ? this._descriptors(chart).filter(filter) : this._descriptors(chart);
     const result = this._notify(descriptors2, chart, hook, args);
     if (hook === "afterDestroy") {
       this._notify(descriptors2, chart, "stop");
       this._notify(this._init, chart, "uninstall");
+      this._init = void 0;
     }
     return result;
   }
@@ -9983,7 +9992,7 @@ function needContext(proxy, names2) {
   }
   return false;
 }
-var version$1 = "4.5.0";
+var version$1 = "4.5.1";
 const KNOWN_POSITIONS = [
   "top",
   "bottom",
@@ -17388,7 +17397,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-qIBaAmd6.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-95oGaZQs.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17433,7 +17442,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-qIBaAmd6.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-95oGaZQs.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17497,7 +17506,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-qIBaAmd6.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-95oGaZQs.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17577,9 +17586,9 @@ const metrics = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePrope
   updateMemoryMetrics,
   updateNetworkMetrics
 }, Symbol.toStringTag, { value: "Module" }));
-var __getOwnPropDesc$I = Object.getOwnPropertyDescriptor;
-var __decorateClass$R = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$I(target, key) : target;
+var __getOwnPropDesc$J = Object.getOwnPropertyDescriptor;
+var __decorateClass$S = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$J(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(result) || result;
@@ -17607,7 +17616,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-qIBaAmd6.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-95oGaZQs.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -18213,7 +18222,7 @@ DashboardTabV2.styles = i$5`
       margin-bottom: 16px;
     }
   `;
-DashboardTabV2 = __decorateClass$R([
+DashboardTabV2 = __decorateClass$S([
   t$2("dashboard-tab-v2")
 ], DashboardTabV2);
 const $interfaces = atom([]);
@@ -18467,15 +18476,15 @@ const networkActions = {
   // Create bridge
   async createBridge(request) {
     try {
-      await api.post("/network/bridge", request);
+      const response = await api.post("/network/bridge", request);
       await Promise.all([
         this.fetchBridges(),
         this.fetchInterfaces()
       ]);
-      return true;
+      return response || {};
     } catch (error) {
       console.error("Error creating bridge:", error);
-      return false;
+      throw error;
     }
   },
   // Delete bridge
@@ -18492,15 +18501,15 @@ const networkActions = {
   // Create bond
   async createBond(request) {
     try {
-      await api.post("/network/bond", request);
+      const response = await api.post("/network/bond", request);
       await Promise.all([
         this.fetchBonds(),
         this.fetchInterfaces()
       ]);
-      return true;
+      return response || {};
     } catch (error) {
       console.error("Error creating bond:", error);
-      return false;
+      throw error;
     }
   },
   // Delete bond
@@ -18517,15 +18526,15 @@ const networkActions = {
   // Create VLAN
   async createVlan(request) {
     try {
-      await api.post("/network/vlan", request);
+      const response = await api.post("/network/vlan", request);
       await Promise.all([
         this.fetchVlans(),
         this.fetchInterfaces()
       ]);
-      return true;
+      return response || {};
     } catch (error) {
       console.error("Error creating VLAN:", error);
-      return false;
+      throw error;
     }
   },
   // Delete VLAN
@@ -18537,6 +18546,59 @@ const networkActions = {
     } catch (error) {
       console.error("Error deleting VLAN:", error);
       return false;
+    }
+  },
+  // Update bridge
+  async updateBridge(name, request) {
+    try {
+      const response = await api.put(`/network/bridge/${name}`, request);
+      await Promise.all([
+        this.fetchBridges(),
+        this.fetchInterfaces()
+      ]);
+      return response || {};
+    } catch (error) {
+      console.error("Error updating bridge:", error);
+      throw error;
+    }
+  },
+  // Update bond
+  async updateBond(name, request) {
+    try {
+      const response = await api.put(`/network/bond/${name}`, request);
+      await Promise.all([
+        this.fetchBonds(),
+        this.fetchInterfaces()
+      ]);
+      return response || {};
+    } catch (error) {
+      console.error("Error updating bond:", error);
+      throw error;
+    }
+  },
+  // Update VLAN
+  async updateVlan(name, request) {
+    try {
+      const response = await api.put(`/network/vlan/${name}`, request);
+      await Promise.all([
+        this.fetchVlans(),
+        this.fetchInterfaces()
+      ]);
+      return response || {};
+    } catch (error) {
+      console.error("Error updating VLAN:", error);
+      throw error;
+    }
+  },
+  // Update interface address
+  async updateInterfaceAddress(interfaceName, request) {
+    try {
+      const response = await api.put(`/network/interfaces/${interfaceName}/address`, request);
+      await this.fetchInterfaces();
+      return response || {};
+    } catch (error) {
+      console.error("Error updating interface address:", error);
+      throw error;
     }
   },
   // UI Actions
@@ -18586,13 +18648,13 @@ async function initializeNetworkStore() {
   // Actions
   ...networkActions
 });
-var __defProp$Q = Object.defineProperty;
-var __decorateClass$Q = (decorators, target, key, kind) => {
+var __defProp$R = Object.defineProperty;
+var __decorateClass$R = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$Q(target, key, result);
+  if (result) __defProp$R(target, key, result);
   return result;
 };
 class ModalDialog extends I18nLitElement {
@@ -18795,19 +18857,230 @@ class ModalDialog extends I18nLitElement {
     `;
   }
 }
-__decorateClass$Q([
+__decorateClass$R([
   n2({ type: Boolean, reflect: true })
 ], ModalDialog.prototype, "open");
-__decorateClass$Q([
+__decorateClass$R([
   n2({ type: String })
 ], ModalDialog.prototype, "title");
-__decorateClass$Q([
+__decorateClass$R([
   n2({ type: String })
 ], ModalDialog.prototype, "size");
-__decorateClass$Q([
+__decorateClass$R([
   n2({ type: Boolean })
 ], ModalDialog.prototype, "showFooter");
 customElements.define("modal-dialog", ModalDialog);
+var __defProp$Q = Object.defineProperty;
+var __getOwnPropDesc$I = Object.getOwnPropertyDescriptor;
+var __decorateClass$Q = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$I(target, key) : target;
+  for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
+    if (decorator = decorators[i4])
+      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
+  if (kind && result) __defProp$Q(target, key, result);
+  return result;
+};
+let OperationWarning = class extends i$2 {
+  constructor() {
+    super(...arguments);
+    this.type = "warning";
+    this.message = "";
+    this.failures = [];
+    this.successfulItems = [];
+    this.dismissible = true;
+  }
+  handleClose() {
+    this.dispatchEvent(new CustomEvent("close", {
+      bubbles: true,
+      composed: true
+    }));
+  }
+  renderIcon() {
+    if (this.type === "partial-success") {
+      return x`
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      `;
+    }
+    return x`
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+        <line x1="12" y1="9" x2="12" y2="13"></line>
+        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+      </svg>
+    `;
+  }
+  render() {
+    return x`
+      <div class="warning-container ${this.type}">
+        <div class="warning-icon" style="color: ${this.type === "partial-success" ? "var(--info-color, #2196f3)" : this.type === "persistence" ? "var(--caution-color, #ffc107)" : "var(--warning-color, #ff9800)"}">
+          ${this.renderIcon()}
+        </div>
+        <div class="warning-content">
+          ${this.message ? x`
+            <div class="warning-message">${this.message}</div>
+          ` : ""}
+          
+          ${this.successfulItems.length > 0 ? x`
+            <div class="success-list">
+              Successfully processed: ${this.successfulItems.join(", ")}
+            </div>
+          ` : ""}
+          
+          ${this.failures.length > 0 ? x`
+            <div class="failures-list">
+              ${this.failures.map((failure) => x`
+                <div class="failure-item">
+                  <span class="failure-interface">${failure.interface}:</span>
+                  <span class="failure-reason">${failure.reason}</span>
+                </div>
+              `)}
+            </div>
+          ` : ""}
+        </div>
+        ${this.dismissible ? x`
+          <button class="close-button" @click=${this.handleClose} title="Dismiss">×</button>
+        ` : ""}
+      </div>
+    `;
+  }
+};
+OperationWarning.styles = i$5`
+    :host {
+      display: block;
+      margin: 12px 0;
+    }
+
+    .warning-container {
+      background: var(--warning-bg, rgba(255, 152, 0, 0.1));
+      border: 1px solid var(--warning-border, rgba(255, 152, 0, 0.3));
+      border-left: 4px solid var(--warning-color, #ff9800);
+      border-radius: 4px;
+      padding: 12px 16px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    .warning-container.partial-success {
+      background: var(--info-bg, rgba(33, 150, 243, 0.1));
+      border-color: var(--info-border, rgba(33, 150, 243, 0.3));
+      border-left-color: var(--info-color, #2196f3);
+    }
+
+    .warning-container.persistence {
+      background: var(--caution-bg, rgba(255, 193, 7, 0.1));
+      border-color: var(--caution-border, rgba(255, 193, 7, 0.3));
+      border-left-color: var(--caution-color, #ffc107);
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .warning-icon {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      margin-top: 2px;
+    }
+
+    .warning-icon svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .warning-content {
+      flex: 1;
+      color: var(--text-primary, var(--vscode-foreground, #cccccc));
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+
+    .warning-title {
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--text-primary, var(--vscode-foreground, #cccccc));
+    }
+
+    .warning-message {
+      margin-bottom: 8px;
+    }
+
+    .failures-list {
+      margin-top: 8px;
+      padding-left: 16px;
+    }
+
+    .failure-item {
+      margin: 4px 0;
+      display: flex;
+      gap: 8px;
+    }
+
+    .failure-interface {
+      font-weight: 500;
+      color: var(--text-primary, var(--vscode-foreground, #cccccc));
+    }
+
+    .failure-reason {
+      color: var(--text-secondary, var(--vscode-descriptionForeground, #999999));
+    }
+
+    .success-list {
+      margin-top: 8px;
+      color: var(--text-secondary, var(--vscode-descriptionForeground, #999999));
+    }
+
+    .close-button {
+      flex-shrink: 0;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-secondary, var(--vscode-descriptionForeground, #999999));
+      font-size: 18px;
+      padding: 0;
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      transition: all 0.2s;
+      line-height: 1;
+    }
+
+    .close-button:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary, var(--vscode-foreground, #cccccc));
+    }
+  `;
+__decorateClass$Q([
+  n2({ type: String })
+], OperationWarning.prototype, "type", 2);
+__decorateClass$Q([
+  n2({ type: String })
+], OperationWarning.prototype, "message", 2);
+__decorateClass$Q([
+  n2({ type: Array })
+], OperationWarning.prototype, "failures", 2);
+__decorateClass$Q([
+  n2({ type: Array })
+], OperationWarning.prototype, "successfulItems", 2);
+__decorateClass$Q([
+  n2({ type: Boolean })
+], OperationWarning.prototype, "dismissible", 2);
+OperationWarning = __decorateClass$Q([
+  t$2("operation-warning")
+], OperationWarning);
 var __defProp$P = Object.defineProperty;
 var __decorateClass$P = (decorators, target, key, kind) => {
   var result = void 0;
@@ -18845,11 +19118,15 @@ class NetworkTab extends I18nLitElement {
     this.newIpNetmask = 24;
     this.newIpGateway = "";
     this.showBridgeDrawer = false;
+    this.isEditingBridge = false;
+    this.editingBridgeName = null;
     this.bridgeFormData = {
       name: "",
       interfaces: ""
     };
     this.showBondDrawer = false;
+    this.isEditingBond = false;
+    this.editingBondName = null;
     this.bondFormData = {
       name: "",
       mode: "balance-rr",
@@ -18861,6 +19138,9 @@ class NetworkTab extends I18nLitElement {
       name: ""
     };
     this.showVLANDrawer = false;
+    this.isEditingVlan = false;
+    this.editingVlanName = null;
+    this.operationWarning = null;
     this.configureNetworkInterface = null;
     this.configureFormData = {
       address: "",
@@ -19772,6 +20052,16 @@ class NetworkTab extends I18nLitElement {
       }
     );
   }
+  // Helper to show operation warnings
+  showOperationWarning(type, message, failures, successItems) {
+    this.operationWarning = { type, message, failures, successItems };
+    setTimeout(() => {
+      this.operationWarning = null;
+    }, 1e4);
+  }
+  dismissOperationWarning() {
+    this.operationWarning = null;
+  }
   showConfirmDialog(title, message, action) {
     this.confirmTitle = title;
     this.confirmMessage = message;
@@ -19805,6 +20095,8 @@ class NetworkTab extends I18nLitElement {
   }
   closeVLANDrawer() {
     this.showVLANDrawer = false;
+    this.isEditingVlan = false;
+    this.editingVlanName = null;
     this.vlanFormData = {
       interface: "",
       vlanId: 0,
@@ -19888,13 +20180,29 @@ class NetworkTab extends I18nLitElement {
     const oldAddress = this.selectedInterface.addresses?.[this.editingIpIndex];
     if (!oldAddress) return;
     try {
-      await api.delete(`/network/interfaces/${this.selectedInterface.name}/address?address=${encodeURIComponent(oldAddress)}`);
       const request = {
         address: this.editIpAddress,
         netmask: this.editIpNetmask,
         gateway: this.editIpGateway || void 0
       };
-      await api.post(`/network/interfaces/${this.selectedInterface.name}/address`, request);
+      const response = await networkActions.updateInterfaceAddress(
+        this.selectedInterface.name,
+        request
+      );
+      if (response.warning) {
+        this.showOperationWarning("warning", response.warning);
+      }
+      if (response.persistence_warning) {
+        this.showOperationWarning("persistence", response.persistence_warning);
+      }
+      if (response.failed && response.failed.length > 0) {
+        this.showOperationWarning(
+          "partial-success",
+          response.warning || "Some operations failed",
+          response.failed,
+          response.successfully_added
+        );
+      }
       await this.fetchInterfaces();
       const updatedInterface = this.interfaces.find((i4) => i4.name === this.selectedInterface?.name);
       if (updatedInterface) {
@@ -19946,7 +20254,13 @@ class NetworkTab extends I18nLitElement {
       gateway: this.newIpGateway || void 0
     };
     try {
-      await api.post(`/network/interfaces/${this.selectedInterface.name}/address`, request);
+      const response = await api.post(`/network/interfaces/${this.selectedInterface.name}/address`, request);
+      if (response?.warning) {
+        this.showOperationWarning("warning", response.warning);
+      }
+      if (response?.persistence_warning) {
+        this.showOperationWarning("persistence", response.persistence_warning);
+      }
       await this.fetchInterfaces();
       const updatedInterface = this.interfaces.find((i4) => i4.name === this.selectedInterface?.name);
       if (updatedInterface) {
@@ -19966,6 +20280,8 @@ class NetworkTab extends I18nLitElement {
   }
   closeBridgeDrawer() {
     this.showBridgeDrawer = false;
+    this.isEditingBridge = false;
+    this.editingBridgeName = null;
     this.bridgeFormData = {
       name: "",
       interfaces: ""
@@ -19981,10 +20297,44 @@ class NetworkTab extends I18nLitElement {
   }
   closeBondDrawer() {
     this.showBondDrawer = false;
+    this.isEditingBond = false;
+    this.editingBondName = null;
     this.bondFormData = {
       name: "",
       mode: "balance-rr",
       interfaces: ""
+    };
+  }
+  // Edit methods for Bridge
+  openEditBridgeDrawer(bridge) {
+    this.isEditingBridge = true;
+    this.editingBridgeName = bridge.name;
+    this.showBridgeDrawer = true;
+    this.bridgeFormData = {
+      name: bridge.name,
+      interfaces: bridge.interfaces ? bridge.interfaces.join(",") : ""
+    };
+  }
+  // Edit methods for Bond
+  openEditBondDrawer(bond) {
+    this.isEditingBond = true;
+    this.editingBondName = bond.name;
+    this.showBondDrawer = true;
+    this.bondFormData = {
+      name: bond.name,
+      mode: bond.mode || "balance-rr",
+      interfaces: bond.interfaces ? bond.interfaces.join(",") : ""
+    };
+  }
+  // Edit methods for VLAN
+  openEditVlanDrawer(vlan) {
+    this.isEditingVlan = true;
+    this.editingVlanName = vlan.name;
+    this.showVLANDrawer = true;
+    this.vlanFormData = {
+      interface: vlan.interface || "",
+      vlanId: vlan.vlan_id || 0,
+      name: vlan.name
     };
   }
   async handleCreateBridge() {
@@ -19995,7 +20345,26 @@ class NetworkTab extends I18nLitElement {
       name: this.bridgeFormData.name,
       interfaces: this.bridgeFormData.interfaces.split(",").map((item) => item.trim()).filter(Boolean)
     };
-    await networkActions.createBridge(request);
+    let response;
+    if (this.isEditingBridge) {
+      response = await networkActions.updateBridge(this.editingBridgeName, { interfaces: request.interfaces });
+    } else {
+      response = await networkActions.createBridge(request);
+    }
+    if (response?.warning) {
+      this.showOperationWarning("warning", response.warning);
+    }
+    if (response?.persistence_warning) {
+      this.showOperationWarning("persistence", response.persistence_warning);
+    }
+    if (response?.failed && response.failed.length > 0) {
+      this.showOperationWarning(
+        "partial-success",
+        response.warning || "Some interfaces failed to add",
+        response.failed,
+        response.successfully_added
+      );
+    }
     this.closeBridgeDrawer();
   }
   async handleCreateBond() {
@@ -20007,7 +20376,26 @@ class NetworkTab extends I18nLitElement {
       mode: this.bondFormData.mode,
       interfaces: this.bondFormData.interfaces.split(",").map((item) => item.trim()).filter(Boolean)
     };
-    await networkActions.createBond(request);
+    let response;
+    if (this.isEditingBond) {
+      response = await networkActions.updateBond(this.editingBondName, { mode: request.mode, interfaces: request.interfaces });
+    } else {
+      response = await networkActions.createBond(request);
+    }
+    if (response?.warning) {
+      this.showOperationWarning("warning", response.warning);
+    }
+    if (response?.persistence_warning) {
+      this.showOperationWarning("persistence", response.persistence_warning);
+    }
+    if (response?.failed && response.failed.length > 0) {
+      this.showOperationWarning(
+        "partial-success",
+        response.warning || "Some interfaces failed to add",
+        response.failed,
+        response.successfully_added
+      );
+    }
     this.closeBondDrawer();
   }
   async handleCreateVLANInterface() {
@@ -20019,7 +20407,26 @@ class NetworkTab extends I18nLitElement {
       vlan_id: this.vlanFormData.vlanId,
       name: this.vlanFormData.name || `${this.vlanFormData.interface}.${this.vlanFormData.vlanId}`
     };
-    await networkActions.createVlan(request);
+    let response;
+    if (this.isEditingVlan) {
+      response = await networkActions.updateVlan(this.editingVlanName, { vlan_id: request.vlan_id });
+    } else {
+      response = await networkActions.createVlan(request);
+    }
+    if (response?.warning) {
+      this.showOperationWarning("warning", response.warning);
+    }
+    if (response?.persistence_warning) {
+      this.showOperationWarning("persistence", response.persistence_warning);
+    }
+    if (response?.failed && response.failed.length > 0) {
+      this.showOperationWarning(
+        "partial-success",
+        response.warning || "Some operations failed",
+        response.failed,
+        response.successfully_added
+      );
+    }
     this.closeVLANDrawer();
   }
   renderInterface(iface) {
@@ -20093,6 +20500,16 @@ class NetworkTab extends I18nLitElement {
     return x`
       <div class="tab-container">
         <h1>${this.getPageTitle()}</h1>
+
+        ${this.operationWarning ? x`
+          <operation-warning
+            .type=${this.operationWarning.type}
+            .message=${this.operationWarning.message}
+            .failures=${this.operationWarning.failures || []}
+            .successfulItems=${this.operationWarning.successItems || []}
+            @close=${this.dismissOperationWarning}
+          ></operation-warning>
+        ` : ""}
         <div class="tab-content">
           ${this.activeTab === "interfaces" ? x`
             <div class="filter-container">
@@ -20218,7 +20635,7 @@ ${this.interfaces.length > 0 ? x`
                 />
               </div>
               <button class="action-button primary" @click="${this.openBridgeDrawer}">
-                ${t$5("network.createBridge")}
+                ${this.isEditingBridge ? t$5("common.update") : t$5("network.createBridge")}
               </button>
             </div>
             
@@ -20244,6 +20661,12 @@ ${this.interfaces.length > 0 ? x`
                         <div class="action-menu">
                           <button class="action-dots" @click=${(e3) => this.toggleActionMenu(e3, `bridge-${index2}`)}>${"⋮"}</button>
                           <div class="action-dropdown" id="bridge-${index2}">
+                            <button @click=${() => {
+      this.closeAllMenus();
+      this.openEditBridgeDrawer(bridge);
+    }}>
+                              ${t$5("common.edit")}
+                            </button>
                             <button class="danger" @click=${() => {
       this.closeAllMenus();
       this.deleteBridge(bridge.name);
@@ -20276,7 +20699,7 @@ ${this.interfaces.length > 0 ? x`
                 />
               </div>
               <button class="action-button primary" @click="${this.openBondDrawer}">
-                ${t$5("network.createBond")}
+                ${this.isEditingBond ? t$5("common.update") : t$5("network.createBond")}
               </button>
             </div>
             
@@ -20304,6 +20727,12 @@ ${this.interfaces.length > 0 ? x`
                         <div class="action-menu">
                           <button class="action-dots" @click=${(e3) => this.toggleActionMenu(e3, `bond-${index2}`)}>${"⋮"}</button>
                           <div class="action-dropdown" id="bond-${index2}">
+                            <button @click=${() => {
+      this.closeAllMenus();
+      this.openEditBondDrawer(bond);
+    }}>
+                              ${t$5("common.edit")}
+                            </button>
                             <button class="danger" @click=${() => {
       this.closeAllMenus();
       this.deleteBond(bond.name);
@@ -20336,7 +20765,7 @@ ${this.interfaces.length > 0 ? x`
                 />
               </div>
               <button class="action-button primary" @click="${this.openVLANDrawer}">
-                ${t$5("network.createVLAN")}
+                ${this.isEditingVlan ? t$5("common.update") : t$5("network.createVLAN")}
               </button>
             </div>
             
@@ -20362,6 +20791,12 @@ ${this.interfaces.length > 0 ? x`
                         <div class="action-menu">
                           <button class="action-dots" @click=${(e3) => this.toggleActionMenu(e3, `vlan-${index2}`)}>${"⋮"}</button>
                           <div class="action-dropdown" id="vlan-${index2}">
+                            <button @click=${() => {
+      this.closeAllMenus();
+      this.openEditVlanDrawer(vlan);
+    }}>
+                              ${t$5("common.edit")}
+                            </button>
                             <button class="danger" @click=${() => {
       this.closeAllMenus();
       this.deleteVlan(vlan.name);
@@ -20474,7 +20909,7 @@ ${this.interfaces.length > 0 ? x`
         <div class="drawer">
           <button class="close-btn" @click="${() => this.closeBridgeDrawer()}">×</button>
           <div class="drawer-content">
-            <h2>${t$5("network.createBridgeTitle")}</h2>
+            <h2>${this.isEditingBridge ? t$5("network.editBridgeTitle") : t$5("network.createBridgeTitle")}</h2>
             <form @submit=${(e3) => {
       e3.preventDefault();
       this.handleCreateBridge();
@@ -20489,6 +20924,7 @@ ${this.interfaces.length > 0 ? x`
                   .value=${this.bridgeFormData.name}
                   @input=${(e3) => this.bridgeFormData.name = e3.target.value}
                   required
+                  ?disabled=${this.isEditingBridge}
                 />
               </div>
               
@@ -20513,7 +20949,7 @@ ${this.interfaces.length > 0 ? x`
                   ${t$5("common.cancel")}
                 </button>
                 <button type="submit" class="action-button primary">
-                  ${t$5("network.createBridge")}
+                  ${this.isEditingBridge ? t$5("common.update") : t$5("network.createBridge")}
                 </button>
               </div>
             </form>
@@ -20525,7 +20961,7 @@ ${this.interfaces.length > 0 ? x`
         <div class="drawer">
           <button class="close-btn" @click="${() => this.closeBondDrawer()}">×</button>
           <div class="drawer-content">
-            <h2>${t$5("network.createBondTitle")}</h2>
+            <h2>${this.isEditingBond ? t$5("network.editBondTitle") : t$5("network.createBondTitle")}</h2>
             <form @submit=${(e3) => {
       e3.preventDefault();
       this.handleCreateBond();
@@ -20540,6 +20976,7 @@ ${this.interfaces.length > 0 ? x`
                   .value=${this.bondFormData.name}
                   @input=${(e3) => this.bondFormData.name = e3.target.value}
                   required
+                  ?disabled=${this.isEditingBond}
                 />
               </div>
               
@@ -20583,7 +21020,7 @@ ${this.interfaces.length > 0 ? x`
                   ${t$5("common.cancel")}
                 </button>
                 <button type="submit" class="action-button primary">
-                  ${t$5("network.createBond")}
+                  ${this.isEditingBond ? t$5("common.update") : t$5("network.createBond")}
                 </button>
               </div>
             </form>
@@ -20595,7 +21032,7 @@ ${this.interfaces.length > 0 ? x`
         <div class="drawer">
           <button class="close-btn" @click="${() => this.closeVLANDrawer()}">×</button>
           <div class="drawer-content">
-            <h2>${t$5("network.createVlanTitle")}</h2>
+            <h2>${this.isEditingVlan ? t$5("network.editVlanTitle") : t$5("network.createVlanTitle")}</h2>
             <form @submit=${(e3) => {
       e3.preventDefault();
       this.handleCreateVLANInterface();
@@ -20608,6 +21045,7 @@ ${this.interfaces.length > 0 ? x`
                   type="text" 
                   placeholder="eth0"
                   .value=${this.vlanFormData.interface}
+                  ?disabled=${this.isEditingVlan}
                   @input=${(e3) => this.vlanFormData.interface = e3.target.value}
                   required
                 />
@@ -20637,6 +21075,7 @@ ${this.interfaces.length > 0 ? x`
                   placeholder="eth0.100"
                   .value=${this.vlanFormData.name}
                   @input=${(e3) => this.vlanFormData.name = e3.target.value}
+                  ?disabled=${this.isEditingVlan}
                 />
                 <small style="display: block; margin-top: 0.25rem; color: var(--text-secondary); font-size: 0.75rem;">
                   ${t$5("network.vlanNameDefault")}
@@ -20648,7 +21087,7 @@ ${this.interfaces.length > 0 ? x`
                   ${t$5("common.cancel")}
                 </button>
                 <button type="submit" class="action-button primary">
-                  ${t$5("network.createVLAN")}
+                  ${this.isEditingVlan ? t$5("common.update") : t$5("network.createVLAN")}
                 </button>
               </div>
             </form>
@@ -20959,10 +21398,22 @@ __decorateClass$P([
 ], NetworkTab.prototype, "showBridgeDrawer");
 __decorateClass$P([
   r$1()
+], NetworkTab.prototype, "isEditingBridge");
+__decorateClass$P([
+  r$1()
+], NetworkTab.prototype, "editingBridgeName");
+__decorateClass$P([
+  r$1()
 ], NetworkTab.prototype, "bridgeFormData");
 __decorateClass$P([
   r$1()
 ], NetworkTab.prototype, "showBondDrawer");
+__decorateClass$P([
+  r$1()
+], NetworkTab.prototype, "isEditingBond");
+__decorateClass$P([
+  r$1()
+], NetworkTab.prototype, "editingBondName");
 __decorateClass$P([
   r$1()
 ], NetworkTab.prototype, "bondFormData");
@@ -20972,6 +21423,15 @@ __decorateClass$P([
 __decorateClass$P([
   r$1()
 ], NetworkTab.prototype, "showVLANDrawer");
+__decorateClass$P([
+  r$1()
+], NetworkTab.prototype, "isEditingVlan");
+__decorateClass$P([
+  r$1()
+], NetworkTab.prototype, "editingVlanName");
+__decorateClass$P([
+  r$1()
+], NetworkTab.prototype, "operationWarning");
 __decorateClass$P([
   r$1()
 ], NetworkTab.prototype, "configureNetworkInterface");
@@ -39764,7 +40224,7 @@ try {
 }
 function blockString({ comment, type, value }, ctx, onComment, onChompKeep) {
   const { blockQuote, commentString, lineWidth } = ctx.options;
-  if (!blockQuote || /\n[\t ]+$/.test(value) || /^\s*$/.test(value)) {
+  if (!blockQuote || /\n[\t ]+$/.test(value)) {
     return quotedString(value, ctx);
   }
   const indent = ctx.indent || (ctx.forceBlockIndent || containsDocumentMarker(value) ? "  " : "");
@@ -57665,7 +58125,7 @@ let CreateVMWizardEnhanced = class extends i$2 {
             >
               <option value="">No ISO</option>
               ${isos.map((iso) => x`
-                <option value=${iso.name}>${iso.name}</option>
+                <option value=${iso.path}>${iso.name}</option>
               `)}
             </select>
           </div>
