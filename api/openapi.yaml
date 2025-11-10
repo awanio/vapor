@@ -189,6 +189,8 @@ paths:
     $ref: paths/auth_challenge_verify.yaml
   /auth/users/{username}/keys:
     $ref: paths/auth_users_{username}_keys.yaml
+  /network/interface-types:
+    $ref: paths/network_interface_types.yaml
   /network/interfaces:
     $ref: paths/network_interfaces.yaml
   /network/interfaces/{name}/up:

@@ -4,6 +4,14 @@ get:
     - Network
   security:
     - bearerAuth: []
+  parameters:
+    - name: type
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Filter interfaces by type (comma-separated for multiple types). Examples: bridge, device, vlan, bond, veth, tun, tap, dummy
+      example: bridge,device
   responses:
     '200':
       description: List of interfaces

@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"sort"
 	"strings"
 
 	"github.com/awanio/vapor/internal/common"
@@ -74,6 +75,7 @@ type Interface struct {
 	State      string   `json:"state"`
 	Type       string   `json:"type"`
 	Addresses  []string `json:"addresses"`
+	Interfaces []string `json:"interfaces,omitempty"`
 	Statistics *Stats   `json:"statistics"`
 }
 
@@ -114,7 +116,31 @@ type VLANRequest struct {
 	Name      string `json:"name"`
 }
 
-// GetInterfaces returns all network interfaces
+// GetInterfaceTypes returns unique list of interface types available on the system
+func (s *Service) GetInterfaceTypes(c *gin.Context) {
+	links, err := netlink.LinkList()
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to list interfaces", err.Error())
+		return
+	}
+
+	// Use a map to collect unique types
+	typeMap := make(map[string]bool)
+	for _, link := range links {
+		typeMap[link.Type()] = true
+	}
+
+	// Convert map to sorted slice
+	types := make([]string, 0, len(typeMap))
+	for t := range typeMap {
+		types = append(types, t)
+	}
+	sort.Strings(types)
+
+	common.SendSuccess(c, gin.H{"types": types})
+}
+
+// GetInterfaces returns all network interfaces, optionally filtered by type
 func (s *Service) GetInterfaces(c *gin.Context) {
 	links, err := netlink.LinkList()
 	if err != nil {
@@ -122,9 +148,29 @@ func (s *Service) GetInterfaces(c *gin.Context) {
 		return
 	}
 
+	// Parse type filter from query parameter
+	typeFilter := c.Query("type")
+	var typeMap map[string]bool
+	if typeFilter != "" {
+		// Split by comma and create a map for quick lookup
+		types := strings.Split(typeFilter, ",")
+		typeMap = make(map[string]bool)
+		for _, t := range types {
+			typeMap[strings.TrimSpace(t)] = true
+		}
+	}
+
 	interfaces := make([]Interface, 0, len(links))
 	for _, link := range links {
 		iface := s.linkToInterface(link)
+
+		// Apply type filter if specified
+		if typeMap != nil {
+			if !typeMap[iface.Type] {
+				continue
+			}
+		}
+
 		interfaces = append(interfaces, iface)
 	}
 
@@ -143,11 +189,34 @@ func (s *Service) GetBridges(c *gin.Context) {
 	for _, link := range links {
 		if _, ok := link.(*netlink.Bridge); ok {
 			iface := s.linkToInterface(link)
+			iface.Interfaces = s.getBridgeMembers(link)
 			bridges = append(bridges, iface)
 		}
 	}
 
 	common.SendSuccess(c, gin.H{"bridges": bridges})
+}
+
+// GetBridge returns a specific network bridge by name
+func (s *Service) GetBridge(c *gin.Context) {
+	name := c.Param("name")
+
+	link, err := netlink.LinkByName(name)
+	if err != nil {
+		common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "Bridge not found", err.Error())
+		return
+	}
+
+	// Verify it's a bridge
+	if _, ok := link.(*netlink.Bridge); !ok {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Interface is not a bridge", "")
+		return
+	}
+
+	iface := s.linkToInterface(link)
+	iface.Interfaces = s.getBridgeMembers(link)
+
+	common.SendSuccess(c, gin.H{"bridge": iface})
 }
 
 // GetBonds returns all network bonds
@@ -1258,6 +1327,27 @@ func (s *Service) CreateVLAN(c *gin.Context) {
 }
 
 // linkToInterface converts netlink.Link to Interface
+// getBridgeMembers returns the list of interfaces that are members of a bridge
+func (s *Service) getBridgeMembers(bridge netlink.Link) []string {
+	bridgeIndex := bridge.Attrs().Index
+	members := make([]string, 0)
+
+	// Get all links
+	links, err := netlink.LinkList()
+	if err != nil {
+		return members
+	}
+
+	// Find all interfaces whose MasterIndex matches this bridge
+	for _, link := range links {
+		if link.Attrs().MasterIndex == bridgeIndex {
+			members = append(members, link.Attrs().Name)
+		}
+	}
+
+	return members
+}
+
 func (s *Service) linkToInterface(link netlink.Link) Interface {
 	attrs := link.Attrs()
 

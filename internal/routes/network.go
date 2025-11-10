@@ -8,6 +8,7 @@ import (
 // NetworkRoutes sets up network-related routes
 func NetworkRoutes(r *gin.RouterGroup, networkService *network.Service) {
 	// Network endpoints
+	r.GET("/network/interface-types", networkService.GetInterfaceTypes)
 	r.GET("/network/interfaces", networkService.GetInterfaces)
 	r.PUT("/network/interfaces/:name/up", networkService.InterfaceUp)
 	r.PUT("/network/interfaces/:name/down", networkService.InterfaceDown)
@@ -15,6 +16,7 @@ func NetworkRoutes(r *gin.RouterGroup, networkService *network.Service) {
 	r.PUT("/network/interfaces/:name/address", networkService.UpdateInterfaceAddress)
 	r.DELETE("/network/interfaces/:name/address", networkService.DeleteInterfaceAddress)
 	r.GET("/network/bridges", networkService.GetBridges)
+	r.GET("/network/bridge/:name", networkService.GetBridge)
 	r.POST("/network/bridge", networkService.CreateBridge)
 	r.PUT("/network/bridge/:name", networkService.UpdateBridge)
 	r.DELETE("/network/bridge/:name", networkService.DeleteBridge)

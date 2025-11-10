@@ -1,0 +1,27 @@
+get:
+  summary: List network interface types
+  description: Returns a list of unique network interface types available on the system
+  tags:
+    - Network
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: List of interface types
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              data:
+                type: object
+                properties:
+                  types:
+                    type: array
+                    items:
+                      type: string
+                    example: ["bridge", "device", "veth", "tuntap", "openvswitch"]
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

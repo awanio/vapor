@@ -1,3 +1,37 @@
+get:
+  summary: Get network bridge details
+  tags:
+    - Network
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Bridge name
+  responses:
+    '200':
+      description: Bridge details
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              data:
+                type: object
+                properties:
+                  bridge:
+                    $ref: ../components/schemas/Interface.yaml
+    '400':
+      $ref: ../components/responses/BadRequestError.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      $ref: ../components/responses/NotFoundError.yaml
 put:
   summary: Update network bridge
   description: Updates bridge configuration by removing old members and adding new ones
