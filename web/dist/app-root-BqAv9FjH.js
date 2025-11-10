@@ -1,4 +1,4 @@
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-95oGaZQs.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-BmfdHIcR.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -17095,14 +17095,12 @@ class WebSocketManager2 {
     this.reconnectTimer = null;
     this.authenticated = false;
     this.intentionalDisconnect = false;
-    this.url = "";
   }
   connect() {
     return new Promise((resolve2, reject) => {
       try {
         this.intentionalDisconnect = false;
-        this.url = `${getApiUrl("").replace(/^http/, "ws")}${this.path}`;
-        this.ws = new WebSocket(this.url);
+        this.ws = new WebSocket(getWsUrl(this.path));
         this.ws.onopen = () => {
           console.log(`WebSocket connected to ${this.path}`);
           this.reconnectAttempts = 0;
@@ -17397,7 +17395,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-95oGaZQs.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-BmfdHIcR.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17442,7 +17440,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-95oGaZQs.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-BmfdHIcR.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17506,7 +17504,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-95oGaZQs.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-BmfdHIcR.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17616,7 +17614,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-95oGaZQs.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-BmfdHIcR.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {

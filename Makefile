@@ -43,7 +43,7 @@ run-dev: embed-web
 run-dev-web:
 	cd web && npm run dev
 
-update-systemd:
+update-systemd: embed-web
 	@echo "Update Vapor daemon service in systemd"
 	go build -o bin/$(BINARY_NAME) $(MAIN_PATH)
 	cp ./bin/$(BINARY_NAME) /usr/local/bin/$(BINARY_NAME).new

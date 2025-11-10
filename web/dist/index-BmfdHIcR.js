@@ -155,23 +155,14 @@ const i18n = new I18n();
 function t(key, params) {
   return i18n.t(key, params);
 }
-function getSameOriginUrl(protocol) {
-  const { protocol: currentProtocol, host } = window.location;
-  const isSecure = currentProtocol === "https:";
-  if (protocol === "http") {
-    return `${currentProtocol}//${host}`;
-  } else {
-    return `${isSecure ? "wss" : "ws"}://${host}`;
-  }
-}
 const getEnvConfig = () => {
-  const apiBaseUrl = getSameOriginUrl("http");
-  const wsBaseUrl = getSameOriginUrl("ws");
+  const apiBaseUrl = "https://vapor-dev.awan.app";
+  const wsBaseUrl = "wss://vapor-dev.awan.app";
   return {
     API_BASE_URL: apiBaseUrl,
     WS_BASE_URL: wsBaseUrl,
     API_VERSION: "/api/v1",
-    ENABLE_DEBUG: false,
+    ENABLE_DEBUG: true,
     ENABLE_MOCK_DATA: false
   };
 };
@@ -346,7 +337,7 @@ theme.getTheme();
 auth.isAuthenticated();
 i18n.init().then(() => {
   console.log("i18n initialized, loading app...");
-  import("./app-root-CN1IQ_e3.js");
+  import("./app-root-BqAv9FjH.js");
   console.log("Vapor Web UI initialized");
 }).catch((error) => {
   console.error("Failed to initialize i18n:", error);
