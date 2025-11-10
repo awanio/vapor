@@ -135,6 +135,7 @@ export interface NetworkInterface {
   state: 'up' | 'down';
   type: string;
   addresses: string[];
+  interfaces?: string[];
   statistics: {
     rx_bytes: number;
     tx_bytes: number;

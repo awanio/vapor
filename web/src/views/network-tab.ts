@@ -398,6 +398,47 @@ export class NetworkTab extends I18nLitElement {
     .action-dropdown button.danger {
       color: var(--vscode-error, #f44336);
     }
+
+    .autocomplete-container {
+      position: relative;
+    }
+
+    .autocomplete-suggestions {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      margin-top: 4px;
+      background-color: var(--surface-1);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 1001;
+    }
+
+    .autocomplete-suggestion {
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text-primary);
+      transition: background-color 0.2s;
+    }
+
+    .autocomplete-suggestion:hover,
+    .autocomplete-suggestion.selected {
+      background-color: var(--vscode-list-hoverBackground, rgba(255, 255, 255, 0.08));
+    }
+
+    .autocomplete-suggestion.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .autocomplete-suggestion.disabled:hover {
+      background-color: transparent;
+    }
     .drawer {
       position: fixed;
       top: 0;
@@ -868,6 +909,18 @@ export class NetworkTab extends I18nLitElement {
   @state()
   private confirmMessage = '';
 
+  @state()
+  private availableInterfacesForBridge: string[] = [];
+
+  @state()
+  private showBridgeInterfacesSuggestions = false;
+
+  @state()
+  private bridgeInterfaceInputValue = "";
+
+  @state()
+  private selectedSuggestionIndex = -1;
+
   // Getters for store data
   get interfaces() {
     return this.interfacesController.value || [];
@@ -1000,6 +1053,85 @@ export class NetworkTab extends I18nLitElement {
     } catch (error) {
       console.error('Error fetching interface types:', error);
     }
+  }
+
+  async fetchAvailableInterfacesForBridge() {
+    try {
+      const response = await api.get('/network/interfaces?type=device,vlan,bond');
+      if (response && response.interfaces) {
+        this.availableInterfacesForBridge = response.interfaces.map((iface: NetworkInterface) => iface.name);
+      }
+    } catch (error) {
+      console.error('Error fetching available interfaces:', error);
+    }
+  }
+
+  handleBridgeInterfaceInput(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const value = input.value;
+    this.bridgeInterfaceInputValue = value;
+    
+    // Get the current word being typed (after the last comma)
+    const parts = value.split(',').map(p => p.trim());
+    const currentWord = (parts[parts.length - 1] || '').toLowerCase();
+    
+    // Show suggestions if there's text to search
+    this.showBridgeInterfacesSuggestions = currentWord.length > 0;
+    this.selectedSuggestionIndex = -1;
+  }
+
+  handleBridgeInterfaceKeyDown(e: KeyboardEvent) {
+    if (!this.showBridgeInterfacesSuggestions) return;
+    
+    const filteredSuggestions = this.getFilteredSuggestions();
+    
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      this.selectedSuggestionIndex = Math.min(
+        this.selectedSuggestionIndex + 1,
+        filteredSuggestions.length - 1
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      this.selectedSuggestionIndex = Math.max(this.selectedSuggestionIndex - 1, 0);
+    } else if (e.key === 'Enter' && this.selectedSuggestionIndex >= 0) {
+      e.preventDefault();
+      const selected = filteredSuggestions[this.selectedSuggestionIndex];
+      if (selected) this.selectSuggestion(selected);
+    } else if (e.key === 'Escape') {
+      this.showBridgeInterfacesSuggestions = false;
+    }
+  }
+
+  getFilteredSuggestions(): string[] {
+    const parts = this.bridgeInterfaceInputValue.split(',').map(p => p.trim());
+    const currentWord = (parts[parts.length - 1] || '').toLowerCase();
+    const alreadySelected = parts.slice(0, -1).map(p => p.toLowerCase());
+    
+    return this.availableInterfacesForBridge.filter(name => {
+      const nameLower = name.toLowerCase();
+      return nameLower.includes(currentWord) && !alreadySelected.includes(nameLower);
+    });
+  }
+
+  selectSuggestion(interfaceName: string) {
+    const parts = this.bridgeInterfaceInputValue.split(',').map(p => p.trim());
+    parts[parts.length - 1] = interfaceName;
+    this.bridgeInterfaceInputValue = parts.join(', ') + ', ';
+    this.bridgeFormData.interfaces = this.bridgeInterfaceInputValue;
+    this.showBridgeInterfacesSuggestions = false;
+    this.selectedSuggestionIndex = -1;
+    
+    // Focus back on input
+    const input = document.getElementById('bridge-interfaces') as HTMLInputElement;
+    if (input) input.focus();
+  }
+
+  closeBridgeInterfacesSuggestions() {
+    // Add a small delay to allow click events on suggestions to fire
+    setTimeout(() => {
+      this.showBridgeInterfacesSuggestions = false;
+    }, 200);
   }
 
   handleDocumentClick(e: Event) {
@@ -1401,6 +1533,8 @@ export class NetworkTab extends I18nLitElement {
       name: '',
       interfaces: ''
     };
+    this.bridgeInterfaceInputValue = '';
+    this.fetchAvailableInterfacesForBridge();
   }
 
   closeBridgeDrawer() {
@@ -1411,6 +1545,9 @@ export class NetworkTab extends I18nLitElement {
       name: '',
       interfaces: ''
     };
+    this.showBridgeInterfacesSuggestions = false;
+    this.bridgeInterfaceInputValue = '';
+    this.selectedSuggestionIndex = -1;
   }
 
   openBondDrawer() {
@@ -1438,10 +1575,13 @@ export class NetworkTab extends I18nLitElement {
     this.editingBridgeName = bridge.name;
     this.showBridgeDrawer = true;
     // Prefill form with existing data
+    const interfacesStr = bridge.interfaces ? bridge.interfaces.join(', ') : '';
     this.bridgeFormData = {
       name: bridge.name,
-      interfaces: bridge.interfaces ? bridge.interfaces.join(',') : ''
+      interfaces: interfacesStr
     };
+    this.bridgeInterfaceInputValue = interfacesStr;
+    this.fetchAvailableInterfacesForBridge();
   }
 
   // Edit methods for Bond
@@ -1788,7 +1928,11 @@ ${this.interfaces.length > 0 ? html`
                 <tbody>
                   ${this.bridges.filter(bridge => bridge.name.toLowerCase().includes(this.bridgeSearchQuery.toLowerCase())).map((bridge, index) => html`
                     <tr>
-                      <td>${bridge.name}</td>
+                      <td>
+                        <span class="interface-name-link" @click=${() => this.openDetailsDrawer(bridge)}>
+                          ${bridge.name}
+                        </span>
+                      </td>
                       <td>
                         <div class="status-indicator">
                           <span class="status-icon ${bridge.state === 'up' ? 'up' : 'down'}" data-tooltip="${bridge.state === 'up' ? 'Up' : 'Down'}"></span>
@@ -2043,15 +2187,38 @@ ${this.interfaces.length > 0 ? html`
               
               <div class="form-group">
                 <label class="form-label" for="bridge-interfaces">${t('network.interfacesRequired')}</label>
-                <input 
-                  id="bridge-interfaces"
-                  class="form-input" 
-                  type="text" 
-                  placeholder="eth0, eth1"
-                  .value=${this.bridgeFormData.interfaces}
-                  @input=${(e: Event) => this.bridgeFormData.interfaces = (e.target as HTMLInputElement).value}
-                  required
-                />
+                <div class="autocomplete-container">
+                  <input 
+                    id="bridge-interfaces"
+                    class="form-input" 
+                    type="text" 
+                    placeholder="eth0, eth1"
+                    .value=${this.bridgeInterfaceInputValue}
+                    @input=${(e: Event) => {
+                      this.bridgeFormData.interfaces = (e.target as HTMLInputElement).value;
+                      this.handleBridgeInterfaceInput(e);
+                    }}
+                    @keydown=${(e: KeyboardEvent) => this.handleBridgeInterfaceKeyDown(e)}
+                    @blur=${() => this.closeBridgeInterfacesSuggestions()}
+                    autocomplete="off"
+                    required
+                  />
+                  ${this.showBridgeInterfacesSuggestions && this.getFilteredSuggestions().length > 0 ? html`
+                    <div class="autocomplete-suggestions">
+                      ${this.getFilteredSuggestions().map((name, index) => html`
+                        <div 
+                          class="autocomplete-suggestion ${index === this.selectedSuggestionIndex ? 'selected' : ''}"
+                          @mousedown=${(e: Event) => {
+                            e.preventDefault();
+                            this.selectSuggestion(name);
+                          }}
+                        >
+                          ${name}
+                        </div>
+                      `)}
+                    </div>
+                  ` : ''}
+                </div>
                 <small style="display: block; margin-top: 0.25rem; color: var(--text-secondary); font-size: 0.75rem;">
                   ${t('network.commaSeparatedInterfaces')}
                 </small>
@@ -2298,6 +2465,27 @@ ${this.interfaces.length > 0 ? html`
                 </button>
               </div>
             `}
+
+            <!-- Member Interfaces Section (for bridges/bonds) -->
+            ${this.selectedInterface.interfaces && this.selectedInterface.interfaces.length > 0 ? html`
+              <div class="section-header" style="margin-top: 2rem;">
+                <h3 class="section-title">Member Interfaces</h3>
+              </div>
+              <table class="details-table">
+                <thead>
+                  <tr>
+                    <th>Interface Name</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${this.selectedInterface.interfaces.map(ifaceName => html`
+                    <tr>
+                      <td>${ifaceName}</td>
+                    </tr>
+                  `)}
+                </tbody>
+              </table>
+            ` : ''}
 
             <!-- Interface Actions -->
             <div class="form-actions" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
