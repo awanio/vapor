@@ -161,12 +161,13 @@ export const networkActions = {
   },
 
   // Fetch interfaces
-  async fetchInterfaces() {
+  async fetchInterfaces(type?: string) {
     $interfacesLoading.set(true);
     $interfacesError.set(null);
     
     try {
-      const data = await api.get('/network/interfaces');
+      const url = type ? `/network/interfaces?type=${type}` : '/network/interfaces';
+      const data = await api.get(url);
       $interfaces.set(data.interfaces || []);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch interfaces';

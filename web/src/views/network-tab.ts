@@ -830,6 +830,9 @@ export class NetworkTab extends I18nLitElement {
   private showVLANDrawer = false;
 
   @state()
+  private interfaceTypes: string[] = [];
+
+  @state()
   private isEditingVlan = false;
 
   @state()
@@ -950,6 +953,9 @@ export class NetworkTab extends I18nLitElement {
     document.addEventListener('click', this.handleDocumentClick.bind(this));
     document.addEventListener('keydown', this.handleKeyDown.bind(this));
     window.addEventListener('popstate', this.handlePopState);
+    
+    // Fetch interface types when component is connected
+    this.fetchInterfaceTypes();
 
     // Initialize tab from URL or subRoute
     const pathSegments = window.location.pathname.split('/');
@@ -983,6 +989,17 @@ export class NetworkTab extends I18nLitElement {
     document.removeEventListener('click', this.handleDocumentClick.bind(this));
     document.removeEventListener('keydown', this.handleKeyDown.bind(this));
     window.removeEventListener('popstate', this.handlePopState);
+  }
+
+  async fetchInterfaceTypes() {
+    try {
+      const response = await api.get('/network/interface-types');
+      if (response && response.types) {
+        this.interfaceTypes = response.types;
+      }
+    } catch (error) {
+      console.error('Error fetching interface types:', error);
+    }
   }
 
   handleDocumentClick(e: Event) {
@@ -1052,7 +1069,9 @@ export class NetworkTab extends I18nLitElement {
   }
 
   async fetchInterfaces() {
-    await networkActions.fetchInterfaces();
+    // Pass the selected type as a query parameter if not 'all'
+    const type = this.selectedType !== 'all' ? this.selectedType : undefined;
+    await networkActions.fetchInterfaces(type);
   }
 
   async fetchBridges() {
@@ -1597,16 +1616,6 @@ export class NetworkTab extends I18nLitElement {
     }
   }
 
-  private getUniqueInterfaceTypes(): string[] {
-    const types = new Set<string>();
-    this.interfaces.forEach(iface => {
-      if (iface.type) {
-        types.add(iface.type);
-      }
-    });
-    return Array.from(types).sort();
-  }
-
   private filterInterfaces() {
     let filtered = this.interfaces;
     
@@ -1646,10 +1655,13 @@ export class NetworkTab extends I18nLitElement {
               <select 
                 class="type-filter-select"
                 .value=${this.selectedType}
-                @change=${(e: Event) => this.selectedType = (e.target as HTMLSelectElement).value}
+                @change=${async (e: Event) => {
+                  this.selectedType = (e.target as HTMLSelectElement).value;
+                  await this.fetchInterfaces();
+                }}
               >
                 <option value="all">All Types</option>
-                ${this.getUniqueInterfaceTypes().map(type => html`
+                ${this.interfaceTypes.map(type => html`
                   <option value="${type}">${type}</option>
                 `)}
               </select>
