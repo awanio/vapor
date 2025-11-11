@@ -1,4 +1,4 @@
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-BmfdHIcR.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-C6efol31.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -17395,7 +17395,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-BmfdHIcR.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-C6efol31.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17440,7 +17440,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-BmfdHIcR.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-C6efol31.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17504,7 +17504,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-BmfdHIcR.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-C6efol31.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17614,7 +17614,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-BmfdHIcR.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-C6efol31.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -18333,11 +18333,12 @@ const networkActions = {
     ]);
   },
   // Fetch interfaces
-  async fetchInterfaces() {
+  async fetchInterfaces(type) {
     $interfacesLoading.set(true);
     $interfacesError.set(null);
     try {
-      const data = await api.get("/network/interfaces");
+      const url = type ? `/network/interfaces?type=${type}` : "/network/interfaces";
+      const data = await api.get(url);
       $interfaces.set(data.interfaces || []);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to fetch interfaces";
@@ -19136,6 +19137,7 @@ class NetworkTab extends I18nLitElement {
       name: ""
     };
     this.showVLANDrawer = false;
+    this.interfaceTypes = [];
     this.isEditingVlan = false;
     this.editingVlanName = null;
     this.operationWarning = null;
@@ -19149,6 +19151,16 @@ class NetworkTab extends I18nLitElement {
     this.confirmAction = null;
     this.confirmTitle = "";
     this.confirmMessage = "";
+    this.availableInterfacesForBridge = [];
+    this.showBridgeInterfacesSuggestions = false;
+    this.bridgeInterfaceInputValue = "";
+    this.selectedSuggestionIndex = -1;
+    this.bondInterfaceInputValue = "";
+    this.showBondInterfacesSuggestions = false;
+    this.selectedBondSuggestionIndex = -1;
+    this.vlanInterfaceInputValue = "";
+    this.showVlanInterfacesSuggestions = false;
+    this.selectedVlanSuggestionIndex = -1;
     this.handlePopState = this.handlePopState.bind(this);
   }
   static {
@@ -19509,6 +19521,47 @@ class NetworkTab extends I18nLitElement {
     .action-dropdown button.danger {
       color: var(--vscode-error, #f44336);
     }
+
+    .autocomplete-container {
+      position: relative;
+    }
+
+    .autocomplete-suggestions {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      margin-top: 4px;
+      background-color: var(--surface-1);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 1001;
+    }
+
+    .autocomplete-suggestion {
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text-primary);
+      transition: background-color 0.2s;
+    }
+
+    .autocomplete-suggestion:hover,
+    .autocomplete-suggestion.selected {
+      background-color: var(--vscode-list-hoverBackground, rgba(255, 255, 255, 0.08));
+    }
+
+    .autocomplete-suggestion.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .autocomplete-suggestion.disabled:hover {
+      background-color: transparent;
+    }
     .drawer {
       position: fixed;
       top: 0;
@@ -19676,10 +19729,6 @@ class NetworkTab extends I18nLitElement {
       box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.2);
     }
 
-    .filter-label {
-      font-size: 0.875rem;
-      color: var(--text-secondary);
-      font-weight: 500;
     }
 
     .interface-name-link {
@@ -19918,6 +19967,7 @@ class NetworkTab extends I18nLitElement {
     document.addEventListener("click", this.handleDocumentClick.bind(this));
     document.addEventListener("keydown", this.handleKeyDown.bind(this));
     window.addEventListener("popstate", this.handlePopState);
+    this.fetchInterfaceTypes();
     const pathSegments = window.location.pathname.split("/");
     const tab = pathSegments[pathSegments.length - 1];
     if (tab && ["interfaces", "bridges", "bonds", "vlans"].includes(tab)) {
@@ -19944,6 +19994,175 @@ class NetworkTab extends I18nLitElement {
     document.removeEventListener("click", this.handleDocumentClick.bind(this));
     document.removeEventListener("keydown", this.handleKeyDown.bind(this));
     window.removeEventListener("popstate", this.handlePopState);
+  }
+  async fetchInterfaceTypes() {
+    try {
+      const response = await api.get("/network/interface-types");
+      if (response && response.types) {
+        this.interfaceTypes = response.types;
+      }
+    } catch (error) {
+      console.error("Error fetching interface types:", error);
+    }
+  }
+  async fetchAvailableInterfacesForBridge() {
+    try {
+      const response = await api.get("/network/interfaces?type=device,vlan,bond");
+      if (response && response.interfaces) {
+        this.availableInterfacesForBridge = response.interfaces.map((iface) => iface.name);
+      }
+    } catch (error) {
+      console.error("Error fetching available interfaces:", error);
+    }
+  }
+  handleBridgeInterfaceInput(e3) {
+    const input = e3.target;
+    const value = input.value;
+    this.bridgeInterfaceInputValue = value;
+    const parts = value.split(",").map((p2) => p2.trim());
+    const currentWord = (parts[parts.length - 1] || "").toLowerCase();
+    this.showBridgeInterfacesSuggestions = currentWord.length > 0;
+    this.selectedSuggestionIndex = -1;
+  }
+  handleBridgeInterfaceKeyDown(e3) {
+    if (!this.showBridgeInterfacesSuggestions) return;
+    const filteredSuggestions = this.getFilteredSuggestions();
+    if (e3.key === "ArrowDown") {
+      e3.preventDefault();
+      this.selectedSuggestionIndex = Math.min(
+        this.selectedSuggestionIndex + 1,
+        filteredSuggestions.length - 1
+      );
+    } else if (e3.key === "ArrowUp") {
+      e3.preventDefault();
+      this.selectedSuggestionIndex = Math.max(this.selectedSuggestionIndex - 1, 0);
+    } else if (e3.key === "Enter" && this.selectedSuggestionIndex >= 0) {
+      e3.preventDefault();
+      const selected = filteredSuggestions[this.selectedSuggestionIndex];
+      if (selected) this.selectSuggestion(selected);
+    } else if (e3.key === "Escape") {
+      this.showBridgeInterfacesSuggestions = false;
+    }
+  }
+  getFilteredSuggestions() {
+    const parts = this.bridgeInterfaceInputValue.split(",").map((p2) => p2.trim());
+    const currentWord = (parts[parts.length - 1] || "").toLowerCase();
+    const alreadySelected = parts.slice(0, -1).map((p2) => p2.toLowerCase());
+    return this.availableInterfacesForBridge.filter((name) => {
+      const nameLower = name.toLowerCase();
+      return nameLower.includes(currentWord) && !alreadySelected.includes(nameLower);
+    });
+  }
+  selectSuggestion(interfaceName) {
+    const parts = this.bridgeInterfaceInputValue.split(",").map((p2) => p2.trim());
+    parts[parts.length - 1] = interfaceName;
+    this.bridgeInterfaceInputValue = parts.join(", ") + ", ";
+    this.bridgeFormData.interfaces = this.bridgeInterfaceInputValue;
+    this.showBridgeInterfacesSuggestions = false;
+    this.selectedSuggestionIndex = -1;
+    const input = document.getElementById("bridge-interfaces");
+    if (input) input.focus();
+  }
+  closeBridgeInterfacesSuggestions() {
+    setTimeout(() => {
+      this.showBridgeInterfacesSuggestions = false;
+    }, 200);
+  }
+  // Bond interface autocomplete methods
+  handleBondInterfaceInput(e3) {
+    const value = e3.target.value;
+    this.bondInterfaceInputValue = value;
+    const parts = value.split(",").map((p2) => p2.trim());
+    const currentWord = parts[parts.length - 1] || "";
+    this.showBondInterfacesSuggestions = currentWord.length > 0;
+    this.selectedBondSuggestionIndex = -1;
+  }
+  handleBondInterfaceKeyDown(e3) {
+    if (!this.showBondInterfacesSuggestions) return;
+    const filteredSuggestions = this.getFilteredBondSuggestions();
+    if (e3.key === "ArrowDown") {
+      e3.preventDefault();
+      this.selectedBondSuggestionIndex = Math.min(
+        this.selectedBondSuggestionIndex + 1,
+        filteredSuggestions.length - 1
+      );
+    } else if (e3.key === "ArrowUp") {
+      e3.preventDefault();
+      this.selectedBondSuggestionIndex = Math.max(this.selectedBondSuggestionIndex - 1, 0);
+    } else if (e3.key === "Enter" && this.selectedBondSuggestionIndex >= 0) {
+      e3.preventDefault();
+      const selected = filteredSuggestions[this.selectedBondSuggestionIndex];
+      if (selected) this.selectBondSuggestion(selected);
+    } else if (e3.key === "Escape") {
+      this.showBondInterfacesSuggestions = false;
+    }
+  }
+  getFilteredBondSuggestions() {
+    const parts = this.bondInterfaceInputValue.split(",").map((p2) => p2.trim());
+    const currentWord = parts[parts.length - 1] || "";
+    const alreadySelected = parts.slice(0, -1).map((p2) => p2.toLowerCase());
+    return this.availableInterfacesForBridge.filter(
+      (name) => name.toLowerCase().includes(currentWord.toLowerCase()) && !alreadySelected.includes(name.toLowerCase())
+    ).slice(0, 10);
+  }
+  selectBondSuggestion(interfaceName) {
+    const parts = this.bondInterfaceInputValue.split(",").map((p2) => p2.trim());
+    parts[parts.length - 1] = interfaceName;
+    this.bondInterfaceInputValue = parts.join(", ") + ", ";
+    this.bondFormData.interfaces = this.bondInterfaceInputValue;
+    this.showBondInterfacesSuggestions = false;
+    this.selectedBondSuggestionIndex = -1;
+    const input = this.shadowRoot?.querySelector("#bond-interfaces");
+    if (input) input.focus();
+  }
+  closeBondInterfacesSuggestions() {
+    setTimeout(() => {
+      this.showBondInterfacesSuggestions = false;
+    }, 200);
+  }
+  // VLAN interface autocomplete methods (single interface only)
+  handleVlanInterfaceInput(e3) {
+    const value = e3.target.value;
+    this.vlanInterfaceInputValue = value;
+    this.showVlanInterfacesSuggestions = value.length > 0;
+    this.selectedVlanSuggestionIndex = -1;
+  }
+  handleVlanInterfaceKeyDown(e3) {
+    if (!this.showVlanInterfacesSuggestions) return;
+    const filteredSuggestions = this.getFilteredVlanSuggestions();
+    if (e3.key === "ArrowDown") {
+      e3.preventDefault();
+      this.selectedVlanSuggestionIndex = Math.min(
+        this.selectedVlanSuggestionIndex + 1,
+        filteredSuggestions.length - 1
+      );
+    } else if (e3.key === "ArrowUp") {
+      e3.preventDefault();
+      this.selectedVlanSuggestionIndex = Math.max(this.selectedVlanSuggestionIndex - 1, 0);
+    } else if (e3.key === "Enter" && this.selectedVlanSuggestionIndex >= 0) {
+      e3.preventDefault();
+      const selected = filteredSuggestions[this.selectedVlanSuggestionIndex];
+      if (selected) this.selectVlanSuggestion(selected);
+    } else if (e3.key === "Escape") {
+      this.showVlanInterfacesSuggestions = false;
+    }
+  }
+  getFilteredVlanSuggestions() {
+    const currentValue = this.vlanInterfaceInputValue.trim().toLowerCase();
+    return this.availableInterfacesForBridge.filter((name) => name.toLowerCase().includes(currentValue)).slice(0, 10);
+  }
+  selectVlanSuggestion(interfaceName) {
+    this.vlanInterfaceInputValue = interfaceName;
+    this.vlanFormData.interface = interfaceName;
+    this.showVlanInterfacesSuggestions = false;
+    this.selectedVlanSuggestionIndex = -1;
+    const input = this.shadowRoot?.querySelector("#vlan-interface");
+    if (input) input.focus();
+  }
+  closeVlanInterfacesSuggestions() {
+    setTimeout(() => {
+      this.showVlanInterfacesSuggestions = false;
+    }, 200);
   }
   handleDocumentClick(e3) {
     const target = e3.target;
@@ -20000,7 +20219,8 @@ class NetworkTab extends I18nLitElement {
     networkActions.fetchVlans();
   }
   async fetchInterfaces() {
-    await networkActions.fetchInterfaces();
+    const type = this.selectedType !== "all" ? this.selectedType : void 0;
+    await networkActions.fetchInterfaces(type);
   }
   async fetchBridges() {
     await networkActions.fetchBridges();
@@ -20090,6 +20310,10 @@ class NetworkTab extends I18nLitElement {
       vlanId: 0,
       name: ""
     };
+    this.vlanInterfaceInputValue = "";
+    this.showVlanInterfacesSuggestions = false;
+    this.selectedVlanSuggestionIndex = -1;
+    this.fetchAvailableInterfacesForBridge();
   }
   closeVLANDrawer() {
     this.showVLANDrawer = false;
@@ -20102,6 +20326,9 @@ class NetworkTab extends I18nLitElement {
     };
   }
   handleConfigureAddress(iface) {
+    this.showVlanInterfacesSuggestions = false;
+    this.vlanInterfaceInputValue = "";
+    this.selectedVlanSuggestionIndex = -1;
     this.configureNetworkInterface = iface;
     this.configureFormData = {
       address: "",
@@ -20275,6 +20502,8 @@ class NetworkTab extends I18nLitElement {
       name: "",
       interfaces: ""
     };
+    this.bridgeInterfaceInputValue = "";
+    this.fetchAvailableInterfacesForBridge();
   }
   closeBridgeDrawer() {
     this.showBridgeDrawer = false;
@@ -20284,6 +20513,9 @@ class NetworkTab extends I18nLitElement {
       name: "",
       interfaces: ""
     };
+    this.showBridgeInterfacesSuggestions = false;
+    this.bridgeInterfaceInputValue = "";
+    this.selectedSuggestionIndex = -1;
   }
   openBondDrawer() {
     this.showBondDrawer = true;
@@ -20292,6 +20524,10 @@ class NetworkTab extends I18nLitElement {
       mode: "balance-rr",
       interfaces: ""
     };
+    this.bondInterfaceInputValue = "";
+    this.showBondInterfacesSuggestions = false;
+    this.selectedBondSuggestionIndex = -1;
+    this.fetchAvailableInterfacesForBridge();
   }
   closeBondDrawer() {
     this.showBondDrawer = false;
@@ -20302,16 +20538,22 @@ class NetworkTab extends I18nLitElement {
       mode: "balance-rr",
       interfaces: ""
     };
+    this.showBondInterfacesSuggestions = false;
+    this.bondInterfaceInputValue = "";
+    this.selectedBondSuggestionIndex = -1;
   }
   // Edit methods for Bridge
   openEditBridgeDrawer(bridge) {
     this.isEditingBridge = true;
     this.editingBridgeName = bridge.name;
     this.showBridgeDrawer = true;
+    const interfacesStr = bridge.interfaces ? bridge.interfaces.join(", ") : "";
     this.bridgeFormData = {
       name: bridge.name,
-      interfaces: bridge.interfaces ? bridge.interfaces.join(",") : ""
+      interfaces: interfacesStr
     };
+    this.bridgeInterfaceInputValue = interfacesStr;
+    this.fetchAvailableInterfacesForBridge();
   }
   // Edit methods for Bond
   openEditBondDrawer(bond) {
@@ -20323,6 +20565,8 @@ class NetworkTab extends I18nLitElement {
       mode: bond.mode || "balance-rr",
       interfaces: bond.interfaces ? bond.interfaces.join(",") : ""
     };
+    const interfacesStr = bond.interfaces ? bond.interfaces.join(", ") : "";
+    this.bondInterfaceInputValue = interfacesStr;
   }
   // Edit methods for VLAN
   openEditVlanDrawer(vlan) {
@@ -20334,6 +20578,7 @@ class NetworkTab extends I18nLitElement {
       vlanId: vlan.vlan_id || 0,
       name: vlan.name
     };
+    this.vlanInterfaceInputValue = vlan.interface || "";
   }
   async handleCreateBridge() {
     if (!this.bridgeFormData.name || !this.bridgeFormData.interfaces) {
@@ -20473,15 +20718,6 @@ class NetworkTab extends I18nLitElement {
         return t$5("network.title");
     }
   }
-  getUniqueInterfaceTypes() {
-    const types = /* @__PURE__ */ new Set();
-    this.interfaces.forEach((iface) => {
-      if (iface.type) {
-        types.add(iface.type);
-      }
-    });
-    return Array.from(types).sort();
-  }
   filterInterfaces() {
     let filtered = this.interfaces;
     if (this.selectedType !== "all") {
@@ -20511,14 +20747,16 @@ class NetworkTab extends I18nLitElement {
         <div class="tab-content">
           ${this.activeTab === "interfaces" ? x`
             <div class="filter-container">
-              <span class="filter-label">Type:</span>
               <select 
                 class="type-filter-select"
                 .value=${this.selectedType}
-                @change=${(e3) => this.selectedType = e3.target.value}
+                @change=${async (e3) => {
+      this.selectedType = e3.target.value;
+      await this.fetchInterfaces();
+    }}
               >
                 <option value="all">All Types</option>
-                ${this.getUniqueInterfaceTypes().map((type) => x`
+                ${this.interfaceTypes.map((type) => x`
                   <option value="${type}">${type}</option>
                 `)}
               </select>
@@ -20649,7 +20887,11 @@ ${this.interfaces.length > 0 ? x`
                 <tbody>
                   ${this.bridges.filter((bridge) => bridge.name.toLowerCase().includes(this.bridgeSearchQuery.toLowerCase())).map((bridge, index2) => x`
                     <tr>
-                      <td>${bridge.name}</td>
+                      <td>
+                        <span class="interface-name-link" @click=${() => this.openDetailsDrawer(bridge)}>
+                          ${bridge.name}
+                        </span>
+                      </td>
                       <td>
                         <div class="status-indicator">
                           <span class="status-icon ${bridge.state === "up" ? "up" : "down"}" data-tooltip="${bridge.state === "up" ? "Up" : "Down"}"></span>
@@ -20928,15 +21170,38 @@ ${this.interfaces.length > 0 ? x`
               
               <div class="form-group">
                 <label class="form-label" for="bridge-interfaces">${t$5("network.interfacesRequired")}</label>
-                <input 
-                  id="bridge-interfaces"
-                  class="form-input" 
-                  type="text" 
-                  placeholder="eth0, eth1"
-                  .value=${this.bridgeFormData.interfaces}
-                  @input=${(e3) => this.bridgeFormData.interfaces = e3.target.value}
-                  required
-                />
+                <div class="autocomplete-container">
+                  <input 
+                    id="bridge-interfaces"
+                    class="form-input" 
+                    type="text" 
+                    placeholder="eth0, eth1"
+                    .value=${this.bridgeInterfaceInputValue}
+                    @input=${(e3) => {
+      this.bridgeFormData.interfaces = e3.target.value;
+      this.handleBridgeInterfaceInput(e3);
+    }}
+                    @keydown=${(e3) => this.handleBridgeInterfaceKeyDown(e3)}
+                    @blur=${() => this.closeBridgeInterfacesSuggestions()}
+                    autocomplete="off"
+                    required
+                  />
+                  ${this.showBridgeInterfacesSuggestions && this.getFilteredSuggestions().length > 0 ? x`
+                    <div class="autocomplete-suggestions">
+                      ${this.getFilteredSuggestions().map((name, index2) => x`
+                        <div 
+                          class="autocomplete-suggestion ${index2 === this.selectedSuggestionIndex ? "selected" : ""}"
+                          @mousedown=${(e3) => {
+      e3.preventDefault();
+      this.selectSuggestion(name);
+    }}
+                        >
+                          ${name}
+                        </div>
+                      `)}
+                    </div>
+                  ` : ""}
+                </div>
                 <small style="display: block; margin-top: 0.25rem; color: var(--text-secondary); font-size: 0.75rem;">
                   ${t$5("network.commaSeparatedInterfaces")}
                 </small>
@@ -20999,19 +21264,43 @@ ${this.interfaces.length > 0 ? x`
               
               <div class="form-group">
                 <label class="form-label" for="bond-interfaces">${t$5("network.interfacesRequired")}</label>
-                <input 
-                  id="bond-interfaces"
-                  class="form-input" 
-                  type="text" 
-                  placeholder="eth2, eth3"
-                  .value=${this.bondFormData.interfaces}
-                  @input=${(e3) => this.bondFormData.interfaces = e3.target.value}
-                  required
-                />
+                <div class="autocomplete-container">
+                  <input 
+                    id="bond-interfaces"
+                    class="form-input" 
+                    type="text" 
+                    placeholder="eth2, eth3"
+                    .value=${this.bondInterfaceInputValue}
+                    @input=${(e3) => {
+      this.bondFormData.interfaces = e3.target.value;
+      this.handleBondInterfaceInput(e3);
+    }}
+                    @keydown=${(e3) => this.handleBondInterfaceKeyDown(e3)}
+                    @blur=${() => this.closeBondInterfacesSuggestions()}
+                    autocomplete="off"
+                    required
+                  />
+                  ${this.showBondInterfacesSuggestions && this.getFilteredBondSuggestions().length > 0 ? x`
+                    <div class="autocomplete-suggestions">
+                      ${this.getFilteredBondSuggestions().map((name, index2) => x`
+                        <div 
+                          class="autocomplete-suggestion ${index2 === this.selectedBondSuggestionIndex ? "selected" : ""}"
+                          @mousedown=${(e3) => {
+      e3.preventDefault();
+      this.selectBondSuggestion(name);
+    }}
+                        >
+                          ${name}
+                        </div>
+                      `)}
+                    </div>
+                  ` : ""}
+                </div>
                 <small style="display: block; margin-top: 0.25rem; color: var(--text-secondary); font-size: 0.75rem;">
                   ${t$5("network.commaSeparatedInterfaces")}
                 </small>
               </div>
+              
               
               <div class="form-actions">
                 <button type="button" class="action-button" @click="${() => this.closeBondDrawer()}">
@@ -21037,17 +21326,41 @@ ${this.interfaces.length > 0 ? x`
     }}>
               <div class="form-group">
                 <label class="form-label" for="vlan-interface">${t$5("network.baseInterfaceRequired")}</label>
-                <input 
-                  id="vlan-interface"
-                  class="form-input" 
-                  type="text" 
-                  placeholder="eth0"
-                  .value=${this.vlanFormData.interface}
-                  ?disabled=${this.isEditingVlan}
-                  @input=${(e3) => this.vlanFormData.interface = e3.target.value}
-                  required
-                />
+                <div class="autocomplete-container">
+                  <input 
+                    id="vlan-interface"
+                    class="form-input" 
+                    type="text" 
+                    placeholder="eth0"
+                    .value=${this.vlanInterfaceInputValue}
+                    ?disabled=${this.isEditingVlan}
+                    @input=${(e3) => {
+      this.vlanFormData.interface = e3.target.value;
+      this.handleVlanInterfaceInput(e3);
+    }}
+                    @keydown=${(e3) => this.handleVlanInterfaceKeyDown(e3)}
+                    @blur=${() => this.closeVlanInterfacesSuggestions()}
+                    autocomplete="off"
+                    required
+                  />
+                  ${this.showVlanInterfacesSuggestions && this.getFilteredVlanSuggestions().length > 0 ? x`
+                    <div class="autocomplete-suggestions">
+                      ${this.getFilteredVlanSuggestions().map((name, index2) => x`
+                        <div 
+                          class="autocomplete-suggestion ${index2 === this.selectedVlanSuggestionIndex ? "selected" : ""}"
+                          @mousedown=${(e3) => {
+      e3.preventDefault();
+      this.selectVlanSuggestion(name);
+    }}
+                        >
+                          ${name}
+                        </div>
+                      `)}
+                    </div>
+                  ` : ""}
+                </div>
               </div>
+              
               
               <div class="form-group">
                 <label class="form-label" for="vlan-id">${t$5("network.vlanIdRequired")}</label>
@@ -21195,6 +21508,27 @@ ${this.interfaces.length > 0 ? x`
                 </button>
               </div>
             `}
+
+            <!-- Member Interfaces Section (for bridges/bonds) -->
+            ${this.selectedInterface.interfaces && this.selectedInterface.interfaces.length > 0 ? x`
+              <div class="section-header" style="margin-top: 2rem;">
+                <h3 class="section-title">Member Interfaces</h3>
+              </div>
+              <table class="details-table">
+                <thead>
+                  <tr>
+                    <th>Interface Name</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${this.selectedInterface.interfaces.map((ifaceName) => x`
+                    <tr>
+                      <td>${ifaceName}</td>
+                    </tr>
+                  `)}
+                </tbody>
+              </table>
+            ` : ""}
 
             <!-- Interface Actions -->
             <div class="form-actions" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
@@ -21423,6 +21757,9 @@ __decorateClass$P([
 ], NetworkTab.prototype, "showVLANDrawer");
 __decorateClass$P([
   r$1()
+], NetworkTab.prototype, "interfaceTypes");
+__decorateClass$P([
+  r$1()
 ], NetworkTab.prototype, "isEditingVlan");
 __decorateClass$P([
   r$1()
@@ -21448,6 +21785,36 @@ __decorateClass$P([
 __decorateClass$P([
   r$1()
 ], NetworkTab.prototype, "confirmMessage");
+__decorateClass$P([
+  r$1()
+], NetworkTab.prototype, "availableInterfacesForBridge");
+__decorateClass$P([
+  r$1()
+], NetworkTab.prototype, "showBridgeInterfacesSuggestions");
+__decorateClass$P([
+  r$1()
+], NetworkTab.prototype, "bridgeInterfaceInputValue");
+__decorateClass$P([
+  r$1()
+], NetworkTab.prototype, "selectedSuggestionIndex");
+__decorateClass$P([
+  r$1()
+], NetworkTab.prototype, "bondInterfaceInputValue");
+__decorateClass$P([
+  r$1()
+], NetworkTab.prototype, "showBondInterfacesSuggestions");
+__decorateClass$P([
+  r$1()
+], NetworkTab.prototype, "selectedBondSuggestionIndex");
+__decorateClass$P([
+  r$1()
+], NetworkTab.prototype, "vlanInterfaceInputValue");
+__decorateClass$P([
+  r$1()
+], NetworkTab.prototype, "showVlanInterfacesSuggestions");
+__decorateClass$P([
+  r$1()
+], NetworkTab.prototype, "selectedVlanSuggestionIndex");
 customElements.define("network-tab", NetworkTab);
 var __defProp$O = Object.defineProperty;
 var __decorateClass$O = (decorators, target, key, kind) => {
@@ -21472,6 +21839,7 @@ class StorageTab extends I18nLitElement {
     this.multipathDevices = [];
     this.btrfsSubvolumes = [];
     this.activeSection = "disks";
+    this.expandedDisks = /* @__PURE__ */ new Set();
     this.subRoute = null;
     this.loading = false;
     this.error = "";
@@ -21951,6 +22319,186 @@ class StorageTab extends I18nLitElement {
       `)}
     `;
   }
+  toggleDiskExpanded(diskName) {
+    if (this.expandedDisks.has(diskName)) {
+      this.expandedDisks.delete(diskName);
+    } else {
+      this.expandedDisks.add(diskName);
+    }
+    this.requestUpdate();
+  }
+  renderDisksExpandableSection() {
+    if (this.disks.length === 0) {
+      return x`<div class="empty-state">${t$5("storage.disks.empty")}</div>`;
+    }
+    return x`
+      <table class="table">
+        <thead>
+          <tr>
+            <th style="width: 40px;"></th>
+            <th>${t$5("common.name")}</th>
+            <th>${t$5("storage.disks.size")}</th>
+            <th>${t$5("storage.disks.type")}</th>
+            <th>${t$5("storage.disks.serial")}</th>
+            <th>${t$5("storage.disks.removable")}</th>
+            <th>${t$5("storage.disks.partitions")}</th>
+            <th>${t$5("common.actions")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${this.disks.map((disk) => {
+      const isExpanded2 = this.expandedDisks.has(disk.name);
+      const hasPartitions = disk.partitions && disk.partitions.length > 0;
+      return x`
+              <tr class="disk-row">
+                <td style="text-align: center;">
+                  ${hasPartitions ? x`
+                    <span 
+                      class="expand-icon ${isExpanded2 ? "expanded" : ""}"
+                      @click=${() => this.toggleDiskExpanded(disk.name)}
+                      style="cursor: pointer; user-select: none;">
+                      ${isExpanded2 ? "▼" : "▶"}
+                    </span>
+                  ` : ""}
+                </td>
+                <td>
+                  <strong>${disk.name}</strong> - ${disk.model || "Unknown Model"}
+                </td>
+                <td>${this.formatBytes(disk.size)}</td>
+                <td>${disk.type}</td>
+                <td>${disk.serial || "N/A"}</td>
+                <td>${disk.removable ? t$5("common.yes") : t$5("common.no")}</td>
+                <td>${hasPartitions ? disk.partitions.length : 0}</td>
+                <td>
+                  <button class="btn-icon">⋮</button>
+                </td>
+              </tr>
+              ${isExpanded2 && hasPartitions ? x`
+                <tr class="partition-row-container">
+                  <td colspan="8" style="padding: 0;">
+                    <div class="partition-table-wrapper">
+                      <table class="partition-table">
+                        <thead>
+                          <tr>
+                            <th>${t$5("storage.disks.partition")}</th>
+                            <th>${t$5("storage.disks.filesystem")}</th>
+                            <th>${t$5("storage.disks.size")}</th>
+                            <th>${t$5("storage.disks.used")}</th>
+                            <th>${t$5("storage.disks.mountpoint")}</th>
+                            <th>${t$5("common.actions")}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          ${disk.partitions.map((partition) => x`
+                            <tr>
+                              <td>${partition.name}</td>
+                              <td>${partition.filesystem || "Unknown"}</td>
+                              <td>${this.formatBytes(partition.size)}</td>
+                              <td>
+                                ${partition.used ? x`
+                                  <div>
+                                    ${this.formatBytes(partition.used)} (${partition.use_percent?.toFixed(1)}%)
+                                    <div class="progress-bar">
+                                      <div class="progress-fill" style="width: ${partition.use_percent}%"></div>
+                                    </div>
+                                  </div>
+                                ` : "N/A"}
+                              </td>
+                              <td>${partition.mount_point || "Not mounted"}</td>
+                              <td>
+                                ${partition.mount_point ? x`
+                                  <button class="btn-danger" @click=${() => this.unmountPartition(partition.mount_point)}>
+                                    ${t$5("storage.disks.unmount")}
+                                  </button>
+                                ` : x`
+                                  <button class="btn-primary" @click=${() => this.mountPartition(partition.path, `/mnt/${partition.name}`)}>
+                                    ${t$5("storage.disks.mount")}
+                                  </button>
+                                `}
+                              </td>
+                            </tr>
+                          `)}
+                        </tbody>
+                      </table>
+                    </div>
+                  </td>
+                </tr>
+              ` : ""}
+            `;
+    })}
+        </tbody>
+      </table>
+    `;
+  }
+  renderDisksFlatSection() {
+    if (this.disks.length === 0) {
+      return x`<div class="empty-state">${t$5("storage.disks.empty")}</div>`;
+    }
+    return x`
+      <table class="table">
+        <thead>
+          <tr>
+            <th>${t$5("common.name")}</th>
+            <th>${t$5("storage.disks.size")}</th>
+            <th>${t$5("storage.disks.type")}</th>
+            <th>${t$5("storage.disks.serial")}</th>
+            <th>${t$5("storage.disks.removable")}</th>
+            <th>${t$5("storage.disks.filesystem")}</th>
+            <th>${t$5("storage.disks.used")}</th>
+            <th>${t$5("storage.disks.mountpoint")}</th>
+            <th>${t$5("common.actions")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${this.disks.map((disk) => {
+      const hasPartitions = disk.partitions && disk.partitions.length > 0;
+      return x`
+              <tr class="disk-row-flat">
+                <td colspan="9" style="padding: 8px 12px;">
+                  <strong style="font-size: 15px;">${disk.name}</strong> - ${disk.model || "Unknown Model"}
+                  <span style="margin-left: 12px; color: var(--text-secondary);">
+                    ${this.formatBytes(disk.size)} | ${disk.type} | ${disk.serial || "N/A"} | ${disk.removable ? t$5("common.yes") : t$5("common.no")}
+                  </span>
+                </td>
+              </tr>
+              ${hasPartitions ? disk.partitions.map((partition) => x`
+                <tr class="partition-row-flat">
+                  <td style="padding-left: 32px;">${partition.name}</td>
+                  <td>${this.formatBytes(partition.size)}</td>
+                  <td>-</td>
+                  <td>-</td>
+                  <td>-</td>
+                  <td>${partition.filesystem || "Unknown"}</td>
+                  <td>
+                    ${partition.used ? x`
+                      <div>
+                        ${this.formatBytes(partition.used)} (${partition.use_percent?.toFixed(1)}%)
+                        <div class="progress-bar">
+                          <div class="progress-fill" style="width: ${partition.use_percent}%"></div>
+                        </div>
+                      </div>
+                    ` : "N/A"}
+                  </td>
+                  <td>${partition.mount_point || "Not mounted"}</td>
+                  <td>
+                    ${partition.mount_point ? x`
+                      <button class="btn-danger btn-small" @click=${() => this.unmountPartition(partition.mount_point)}>
+                        ${t$5("storage.disks.unmount")}
+                      </button>
+                    ` : x`
+                      <button class="btn-primary btn-small" @click=${() => this.mountPartition(partition.path, `/mnt/${partition.name}`)}>
+                        ${t$5("storage.disks.mount")}
+                      </button>
+                    `}
+                  </td>
+                </tr>
+              `) : ""}
+            `;
+    })}
+        </tbody>
+      </table>
+    `;
+  }
   renderLVMSection() {
     return x`
       <div class="card">
@@ -22301,7 +22849,9 @@ class StorageTab extends I18nLitElement {
     }
     switch (this.activeSection) {
       case "disks":
-        return this.renderDisksSection();
+        return this.renderDisksExpandableSection();
+      case "disks-flat":
+        return this.renderDisksFlatSection();
       case "lvm":
         return this.renderLVMSection();
       case "raid":
@@ -22421,6 +22971,9 @@ __decorateClass$O([
 __decorateClass$O([
   n2({ type: String })
 ], StorageTab.prototype, "activeSection");
+__decorateClass$O([
+  n2({ type: Set })
+], StorageTab.prototype, "expandedDisks");
 __decorateClass$O([
   n2({ type: String })
 ], StorageTab.prototype, "subRoute");
@@ -72606,35 +73159,42 @@ class SidebarTree extends I18nLitElement {
             route: "storage/disks"
           },
           {
-            id: "storage-lvm",
-            label: "storage.lvm.title",
-            icon: "lvm",
-            route: "storage/lvm"
-          },
-          {
-            id: "storage-raid",
-            label: "storage.raid.title",
-            icon: "raid",
-            route: "storage/raid"
-          },
-          {
-            id: "storage-iscsi",
-            label: "storage.iscsi.title",
-            icon: "storage",
-            route: "storage/iscsi"
-          },
-          {
-            id: "storage-multipath",
-            label: "storage.multipath.title",
-            icon: "storage",
-            route: "storage/multipath"
-          },
-          {
-            id: "storage-btrfs",
-            label: "storage.btrfs.title",
-            icon: "storage",
-            route: "storage/btrfs"
+            id: "storage-disks-flat",
+            label: "storage.disks.titleFlat",
+            icon: "disks",
+            route: "storage/disks-flat"
           }
+          // Temporarily hidden - will be implemented later
+          // {
+          //   id: 'storage-lvm',
+          //   label: 'storage.lvm.title',
+          //   icon: 'lvm',
+          //   route: 'storage/lvm'
+          // },
+          // {
+          //   id: 'storage-raid',
+          //   label: 'storage.raid.title',
+          //   icon: 'raid',
+          //   route: 'storage/raid'
+          // },
+          // {
+          //   id: 'storage-iscsi',
+          //   label: 'storage.iscsi.title',
+          //   icon: 'storage',
+          //   route: 'storage/iscsi'
+          // },
+          // {
+          //   id: 'storage-multipath',
+          //   label: 'storage.multipath.title',
+          //   icon: 'storage',
+          //   route: 'storage/multipath'
+          // },
+          // {
+          //   id: 'storage-btrfs',
+          //   label: 'storage.btrfs.title',
+          //   icon: 'storage',
+          //   route: 'storage/btrfs'
+          // }
         ]
       },
       {

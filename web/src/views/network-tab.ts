@@ -606,10 +606,6 @@ export class NetworkTab extends I18nLitElement {
       box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.2);
     }
 
-    .filter-label {
-      font-size: 0.875rem;
-      color: var(--text-secondary);
-      font-weight: 500;
     }
 
     .interface-name-link {
@@ -1952,7 +1948,6 @@ export class NetworkTab extends I18nLitElement {
         <div class="tab-content">
           ${this.activeTab === 'interfaces' ? html`
             <div class="filter-container">
-              <span class="filter-label">Type:</span>
               <select 
                 class="type-filter-select"
                 .value=${this.selectedType}

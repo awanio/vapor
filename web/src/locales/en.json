@@ -334,7 +334,6 @@
     "modified": "Last Modified",
     "templateType": "Type",
     "playbook": "Playbook",
-    "inventory": "Inventory",
     "lastUsed": "Last Used",
     "runTemplate": "Run Template",
     "duplicate": "Duplicate",

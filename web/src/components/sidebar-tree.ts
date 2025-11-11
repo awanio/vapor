@@ -251,36 +251,37 @@ export class SidebarTree extends I18nLitElement {
           icon: 'disks',
           route: 'storage/disks'
         },
-        {
-          id: 'storage-lvm',
-          label: 'storage.lvm.title',
-          icon: 'lvm',
-          route: 'storage/lvm'
-        },
-        {
-          id: 'storage-raid',
-          label: 'storage.raid.title',
-          icon: 'raid',
-          route: 'storage/raid'
-        },
-        {
-          id: 'storage-iscsi',
-          label: 'storage.iscsi.title',
-          icon: 'storage',
-          route: 'storage/iscsi'
-        },
-        {
-          id: 'storage-multipath',
-          label: 'storage.multipath.title',
-          icon: 'storage',
-          route: 'storage/multipath'
-        },
-        {
-          id: 'storage-btrfs',
-          label: 'storage.btrfs.title',
-          icon: 'storage',
-          route: 'storage/btrfs'
-        }
+        // Temporarily hidden - will be implemented later
+        // {
+        //   id: 'storage-lvm',
+        //   label: 'storage.lvm.title',
+        //   icon: 'lvm',
+        //   route: 'storage/lvm'
+        // },
+        // {
+        //   id: 'storage-raid',
+        //   label: 'storage.raid.title',
+        //   icon: 'raid',
+        //   route: 'storage/raid'
+        // },
+        // {
+        //   id: 'storage-iscsi',
+        //   label: 'storage.iscsi.title',
+        //   icon: 'storage',
+        //   route: 'storage/iscsi'
+        // },
+        // {
+        //   id: 'storage-multipath',
+        //   label: 'storage.multipath.title',
+        //   icon: 'storage',
+        //   route: 'storage/multipath'
+        // },
+        // {
+        //   id: 'storage-btrfs',
+        //   label: 'storage.btrfs.title',
+        //   icon: 'storage',
+        //   route: 'storage/btrfs'
+        // }
       ]
     },
     {

@@ -280,6 +280,28 @@ export class StorageTab extends I18nLitElement {
       cursor: pointer;
       color: var(--vscode-text-dim);
     }
+
+    .disk-row-flat {
+      background: var(--vscode-sidebar);
+      border-left: 3px solid var(--vscode-accent);
+    }
+
+    .disk-row-flat td:first-child {
+      font-weight: 500;
+    }
+
+    .disk-row-flat td:first-child strong {
+      font-size: 1.05em;
+    }
+
+    .partition-row-flat {
+      background: var(--vscode-editor);
+      border-left: 3px solid var(--vscode-border);
+    }
+
+    .partition-row-flat:hover {
+      background: var(--vscode-sidebar-hover);
+    }
   `;
 
   static override get properties() {
@@ -531,7 +553,77 @@ export class StorageTab extends I18nLitElement {
     `;
   }
 
-  renderLVMSection() {
+  renderDisksFlatSection() {
+    if (this.disks.length === 0) {
+      return html`<div class="empty-state">${t('storage.disks.empty')}</div>`;
+    }
+
+    return html`
+      <table class="table">
+        <thead>
+          <tr>
+            <th>${t('common.name')}</th>
+            <th>${t('storage.disks.size')}</th>
+            <th>${t('storage.disks.type')}</th>
+            <th>${t('storage.disks.serial')}</th>
+            <th>${t('storage.disks.removable')}</th>
+            <th>${t('storage.disks.filesystem')}</th>
+            <th>${t('storage.disks.used')}</th>
+            <th>${t('storage.disks.mountpoint')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${this.disks.map(disk => {
+            const hasPartitions = disk.partitions && disk.partitions.length > 0;
+            
+            return html`
+              <tr class="disk-row-flat">
+                <td>
+                  <strong>${disk.name}</strong>
+                  <div style="font-size: 0.85em; color: var(--text-secondary); margin-top: 2px;">
+                    ${disk.model || 'Unknown Model'}
+                  </div>
+                </td>
+                <td>${this.formatBytes(disk.size)}</td>
+                <td>${disk.type}</td>
+                <td>${disk.serial || 'N/A'}</td>
+                <td>${disk.removable ? t('common.yes') : t('common.no')}</td>
+                <td colspan="3" style="color: var(--text-secondary); font-style: italic;">
+                  ${hasPartitions ? `${disk.partitions.length} partition(s)` : 'No partitions'}
+                </td>
+              </tr>
+              ${hasPartitions ? disk.partitions.map(partition => html`
+                <tr class="partition-row-flat">
+                  <td style="padding-left: 32px;">
+                    └ ${partition.name}
+                  </td>
+                  <td>${this.formatBytes(partition.size)}</td>
+                  <td>-</td>
+                  <td>-</td>
+                  <td>-</td>
+                  <td>${partition.filesystem || 'Unknown'}</td>
+                  <td>
+                    ${partition.used ? html`
+                      <div>
+                        ${this.formatBytes(partition.used)} (${partition.use_percent?.toFixed(1)}%)
+                        <div class="progress-bar">
+                          <div class="progress-fill" style="width: ${partition.use_percent}%"></div>
+                        </div>
+                      </div>
+                    ` : 'N/A'}
+                  </td>
+                  <td>${partition.mount_point || 'Not mounted'}</td>
+                </tr>
+              `) : ''}
+            `;
+          })}
+        </tbody>
+      </table>
+    `;
+  }
+
+
+    renderLVMSection() {
     return html`
       <div class="card">
         <div class="card-header">
@@ -888,7 +980,7 @@ export class StorageTab extends I18nLitElement {
 
     switch (this.activeSection) {
       case 'disks':
-        return this.renderDisksSection();
+        return this.renderDisksFlatSection();
       case 'lvm':
         return this.renderLVMSection();
       case 'raid':
