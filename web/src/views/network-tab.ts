@@ -921,6 +921,24 @@ export class NetworkTab extends I18nLitElement {
   @state()
   private selectedSuggestionIndex = -1;
 
+  @state()
+  private bondInterfaceInputValue = "";
+
+  @state()
+  private showBondInterfacesSuggestions = false;
+
+  @state()
+  private selectedBondSuggestionIndex = -1;
+
+  @state()
+  private vlanInterfaceInputValue = "";
+
+  @state()
+  private showVlanInterfacesSuggestions = false;
+
+  @state()
+  private selectedVlanSuggestionIndex = -1;
+
   // Getters for store data
   get interfaces() {
     return this.interfacesController.value || [];
@@ -1134,6 +1152,132 @@ export class NetworkTab extends I18nLitElement {
     }, 200);
   }
 
+  // Bond interface autocomplete methods
+  handleBondInterfaceInput(e: Event) {
+    const value = (e.target as HTMLInputElement).value;
+    this.bondInterfaceInputValue = value;
+    
+    // Get current word being typed
+    const parts = value.split(',').map(p => p.trim());
+    const currentWord = parts[parts.length - 1] || '';
+    
+    this.showBondInterfacesSuggestions = currentWord.length > 0;
+    this.selectedBondSuggestionIndex = -1;
+  }
+
+  handleBondInterfaceKeyDown(e: KeyboardEvent) {
+    if (!this.showBondInterfacesSuggestions) return;
+    
+    const filteredSuggestions = this.getFilteredBondSuggestions();
+    
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      this.selectedBondSuggestionIndex = Math.min(
+        this.selectedBondSuggestionIndex + 1,
+        filteredSuggestions.length - 1
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      this.selectedBondSuggestionIndex = Math.max(this.selectedBondSuggestionIndex - 1, 0);
+    } else if (e.key === 'Enter' && this.selectedBondSuggestionIndex >= 0) {
+      e.preventDefault();
+      const selected = filteredSuggestions[this.selectedBondSuggestionIndex];
+      if (selected) this.selectBondSuggestion(selected);
+    } else if (e.key === 'Escape') {
+      this.showBondInterfacesSuggestions = false;
+    }
+  }
+
+  getFilteredBondSuggestions(): string[] {
+    const parts = this.bondInterfaceInputValue.split(',').map(p => p.trim());
+    const currentWord = parts[parts.length - 1] || '';
+    const alreadySelected = parts.slice(0, -1).map(p => p.toLowerCase());
+    
+    return this.availableInterfacesForBridge
+      .filter(name => 
+        name.toLowerCase().includes(currentWord.toLowerCase()) &&
+        !alreadySelected.includes(name.toLowerCase())
+      )
+      .slice(0, 10);
+  }
+
+  selectBondSuggestion(interfaceName: string) {
+    const parts = this.bondInterfaceInputValue.split(',').map(p => p.trim());
+    parts[parts.length - 1] = interfaceName;
+    this.bondInterfaceInputValue = parts.join(', ') + ', ';
+    this.bondFormData.interfaces = this.bondInterfaceInputValue;
+    this.showBondInterfacesSuggestions = false;
+    this.selectedBondSuggestionIndex = -1;
+    
+    const input = this.shadowRoot?.querySelector('#bond-interfaces') as HTMLInputElement;
+    if (input) input.focus();
+  }
+
+  closeBondInterfacesSuggestions() {
+    // Add a small delay to allow click events on suggestions to fire
+    setTimeout(() => {
+      this.showBondInterfacesSuggestions = false;
+    }, 200);
+  }
+
+  // VLAN interface autocomplete methods (single interface only)
+  handleVlanInterfaceInput(e: Event) {
+    const value = (e.target as HTMLInputElement).value;
+    this.vlanInterfaceInputValue = value;
+    
+    // Show suggestions if there's input
+    this.showVlanInterfacesSuggestions = value.length > 0;
+    this.selectedVlanSuggestionIndex = -1;
+  }
+
+  handleVlanInterfaceKeyDown(e: KeyboardEvent) {
+    if (!this.showVlanInterfacesSuggestions) return;
+    
+    const filteredSuggestions = this.getFilteredVlanSuggestions();
+    
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      this.selectedVlanSuggestionIndex = Math.min(
+        this.selectedVlanSuggestionIndex + 1,
+        filteredSuggestions.length - 1
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      this.selectedVlanSuggestionIndex = Math.max(this.selectedVlanSuggestionIndex - 1, 0);
+    } else if (e.key === 'Enter' && this.selectedVlanSuggestionIndex >= 0) {
+      e.preventDefault();
+      const selected = filteredSuggestions[this.selectedVlanSuggestionIndex];
+      if (selected) this.selectVlanSuggestion(selected);
+    } else if (e.key === 'Escape') {
+      this.showVlanInterfacesSuggestions = false;
+    }
+  }
+
+  getFilteredVlanSuggestions(): string[] {
+    const currentValue = this.vlanInterfaceInputValue.trim().toLowerCase();
+    
+    return this.availableInterfacesForBridge
+      .filter(name => name.toLowerCase().includes(currentValue))
+      .slice(0, 10);
+  }
+
+  selectVlanSuggestion(interfaceName: string) {
+    this.vlanInterfaceInputValue = interfaceName;
+    this.vlanFormData.interface = interfaceName;
+    this.showVlanInterfacesSuggestions = false;
+    this.selectedVlanSuggestionIndex = -1;
+    
+    const input = this.shadowRoot?.querySelector('#vlan-interface') as HTMLInputElement;
+    if (input) input.focus();
+  }
+
+  closeVlanInterfacesSuggestions() {
+    // Add a small delay to allow click events on suggestions to fire
+    setTimeout(() => {
+      this.showVlanInterfacesSuggestions = false;
+    }, 200);
+  }
+
   handleDocumentClick(e: Event) {
     const target = e.target as Element;
     if (!target.closest('.action-menu')) {
@@ -1308,6 +1452,10 @@ export class NetworkTab extends I18nLitElement {
       vlanId: 0,
       name: ''
     };
+    this.vlanInterfaceInputValue = "";
+    this.showVlanInterfacesSuggestions = false;
+    this.selectedVlanSuggestionIndex = -1;
+    this.fetchAvailableInterfacesForBridge();
   }
 
   closeVLANDrawer() {
@@ -1322,6 +1470,9 @@ export class NetworkTab extends I18nLitElement {
   }
 
   handleConfigureAddress(iface: NetworkInterface) {
+    this.showVlanInterfacesSuggestions = false;
+    this.vlanInterfaceInputValue = "";
+    this.selectedVlanSuggestionIndex = -1;
     // Open drawer for configuration without sending any data
     this.configureNetworkInterface = iface;
     this.configureFormData = {
@@ -1557,6 +1708,10 @@ export class NetworkTab extends I18nLitElement {
       mode: 'balance-rr',
       interfaces: ''
     };
+    this.bondInterfaceInputValue = "";
+    this.showBondInterfacesSuggestions = false;
+    this.selectedBondSuggestionIndex = -1;
+    this.fetchAvailableInterfacesForBridge();
   }
 
   closeBondDrawer() {
@@ -1568,6 +1723,9 @@ export class NetworkTab extends I18nLitElement {
       mode: 'balance-rr' as BondMode,
       interfaces: ''
     };
+    this.showBondInterfacesSuggestions = false;
+    this.bondInterfaceInputValue = "";
+    this.selectedBondSuggestionIndex = -1;
   }
   // Edit methods for Bridge
   openEditBridgeDrawer(bridge: any) {
@@ -1595,6 +1753,8 @@ export class NetworkTab extends I18nLitElement {
       mode: bond.mode || 'balance-rr',
       interfaces: bond.interfaces ? bond.interfaces.join(',') : ''
     };
+    const interfacesStr = bond.interfaces ? bond.interfaces.join(", ") : "";
+    this.bondInterfaceInputValue = interfacesStr;
   }
 
   // Edit methods for VLAN
@@ -1608,6 +1768,7 @@ export class NetworkTab extends I18nLitElement {
       vlanId: vlan.vlan_id || 0,
       name: vlan.name
     };
+    this.vlanInterfaceInputValue = vlan.interface || "";
   }
 
   async handleCreateBridge() {
@@ -2278,19 +2439,43 @@ ${this.interfaces.length > 0 ? html`
               
               <div class="form-group">
                 <label class="form-label" for="bond-interfaces">${t('network.interfacesRequired')}</label>
-                <input 
-                  id="bond-interfaces"
-                  class="form-input" 
-                  type="text" 
-                  placeholder="eth2, eth3"
-                  .value=${this.bondFormData.interfaces}
-                  @input=${(e: Event) => this.bondFormData.interfaces = (e.target as HTMLInputElement).value}
-                  required
-                />
+                <div class="autocomplete-container">
+                  <input 
+                    id="bond-interfaces"
+                    class="form-input" 
+                    type="text" 
+                    placeholder="eth2, eth3"
+                    .value=${this.bondInterfaceInputValue}
+                    @input=${(e: Event) => {
+                      this.bondFormData.interfaces = (e.target as HTMLInputElement).value;
+                      this.handleBondInterfaceInput(e);
+                    }}
+                    @keydown=${(e: KeyboardEvent) => this.handleBondInterfaceKeyDown(e)}
+                    @blur=${() => this.closeBondInterfacesSuggestions()}
+                    autocomplete="off"
+                    required
+                  />
+                  ${this.showBondInterfacesSuggestions && this.getFilteredBondSuggestions().length > 0 ? html`
+                    <div class="autocomplete-suggestions">
+                      ${this.getFilteredBondSuggestions().map((name, index) => html`
+                        <div 
+                          class="autocomplete-suggestion ${index === this.selectedBondSuggestionIndex ? 'selected' : ''}"
+                          @mousedown=${(e: Event) => {
+                            e.preventDefault();
+                            this.selectBondSuggestion(name);
+                          }}
+                        >
+                          ${name}
+                        </div>
+                      `)}
+                    </div>
+                  ` : ''}
+                </div>
                 <small style="display: block; margin-top: 0.25rem; color: var(--text-secondary); font-size: 0.75rem;">
                   ${t('network.commaSeparatedInterfaces')}
                 </small>
               </div>
+              
               
               <div class="form-actions">
                 <button type="button" class="action-button" @click="${() => this.closeBondDrawer()}">
@@ -2313,17 +2498,41 @@ ${this.interfaces.length > 0 ? html`
             <form @submit=${(e: Event) => { e.preventDefault(); this.handleCreateVLANInterface(); }}>
               <div class="form-group">
                 <label class="form-label" for="vlan-interface">${t('network.baseInterfaceRequired')}</label>
-                <input 
-                  id="vlan-interface"
-                  class="form-input" 
-                  type="text" 
-                  placeholder="eth0"
-                  .value=${this.vlanFormData.interface}
-                  ?disabled=${this.isEditingVlan}
-                  @input=${(e: Event) => this.vlanFormData.interface = (e.target as HTMLInputElement).value}
-                  required
-                />
+                <div class="autocomplete-container">
+                  <input 
+                    id="vlan-interface"
+                    class="form-input" 
+                    type="text" 
+                    placeholder="eth0"
+                    .value=${this.vlanInterfaceInputValue}
+                    ?disabled=${this.isEditingVlan}
+                    @input=${(e: Event) => {
+                      this.vlanFormData.interface = (e.target as HTMLInputElement).value;
+                      this.handleVlanInterfaceInput(e);
+                    }}
+                    @keydown=${(e: KeyboardEvent) => this.handleVlanInterfaceKeyDown(e)}
+                    @blur=${() => this.closeVlanInterfacesSuggestions()}
+                    autocomplete="off"
+                    required
+                  />
+                  ${this.showVlanInterfacesSuggestions && this.getFilteredVlanSuggestions().length > 0 ? html`
+                    <div class="autocomplete-suggestions">
+                      ${this.getFilteredVlanSuggestions().map((name, index) => html`
+                        <div 
+                          class="autocomplete-suggestion ${index === this.selectedVlanSuggestionIndex ? 'selected' : ''}"
+                          @mousedown=${(e: Event) => {
+                            e.preventDefault();
+                            this.selectVlanSuggestion(name);
+                          }}
+                        >
+                          ${name}
+                        </div>
+                      `)}
+                    </div>
+                  ` : ''}
+                </div>
               </div>
+              
               
               <div class="form-group">
                 <label class="form-label" for="vlan-id">${t('network.vlanIdRequired')}</label>
