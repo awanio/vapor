@@ -1,4 +1,4 @@
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-C6efol31.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-D2Cd__DL.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -17395,7 +17395,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-C6efol31.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-D2Cd__DL.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17440,7 +17440,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-C6efol31.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-D2Cd__DL.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17504,7 +17504,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-C6efol31.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-D2Cd__DL.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17614,7 +17614,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-C6efol31.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-D2Cd__DL.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -21839,7 +21839,6 @@ class StorageTab extends I18nLitElement {
     this.multipathDevices = [];
     this.btrfsSubvolumes = [];
     this.activeSection = "disks";
-    this.expandedDisks = /* @__PURE__ */ new Set();
     this.subRoute = null;
     this.loading = false;
     this.error = "";
@@ -22094,6 +22093,28 @@ class StorageTab extends I18nLitElement {
       cursor: pointer;
       color: var(--vscode-text-dim);
     }
+
+    .disk-row-flat {
+      background: var(--vscode-sidebar);
+      border-left: 3px solid var(--vscode-accent);
+    }
+
+    .disk-row-flat td:first-child {
+      font-weight: 500;
+    }
+
+    .disk-row-flat td:first-child strong {
+      font-size: 1.05em;
+    }
+
+    .partition-row-flat {
+      background: var(--vscode-editor);
+      border-left: 3px solid var(--vscode-border);
+    }
+
+    .partition-row-flat:hover {
+      background: var(--vscode-sidebar-hover);
+    }
   `;
   }
   static get properties() {
@@ -22319,117 +22340,6 @@ class StorageTab extends I18nLitElement {
       `)}
     `;
   }
-  toggleDiskExpanded(diskName) {
-    if (this.expandedDisks.has(diskName)) {
-      this.expandedDisks.delete(diskName);
-    } else {
-      this.expandedDisks.add(diskName);
-    }
-    this.requestUpdate();
-  }
-  renderDisksExpandableSection() {
-    if (this.disks.length === 0) {
-      return x`<div class="empty-state">${t$5("storage.disks.empty")}</div>`;
-    }
-    return x`
-      <table class="table">
-        <thead>
-          <tr>
-            <th style="width: 40px;"></th>
-            <th>${t$5("common.name")}</th>
-            <th>${t$5("storage.disks.size")}</th>
-            <th>${t$5("storage.disks.type")}</th>
-            <th>${t$5("storage.disks.serial")}</th>
-            <th>${t$5("storage.disks.removable")}</th>
-            <th>${t$5("storage.disks.partitions")}</th>
-            <th>${t$5("common.actions")}</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${this.disks.map((disk) => {
-      const isExpanded2 = this.expandedDisks.has(disk.name);
-      const hasPartitions = disk.partitions && disk.partitions.length > 0;
-      return x`
-              <tr class="disk-row">
-                <td style="text-align: center;">
-                  ${hasPartitions ? x`
-                    <span 
-                      class="expand-icon ${isExpanded2 ? "expanded" : ""}"
-                      @click=${() => this.toggleDiskExpanded(disk.name)}
-                      style="cursor: pointer; user-select: none;">
-                      ${isExpanded2 ? "▼" : "▶"}
-                    </span>
-                  ` : ""}
-                </td>
-                <td>
-                  <strong>${disk.name}</strong> - ${disk.model || "Unknown Model"}
-                </td>
-                <td>${this.formatBytes(disk.size)}</td>
-                <td>${disk.type}</td>
-                <td>${disk.serial || "N/A"}</td>
-                <td>${disk.removable ? t$5("common.yes") : t$5("common.no")}</td>
-                <td>${hasPartitions ? disk.partitions.length : 0}</td>
-                <td>
-                  <button class="btn-icon">⋮</button>
-                </td>
-              </tr>
-              ${isExpanded2 && hasPartitions ? x`
-                <tr class="partition-row-container">
-                  <td colspan="8" style="padding: 0;">
-                    <div class="partition-table-wrapper">
-                      <table class="partition-table">
-                        <thead>
-                          <tr>
-                            <th>${t$5("storage.disks.partition")}</th>
-                            <th>${t$5("storage.disks.filesystem")}</th>
-                            <th>${t$5("storage.disks.size")}</th>
-                            <th>${t$5("storage.disks.used")}</th>
-                            <th>${t$5("storage.disks.mountpoint")}</th>
-                            <th>${t$5("common.actions")}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          ${disk.partitions.map((partition) => x`
-                            <tr>
-                              <td>${partition.name}</td>
-                              <td>${partition.filesystem || "Unknown"}</td>
-                              <td>${this.formatBytes(partition.size)}</td>
-                              <td>
-                                ${partition.used ? x`
-                                  <div>
-                                    ${this.formatBytes(partition.used)} (${partition.use_percent?.toFixed(1)}%)
-                                    <div class="progress-bar">
-                                      <div class="progress-fill" style="width: ${partition.use_percent}%"></div>
-                                    </div>
-                                  </div>
-                                ` : "N/A"}
-                              </td>
-                              <td>${partition.mount_point || "Not mounted"}</td>
-                              <td>
-                                ${partition.mount_point ? x`
-                                  <button class="btn-danger" @click=${() => this.unmountPartition(partition.mount_point)}>
-                                    ${t$5("storage.disks.unmount")}
-                                  </button>
-                                ` : x`
-                                  <button class="btn-primary" @click=${() => this.mountPartition(partition.path, `/mnt/${partition.name}`)}>
-                                    ${t$5("storage.disks.mount")}
-                                  </button>
-                                `}
-                              </td>
-                            </tr>
-                          `)}
-                        </tbody>
-                      </table>
-                    </div>
-                  </td>
-                </tr>
-              ` : ""}
-            `;
-    })}
-        </tbody>
-      </table>
-    `;
-  }
   renderDisksFlatSection() {
     if (this.disks.length === 0) {
       return x`<div class="empty-state">${t$5("storage.disks.empty")}</div>`;
@@ -22446,7 +22356,6 @@ class StorageTab extends I18nLitElement {
             <th>${t$5("storage.disks.filesystem")}</th>
             <th>${t$5("storage.disks.used")}</th>
             <th>${t$5("storage.disks.mountpoint")}</th>
-            <th>${t$5("common.actions")}</th>
           </tr>
         </thead>
         <tbody>
@@ -22454,16 +22363,25 @@ class StorageTab extends I18nLitElement {
       const hasPartitions = disk.partitions && disk.partitions.length > 0;
       return x`
               <tr class="disk-row-flat">
-                <td colspan="9" style="padding: 8px 12px;">
-                  <strong style="font-size: 15px;">${disk.name}</strong> - ${disk.model || "Unknown Model"}
-                  <span style="margin-left: 12px; color: var(--text-secondary);">
-                    ${this.formatBytes(disk.size)} | ${disk.type} | ${disk.serial || "N/A"} | ${disk.removable ? t$5("common.yes") : t$5("common.no")}
-                  </span>
+                <td>
+                  <strong>${disk.name}</strong>
+                  <div style="font-size: 0.85em; color: var(--text-secondary); margin-top: 2px;">
+                    ${disk.model || "Unknown Model"}
+                  </div>
+                </td>
+                <td>${this.formatBytes(disk.size)}</td>
+                <td>${disk.type}</td>
+                <td>${disk.serial || "N/A"}</td>
+                <td>${disk.removable ? t$5("common.yes") : t$5("common.no")}</td>
+                <td colspan="3" style="color: var(--text-secondary); font-style: italic;">
+                  ${hasPartitions ? `${disk.partitions.length} partition(s)` : "No partitions"}
                 </td>
               </tr>
               ${hasPartitions ? disk.partitions.map((partition) => x`
                 <tr class="partition-row-flat">
-                  <td style="padding-left: 32px;">${partition.name}</td>
+                  <td style="padding-left: 32px;">
+                    └ ${partition.name}
+                  </td>
                   <td>${this.formatBytes(partition.size)}</td>
                   <td>-</td>
                   <td>-</td>
@@ -22480,17 +22398,6 @@ class StorageTab extends I18nLitElement {
                     ` : "N/A"}
                   </td>
                   <td>${partition.mount_point || "Not mounted"}</td>
-                  <td>
-                    ${partition.mount_point ? x`
-                      <button class="btn-danger btn-small" @click=${() => this.unmountPartition(partition.mount_point)}>
-                        ${t$5("storage.disks.unmount")}
-                      </button>
-                    ` : x`
-                      <button class="btn-primary btn-small" @click=${() => this.mountPartition(partition.path, `/mnt/${partition.name}`)}>
-                        ${t$5("storage.disks.mount")}
-                      </button>
-                    `}
-                  </td>
                 </tr>
               `) : ""}
             `;
@@ -22849,8 +22756,6 @@ class StorageTab extends I18nLitElement {
     }
     switch (this.activeSection) {
       case "disks":
-        return this.renderDisksExpandableSection();
-      case "disks-flat":
         return this.renderDisksFlatSection();
       case "lvm":
         return this.renderLVMSection();
@@ -22971,9 +22876,6 @@ __decorateClass$O([
 __decorateClass$O([
   n2({ type: String })
 ], StorageTab.prototype, "activeSection");
-__decorateClass$O([
-  n2({ type: Set })
-], StorageTab.prototype, "expandedDisks");
 __decorateClass$O([
   n2({ type: String })
 ], StorageTab.prototype, "subRoute");
@@ -73157,12 +73059,6 @@ class SidebarTree extends I18nLitElement {
             label: "storage.disks.title",
             icon: "disks",
             route: "storage/disks"
-          },
-          {
-            id: "storage-disks-flat",
-            label: "storage.disks.titleFlat",
-            icon: "disks",
-            route: "storage/disks-flat"
           }
           // Temporarily hidden - will be implemented later
           // {
