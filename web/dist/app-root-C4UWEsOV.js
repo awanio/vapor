@@ -1,4 +1,4 @@
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-D2Cd__DL.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-CqD5wkcy.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -17395,7 +17395,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-D2Cd__DL.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-CqD5wkcy.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17440,7 +17440,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-D2Cd__DL.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-CqD5wkcy.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17504,7 +17504,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-D2Cd__DL.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-CqD5wkcy.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17614,7 +17614,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-D2Cd__DL.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-CqD5wkcy.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -38884,12 +38884,17 @@ let ResourceDetailView = class extends i$2 {
         `);
       }
     });
+    const filteredResource = { ...this.resource };
+    if (filteredResource.metadata?.managedFields) {
+      filteredResource.metadata = { ...filteredResource.metadata };
+      delete filteredResource.metadata.managedFields;
+    }
     additionalSections.push(x`
       <div class="detail-section">
         <h3>Raw Data</h3>
         <details>
           <summary>View raw resource data</summary>
-          <pre class="raw-data">${JSON.stringify(this.resource, null, 2)}</pre>
+          <pre class="raw-data">${JSON.stringify(filteredResource, null, 2)}</pre>
         </details>
       </div>
     `);
@@ -39503,7 +39508,7 @@ ResourceDetailView.styles = i$5`
     /* Code block */
     .code-block,
     .raw-data {
-      background: var(--vscode-textCodeBlock-background, var(--vscode-editor-background, #f5f5f5));
+      background: var(--vscode-textCodeBlock-background, var(--vscode-editor-background, #1e1e1e));
       border: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.35));
       border-radius: 4px;
       padding: 12px;
@@ -39514,7 +39519,7 @@ ResourceDetailView.styles = i$5`
       white-space: pre-wrap;
       max-height: 600px;
       overflow-y: auto;
-      color: var(--vscode-editor-foreground, var(--vscode-foreground));
+      color: var(--vscode-editor-foreground, var(--vscode-foreground, #d4d4d4));
     }
 
     details {
@@ -51069,7 +51074,7 @@ let CRDInstancesDrawer = class extends i$2 {
         instance.name,
         isNamespaced ? instance.namespace : void 0
       );
-      this.instanceDetailsData = response;
+      this.instanceDetailsData = response?.object ? response.object : response;
     } catch (err) {
       console.error("Failed to fetch instance details:", err);
       this.instanceDetailsData = {
@@ -51233,11 +51238,17 @@ let CRDInstancesDrawer = class extends i$2 {
         instance.name,
         isNamespaced ? instance.namespace : void 0
       );
+      const unwrappedResponse = response?.object ? response.object : response;
+      const filteredResource = { ...unwrappedResponse };
+      if (filteredResource.metadata?.managedFields) {
+        filteredResource.metadata = { ...filteredResource.metadata };
+        delete filteredResource.metadata.managedFields;
+      }
       try {
-        this.editResourceContent = YAML.stringify(response);
+        this.editResourceContent = YAML.stringify(filteredResource);
         this.editResourceFormat = "yaml";
       } catch (yamlError) {
-        this.editResourceContent = JSON.stringify(response, null, 2);
+        this.editResourceContent = JSON.stringify(filteredResource, null, 2);
         this.editResourceFormat = "json";
       }
     } catch (err) {

@@ -290,7 +290,8 @@ export class CRDInstancesDrawer extends LitElement {
         isNamespaced ? instance.namespace : undefined
       );
       
-      this.instanceDetailsData = response;
+      // Unwrap the { object: { ... } } structure to make it consistent with other Kubernetes resources
+      this.instanceDetailsData = response?.object ? response.object : response;
     } catch (err: any) {
       console.error('Failed to fetch instance details:', err);
       // If fetching details fails, use basic data from the list
@@ -499,14 +500,25 @@ export class CRDInstancesDrawer extends LitElement {
         isNamespaced ? instance.namespace : undefined
       );
       
+      
+      // Unwrap the { object: { ... } } structure to make it consistent with other Kubernetes resources
+      const unwrappedResponse = response?.object ? response.object : response;
+      
+      // Filter out managedFields from metadata as it's internal Kubernetes data
+      const filteredResource = { ...unwrappedResponse };
+      if (filteredResource.metadata?.managedFields) {
+        filteredResource.metadata = { ...filteredResource.metadata };
+        delete filteredResource.metadata.managedFields;
+      }
+      
       // Try to get the resource in YAML format by default
       try {
         // Convert the response to YAML format
-        this.editResourceContent = YAML.stringify(response);
+        this.editResourceContent = YAML.stringify(filteredResource);
         this.editResourceFormat = 'yaml';
       } catch (yamlError) {
         // If YAML conversion fails, use JSON
-        this.editResourceContent = JSON.stringify(response, null, 2);
+        this.editResourceContent = JSON.stringify(filteredResource, null, 2);
         this.editResourceFormat = 'json';
       }
     } catch (err: any) {

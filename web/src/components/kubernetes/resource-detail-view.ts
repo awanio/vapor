@@ -246,7 +246,7 @@ export class ResourceDetailView extends LitElement {
     /* Code block */
     .code-block,
     .raw-data {
-      background: var(--vscode-textCodeBlock-background, var(--vscode-editor-background, #f5f5f5));
+      background: var(--vscode-textCodeBlock-background, var(--vscode-editor-background, #1e1e1e));
       border: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.35));
       border-radius: 4px;
       padding: 12px;
@@ -257,7 +257,7 @@ export class ResourceDetailView extends LitElement {
       white-space: pre-wrap;
       max-height: 600px;
       overflow-y: auto;
-      color: var(--vscode-editor-foreground, var(--vscode-foreground));
+      color: var(--vscode-editor-foreground, var(--vscode-foreground, #d4d4d4));
     }
 
     details {
@@ -479,12 +479,19 @@ export class ResourceDetailView extends LitElement {
     });
 
     // Add Raw Data section at the end
+    // Filter out managedFields from metadata as it's internal Kubernetes data
+    const filteredResource = { ...this.resource };
+    if (filteredResource.metadata?.managedFields) {
+      filteredResource.metadata = { ...filteredResource.metadata };
+      delete filteredResource.metadata.managedFields;
+    }
+    
     additionalSections.push(html`
       <div class="detail-section">
         <h3>Raw Data</h3>
         <details>
           <summary>View raw resource data</summary>
-          <pre class="raw-data">${JSON.stringify(this.resource, null, 2)}</pre>
+          <pre class="raw-data">${JSON.stringify(filteredResource, null, 2)}</pre>
         </details>
       </div>
     `);
