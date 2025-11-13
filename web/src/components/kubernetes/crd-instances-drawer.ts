@@ -51,6 +51,11 @@ export class CRDInstancesDrawer extends LitElement {
   @state() private editResourceFormat: 'yaml' | 'json' = 'yaml';
   @state() private loadingEdit = false;
   @state() private deleting = false;
+  // Create drawer state
+  @state() private showCreateDrawer = false;
+  @state() private createResourceValue = '';
+  @state() private createResourceFormat: 'yaml' | 'json' = 'yaml';
+  @state() private isCreating = false;
   @state() private showDeleteModal = false;
   @state() private deleteItem: DeleteItem | null = null;
 
@@ -83,6 +88,30 @@ export class CRDInstancesDrawer extends LitElement {
       padding: 1rem;
       border-bottom: 1px solid var(--vscode-widget-border, #303031);
       background: var(--vscode-editor-background, #1e1e1e);
+    }
+
+    .btn-create {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: var(--vscode-button-background, #007acc);
+      color: var(--vscode-button-foreground, white);
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .btn-create:hover {
+      background: var(--vscode-button-hoverBackground, #005a9e);
+    }
+
+    .btn-create svg {
+      width: 14px;
+      height: 14px;
     }
 
     .title-section {
@@ -486,6 +515,75 @@ export class CRDInstancesDrawer extends LitElement {
     await this.fetchInstanceDetails(instance);
   }
 
+
+  private openCreateDrawer() {
+    this.createResourceFormat = 'yaml';
+    this.showCreateDrawer = true;
+    
+    // Generate a basic template for the CRD instance
+    const template = {
+      apiVersion: `${this.crdGroup}/${this.crdVersion}`,
+      kind: this.crdKind,
+      metadata: {
+        name: 'example-name',
+        ...(this.crdScope === 'Namespaced' && { namespace: 'default' })
+      },
+      spec: {
+        // Add your spec fields here
+      }
+    };
+    
+    try {
+      this.createResourceValue = YAML.stringify(template);
+    } catch (error) {
+      console.error('Failed to generate template:', error);
+      this.createResourceValue = JSON.stringify(template, null, 2);
+      this.createResourceFormat = 'json';
+    }
+  }
+
+  private async handleCreateResource(event: CustomEvent) {
+    const { resource, format } = event.detail as { resource: any; format: 'yaml' | 'json' };
+    let content = '';
+    try {
+      content = format === 'json' ? JSON.stringify(resource) : (resource.yaml as string);
+      this.isCreating = true;
+      
+      // Determine the endpoint based on scope
+      let endpoint = `/kubernetes/customresourcedefinitions/${this.crdName}/instances`;
+      
+      // For namespaced resources, add the namespace to the endpoint
+      if (this.crdScope === 'Namespaced') {
+        // Try to extract namespace from the resource
+        const parsedResource = format === 'json' ? resource : YAML.parse(content);
+        const namespace = parsedResource?.metadata?.namespace || 'default';
+        endpoint = `${endpoint}/${namespace}`;
+      } else {
+        // For cluster-scoped resources, use '-' as namespace placeholder
+        endpoint = `${endpoint}/-`;
+      }
+      
+      // Create the resource
+      await Api.postResource(endpoint, content, format === 'json' ? 'application/json' : 'application/yaml');
+      
+      const nc = this.shadowRoot?.querySelector('notification-container') as any;
+      if (nc && typeof nc.addNotification === 'function') {
+        nc.addNotification({ type: 'success', message: `${this.crdKind} created successfully` });
+      }
+      
+      await this.fetchInstances();
+      this.showCreateDrawer = false;
+      this.createResourceValue = '';
+    } catch (err: any) {
+      const nc = this.shadowRoot?.querySelector('notification-container') as any;
+      if (nc && typeof nc.addNotification === 'function') {
+        nc.addNotification({ type: 'error', message: `Failed to create ${this.crdKind}: ${err?.message || 'Unknown error'}` });
+      }
+    } finally {
+      this.isCreating = false;
+    }
+  }
+
   private async editInstance(instance: CRDInstance) {
     this.selectedInstance = instance;
     this.loadingEdit = true;
@@ -711,6 +809,17 @@ export class CRDInstancesDrawer extends LitElement {
           placeholder="Search instances..."
           @search-change="${this.handleSearchChange}"
         ></search-input>
+            <button 
+              class="btn-create" 
+              @click="${this.openCreateDrawer}"
+              title="Create CRD Instance"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Create CRD Instance
+            </button>
       </div>
 
       <div class="content">
@@ -795,11 +904,23 @@ export class CRDInstancesDrawer extends LitElement {
         .title=${`Edit ${this.selectedInstance?.name || 'Resource'}`}
         .value=${this.editResourceContent}
         .format=${this.editResourceFormat}
-        .submitLabel="Update"
+        .submitLabel=${"Update"}
         .loading=${this.loadingEdit}
         @close=${(e: Event) => this.handleEditDrawerClose(e)}
         @create=${this.handleUpdateResource}
       ></create-resource-drawer>
+
+
+        <create-resource-drawer
+          .show="${this.showCreateDrawer}"
+          .title="Create CRD Instance"
+          .value="${this.createResourceValue}"
+          .format="${this.createResourceFormat}"
+          .submitLabel=${"Apply"}
+          .loading="${this.isCreating}"
+          @close="${() => { this.showCreateDrawer = false; }}"
+          @create="${this.handleCreateResource}"
+        ></create-resource-drawer>
 
       <delete-modal
         .show=${this.showDeleteModal}

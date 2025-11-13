@@ -185,7 +185,14 @@ export class KubernetesCRDs extends LitElement {
       
       // Unwrap if it's wrapped in a response object
       let unwrapped = parsed;
-      if (parsed.crd_detail) {
+      // Handle nested data structure (e.g., {status: "success", data: {crd_detail: {...}}})
+      if (parsed.data?.crd_detail) {
+        unwrapped = parsed.data.crd_detail;
+      } else if (parsed.data?.crd) {
+        unwrapped = parsed.data.crd;
+      } else if (parsed.data?.resource) {
+        unwrapped = parsed.data.resource;
+      } else if (parsed.crd_detail) {
         unwrapped = parsed.crd_detail;
       } else if (parsed.crd) {
         unwrapped = parsed.crd;

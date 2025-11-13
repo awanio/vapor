@@ -1,4 +1,4 @@
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-B3P1LpA3.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-YxR0rVt8.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -17407,7 +17407,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-B3P1LpA3.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-YxR0rVt8.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17452,7 +17452,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-B3P1LpA3.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-YxR0rVt8.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17516,7 +17516,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-B3P1LpA3.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-YxR0rVt8.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17626,7 +17626,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-B3P1LpA3.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-YxR0rVt8.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -36341,7 +36341,7 @@ class KubernetesApi {
       if (contentType === "json") {
         parsedResource = JSON.parse(content);
       } else {
-        const yaml = await import("./index-B_pUNQwr.js");
+        const yaml = await import("./index-C4MuY0Ey.js");
         parsedResource = yaml.parse(content);
       }
     } catch (error) {
@@ -51194,6 +51194,10 @@ let CRDInstancesDrawer = class extends i$2 {
     this.editResourceFormat = "yaml";
     this.loadingEdit = false;
     this.deleting = false;
+    this.showCreateDrawer = false;
+    this.createResourceValue = "";
+    this.createResourceFormat = "yaml";
+    this.isCreating = false;
     this.showDeleteModal = false;
     this.deleteItem = null;
     this.handleKeyDown = (event) => {
@@ -51406,6 +51410,59 @@ let CRDInstancesDrawer = class extends i$2 {
     this.showInstanceDetails = true;
     await this.fetchInstanceDetails(instance);
   }
+  openCreateDrawer() {
+    this.createResourceFormat = "yaml";
+    this.showCreateDrawer = true;
+    const template = {
+      apiVersion: `${this.crdGroup}/${this.crdVersion}`,
+      kind: this.crdKind,
+      metadata: {
+        name: "example-name",
+        ...this.crdScope === "Namespaced" && { namespace: "default" }
+      },
+      spec: {
+        // Add your spec fields here
+      }
+    };
+    try {
+      this.createResourceValue = YAML.stringify(template);
+    } catch (error) {
+      console.error("Failed to generate template:", error);
+      this.createResourceValue = JSON.stringify(template, null, 2);
+      this.createResourceFormat = "json";
+    }
+  }
+  async handleCreateResource(event) {
+    const { resource, format } = event.detail;
+    let content = "";
+    try {
+      content = format === "json" ? JSON.stringify(resource) : resource.yaml;
+      this.isCreating = true;
+      let endpoint = `/kubernetes/customresourcedefinitions/${this.crdName}/instances`;
+      if (this.crdScope === "Namespaced") {
+        const parsedResource = format === "json" ? resource : YAML.parse(content);
+        const namespace = parsedResource?.metadata?.namespace || "default";
+        endpoint = `${endpoint}/${namespace}`;
+      } else {
+        endpoint = `${endpoint}/-`;
+      }
+      await Api.postResource(endpoint, content, format === "json" ? "application/json" : "application/yaml");
+      const nc = this.shadowRoot?.querySelector("notification-container");
+      if (nc && typeof nc.addNotification === "function") {
+        nc.addNotification({ type: "success", message: `${this.crdKind} created successfully` });
+      }
+      await this.fetchInstances();
+      this.showCreateDrawer = false;
+      this.createResourceValue = "";
+    } catch (err) {
+      const nc = this.shadowRoot?.querySelector("notification-container");
+      if (nc && typeof nc.addNotification === "function") {
+        nc.addNotification({ type: "error", message: `Failed to create ${this.crdKind}: ${err?.message || "Unknown error"}` });
+      }
+    } finally {
+      this.isCreating = false;
+    }
+  }
   async editInstance(instance) {
     this.selectedInstance = instance;
     this.loadingEdit = true;
@@ -51568,6 +51625,17 @@ let CRDInstancesDrawer = class extends i$2 {
           placeholder="Search instances..."
           @search-change="${this.handleSearchChange}"
         ></search-input>
+            <button 
+              class="btn-create" 
+              @click="${this.openCreateDrawer}"
+              title="Create CRD Instance"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Create CRD Instance
+            </button>
       </div>
 
       <div class="content">
@@ -51651,11 +51719,25 @@ let CRDInstancesDrawer = class extends i$2 {
         .title=${`Edit ${this.selectedInstance?.name || "Resource"}`}
         .value=${this.editResourceContent}
         .format=${this.editResourceFormat}
-        .submitLabel="Update"
+        .submitLabel=${"Update"}
         .loading=${this.loadingEdit}
         @close=${(e3) => this.handleEditDrawerClose(e3)}
         @create=${this.handleUpdateResource}
       ></create-resource-drawer>
+
+
+        <create-resource-drawer
+          .show="${this.showCreateDrawer}"
+          .title="Create CRD Instance"
+          .value="${this.createResourceValue}"
+          .format="${this.createResourceFormat}"
+          .submitLabel=${"Apply"}
+          .loading="${this.isCreating}"
+          @close="${() => {
+      this.showCreateDrawer = false;
+    }}"
+          @create="${this.handleCreateResource}"
+        ></create-resource-drawer>
 
       <delete-modal
         .show=${this.showDeleteModal}
@@ -51696,6 +51778,30 @@ CRDInstancesDrawer.styles = i$5`
       padding: 1rem;
       border-bottom: 1px solid var(--vscode-widget-border, #303031);
       background: var(--vscode-editor-background, #1e1e1e);
+    }
+
+    .btn-create {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: var(--vscode-button-background, #007acc);
+      color: var(--vscode-button-foreground, white);
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .btn-create:hover {
+      background: var(--vscode-button-hoverBackground, #005a9e);
+    }
+
+    .btn-create svg {
+      width: 14px;
+      height: 14px;
     }
 
     .title-section {
@@ -51910,6 +52016,18 @@ __decorateClass$n([
 ], CRDInstancesDrawer.prototype, "deleting", 2);
 __decorateClass$n([
   r$1()
+], CRDInstancesDrawer.prototype, "showCreateDrawer", 2);
+__decorateClass$n([
+  r$1()
+], CRDInstancesDrawer.prototype, "createResourceValue", 2);
+__decorateClass$n([
+  r$1()
+], CRDInstancesDrawer.prototype, "createResourceFormat", 2);
+__decorateClass$n([
+  r$1()
+], CRDInstancesDrawer.prototype, "isCreating", 2);
+__decorateClass$n([
+  r$1()
 ], CRDInstancesDrawer.prototype, "showDeleteModal", 2);
 __decorateClass$n([
   r$1()
@@ -52015,7 +52133,13 @@ let KubernetesCRDs = class extends i$2 {
       );
       const parsed = JSON.parse(resourceContent);
       let unwrapped = parsed;
-      if (parsed.crd_detail) {
+      if (parsed.data?.crd_detail) {
+        unwrapped = parsed.data.crd_detail;
+      } else if (parsed.data?.crd) {
+        unwrapped = parsed.data.crd;
+      } else if (parsed.data?.resource) {
+        unwrapped = parsed.data.resource;
+      } else if (parsed.crd_detail) {
         unwrapped = parsed.crd_detail;
       } else if (parsed.crd) {
         unwrapped = parsed.crd;
@@ -52026,7 +52150,7 @@ let KubernetesCRDs = class extends i$2 {
         unwrapped = JSON.parse(JSON.stringify(unwrapped));
         delete unwrapped.metadata.managedFields;
       }
-      const yaml = await import("./index-B_pUNQwr.js");
+      const yaml = await import("./index-C4MuY0Ey.js");
       this.createResourceValue = yaml.stringify(unwrapped);
       this.isCreating = false;
     } catch (error) {
