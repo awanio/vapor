@@ -238,7 +238,7 @@ export class LoginPage extends I18nLitElement {
           ` : ''}
         </form>
         <div id="copy">
-        <span>&copy; ${new Date().getFullYear()} Awanio</span>
+        <span>&copy; ${new Date().getFullYear()} Awanio. All rights reserved.</span>
         </div>
       </div>
     `;

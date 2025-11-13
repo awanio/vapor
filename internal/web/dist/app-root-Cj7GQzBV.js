@@ -1,4 +1,4 @@
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-CPYMjXkT.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-C7QCEZgO.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -17407,7 +17407,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-CPYMjXkT.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-C7QCEZgO.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17452,7 +17452,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-CPYMjXkT.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-C7QCEZgO.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17516,7 +17516,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-CPYMjXkT.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-C7QCEZgO.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17626,7 +17626,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-CPYMjXkT.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-C7QCEZgO.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -36341,7 +36341,7 @@ class KubernetesApi {
       if (contentType === "json") {
         parsedResource = JSON.parse(content);
       } else {
-        const yaml = await import("./index-DrOnyrEL.js");
+        const yaml = await import("./index-Bgy2LEkG.js");
         parsedResource = yaml.parse(content);
       }
     } catch (error) {
@@ -52326,7 +52326,7 @@ let KubernetesCRDs = class extends i$2 {
         unwrapped = JSON.parse(JSON.stringify(unwrapped));
         delete unwrapped.metadata.managedFields;
       }
-      const yaml = await import("./index-DrOnyrEL.js");
+      const yaml = await import("./index-Bgy2LEkG.js");
       this.createResourceValue = yaml.stringify(unwrapped);
       this.isCreating = false;
     } catch (error) {
@@ -73850,16 +73850,46 @@ class SidebarTree extends I18nLitElement {
   static {
     this.styles = i$5`
     :host {
-      display: block;
+      display: flex;
+      flex-direction: column;
+
       height: 100%;
       background-color: var(--vscode-sidebar);
       color: var(--vscode-text);
       border-right: 1px solid var(--vscode-border);
-      overflow-y: auto;
       user-select: none;
     }
 
-    .tree {
+
+    .sidebar-content {
+      flex: 1;
+      overflow-y: auto;
+
+      overflow-x: hidden;
+    }
+
+    .sidebar-footer {
+      flex-shrink: 0;
+      padding: 12px;
+      border-top: 1px solid var(--vscode-border);
+      background-color: var(--vscode-sidebar);
+      font-size: 11px;
+      color: var(--vscode-text-dim);
+      text-align: center;
+      line-height: 1.4;
+    }
+
+    .sidebar-footer-brand {
+      font-weight: 600;
+      color: var(--vscode-text);
+      margin-bottom: 2px;
+    }
+
+    .sidebar-footer-copyright {
+      opacity: 0.7;
+    }
+
+        .tree {
       padding: 20px 0 0 0;
       margin: 0;
       list-style: none;
@@ -73917,6 +73947,7 @@ class SidebarTree extends I18nLitElement {
 
     .tree-item-label {
       flex: 1;
+      overflow-y: auto;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -74193,10 +74224,17 @@ class SidebarTree extends I18nLitElement {
     if (!this.translationsLoaded) {
       return x``;
     }
+    const currentYear = (/* @__PURE__ */ new Date()).getFullYear();
     return x`
-      <ul class="tree" role="tree">
-        ${this.navigationItems.map((item) => this.renderNavItem(item))}
-      </ul>
+      <div class="sidebar-content">
+        <ul class="tree" role="tree">
+          ${this.navigationItems.map((item) => this.renderNavItem(item))}
+        </ul>
+      </div>
+      <div class="sidebar-footer">
+        <div class="sidebar-footer-brand">Vapor by Awanio</div>
+        <div class="sidebar-footer-copyright">© ${currentYear} Awanio. All rights reserved.</div>
+      </div>
     `;
   }
 }

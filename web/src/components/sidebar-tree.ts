@@ -3,7 +3,7 @@ import { property, state } from 'lit/decorators.js';
 import { i18n, t } from '../i18n';
 import { I18nLitElement } from '../i18n-mixin';
 import type { NavItem } from '../types/system';
-import { 
+import {
   $expandedItems,
   $activeItem,
   toggleExpanded,
@@ -14,30 +14,60 @@ import {
 
 export class SidebarTree extends I18nLitElement {
   @property({ type: Boolean }) collapsed = false;
-  
+
   @state()
   private activeItemId = 'dashboard';
-  
+
   @state()
   private expandedItemsArray: string[] = [];
-  
+
   @state()
   private translationsLoaded = false;
-  
+
   private storeUnsubscribers: Array<() => void> = [];
 
   static override styles = css`
     :host {
-      display: block;
+      display: flex;
+      flex-direction: column;
+
       height: 100%;
       background-color: var(--vscode-sidebar);
       color: var(--vscode-text);
       border-right: 1px solid var(--vscode-border);
-      overflow-y: auto;
       user-select: none;
     }
 
-    .tree {
+
+    .sidebar-content {
+      flex: 1;
+      overflow-y: auto;
+
+      overflow-x: hidden;
+    }
+
+    .sidebar-footer {
+      flex-shrink: 0;
+      padding: 12px;
+      border-top: 1px solid var(--vscode-border);
+      background-color: var(--vscode-sidebar);
+      font-size: 11px;
+      color: var(--vscode-text-dim);
+      text-align: center;
+      line-height: 1.4;
+    }
+
+    .sidebar-footer-brand {
+      font-weight: 600;
+      color: var(--vscode-text);
+      margin-bottom: 2px;
+    }
+
+    .sidebar-footer-copyright {
+      opacity: 0.7;
+    }
+
+        .tree {
       padding: 20px 0 0 0;
       margin: 0;
       list-style: none;
@@ -95,6 +125,7 @@ export class SidebarTree extends I18nLitElement {
 
     .tree-item-label {
       flex: 1;
+      overflow-y: auto;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -393,31 +424,31 @@ export class SidebarTree extends I18nLitElement {
         }
       ]
     },
-//     {
-//       id: 'ansible',
-//       label: 'nav.ansible',
-//       icon: 'ansible',
-//       route: 'ansible',
-//       children: [
-//         {
-//           id: 'ansible-playbooks',
-//           label: 'ansible.playbooks',
-//           icon: 'playbooks',
-//           route: 'ansible/playbooks'
-//         },
-//         {
-//           id: 'ansible-inventory',
-//           label: 'ansible.inventory',
-//           icon: 'inventory',
-//           route: 'ansible/inventory'
-//         },
-//         {
-//           id: 'ansible-executions',
-//           label: 'ansible.executions',
-//           icon: 'executions',
-//           route: 'ansible/executions'
-// //         }
-//     },
+    //     {
+    //       id: 'ansible',
+    //       label: 'nav.ansible',
+    //       icon: 'ansible',
+    //       route: 'ansible',
+    //       children: [
+    //         {
+    //           id: 'ansible-playbooks',
+    //           label: 'ansible.playbooks',
+    //           icon: 'playbooks',
+    //           route: 'ansible/playbooks'
+    //         },
+    //         {
+    //           id: 'ansible-inventory',
+    //           label: 'ansible.inventory',
+    //           icon: 'inventory',
+    //           route: 'ansible/inventory'
+    //         },
+    //         {
+    //           id: 'ansible-executions',
+    //           label: 'ansible.executions',
+    //           icon: 'executions',
+    //           route: 'ansible/executions'
+    // //         }
+    //     },
     {
       id: 'logs',
       label: 'nav.logs',
@@ -451,7 +482,7 @@ export class SidebarTree extends I18nLitElement {
       // Parse route and query params
       const [path, queryString] = item.route.split('?');
       const queryParams = queryString ? new URLSearchParams(queryString) : null;
-      
+
       // Update the URL without reloading the page
       const url = path === 'dashboard' ? '/' : `/${item.route}`;
       window.history.pushState({ route: path, queryParams }, '', url);
@@ -568,28 +599,28 @@ export class SidebarTree extends I18nLitElement {
 
   override async connectedCallback() {
     super.connectedCallback();
-    
+
     // Ensure translations are loaded before rendering
     await i18n.init();
     this.translationsLoaded = true;
-    
+
     // Subscribe to store changes
     const unsubscribeExpanded = $expandedItems.subscribe(() => {
       this.expandedItemsArray = getExpandedItemsArray();
       this.requestUpdate();
     });
-    
+
     const unsubscribeActive = $activeItem.subscribe((activeId) => {
       this.activeItemId = activeId;
       this.requestUpdate();
     });
-    
+
     this.storeUnsubscribers.push(unsubscribeExpanded, unsubscribeActive);
-    
+
     // Initialize from store
     this.expandedItemsArray = getExpandedItemsArray();
     this.activeItemId = $activeItem.get();
-    
+
     // Set activeItemId from URL on component mount
     const path = window.location.pathname.slice(1);
     if (!path || path === '') {
@@ -603,20 +634,20 @@ export class SidebarTree extends I18nLitElement {
         setActiveItem('dashboard');
       }
     }
-    
+
     // Listen for popstate to update active item
     window.addEventListener('popstate', this.handlePopState);
   }
-  
+
   override disconnectedCallback() {
     super.disconnectedCallback();
     window.removeEventListener('popstate', this.handlePopState);
-    
+
     // Unsubscribe from store updates
     this.storeUnsubscribers.forEach(unsubscribe => unsubscribe());
     this.storeUnsubscribers = [];
   }
-  
+
   private findNavItemByRoute(route: string): NavItem | null {
     const findInItems = (items: NavItem[]): NavItem | null => {
       for (const item of items) {
@@ -634,7 +665,7 @@ export class SidebarTree extends I18nLitElement {
       }
       return null;
     };
-    
+
     return findInItems(this.navigationItems);
   }
 
@@ -644,7 +675,7 @@ export class SidebarTree extends I18nLitElement {
     if (item.children && item.children.length > 0) {
       return false;
     }
-    
+
     // For leaf items, check if this item is the currently active one
     return this.activeItemId === item.id;
   }
@@ -665,11 +696,19 @@ export class SidebarTree extends I18nLitElement {
     if (!this.translationsLoaded) {
       return html``;
     }
-    
+
+    const currentYear = new Date().getFullYear();
+
     return html`
-      <ul class="tree" role="tree">
-        ${this.navigationItems.map(item => this.renderNavItem(item))}
-      </ul>
+      <div class="sidebar-content">
+        <ul class="tree" role="tree">
+          ${this.navigationItems.map(item => this.renderNavItem(item))}
+        </ul>
+      </div>
+      <div class="sidebar-footer">
+        <div class="sidebar-footer-brand">Vapor by Awanio</div>
+        <div class="sidebar-footer-copyright">© ${currentYear} Awanio.</div>
+      </div>
     `;
   }
 }
