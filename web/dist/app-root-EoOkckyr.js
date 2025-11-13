@@ -1,4 +1,4 @@
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-YxR0rVt8.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-CPYMjXkT.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -17407,7 +17407,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-YxR0rVt8.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-CPYMjXkT.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17452,7 +17452,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-YxR0rVt8.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-CPYMjXkT.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17516,7 +17516,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-YxR0rVt8.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-CPYMjXkT.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17626,7 +17626,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-YxR0rVt8.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-CPYMjXkT.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -36169,7 +36169,7 @@ class KubernetesApi {
   }
   static async getCRDDetails(name) {
     const response = await Api.get(`/kubernetes/customresourcedefinitions/${name}`);
-    return response.crd || response;
+    return response.crd_detail || response.crd || response;
   }
   static async getPVCDetails(namespace, name) {
     const response = await Api.get(`/kubernetes/persistentvolumeclaims/${namespace}/${name}`);
@@ -36341,7 +36341,7 @@ class KubernetesApi {
       if (contentType === "json") {
         parsedResource = JSON.parse(content);
       } else {
-        const yaml = await import("./index-C4MuY0Ey.js");
+        const yaml = await import("./index-DrOnyrEL.js");
         parsedResource = yaml.parse(content);
       }
     } catch (error) {
@@ -38005,67 +38005,93 @@ LogsDrawer.styles = i$5`
     }
 
     .controls {
-      padding: 16px 20px;
-      background: var(--vscode-editor-background, var(--vscode-bg-light, #252526));
+      padding: 12px 20px;
+      background: var(--vscode-sideBar-background, var(--vscode-bg-light, #252526));
       border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
       display: flex;
-      gap: 12px;
+      gap: 8px;
       align-items: center;
       flex-shrink: 0;
+      flex-wrap: wrap;
     }
 
     .search-container {
       flex: 1;
+      min-width: 200px;
       position: relative;
+      display: flex;
+      align-items: center;
     }
 
     .search-input {
       width: 100%;
-      padding: 8px 12px 8px 36px;
+      padding: 6px 12px 6px 32px;
       background: var(--vscode-input-background, #3c3c3c);
       color: var(--vscode-input-foreground, var(--vscode-text, #cccccc));
-      border: 1px solid var(--vscode-input-border, transparent);
+      border: 1px solid var(--vscode-input-border, rgba(255, 255, 255, 0.1));
       border-radius: 4px;
       font-size: 13px;
       outline: none;
+      height: 32px;
+      box-sizing: border-box;
+      transition: border-color 0.2s ease;
     }
 
     .search-input:focus {
       border-color: var(--vscode-focusBorder, #007acc);
+      background: var(--vscode-input-background, #3c3c3c);
+    }
+
+    .search-input::placeholder {
+      color: var(--vscode-input-placeholderForeground, rgba(204, 204, 204, 0.5));
     }
 
     .search-icon {
       position: absolute;
-      left: 12px;
+      left: 10px;
       top: 50%;
       transform: translateY(-50%);
-      width: 16px;
-      height: 16px;
-      color: var(--vscode-icon-foreground, var(--vscode-text-dim, #9d9d9d));
+      width: 14px;
+      height: 14px;
+      color: var(--vscode-input-placeholderForeground, rgba(204, 204, 204, 0.5));
+      pointer-events: none;
     }
 
     .control-button {
       background: var(--vscode-button-secondaryBackground, transparent);
       color: var(--vscode-button-secondaryForeground, var(--vscode-text, #cccccc));
-      border: 1px solid var(--vscode-button-border, var(--vscode-panel-border, #454545));
-      padding: 6px 14px;
+      border: 1px solid var(--vscode-button-border, rgba(255, 255, 255, 0.1));
+      padding: 6px 12px;
       border-radius: 4px;
       cursor: pointer;
       font-size: 13px;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 6px;
-      transition: all 0.2s;
+      transition: all 0.2s ease;
       white-space: nowrap;
+      height: 32px;
+      box-sizing: border-box;
+      font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
     }
 
-    .control-button:hover {
+    .control-button svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+
+    .control-button:hover:not(:disabled) {
       background: var(--vscode-button-secondaryHoverBackground, rgba(90, 93, 94, 0.31));
-      border-color: var(--vscode-button-border, var(--vscode-panel-border, #454545));
+      border-color: var(--vscode-button-hoverBorder, rgba(255, 255, 255, 0.2));
+    }
+
+    .control-button:active:not(:disabled) {
+      background: var(--vscode-button-secondaryHoverBackground, rgba(90, 93, 94, 0.5));
     }
 
     .control-button:disabled {
-      opacity: 0.5;
+      opacity: 0.4;
       cursor: not-allowed;
     }
 
@@ -38073,6 +38099,11 @@ LogsDrawer.styles = i$5`
       background: var(--vscode-button-background, #007acc);
       color: var(--vscode-button-foreground, white);
       border-color: var(--vscode-button-background, #007acc);
+    }
+
+    .control-button.active:hover:not(:disabled) {
+      background: var(--vscode-button-hoverBackground, #0098ff);
+      border-color: var(--vscode-button-hoverBackground, #0098ff);
     }
 
     .content {
@@ -51160,6 +51191,98 @@ __decorateClass$o([
 KubernetesNodes = __decorateClass$o([
   t$2("kubernetes-nodes")
 ], KubernetesNodes);
+function evaluateJSONPath(obj, path) {
+  if (!obj || !path) {
+    return void 0;
+  }
+  const cleanPath = path.startsWith(".") ? path.substring(1) : path;
+  if (!cleanPath.includes("[")) {
+    return evaluateSimplePath(obj, cleanPath);
+  }
+  const filterMatch = cleanPath.match(/^(.*?)\[?\??\((@\.[\w]+)==['"]?(.*?)['"]?\)\]\.?(.*)$/);
+  if (filterMatch) {
+    const [, beforeFilter, filterKey, filterValue, afterFilter] = filterMatch;
+    if (!filterKey) return void 0;
+    let current = beforeFilter ? evaluateSimplePath(obj, beforeFilter) : obj;
+    if (!Array.isArray(current)) {
+      return void 0;
+    }
+    const cleanFilterKey = filterKey.substring(2);
+    const filtered = current.filter((item) => {
+      const itemValue = evaluateSimplePath(item, cleanFilterKey);
+      return itemValue === filterValue || String(itemValue) === String(filterValue);
+    });
+    if (afterFilter && filtered.length > 0) {
+      return evaluateSimplePath(filtered[0], afterFilter);
+    }
+    return filtered.length > 0 ? filtered[0] : void 0;
+  }
+  const indexMatch = cleanPath.match(/^(.*?)\[(\d+)\]\.?(.*)$/);
+  if (indexMatch) {
+    const [, beforeIndex, index2, afterIndex] = indexMatch;
+    if (!index2) return void 0;
+    let current = beforeIndex ? evaluateSimplePath(obj, beforeIndex) : obj;
+    if (!Array.isArray(current)) {
+      return void 0;
+    }
+    const item = current[parseInt(index2, 10)];
+    if (!item) {
+      return void 0;
+    }
+    return afterIndex ? evaluateSimplePath(item, afterIndex) : item;
+  }
+  return evaluateSimplePath(obj, cleanPath);
+}
+function evaluateSimplePath(obj, path) {
+  if (!path) {
+    return obj;
+  }
+  const parts = path.split(".");
+  let current = obj;
+  for (const part of parts) {
+    if (current === null || current === void 0) {
+      return void 0;
+    }
+    current = current[part];
+  }
+  return current;
+}
+function formatColumnValue(value, type) {
+  if (value === null || value === void 0) {
+    return "-";
+  }
+  switch (type) {
+    case "date":
+      try {
+        const date = new Date(value);
+        const now = /* @__PURE__ */ new Date();
+        const diffMs = now.getTime() - date.getTime();
+        const diffSeconds = Math.floor(diffMs / 1e3);
+        const diffMinutes = Math.floor(diffSeconds / 60);
+        const diffHours = Math.floor(diffMinutes / 60);
+        const diffDays = Math.floor(diffHours / 24);
+        if (diffDays > 0) {
+          return `${diffDays}d ${diffHours % 24}h`;
+        } else if (diffHours > 0) {
+          return `${diffHours}h ${diffMinutes % 60}m`;
+        } else if (diffMinutes > 0) {
+          return `${diffMinutes}m`;
+        } else {
+          return `${diffSeconds}s`;
+        }
+      } catch {
+        return String(value);
+      }
+    case "integer":
+    case "number":
+      return String(value);
+    case "boolean":
+      return value ? "True" : "False";
+    case "string":
+    default:
+      return String(value);
+  }
+}
 var __defProp$n = Object.defineProperty;
 var __getOwnPropDesc$l = Object.getOwnPropertyDescriptor;
 var __decorateClass$n = (decorators, target, key, kind) => {
@@ -51181,6 +51304,7 @@ let CRDInstancesDrawer = class extends i$2 {
     this.crdScope = "Namespaced";
     this.loading = false;
     this.width = "80%";
+    this.crdDefinition = null;
     this.searchQuery = "";
     this.selectedNamespace = "All Namespaces";
     this.instances = [];
@@ -51230,18 +51354,39 @@ let CRDInstancesDrawer = class extends i$2 {
           instancesArray = [];
         }
       }
-      this.instances = instancesArray.map((item) => ({
-        name: item.metadata?.name || item.name || "",
-        namespace: item.metadata?.namespace || item.namespace,
-        apiVersion: item.apiVersion || `${this.crdGroup}/${this.crdVersion}`,
-        kind: item.kind || this.crdKind,
-        status: item.status?.phase || item.status?.state || "Unknown",
-        age: this.calculateAge(item.metadata?.creationTimestamp || item.creationTimestamp),
-        labels: item.metadata?.labels || item.labels || {},
-        annotations: item.metadata?.annotations || item.annotations || {}
-      }));
+      this.instances = instancesArray.map((item) => {
+        const instance = {
+          name: item.metadata?.name || item.name || "",
+          namespace: item.metadata?.namespace || item.namespace,
+          apiVersion: item.apiVersion || `${this.crdGroup}/${this.crdVersion}`,
+          kind: item.kind || this.crdKind,
+          status: item.status?.phase || item.status?.state || "Unknown",
+          age: this.calculateAge(item.metadata?.creationTimestamp || item.creationTimestamp),
+          labels: item.metadata?.labels || item.labels || {},
+          annotations: item.metadata?.annotations || item.annotations || {}
+        };
+        const printerColumns = this.getAdditionalPrinterColumns();
+        if (printerColumns && printerColumns.length > 0) {
+          for (const col of printerColumns) {
+            if (col.name === "Age" || col.name === "AGE") {
+              continue;
+            }
+            const value = evaluateJSONPath(item, col.jsonPath);
+            instance[`_dynamic_${col.name}`] = formatColumnValue(value, col.type || "string");
+          }
+        }
+        if (item.metadata?.name && item.metadata.name === instancesArray[0]?.metadata?.name) {
+          console.log("[CRD Debug] Processing first instance:", item.metadata.name);
+          console.log("[CRD Debug] Item structure:", item);
+          console.log("[CRD Debug] Printer columns:", printerColumns);
+          printerColumns?.forEach((col) => {
+            const val = evaluateJSONPath(item, col.jsonPath);
+            console.log(`[CRD Debug] Column "${col.name}" jsonPath="${col.jsonPath}" value=`, val);
+          });
+        }
+        return instance;
+      });
     } catch (err) {
-      console.error("Failed to fetch CRD instances:", err);
       this.error = `Failed to fetch instances: ${err?.message || "Unknown error"}`;
       this.instances = [];
     } finally {
@@ -51294,6 +51439,23 @@ let CRDInstancesDrawer = class extends i$2 {
       return `${seconds}s`;
     }
   }
+  /**
+   * Extract additionalPrinterColumns from the CRD definition for the active version
+   */
+  getAdditionalPrinterColumns() {
+    if (!this.crdDefinition || !this.crdDefinition.spec || !this.crdDefinition.spec.versions) {
+      return null;
+    }
+    const version2 = this.crdDefinition.spec.versions.find(
+      (v2) => v2.name === this.crdVersion
+    );
+    if (!version2 || !version2.additionalPrinterColumns) {
+      return null;
+    }
+    return version2.additionalPrinterColumns.filter(
+      (col) => col.priority === void 0 || col.priority === 0
+    );
+  }
   getColumns() {
     const columns = [
       { key: "name", label: "Name", type: "link" }
@@ -51301,10 +51463,21 @@ let CRDInstancesDrawer = class extends i$2 {
     if (this.crdScope === "Namespaced") {
       columns.push({ key: "namespace", label: "Namespace" });
     }
-    columns.push(
-      { key: "status", label: "Status" },
-      { key: "age", label: "Age" }
-    );
+    const printerColumns = this.getAdditionalPrinterColumns();
+    if (printerColumns && printerColumns.length > 0) {
+      for (const col of printerColumns) {
+        if (col.name === "Age" || col.name === "AGE") {
+          continue;
+        }
+        columns.push({
+          key: `_dynamic_${col.name}`,
+          label: col.name
+        });
+      }
+    } else {
+      columns.push({ key: "status", label: "Status" });
+    }
+    columns.push({ key: "age", label: "Age" });
     return columns;
   }
   getActions(_item) {
@@ -51976,6 +52149,9 @@ __decorateClass$n([
   n2({ type: String })
 ], CRDInstancesDrawer.prototype, "width", 2);
 __decorateClass$n([
+  n2({ type: Object })
+], CRDInstancesDrawer.prototype, "crdDefinition", 2);
+__decorateClass$n([
   r$1()
 ], CRDInstancesDrawer.prototype, "searchQuery", 2);
 __decorateClass$n([
@@ -52150,7 +52326,7 @@ let KubernetesCRDs = class extends i$2 {
         unwrapped = JSON.parse(JSON.stringify(unwrapped));
         delete unwrapped.metadata.managedFields;
       }
-      const yaml = await import("./index-C4MuY0Ey.js");
+      const yaml = await import("./index-DrOnyrEL.js");
       this.createResourceValue = yaml.stringify(unwrapped);
       this.isCreating = false;
     } catch (error) {
@@ -52193,8 +52369,14 @@ let KubernetesCRDs = class extends i$2 {
       this.loadingDetails = false;
     }
   }
-  viewInstances(item) {
+  async viewInstances(item) {
     this.selectedCRDForInstances = item;
+    try {
+      const fullCRD = await KubernetesApi.getCRDDetails(item.name);
+      this.selectedCRDForInstances = { ...item, _fullDefinition: fullCRD };
+    } catch (error) {
+      console.error("Failed to fetch full CRD definition:", error);
+    }
     this.showInstancesDrawer = true;
   }
   deleteItem(item) {
@@ -52416,6 +52598,7 @@ spec:
         .crdGroup="${this.selectedCRDForInstances?.group || ""}"
         .crdVersion="${this.selectedCRDForInstances?.version || ""}"
         .crdScope="${this.selectedCRDForInstances?.scope || "Namespaced"}"
+        .crdDefinition="${this.selectedCRDForInstances?._fullDefinition}"
         @close="${this.handleInstancesDrawerClose}"
       ></crd-instances-drawer>
     `;
@@ -73561,13 +73744,14 @@ class SidebarTree extends I18nLitElement {
             label: "kubernetes.crds",
             icon: "crds",
             route: "kubernetes/crds"
-          },
-          {
-            id: "kubernetes-helm",
-            label: "kubernetes.helms",
-            icon: "helm",
-            route: "kubernetes/helm"
           }
+          // Temporarily hidden - will be worked on later
+          // {
+          //   id: 'kubernetes-helm',
+          //   label: 'kubernetes.helms',
+          //   icon: 'helm',
+          //   route: 'kubernetes/helm'
+          // }
         ]
       },
       {

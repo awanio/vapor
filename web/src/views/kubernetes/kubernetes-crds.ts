@@ -259,8 +259,17 @@ export class KubernetesCRDs extends LitElement {
     }
   }
 
-  private viewInstances(item: KubernetesCRD) {
+  private async viewInstances(item: KubernetesCRD) {
     this.selectedCRDForInstances = item;
+    // Fetch the full CRD definition to get additionalPrinterColumns
+    try {
+      const fullCRD = await KubernetesApi.getCRDDetails(item.name);
+      // Store the full definition in a way the drawer can access
+      this.selectedCRDForInstances = { ...item, _fullDefinition: fullCRD } as any;
+    } catch (error) {
+      console.error('Failed to fetch full CRD definition:', error);
+      // Still show the drawer, but without full definition (will use fallback columns)
+    }
     this.showInstancesDrawer = true;
   }
 
@@ -505,6 +514,7 @@ spec:
         .crdGroup="${this.selectedCRDForInstances?.group || ''}"
         .crdVersion="${this.selectedCRDForInstances?.version || ''}"
         .crdScope="${this.selectedCRDForInstances?.scope || 'Namespaced'}"
+        .crdDefinition="${(this.selectedCRDForInstances as any)?._fullDefinition}"
         @close="${this.handleInstancesDrawerClose}"
       ></crd-instances-drawer>
     `;

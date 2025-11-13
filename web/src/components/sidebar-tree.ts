@@ -346,12 +346,13 @@ export class SidebarTree extends I18nLitElement {
           icon: 'crds',
           route: 'kubernetes/crds'
         },
-        {
-          id: 'kubernetes-helm',
-          label: 'kubernetes.helms',
-          icon: 'helm',
-          route: 'kubernetes/helm'
-        }
+        // Temporarily hidden - will be worked on later
+        // {
+        //   id: 'kubernetes-helm',
+        //   label: 'kubernetes.helms',
+        //   icon: 'helm',
+        //   route: 'kubernetes/helm'
+        // }
       ]
     },
     {

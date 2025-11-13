@@ -1,6 +1,8 @@
 get:
   summary: List all objects for a specific CRD
-  description: List all Kubernetes objects for a specific Custom Resource Definition
+  description: |
+    List all custom resource instances for a specific CRD with complete object data.
+    Returns full objects including metadata, spec, status, and all custom fields defined by the CRD.
   tags:
     - Kubernetes
   security:

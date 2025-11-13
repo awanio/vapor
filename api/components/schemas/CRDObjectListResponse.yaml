@@ -5,9 +5,32 @@ allOf:
       data:
         type: object
         properties:
-          objects:
+          instances:
             type: array
+            description: List of custom resource instances with complete object data
             items:
               $ref: ./CRDObject.yaml
           count:
             type: integer
+            description: Total number of instances returned
+        example:
+          instances:
+            - apiVersion: "stable.example.com/v1"
+              kind: "CronTab"
+              metadata:
+                name: "my-crontab"
+                namespace: "default"
+                uid: "12345678-1234-1234-1234-123456789abc"
+                resourceVersion: "12345"
+                generation: 1
+                creationTimestamp: "2023-01-01T00:00:00Z"
+                labels:
+                  app: "scheduler"
+              spec:
+                cronSpec: "*/5 * * * *"
+                image: "busybox:latest"
+                replicas: 3
+              status:
+                active: 2
+                lastScheduleTime: "2023-01-01T12:00:00Z"
+          count: 1

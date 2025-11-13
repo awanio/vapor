@@ -14,6 +14,7 @@ import '../modals/delete-modal.js';
 import '../kubernetes/resource-detail-view.js';
 import type { Column } from '../tables/resource-table.js';
 import type { ActionItem } from '../ui/action-dropdown.js';
+import { evaluateJSONPath, formatColumnValue } from '../../utils/jsonpath.js';
 import type { DeleteItem } from '../modals/delete-modal.js';
 
 export interface CRDInstance {
@@ -37,6 +38,7 @@ export class CRDInstancesDrawer extends LitElement {
   @property({ type: String }) crdScope = 'Namespaced';
   @property({ type: Boolean }) loading = false;
   @property({ type: String }) width = '80%';
+  @property({ type: Object }) crdDefinition: any = null;
   
   @state() private searchQuery = '';
   @state() private selectedNamespace = 'All Namespaces';
@@ -289,18 +291,47 @@ export class CRDInstancesDrawer extends LitElement {
       }
       
       // Transform the API response to match our CRDInstance interface
-      this.instances = instancesArray.map((item: any) => ({
-        name: item.metadata?.name || item.name || '',
-        namespace: item.metadata?.namespace || item.namespace,
-        apiVersion: item.apiVersion || `${this.crdGroup}/${this.crdVersion}`,
-        kind: item.kind || this.crdKind,
-        status: item.status?.phase || item.status?.state || 'Unknown',
-        age: this.calculateAge(item.metadata?.creationTimestamp || item.creationTimestamp),
-        labels: item.metadata?.labels || item.labels || {},
-        annotations: item.metadata?.annotations || item.annotations || {}
-      }));
+      this.instances = instancesArray.map((item: any) => {
+        const instance: any = {
+          name: item.metadata?.name || item.name || '',
+          namespace: item.metadata?.namespace || item.namespace,
+          apiVersion: item.apiVersion || `${this.crdGroup}/${this.crdVersion}`,
+          kind: item.kind || this.crdKind,
+          status: item.status?.phase || item.status?.state || 'Unknown',
+          age: this.calculateAge(item.metadata?.creationTimestamp || item.creationTimestamp),
+          labels: item.metadata?.labels || item.labels || {},
+          annotations: item.metadata?.annotations || item.annotations || {}
+        };
+
+        // Add dynamic columns from additionalPrinterColumns
+        const printerColumns = this.getAdditionalPrinterColumns();
+        if (printerColumns && printerColumns.length > 0) {
+          for (const col of printerColumns) {
+            // Skip Age as we already handle it
+            if (col.name === 'Age' || col.name === 'AGE') {
+              continue;
+            }
+            
+            // Evaluate JSONPath expression and format value
+            const value = evaluateJSONPath(item, col.jsonPath);
+            instance[`_dynamic_${col.name}`] = formatColumnValue(value, col.type || 'string');
+          }
+        }
+          // Debug log for first instance
+          if (item.metadata?.name && item.metadata.name === instancesArray[0]?.metadata?.name) {
+            console.log("[CRD Debug] Processing first instance:", item.metadata.name);
+            console.log("[CRD Debug] Item structure:", item);
+            console.log("[CRD Debug] Printer columns:", printerColumns);
+            printerColumns?.forEach(col => {
+              const val = evaluateJSONPath(item, col.jsonPath);
+              console.log(`[CRD Debug] Column "${col.name}" jsonPath="${col.jsonPath}" value=`, val);
+            });
+          }
+
+        return instance;
+      });
     } catch (err: any) {
-      console.error('Failed to fetch CRD instances:', err);
+        
       this.error = `Failed to fetch instances: ${err?.message || 'Unknown error'}`;
       this.instances = [];
     } finally {
@@ -363,6 +394,29 @@ export class CRDInstancesDrawer extends LitElement {
     }
   }
 
+  /**
+   * Extract additionalPrinterColumns from the CRD definition for the active version
+   */
+  private getAdditionalPrinterColumns(): any[] | null {
+    if (!this.crdDefinition || !this.crdDefinition.spec || !this.crdDefinition.spec.versions) {
+      return null;
+    }
+
+    // Find the version matching crdVersion
+    const version = this.crdDefinition.spec.versions.find(
+      (v: any) => v.name === this.crdVersion
+    );
+
+    if (!version || !version.additionalPrinterColumns) {
+      return null;
+    }
+
+    // Filter to only priority 0 columns (default display)
+    return version.additionalPrinterColumns.filter(
+      (col: any) => col.priority === undefined || col.priority === 0
+    );
+  }
+
   private getColumns(): Column[] {
     const columns: Column[] = [
       { key: 'name', label: 'Name', type: 'link' }
@@ -372,14 +426,34 @@ export class CRDInstancesDrawer extends LitElement {
     if (this.crdScope === 'Namespaced') {
       columns.push({ key: 'namespace', label: 'Namespace' });
     }
+
+    // Try to get additionalPrinterColumns from CRD definition
+    const printerColumns = this.getAdditionalPrinterColumns();
     
-    columns.push(
-      { key: 'status', label: 'Status' },
-      { key: 'age', label: 'Age' }
-    );
+    if (printerColumns && printerColumns.length > 0) {
+      // Use dynamic columns from CRD definition
+      for (const col of printerColumns) {
+        // Skip Age column as we'll add it separately with consistent formatting
+        if (col.name === 'Age' || col.name === 'AGE') {
+          continue;
+        }
+        
+        columns.push({
+          key: `_dynamic_${col.name}`,
+          label: col.name
+        });
+      }
+    } else {
+      // Fallback to default Status column if no printer columns defined
+      columns.push({ key: 'status', label: 'Status' });
+    }
+    
+    // Always add Age column at the end
+    columns.push({ key: 'age', label: 'Age' });
     
     return columns;
   }
+
 
   private getActions(_item: CRDInstance): ActionItem[] {
     return [

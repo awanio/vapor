@@ -1,4 +1,4 @@
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-BZLNiS-u.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-CPYMjXkT.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -1243,7 +1243,7 @@ let LoginPage = class extends I18nLitElement {
           </svg>
         </div>
         
-        <h1>Vapor</h1>
+        <h1>Vapor by Awanio</h1>
         
         <form @submit=${this.handleSubmit}>
           <div class="form-group">
@@ -1304,6 +1304,9 @@ let LoginPage = class extends I18nLitElement {
             <div class="error-message">${this.error}</div>
           ` : ""}
         </form>
+        <div id="copy">
+        <span>&copy; ${(/* @__PURE__ */ new Date()).getFullYear()} Awanio</span>
+        </div>
       </div>
     `;
   }
@@ -1370,6 +1373,15 @@ LoginPage.styles = i$5`
       color: var(--text-primary);
       margin-bottom: 2rem;
       font-size: 1.5rem;
+    }
+
+    div#copy {
+      text-align: center;
+      font-size: small;
+      width: 100%;
+      justify-content: center;
+      margin-top: 1.5rem;
+      padding-top: 1rem;
     }
 
     .form-group {
@@ -17395,7 +17407,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-BZLNiS-u.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-CPYMjXkT.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17440,7 +17452,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-BZLNiS-u.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-CPYMjXkT.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17504,7 +17516,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-BZLNiS-u.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-CPYMjXkT.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17614,7 +17626,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-BZLNiS-u.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-CPYMjXkT.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -36157,7 +36169,7 @@ class KubernetesApi {
   }
   static async getCRDDetails(name) {
     const response = await Api.get(`/kubernetes/customresourcedefinitions/${name}`);
-    return response.crd || response;
+    return response.crd_detail || response.crd || response;
   }
   static async getPVCDetails(namespace, name) {
     const response = await Api.get(`/kubernetes/persistentvolumeclaims/${namespace}/${name}`);
@@ -36324,7 +36336,72 @@ class KubernetesApi {
   }
   static async createResource(content, contentType = "yaml") {
     const mimeType = contentType === "json" ? "application/json" : "application/yaml";
-    return Api.postResource("/kubernetes/resource", content, mimeType);
+    let parsedResource;
+    try {
+      if (contentType === "json") {
+        parsedResource = JSON.parse(content);
+      } else {
+        const yaml = await import("./index-DrOnyrEL.js");
+        parsedResource = yaml.parse(content);
+      }
+    } catch (error) {
+      throw new Error(`Failed to parse ${contentType.toUpperCase()}: ${error}`);
+    }
+    const kind = parsedResource?.kind?.toLowerCase();
+    if (!kind) {
+      throw new Error("Resource kind is required");
+    }
+    let endpoint;
+    switch (kind) {
+      case "pod":
+        endpoint = "/kubernetes/pods";
+        break;
+      case "deployment":
+        endpoint = "/kubernetes/deployments";
+        break;
+      case "statefulset":
+        endpoint = "/kubernetes/statefulsets";
+        break;
+      case "daemonset":
+        endpoint = "/kubernetes/daemonsets";
+        break;
+      case "job":
+        endpoint = "/kubernetes/jobs";
+        break;
+      case "cronjob":
+        endpoint = "/kubernetes/cronjobs";
+        break;
+      case "customresourcedefinition":
+      case "crd":
+        endpoint = "/kubernetes/customresourcedefinitions";
+        break;
+      case "service":
+        endpoint = "/kubernetes/services";
+        break;
+      case "ingress":
+        endpoint = "/kubernetes/ingresses";
+        break;
+      case "persistentvolumeclaim":
+      case "pvc":
+        endpoint = "/kubernetes/pvcs";
+        break;
+      case "persistentvolume":
+      case "pv":
+        endpoint = "/kubernetes/pvs";
+        break;
+      case "namespace":
+        endpoint = "/kubernetes/namespaces";
+        break;
+      case "networkpolicy":
+        endpoint = "/kubernetes/networkpolicies";
+        break;
+      case "ingressclass":
+        endpoint = "/kubernetes/ingressclasses";
+        break;
+      default:
+        throw new Error(`Creating ${kind} resources is not supported. Supported types: Pod, Deployment, StatefulSet, DaemonSet, Job, CronJob, CRD, Service, Ingress, PVC, PV, Namespace, NetworkPolicy, IngressClass.`);
+    }
+    return Api.postResource(endpoint, content, mimeType);
   }
   static async updateResource(kind, name, namespace, content, contentType = "yaml") {
     const endpoint = this.getResourceEndpoint(kind, name, namespace);
@@ -37928,67 +38005,93 @@ LogsDrawer.styles = i$5`
     }
 
     .controls {
-      padding: 16px 20px;
-      background: var(--vscode-editor-background, var(--vscode-bg-light, #252526));
+      padding: 12px 20px;
+      background: var(--vscode-sideBar-background, var(--vscode-bg-light, #252526));
       border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
       display: flex;
-      gap: 12px;
+      gap: 8px;
       align-items: center;
       flex-shrink: 0;
+      flex-wrap: wrap;
     }
 
     .search-container {
       flex: 1;
+      min-width: 200px;
       position: relative;
+      display: flex;
+      align-items: center;
     }
 
     .search-input {
       width: 100%;
-      padding: 8px 12px 8px 36px;
+      padding: 6px 12px 6px 32px;
       background: var(--vscode-input-background, #3c3c3c);
       color: var(--vscode-input-foreground, var(--vscode-text, #cccccc));
-      border: 1px solid var(--vscode-input-border, transparent);
+      border: 1px solid var(--vscode-input-border, rgba(255, 255, 255, 0.1));
       border-radius: 4px;
       font-size: 13px;
       outline: none;
+      height: 32px;
+      box-sizing: border-box;
+      transition: border-color 0.2s ease;
     }
 
     .search-input:focus {
       border-color: var(--vscode-focusBorder, #007acc);
+      background: var(--vscode-input-background, #3c3c3c);
+    }
+
+    .search-input::placeholder {
+      color: var(--vscode-input-placeholderForeground, rgba(204, 204, 204, 0.5));
     }
 
     .search-icon {
       position: absolute;
-      left: 12px;
+      left: 10px;
       top: 50%;
       transform: translateY(-50%);
-      width: 16px;
-      height: 16px;
-      color: var(--vscode-icon-foreground, var(--vscode-text-dim, #9d9d9d));
+      width: 14px;
+      height: 14px;
+      color: var(--vscode-input-placeholderForeground, rgba(204, 204, 204, 0.5));
+      pointer-events: none;
     }
 
     .control-button {
       background: var(--vscode-button-secondaryBackground, transparent);
       color: var(--vscode-button-secondaryForeground, var(--vscode-text, #cccccc));
-      border: 1px solid var(--vscode-button-border, var(--vscode-panel-border, #454545));
-      padding: 6px 14px;
+      border: 1px solid var(--vscode-button-border, rgba(255, 255, 255, 0.1));
+      padding: 6px 12px;
       border-radius: 4px;
       cursor: pointer;
       font-size: 13px;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 6px;
-      transition: all 0.2s;
+      transition: all 0.2s ease;
       white-space: nowrap;
+      height: 32px;
+      box-sizing: border-box;
+      font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
     }
 
-    .control-button:hover {
+    .control-button svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+
+    .control-button:hover:not(:disabled) {
       background: var(--vscode-button-secondaryHoverBackground, rgba(90, 93, 94, 0.31));
-      border-color: var(--vscode-button-border, var(--vscode-panel-border, #454545));
+      border-color: var(--vscode-button-hoverBorder, rgba(255, 255, 255, 0.2));
+    }
+
+    .control-button:active:not(:disabled) {
+      background: var(--vscode-button-secondaryHoverBackground, rgba(90, 93, 94, 0.5));
     }
 
     .control-button:disabled {
-      opacity: 0.5;
+      opacity: 0.4;
       cursor: not-allowed;
     }
 
@@ -37996,6 +38099,11 @@ LogsDrawer.styles = i$5`
       background: var(--vscode-button-background, #007acc);
       color: var(--vscode-button-foreground, white);
       border-color: var(--vscode-button-background, #007acc);
+    }
+
+    .control-button.active:hover:not(:disabled) {
+      background: var(--vscode-button-hoverBackground, #0098ff);
+      border-color: var(--vscode-button-hoverBackground, #0098ff);
     }
 
     .content {
@@ -51083,6 +51191,98 @@ __decorateClass$o([
 KubernetesNodes = __decorateClass$o([
   t$2("kubernetes-nodes")
 ], KubernetesNodes);
+function evaluateJSONPath(obj, path) {
+  if (!obj || !path) {
+    return void 0;
+  }
+  const cleanPath = path.startsWith(".") ? path.substring(1) : path;
+  if (!cleanPath.includes("[")) {
+    return evaluateSimplePath(obj, cleanPath);
+  }
+  const filterMatch = cleanPath.match(/^(.*?)\[?\??\((@\.[\w]+)==['"]?(.*?)['"]?\)\]\.?(.*)$/);
+  if (filterMatch) {
+    const [, beforeFilter, filterKey, filterValue, afterFilter] = filterMatch;
+    if (!filterKey) return void 0;
+    let current = beforeFilter ? evaluateSimplePath(obj, beforeFilter) : obj;
+    if (!Array.isArray(current)) {
+      return void 0;
+    }
+    const cleanFilterKey = filterKey.substring(2);
+    const filtered = current.filter((item) => {
+      const itemValue = evaluateSimplePath(item, cleanFilterKey);
+      return itemValue === filterValue || String(itemValue) === String(filterValue);
+    });
+    if (afterFilter && filtered.length > 0) {
+      return evaluateSimplePath(filtered[0], afterFilter);
+    }
+    return filtered.length > 0 ? filtered[0] : void 0;
+  }
+  const indexMatch = cleanPath.match(/^(.*?)\[(\d+)\]\.?(.*)$/);
+  if (indexMatch) {
+    const [, beforeIndex, index2, afterIndex] = indexMatch;
+    if (!index2) return void 0;
+    let current = beforeIndex ? evaluateSimplePath(obj, beforeIndex) : obj;
+    if (!Array.isArray(current)) {
+      return void 0;
+    }
+    const item = current[parseInt(index2, 10)];
+    if (!item) {
+      return void 0;
+    }
+    return afterIndex ? evaluateSimplePath(item, afterIndex) : item;
+  }
+  return evaluateSimplePath(obj, cleanPath);
+}
+function evaluateSimplePath(obj, path) {
+  if (!path) {
+    return obj;
+  }
+  const parts = path.split(".");
+  let current = obj;
+  for (const part of parts) {
+    if (current === null || current === void 0) {
+      return void 0;
+    }
+    current = current[part];
+  }
+  return current;
+}
+function formatColumnValue(value, type) {
+  if (value === null || value === void 0) {
+    return "-";
+  }
+  switch (type) {
+    case "date":
+      try {
+        const date = new Date(value);
+        const now = /* @__PURE__ */ new Date();
+        const diffMs = now.getTime() - date.getTime();
+        const diffSeconds = Math.floor(diffMs / 1e3);
+        const diffMinutes = Math.floor(diffSeconds / 60);
+        const diffHours = Math.floor(diffMinutes / 60);
+        const diffDays = Math.floor(diffHours / 24);
+        if (diffDays > 0) {
+          return `${diffDays}d ${diffHours % 24}h`;
+        } else if (diffHours > 0) {
+          return `${diffHours}h ${diffMinutes % 60}m`;
+        } else if (diffMinutes > 0) {
+          return `${diffMinutes}m`;
+        } else {
+          return `${diffSeconds}s`;
+        }
+      } catch {
+        return String(value);
+      }
+    case "integer":
+    case "number":
+      return String(value);
+    case "boolean":
+      return value ? "True" : "False";
+    case "string":
+    default:
+      return String(value);
+  }
+}
 var __defProp$n = Object.defineProperty;
 var __getOwnPropDesc$l = Object.getOwnPropertyDescriptor;
 var __decorateClass$n = (decorators, target, key, kind) => {
@@ -51104,6 +51304,7 @@ let CRDInstancesDrawer = class extends i$2 {
     this.crdScope = "Namespaced";
     this.loading = false;
     this.width = "80%";
+    this.crdDefinition = null;
     this.searchQuery = "";
     this.selectedNamespace = "All Namespaces";
     this.instances = [];
@@ -51117,6 +51318,10 @@ let CRDInstancesDrawer = class extends i$2 {
     this.editResourceFormat = "yaml";
     this.loadingEdit = false;
     this.deleting = false;
+    this.showCreateDrawer = false;
+    this.createResourceValue = "";
+    this.createResourceFormat = "yaml";
+    this.isCreating = false;
     this.showDeleteModal = false;
     this.deleteItem = null;
     this.handleKeyDown = (event) => {
@@ -51149,18 +51354,39 @@ let CRDInstancesDrawer = class extends i$2 {
           instancesArray = [];
         }
       }
-      this.instances = instancesArray.map((item) => ({
-        name: item.metadata?.name || item.name || "",
-        namespace: item.metadata?.namespace || item.namespace,
-        apiVersion: item.apiVersion || `${this.crdGroup}/${this.crdVersion}`,
-        kind: item.kind || this.crdKind,
-        status: item.status?.phase || item.status?.state || "Unknown",
-        age: this.calculateAge(item.metadata?.creationTimestamp || item.creationTimestamp),
-        labels: item.metadata?.labels || item.labels || {},
-        annotations: item.metadata?.annotations || item.annotations || {}
-      }));
+      this.instances = instancesArray.map((item) => {
+        const instance = {
+          name: item.metadata?.name || item.name || "",
+          namespace: item.metadata?.namespace || item.namespace,
+          apiVersion: item.apiVersion || `${this.crdGroup}/${this.crdVersion}`,
+          kind: item.kind || this.crdKind,
+          status: item.status?.phase || item.status?.state || "Unknown",
+          age: this.calculateAge(item.metadata?.creationTimestamp || item.creationTimestamp),
+          labels: item.metadata?.labels || item.labels || {},
+          annotations: item.metadata?.annotations || item.annotations || {}
+        };
+        const printerColumns = this.getAdditionalPrinterColumns();
+        if (printerColumns && printerColumns.length > 0) {
+          for (const col of printerColumns) {
+            if (col.name === "Age" || col.name === "AGE") {
+              continue;
+            }
+            const value = evaluateJSONPath(item, col.jsonPath);
+            instance[`_dynamic_${col.name}`] = formatColumnValue(value, col.type || "string");
+          }
+        }
+        if (item.metadata?.name && item.metadata.name === instancesArray[0]?.metadata?.name) {
+          console.log("[CRD Debug] Processing first instance:", item.metadata.name);
+          console.log("[CRD Debug] Item structure:", item);
+          console.log("[CRD Debug] Printer columns:", printerColumns);
+          printerColumns?.forEach((col) => {
+            const val = evaluateJSONPath(item, col.jsonPath);
+            console.log(`[CRD Debug] Column "${col.name}" jsonPath="${col.jsonPath}" value=`, val);
+          });
+        }
+        return instance;
+      });
     } catch (err) {
-      console.error("Failed to fetch CRD instances:", err);
       this.error = `Failed to fetch instances: ${err?.message || "Unknown error"}`;
       this.instances = [];
     } finally {
@@ -51213,6 +51439,23 @@ let CRDInstancesDrawer = class extends i$2 {
       return `${seconds}s`;
     }
   }
+  /**
+   * Extract additionalPrinterColumns from the CRD definition for the active version
+   */
+  getAdditionalPrinterColumns() {
+    if (!this.crdDefinition || !this.crdDefinition.spec || !this.crdDefinition.spec.versions) {
+      return null;
+    }
+    const version2 = this.crdDefinition.spec.versions.find(
+      (v2) => v2.name === this.crdVersion
+    );
+    if (!version2 || !version2.additionalPrinterColumns) {
+      return null;
+    }
+    return version2.additionalPrinterColumns.filter(
+      (col) => col.priority === void 0 || col.priority === 0
+    );
+  }
   getColumns() {
     const columns = [
       { key: "name", label: "Name", type: "link" }
@@ -51220,10 +51463,21 @@ let CRDInstancesDrawer = class extends i$2 {
     if (this.crdScope === "Namespaced") {
       columns.push({ key: "namespace", label: "Namespace" });
     }
-    columns.push(
-      { key: "status", label: "Status" },
-      { key: "age", label: "Age" }
-    );
+    const printerColumns = this.getAdditionalPrinterColumns();
+    if (printerColumns && printerColumns.length > 0) {
+      for (const col of printerColumns) {
+        if (col.name === "Age" || col.name === "AGE") {
+          continue;
+        }
+        columns.push({
+          key: `_dynamic_${col.name}`,
+          label: col.name
+        });
+      }
+    } else {
+      columns.push({ key: "status", label: "Status" });
+    }
+    columns.push({ key: "age", label: "Age" });
     return columns;
   }
   getActions(_item) {
@@ -51328,6 +51582,59 @@ let CRDInstancesDrawer = class extends i$2 {
     this.selectedInstance = instance;
     this.showInstanceDetails = true;
     await this.fetchInstanceDetails(instance);
+  }
+  openCreateDrawer() {
+    this.createResourceFormat = "yaml";
+    this.showCreateDrawer = true;
+    const template = {
+      apiVersion: `${this.crdGroup}/${this.crdVersion}`,
+      kind: this.crdKind,
+      metadata: {
+        name: "example-name",
+        ...this.crdScope === "Namespaced" && { namespace: "default" }
+      },
+      spec: {
+        // Add your spec fields here
+      }
+    };
+    try {
+      this.createResourceValue = YAML.stringify(template);
+    } catch (error) {
+      console.error("Failed to generate template:", error);
+      this.createResourceValue = JSON.stringify(template, null, 2);
+      this.createResourceFormat = "json";
+    }
+  }
+  async handleCreateResource(event) {
+    const { resource, format } = event.detail;
+    let content = "";
+    try {
+      content = format === "json" ? JSON.stringify(resource) : resource.yaml;
+      this.isCreating = true;
+      let endpoint = `/kubernetes/customresourcedefinitions/${this.crdName}/instances`;
+      if (this.crdScope === "Namespaced") {
+        const parsedResource = format === "json" ? resource : YAML.parse(content);
+        const namespace = parsedResource?.metadata?.namespace || "default";
+        endpoint = `${endpoint}/${namespace}`;
+      } else {
+        endpoint = `${endpoint}/-`;
+      }
+      await Api.postResource(endpoint, content, format === "json" ? "application/json" : "application/yaml");
+      const nc = this.shadowRoot?.querySelector("notification-container");
+      if (nc && typeof nc.addNotification === "function") {
+        nc.addNotification({ type: "success", message: `${this.crdKind} created successfully` });
+      }
+      await this.fetchInstances();
+      this.showCreateDrawer = false;
+      this.createResourceValue = "";
+    } catch (err) {
+      const nc = this.shadowRoot?.querySelector("notification-container");
+      if (nc && typeof nc.addNotification === "function") {
+        nc.addNotification({ type: "error", message: `Failed to create ${this.crdKind}: ${err?.message || "Unknown error"}` });
+      }
+    } finally {
+      this.isCreating = false;
+    }
   }
   async editInstance(instance) {
     this.selectedInstance = instance;
@@ -51491,6 +51798,17 @@ let CRDInstancesDrawer = class extends i$2 {
           placeholder="Search instances..."
           @search-change="${this.handleSearchChange}"
         ></search-input>
+            <button 
+              class="btn-create" 
+              @click="${this.openCreateDrawer}"
+              title="Create CRD Instance"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Create CRD Instance
+            </button>
       </div>
 
       <div class="content">
@@ -51574,11 +51892,25 @@ let CRDInstancesDrawer = class extends i$2 {
         .title=${`Edit ${this.selectedInstance?.name || "Resource"}`}
         .value=${this.editResourceContent}
         .format=${this.editResourceFormat}
-        .submitLabel="Update"
+        .submitLabel=${"Update"}
         .loading=${this.loadingEdit}
         @close=${(e3) => this.handleEditDrawerClose(e3)}
         @create=${this.handleUpdateResource}
       ></create-resource-drawer>
+
+
+        <create-resource-drawer
+          .show="${this.showCreateDrawer}"
+          .title="Create CRD Instance"
+          .value="${this.createResourceValue}"
+          .format="${this.createResourceFormat}"
+          .submitLabel=${"Apply"}
+          .loading="${this.isCreating}"
+          @close="${() => {
+      this.showCreateDrawer = false;
+    }}"
+          @create="${this.handleCreateResource}"
+        ></create-resource-drawer>
 
       <delete-modal
         .show=${this.showDeleteModal}
@@ -51619,6 +51951,30 @@ CRDInstancesDrawer.styles = i$5`
       padding: 1rem;
       border-bottom: 1px solid var(--vscode-widget-border, #303031);
       background: var(--vscode-editor-background, #1e1e1e);
+    }
+
+    .btn-create {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: var(--vscode-button-background, #007acc);
+      color: var(--vscode-button-foreground, white);
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .btn-create:hover {
+      background: var(--vscode-button-hoverBackground, #005a9e);
+    }
+
+    .btn-create svg {
+      width: 14px;
+      height: 14px;
     }
 
     .title-section {
@@ -51793,6 +52149,9 @@ __decorateClass$n([
   n2({ type: String })
 ], CRDInstancesDrawer.prototype, "width", 2);
 __decorateClass$n([
+  n2({ type: Object })
+], CRDInstancesDrawer.prototype, "crdDefinition", 2);
+__decorateClass$n([
   r$1()
 ], CRDInstancesDrawer.prototype, "searchQuery", 2);
 __decorateClass$n([
@@ -51833,6 +52192,18 @@ __decorateClass$n([
 ], CRDInstancesDrawer.prototype, "deleting", 2);
 __decorateClass$n([
   r$1()
+], CRDInstancesDrawer.prototype, "showCreateDrawer", 2);
+__decorateClass$n([
+  r$1()
+], CRDInstancesDrawer.prototype, "createResourceValue", 2);
+__decorateClass$n([
+  r$1()
+], CRDInstancesDrawer.prototype, "createResourceFormat", 2);
+__decorateClass$n([
+  r$1()
+], CRDInstancesDrawer.prototype, "isCreating", 2);
+__decorateClass$n([
+  r$1()
 ], CRDInstancesDrawer.prototype, "showDeleteModal", 2);
 __decorateClass$n([
   r$1()
@@ -51867,6 +52238,9 @@ let KubernetesCRDs = class extends i$2 {
     this.showCreateDrawer = false;
     this.createResourceValue = "";
     this.isCreating = false;
+    this.isEditMode = false;
+    this.editingResource = null;
+    this.resourceFormat = "yaml";
     this.showInstancesDrawer = false;
     this.selectedCRDForInstances = null;
   }
@@ -51883,6 +52257,7 @@ let KubernetesCRDs = class extends i$2 {
     return [
       { label: "View Details", action: "view" },
       { label: "View Instances", action: "instances" },
+      { label: "Edit", action: "edit" },
       { label: "Delete", action: "delete", danger: true }
     ];
   }
@@ -51911,9 +52286,60 @@ let KubernetesCRDs = class extends i$2 {
       case "instances":
         this.viewInstances(item);
         break;
+      case "edit":
+        this.editItem(item);
+        break;
       case "delete":
         this.deleteItem(item);
         break;
+    }
+  }
+  async editItem(item) {
+    this.editingResource = item;
+    this.isEditMode = true;
+    this.resourceFormat = "yaml";
+    this.showCreateDrawer = true;
+    this.isCreating = true;
+    try {
+      const resourceContent = await KubernetesApi.getResourceRaw(
+        "CustomResourceDefinition",
+        item.name,
+        void 0,
+        "json"
+      );
+      const parsed = JSON.parse(resourceContent);
+      let unwrapped = parsed;
+      if (parsed.data?.crd_detail) {
+        unwrapped = parsed.data.crd_detail;
+      } else if (parsed.data?.crd) {
+        unwrapped = parsed.data.crd;
+      } else if (parsed.data?.resource) {
+        unwrapped = parsed.data.resource;
+      } else if (parsed.crd_detail) {
+        unwrapped = parsed.crd_detail;
+      } else if (parsed.crd) {
+        unwrapped = parsed.crd;
+      } else if (parsed.resource) {
+        unwrapped = parsed.resource;
+      }
+      if (unwrapped.metadata?.managedFields) {
+        unwrapped = JSON.parse(JSON.stringify(unwrapped));
+        delete unwrapped.metadata.managedFields;
+      }
+      const yaml = await import("./index-DrOnyrEL.js");
+      this.createResourceValue = yaml.stringify(unwrapped);
+      this.isCreating = false;
+    } catch (error) {
+      console.error("Failed to fetch CRD for editing:", error);
+      this.isCreating = false;
+      this.showCreateDrawer = false;
+      const nc = this.shadowRoot?.querySelector("notification-container");
+      if (nc && typeof nc.addNotification === "function") {
+        nc.addNotification({
+          type: "error",
+          message: `Failed to fetch CRD: ${error.message || "Unknown error"}`
+        });
+      }
     }
   }
   async viewDetails(item) {
@@ -51921,7 +52347,21 @@ let KubernetesCRDs = class extends i$2 {
     this.showDetails = true;
     this.loadingDetails = true;
     try {
-      this.detailsData = await KubernetesApi.getResourceDetails("crd", item.name);
+      const response = await KubernetesApi.getResourceDetails("crd", item.name);
+      let unwrapped = response;
+      if (response?.data?.crd_detail) {
+        unwrapped = response.data.crd_detail;
+      } else if (response?.crd_detail) {
+        unwrapped = response.crd_detail;
+      } else if (response?.crd) {
+        unwrapped = response.crd;
+      } else if (response?.resource) {
+        unwrapped = response.resource;
+      }
+      if (unwrapped?.metadata?.managedFields) {
+        delete unwrapped.metadata.managedFields;
+      }
+      this.detailsData = unwrapped;
     } catch (error) {
       console.error("Failed to fetch CRD details:", error);
       this.detailsData = null;
@@ -51929,8 +52369,14 @@ let KubernetesCRDs = class extends i$2 {
       this.loadingDetails = false;
     }
   }
-  viewInstances(item) {
+  async viewInstances(item) {
     this.selectedCRDForInstances = item;
+    try {
+      const fullCRD = await KubernetesApi.getCRDDetails(item.name);
+      this.selectedCRDForInstances = { ...item, _fullDefinition: fullCRD };
+    } catch (error) {
+      console.error("Failed to fetch full CRD definition:", error);
+    }
     this.showInstancesDrawer = true;
   }
   deleteItem(item) {
@@ -51968,6 +52414,9 @@ let KubernetesCRDs = class extends i$2 {
     this.itemToDelete = null;
   }
   handleCreate() {
+    this.isEditMode = false;
+    this.editingResource = null;
+    this.resourceFormat = "yaml";
     this.createResourceValue = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -52006,18 +52455,35 @@ spec:
     try {
       content = format === "json" ? JSON.stringify(resource) : resource.yaml;
       this.isCreating = true;
-      await KubernetesApi.createResource(content, format);
+      if (this.isEditMode && this.editingResource) {
+        await KubernetesApi.updateResource(
+          "CustomResourceDefinition",
+          this.editingResource.name,
+          void 0,
+          content,
+          format
+        );
+        const nc = this.shadowRoot?.querySelector("notification-container");
+        if (nc && typeof nc.addNotification === "function") {
+          nc.addNotification({ type: "success", message: "CRD updated successfully" });
+        }
+      } else {
+        await KubernetesApi.createResource(content, format);
+        const nc = this.shadowRoot?.querySelector("notification-container");
+        if (nc && typeof nc.addNotification === "function") {
+          nc.addNotification({ type: "success", message: "CRD created successfully" });
+        }
+      }
       await this.fetchData();
       this.showCreateDrawer = false;
       this.createResourceValue = "";
-      const nc = this.shadowRoot?.querySelector("notification-container");
-      if (nc && typeof nc.addNotification === "function") {
-        nc.addNotification({ type: "success", message: "CRD created successfully" });
-      }
+      this.isEditMode = false;
+      this.editingResource = null;
     } catch (err) {
       const nc = this.shadowRoot?.querySelector("notification-container");
       if (nc && typeof nc.addNotification === "function") {
-        nc.addNotification({ type: "error", message: `Failed to create CRD: ${err?.message || "Unknown error"}` });
+        const action = this.isEditMode ? "update" : "create";
+        nc.addNotification({ type: "error", message: `Failed to ${action} CRD: ${err?.message || "Unknown error"}` });
       }
     } finally {
       this.isCreating = false;
@@ -52111,8 +52577,9 @@ spec:
 
         <create-resource-drawer
           .show="${this.showCreateDrawer}"
-          .title="Create Custom Resource Definition"
+          .title="${this.isEditMode ? "Edit CRD" : "Create CRD"}"
           .value="${this.createResourceValue}"
+          .format="${this.resourceFormat}"
           .submitLabel="Apply"
           .loading="${this.isCreating}"
           @close="${() => {
@@ -52131,6 +52598,7 @@ spec:
         .crdGroup="${this.selectedCRDForInstances?.group || ""}"
         .crdVersion="${this.selectedCRDForInstances?.version || ""}"
         .crdScope="${this.selectedCRDForInstances?.scope || "Namespaced"}"
+        .crdDefinition="${this.selectedCRDForInstances?._fullDefinition}"
         @close="${this.handleInstancesDrawerClose}"
       ></crd-instances-drawer>
     `;
@@ -52231,6 +52699,15 @@ __decorateClass$m([
 __decorateClass$m([
   r$1()
 ], KubernetesCRDs.prototype, "isCreating", 2);
+__decorateClass$m([
+  r$1()
+], KubernetesCRDs.prototype, "isEditMode", 2);
+__decorateClass$m([
+  r$1()
+], KubernetesCRDs.prototype, "editingResource", 2);
+__decorateClass$m([
+  r$1()
+], KubernetesCRDs.prototype, "resourceFormat", 2);
 __decorateClass$m([
   r$1()
 ], KubernetesCRDs.prototype, "showInstancesDrawer", 2);
@@ -73267,13 +73744,14 @@ class SidebarTree extends I18nLitElement {
             label: "kubernetes.crds",
             icon: "crds",
             route: "kubernetes/crds"
-          },
-          {
-            id: "kubernetes-helm",
-            label: "kubernetes.helms",
-            icon: "helm",
-            route: "kubernetes/helm"
           }
+          // Temporarily hidden - will be worked on later
+          // {
+          //   id: 'kubernetes-helm',
+          //   label: 'kubernetes.helms',
+          //   icon: 'helm',
+          //   route: 'kubernetes/helm'
+          // }
         ]
       },
       {
@@ -74182,6 +74660,40 @@ __decorateClass([
   r$1()
 ], AppRoot.prototype, "subRoute");
 customElements.define("app-root", AppRoot);
-export {
+const appRoot = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
   AppRoot
+}, Symbol.toStringTag, { value: "Module" }));
+export {
+  Alias as A,
+  Composer as C,
+  Document$1 as D,
+  Lexer as L,
+  Pair as P,
+  Schema as S,
+  YAML as Y,
+  YAMLError as a,
+  YAMLParseError as b,
+  cst as c,
+  YAMLWarning as d,
+  isCollection$1 as e,
+  isDocument as f,
+  isMap as g,
+  isNode as h,
+  isAlias as i,
+  isPair as j,
+  isScalar$1 as k,
+  isSeq as l,
+  Scalar as m,
+  YAMLMap as n,
+  YAMLSeq as o,
+  LineCounter as p,
+  Parser as q,
+  parse as r,
+  parseAllDocuments as s,
+  parseDocument as t,
+  stringify as u,
+  visit$1 as v,
+  visitAsync as w,
+  appRoot as x
 };

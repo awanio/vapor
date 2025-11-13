@@ -33,7 +33,7 @@ type KubernetesService interface {
 	ApplyCRD(ctx context.Context, crd *apiextensionsv1.CustomResourceDefinition) (*apiextensionsv1.CustomResourceDefinition, error)
 	UpdateCRD(ctx context.Context, name string, crd *apiextensionsv1.CustomResourceDefinition) (*apiextensionsv1.CustomResourceDefinition, error)
 	DeleteCRD(ctx context.Context, name string) error
-	ListCRDObjects(ctx context.Context, crdName, namespace string) ([]CRDObject, error)
+	ListCRDObjects(ctx context.Context, crdName, namespace string) ([]*unstructured.Unstructured, error)
 	GetCRDObjectDetail(ctx context.Context, crdName, objectName, namespace string) (*unstructured.Unstructured, error)
 	GetPodDetail(ctx context.Context, namespace, name string) (*corev1.Pod, error)
 	CreateCRDObject(ctx context.Context, crdName, namespace string, object *unstructured.Unstructured) (*unstructured.Unstructured, error)

@@ -1,21 +1,103 @@
 type: object
+description: |
+  A complete Kubernetes custom resource object. The structure varies based on the CRD definition.
+  All objects include standard Kubernetes metadata, and custom spec/status fields as defined by the CRD.
 properties:
-  name:
-    type: string
-  namespace:
-    type: string
-  kind:
-    type: string
   apiVersion:
     type: string
-  creationTimestamp:
+    description: The API version of this custom resource
+    example: "stable.example.com/v1"
+  kind:
     type: string
-    format: date-time
-  labels:
+    description: The kind of this custom resource
+    example: "CronTab"
+  metadata:
     type: object
-    additionalProperties:
-      type: string
-  annotations:
+    description: Standard Kubernetes object metadata
+    properties:
+      name:
+        type: string
+        description: The name of the custom resource
+      namespace:
+        type: string
+        description: The namespace of the custom resource (omitted for cluster-scoped resources)
+      uid:
+        type: string
+        description: The unique identifier
+      resourceVersion:
+        type: string
+        description: An opaque value that represents the internal version
+      generation:
+        type: integer
+        description: A sequence number representing a specific generation of the desired state
+      creationTimestamp:
+        type: string
+        format: date-time
+        description: Creation timestamp
+      deletionTimestamp:
+        type: string
+        format: date-time
+        description: Deletion timestamp (present when object is being deleted)
+      labels:
+        type: object
+        additionalProperties:
+          type: string
+        description: Map of string keys and values for labels
+      annotations:
+        type: object
+        additionalProperties:
+          type: string
+        description: Map of string keys and values for annotations
+      ownerReferences:
+        type: array
+        description: List of objects depended by this object
+        items:
+          type: object
+      finalizers:
+        type: array
+        description: List of finalizers
+        items:
+          type: string
+      managedFields:
+        type: array
+        description: Managed fields for field management
+        items:
+          type: object
+  spec:
     type: object
-    additionalProperties:
-      type: string
+    description: |
+      The specification of the custom resource. Fields vary based on the CRD schema.
+      This object contains all custom fields defined in the CRD's OpenAPI schema.
+    additionalProperties: true
+  status:
+    type: object
+    description: |
+      The status of the custom resource. Fields vary based on the CRD schema.
+      This object contains status information as defined by the controller.
+    additionalProperties: true
+additionalProperties: true
+example:
+  apiVersion: "stable.example.com/v1"
+  kind: "CronTab"
+  metadata:
+    name: "my-crontab"
+    namespace: "default"
+    uid: "12345678-1234-1234-1234-123456789abc"
+    resourceVersion: "12345"
+    generation: 1
+    creationTimestamp: "2023-01-01T00:00:00Z"
+    labels:
+      app: "scheduler"
+    annotations:
+      description: "Example cron job"
+  spec:
+    cronSpec: "*/5 * * * *"
+    image: "busybox:latest"
+    replicas: 3
+  status:
+    active: 2
+    lastScheduleTime: "2023-01-01T12:00:00Z"
+    conditions:
+      - type: "Ready"
+        status: "True"
+        lastTransitionTime: "2023-01-01T12:00:00Z"

@@ -89,67 +89,93 @@ export class LogsDrawer extends LitElement {
     }
 
     .controls {
-      padding: 16px 20px;
-      background: var(--vscode-editor-background, var(--vscode-bg-light, #252526));
+      padding: 12px 20px;
+      background: var(--vscode-sideBar-background, var(--vscode-bg-light, #252526));
       border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
       display: flex;
-      gap: 12px;
+      gap: 8px;
       align-items: center;
       flex-shrink: 0;
+      flex-wrap: wrap;
     }
 
     .search-container {
       flex: 1;
+      min-width: 200px;
       position: relative;
+      display: flex;
+      align-items: center;
     }
 
     .search-input {
       width: 100%;
-      padding: 8px 12px 8px 36px;
+      padding: 6px 12px 6px 32px;
       background: var(--vscode-input-background, #3c3c3c);
       color: var(--vscode-input-foreground, var(--vscode-text, #cccccc));
-      border: 1px solid var(--vscode-input-border, transparent);
+      border: 1px solid var(--vscode-input-border, rgba(255, 255, 255, 0.1));
       border-radius: 4px;
       font-size: 13px;
       outline: none;
+      height: 32px;
+      box-sizing: border-box;
+      transition: border-color 0.2s ease;
     }
 
     .search-input:focus {
       border-color: var(--vscode-focusBorder, #007acc);
+      background: var(--vscode-input-background, #3c3c3c);
+    }
+
+    .search-input::placeholder {
+      color: var(--vscode-input-placeholderForeground, rgba(204, 204, 204, 0.5));
     }
 
     .search-icon {
       position: absolute;
-      left: 12px;
+      left: 10px;
       top: 50%;
       transform: translateY(-50%);
-      width: 16px;
-      height: 16px;
-      color: var(--vscode-icon-foreground, var(--vscode-text-dim, #9d9d9d));
+      width: 14px;
+      height: 14px;
+      color: var(--vscode-input-placeholderForeground, rgba(204, 204, 204, 0.5));
+      pointer-events: none;
     }
 
     .control-button {
       background: var(--vscode-button-secondaryBackground, transparent);
       color: var(--vscode-button-secondaryForeground, var(--vscode-text, #cccccc));
-      border: 1px solid var(--vscode-button-border, var(--vscode-panel-border, #454545));
-      padding: 6px 14px;
+      border: 1px solid var(--vscode-button-border, rgba(255, 255, 255, 0.1));
+      padding: 6px 12px;
       border-radius: 4px;
       cursor: pointer;
       font-size: 13px;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 6px;
-      transition: all 0.2s;
+      transition: all 0.2s ease;
       white-space: nowrap;
+      height: 32px;
+      box-sizing: border-box;
+      font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
     }
 
-    .control-button:hover {
+    .control-button svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+
+    .control-button:hover:not(:disabled) {
       background: var(--vscode-button-secondaryHoverBackground, rgba(90, 93, 94, 0.31));
-      border-color: var(--vscode-button-border, var(--vscode-panel-border, #454545));
+      border-color: var(--vscode-button-hoverBorder, rgba(255, 255, 255, 0.2));
+    }
+
+    .control-button:active:not(:disabled) {
+      background: var(--vscode-button-secondaryHoverBackground, rgba(90, 93, 94, 0.5));
     }
 
     .control-button:disabled {
-      opacity: 0.5;
+      opacity: 0.4;
       cursor: not-allowed;
     }
 
@@ -157,6 +183,11 @@ export class LogsDrawer extends LitElement {
       background: var(--vscode-button-background, #007acc);
       color: var(--vscode-button-foreground, white);
       border-color: var(--vscode-button-background, #007acc);
+    }
+
+    .control-button.active:hover:not(:disabled) {
+      background: var(--vscode-button-hoverBackground, #0098ff);
+      border-color: var(--vscode-button-hoverBackground, #0098ff);
     }
 
     .content {

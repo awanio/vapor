@@ -562,60 +562,50 @@ return nil
 }
 
 // ListCRDObjects lists all objects for a specific CRD
-func (s *Service) ListCRDObjects(ctx context.Context, crdName, namespace string) ([]CRDObject, error) {
-	// First, get the CRD to extract necessary information
-	crd, err := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, crdName, metav1.GetOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get CRD %s: %w", crdName, err)
-	}
-
-	// Find the served version
-	var version string
-	for _, v := range crd.Spec.Versions {
-		if v.Served {
-			version = v.Name
-			break
-		}
-	}
-	if version == "" && len(crd.Spec.Versions) > 0 {
-		version = crd.Spec.Versions[0].Name
-	}
-
-	// Create GroupVersionResource
-	gvr := schema.GroupVersionResource{
-		Group:    crd.Spec.Group,
-		Version:  version,
-		Resource: crd.Spec.Names.Plural,
-	}
-
-	// List objects using dynamic client
-	var unstructuredList *unstructured.UnstructuredList
-
-	// For cluster-scoped resources, ignore namespace parameter
-	unstructuredList, err = s.dynamicClient.Resource(gvr).List(ctx, metav1.ListOptions{})
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to list objects for CRD %s: %w", crdName, err)
-	}
-
-	// Convert unstructured objects to CRDObject
-	crdObjects := make([]CRDObject, 0, len(unstructuredList.Items))
-	for _, item := range unstructuredList.Items {
-		crdObject := CRDObject{
-			Name:              item.GetName(),
-			Namespace:         item.GetNamespace(),
-			Kind:              item.GetKind(),
-			APIVersion:        item.GetAPIVersion(),
-			CreationTimestamp: item.GetCreationTimestamp().Time,
-			Labels:            item.GetLabels(),
-			Annotations:       item.GetAnnotations(),
-		}
-		crdObjects = append(crdObjects, crdObject)
-	}
-
-	return crdObjects, nil
+func (s *Service) ListCRDObjects(ctx context.Context, crdName, namespace string) ([]*unstructured.Unstructured, error) {
+// First, get the CRD to extract necessary information
+crd, err := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, crdName, metav1.GetOptions{})
+if err != nil {
+return nil, fmt.Errorf("failed to get CRD %s: %w", crdName, err)
 }
 
+// Find the served version
+var version string
+for _, v := range crd.Spec.Versions {
+if v.Served {
+version = v.Name
+break
+}
+}
+if version == "" && len(crd.Spec.Versions) > 0 {
+version = crd.Spec.Versions[0].Name
+}
+
+// Create GroupVersionResource
+gvr := schema.GroupVersionResource{
+Group:    crd.Spec.Group,
+Version:  version,
+Resource: crd.Spec.Names.Plural,
+}
+
+// List objects using dynamic client
+var unstructuredList *unstructured.UnstructuredList
+
+// For cluster-scoped resources, ignore namespace parameter
+unstructuredList, err = s.dynamicClient.Resource(gvr).List(ctx, metav1.ListOptions{})
+
+if err != nil {
+return nil, fmt.Errorf("failed to list objects for CRD %s: %w", crdName, err)
+}
+
+// Return full unstructured objects with all data
+result := make([]*unstructured.Unstructured, 0, len(unstructuredList.Items))
+for i := range unstructuredList.Items {
+result = append(result, &unstructuredList.Items[i])
+}
+
+return result, nil
+}
 // GetCRDObjectDetail retrieves detailed information about a specific CRD object
 func (s *Service) GetCRDObjectDetail(ctx context.Context, crdName, namespace, objectName string) (*unstructured.Unstructured, error) {
 	// First, get the CRD to extract necessary information
