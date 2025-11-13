@@ -1,0 +1,43 @@
+patch:
+  summary: Uncordon a Kubernetes node
+  description: Marks a node as schedulable, allowing new pods to be scheduled on it
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Node name
+  responses:
+    '200':
+      description: Node uncordoned successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: success
+              message:
+                type: string
+                example: Node worker-1 uncordoned successfully
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '500':
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: error
+              message:
+                type: string
+                example: Failed to uncordon node

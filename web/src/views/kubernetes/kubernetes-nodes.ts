@@ -1,6 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { KubernetesApi } from '../../services/kubernetes-api.js';
+import { Api } from '../../api.js';
 import type { KubernetesNode, KubernetesResourceDetails } from '../../services/kubernetes-api.js';
 import '../../components/ui/search-input.js';
 import '../../components/ui/empty-state.js';
@@ -18,11 +19,14 @@ export class KubernetesNodes extends LitElement {
   @property({ type: String }) searchQuery = '';
   @property({ type: Boolean }) loading = false;
   @property({ type: String }) error: string | null = null;
-  
+
   @state() private showDetails = false;
   @state() private selectedNode: KubernetesNode | null = null;
   @state() private loadingDetails = false;
   @state() private nodeDetails: KubernetesResourceDetails | null = null;
+  @state() private showConfirmModal = false;
+  @state() private confirmAction: 'cordon' | 'drain' | null = null;
+  @state() private nodeForAction: KubernetesNode | null = null;
 
   static override styles = css`
     :host {
@@ -59,6 +63,36 @@ export class KubernetesNodes extends LitElement {
       font-size: 13px;
       color: var(--vscode-descriptionForeground, #cccccc80);
       margin-left: auto;
+    }
+
+    /* Raw Data Section */
+    .raw-data {
+      background: var(--vscode-editor-background, #1e1e1e);
+      border: 1px solid var(--vscode-widget-border, #303031);
+      border-radius: 4px;
+      padding: 1rem;
+      font-family: var(--vscode-editor-font-family, 'Courier New', monospace);
+      font-size: 12px;
+      color: var(--vscode-editor-foreground, #d4d4d4);
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    details {
+      margin-top: 1rem;
+    }
+
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--vscode-textLink-foreground, #3794ff);
+      padding: 0.5rem 0;
+      user-select: none;
+    }
+
+    details summary:hover {
+      color: var(--vscode-textLink-activeForeground, #4daafc);
     }
 
     /* Detail styles */
@@ -162,22 +196,18 @@ export class KubernetesNodes extends LitElement {
     return html`
       <div class="container">
         <div class="header">
-          <h1 class="title">Nodes</h1>
+          <search-input
+            .value=${this.searchQuery}
+            placeholder="Search nodes..."
+            @search-change=${this.handleSearchChange}
+          ></search-input>
+
+          <span class="resource-count">
+            ${this.getFilteredNodes().length} nodes
+          </span>
         </div>
 
         <div class="content">
-          <div class="filters">
-            <search-input
-              .value=${this.searchQuery}
-              placeholder="Search nodes..."
-              @search-change=${this.handleSearchChange}
-            ></search-input>
-
-            <span class="resource-count">
-              ${this.getFilteredNodes().length} nodes
-            </span>
-          </div>
-
           ${this.loading ? html`
             <loading-state message="Loading nodes..."></loading-state>
           ` : this.error ? html`
@@ -197,10 +227,22 @@ export class KubernetesNodes extends LitElement {
           ${this.renderNodeDetail()}
         </detail-drawer>
 
+        <delete-modal
+          .show=${this.showConfirmModal}
+          .item=${this.nodeForAction ? { type: 'Node', name: this.nodeForAction.name } : null}
+          modal-title="${this.getConfirmModalConfig()?.title || 'Confirm Action'}"
+          message="${this.getConfirmModalConfig()?.message || ''}"
+          confirm-label="${this.getConfirmModalConfig()?.confirmLabel || 'Confirm'}"
+          confirm-button-class="${this.getConfirmModalConfig()?.confirmButtonClass || 'primary'}"
+          @confirm-delete=${this.handleConfirmAction}
+          @cancel-delete=${this.handleCancelAction}
+        ></delete-modal>
+
         <notification-container></notification-container>
       </div>
     `;
   }
+
 
   private renderContent() {
     const nodes = this.getFilteredNodes();
@@ -243,7 +285,7 @@ export class KubernetesNodes extends LitElement {
     }
 
     const query = this.searchQuery.toLowerCase();
-    return this.nodes.filter(node => 
+    return this.nodes.filter(node =>
       node.name.toLowerCase().includes(query) ||
       node.status.toLowerCase().includes(query) ||
       node.roles.toLowerCase().includes(query) ||
@@ -259,7 +301,7 @@ export class KubernetesNodes extends LitElement {
 
     // Check if node is already cordoned (unschedulable)
     const isUnschedulable = this.nodeDetails?.spec?.unschedulable;
-    
+
     if (isUnschedulable) {
       actions.push({ label: 'Uncordon', action: 'uncordon' });
     } else {
@@ -274,7 +316,7 @@ export class KubernetesNodes extends LitElement {
   private async fetchNodes() {
     this.loading = true;
     this.error = null;
-    
+
     try {
       this.nodes = await KubernetesApi.getNodes();
     } catch (error) {
@@ -288,7 +330,7 @@ export class KubernetesNodes extends LitElement {
 
   private async fetchNodeDetails(nodeName: string) {
     this.loadingDetails = true;
-    
+
     try {
       // Use the specific node details endpoint
       const response = await KubernetesApi.getNodeDetails(nodeName);
@@ -315,19 +357,19 @@ export class KubernetesNodes extends LitElement {
 
   private async handleAction(event: CustomEvent) {
     const { action, item } = event.detail;
-    
+
     switch (action) {
       case 'view':
         await this.viewNodeDetails(item);
         break;
       case 'cordon':
-        await this.cordonNode(item);
+        this.showCordonConfirmation(item);
         break;
       case 'uncordon':
         await this.uncordonNode(item);
         break;
       case 'drain':
-        await this.drainNode(item);
+        this.showDrainConfirmation(item);
         break;
     }
   }
@@ -340,18 +382,7 @@ export class KubernetesNodes extends LitElement {
 
   private async cordonNode(node: KubernetesNode) {
     try {
-      await KubernetesApi.updateResource(
-        'Node',
-        node.name,
-        undefined,
-        JSON.stringify({
-          spec: {
-            unschedulable: true
-          }
-        }),
-        'json'
-      );
-      
+      await Api.patch(`/kubernetes/nodes/${node.name}/cordon`, {});
       this.showNotification(`Node ${node.name} cordoned successfully`, 'success');
       await this.fetchNodes();
     } catch (error) {
@@ -362,18 +393,7 @@ export class KubernetesNodes extends LitElement {
 
   private async uncordonNode(node: KubernetesNode) {
     try {
-      await KubernetesApi.updateResource(
-        'Node',
-        node.name,
-        undefined,
-        JSON.stringify({
-          spec: {
-            unschedulable: false
-          }
-        }),
-        'json'
-      );
-      
+      await Api.patch(`/kubernetes/nodes/${node.name}/uncordon`, {});
       this.showNotification(`Node ${node.name} uncordoned successfully`, 'success');
       await this.fetchNodes();
     } catch (error) {
@@ -382,10 +402,20 @@ export class KubernetesNodes extends LitElement {
     }
   }
 
-  private async drainNode(_node: KubernetesNode) {
-    // TODO: Implement node draining functionality
-    // This requires evicting all pods from the node
-    this.showNotification('Node draining is not yet implemented', 'warning');
+  private async drainNode(node: KubernetesNode) {
+    try {
+      await Api.post(`/kubernetes/nodes/${node.name}/drain`, {
+        gracePeriodSeconds: 30,
+        timeout: 300,
+        ignoreDaemonSets: true,
+        deleteEmptyDirData: false
+      });
+      this.showNotification(`Node ${node.name} drained successfully`, 'success');
+      await this.fetchNodes();
+    } catch (error) {
+      console.error('Failed to drain node:', error);
+      this.showNotification(`Failed to drain node ${node.name}`, 'error');
+    }
   }
 
   private renderNodeDetail() {
@@ -406,7 +436,7 @@ export class KubernetesNodes extends LitElement {
         ${this.renderResourceMetrics()}
         ${this.renderConditions()}
         ${this.renderTaints()}
-        ${this.renderActionButtons()}
+        ${this.renderRawData()}
       </div>
     `;
   }
@@ -559,32 +589,53 @@ export class KubernetesNodes extends LitElement {
     `;
   }
 
-  private renderActionButtons() {
-    if (!this.selectedNode || !this.nodeDetails) return html``;
+  private renderRawData() {
+    if (!this.nodeDetails) return html``;
 
-    const isUnschedulable = this.nodeDetails.spec?.unschedulable;
+    // Filter out managedFields from metadata as it's internal Kubernetes data
+    const filteredNode = { ...this.nodeDetails };
+    if (filteredNode.metadata?.managedFields) {
+      filteredNode.metadata = { ...filteredNode.metadata };
+      delete filteredNode.metadata.managedFields;
+    }
 
     return html`
-      <div class="action-buttons">
-        ${isUnschedulable ? html`
-          <button class="action-button primary" @click=${() => this.uncordonNode(this.selectedNode!)}>
-            Uncordon Node
-          </button>
-        ` : html`
-          <button class="action-button primary" @click=${() => this.cordonNode(this.selectedNode!)}>
-            Cordon Node
-          </button>
-        `}
-        <button class="action-button danger" @click=${() => this.drainNode(this.selectedNode!)}>
-          Drain Node
-        </button>
+      <div class="detail-section">
+        <details>
+          <summary>View raw resource data</summary>
+          <pre class="raw-data">${JSON.stringify(filteredNode, null, 2)}</pre>
+        </details>
       </div>
     `;
   }
 
+
+//   private renderActionButtons() {
+//     if (!this.selectedNode || !this.nodeDetails) return html``;
+// 
+//     const isUnschedulable = this.nodeDetails.spec?.unschedulable;
+// 
+//     return html`
+//       <div class="action-buttons">
+//         ${isUnschedulable ? html`
+//           <button class="action-button primary" @click=${() => this.uncordonNode(this.selectedNode!)}>
+//             Uncordon Node
+//           </button>
+//         ` : html`
+//           <button class="action-button primary" @click=${() => this.cordonNode(this.selectedNode!)}>
+//             Cordon Node
+//           </button>
+//         `}
+//         <button class="action-button danger" @click=${() => this.drainNode(this.selectedNode!)}>
+//           Drain Node
+//         </button>
+//       </div>
+//     `;
+//   }
+
   private formatMemory(memory?: string): string {
     if (!memory) return 'N/A';
-    
+
     // Convert Ki to GB
     const match = memory.match(/(\d+)Ki/);
     if (match && match[1]) {
@@ -592,10 +643,62 @@ export class KubernetesNodes extends LitElement {
       const gb = kb / 1024 / 1024;
       return `${gb.toFixed(2)} GB`;
     }
-    
+
     return memory;
   }
 
+
+  private showCordonConfirmation(node: KubernetesNode) {
+    this.nodeForAction = node;
+    this.confirmAction = 'cordon';
+    this.showConfirmModal = true;
+  }
+
+  private showDrainConfirmation(node: KubernetesNode) {
+    this.nodeForAction = node;
+    this.confirmAction = 'drain';
+    this.showConfirmModal = true;
+  }
+
+  private async handleConfirmAction() {
+    if (!this.nodeForAction || !this.confirmAction) return;
+
+    if (this.confirmAction === 'cordon') {
+      await this.cordonNode(this.nodeForAction);
+    } else if (this.confirmAction === 'drain') {
+      await this.drainNode(this.nodeForAction);
+    }
+
+    this.handleCancelAction();
+  }
+
+  private handleCancelAction() {
+    this.showConfirmModal = false;
+    this.confirmAction = null;
+    this.nodeForAction = null;
+  }
+
+  private getConfirmModalConfig() {
+    if (!this.nodeForAction) return null;
+
+    if (this.confirmAction === 'cordon') {
+      return {
+        title: 'Confirm Cordon Node',
+        message: `Are you sure you want to cordon node "${this.nodeForAction.name}"? This will mark the node as unschedulable and prevent new pods from being scheduled on it.`,
+        confirmLabel: 'Cordon',
+        confirmButtonClass: 'primary'
+      };
+    } else if (this.confirmAction === 'drain') {
+      return {
+        title: 'Confirm Drain Node',
+        message: `Are you sure you want to drain node "${this.nodeForAction.name}"? This will evict all pods from the node and mark it as unschedulable. This action may cause service disruption.`,
+        confirmLabel: 'Drain',
+        confirmButtonClass: 'delete'
+      };
+    }
+
+    return null;
+  }
   private showNotification(message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') {
     const event = new CustomEvent('show-notification', {
       detail: { message, type },

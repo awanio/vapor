@@ -1366,3 +1366,68 @@ func respondYAMLError(c *gin.Context, statusCode int, code, message string, deta
 
 	c.Data(statusCode, "application/yaml", yamlData)
 }
+
+// CordonNodeGin marks a node as unschedulable
+func (h *Handler) CordonNodeGin(c *gin.Context) {
+nodeName := c.Param("name")
+
+if err := h.service.CordonNode(c.Request.Context(), nodeName); err != nil {
+c.JSON(http.StatusInternalServerError, gin.H{
+"status":  "error",
+"message": fmt.Sprintf("Failed to cordon node: %v", err),
+})
+return
+}
+
+c.JSON(http.StatusOK, gin.H{
+"status":  "success",
+"message": fmt.Sprintf("Node %s cordoned successfully", nodeName),
+})
+}
+
+// UncordonNodeGin marks a node as schedulable
+func (h *Handler) UncordonNodeGin(c *gin.Context) {
+nodeName := c.Param("name")
+
+if err := h.service.UncordonNode(c.Request.Context(), nodeName); err != nil {
+c.JSON(http.StatusInternalServerError, gin.H{
+"status":  "error",
+"message": fmt.Sprintf("Failed to uncordon node: %v", err),
+})
+return
+}
+
+c.JSON(http.StatusOK, gin.H{
+"status":  "success",
+"message": fmt.Sprintf("Node %s uncordoned successfully", nodeName),
+})
+}
+
+// DrainNodeGin safely evicts all pods from a node
+func (h *Handler) DrainNodeGin(c *gin.Context) {
+nodeName := c.Param("name")
+
+var options DrainNodeOptions
+if err := c.ShouldBindJSON(&options); err != nil {
+// Use default options if none provided
+options = DrainNodeOptions{
+GracePeriodSeconds: 30,
+Timeout:            300,
+IgnoreDaemonSets:   true,
+DeleteEmptyDirData: false,
+}
+}
+
+if err := h.service.DrainNode(c.Request.Context(), nodeName, options); err != nil {
+c.JSON(http.StatusInternalServerError, gin.H{
+"status":  "error",
+"message": fmt.Sprintf("Failed to drain node: %v", err),
+})
+return
+}
+
+c.JSON(http.StatusOK, gin.H{
+"status":  "success",
+"message": fmt.Sprintf("Node %s drained successfully", nodeName),
+})
+}

@@ -1147,3 +1147,11 @@ type HorizontalPodAutoscalerInfo struct {
 	Age             string            `json:"age"`
 	Labels          map[string]string `json:"labels,omitempty"`
 }
+
+// DrainNodeOptions contains options for draining a node
+type DrainNodeOptions struct {
+GracePeriodSeconds int  `json:"gracePeriodSeconds"`
+Timeout            int  `json:"timeout"`
+IgnoreDaemonSets   bool `json:"ignoreDaemonSets"`
+DeleteEmptyDirData bool `json:"deleteEmptyDirData"`
+}

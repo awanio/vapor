@@ -162,6 +162,10 @@ func KubernetesRoutes(r *gin.RouterGroup) {
 	// Node routes
 	r.GET("/kubernetes/nodes", k8sHandler.ListNodesGin)
 	r.GET("/kubernetes/nodes/:name", k8sHandler.GetNodeDetailGin)
+	// Node operation routes
+	r.PATCH("/kubernetes/nodes/:name/cordon", k8sHandler.CordonNodeGin)
+	r.PATCH("/kubernetes/nodes/:name/uncordon", k8sHandler.UncordonNodeGin)
+	r.POST("/kubernetes/nodes/:name/drain", k8sHandler.DrainNodeGin)
 	
 	// DaemonSet routes
 	r.GET("/kubernetes/daemonsets", k8sHandler.ListDaemonSetsGin)

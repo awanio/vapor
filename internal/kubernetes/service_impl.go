@@ -13,6 +13,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+policyv1 "k8s.io/api/policy/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -2460,4 +2461,116 @@ func (s *Service) DeleteCRDObject(ctx context.Context, crdName, namespace, objec
 	}
 
 	return nil
+}
+
+// CordonNode marks a node as unschedulable
+func (s *Service) CordonNode(ctx context.Context, nodeName string) error {
+node, err := s.client.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
+if err != nil {
+return fmt.Errorf("failed to get node: %w", err)
+}
+
+node.Spec.Unschedulable = true
+
+_, err = s.client.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
+if err != nil {
+return fmt.Errorf("failed to update node: %w", err)
+}
+
+return nil
+}
+
+// UncordonNode marks a node as schedulable
+func (s *Service) UncordonNode(ctx context.Context, nodeName string) error {
+node, err := s.client.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
+if err != nil {
+return fmt.Errorf("failed to get node: %w", err)
+}
+
+node.Spec.Unschedulable = false
+
+_, err = s.client.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
+if err != nil {
+return fmt.Errorf("failed to update node: %w", err)
+}
+
+return nil
+}
+
+// DrainNode safely evicts all pods from a node
+func (s *Service) DrainNode(ctx context.Context, nodeName string, options DrainNodeOptions) error {
+// First, cordon the node
+if err := s.CordonNode(ctx, nodeName); err != nil {
+return fmt.Errorf("failed to cordon node: %w", err)
+}
+
+// List all pods on the node
+pods, err := s.client.CoreV1().Pods("").List(ctx, metav1.ListOptions{
+FieldSelector: fmt.Sprintf("spec.nodeName=%s", nodeName),
+})
+if err != nil {
+return fmt.Errorf("failed to list pods: %w", err)
+}
+
+// Filter and evict pods
+for _, pod := range pods.Items {
+// Skip if pod is already terminating
+if pod.DeletionTimestamp != nil {
+continue
+}
+
+// Skip DaemonSet pods if option is set
+if options.IgnoreDaemonSets && s.isDaemonSetPod(&pod) {
+continue
+}
+
+// Skip mirror pods (static pods)
+if _, ok := pod.Annotations["kubernetes.io/config.mirror"]; ok {
+continue
+}
+
+// Check for emptyDir volumes
+if !options.DeleteEmptyDirData && s.hasEmptyDirVolume(&pod) {
+return fmt.Errorf("pod %s/%s has emptyDir volumes, set deleteEmptyDirData=true to drain", pod.Namespace, pod.Name)
+}
+
+// Evict the pod
+gracePeriodSeconds := int64(options.GracePeriodSeconds)
+eviction := &policyv1.Eviction{
+ObjectMeta: metav1.ObjectMeta{
+Name:      pod.Name,
+Namespace: pod.Namespace,
+},
+DeleteOptions: &metav1.DeleteOptions{
+GracePeriodSeconds: &gracePeriodSeconds,
+},
+}
+
+err = s.client.CoreV1().Pods(pod.Namespace).EvictV1(ctx, eviction)
+if err != nil {
+return fmt.Errorf("failed to evict pod %s/%s: %w", pod.Namespace, pod.Name, err)
+}
+}
+
+return nil
+}
+
+// isDaemonSetPod checks if a pod is managed by a DaemonSet
+func (s *Service) isDaemonSetPod(pod *corev1.Pod) bool {
+for _, owner := range pod.OwnerReferences {
+if owner.Kind == "DaemonSet" {
+return true
+}
+}
+return false
+}
+
+// hasEmptyDirVolume checks if a pod uses emptyDir volumes
+func (s *Service) hasEmptyDirVolume(pod *corev1.Pod) bool {
+for _, volume := range pod.Spec.Volumes {
+if volume.EmptyDir != nil {
+return true
+}
+}
+return false
 }

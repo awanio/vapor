@@ -1,0 +1,43 @@
+patch:
+  summary: Cordon a Kubernetes node
+  description: Marks a node as unschedulable, preventing new pods from being scheduled on it
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Node name
+  responses:
+    '200':
+      description: Node cordoned successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: success
+              message:
+                type: string
+                example: Node worker-1 cordoned successfully
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '500':
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: error
+              message:
+                type: string
+                example: Failed to cordon node

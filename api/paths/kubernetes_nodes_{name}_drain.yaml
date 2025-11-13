@@ -1,0 +1,70 @@
+post:
+  summary: Drain a Kubernetes node
+  description: Safely evicts all pods from a node before maintenance
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Node name
+  requestBody:
+    required: false
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            gracePeriodSeconds:
+              type: integer
+              description: Grace period for pod eviction
+              default: 30
+              example: 30
+            timeout:
+              type: integer
+              description: Timeout for drain operation in seconds
+              default: 300
+              example: 300
+            ignoreDaemonSets:
+              type: boolean
+              description: Ignore DaemonSet-managed pods
+              default: true
+              example: true
+            deleteEmptyDirData:
+              type: boolean
+              description: Allow deletion of pods with emptyDir volumes
+              default: false
+              example: false
+  responses:
+    '200':
+      description: Node drained successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: success
+              message:
+                type: string
+                example: Node worker-1 drained successfully
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '500':
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: error
+              message:
+                type: string
+                example: Failed to drain node

@@ -1,4 +1,4 @@
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-CqD5wkcy.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-BZLNiS-u.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -17395,7 +17395,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-CqD5wkcy.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-BZLNiS-u.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17440,7 +17440,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-CqD5wkcy.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-BZLNiS-u.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17504,7 +17504,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-CqD5wkcy.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-BZLNiS-u.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17614,7 +17614,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-CqD5wkcy.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-BZLNiS-u.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -50435,6 +50435,9 @@ let KubernetesNodes = class extends i$2 {
     this.selectedNode = null;
     this.loadingDetails = false;
     this.nodeDetails = null;
+    this.showConfirmModal = false;
+    this.confirmAction = null;
+    this.nodeForAction = null;
   }
   connectedCallback() {
     super.connectedCallback();
@@ -50444,22 +50447,18 @@ let KubernetesNodes = class extends i$2 {
     return x`
       <div class="container">
         <div class="header">
-          <h1 class="title">Nodes</h1>
+          <search-input
+            .value=${this.searchQuery}
+            placeholder="Search nodes..."
+            @search-change=${this.handleSearchChange}
+          ></search-input>
+
+          <span class="resource-count">
+            ${this.getFilteredNodes().length} nodes
+          </span>
         </div>
 
         <div class="content">
-          <div class="filters">
-            <search-input
-              .value=${this.searchQuery}
-              placeholder="Search nodes..."
-              @search-change=${this.handleSearchChange}
-            ></search-input>
-
-            <span class="resource-count">
-              ${this.getFilteredNodes().length} nodes
-            </span>
-          </div>
-
           ${this.loading ? x`
             <loading-state message="Loading nodes..."></loading-state>
           ` : this.error ? x`
@@ -50478,6 +50477,17 @@ let KubernetesNodes = class extends i$2 {
         >
           ${this.renderNodeDetail()}
         </detail-drawer>
+
+        <delete-modal
+          .show=${this.showConfirmModal}
+          .item=${this.nodeForAction ? { type: "Node", name: this.nodeForAction.name } : null}
+          modal-title="${this.getConfirmModalConfig()?.title || "Confirm Action"}"
+          message="${this.getConfirmModalConfig()?.message || ""}"
+          confirm-label="${this.getConfirmModalConfig()?.confirmLabel || "Confirm"}"
+          confirm-button-class="${this.getConfirmModalConfig()?.confirmButtonClass || "primary"}"
+          @confirm-delete=${this.handleConfirmAction}
+          @cancel-delete=${this.handleCancelAction}
+        ></delete-modal>
 
         <notification-container></notification-container>
       </div>
@@ -50577,13 +50587,13 @@ let KubernetesNodes = class extends i$2 {
         await this.viewNodeDetails(item);
         break;
       case "cordon":
-        await this.cordonNode(item);
+        this.showCordonConfirmation(item);
         break;
       case "uncordon":
         await this.uncordonNode(item);
         break;
       case "drain":
-        await this.drainNode(item);
+        this.showDrainConfirmation(item);
         break;
     }
   }
@@ -50594,17 +50604,7 @@ let KubernetesNodes = class extends i$2 {
   }
   async cordonNode(node) {
     try {
-      await KubernetesApi.updateResource(
-        "Node",
-        node.name,
-        void 0,
-        JSON.stringify({
-          spec: {
-            unschedulable: true
-          }
-        }),
-        "json"
-      );
+      await Api.patch(`/kubernetes/nodes/${node.name}/cordon`, {});
       this.showNotification(`Node ${node.name} cordoned successfully`, "success");
       await this.fetchNodes();
     } catch (error) {
@@ -50614,17 +50614,7 @@ let KubernetesNodes = class extends i$2 {
   }
   async uncordonNode(node) {
     try {
-      await KubernetesApi.updateResource(
-        "Node",
-        node.name,
-        void 0,
-        JSON.stringify({
-          spec: {
-            unschedulable: false
-          }
-        }),
-        "json"
-      );
+      await Api.patch(`/kubernetes/nodes/${node.name}/uncordon`, {});
       this.showNotification(`Node ${node.name} uncordoned successfully`, "success");
       await this.fetchNodes();
     } catch (error) {
@@ -50632,8 +50622,20 @@ let KubernetesNodes = class extends i$2 {
       this.showNotification(`Failed to uncordon node ${node.name}`, "error");
     }
   }
-  async drainNode(_node) {
-    this.showNotification("Node draining is not yet implemented", "warning");
+  async drainNode(node) {
+    try {
+      await Api.post(`/kubernetes/nodes/${node.name}/drain`, {
+        gracePeriodSeconds: 30,
+        timeout: 300,
+        ignoreDaemonSets: true,
+        deleteEmptyDirData: false
+      });
+      this.showNotification(`Node ${node.name} drained successfully`, "success");
+      await this.fetchNodes();
+    } catch (error) {
+      console.error("Failed to drain node:", error);
+      this.showNotification(`Failed to drain node ${node.name}`, "error");
+    }
   }
   renderNodeDetail() {
     if (!this.selectedNode) return x``;
@@ -50651,7 +50653,7 @@ let KubernetesNodes = class extends i$2 {
         ${this.renderResourceMetrics()}
         ${this.renderConditions()}
         ${this.renderTaints()}
-        ${this.renderActionButtons()}
+        ${this.renderRawData()}
       </div>
     `;
   }
@@ -50787,26 +50789,44 @@ let KubernetesNodes = class extends i$2 {
       </div>
     `;
   }
-  renderActionButtons() {
-    if (!this.selectedNode || !this.nodeDetails) return x``;
-    const isUnschedulable = this.nodeDetails.spec?.unschedulable;
+  renderRawData() {
+    if (!this.nodeDetails) return x``;
+    const filteredNode = { ...this.nodeDetails };
+    if (filteredNode.metadata?.managedFields) {
+      filteredNode.metadata = { ...filteredNode.metadata };
+      delete filteredNode.metadata.managedFields;
+    }
     return x`
-      <div class="action-buttons">
-        ${isUnschedulable ? x`
-          <button class="action-button primary" @click=${() => this.uncordonNode(this.selectedNode)}>
-            Uncordon Node
-          </button>
-        ` : x`
-          <button class="action-button primary" @click=${() => this.cordonNode(this.selectedNode)}>
-            Cordon Node
-          </button>
-        `}
-        <button class="action-button danger" @click=${() => this.drainNode(this.selectedNode)}>
-          Drain Node
-        </button>
+      <div class="detail-section">
+        <details>
+          <summary>View raw resource data</summary>
+          <pre class="raw-data">${JSON.stringify(filteredNode, null, 2)}</pre>
+        </details>
       </div>
     `;
   }
+  //   private renderActionButtons() {
+  //     if (!this.selectedNode || !this.nodeDetails) return html``;
+  // 
+  //     const isUnschedulable = this.nodeDetails.spec?.unschedulable;
+  // 
+  //     return html`
+  //       <div class="action-buttons">
+  //         ${isUnschedulable ? html`
+  //           <button class="action-button primary" @click=${() => this.uncordonNode(this.selectedNode!)}>
+  //             Uncordon Node
+  //           </button>
+  //         ` : html`
+  //           <button class="action-button primary" @click=${() => this.cordonNode(this.selectedNode!)}>
+  //             Cordon Node
+  //           </button>
+  //         `}
+  //         <button class="action-button danger" @click=${() => this.drainNode(this.selectedNode!)}>
+  //           Drain Node
+  //         </button>
+  //       </div>
+  //     `;
+  //   }
   formatMemory(memory) {
     if (!memory) return "N/A";
     const match = memory.match(/(\d+)Ki/);
@@ -50816,6 +50836,49 @@ let KubernetesNodes = class extends i$2 {
       return `${gb.toFixed(2)} GB`;
     }
     return memory;
+  }
+  showCordonConfirmation(node) {
+    this.nodeForAction = node;
+    this.confirmAction = "cordon";
+    this.showConfirmModal = true;
+  }
+  showDrainConfirmation(node) {
+    this.nodeForAction = node;
+    this.confirmAction = "drain";
+    this.showConfirmModal = true;
+  }
+  async handleConfirmAction() {
+    if (!this.nodeForAction || !this.confirmAction) return;
+    if (this.confirmAction === "cordon") {
+      await this.cordonNode(this.nodeForAction);
+    } else if (this.confirmAction === "drain") {
+      await this.drainNode(this.nodeForAction);
+    }
+    this.handleCancelAction();
+  }
+  handleCancelAction() {
+    this.showConfirmModal = false;
+    this.confirmAction = null;
+    this.nodeForAction = null;
+  }
+  getConfirmModalConfig() {
+    if (!this.nodeForAction) return null;
+    if (this.confirmAction === "cordon") {
+      return {
+        title: "Confirm Cordon Node",
+        message: `Are you sure you want to cordon node "${this.nodeForAction.name}"? This will mark the node as unschedulable and prevent new pods from being scheduled on it.`,
+        confirmLabel: "Cordon",
+        confirmButtonClass: "primary"
+      };
+    } else if (this.confirmAction === "drain") {
+      return {
+        title: "Confirm Drain Node",
+        message: `Are you sure you want to drain node "${this.nodeForAction.name}"? This will evict all pods from the node and mark it as unschedulable. This action may cause service disruption.`,
+        confirmLabel: "Drain",
+        confirmButtonClass: "delete"
+      };
+    }
+    return null;
   }
   showNotification(message, type = "info") {
     const event = new CustomEvent("show-notification", {
@@ -50861,6 +50924,36 @@ KubernetesNodes.styles = i$5`
       font-size: 13px;
       color: var(--vscode-descriptionForeground, #cccccc80);
       margin-left: auto;
+    }
+
+    /* Raw Data Section */
+    .raw-data {
+      background: var(--vscode-editor-background, #1e1e1e);
+      border: 1px solid var(--vscode-widget-border, #303031);
+      border-radius: 4px;
+      padding: 1rem;
+      font-family: var(--vscode-editor-font-family, 'Courier New', monospace);
+      font-size: 12px;
+      color: var(--vscode-editor-foreground, #d4d4d4);
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    details {
+      margin-top: 1rem;
+    }
+
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--vscode-textLink-foreground, #3794ff);
+      padding: 0.5rem 0;
+      user-select: none;
+    }
+
+    details summary:hover {
+      color: var(--vscode-textLink-activeForeground, #4daafc);
     }
 
     /* Detail styles */
@@ -50978,6 +51071,15 @@ __decorateClass$o([
 __decorateClass$o([
   r$1()
 ], KubernetesNodes.prototype, "nodeDetails", 2);
+__decorateClass$o([
+  r$1()
+], KubernetesNodes.prototype, "showConfirmModal", 2);
+__decorateClass$o([
+  r$1()
+], KubernetesNodes.prototype, "confirmAction", 2);
+__decorateClass$o([
+  r$1()
+], KubernetesNodes.prototype, "nodeForAction", 2);
 KubernetesNodes = __decorateClass$o([
   t$2("kubernetes-nodes")
 ], KubernetesNodes);
@@ -73212,32 +73314,31 @@ class SidebarTree extends I18nLitElement {
           }
         ]
       },
-      {
-        id: "ansible",
-        label: "nav.ansible",
-        icon: "ansible",
-        route: "ansible",
-        children: [
-          {
-            id: "ansible-playbooks",
-            label: "ansible.playbooks",
-            icon: "playbooks",
-            route: "ansible/playbooks"
-          },
-          {
-            id: "ansible-inventory",
-            label: "ansible.inventory",
-            icon: "inventory",
-            route: "ansible/inventory"
-          },
-          {
-            id: "ansible-executions",
-            label: "ansible.executions",
-            icon: "executions",
-            route: "ansible/executions"
-          }
-        ]
-      },
+      //     {
+      //       id: 'ansible',
+      //       label: 'nav.ansible',
+      //       icon: 'ansible',
+      //       route: 'ansible',
+      //       children: [
+      //         {
+      //           id: 'ansible-playbooks',
+      //           label: 'ansible.playbooks',
+      //           icon: 'playbooks',
+      //           route: 'ansible/playbooks'
+      //         },
+      //         {
+      //           id: 'ansible-inventory',
+      //           label: 'ansible.inventory',
+      //           icon: 'inventory',
+      //           route: 'ansible/inventory'
+      //         },
+      //         {
+      //           id: 'ansible-executions',
+      //           label: 'ansible.executions',
+      //           icon: 'executions',
+      //           route: 'ansible/executions'
+      // //         }
+      //     },
       {
         id: "logs",
         label: "nav.logs",

@@ -130,4 +130,9 @@ type KubernetesService interface {
 	DeleteNetworkPolicy(ctx context.Context, namespace, name string) error
 	ApplyNetworkPolicy(ctx context.Context, policy *networkingv1.NetworkPolicy) (*networkingv1.NetworkPolicy, error)
 	UpdateNetworkPolicy(ctx context.Context, namespace, name string, policy *networkingv1.NetworkPolicy) (*networkingv1.NetworkPolicy, error)
+
+// Node operation methods
+CordonNode(ctx context.Context, nodeName string) error
+UncordonNode(ctx context.Context, nodeName string) error
+DrainNode(ctx context.Context, nodeName string, options DrainNodeOptions) error
 }

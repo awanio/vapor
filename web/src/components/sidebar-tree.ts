@@ -392,32 +392,31 @@ export class SidebarTree extends I18nLitElement {
         }
       ]
     },
-    {
-      id: 'ansible',
-      label: 'nav.ansible',
-      icon: 'ansible',
-      route: 'ansible',
-      children: [
-        {
-          id: 'ansible-playbooks',
-          label: 'ansible.playbooks',
-          icon: 'playbooks',
-          route: 'ansible/playbooks'
-        },
-        {
-          id: 'ansible-inventory',
-          label: 'ansible.inventory',
-          icon: 'inventory',
-          route: 'ansible/inventory'
-        },
-        {
-          id: 'ansible-executions',
-          label: 'ansible.executions',
-          icon: 'executions',
-          route: 'ansible/executions'
-        }
-      ]
-    },
+//     {
+//       id: 'ansible',
+//       label: 'nav.ansible',
+//       icon: 'ansible',
+//       route: 'ansible',
+//       children: [
+//         {
+//           id: 'ansible-playbooks',
+//           label: 'ansible.playbooks',
+//           icon: 'playbooks',
+//           route: 'ansible/playbooks'
+//         },
+//         {
+//           id: 'ansible-inventory',
+//           label: 'ansible.inventory',
+//           icon: 'inventory',
+//           route: 'ansible/inventory'
+//         },
+//         {
+//           id: 'ansible-executions',
+//           label: 'ansible.executions',
+//           icon: 'executions',
+//           route: 'ansible/executions'
+// //         }
+//     },
     {
       id: 'logs',
       label: 'nav.logs',

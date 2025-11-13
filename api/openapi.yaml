@@ -534,6 +534,12 @@ paths:
   /kubernetes/namespaces/{name}:
     $ref: paths/kubernetes_namespaces_{name}.yaml
   /kubernetes/nodes/{name}:
+  /kubernetes/nodes/{name}/cordon:
+    $ref: paths/kubernetes_nodes_{name}_cordon.yaml
+  /kubernetes/nodes/{name}/uncordon:
+    $ref: paths/kubernetes_nodes_{name}_uncordon.yaml
+  /kubernetes/nodes/{name}/drain:
+    $ref: paths/kubernetes_nodes_{name}_drain.yaml
     $ref: paths/kubernetes_nodes_{name}.yaml
   /kubernetes/daemonsets/{namespace}/{name}:
     $ref: paths/kubernetes_daemonsets_{namespace}_{name}.yaml
