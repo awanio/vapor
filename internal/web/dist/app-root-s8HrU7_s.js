@@ -1,4 +1,4 @@
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-C7QCEZgO.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-BG39XPy8.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -1305,7 +1305,7 @@ let LoginPage = class extends I18nLitElement {
           ` : ""}
         </form>
         <div id="copy">
-        <span>&copy; ${(/* @__PURE__ */ new Date()).getFullYear()} Awanio</span>
+        <span>&copy; ${(/* @__PURE__ */ new Date()).getFullYear()} Awanio. All rights reserved.</span>
         </div>
       </div>
     `;
@@ -17407,7 +17407,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-C7QCEZgO.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-BG39XPy8.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17452,7 +17452,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-C7QCEZgO.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-BG39XPy8.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17516,7 +17516,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-C7QCEZgO.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-BG39XPy8.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17626,7 +17626,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-C7QCEZgO.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-BG39XPy8.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -36341,7 +36341,7 @@ class KubernetesApi {
       if (contentType === "json") {
         parsedResource = JSON.parse(content);
       } else {
-        const yaml = await import("./index-Bgy2LEkG.js");
+        const yaml = await import("./index-DthB_qNc.js");
         parsedResource = yaml.parse(content);
       }
     } catch (error) {
@@ -52326,7 +52326,7 @@ let KubernetesCRDs = class extends i$2 {
         unwrapped = JSON.parse(JSON.stringify(unwrapped));
         delete unwrapped.metadata.managedFields;
       }
-      const yaml = await import("./index-Bgy2LEkG.js");
+      const yaml = await import("./index-DthB_qNc.js");
       this.createResourceValue = yaml.stringify(unwrapped);
       this.isCreating = false;
     } catch (error) {
@@ -74233,7 +74233,7 @@ class SidebarTree extends I18nLitElement {
       </div>
       <div class="sidebar-footer">
         <div class="sidebar-footer-brand">Vapor by Awanio</div>
-        <div class="sidebar-footer-copyright">© ${currentYear} Awanio. All rights reserved.</div>
+        <div class="sidebar-footer-copyright">© ${currentYear} Awanio.</div>
       </div>
     `;
   }
