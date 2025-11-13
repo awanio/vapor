@@ -111,6 +111,19 @@ make build-linux
 
 ## Installation
 
+### From Script
+
+```bash
+# One-command installation
+curl -fsSL https://raw.githubusercontent.com/awanio/vapor/main/scripts/install.sh | sudo bash
+
+# Install specific version
+VAPOR_VERSION=v0.0.1-rc.0 sudo ./scripts/install.sh
+
+# Upgrade (preserves config)
+sudo ./scripts/install.sh
+```
+
 ### From Source
 
 ```bash
