@@ -722,7 +722,79 @@ export class KubernetesApi {
 
   static async createResource(content: string, contentType: 'json' | 'yaml' = 'yaml'): Promise<any> {
     const mimeType = contentType === 'json' ? 'application/json' : 'application/yaml';
-    return Api.postResource('/kubernetes/resource', content, mimeType);
+    
+    // Parse content to determine resource kind and route to correct endpoint
+    let parsedResource: any;
+    try {
+      if (contentType === 'json') {
+        parsedResource = JSON.parse(content);
+      } else {
+        // Import yaml parser dynamically
+        const yaml = await import('yaml');
+        parsedResource = yaml.parse(content);
+      }
+    } catch (error) {
+      throw new Error(`Failed to parse ${contentType.toUpperCase()}: ${error}`);
+    }
+
+    const kind = parsedResource?.kind?.toLowerCase();
+    if (!kind) {
+      throw new Error('Resource kind is required');
+    }
+
+    // Map kind to endpoint
+    let endpoint: string;
+    switch (kind) {
+      case 'pod':
+        endpoint = '/kubernetes/pods';
+        break;
+      case 'deployment':
+        endpoint = '/kubernetes/deployments';
+        break;
+      case 'statefulset':
+        endpoint = '/kubernetes/statefulsets';
+        break;
+      case 'daemonset':
+        endpoint = '/kubernetes/daemonsets';
+        break;
+      case 'job':
+        endpoint = '/kubernetes/jobs';
+        break;
+      case 'cronjob':
+        endpoint = '/kubernetes/cronjobs';
+        break;
+      case 'customresourcedefinition':
+      case 'crd':
+        endpoint = '/kubernetes/customresourcedefinitions';
+        break;
+      case 'service':
+        endpoint = '/kubernetes/services';
+        break;
+      case 'ingress':
+        endpoint = '/kubernetes/ingresses';
+        break;
+      case 'persistentvolumeclaim':
+      case 'pvc':
+        endpoint = '/kubernetes/pvcs';
+        break;
+      case 'persistentvolume':
+      case 'pv':
+        endpoint = '/kubernetes/pvs';
+        break;
+      case 'namespace':
+        endpoint = '/kubernetes/namespaces';
+        break;
+      case 'networkpolicy':
+        endpoint = '/kubernetes/networkpolicies';
+        break;
+      case 'ingressclass':
+        endpoint = '/kubernetes/ingressclasses';
+        break;
+      default:
+        throw new Error(`Creating ${kind} resources is not supported. Supported types: Pod, Deployment, StatefulSet, DaemonSet, Job, CronJob, CRD, Service, Ingress, PVC, PV, Namespace, NetworkPolicy, IngressClass.`);
+    }
+
+    return Api.postResource(endpoint, content, mimeType);
   }
 
   static async updateResource(kind: string, name: string, namespace: string | undefined, content: string, contentType: 'json' | 'yaml' = 'yaml'): Promise<any> {

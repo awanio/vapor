@@ -16,3 +16,131 @@ get:
       $ref: ../components/responses/UnauthorizedError.yaml
     '503':
       $ref: ../components/responses/KubernetesNotInstalledError.yaml
+
+post:
+  summary: Create or update a stateful set
+  description: |
+    Create or update a stateful set in the Kubernetes cluster using apply semantics.
+    If the stateful set doesn't exist, it will be created. If it exists, it will be updated.
+    
+    Supports both JSON and YAML formats. If Content-Type is not specified, defaults to JSON.
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/StatefulSetDetail.yaml
+        example:
+          apiVersion: apps/v1
+          kind: StatefulSet
+          metadata:
+            name: web
+            namespace: default
+          spec:
+            serviceName: nginx
+            replicas: 3
+            selector:
+              matchLabels:
+                app: nginx
+            template:
+              metadata:
+                labels:
+                  app: nginx
+              spec:
+                containers:
+                - name: nginx
+                  image: nginx:1.14.2
+                  ports:
+                  - containerPort: 80
+                    name: web
+            volumeClaimTemplates:
+            - metadata:
+                name: www
+              spec:
+                accessModes: [ "ReadWriteOnce" ]
+                resources:
+                  requests:
+                    storage: 1Gi
+      application/yaml:
+        schema:
+          type: string
+        example: |
+          apiVersion: apps/v1
+          kind: StatefulSet
+          metadata:
+            name: web
+            namespace: default
+          spec:
+            serviceName: nginx
+            replicas: 3
+            selector:
+              matchLabels:
+                app: nginx
+            template:
+              metadata:
+                labels:
+                  app: nginx
+              spec:
+                containers:
+                - name: nginx
+                  image: nginx:1.14.2
+                  ports:
+                  - containerPort: 80
+                    name: web
+            volumeClaimTemplates:
+            - metadata:
+                name: www
+              spec:
+                accessModes: [ "ReadWriteOnce" ]
+                resources:
+                  requests:
+                    storage: 1Gi
+      text/yaml:
+        schema:
+          type: string
+  responses:
+    '200':
+      description: Stateful set created or updated successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/StatefulSetDetailResponse.yaml
+    '400':
+      description: Bad request - Invalid YAML/JSON format or missing required fields
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+          examples:
+            invalidYaml:
+              summary: Invalid YAML format
+              value:
+                status: error
+                message: Failed to parse YAML
+                details: 'yaml: line 5: found character that cannot start any token'
+            invalidJson:
+              summary: Invalid JSON format
+              value:
+                status: error
+                message: Failed to parse JSON
+                details: 'unexpected end of JSON input'
+            unsupportedContentType:
+              summary: Unsupported content type
+              value:
+                status: error
+                message: Unsupported Content-Type
+                details: "Content-Type must be 'application/json', 'application/yaml', or 'text/yaml'"
+            missingField:
+              summary: Missing required field
+              value:
+                status: error
+                message: Validation error
+                details: 'StatefulSet name is required in metadata.name'
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

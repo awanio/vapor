@@ -1,4 +1,4 @@
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-CqD5wkcy.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-B3P1LpA3.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -1243,7 +1243,7 @@ let LoginPage = class extends I18nLitElement {
           </svg>
         </div>
         
-        <h1>Vapor</h1>
+        <h1>Vapor by Awanio</h1>
         
         <form @submit=${this.handleSubmit}>
           <div class="form-group">
@@ -1304,6 +1304,9 @@ let LoginPage = class extends I18nLitElement {
             <div class="error-message">${this.error}</div>
           ` : ""}
         </form>
+        <div id="copy">
+        <span>&copy; ${(/* @__PURE__ */ new Date()).getFullYear()} Awanio</span>
+        </div>
       </div>
     `;
   }
@@ -1370,6 +1373,15 @@ LoginPage.styles = i$5`
       color: var(--text-primary);
       margin-bottom: 2rem;
       font-size: 1.5rem;
+    }
+
+    div#copy {
+      text-align: center;
+      font-size: small;
+      width: 100%;
+      justify-content: center;
+      margin-top: 1.5rem;
+      padding-top: 1rem;
     }
 
     .form-group {
@@ -17395,7 +17407,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-CqD5wkcy.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-B3P1LpA3.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17440,7 +17452,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-CqD5wkcy.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-B3P1LpA3.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17504,7 +17516,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-CqD5wkcy.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-B3P1LpA3.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17614,7 +17626,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-CqD5wkcy.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-B3P1LpA3.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -36324,7 +36336,72 @@ class KubernetesApi {
   }
   static async createResource(content, contentType = "yaml") {
     const mimeType = contentType === "json" ? "application/json" : "application/yaml";
-    return Api.postResource("/kubernetes/resource", content, mimeType);
+    let parsedResource;
+    try {
+      if (contentType === "json") {
+        parsedResource = JSON.parse(content);
+      } else {
+        const yaml = await import("./index-B_pUNQwr.js");
+        parsedResource = yaml.parse(content);
+      }
+    } catch (error) {
+      throw new Error(`Failed to parse ${contentType.toUpperCase()}: ${error}`);
+    }
+    const kind = parsedResource?.kind?.toLowerCase();
+    if (!kind) {
+      throw new Error("Resource kind is required");
+    }
+    let endpoint;
+    switch (kind) {
+      case "pod":
+        endpoint = "/kubernetes/pods";
+        break;
+      case "deployment":
+        endpoint = "/kubernetes/deployments";
+        break;
+      case "statefulset":
+        endpoint = "/kubernetes/statefulsets";
+        break;
+      case "daemonset":
+        endpoint = "/kubernetes/daemonsets";
+        break;
+      case "job":
+        endpoint = "/kubernetes/jobs";
+        break;
+      case "cronjob":
+        endpoint = "/kubernetes/cronjobs";
+        break;
+      case "customresourcedefinition":
+      case "crd":
+        endpoint = "/kubernetes/customresourcedefinitions";
+        break;
+      case "service":
+        endpoint = "/kubernetes/services";
+        break;
+      case "ingress":
+        endpoint = "/kubernetes/ingresses";
+        break;
+      case "persistentvolumeclaim":
+      case "pvc":
+        endpoint = "/kubernetes/pvcs";
+        break;
+      case "persistentvolume":
+      case "pv":
+        endpoint = "/kubernetes/pvs";
+        break;
+      case "namespace":
+        endpoint = "/kubernetes/namespaces";
+        break;
+      case "networkpolicy":
+        endpoint = "/kubernetes/networkpolicies";
+        break;
+      case "ingressclass":
+        endpoint = "/kubernetes/ingressclasses";
+        break;
+      default:
+        throw new Error(`Creating ${kind} resources is not supported. Supported types: Pod, Deployment, StatefulSet, DaemonSet, Job, CronJob, CRD, Service, Ingress, PVC, PV, Namespace, NetworkPolicy, IngressClass.`);
+    }
+    return Api.postResource(endpoint, content, mimeType);
   }
   static async updateResource(kind, name, namespace, content, contentType = "yaml") {
     const endpoint = this.getResourceEndpoint(kind, name, namespace);
@@ -50435,6 +50512,9 @@ let KubernetesNodes = class extends i$2 {
     this.selectedNode = null;
     this.loadingDetails = false;
     this.nodeDetails = null;
+    this.showConfirmModal = false;
+    this.confirmAction = null;
+    this.nodeForAction = null;
   }
   connectedCallback() {
     super.connectedCallback();
@@ -50444,22 +50524,18 @@ let KubernetesNodes = class extends i$2 {
     return x`
       <div class="container">
         <div class="header">
-          <h1 class="title">Nodes</h1>
+          <search-input
+            .value=${this.searchQuery}
+            placeholder="Search nodes..."
+            @search-change=${this.handleSearchChange}
+          ></search-input>
+
+          <span class="resource-count">
+            ${this.getFilteredNodes().length} nodes
+          </span>
         </div>
 
         <div class="content">
-          <div class="filters">
-            <search-input
-              .value=${this.searchQuery}
-              placeholder="Search nodes..."
-              @search-change=${this.handleSearchChange}
-            ></search-input>
-
-            <span class="resource-count">
-              ${this.getFilteredNodes().length} nodes
-            </span>
-          </div>
-
           ${this.loading ? x`
             <loading-state message="Loading nodes..."></loading-state>
           ` : this.error ? x`
@@ -50478,6 +50554,17 @@ let KubernetesNodes = class extends i$2 {
         >
           ${this.renderNodeDetail()}
         </detail-drawer>
+
+        <delete-modal
+          .show=${this.showConfirmModal}
+          .item=${this.nodeForAction ? { type: "Node", name: this.nodeForAction.name } : null}
+          modal-title="${this.getConfirmModalConfig()?.title || "Confirm Action"}"
+          message="${this.getConfirmModalConfig()?.message || ""}"
+          confirm-label="${this.getConfirmModalConfig()?.confirmLabel || "Confirm"}"
+          confirm-button-class="${this.getConfirmModalConfig()?.confirmButtonClass || "primary"}"
+          @confirm-delete=${this.handleConfirmAction}
+          @cancel-delete=${this.handleCancelAction}
+        ></delete-modal>
 
         <notification-container></notification-container>
       </div>
@@ -50577,13 +50664,13 @@ let KubernetesNodes = class extends i$2 {
         await this.viewNodeDetails(item);
         break;
       case "cordon":
-        await this.cordonNode(item);
+        this.showCordonConfirmation(item);
         break;
       case "uncordon":
         await this.uncordonNode(item);
         break;
       case "drain":
-        await this.drainNode(item);
+        this.showDrainConfirmation(item);
         break;
     }
   }
@@ -50594,17 +50681,7 @@ let KubernetesNodes = class extends i$2 {
   }
   async cordonNode(node) {
     try {
-      await KubernetesApi.updateResource(
-        "Node",
-        node.name,
-        void 0,
-        JSON.stringify({
-          spec: {
-            unschedulable: true
-          }
-        }),
-        "json"
-      );
+      await Api.patch(`/kubernetes/nodes/${node.name}/cordon`, {});
       this.showNotification(`Node ${node.name} cordoned successfully`, "success");
       await this.fetchNodes();
     } catch (error) {
@@ -50614,17 +50691,7 @@ let KubernetesNodes = class extends i$2 {
   }
   async uncordonNode(node) {
     try {
-      await KubernetesApi.updateResource(
-        "Node",
-        node.name,
-        void 0,
-        JSON.stringify({
-          spec: {
-            unschedulable: false
-          }
-        }),
-        "json"
-      );
+      await Api.patch(`/kubernetes/nodes/${node.name}/uncordon`, {});
       this.showNotification(`Node ${node.name} uncordoned successfully`, "success");
       await this.fetchNodes();
     } catch (error) {
@@ -50632,8 +50699,20 @@ let KubernetesNodes = class extends i$2 {
       this.showNotification(`Failed to uncordon node ${node.name}`, "error");
     }
   }
-  async drainNode(_node) {
-    this.showNotification("Node draining is not yet implemented", "warning");
+  async drainNode(node) {
+    try {
+      await Api.post(`/kubernetes/nodes/${node.name}/drain`, {
+        gracePeriodSeconds: 30,
+        timeout: 300,
+        ignoreDaemonSets: true,
+        deleteEmptyDirData: false
+      });
+      this.showNotification(`Node ${node.name} drained successfully`, "success");
+      await this.fetchNodes();
+    } catch (error) {
+      console.error("Failed to drain node:", error);
+      this.showNotification(`Failed to drain node ${node.name}`, "error");
+    }
   }
   renderNodeDetail() {
     if (!this.selectedNode) return x``;
@@ -50651,7 +50730,7 @@ let KubernetesNodes = class extends i$2 {
         ${this.renderResourceMetrics()}
         ${this.renderConditions()}
         ${this.renderTaints()}
-        ${this.renderActionButtons()}
+        ${this.renderRawData()}
       </div>
     `;
   }
@@ -50787,26 +50866,44 @@ let KubernetesNodes = class extends i$2 {
       </div>
     `;
   }
-  renderActionButtons() {
-    if (!this.selectedNode || !this.nodeDetails) return x``;
-    const isUnschedulable = this.nodeDetails.spec?.unschedulable;
+  renderRawData() {
+    if (!this.nodeDetails) return x``;
+    const filteredNode = { ...this.nodeDetails };
+    if (filteredNode.metadata?.managedFields) {
+      filteredNode.metadata = { ...filteredNode.metadata };
+      delete filteredNode.metadata.managedFields;
+    }
     return x`
-      <div class="action-buttons">
-        ${isUnschedulable ? x`
-          <button class="action-button primary" @click=${() => this.uncordonNode(this.selectedNode)}>
-            Uncordon Node
-          </button>
-        ` : x`
-          <button class="action-button primary" @click=${() => this.cordonNode(this.selectedNode)}>
-            Cordon Node
-          </button>
-        `}
-        <button class="action-button danger" @click=${() => this.drainNode(this.selectedNode)}>
-          Drain Node
-        </button>
+      <div class="detail-section">
+        <details>
+          <summary>View raw resource data</summary>
+          <pre class="raw-data">${JSON.stringify(filteredNode, null, 2)}</pre>
+        </details>
       </div>
     `;
   }
+  //   private renderActionButtons() {
+  //     if (!this.selectedNode || !this.nodeDetails) return html``;
+  // 
+  //     const isUnschedulable = this.nodeDetails.spec?.unschedulable;
+  // 
+  //     return html`
+  //       <div class="action-buttons">
+  //         ${isUnschedulable ? html`
+  //           <button class="action-button primary" @click=${() => this.uncordonNode(this.selectedNode!)}>
+  //             Uncordon Node
+  //           </button>
+  //         ` : html`
+  //           <button class="action-button primary" @click=${() => this.cordonNode(this.selectedNode!)}>
+  //             Cordon Node
+  //           </button>
+  //         `}
+  //         <button class="action-button danger" @click=${() => this.drainNode(this.selectedNode!)}>
+  //           Drain Node
+  //         </button>
+  //       </div>
+  //     `;
+  //   }
   formatMemory(memory) {
     if (!memory) return "N/A";
     const match = memory.match(/(\d+)Ki/);
@@ -50816,6 +50913,49 @@ let KubernetesNodes = class extends i$2 {
       return `${gb.toFixed(2)} GB`;
     }
     return memory;
+  }
+  showCordonConfirmation(node) {
+    this.nodeForAction = node;
+    this.confirmAction = "cordon";
+    this.showConfirmModal = true;
+  }
+  showDrainConfirmation(node) {
+    this.nodeForAction = node;
+    this.confirmAction = "drain";
+    this.showConfirmModal = true;
+  }
+  async handleConfirmAction() {
+    if (!this.nodeForAction || !this.confirmAction) return;
+    if (this.confirmAction === "cordon") {
+      await this.cordonNode(this.nodeForAction);
+    } else if (this.confirmAction === "drain") {
+      await this.drainNode(this.nodeForAction);
+    }
+    this.handleCancelAction();
+  }
+  handleCancelAction() {
+    this.showConfirmModal = false;
+    this.confirmAction = null;
+    this.nodeForAction = null;
+  }
+  getConfirmModalConfig() {
+    if (!this.nodeForAction) return null;
+    if (this.confirmAction === "cordon") {
+      return {
+        title: "Confirm Cordon Node",
+        message: `Are you sure you want to cordon node "${this.nodeForAction.name}"? This will mark the node as unschedulable and prevent new pods from being scheduled on it.`,
+        confirmLabel: "Cordon",
+        confirmButtonClass: "primary"
+      };
+    } else if (this.confirmAction === "drain") {
+      return {
+        title: "Confirm Drain Node",
+        message: `Are you sure you want to drain node "${this.nodeForAction.name}"? This will evict all pods from the node and mark it as unschedulable. This action may cause service disruption.`,
+        confirmLabel: "Drain",
+        confirmButtonClass: "delete"
+      };
+    }
+    return null;
   }
   showNotification(message, type = "info") {
     const event = new CustomEvent("show-notification", {
@@ -50861,6 +51001,36 @@ KubernetesNodes.styles = i$5`
       font-size: 13px;
       color: var(--vscode-descriptionForeground, #cccccc80);
       margin-left: auto;
+    }
+
+    /* Raw Data Section */
+    .raw-data {
+      background: var(--vscode-editor-background, #1e1e1e);
+      border: 1px solid var(--vscode-widget-border, #303031);
+      border-radius: 4px;
+      padding: 1rem;
+      font-family: var(--vscode-editor-font-family, 'Courier New', monospace);
+      font-size: 12px;
+      color: var(--vscode-editor-foreground, #d4d4d4);
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    details {
+      margin-top: 1rem;
+    }
+
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--vscode-textLink-foreground, #3794ff);
+      padding: 0.5rem 0;
+      user-select: none;
+    }
+
+    details summary:hover {
+      color: var(--vscode-textLink-activeForeground, #4daafc);
     }
 
     /* Detail styles */
@@ -50978,6 +51148,15 @@ __decorateClass$o([
 __decorateClass$o([
   r$1()
 ], KubernetesNodes.prototype, "nodeDetails", 2);
+__decorateClass$o([
+  r$1()
+], KubernetesNodes.prototype, "showConfirmModal", 2);
+__decorateClass$o([
+  r$1()
+], KubernetesNodes.prototype, "confirmAction", 2);
+__decorateClass$o([
+  r$1()
+], KubernetesNodes.prototype, "nodeForAction", 2);
 KubernetesNodes = __decorateClass$o([
   t$2("kubernetes-nodes")
 ], KubernetesNodes);
@@ -51765,6 +51944,9 @@ let KubernetesCRDs = class extends i$2 {
     this.showCreateDrawer = false;
     this.createResourceValue = "";
     this.isCreating = false;
+    this.isEditMode = false;
+    this.editingResource = null;
+    this.resourceFormat = "yaml";
     this.showInstancesDrawer = false;
     this.selectedCRDForInstances = null;
   }
@@ -51781,6 +51963,7 @@ let KubernetesCRDs = class extends i$2 {
     return [
       { label: "View Details", action: "view" },
       { label: "View Instances", action: "instances" },
+      { label: "Edit", action: "edit" },
       { label: "Delete", action: "delete", danger: true }
     ];
   }
@@ -51809,9 +51992,54 @@ let KubernetesCRDs = class extends i$2 {
       case "instances":
         this.viewInstances(item);
         break;
+      case "edit":
+        this.editItem(item);
+        break;
       case "delete":
         this.deleteItem(item);
         break;
+    }
+  }
+  async editItem(item) {
+    this.editingResource = item;
+    this.isEditMode = true;
+    this.resourceFormat = "yaml";
+    this.showCreateDrawer = true;
+    this.isCreating = true;
+    try {
+      const resourceContent = await KubernetesApi.getResourceRaw(
+        "CustomResourceDefinition",
+        item.name,
+        void 0,
+        "json"
+      );
+      const parsed = JSON.parse(resourceContent);
+      let unwrapped = parsed;
+      if (parsed.crd_detail) {
+        unwrapped = parsed.crd_detail;
+      } else if (parsed.crd) {
+        unwrapped = parsed.crd;
+      } else if (parsed.resource) {
+        unwrapped = parsed.resource;
+      }
+      if (unwrapped.metadata?.managedFields) {
+        unwrapped = JSON.parse(JSON.stringify(unwrapped));
+        delete unwrapped.metadata.managedFields;
+      }
+      const yaml = await import("./index-B_pUNQwr.js");
+      this.createResourceValue = yaml.stringify(unwrapped);
+      this.isCreating = false;
+    } catch (error) {
+      console.error("Failed to fetch CRD for editing:", error);
+      this.isCreating = false;
+      this.showCreateDrawer = false;
+      const nc = this.shadowRoot?.querySelector("notification-container");
+      if (nc && typeof nc.addNotification === "function") {
+        nc.addNotification({
+          type: "error",
+          message: `Failed to fetch CRD: ${error.message || "Unknown error"}`
+        });
+      }
     }
   }
   async viewDetails(item) {
@@ -51819,7 +52047,21 @@ let KubernetesCRDs = class extends i$2 {
     this.showDetails = true;
     this.loadingDetails = true;
     try {
-      this.detailsData = await KubernetesApi.getResourceDetails("crd", item.name);
+      const response = await KubernetesApi.getResourceDetails("crd", item.name);
+      let unwrapped = response;
+      if (response?.data?.crd_detail) {
+        unwrapped = response.data.crd_detail;
+      } else if (response?.crd_detail) {
+        unwrapped = response.crd_detail;
+      } else if (response?.crd) {
+        unwrapped = response.crd;
+      } else if (response?.resource) {
+        unwrapped = response.resource;
+      }
+      if (unwrapped?.metadata?.managedFields) {
+        delete unwrapped.metadata.managedFields;
+      }
+      this.detailsData = unwrapped;
     } catch (error) {
       console.error("Failed to fetch CRD details:", error);
       this.detailsData = null;
@@ -51866,6 +52108,9 @@ let KubernetesCRDs = class extends i$2 {
     this.itemToDelete = null;
   }
   handleCreate() {
+    this.isEditMode = false;
+    this.editingResource = null;
+    this.resourceFormat = "yaml";
     this.createResourceValue = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -51904,18 +52149,35 @@ spec:
     try {
       content = format === "json" ? JSON.stringify(resource) : resource.yaml;
       this.isCreating = true;
-      await KubernetesApi.createResource(content, format);
+      if (this.isEditMode && this.editingResource) {
+        await KubernetesApi.updateResource(
+          "CustomResourceDefinition",
+          this.editingResource.name,
+          void 0,
+          content,
+          format
+        );
+        const nc = this.shadowRoot?.querySelector("notification-container");
+        if (nc && typeof nc.addNotification === "function") {
+          nc.addNotification({ type: "success", message: "CRD updated successfully" });
+        }
+      } else {
+        await KubernetesApi.createResource(content, format);
+        const nc = this.shadowRoot?.querySelector("notification-container");
+        if (nc && typeof nc.addNotification === "function") {
+          nc.addNotification({ type: "success", message: "CRD created successfully" });
+        }
+      }
       await this.fetchData();
       this.showCreateDrawer = false;
       this.createResourceValue = "";
-      const nc = this.shadowRoot?.querySelector("notification-container");
-      if (nc && typeof nc.addNotification === "function") {
-        nc.addNotification({ type: "success", message: "CRD created successfully" });
-      }
+      this.isEditMode = false;
+      this.editingResource = null;
     } catch (err) {
       const nc = this.shadowRoot?.querySelector("notification-container");
       if (nc && typeof nc.addNotification === "function") {
-        nc.addNotification({ type: "error", message: `Failed to create CRD: ${err?.message || "Unknown error"}` });
+        const action = this.isEditMode ? "update" : "create";
+        nc.addNotification({ type: "error", message: `Failed to ${action} CRD: ${err?.message || "Unknown error"}` });
       }
     } finally {
       this.isCreating = false;
@@ -52009,8 +52271,9 @@ spec:
 
         <create-resource-drawer
           .show="${this.showCreateDrawer}"
-          .title="Create Custom Resource Definition"
+          .title="${this.isEditMode ? "Edit CRD" : "Create CRD"}"
           .value="${this.createResourceValue}"
+          .format="${this.resourceFormat}"
           .submitLabel="Apply"
           .loading="${this.isCreating}"
           @close="${() => {
@@ -52129,6 +52392,15 @@ __decorateClass$m([
 __decorateClass$m([
   r$1()
 ], KubernetesCRDs.prototype, "isCreating", 2);
+__decorateClass$m([
+  r$1()
+], KubernetesCRDs.prototype, "isEditMode", 2);
+__decorateClass$m([
+  r$1()
+], KubernetesCRDs.prototype, "editingResource", 2);
+__decorateClass$m([
+  r$1()
+], KubernetesCRDs.prototype, "resourceFormat", 2);
 __decorateClass$m([
   r$1()
 ], KubernetesCRDs.prototype, "showInstancesDrawer", 2);
@@ -73212,32 +73484,31 @@ class SidebarTree extends I18nLitElement {
           }
         ]
       },
-      {
-        id: "ansible",
-        label: "nav.ansible",
-        icon: "ansible",
-        route: "ansible",
-        children: [
-          {
-            id: "ansible-playbooks",
-            label: "ansible.playbooks",
-            icon: "playbooks",
-            route: "ansible/playbooks"
-          },
-          {
-            id: "ansible-inventory",
-            label: "ansible.inventory",
-            icon: "inventory",
-            route: "ansible/inventory"
-          },
-          {
-            id: "ansible-executions",
-            label: "ansible.executions",
-            icon: "executions",
-            route: "ansible/executions"
-          }
-        ]
-      },
+      //     {
+      //       id: 'ansible',
+      //       label: 'nav.ansible',
+      //       icon: 'ansible',
+      //       route: 'ansible',
+      //       children: [
+      //         {
+      //           id: 'ansible-playbooks',
+      //           label: 'ansible.playbooks',
+      //           icon: 'playbooks',
+      //           route: 'ansible/playbooks'
+      //         },
+      //         {
+      //           id: 'ansible-inventory',
+      //           label: 'ansible.inventory',
+      //           icon: 'inventory',
+      //           route: 'ansible/inventory'
+      //         },
+      //         {
+      //           id: 'ansible-executions',
+      //           label: 'ansible.executions',
+      //           icon: 'executions',
+      //           route: 'ansible/executions'
+      // //         }
+      //     },
       {
         id: "logs",
         label: "nav.logs",
@@ -74081,6 +74352,40 @@ __decorateClass([
   r$1()
 ], AppRoot.prototype, "subRoute");
 customElements.define("app-root", AppRoot);
-export {
+const appRoot = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
   AppRoot
+}, Symbol.toStringTag, { value: "Module" }));
+export {
+  Alias as A,
+  Composer as C,
+  Document$1 as D,
+  Lexer as L,
+  Pair as P,
+  Schema as S,
+  YAML as Y,
+  YAMLError as a,
+  YAMLParseError as b,
+  cst as c,
+  YAMLWarning as d,
+  isCollection$1 as e,
+  isDocument as f,
+  isMap as g,
+  isNode as h,
+  isAlias as i,
+  isPair as j,
+  isScalar$1 as k,
+  isSeq as l,
+  Scalar as m,
+  YAMLMap as n,
+  YAMLSeq as o,
+  LineCounter as p,
+  Parser as q,
+  parse as r,
+  parseAllDocuments as s,
+  parseDocument as t,
+  stringify as u,
+  visit$1 as v,
+  visitAsync as w,
+  appRoot as x
 };

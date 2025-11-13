@@ -30,6 +30,15 @@ export class LoginPage extends I18nLitElement {
       font-size: 1.5rem;
     }
 
+    div#copy {
+      text-align: center;
+      font-size: small;
+      width: 100%;
+      justify-content: center;
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+    }
+
     .form-group {
       margin-bottom: 1.5rem;
     }
@@ -167,7 +176,7 @@ export class LoginPage extends I18nLitElement {
           </svg>
         </div>
         
-        <h1>Vapor</h1>
+        <h1>Vapor by Awanio</h1>
         
         <form @submit=${this.handleSubmit}>
           <div class="form-group">
@@ -228,6 +237,9 @@ export class LoginPage extends I18nLitElement {
             <div class="error-message">${this.error}</div>
           ` : ''}
         </form>
+        <div id="copy">
+        <span>&copy; ${new Date().getFullYear()} Awanio</span>
+        </div>
       </div>
     `;
   }
@@ -248,7 +260,7 @@ export class LoginPage extends I18nLitElement {
 
   private async handleSubmit(e: Event) {
     e.preventDefault();
-    
+
     if (!this.username || !this.password) {
       this.error = 'Please enter both username and password';
       return;
@@ -258,11 +270,11 @@ export class LoginPage extends I18nLitElement {
     this.error = '';
 
     try {
-      const success = await login({ 
-        username: this.username, 
-        password: this.password 
+      const success = await login({
+        username: this.username,
+        password: this.password
       });
-      
+
       if (success) {
         // The auth store will dispatch an event and app-root will handle the redirect
         this.dispatchEvent(new CustomEvent('login-success', {

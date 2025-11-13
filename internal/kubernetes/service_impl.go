@@ -504,6 +504,63 @@ func (s *Service) GetCRDDetail(ctx context.Context, name string) (*apiextensions
 	return crd, nil
 }
 
+// ApplyCRD creates or updates a Custom Resource Definition
+func (s *Service) ApplyCRD(ctx context.Context, crd *apiextensionsv1.CustomResourceDefinition) (*apiextensionsv1.CustomResourceDefinition, error) {
+// Try to get the CRD first to see if it exists
+existingCRD, err := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, crd.Name, metav1.GetOptions{})
+
+if err != nil {
+// CRD doesn't exist, create it
+createdCRD, createErr := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Create(ctx, crd, metav1.CreateOptions{})
+if createErr != nil {
+return nil, fmt.Errorf("failed to create CRD: %w", createErr)
+}
+createdCRD.APIVersion = "apiextensions.k8s.io/v1"
+createdCRD.Kind = "CustomResourceDefinition"
+return createdCRD, nil
+}
+
+// CRD exists, update it
+crd.ResourceVersion = existingCRD.ResourceVersion
+updatedCRD, updateErr := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Update(ctx, crd, metav1.UpdateOptions{})
+if updateErr != nil {
+return nil, fmt.Errorf("failed to update CRD: %w", updateErr)
+}
+updatedCRD.APIVersion = "apiextensions.k8s.io/v1"
+updatedCRD.Kind = "CustomResourceDefinition"
+return updatedCRD, nil
+}
+
+// UpdateCRD updates an existing Custom Resource Definition
+func (s *Service) UpdateCRD(ctx context.Context, name string, crd *apiextensionsv1.CustomResourceDefinition) (*apiextensionsv1.CustomResourceDefinition, error) {
+// Get the existing CRD to obtain its ResourceVersion
+existingCRD, err := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, name, metav1.GetOptions{})
+if err != nil {
+return nil, fmt.Errorf("failed to get existing CRD: %w", err)
+}
+
+// Set the ResourceVersion for optimistic concurrency control
+crd.ResourceVersion = existingCRD.ResourceVersion
+crd.Name = name // Ensure the name matches
+
+updatedCRD, updateErr := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Update(ctx, crd, metav1.UpdateOptions{})
+if updateErr != nil {
+return nil, fmt.Errorf("failed to update CRD: %w", updateErr)
+}
+updatedCRD.APIVersion = "apiextensions.k8s.io/v1"
+updatedCRD.Kind = "CustomResourceDefinition"
+return updatedCRD, nil
+}
+
+// DeleteCRD deletes a Custom Resource Definition
+func (s *Service) DeleteCRD(ctx context.Context, name string) error {
+err := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Delete(ctx, name, metav1.DeleteOptions{})
+if err != nil {
+return fmt.Errorf("failed to delete CRD: %w", err)
+}
+return nil
+}
+
 // ListCRDObjects lists all objects for a specific CRD
 func (s *Service) ListCRDObjects(ctx context.Context, crdName, namespace string) ([]CRDObject, error) {
 	// First, get the CRD to extract necessary information

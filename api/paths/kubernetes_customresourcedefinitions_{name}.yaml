@@ -29,3 +29,165 @@ get:
             $ref: ../components/schemas/ErrorResponse.yaml
     '503':
       $ref: ../components/responses/KubernetesNotInstalledError.yaml
+
+put:
+  summary: Update a Custom Resource Definition
+  description: |
+    Update an existing Custom Resource Definition in the Kubernetes cluster.
+    
+    Supports both JSON and YAML formats. If Content-Type is not specified, defaults to JSON.
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      description: CRD name
+      schema:
+        type: string
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+      application/yaml:
+        schema:
+          type: string
+      text/yaml:
+        schema:
+          type: string
+  responses:
+    '200':
+      description: CRD updated successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+              data:
+                type: object
+                properties:
+                  crd:
+                    type: object
+    '400':
+      description: Bad request - Invalid YAML/JSON format
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: CRD not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml
+
+patch:
+  summary: Update a Custom Resource Definition
+  description: |
+    Update an existing Custom Resource Definition in the Kubernetes cluster.
+    
+    Supports both JSON and YAML formats. If Content-Type is not specified, defaults to JSON.
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      description: CRD name
+      schema:
+        type: string
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+      application/yaml:
+        schema:
+          type: string
+      text/yaml:
+        schema:
+          type: string
+  responses:
+    '200':
+      description: CRD updated successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+              data:
+                type: object
+                properties:
+                  crd:
+                    type: object
+    '400':
+      description: Bad request - Invalid YAML/JSON format
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: CRD not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml
+
+delete:
+  summary: Delete a Custom Resource Definition
+  description: Delete an existing Custom Resource Definition from the Kubernetes cluster
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      description: CRD name
+      schema:
+        type: string
+  responses:
+    '200':
+      description: CRD deleted successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+              data:
+                type: object
+                properties:
+                  message:
+                    type: string
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '404':
+      description: CRD not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

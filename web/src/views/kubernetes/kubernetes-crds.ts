@@ -42,6 +42,9 @@ export class KubernetesCRDs extends LitElement {
   @state() private showCreateDrawer = false;
   @state() private createResourceValue = '';
   @state() private isCreating = false;
+  @state() private isEditMode = false;
+  @state() private editingResource: KubernetesCRD | null = null;
+  @state() private resourceFormat: 'yaml' | 'json' = 'yaml';
 
   // Instances drawer state
   @state() private showInstancesDrawer = false;
@@ -115,6 +118,7 @@ export class KubernetesCRDs extends LitElement {
     return [
       { label: 'View Details', action: 'view' },
       { label: 'View Instances', action: 'instances' },
+      { label: 'Edit', action: 'edit' },
       { label: 'Delete', action: 'delete', danger: true }
     ];
   }
@@ -151,11 +155,69 @@ export class KubernetesCRDs extends LitElement {
       case 'instances':
         this.viewInstances(item);
         break;
+      case 'edit':
+        this.editItem(item);
+        break;
       case 'delete':
         this.deleteItem(item);
         break;
     }
   }
+
+  private async editItem(item: KubernetesCRD) {
+    this.editingResource = item;
+    this.isEditMode = true;
+    this.resourceFormat = 'yaml';
+    this.showCreateDrawer = true;
+    this.isCreating = true;
+    
+    try {
+      // Fetch the CRD - try JSON first to unwrap, then convert to YAML
+      const resourceContent = await KubernetesApi.getResourceRaw(
+        'CustomResourceDefinition',
+        item.name,
+        undefined,
+        'json'
+      );
+      
+      // Parse the JSON response
+      const parsed = JSON.parse(resourceContent);
+      
+      // Unwrap if it's wrapped in a response object
+      let unwrapped = parsed;
+      if (parsed.crd_detail) {
+        unwrapped = parsed.crd_detail;
+      } else if (parsed.crd) {
+        unwrapped = parsed.crd;
+      } else if (parsed.resource) {
+        unwrapped = parsed.resource;
+      }
+      
+      // Remove managedFields from metadata
+      if (unwrapped.metadata?.managedFields) {
+        unwrapped = JSON.parse(JSON.stringify(unwrapped));
+        delete unwrapped.metadata.managedFields;
+      }
+      
+      // Convert to YAML
+      const yaml = await import('yaml');
+      this.createResourceValue = yaml.stringify(unwrapped);
+      this.isCreating = false;
+    } catch (error: any) {
+      console.error('Failed to fetch CRD for editing:', error);
+      this.isCreating = false;
+      this.showCreateDrawer = false;
+      
+      const nc = this.shadowRoot?.querySelector('notification-container') as any;
+      if (nc && typeof nc.addNotification === 'function') {
+        nc.addNotification({ 
+          type: 'error', 
+          message: `Failed to fetch CRD: ${error.message || 'Unknown error'}` 
+        });
+      }
+    }
+  }
+
 
   private async viewDetails(item: KubernetesCRD) {
     this.selectedItem = item;
@@ -163,7 +225,25 @@ export class KubernetesCRDs extends LitElement {
     this.loadingDetails = true;
     
     try {
-      this.detailsData = await KubernetesApi.getResourceDetails('crd', item.name);
+      const response: any = await KubernetesApi.getResourceDetails('crd', item.name);
+      
+      // Unwrap the response from various possible wrappers
+      let unwrapped = response;
+      if (response?.data?.crd_detail) {
+        unwrapped = response.data.crd_detail;
+      } else if (response?.crd_detail) {
+        unwrapped = response.crd_detail;
+      } else if (response?.crd) {
+        unwrapped = response.crd;
+      } else if (response?.resource) {
+        unwrapped = response.resource;
+      }
+      
+      // Remove managedFields from metadata
+      if (unwrapped?.metadata?.managedFields) {
+        delete unwrapped.metadata.managedFields;
+      }
+      this.detailsData = unwrapped;
     } catch (error) {
       console.error('Failed to fetch CRD details:', error);
       this.detailsData = null;
@@ -223,6 +303,9 @@ export class KubernetesCRDs extends LitElement {
   }
 
   private handleCreate() {
+    this.isEditMode = false;
+    this.editingResource = null;
+    this.resourceFormat = 'yaml';
     this.createResourceValue = `apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -262,18 +345,41 @@ spec:
     try {
       content = format === 'json' ? JSON.stringify(resource) : (resource.yaml as string);
       this.isCreating = true;
-      await KubernetesApi.createResource(content, format);
+      
+      if (this.isEditMode && this.editingResource) {
+        // Update existing CRD
+        await KubernetesApi.updateResource(
+          'CustomResourceDefinition',
+          this.editingResource.name,
+          undefined,
+          content,
+          format
+        );
+        
+        const nc = this.shadowRoot?.querySelector('notification-container') as any;
+        if (nc && typeof nc.addNotification === 'function') {
+          nc.addNotification({ type: 'success', message: 'CRD updated successfully' });
+        }
+      } else {
+        // Create new CRD
+        await KubernetesApi.createResource(content, format);
+        
+        const nc = this.shadowRoot?.querySelector('notification-container') as any;
+        if (nc && typeof nc.addNotification === 'function') {
+          nc.addNotification({ type: 'success', message: 'CRD created successfully' });
+        }
+      }
+      
       await this.fetchData();
       this.showCreateDrawer = false;
       this.createResourceValue = '';
-      const nc = this.shadowRoot?.querySelector('notification-container') as any;
-      if (nc && typeof nc.addNotification === 'function') {
-        nc.addNotification({ type: 'success', message: 'CRD created successfully' });
-      }
+      this.isEditMode = false;
+      this.editingResource = null;
     } catch (err: any) {
       const nc = this.shadowRoot?.querySelector('notification-container') as any;
       if (nc && typeof nc.addNotification === 'function') {
-        nc.addNotification({ type: 'error', message: `Failed to create CRD: ${err?.message || 'Unknown error'}` });
+        const action = this.isEditMode ? 'update' : 'create';
+        nc.addNotification({ type: 'error', message: `Failed to ${action} CRD: ${err?.message || 'Unknown error'}` });
       }
     } finally {
       this.isCreating = false;
@@ -373,8 +479,9 @@ spec:
 
         <create-resource-drawer
           .show="${this.showCreateDrawer}"
-          .title="Create Custom Resource Definition"
+          .title="${this.isEditMode ? 'Edit CRD' : 'Create CRD'}"
           .value="${this.createResourceValue}"
+          .format="${this.resourceFormat}"
           .submitLabel="Apply"
           .loading="${this.isCreating}"
           @close="${() => { this.showCreateDrawer = false; }}"

@@ -15,3 +15,133 @@ get:
       $ref: ../components/responses/UnauthorizedError.yaml
     '503':
       $ref: ../components/responses/KubernetesNotInstalledError.yaml
+
+post:
+  summary: Create or update a Custom Resource Definition
+  description: |
+    Create or update a Custom Resource Definition in the Kubernetes cluster using apply semantics.
+    If the CRD doesn't exist, it will be created. If it exists, it will be updated.
+    
+    Supports both JSON and YAML formats. If Content-Type is not specified, defaults to JSON.
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+        example:
+          apiVersion: apiextensions.k8s.io/v1
+          kind: CustomResourceDefinition
+          metadata:
+            name: crontabs.stable.example.com
+          spec:
+            group: stable.example.com
+            versions:
+              - name: v1
+                served: true
+                storage: true
+                schema:
+                  openAPIV3Schema:
+                    type: object
+                    properties:
+                      spec:
+                        type: object
+                        properties:
+                          cronSpec:
+                            type: string
+                          image:
+                            type: string
+                          replicas:
+                            type: integer
+            scope: Namespaced
+            names:
+              plural: crontabs
+              singular: crontab
+              kind: CronTab
+              shortNames:
+                - ct
+      application/yaml:
+        schema:
+          type: string
+        example: |
+          apiVersion: apiextensions.k8s.io/v1
+          kind: CustomResourceDefinition
+          metadata:
+            name: crontabs.stable.example.com
+          spec:
+            group: stable.example.com
+            versions:
+              - name: v1
+                served: true
+                storage: true
+                schema:
+                  openAPIV3Schema:
+                    type: object
+                    properties:
+                      spec:
+                        type: object
+                        properties:
+                          cronSpec:
+                            type: string
+                          image:
+                            type: string
+                          replicas:
+                            type: integer
+            scope: Namespaced
+            names:
+              plural: crontabs
+              singular: crontab
+              kind: CronTab
+              shortNames:
+                - ct
+      text/yaml:
+        schema:
+          type: string
+  responses:
+    '200':
+      description: CRD created or updated successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+              data:
+                type: object
+                properties:
+                  crd:
+                    type: object
+    '400':
+      description: Bad request - Invalid YAML/JSON format or missing required fields
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+          examples:
+            invalidYaml:
+              summary: Invalid YAML format
+              value:
+                status: error
+                message: Failed to parse YAML
+                details: 'yaml: line 5: found character that cannot start any token'
+            invalidJson:
+              summary: Invalid JSON format
+              value:
+                status: error
+                message: Failed to parse JSON
+                details: 'unexpected end of JSON input'
+            missingField:
+              summary: Missing required field
+              value:
+                status: error
+                message: Validation error
+                details: 'CRD name is required in metadata.name'
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

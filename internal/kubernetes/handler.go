@@ -11,6 +11,7 @@ import (
 	"github.com/awanio/vapor/internal/common"
 	"github.com/gin-gonic/gin"
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/yaml"
@@ -557,6 +558,97 @@ func (h *Handler) GetCRDDetailGin(c *gin.Context) {
 		return
 	}
 	common.SendSuccess(c, gin.H{"crd_detail": crdDetail})
+}
+
+// ApplyCRDGin handles POST requests to create or update a CRD
+func (h *Handler) ApplyCRDGin(c *gin.Context) {
+var crd apiextensionsv1.CustomResourceDefinition
+
+contentType := c.ContentType()
+
+// Handle different content types
+if contentType == "application/yaml" || contentType == "text/yaml" {
+body, err := io.ReadAll(c.Request.Body)
+if err != nil {
+common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to read request body", err.Error())
+return
+}
+
+if err := yaml.Unmarshal(body, &crd); err != nil {
+common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to parse YAML", err.Error())
+return
+}
+} else {
+// Default to JSON
+if err := c.ShouldBindJSON(&crd); err != nil {
+common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to parse JSON", err.Error())
+return
+}
+}
+
+// Validate required fields
+if crd.Name == "" {
+common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Validation error", "CRD name is required in metadata.name")
+return
+}
+
+appliedCRD, err := h.service.ApplyCRD(c.Request.Context(), &crd)
+if err != nil {
+common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to apply CRD", err.Error())
+return
+}
+
+common.SendSuccess(c, gin.H{"crd": appliedCRD})
+}
+
+// UpdateCRDGin handles PUT/PATCH requests to update an existing CRD
+func (h *Handler) UpdateCRDGin(c *gin.Context) {
+name := c.Param("name")
+
+var crd apiextensionsv1.CustomResourceDefinition
+
+contentType := c.ContentType()
+
+// Handle different content types
+if contentType == "application/yaml" || contentType == "text/yaml" {
+body, err := io.ReadAll(c.Request.Body)
+if err != nil {
+common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to read request body", err.Error())
+return
+}
+
+if err := yaml.Unmarshal(body, &crd); err != nil {
+common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to parse YAML", err.Error())
+return
+}
+} else {
+// Default to JSON
+if err := c.ShouldBindJSON(&crd); err != nil {
+common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to parse JSON", err.Error())
+return
+}
+}
+
+updatedCRD, err := h.service.UpdateCRD(c.Request.Context(), name, &crd)
+if err != nil {
+common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to update CRD", err.Error())
+return
+}
+
+common.SendSuccess(c, gin.H{"crd": updatedCRD})
+}
+
+// DeleteCRDGin handles DELETE requests to remove a CRD
+func (h *Handler) DeleteCRDGin(c *gin.Context) {
+name := c.Param("name")
+
+err := h.service.DeleteCRD(c.Request.Context(), name)
+if err != nil {
+common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to delete CRD", err.Error())
+return
+}
+
+common.SendSuccess(c, gin.H{"message": "CRD deleted successfully"})
 }
 
 func (h *Handler) ListCRDObjectsGin(c *gin.Context) {

@@ -16,3 +16,99 @@ get:
       $ref: ../components/responses/UnauthorizedError.yaml
     '503':
       $ref: ../components/responses/KubernetesNotInstalledError.yaml
+
+post:
+  summary: Create or update a job
+  description: |
+    Create or update a job in the Kubernetes cluster using apply semantics.
+    If the job doesn't exist, it will be created. If it exists, it will be updated.
+    
+    Supports both JSON and YAML formats. If Content-Type is not specified, defaults to JSON.
+  tags:
+    - Kubernetes
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/JobDetail.yaml
+        example:
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: pi
+            namespace: default
+          spec:
+            template:
+              spec:
+                containers:
+                - name: pi
+                  image: perl:5.34.0
+                  command: ["perl", "-Mbignum=bpi", "-wle", "print bpi(2000)"]
+                restartPolicy: Never
+            backoffLimit: 4
+      application/yaml:
+        schema:
+          type: string
+        example: |
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: pi
+            namespace: default
+          spec:
+            template:
+              spec:
+                containers:
+                - name: pi
+                  image: perl:5.34.0
+                  command: ["perl", "-Mbignum=bpi", "-wle", "print bpi(2000)"]
+                restartPolicy: Never
+            backoffLimit: 4
+      text/yaml:
+        schema:
+          type: string
+  responses:
+    '200':
+      description: Job created or updated successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/JobDetailResponse.yaml
+    '400':
+      description: Bad request - Invalid YAML/JSON format or missing required fields
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+          examples:
+            invalidYaml:
+              summary: Invalid YAML format
+              value:
+                status: error
+                message: Failed to parse YAML
+                details: 'yaml: line 5: found character that cannot start any token'
+            invalidJson:
+              summary: Invalid JSON format
+              value:
+                status: error
+                message: Failed to parse JSON
+                details: 'unexpected end of JSON input'
+            unsupportedContentType:
+              summary: Unsupported content type
+              value:
+                status: error
+                message: Unsupported Content-Type
+                details: "Content-Type must be 'application/json', 'application/yaml', or 'text/yaml'"
+            missingField:
+              summary: Missing required field
+              value:
+                status: error
+                message: Validation error
+                details: 'Job name is required in metadata.name'
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '503':
+      $ref: ../components/responses/KubernetesNotInstalledError.yaml

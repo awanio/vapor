@@ -31,6 +31,11 @@ func KubernetesRoutes(r *gin.RouterGroup) {
 	// CRD routes
 	r.GET("/kubernetes/customresourcedefinitions", k8sHandler.ListCRDsGin)
 	r.GET("/kubernetes/customresourcedefinitions/:name", k8sHandler.GetCRDDetailGin)
+	// CRD definition manipulation routes
+	r.POST("/kubernetes/customresourcedefinitions", k8sHandler.ApplyCRDGin)
+	r.PUT("/kubernetes/customresourcedefinitions/:name", k8sHandler.UpdateCRDGin)
+	r.PATCH("/kubernetes/customresourcedefinitions/:name", k8sHandler.UpdateCRDGin)
+	r.DELETE("/kubernetes/customresourcedefinitions/:name", k8sHandler.DeleteCRDGin)
 	r.GET("/kubernetes/customresourcedefinitions/:name/instances", k8sHandler.ListCRDObjectsGin)
 	r.GET("/kubernetes/customresourcedefinitions/:name/instances/:namespace/:object-name", k8sHandler.GetCRDObjectDetailGin)
 	// CRD instance manipulation routes
@@ -253,6 +258,10 @@ func registerNoKubernetesRoutes(r *gin.RouterGroup) {
 	// All routes point to the same no-op handler
 	r.GET("/kubernetes/customresourcedefinitions", noK8sHandler)
 	r.GET("/kubernetes/customresourcedefinitions/:name", noK8sHandler)
+	r.POST("/kubernetes/customresourcedefinitions", noK8sHandler)
+	r.PUT("/kubernetes/customresourcedefinitions/:name", noK8sHandler)
+	r.PATCH("/kubernetes/customresourcedefinitions/:name", noK8sHandler)
+	r.DELETE("/kubernetes/customresourcedefinitions/:name", noK8sHandler)
 	r.GET("/kubernetes/customresourcedefinitions/:name/instances", noK8sHandler)
 	r.GET("/kubernetes/customresourcedefinitions/:name/instances/:namespace/:object-name", noK8sHandler)
 	r.POST("/kubernetes/customresourcedefinitions/:name/instances", noK8sHandler)
