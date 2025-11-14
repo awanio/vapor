@@ -319,6 +319,10 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
 
   private cpuChart: Chart | null = null;
   private memoryChart: Chart | null = null;
+  private updateThrottle: number | null = null;
+  private lastChartUpdate: number = 0;
+  private readonly CHART_UPDATE_INTERVAL = 2000; // Update charts every 2 seconds max
+
 
   // Store subscriptions
   private systemSummary = this.subscribeToStore($systemSummary);
@@ -371,13 +375,32 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
   override updated(changedProperties: Map<string, any>) {
     super.updated(changedProperties);
     
-    // Update charts when history changes
+    // Throttle chart updates to prevent excessive re-renders
+    // Only update charts every CHART_UPDATE_INTERVAL milliseconds
     if (this.cpuChart && this.memoryChart) {
-      this.updateChartsFromHistory();
+      const now = Date.now();
+      if (now - this.lastChartUpdate >= this.CHART_UPDATE_INTERVAL) {
+        this.lastChartUpdate = now;
+        this.updateChartsFromHistory();
+      } else if (!this.updateThrottle) {
+        // Schedule an update for later
+        this.updateThrottle = window.setTimeout(() => {
+          this.updateThrottle = null;
+          this.lastChartUpdate = Date.now();
+          this.updateChartsFromHistory();
+        }, this.CHART_UPDATE_INTERVAL - (now - this.lastChartUpdate));
+      }
     }
   }
 
   private cleanup() {
+    // Clear throttle timer
+    if (this.updateThrottle) {
+      clearTimeout(this.updateThrottle);
+      this.updateThrottle = null;
+    }
+    
+    // Destroy charts and clear references
     if (this.cpuChart) {
       this.cpuChart.destroy();
       this.cpuChart = null;
@@ -484,7 +507,7 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
       if (this.cpuChart.data.datasets[0]) {
         this.cpuChart.data.datasets[0].data = data.map((p: any) => p.value);
       }
-      this.cpuChart.update('none');
+      this.cpuChart.update('none'); // Use 'none' mode to skip animations
     }
 
     // Update Memory chart

@@ -67,7 +67,7 @@ export interface MetricsState {
  * Default history configuration
  */
 const DEFAULT_HISTORY_CONFIG: MetricHistoryConfig = {
-  maxPoints: 120, // Keep 2 minutes of data at 1-second intervals
+  maxPoints: 60, // Keep 1 minute of data at 1-second intervals (reduced for memory optimization)
   interval: 1000,
 };
 
@@ -323,10 +323,13 @@ function addToHistory(
   const timestamp = Date.now();
   const label = new Date(timestamp).toLocaleTimeString();
   
-  const newHistory = [...history, { timestamp, value, label }];
+  // Optimize: mutate existing array instead of creating new one
+  const newHistory = history.slice(); // Shallow copy
+  newHistory.push({ timestamp, value, label });
   
-  // Keep only last N points
+  // Keep only last N points - remove from beginning if exceeded
   if (newHistory.length > maxPoints) {
+    // Remove excess items efficiently
     newHistory.splice(0, newHistory.length - maxPoints);
   }
   

@@ -1,4 +1,4 @@
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-DRqIQZ0C.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-CCmIBfqX.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -17244,7 +17244,7 @@ class WebSocketManager2 {
 }
 const api = Api;
 const DEFAULT_HISTORY_CONFIG = {
-  maxPoints: 120
+  maxPoints: 60
 };
 const $systemSummary = persistentAtom(
   "vapor.metrics.systemSummary",
@@ -17371,7 +17371,8 @@ function addToHistory(historyAtom, value, maxPoints = DEFAULT_HISTORY_CONFIG.max
   const history = historyAtom.get();
   const timestamp2 = Date.now();
   const label = new Date(timestamp2).toLocaleTimeString();
-  const newHistory = [...history, { timestamp: timestamp2, value, label }];
+  const newHistory = history.slice();
+  newHistory.push({ timestamp: timestamp2, value, label });
   if (newHistory.length > maxPoints) {
     newHistory.splice(0, newHistory.length - maxPoints);
   }
@@ -17407,7 +17408,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-DRqIQZ0C.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-CCmIBfqX.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17452,7 +17453,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-DRqIQZ0C.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-CCmIBfqX.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17516,7 +17517,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-DRqIQZ0C.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-CCmIBfqX.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17609,6 +17610,9 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
     super(...arguments);
     this.cpuChart = null;
     this.memoryChart = null;
+    this.updateThrottle = null;
+    this.lastChartUpdate = 0;
+    this.CHART_UPDATE_INTERVAL = 2e3;
     this.systemSummary = this.subscribeToStore($systemSummary);
     this.cpuInfo = this.subscribeToStore($cpuInfo);
     this.memoryInfo = this.subscribeToStore($memoryInfo);
@@ -17626,7 +17630,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-DRqIQZ0C.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-CCmIBfqX.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -17647,10 +17651,24 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   updated(changedProperties) {
     super.updated(changedProperties);
     if (this.cpuChart && this.memoryChart) {
-      this.updateChartsFromHistory();
+      const now = Date.now();
+      if (now - this.lastChartUpdate >= this.CHART_UPDATE_INTERVAL) {
+        this.lastChartUpdate = now;
+        this.updateChartsFromHistory();
+      } else if (!this.updateThrottle) {
+        this.updateThrottle = window.setTimeout(() => {
+          this.updateThrottle = null;
+          this.lastChartUpdate = Date.now();
+          this.updateChartsFromHistory();
+        }, this.CHART_UPDATE_INTERVAL - (now - this.lastChartUpdate));
+      }
     }
   }
   cleanup() {
+    if (this.updateThrottle) {
+      clearTimeout(this.updateThrottle);
+      this.updateThrottle = null;
+    }
     if (this.cpuChart) {
       this.cpuChart.destroy();
       this.cpuChart = null;
@@ -36341,7 +36359,7 @@ class KubernetesApi {
       if (contentType === "json") {
         parsedResource = JSON.parse(content);
       } else {
-        const yaml = await import("./index-CEA2wl8z.js");
+        const yaml = await import("./index-Dgc_L4Vu.js");
         parsedResource = yaml.parse(content);
       }
     } catch (error) {
@@ -52326,7 +52344,7 @@ let KubernetesCRDs = class extends i$2 {
         unwrapped = JSON.parse(JSON.stringify(unwrapped));
         delete unwrapped.metadata.managedFields;
       }
-      const yaml = await import("./index-CEA2wl8z.js");
+      const yaml = await import("./index-Dgc_L4Vu.js");
       this.createResourceValue = yaml.stringify(unwrapped);
       this.isCreating = false;
     } catch (error) {
