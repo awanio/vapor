@@ -186,9 +186,9 @@ if [ ! -f "$CONFIG_DIR/vapor.conf" ]; then
     JWT_SECRET=$(openssl rand -base64 32)
     cat > "$CONFIG_DIR/vapor.conf" << CONFEOF
 # Vapor Configuration File
-JWT_SECRET=${JWT_SECRET}
+JWT_SECRET: "${JWT_SECRET}"
 port: "7770"
-appdir: ${APP_DIR}
+appdir: "${APP_DIR}"
 
 # TLS/HTTPS Configuration (enabled by default for security)
 tls_enabled: true
