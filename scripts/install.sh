@@ -104,8 +104,8 @@ else
     exit 1
 fi
 
-# Verify binary is executable
-if ! file "$TEMP_DIR/$BINARY_NAME" | grep -q "executable"; then
+# Verify binary is an ELF executable (check magic bytes)
+if ! head -c 4 "$TEMP_DIR/$BINARY_NAME" | grep -q "^.ELF"; then
     echo -e "${RED}Error: Downloaded file is not a valid executable${NC}"
     exit 1
 fi
