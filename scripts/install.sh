@@ -83,6 +83,39 @@ if [ -n "$MISSING_OPTIONAL" ]; then
     echo "Some advanced features may not work."
 fi
 
+# Check for required libvirt libraries
+echo "Checking for libvirt libraries..."
+LIBVIRT_MISSING=false
+if ! ldconfig -p 2>/dev/null | grep -q "libvirt-lxc.so.0" && ! ls /usr/lib/x86_64-linux-gnu/libvirt-lxc.so.0 2>/dev/null && ! ls /usr/lib64/libvirt-lxc.so.0 2>/dev/null; then
+    LIBVIRT_MISSING=true
+fi
+
+if [ "$LIBVIRT_MISSING" = true ]; then
+    echo -e "${YELLOW}Warning: libvirt libraries not found. Installing...${NC}"
+    
+    # Detect package manager and install libvirt libraries
+    if command -v apt-get &> /dev/null; then
+        echo "Installing libvirt libraries using apt..."
+        apt-get update -qq
+        apt-get install -y libvirt-daemon-system libvirt-clients 2>&1 | grep -v "^Get:" || true
+    elif command -v dnf &> /dev/null; then
+        echo "Installing libvirt libraries using dnf..."
+        dnf install -y libvirt-daemon libvirt-client -q
+    elif command -v yum &> /dev/null; then
+        echo "Installing libvirt libraries using yum..."
+        yum install -y libvirt-daemon libvirt-client -q
+    else
+        echo -e "${RED}Error: Could not install libvirt libraries automatically.${NC}"
+        echo "Please install the libvirt package manually:"
+        echo "  - Debian/Ubuntu: sudo apt-get install libvirt-daemon-system libvirt-clients"
+        echo "  - RHEL/CentOS: sudo yum install libvirt-daemon libvirt-client"
+        echo "  - Fedora: sudo dnf install libvirt-daemon libvirt-client"
+        exit 1
+    fi
+    
+    echo -e "${GREEN}libvirt libraries installed successfully${NC}"
+fi
+
 # Create temporary directory
 echo "Creating temporary directory..."
 mkdir -p "$TEMP_DIR"
