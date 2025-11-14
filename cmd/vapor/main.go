@@ -468,6 +468,8 @@ func regenerateCertsCmd() {
 	fmt.Println("====================================")
 	fmt.Println()
 
+	// Remove the special command from os.Args so flag.Parse() works
+	os.Args = append(os.Args[:1], os.Args[2:]...)
 	// Load configuration to get certificate paths
 	cfg, err := config.Load()
 	if err != nil {
