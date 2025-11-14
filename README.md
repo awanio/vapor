@@ -7,14 +7,19 @@ Vapor is a comprehensive Linux system management platform inspired by [Cockpit](
 1. System Management
     * User management (Linux system users)
     * Network configuration (interfaces, bridges, bonds, VLANs)
-    * Storage management (disks, LVM, iSCSI, BTRFS, multipath)
+    * Storage management:
+      * disks
+      * LVM (upcoming)
+      * iSCSI (upcoming)
+      * BTRFS (upcoming)
+      * multipath (upcoming)
     * System monitoring and metrics
 2. Container Orchestration
     * Docker container management
     * CRI-compatible runtime support (containerd, CRI-O)
     * Container images management
     * Resumable image uploads
-3. Virtualization (KVM/Libvirt)
+3. Virtualization (KVM/Libvirt) (upcoming)
     * VM creation with enhanced API
     * PCI device passthrough support
     * Storage pool management
@@ -24,9 +29,9 @@ Vapor is a comprehensive Linux system management platform inspired by [Cockpit](
 4. Kubernetes Integration
     * Cluster management
     * Workload deployment
-    * Helm chart management
+    * Helm chart management (upcoming)
     * Node and storage management
-5. Ansible Automation
+5. Ansible Automation (upcoming)
     * Playbook execution with parameter support
     * Ad-hoc commands
     * Dynamic inventory generation
@@ -256,49 +261,6 @@ The API provides WebSocket-based terminal access at `/api/v1/ws/terminal`. Key f
 - **Security**: Requires valid JWT authentication before establishing terminal session
 - **Audit logging**: All terminal sessions are logged with username and session details
 - **User permissions**: Each user operates within their own Linux permissions
-
-#### Terminal WebSocket Protocol
-
-1. Connect to `ws://localhost:8080/api/v1/ws/terminal`
-2. Send authentication message:
-   ```json
-   {
-     "type": "auth",
-     "payload": {
-       "token": "your-jwt-token"
-     }
-   }
-   ```
-3. After successful auth, send subscribe message with terminal size:
-   ```json
-   {
-     "type": "subscribe",
-     "payload": {
-       "rows": 24,
-       "cols": 80
-     }
-   }
-   ```
-4. Send input:
-   ```json
-   {
-     "type": "input",
-     "data": "ls -la\n"
-   }
-   ```
-5. Resize terminal:
-   ```json
-   {
-     "type": "resize",
-     "rows": 40,
-     "cols": 120
-   }
-   ```
-
-### Other WebSocket Endpoints
-
-- `/api/v1/ws/metrics` - Real-time system metrics
-- `/api/v1/ws/logs` - Real-time log streaming
 
 ## Development
 

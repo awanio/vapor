@@ -38,11 +38,14 @@ func main() {
 		case "--generate-config":
 			generateConfigCmd()
 			return
+		case "--regenerate-certs":
+			regenerateCertsCmd()
+			return
 		case "--help", "-h":
 			printHelp()
 			return
 		case "--version", "-v":
-			fmt.Println("Vapor API v1.0.0")
+			fmt.Println("Vapor API v0.0.1")
 			return
 		}
 	}
@@ -294,29 +297,87 @@ func main() {
 		Handler: router,
 	}
 
-	// Start server in a goroutine
-	go func() {
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Failed to start server: %v", err)
+	// Check if TLS is enabled and ensure certificates exist
+	if cfg.IsTLSEnabled() {
+		log.Println("TLS enabled, checking for certificates...")
+
+		if err := cfg.EnsureTLSCertificates(); err != nil {
+			log.Fatalf("Failed to ensure TLS certificates: %v", err)
 		}
-	}()
 
-	log.Printf("Server started on %s", srv.Addr)
+		certFile := cfg.GetTLSCertFile()
+		keyFile := cfg.GetTLSKeyFile()
 
-	// Wait for interrupt signal to gracefully shutdown the server
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	log.Println("Shutting down server...")
+		log.Printf("Using TLS certificate: %s", certFile)
+		log.Printf("Using TLS key: %s", keyFile)
 
-	// Graceful shutdown with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatal("Server forced to shutdown:", err)
+		// Start HTTPS server in a goroutine
+		go func() {
+			if err := srv.ListenAndServeTLS(certFile, keyFile); err != nil && err != http.ErrServerClosed {
+				log.Fatalf("Failed to start HTTPS server: %v", err)
+			}
+		}()
+
+		log.Printf("HTTPS server started on %s", srv.Addr)
+	} else {
+		// Start HTTP server in a goroutine
+		go func() {
+			if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Fatalf("Failed to start HTTP server: %v", err)
+			}
+		}()
+
+		log.Printf("HTTP server started on %s", srv.Addr)
+		log.Println("WARNING: TLS is disabled. Consider enabling TLS for production use.")
 	}
 
-	log.Println("Server exiting")
+
+// Wait for interrupt signal to gracefully shutdown the server
+quit := make(chan os.Signal, 1)
+signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+<-quit
+
+log.Println("========================================")
+log.Println("Received shutdown signal, starting graceful shutdown...")
+log.Println("========================================")
+
+// Create shutdown context with timeout
+shutdownTimeout := 30 * time.Second
+ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+defer cancel()
+
+// Channel to track shutdown completion
+done := make(chan error, 1)
+
+// Perform graceful shutdown in a goroutine
+go func() {
+log.Println("Stopping HTTP/HTTPS server...")
+if err := srv.Shutdown(ctx); err != nil {
+done <- fmt.Errorf("server shutdown failed: %w", err)
+return
+}
+log.Println("✓ HTTP/HTTPS server stopped")
+done <- nil
+}()
+
+// Wait for shutdown to complete or timeout
+select {
+case err := <-done:
+if err != nil {
+log.Printf("Error during shutdown: %v", err)
+log.Println("Forcing shutdown...")
+os.Exit(1)
+}
+log.Println("========================================")
+log.Println("Graceful shutdown completed successfully")
+log.Println("========================================")
+case <-ctx.Done():
+log.Printf("Shutdown timeout (%v) exceeded, forcing shutdown...", shutdownTimeout)
+log.Println("Some connections may have been terminated abruptly")
+os.Exit(1)
+}
+
+log.Println("Server exited")
 }
 
 func corsMiddleware() gin.HandlerFunc {
@@ -358,12 +419,14 @@ func printHelp() {
 Usage:
   vapor [options]
   vapor --generate-config [--output <path>]
+  vapor --regenerate-certs
 
 Options:
   --config <path>    Path to configuration file (default: search common locations)
   --port <port>      Server port (default: 8080)
   --appdir <path>    Application data directory (default: /var/lib/vapor)
   --generate-config  Generate an example configuration file
+  --regenerate-certs  Regenerate TLS certificates (or create new if not exists)
   --help, -h         Show this help message
   --version, -v      Show version information
 
@@ -397,4 +460,93 @@ Examples:
   # Generate example config file
   vapor --generate-config --output /etc/vapor/vapor.conf
 `)
+}
+
+// regenerateCertsCmd regenerates TLS certificates
+func regenerateCertsCmd() {
+	fmt.Println("Vapor - Regenerate TLS Certificates")
+	fmt.Println("====================================")
+	fmt.Println()
+
+	// Load configuration to get certificate paths
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Printf("Error: Failed to load configuration: %v\n", err)
+		os.Exit(1)
+	}
+
+	certFile := cfg.GetTLSCertFile()
+	keyFile := cfg.GetTLSKeyFile()
+	certDir := cfg.GetTLSCertDir()
+
+	fmt.Printf("Certificate directory: %s\n", certDir)
+	fmt.Printf("Certificate file:      %s\n", certFile)
+	fmt.Printf("Key file:              %s\n", keyFile)
+	fmt.Println()
+
+	// Check if certificates already exist
+	certExists := fileExists(certFile)
+	keyExists := fileExists(keyFile)
+
+	if certExists || keyExists {
+		fmt.Println("⚠️  Existing certificates found:")
+		if certExists {
+			fmt.Printf("   - %s\n", certFile)
+		}
+		if keyExists {
+			fmt.Printf("   - %s\n", keyFile)
+		}
+		fmt.Println()
+		fmt.Print("Do you want to overwrite them? (yes/no): ")
+
+		var response string
+		fmt.Scanln(&response)
+
+		if response != "yes" && response != "y" {
+			fmt.Println("\nOperation cancelled.")
+			return
+		}
+
+		// Remove existing certificates
+		if certExists {
+			if err := os.Remove(certFile); err != nil {
+				fmt.Printf("Error: Failed to remove old certificate: %v\n", err)
+				os.Exit(1)
+			}
+		}
+		if keyExists {
+			if err := os.Remove(keyFile); err != nil {
+				fmt.Printf("Error: Failed to remove old key: %v\n", err)
+				os.Exit(1)
+			}
+		}
+		fmt.Println("\n✓ Old certificates removed")
+	}
+
+	// Generate new certificates
+	fmt.Println("\nGenerating new TLS certificates...")
+	if err := cfg.EnsureTLSCertificates(); err != nil {
+		fmt.Printf("Error: Failed to generate certificates: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("\n✓ TLS certificates generated successfully!")
+	fmt.Println()
+	fmt.Println("Certificate details:")
+	fmt.Printf("  Location:  %s\n", certDir)
+	fmt.Printf("  Cert file: %s\n", certFile)
+	fmt.Printf("  Key file:  %s\n", keyFile)
+	fmt.Printf("  Valid for: 3 years\n")
+	fmt.Println()
+	fmt.Println("To use these certificates, ensure your vapor.conf has:")
+	fmt.Println("  tls_enabled: true")
+	fmt.Println()
+	fmt.Println("Then restart the Vapor service:")
+	fmt.Println("  sudo systemctl restart vapor")
+	fmt.Println()
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }

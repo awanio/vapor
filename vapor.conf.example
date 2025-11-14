@@ -4,21 +4,29 @@
 # Settings can be overridden using environment variables or command-line flags.
 #
 # Environment variables:
-#   VAPOR_CONFIG - Path to this configuration file
-#   VAPOR_PORT   - Server port  
-#   VAPOR_APPDIR - Application data directory
+#   VAPOR_CONFIG       - Path to this configuration file
+#   VAPOR_PORT         - Server port  
+#   VAPOR_APPDIR       - Application data directory
+#   VAPOR_TLS_ENABLED  - Enable TLS/HTTPS (true/false)
+#   VAPOR_TLS_CERT_DIR - Directory for TLS certificates
+#   VAPOR_TLS_CERT_FILE - Path to TLS certificate file
+#   VAPOR_TLS_KEY_FILE  - Path to TLS private key file
 #
 # Command-line flags:
 #   --config <path>  - Path to configuration file
 #   --port <port>    - Server port
 #   --appdir <path>  - Application data directory
 
-# Server port (default: 8080)
+# JWT Secret for authentication
+# IMPORTANT: Change this in production! Generate with: openssl rand -base64 32
+JWT_SECRET: "CHANGE-THIS-IN-PRODUCTION"
+
+# Server port (default: 7770)
 # Can be specified as:
 #   - Port number only: "8080"
 #   - With colon prefix: ":8080"
 #   - Full address: "0.0.0.0:8080" or "127.0.0.1:8080"
-port: "8080"
+port: "7770"
 
 # Application data directory (default: /var/lib/vapor)
 # This is where Vapor stores all its data including:
@@ -26,6 +34,59 @@ port: "8080"
 #   - Execution history database
 #   - Log files
 #   - Temporary files
-JWT_SECRET=xxx-xxx-xxx-xxx-xxx
-port: "7770"
+#   - TLS certificates (if not specified separately)
 appdir: "/var/lib/vapor"
+
+# TLS/HTTPS Configuration
+# Enable TLS for secure HTTPS connections (recommended for production)
+tls_enabled: true
+
+# TLS certificate directory (optional)
+# If not specified, defaults to {appdir}/certs
+# Self-signed certificates will be auto-generated if they don't exist
+# tls_cert_dir: "/var/lib/vapor/certs"
+
+# TLS certificate file (optional)
+# If not specified, defaults to {tls_cert_dir}/server.crt
+# You can provide your own certificate from a trusted CA
+# tls_cert_file: "/var/lib/vapor/certs/server.crt"
+
+# TLS private key file (optional)
+# If not specified, defaults to {tls_cert_dir}/server.key
+# Keep this file secure with permissions 600 (owner read/write only)
+# tls_key_file: "/var/lib/vapor/certs/server.key"
+
+# Libvirt URI (optional)
+# Specify custom libvirt connection URI
+# Default uses system connection
+# libvirt_uri: "qemu:///system"
+
+# Console settings for web-based VM console access
+# console:
+#   # WebSocket port for console connections (default: 6080)
+#   port: 6080
+#   
+#   # Console connection timeout in seconds (default: 30)
+#   timeout: 30
+
+# ============================================
+# Example Configurations
+# ============================================
+
+# Development (HTTP only, local access):
+# port: "7770"
+# appdir: "/var/lib/vapor"
+# tls_enabled: false
+
+# Production (HTTPS with custom certificates):
+# port: "443"
+# appdir: "/var/lib/vapor"
+# tls_enabled: true
+# tls_cert_file: "/etc/ssl/vapor/server.crt"
+# tls_key_file: "/etc/ssl/vapor/server.key"
+
+# Production (HTTPS with auto-generated self-signed certificates):
+# port: "7770"
+# appdir: "/var/lib/vapor"
+# tls_enabled: true
+# # Certificates will be auto-generated in /var/lib/vapor/certs/

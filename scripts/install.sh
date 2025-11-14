@@ -156,9 +156,18 @@ if [ ! -f "$CONFIG_DIR/vapor.conf" ]; then
 JWT_SECRET=${JWT_SECRET}
 port: "7770"
 appdir: ${APP_DIR}
+
+# TLS/HTTPS Configuration (enabled by default for security)
+tls_enabled: true
+# Certificates will be auto-generated in ${APP_DIR}/certs/
+# To use custom certificates, specify paths below:
+# tls_cert_dir: "${APP_DIR}/certs"
+# tls_cert_file: "${APP_DIR}/certs/server.crt"
+# tls_key_file: "${APP_DIR}/certs/server.key"
 CONFEOF
     chmod 600 "$CONFIG_DIR/vapor.conf"
     echo -e "${GREEN}New JWT secret generated${NC}"
+    echo -e "${GREEN}TLS enabled by default${NC}"
 else
     echo "Configuration file already exists, skipping..."
     echo -e "${YELLOW}Warning: Keeping existing configuration and JWT secret${NC}"
@@ -229,16 +238,43 @@ if systemctl is-active --quiet $SERVICE_NAME; then
     echo "  Status:        $(systemctl is-active $SERVICE_NAME)"
     echo "  Enabled:       $(systemctl is-enabled $SERVICE_NAME)"
     echo ""
+    # Get all non-loopback IP addresses
     echo -e "${BLUE}Access Information:${NC}"
-    echo "  API Endpoint:  http://localhost:7770"
+    
+    # Collect all IPs
+    IPS=$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '^127\.' | grep -v '^169\.254\.')
+    
+    if [ -n "$IPS" ]; then
+        echo "  API Endpoints (HTTPS - TLS enabled):"
+        while IFS= read -r ip; do
+            echo "    https://${ip}:7770"
+        done <<< "$IPS"
+    else
+        echo "  API Endpoint:  https://localhost:7770 (TLS enabled)"
+        echo "  ${YELLOW}Warning: No non-loopback IP addresses detected${NC}"
+    fi
+    
     echo "  Username:      YOUR-LINUX-USER"
     echo "  Password:      YOUR-LINUX-PASSWORD"
-    echo ""
     echo -e "${BLUE}Useful Commands:${NC}"
     echo "  View logs:     journalctl -u $SERVICE_NAME -f"
+    echo ""
     echo "  Service status: systemctl status $SERVICE_NAME"
     echo "  Restart:       systemctl restart $SERVICE_NAME"
     echo "  Stop:          systemctl stop $SERVICE_NAME"
+    echo ""
+    echo -e "${BLUE}TLS/HTTPS Configuration:${NC}"
+    echo "  Status:        Enabled (self-signed certificates)"
+    echo "  Cert Location: $APP_DIR/certs/"
+    echo "  Auto-generated: Yes (on first start)"
+    echo "  Valid for:     3 years"
+    echo ""
+    echo -e "${YELLOW}Note:${NC} Self-signed certificates will be auto-generated on first start."
+    echo "      For trusted certificates, see: $CONFIG_DIR/vapor.conf"
+    echo ""
+    echo -e "${BLUE}Testing HTTPS:${NC}"
+    echo "  curl -k https://localhost:7770/health"
+    echo "  (Use -k to accept self-signed certificate)"
     echo ""
 else
     echo ""
