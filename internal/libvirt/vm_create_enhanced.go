@@ -149,7 +149,7 @@ func (s *Service) CreateVMEnhanced(ctx context.Context, req *VMCreateRequestEnha
 	}
 
 	// Generate enhanced domain XML with OS metadata
-domainXML, err := s.generateEnhancedDomainXML(req, diskConfigs)
+	domainXML, err := s.generateEnhancedDomainXML(req, diskConfigs)
 	if err != nil {
 		log.Printf("CreateVMEnhanced error generating domain XML: %v\n", err)
 		// Clean up any created disks on failure
@@ -195,15 +195,13 @@ domainXML, err := s.generateEnhancedDomainXML(req, diskConfigs)
 	return s.domainToVM(domain)
 }
 
-
 // prepareEnhancedStorageConfig validates and prepares the storage configuration
 func (s *Service) prepareEnhancedStorageConfig(ctx context.Context, req *VMCreateRequestEnhanced) ([]PreparedDisk, error) {
 	var disks []PreparedDisk
 
-	// Validate default pool exists
-	if err := s.validateStoragePool(ctx, req.Storage.DefaultPool); err != nil {
-		log.Printf("prepareEnhancedStorageConfig: error validating storage pool: %v\n", err)
-		return nil, fmt.Errorf("default storage pool '%s' not found: %w", req.Storage.DefaultPool, err)
+	// Basic validation that a default pool name is provided
+	if req.Storage.DefaultPool == "" {
+		return nil, fmt.Errorf("default storage pool is required")
 	}
 
 	// Handle boot ISO if specified
@@ -246,7 +244,13 @@ func (s *Service) prepareEnhancedStorageConfig(ctx context.Context, req *VMCreat
 			// Validate the override pool exists
 			if err := s.validateStoragePool(ctx, poolName); err != nil {
 				log.Printf("prepareEnhancedStorageConfig: error validating storage pool: %v\n", err)
-				return nil, fmt.Errorf("storage pool '%s' not found for disk %d: %w", poolName, i, err)
+				return nil, fmt.Errorf("storage pool %s not found for disk %d: %w", poolName, i, err)
+			}
+		} else {
+			// Validate the default pool exists only after disk-level validation
+			if err := s.validateStoragePool(ctx, poolName); err != nil {
+				log.Printf("prepareEnhancedStorageConfig: error validating storage pool: %v\n", err)
+				return nil, fmt.Errorf("storage pool %s not found: %w", poolName, err)
 			}
 		}
 

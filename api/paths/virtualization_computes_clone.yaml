@@ -1,0 +1,132 @@
+post:
+  summary: Clone a virtual machine
+  description: |
+    Creates a clone (copy) of an existing virtual machine with customizable options.
+    
+    **Clone Types:**
+    - Full clone: Complete independent copy including storage
+    - Linked clone: Uses backing store for efficient storage (if supported)
+    
+    **Customization Options:**
+    - New VM name (required)
+    - Memory and CPU adjustments
+    - Network MAC address regeneration
+    - Storage pool selection
+  tags:
+    - Virtualization Compute
+  operationId: cloneVM
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - source_vm
+            - new_name
+          properties:
+            source_vm:
+              type: string
+              description: Source VM name or UUID to clone from
+            new_name:
+              type: string
+              description: Name for the cloned VM
+              pattern: '^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$'
+            clone_type:
+              type: string
+              enum: [full, linked]
+              default: full
+              description: Type of clone to create
+            auto_start:
+              type: boolean
+              default: false
+              description: Start the cloned VM after creation
+            regenerate_mac:
+              type: boolean
+              default: true
+              description: Generate new MAC addresses for network interfaces
+            storage_pool:
+              type: string
+              description: Target storage pool for cloned disks (defaults to source pool)
+            memory_mb:
+              type: integer
+              minimum: 256
+              description: Override memory size in MB
+            vcpus:
+              type: integer
+              minimum: 1
+              maximum: 256
+              description: Override number of virtual CPUs
+            metadata:
+              type: object
+              description: Additional metadata for the cloned VM
+              additionalProperties:
+                type: string
+        examples:
+          simple_clone:
+            summary: Simple full clone
+            value:
+              source_vm: "production-web"
+              new_name: "staging-web"
+              clone_type: "full"
+              regenerate_mac: true
+          customized_clone:
+            summary: Clone with customizations
+            value:
+              source_vm: "template-ubuntu"
+              new_name: "dev-server-01"
+              clone_type: "full"
+              auto_start: true
+              regenerate_mac: true
+              storage_pool: "fast-ssd"
+              memory_mb: 4096
+              vcpus: 4
+              metadata:
+                environment: "development"
+                owner: "dev-team"
+  responses:
+    '202':
+      description: Clone operation started successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "cloning"
+              message:
+                type: string
+                example: "VM clone operation started"
+              clone_id:
+                type: string
+                description: ID to track clone operation
+              source_vm:
+                type: string
+              new_vm:
+                type: string
+              estimated_time_seconds:
+                type: integer
+                description: Estimated time to complete
+    '400':
+      description: Invalid clone parameters
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '404':
+      description: Source VM not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '409':
+      description: VM with new name already exists
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml
+  security:
+    - bearerAuth: []

@@ -1,0 +1,73 @@
+get:
+  summary: Get available console types
+  description: |
+    Returns a list of all available console types for the specified virtual machine.
+    This includes VNC, SPICE, and serial console availability based on VM configuration.
+  tags:
+    - Virtualization Compute
+  operationId: getAvailableConsoles
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: VM name or UUID
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Available console types retrieved successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              vm_id:
+                type: string
+                description: VM identifier
+              consoles:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                      enum: [vnc, spice, serial]
+                      description: Console type
+                    available:
+                      type: boolean
+                      description: Whether this console type is available
+                    port:
+                      type: integer
+                      description: Port number if applicable
+                    listen:
+                      type: string
+                      description: Listen address
+                    websocket_url:
+                      type: string
+                      description: WebSocket URL for this console type
+                    autoport:
+                      type: boolean
+                      description: Whether port is automatically assigned
+            example:
+              vm_id: "test-vm"
+              consoles:
+                - type: "vnc"
+                  available: true
+                  port: 5900
+                  listen: "0.0.0.0"
+                  websocket_url: "/virtualization/computes/test-vm/console/vnc/ws"
+                  autoport: true
+                - type: "spice"
+                  available: true
+                  port: 5901
+                  listen: "0.0.0.0"
+                  websocket_url: "/virtualization/computes/test-vm/console/spice/ws"
+                  autoport: true
+                - type: "serial"
+                  available: false
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml
+  security:
+    - bearerAuth: []

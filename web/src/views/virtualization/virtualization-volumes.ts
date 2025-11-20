@@ -25,8 +25,11 @@ import {
   $volumeSearchQuery,
   $activeVolumeTab,
   volumeActions,
+  $virtualizationEnabled,
+  $virtualizationDisabledMessage,
 } from "../../stores/virtualization";
 import type { StorageVolume } from "../../types/virtualization";
+import { VirtualizationDisabledError } from "../../utils/api-errors";
 
 @customElement('virtualization-volumes')
 export class VirtualizationVolumes extends LitElement {
@@ -516,6 +519,27 @@ export class VirtualizationVolumes extends LitElement {
     .btn-refresh:hover {
       background: var(--vscode-button-secondaryHoverBackground);
     }
+
+    .virtualization-disabled-banner {
+      margin-top: 16px;
+      padding: 16px 20px;
+      border-radius: 8px;
+      border: 1px solid var(--vscode-inputValidation-warningBorder, #e2c08d);
+      background: var(--vscode-inputValidation-warningBackground, rgba(229, 200, 144, 0.15));
+      color: var(--vscode-inputValidation-warningForeground, #e2c08d);
+    }
+
+    .virtualization-disabled-banner h2 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .virtualization-disabled-banner p {
+      margin: 0 0 4px 0;
+      font-size: 13px;
+      color: var(--vscode-descriptionForeground);
+    }
   `;
 
   // Store controllers for reactive updates
@@ -524,6 +548,8 @@ export class VirtualizationVolumes extends LitElement {
   private volumeStatsController = new StoreController(this, $volumeStats);
   private searchQueryController = new StoreController(this, $volumeSearchQuery);
   private activeTabController = new StoreController(this, $activeVolumeTab);
+  private virtualizationEnabledController = new StoreController(this, $virtualizationEnabled);
+  private virtualizationDisabledMessageController = new StoreController(this, $virtualizationDisabledMessage);
 
   // Component tabs
   private tabs: Tab[] = [
@@ -682,7 +708,13 @@ export class VirtualizationVolumes extends LitElement {
   }
 
   private async handleRefresh() {
-    await this.loadData();
+    try {
+      await this.loadData();
+    } catch (error) {
+      if (!(error instanceof VirtualizationDisabledError)) {
+        this.showNotification('Failed to refresh volumes', 'error');
+      }
+    }
   }
 
   private async handleDelete(volume: StorageVolume) {
@@ -704,7 +736,31 @@ export class VirtualizationVolumes extends LitElement {
     return 'low';
   }
 
+  private renderVirtualizationDisabledBanner(details?: string | null) {
+    return html`
+      <div class="virtualization-disabled-banner">
+        <h2>Virtualization is disabled on this host</h2>
+        <p>Virtualization features are currently unavailable because libvirt is not installed or not running.\
+ To manage storage volumes, install and start libvirt on this machine, then reload this page.</p>
+        ${details ? html`<p>${details}</p>` : ''}
+      </div>
+    `;
+  }
+
   override render() {
+    const virtualizationEnabled = this.virtualizationEnabledController.value;
+    if (virtualizationEnabled === false) {
+      const details = this.virtualizationDisabledMessageController.value;
+      return html`
+        <div class="container">
+          <div class="header">
+            <h1>Storage Volumes</h1>
+          </div>
+          ${this.renderVirtualizationDisabledBanner(details)}
+        </div>
+      `;
+    }
+
     const state = this.storeController.value;
     const volumes = this.filteredVolumesController.value || [];
     const stats = this.volumeStatsController.value || {

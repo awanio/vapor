@@ -239,3 +239,141 @@ func (s *Service) DeleteStoragePool(ctx context.Context, name string, deleteVolu
 
 	return nil
 }
+
+// UpdateStoragePool updates a storage pool's configuration
+func (s *Service) UpdateStoragePool(ctx context.Context, name string, req *StoragePoolUpdateRequest) (*StoragePool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	pool, err := s.conn.LookupStoragePoolByName(name)
+	if err != nil {
+		return nil, fmt.Errorf("storage pool not found: %w", err)
+	}
+	defer pool.Free()
+
+	if req.Autostart != nil {
+		if err := pool.SetAutostart(*req.Autostart); err != nil {
+			return nil, fmt.Errorf("failed to set autostart: %w", err)
+		}
+	}
+
+	return s.storagePoolToType(pool)
+}
+
+// StartStoragePool starts a storage pool
+func (s *Service) StartStoragePool(ctx context.Context, name string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	pool, err := s.conn.LookupStoragePoolByName(name)
+	if err != nil {
+		return fmt.Errorf("storage pool not found: %w", err)
+	}
+	defer pool.Free()
+
+	active, err := pool.IsActive()
+	if err != nil {
+		return fmt.Errorf("failed to check pool status: %w", err)
+	}
+	if active {
+		return fmt.Errorf("storage pool is already active")
+	}
+
+	if err := pool.Create(0); err != nil {
+		return fmt.Errorf("failed to start storage pool: %w", err)
+	}
+
+	return nil
+}
+
+// StopStoragePool stops a storage pool
+func (s *Service) StopStoragePool(ctx context.Context, name string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	pool, err := s.conn.LookupStoragePoolByName(name)
+	if err != nil {
+		return fmt.Errorf("storage pool not found: %w", err)
+	}
+	defer pool.Free()
+
+	active, err := pool.IsActive()
+	if err != nil {
+		return fmt.Errorf("failed to check pool status: %w", err)
+	}
+	if !active {
+		return fmt.Errorf("storage pool is not active")
+	}
+
+	if err := pool.Destroy(); err != nil {
+		return fmt.Errorf("failed to stop storage pool: %w", err)
+	}
+
+	return nil
+}
+
+// RefreshStoragePool refreshes a storage pool's volumes
+func (s *Service) RefreshStoragePool(ctx context.Context, name string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	pool, err := s.conn.LookupStoragePoolByName(name)
+	if err != nil {
+		return fmt.Errorf("storage pool not found: %w", err)
+	}
+	defer pool.Free()
+
+	active, err := pool.IsActive()
+	if err != nil {
+		return fmt.Errorf("failed to check pool status: %w", err)
+	}
+	if !active {
+		return fmt.Errorf("storage pool is not active, cannot refresh")
+	}
+
+	if err := pool.Refresh(0); err != nil {
+		return fmt.Errorf("failed to refresh storage pool: %w", err)
+	}
+
+	return nil
+}
+
+// GetPoolCapacity returns capacity information for a storage pool
+func (s *Service) GetPoolCapacity(ctx context.Context, name string) (*StoragePoolCapacity, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	pool, err := s.conn.LookupStoragePoolByName(name)
+	if err != nil {
+		return nil, fmt.Errorf("storage pool not found: %w", err)
+	}
+	defer pool.Free()
+
+	info, err := pool.GetInfo()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pool info: %w", err)
+	}
+
+	active, err := pool.IsActive()
+	if err != nil {
+		return nil, fmt.Errorf("failed to check pool status: %w", err)
+	}
+
+	capacity := &StoragePoolCapacity{
+		Name:      name,
+		Capacity:  info.Capacity,
+		Available: info.Available,
+		Used:      info.Capacity - info.Available,
+		State:     "inactive",
+	}
+
+	if active {
+		capacity.State = "active"
+	}
+
+	if info.Capacity > 0 {
+		capacity.UsagePercent = float64(capacity.Used) / float64(info.Capacity) * 100
+	}
+
+	return capacity, nil
+}

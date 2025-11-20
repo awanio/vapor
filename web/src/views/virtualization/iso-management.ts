@@ -23,9 +23,12 @@ import {
   $availableISOs,
   $isoUploadState,
   storageActions,
+  $virtualizationEnabled,
+  $virtualizationDisabledMessage,
 } from '../../stores/virtualization';
 import type { ISOImage } from '../../types/virtualization';
 import { virtualizationAPI } from '../../services/virtualization-api';
+import { VirtualizationDisabledError } from '../../utils/api-errors';
 
 // Import types
 import type { Column } from '../../components/tables/resource-table.js';
@@ -38,6 +41,8 @@ export class ISOManagement extends LitElement {
   private isoStoreController = new StoreController(this, isoStore.$state);
   private availableISOsController = new StoreController(this, $availableISOs);
   private _uploadStateController = new StoreController(this, $isoUploadState);
+  private virtualizationEnabledController = new StoreController(this, $virtualizationEnabled);
+  private virtualizationDisabledMessageController = new StoreController(this, $virtualizationDisabledMessage);
 
   // Component state
   @state() private searchQuery = '';
@@ -438,6 +443,27 @@ export class ISOManagement extends LitElement {
       cursor: not-allowed;
     }
 
+    .virtualization-disabled-banner {
+      margin-top: 16px;
+      padding: 16px 20px;
+      border-radius: 8px;
+      border: 1px solid var(--vscode-inputValidation-warningBorder, #e2c08d);
+      background: var(--vscode-inputValidation-warningBackground, rgba(229, 200, 144, 0.15));
+      color: var(--vscode-inputValidation-warningForeground, #e2c08d);
+    }
+
+    .virtualization-disabled-banner h2 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .virtualization-disabled-banner p {
+      margin: 0 0 4px 0;
+      font-size: 13px;
+      color: var(--vscode-descriptionForeground);
+    }
+
     /* Stats Bar */
     .stats-bar {
       display: flex;
@@ -517,7 +543,9 @@ export class ISOManagement extends LitElement {
       await storagePoolStore.fetch();
     } catch (error) {
       console.error('Failed to load ISOs:', error);
-      this.showNotification('Failed to load ISO images', 'error');
+      if (!(error instanceof VirtualizationDisabledError)) {
+        this.showNotification('Failed to load ISO images', 'error');
+      }
     }
   }
 
@@ -1208,7 +1236,31 @@ export class ISOManagement extends LitElement {
     `;
   }
 
+  private renderVirtualizationDisabledBanner(details?: string | null) {
+    return html`
+      <div class="virtualization-disabled-banner">
+        <h2>Virtualization is disabled on this host</h2>
+        <p>Virtualization features are currently unavailable because libvirt is not installed or not running.\
+ ISO image management is disabled until virtualization support is available on this host.</p>
+        ${details ? html`<p>${details}</p>` : ''}
+      </div>
+    `;
+  }
+
   override render() {
+    const virtualizationEnabled = this.virtualizationEnabledController.value;
+    if (virtualizationEnabled === false) {
+      const details = this.virtualizationDisabledMessageController.value;
+      return html`
+        <div class="container">
+          <div class="header">
+            <h1>ISO Images</h1>
+          </div>
+          ${this.renderVirtualizationDisabledBanner(details)}
+        </div>
+      `;
+    }
+
     const state = this.isoStoreController.value;
     const filteredISOs = this.getFilteredISOs();
     // const uploadState = this.uploadStateController.value;

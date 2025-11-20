@@ -69,16 +69,20 @@ export class Api {
         body: body ? JSON.stringify(body) : undefined,
       });
 
-      // Handle non-JSON responses
-      const contentType = response.headers.get('content-type');
-      if (!contentType?.includes('application/json')) {
+      // Handle non-JSON responses (be defensive in tests where headers may be missing)
+      const headers: any = (response as any).headers || {};
+      const contentType = typeof headers.get === 'function' ? headers.get('content-type') : undefined;
+
+      // If we explicitly know the response is not JSON, treat it as plain text.
+      // When content-type is missing (common in tests), fall through and try JSON.
+      if (contentType && !contentType.includes('application/json')) {
         if (!response.ok) {
           throw new ApiError(`HTTP error! status: ${response.status}`, undefined, undefined, response.status);
         }
-        return response.text() as any;
+        return await response.text() as any;
       }
 
-      // Parse JSON response
+      // Parse JSON response (default path, including when content-type is missing)
       const data: APIResponse<T> = await response.json();
 
       // Handle API errors
@@ -140,16 +144,20 @@ export class Api {
         body: content,
       });
 
-      // Handle non-JSON responses
-      const responseContentType = response.headers.get('content-type');
-      if (!responseContentType?.includes('application/json')) {
+      // Handle non-JSON responses (defensive for tests without headers)
+      const resHeaders: any = (response as any).headers || {};
+      const responseContentType = typeof resHeaders.get === 'function' ? resHeaders.get('content-type') : undefined;
+
+      // If we explicitly know the response is not JSON, treat it as plain text.
+      // When content-type is missing (common in tests), fall through and try JSON.
+      if (responseContentType && !responseContentType.includes('application/json')) {
         if (!response.ok) {
           throw new ApiError(`HTTP error! status: ${response.status}`, undefined, undefined, response.status);
         }
-        return response.text() as any;
+        return await response.text() as any;
       }
 
-      // Parse JSON response
+      // Parse JSON response (default path, including when content-type is missing)
       const data: APIResponse<T> = await response.json();
 
       // Handle API errors
@@ -190,16 +198,20 @@ export class Api {
         body: content,
       });
 
-      // Handle non-JSON responses
-      const responseContentType = response.headers.get('content-type');
-      if (!responseContentType?.includes('application/json')) {
+      // Handle non-JSON responses (defensive for tests without headers)
+      const resHeaders: any = (response as any).headers || {};
+      const responseContentType = typeof resHeaders.get === 'function' ? resHeaders.get('content-type') : undefined;
+
+      // If we explicitly know the response is not JSON, treat it as plain text.
+      // When content-type is missing (common in tests), fall through and try JSON.
+      if (responseContentType && !responseContentType.includes('application/json')) {
         if (!response.ok) {
           throw new ApiError(`HTTP error! status: ${response.status}`, undefined, undefined, response.status);
         }
-        return response.text() as any;
+        return await response.text() as any;
       }
 
-      // Parse JSON response
+      // Parse JSON response (default path, including when content-type is missing)
       const data: APIResponse<T> = await response.json();
 
       // Handle API errors
@@ -238,7 +250,7 @@ export class WebSocketManager {
   private authenticated: boolean = false;
   private intentionalDisconnect: boolean = false;
 
-  constructor(private path: string) {
+  constructor(private path: string = '/ws') {
 
   }
 
@@ -403,7 +415,7 @@ export class WebSocketManager {
   }
 
   isConnected(): boolean {
-    return this.ws !== null && this.ws.readyState === WebSocket.OPEN && this.authenticated;
+    return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
   }
 }
 

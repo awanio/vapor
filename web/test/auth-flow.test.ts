@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import '../src/app-root';
 import '../src/components/login-page';
 import { auth } from '../src/auth';
+import { login } from '../src/stores/auth';
 import type { AppRoot } from '../src/app-root';
 import type { LoginPage } from '../src/components/login-page';
 
@@ -16,6 +17,32 @@ vi.mock('../src/auth', () => ({
     getWebSocketUrl: vi.fn(),
   }
 }));
+// Mock the auth store login function used by login-page
+vi.mock('../src/stores/auth', () => ({
+  login: vi.fn(async () => false),
+}));
+
+// Mock metrics store to avoid WebSocket/API usage during auth-flow tests
+vi.mock('../src/stores/shared/metrics', () => ({
+  initializeMetrics: vi.fn(async () => {}),
+  reinitializeMetricsAfterLogin: vi.fn(async () => {}),
+}));
+
+// Mock dashboard view to avoid metrics initialization side effects in auth-flow tests
+vi.mock('../src/views/dashboard-tab-v2', () => {
+  class DummyDashboard extends HTMLElement {}
+  if (!customElements.get('dashboard-tab-v2')) {
+    customElements.define('dashboard-tab-v2', DummyDashboard);
+  }
+  return {
+    DashboardTabV2: DummyDashboard,
+    default: DummyDashboard,
+  };
+});
+
+
+
+
 
 describe('Authentication Flow', () => {
   beforeEach(() => {
@@ -121,7 +148,7 @@ describe('Authentication Flow', () => {
     });
 
     it('should handle form submission with valid credentials', async () => {
-      vi.mocked(auth.login).mockResolvedValue(true);
+      vi.mocked(login).mockResolvedValue(true);
       
       const el = document.createElement('login-page') as LoginPage;
       document.body.appendChild(el);
@@ -150,7 +177,7 @@ describe('Authentication Flow', () => {
       
       // Wait for async operations
       await vi.waitFor(() => {
-        expect(auth.login).toHaveBeenCalledWith('testuser', 'testpass');
+        expect(login).toHaveBeenCalledWith({ username: 'testuser', password: 'testpass' });
       });
       
       // Wait for event to fire
@@ -162,7 +189,7 @@ describe('Authentication Flow', () => {
     });
 
     it('should show error on invalid credentials', async () => {
-      vi.mocked(auth.login).mockResolvedValue(false);
+      vi.mocked(login).mockResolvedValue(false);
       
       const el = document.createElement('login-page') as LoginPage;
       document.body.appendChild(el);
@@ -185,7 +212,7 @@ describe('Authentication Flow', () => {
       
       // Wait for async operations
       await vi.waitFor(() => {
-        expect(auth.login).toHaveBeenCalledWith('testuser', 'wrongpass');
+        expect(login).toHaveBeenCalledWith({ username: 'testuser', password: 'wrongpass' });
       });
       
       // Wait for error message to appear
@@ -215,14 +242,14 @@ describe('Authentication Flow', () => {
       expect(errorMessage?.textContent).toBe('Please enter both username and password');
       
       // Login should not be called
-      expect(auth.login).not.toHaveBeenCalled();
+      expect(login).not.toHaveBeenCalled();
       
       document.body.removeChild(el);
     });
 
     it('should disable form during loading', async () => {
       // Make login take some time
-      vi.mocked(auth.login).mockImplementation(() => new Promise(resolve => setTimeout(() => resolve(true), 100)));
+      vi.mocked(login).mockImplementation(() => new Promise(resolve => setTimeout(() => resolve(true), 100)));
       
       const el = document.createElement('login-page') as LoginPage;
       document.body.appendChild(el);

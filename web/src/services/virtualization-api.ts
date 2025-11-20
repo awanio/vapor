@@ -24,6 +24,8 @@ import type {
   DiskConfig,
   ISOUploadProgress,
 } from '../types/virtualization';
+import { isVirtualizationDisabled, VirtualizationDisabledError, type ApiErrorBody } from '../utils/api-errors';
+import { $virtualizationEnabled, $virtualizationDisabledMessage } from '../stores/virtualization';
 
 /**
  * Base API configuration
@@ -69,7 +71,7 @@ async function apiRequest<T>(
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
+      'Authorization': `Bearer ${token}` ,
       ...options.headers,
     },
   };
@@ -78,32 +80,68 @@ async function apiRequest<T>(
     // Use getApiUrl to get the correct full URL with host and API version
     const url = getApiUrl(`${API_BASE}${endpoint}`);
     const response = await fetch(url, config);
+    const status = response.status;
     
     if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        code: 'API_ERROR',
-        message: response.statusText,
-      }));
+      const errorBody: ApiErrorBody | { code?: string; message?: string; details?: string } = await response
+        .json()
+        .catch(() => ({
+          status: 'error',
+          error: { code: 'API_ERROR', message: response.statusText },
+        } as ApiErrorBody));
+
+      if (isVirtualizationDisabled(status, errorBody as ApiErrorBody)) {
+        $virtualizationEnabled.set(false);
+        $virtualizationDisabledMessage.set(
+          (errorBody as ApiErrorBody).error?.details ||
+            (errorBody as ApiErrorBody).error?.message ||
+            'Virtualization is disabled on this host.',
+        );
+        throw new VirtualizationDisabledError(
+          (errorBody as ApiErrorBody).error?.message || 'Virtualization is disabled on this host.',
+          (errorBody as ApiErrorBody).error?.details,
+          status,
+        );
+      }
+
+      const apiBody: any = errorBody;
+      if (apiBody.status === 'error' && apiBody.error) {
+        throw new VirtualizationAPIError(
+          apiBody.error.code || 'API_ERROR',
+          apiBody.error.message || `Request failed: ${status}` ,
+          apiBody.error.details,
+        );
+      }
+
       throw new VirtualizationAPIError(
-        error.code || 'API_ERROR',
-        error.message || `Request failed: ${response.status}`,
-        error.details
+        apiBody.code || 'API_ERROR',
+        apiBody.message || `Request failed: ${status}` ,
+        apiBody.details,
       );
     }
     
     // Handle empty responses
     if (response.status === 204) {
+      if ($virtualizationEnabled.get() !== true) {
+        $virtualizationEnabled.set(true);
+        $virtualizationDisabledMessage.set(null);
+      }
       return {} as T;
+    }
+
+    if ($virtualizationEnabled.get() !== true) {
+      $virtualizationEnabled.set(true);
+      $virtualizationDisabledMessage.set(null);
     }
     
     return await response.json();
   } catch (error) {
-    if (error instanceof VirtualizationAPIError) {
+    if (error instanceof VirtualizationAPIError || error instanceof VirtualizationDisabledError) {
       throw error;
     }
     throw new VirtualizationAPIError(
       'NETWORK_ERROR',
-      error instanceof Error ? error.message : 'Network request failed'
+      error instanceof Error ? error.message : 'Network request failed',
     );
   }
 }

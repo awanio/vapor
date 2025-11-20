@@ -1,0 +1,62 @@
+post:
+  summary: Refresh storage pool
+  description: |
+    Refreshes the storage pool to update volume information.
+    This is useful after manually adding/removing files to the pool directory.
+    The pool must be active to be refreshed.
+  tags:
+    - Virtualization Storage
+  operationId: refreshStoragePool
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Storage pool name
+  responses:
+    '200':
+      description: Storage pool refreshed successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "success"
+              message:
+                type: string
+                example: "Storage pool refreshed successfully"
+    '404':
+      description: Storage pool not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '409':
+      description: Storage pool is not active
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "error"
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "POOL_NOT_ACTIVE"
+                  message:
+                    type: string
+                    example: "Failed to refresh storage pool"
+                  details:
+                    type: string
+                    example: "storage pool is not active, cannot refresh"
+    '500':
+      $ref: ../components/responses/InternalError.yaml

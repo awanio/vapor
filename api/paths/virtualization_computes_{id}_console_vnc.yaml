@@ -1,0 +1,62 @@
+get:
+  summary: Get VNC console information
+  description: |
+    Returns VNC-specific console connection information for the virtual machine.
+    Use this endpoint to get VNC server details before establishing a WebSocket connection.
+  tags:
+    - Virtualization Compute
+  operationId: getVNCConsole
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: VM name or UUID
+      schema:
+        type: string
+  responses:
+    '200':
+      description: VNC console information retrieved successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              type:
+                type: string
+                enum: [vnc]
+                description: Console type (always 'vnc')
+              host:
+                type: string
+                description: VNC server host address
+              port:
+                type: integer
+                description: VNC server port
+              password:
+                type: string
+                description: VNC password (if configured)
+              websocket_url:
+                type: string
+                description: WebSocket URL for VNC console
+              autoport:
+                type: boolean
+                description: Whether port is automatically assigned
+              listen:
+                type: string
+                description: Listen address configuration
+            example:
+              type: "vnc"
+              host: "0.0.0.0"
+              port: 5900
+              websocket_url: "/virtualization/computes/test-vm/console/vnc/ws"
+              autoport: true
+              listen: "0.0.0.0"
+    '404':
+      description: VM not found or VNC console not available
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml
+  security:
+    - bearerAuth: []

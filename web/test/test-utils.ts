@@ -47,6 +47,17 @@ export function dispatchEvent(
   detail?: any,
   options: EventInit = {}
 ): void {
+  // Use KeyboardEvent for key events so handlers can read event.key
+  if (type === 'keydown' || type === 'keyup' || type === 'keypress') {
+    const keyboardEvent = new KeyboardEvent(type, {
+      bubbles: true,
+      composed: true,
+      ...(options as KeyboardEventInit),
+    });
+    element.dispatchEvent(keyboardEvent);
+    return;
+  }
+
   const event = new CustomEvent(type, {
     detail,
     bubbles: true,

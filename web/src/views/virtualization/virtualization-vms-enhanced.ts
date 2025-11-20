@@ -40,14 +40,19 @@ import {
   vmActions,
   wizardActions,
   initializeVirtualizationStores,
+  $virtualizationEnabled,
+  $virtualizationDisabledMessage,
 } from '../../stores/virtualization';
 import type { VirtualMachine, VMState, VMTemplate } from '../../types/virtualization';
+import { VirtualizationDisabledError } from '../../utils/api-errors';
 
 
 @customElement('virtualization-vms-enhanced')
 export class VirtualizationVMsEnhanced extends LitElement {
   // Store controllers for reactive updates
   private vmStoreController = new StoreController(this, vmStore.$items);
+  private virtualizationEnabledController = new StoreController(this, $virtualizationEnabled);
+  private virtualizationDisabledMessageController = new StoreController(this, $virtualizationDisabledMessage);
   // private templateStoreController = new StoreController(this, templateStore.$items); // Using subscription instead
   private filteredVMsController = new StoreController(this, $filteredVMs);
   // private selectedVMController = new StoreController(this, $selectedVM); // Unused
@@ -328,6 +333,27 @@ export class VirtualizationVMsEnhanced extends LitElement {
       color: var(--vscode-badge-foreground);
     }
 
+    .virtualization-disabled-banner {
+      margin-top: 16px;
+      padding: 16px 20px;
+      border-radius: 8px;
+      border: 1px solid var(--vscode-inputValidation-warningBorder, #e2c08d);
+      background: var(--vscode-inputValidation-warningBackground, rgba(229, 200, 144, 0.15));
+      color: var(--vscode-inputValidation-warningForeground, #e2c08d);
+    }
+
+    .virtualization-disabled-banner h2 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .virtualization-disabled-banner p {
+      margin: 0 0 4px 0;
+      font-size: 13px;
+      color: var(--vscode-descriptionForeground);
+    }
+
   `;
 
   private tabs: Tab[] = [
@@ -369,8 +395,9 @@ export class VirtualizationVMsEnhanced extends LitElement {
       });
     } catch (error) {
       console.error('Failed to initialize virtualization stores:', error);
-      // Show error notification
-      this.showNotification('Failed to load virtual machines', 'error');
+      if (!(error instanceof VirtualizationDisabledError)) {
+        this.showNotification('Failed to load virtual machines', 'error');
+      }
     }
   }
 
@@ -652,7 +679,9 @@ export class VirtualizationVMsEnhanced extends LitElement {
         this.showNotification('VMs refreshed', 'success');
       }
     } catch (error) {
-      this.showNotification(`Failed to refresh ${this.activeMainTab}`, 'error');
+      if (!(error instanceof VirtualizationDisabledError)) {
+        this.showNotification(`Failed to refresh ${this.activeMainTab}`, 'error');
+      }
     }
   }
 
@@ -719,7 +748,31 @@ export class VirtualizationVMsEnhanced extends LitElement {
     await this.openConsole(vm);
   }
 
+  private renderVirtualizationDisabledBanner(details?: string | null) {
+    return html`
+      <div class="virtualization-disabled-banner">
+        <h2>Virtualization is disabled on this host</h2>
+        <p>Virtualization features are currently unavailable because libvirt is not installed or not running.\
+ To enable VM management, install and start libvirt on this machine, then reload this page.</p>
+        ${details ? html`<p>${details}</p>` : ''}
+      </div>
+    `;
+  }
+
   override render() {
+    const virtualizationEnabled = this.virtualizationEnabledController.value;
+    if (virtualizationEnabled === false) {
+      const details = this.virtualizationDisabledMessageController.value;
+      return html`
+        <div class="container">
+          <div class="header">
+            <h1>Virtual Machines</h1>
+          </div>
+          ${this.renderVirtualizationDisabledBanner(details)}
+        </div>
+      `;
+    }
+
     const vmItems = this.vmStoreController.value;
     // const templateItems = this.templateStoreController.value; // Unused - using this.templates instead
     const filteredVMs = this.filteredVMsController.value || [];

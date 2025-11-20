@@ -11,6 +11,8 @@ import {
   isExpanded as isItemExpanded,
   getExpandedItemsArray
 } from '../stores/shared/sidebar';
+import { StoreController } from '@nanostores/lit';
+import { $virtualizationEnabled } from '../stores/virtualization';
 
 export class SidebarTree extends I18nLitElement {
   @property({ type: Boolean }) collapsed = false;
@@ -24,6 +26,7 @@ export class SidebarTree extends I18nLitElement {
   @state()
   private translationsLoaded = false;
 
+  private virtualizationEnabledController = new StoreController(this, $virtualizationEnabled);
   private storeUnsubscribers: Array<() => void> = [];
 
   static override styles = css`
@@ -93,6 +96,12 @@ export class SidebarTree extends I18nLitElement {
       background-color: var(--vscode-sidebar-active);
       border-left-color: var(--vscode-sidebar-active-border);
       color: var(--vscode-accent);
+    }
+
+    .tree-item.disabled {
+      opacity: 0.5;
+      cursor: default;
+      pointer-events: none;
     }
 
     .tree-item.active .tree-item-icon {
@@ -524,10 +533,18 @@ export class SidebarTree extends I18nLitElement {
     return t(key) || key;
   }
 
+  private isVirtualizationItemDisabled(item: NavItem): boolean {
+    const virtualizationEnabled = this.virtualizationEnabledController.value;
+    const virtualizationDisabled = virtualizationEnabled === false;
+    const isVirtualizationItem = item.id === 'virtualization' || item.id.startsWith('virtualization-');
+    return virtualizationDisabled && isVirtualizationItem;
+  }
+
   private renderNavItem(item: NavItem): any {
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = isItemExpanded(item.id);
     const isActive = this.isItemActive(item);
+    const isDisabled = this.isVirtualizationItemDisabled(item);
 
     // Use custom SVG icons for specific menu items
     const renderIcon = () => {
@@ -569,8 +586,8 @@ export class SidebarTree extends I18nLitElement {
     return html`
       <li>
         <div
-          class="tree-item ${isActive ? 'active' : ''}"
-          @click=${(e: Event) => this.handleItemClick(item, e)}
+          class="tree-item ${isActive ? 'active' : ''} ${isDisabled ? 'disabled' : ''}"
+          @click=${(e: Event) => !isDisabled && this.handleItemClick(item, e)}
           @keydown=${(e: KeyboardEvent) => this.handleKeyDown(item, e)}
           title=${this.collapsed ? this.getTranslation(item.label) : ''}
           tabindex="0"
@@ -707,7 +724,7 @@ export class SidebarTree extends I18nLitElement {
       </div>
       <div class="sidebar-footer">
         <div class="sidebar-footer-brand">Vapor by Awanio</div>
-        <div class="sidebar-footer-copyright">© ${currentYear} Awanio.</div>
+        <div class="sidebar-footer-copyright">© ${currentYear} Awanio. All rights reserved.</div>
       </div>
     `;
   }

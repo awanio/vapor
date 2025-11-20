@@ -48,3 +48,57 @@ delete:
       $ref: ../components/responses/NotFound.yaml
     '500':
       $ref: ../components/responses/InternalError.yaml
+put:
+  summary: Update storage pool configuration
+  description: |
+    Updates the configuration of an existing storage pool.
+    Currently supports updating autostart settings.
+  tags:
+    - Virtualization Storage
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Storage pool name
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            autostart:
+              type: boolean
+              description: Enable or disable autostart for the pool
+        examples:
+          enable_autostart:
+            summary: Enable autostart
+            value:
+              autostart: true
+          disable_autostart:
+            summary: Disable autostart
+            value:
+              autostart: false
+  responses:
+    '200':
+      description: Storage pool updated successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "success"
+              data:
+                $ref: ../components/schemas/StoragePoolDetailResponse.yaml
+    '400':
+      $ref: ../components/responses/BadRequest.yaml
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

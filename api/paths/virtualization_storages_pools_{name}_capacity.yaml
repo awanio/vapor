@@ -1,0 +1,62 @@
+get:
+  summary: Get storage pool capacity information
+  description: |
+    Returns detailed capacity and usage information for a storage pool.
+    Useful for monitoring storage usage without fetching full pool details.
+  tags:
+    - Virtualization Storage
+  operationId: getPoolCapacity
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Storage pool name
+  responses:
+    '200':
+      description: Storage pool capacity information retrieved successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "success"
+              data:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    example: "default"
+                  state:
+                    type: string
+                    enum: [active, inactive]
+                    example: "active"
+                  capacity:
+                    type: integer
+                    format: int64
+                    description: Total capacity in bytes
+                    example: 107374182400
+                  available:
+                    type: integer
+                    format: int64
+                    description: Available space in bytes
+                    example: 53687091200
+                  used:
+                    type: integer
+                    format: int64
+                    description: Used space in bytes
+                    example: 53687091200
+                  usage_percent:
+                    type: number
+                    format: float
+                    description: Percentage of space used
+                    example: 50.0
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

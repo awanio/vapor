@@ -1,5 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { StoreController } from '@nanostores/lit';
 import '../../components/ui/search-input.js';
 import '../../components/ui/empty-state.js';
 import '../../components/ui/loading-state.js';
@@ -14,6 +15,8 @@ import type { ActionItem } from '../../components/ui/action-dropdown.js';
 import type { DeleteItem } from '../../components/modals/delete-modal.js';
 import { virtualizationAPI } from '../../services/virtualization-api';
 import type { VirtualNetwork as BaseVirtualNetwork } from '../../types/virtualization';
+import { $virtualizationEnabled, $virtualizationDisabledMessage } from '../../stores/virtualization';
+import { VirtualizationDisabledError } from '../../utils/api-errors';
 
 // Extend the base VirtualNetwork interface to match the actual API response
 interface VirtualNetwork extends Omit<BaseVirtualNetwork, 'type' | 'ip' | 'netmask'> {
@@ -32,6 +35,8 @@ interface VirtualNetwork extends Omit<BaseVirtualNetwork, 'type' | 'ip' | 'netma
 
 @customElement('virtualization-networks')
 export class VirtualizationNetworks extends LitElement {
+  private virtualizationEnabledController = new StoreController(this, $virtualizationEnabled);
+  private virtualizationDisabledMessageController = new StoreController(this, $virtualizationDisabledMessage);
   @state() private networks: VirtualNetwork[] = [];
   @state() private searchQuery = '';
   @state() private loading = false;
@@ -430,6 +435,27 @@ export class VirtualizationNetworks extends LitElement {
       opacity: 0.5;
       cursor: not-allowed;
     }
+
+    .virtualization-disabled-banner {
+      margin-top: 16px;
+      padding: 16px 20px;
+      border-radius: 8px;
+      border: 1px solid var(--vscode-inputValidation-warningBorder, #e2c08d);
+      background: var(--vscode-inputValidation-warningBackground, rgba(229, 200, 144, 0.15));
+      color: var(--vscode-inputValidation-warningForeground, #e2c08d);
+    }
+
+    .virtualization-disabled-banner h2 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .virtualization-disabled-banner p {
+      margin: 0 0 4px 0;
+      font-size: 13px;
+      color: var(--vscode-descriptionForeground);
+    }
   `;
 
   private tabs: Tab[] = [
@@ -472,7 +498,9 @@ export class VirtualizationNetworks extends LitElement {
       }));
     } catch (error) {
       console.error('Failed to load networks:', error);
-      this.error = error instanceof Error ? error.message : 'Failed to load networks';
+      if (!(error instanceof VirtualizationDisabledError)) {
+        this.error = error instanceof Error ? error.message : 'Failed to load networks';
+      }
       this.networks = [];
     } finally {
       this.loading = false;
@@ -626,7 +654,9 @@ export class VirtualizationNetworks extends LitElement {
       } as VirtualNetwork & { dhcp?: any; forward?: any };
     } catch (error) {
       console.error('Failed to fetch network details:', error);
-      this.error = error instanceof Error ? error.message : 'Failed to load network details';
+      if (!(error instanceof VirtualizationDisabledError)) {
+        this.error = error instanceof Error ? error.message : 'Failed to load network details';
+      }
       // Keep the basic network info even if detailed fetch fails
     } finally {
       this.isLoadingDetail = false;
@@ -708,7 +738,9 @@ export class VirtualizationNetworks extends LitElement {
       }
     } catch (error) {
       console.error('Failed to delete network:', error);
-      this.error = error instanceof Error ? error.message : 'Failed to delete network';
+      if (!(error instanceof VirtualizationDisabledError)) {
+        this.error = error instanceof Error ? error.message : 'Failed to delete network';
+      }
     } finally {
       this.isDeleting = false;
       this.showDeleteModal = false;
@@ -761,7 +793,9 @@ export class VirtualizationNetworks extends LitElement {
       this.createResourceValue = '';
     } catch (error) {
       console.error('Failed to create network:', error);
-      this.error = error instanceof Error ? error.message : 'Failed to create network';
+      if (!(error instanceof VirtualizationDisabledError)) {
+        this.error = error instanceof Error ? error.message : 'Failed to create network';
+      }
     } finally {
       this.isCreating = false;
     }
@@ -1092,7 +1126,31 @@ export class VirtualizationNetworks extends LitElement {
     }
   }
 
+  private renderVirtualizationDisabledBanner(details?: string | null) {
+    return html`
+      <div class="virtualization-disabled-banner">
+        <h2>Virtualization is disabled on this host</h2>
+        <p>Virtualization features are currently unavailable because libvirt is not installed or not running.\
+ To manage virtual networks, install and start libvirt on this machine, then reload this page.</p>
+        ${details ? html`<p>${details}</p>` : ''}
+      </div>
+    `;
+  }
+
   override render() {
+    const virtualizationEnabled = this.virtualizationEnabledController.value;
+    if (virtualizationEnabled === false) {
+      const details = this.virtualizationDisabledMessageController.value;
+      return html`
+        <div class="container">
+          <div class="header">
+            <h1>Virtual Networks</h1>
+          </div>
+          ${this.renderVirtualizationDisabledBanner(details)}
+        </div>
+      `;
+    }
+
     const filteredData = this.getFilteredData();
 
     return html`

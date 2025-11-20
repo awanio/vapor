@@ -1,0 +1,57 @@
+get:
+  summary: VNC WebSocket console connection
+  description: |
+    Establishes a WebSocket connection for VNC console access to the virtual machine.
+    
+    **WebSocket Protocol:**
+    - Upgrade: websocket
+    - Connection: Upgrade
+    - Subprotocol: binary (for VNC RFB protocol)
+    
+    **Authentication:**
+    - Bearer token should be passed as query parameter: `?token=<jwt_token>`
+    - Or via WebSocket subprotocol: `Sec-WebSocket-Protocol: access_token, <jwt_token>`
+  tags:
+    - Virtualization Compute
+  operationId: vmVNCWebSocket
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: VM name or UUID
+      schema:
+        type: string
+    - name: token
+      in: query
+      required: false
+      description: JWT authentication token (alternative to header auth)
+      schema:
+        type: string
+  responses:
+    '101':
+      description: Switching Protocols - WebSocket connection established
+      headers:
+        Upgrade:
+          schema:
+            type: string
+            example: websocket
+        Connection:
+          schema:
+            type: string
+            example: Upgrade
+    '404':
+      description: VM not found or VNC console not available
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '401':
+      description: Authentication required or invalid token
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml
+  security:
+    - bearerAuth: []

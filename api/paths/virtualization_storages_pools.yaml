@@ -1,24 +1,120 @@
 get:
   summary: List all storage pools
+  description: 'Returns a list of storage pools with optional filtering and pagination.
+
+
+    **Filtering:**
+
+    - `state`: Filter by pool state (active, inactive, all)
+
+    - `type`: Filter by pool type (dir, logical, disk, netfs, etc.)
+
+
+    **Pagination:**
+
+    - `page`: Page number (default: 1)
+
+    - `page_size`: Number of items per page (default: 50, max: 100)
+
+    '
   tags:
-    - Virtualization Storage
+  - Virtualization Storage
   security:
-    - bearerAuth: []
+  - bearerAuth: []
+  parameters:
+  - name: state
+    in: query
+    required: false
+    schema:
+      type: string
+      enum:
+      - all
+      - active
+      - inactive
+      default: all
+    description: Filter by pool state
+    example: active
+  - name: type
+    in: query
+    required: false
+    schema:
+      type: string
+      enum:
+      - dir
+      - logical
+      - disk
+      - netfs
+      - iscsi
+      - scsi
+      - mpath
+      - rbd
+      - gluster
+      - zfs
+      - fs
+    description: Filter by pool type
+    example: dir
+  - name: page
+    in: query
+    required: false
+    schema:
+      type: integer
+      minimum: 1
+      default: 1
+    description: Page number for pagination
+  - name: page_size
+    in: query
+    required: false
+    schema:
+      type: integer
+      minimum: 1
+      maximum: 100
+      default: 50
+    description: Number of items per page
   responses:
     '200':
-      description: A list of storage pools
+      description: A list of storage pools with pagination information
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/StoragePoolsResponse.yaml
+            type: object
+            properties:
+              status:
+                type: string
+                example: success
+              data:
+                type: object
+                properties:
+                  pools:
+                    type: array
+                    items:
+                      $ref: ../components/schemas/StoragePoolsResponse.yaml
+                  pagination:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        description: Total number of items matching the filter
+                        example: 25
+                      page:
+                        type: integer
+                        description: Current page number
+                        example: 1
+                      page_size:
+                        type: integer
+                        description: Number of items per page
+                        example: 50
+                      total_pages:
+                        type: integer
+                        description: Total number of pages
+                        example: 1
     '500':
       $ref: ../components/responses/InternalError.yaml
 post:
   summary: Create a new storage pool
   tags:
-    - Virtualization Storage
+  - Virtualization Storage
   security:
-    - bearerAuth: []
+  - bearerAuth: []
   requestBody:
     required: true
     content:

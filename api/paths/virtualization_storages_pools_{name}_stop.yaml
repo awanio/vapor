@@ -1,0 +1,60 @@
+post:
+  summary: Stop storage pool
+  description: |
+    Stops an active storage pool, making it unavailable until started again.
+    Volumes in the pool cannot be accessed while the pool is stopped.
+  tags:
+    - Virtualization Storage
+  operationId: stopStoragePool
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Storage pool name
+  responses:
+    '200':
+      description: Storage pool stopped successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "success"
+              message:
+                type: string
+                example: "Storage pool stopped successfully"
+    '404':
+      description: Storage pool not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '409':
+      description: Storage pool is not active
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "error"
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "POOL_NOT_ACTIVE"
+                  message:
+                    type: string
+                    example: "Failed to stop storage pool"
+                  details:
+                    type: string
+    '500':
+      $ref: ../components/responses/InternalError.yaml

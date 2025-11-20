@@ -132,10 +132,15 @@ func LibvirtRoutes(r *gin.RouterGroup, authService *auth.EnhancedService, servic
 	{
 		poolsGroup := storageGroup.Group("/pools")
 		{
-			poolsGroup.GET("", listStoragePools(service))           // List storage pools
-			poolsGroup.POST("", createStoragePool(service))         // Create storage pool
-			poolsGroup.GET("/:name", getStoragePool(service))       // Get pool details
-			poolsGroup.DELETE("/:name", deleteStoragePool(service)) // Delete pool
+			poolsGroup.GET("", listStoragePools(service))                      // List storage pools
+			poolsGroup.POST("", createStoragePool(service))                    // Create storage pool
+			poolsGroup.GET("/:name", getStoragePool(service))                  // Get pool details
+			poolsGroup.DELETE("/:name", deleteStoragePool(service))            // Delete pool
+			poolsGroup.PUT("/:name", updateStoragePool(service))               // Update pool
+			poolsGroup.POST("/:name/start", startStoragePool(service))         // Start pool
+			poolsGroup.POST("/:name/stop", stopStoragePool(service))           // Stop pool
+			poolsGroup.POST("/:name/refresh", refreshStoragePool(service))     // Refresh pool
+			poolsGroup.GET("/:name/capacity", getStoragePoolCapacity(service)) // Get capacity
 
 			volumesGroup := poolsGroup.Group("/:name/volumes")
 			{
@@ -1078,25 +1083,85 @@ func createVMFromTemplate(service *libvirt.Service) gin.HandlerFunc {
 
 // Storage handlers
 
+// sendStorageError sends a consistent error response for storage operations
+func sendStorageError(c *gin.Context, code string, message string, err error, status int) {
+	c.JSON(status, gin.H{
+		"status": "error",
+		"error": gin.H{
+			"code":    code,
+			"message": message,
+			"details": err.Error(),
+		},
+	})
+}
+
 func listStoragePools(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Get query parameters for filtering and pagination
+		state := c.DefaultQuery("state", "all") // active, inactive, all
+		poolType := c.Query("type")             // dir, logical, disk, etc.
+		page := c.DefaultQuery("page", "1")
+		pageSize := c.DefaultQuery("page_size", "50")
+
+		// Convert pagination params
+		pageNum, err := strconv.Atoi(page)
+		if err != nil || pageNum < 1 {
+			pageNum = 1
+		}
+		pageSizeNum, err := strconv.Atoi(pageSize)
+		if err != nil || pageSizeNum < 1 {
+			pageSizeNum = 50
+		}
+		if pageSizeNum > 100 {
+			pageSizeNum = 100
+		}
+
+		// List all pools
 		pools, err := service.ListStoragePools(c.Request.Context())
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"status": "error",
-				"error": gin.H{
-					"code":    "LIST_STORAGE_POOLS_FAILED",
-					"message": "Failed to list storage pools",
-					"details": err.Error(),
-				},
-			})
+			sendStorageError(c, "LIST_POOLS_FAILED", "Failed to list storage pools", err, http.StatusInternalServerError)
 			return
 		}
+
+		// Filter by state and type
+		var filteredPools []libvirt.StoragePool
+		for _, pool := range pools {
+			// State filter
+			if state != "all" {
+				if (state == "active" && pool.State != "active") || (state == "inactive" && pool.State == "active") {
+					continue
+				}
+			}
+			// Type filter
+			if poolType != "" && pool.Type != poolType {
+				continue
+			}
+			filteredPools = append(filteredPools, pool)
+		}
+
+		// Pagination
+		total := len(filteredPools)
+		totalPages := (total + pageSizeNum - 1) / pageSizeNum
+		startIdx := (pageNum - 1) * pageSizeNum
+		endIdx := startIdx + pageSizeNum
+
+		if startIdx >= total {
+			filteredPools = []libvirt.StoragePool{}
+		} else {
+			if endIdx > total {
+				endIdx = total
+			}
+			filteredPools = filteredPools[startIdx:endIdx]
+		}
+
 		c.JSON(http.StatusOK, gin.H{
 			"status": "success",
 			"data": gin.H{
-				"pools": pools,
-				"count": len(pools),
+				"pools":       filteredPools,
+				"total":       total,
+				"page":        pageNum,
+				"page_size":   pageSizeNum,
+				"total_pages": totalPages,
 			},
 		})
 	}
@@ -1144,6 +1209,88 @@ func deleteStoragePool(service *libvirt.Service) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusNoContent, nil)
+	}
+}
+
+func updateStoragePool(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		name := c.Param("name")
+		var req libvirt.StoragePoolUpdateRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			sendStorageError(c, "INVALID_REQUEST", "Invalid request payload", err, http.StatusBadRequest)
+			return
+		}
+
+		pool, err := service.UpdateStoragePool(c.Request.Context(), name, &req)
+		if err != nil {
+			sendStorageError(c, "UPDATE_POOL_FAILED", "Failed to update storage pool", err, http.StatusInternalServerError)
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data":   pool,
+		})
+	}
+}
+
+func startStoragePool(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		name := c.Param("name")
+		err := service.StartStoragePool(c.Request.Context(), name)
+		if err != nil {
+			sendStorageError(c, "START_POOL_FAILED", "Failed to start storage pool", err, http.StatusInternalServerError)
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"status":  "success",
+			"message": "Storage pool started successfully",
+		})
+	}
+}
+
+func stopStoragePool(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		name := c.Param("name")
+		err := service.StopStoragePool(c.Request.Context(), name)
+		if err != nil {
+			sendStorageError(c, "STOP_POOL_FAILED", "Failed to stop storage pool", err, http.StatusInternalServerError)
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"status":  "success",
+			"message": "Storage pool stopped successfully",
+		})
+	}
+}
+
+func refreshStoragePool(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		name := c.Param("name")
+		err := service.RefreshStoragePool(c.Request.Context(), name)
+		if err != nil {
+			sendStorageError(c, "REFRESH_POOL_FAILED", "Failed to refresh storage pool", err, http.StatusInternalServerError)
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"status":  "success",
+			"message": "Storage pool refreshed successfully",
+		})
+	}
+}
+
+func getStoragePoolCapacity(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		name := c.Param("name")
+		capacity, err := service.GetPoolCapacity(c.Request.Context(), name)
+		if err != nil {
+			sendStorageError(c, "GET_CAPACITY_FAILED", "Failed to get storage pool capacity", err, http.StatusInternalServerError)
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data":   capacity,
+		})
 	}
 }
 
@@ -1844,4 +1991,24 @@ func updateVMEnhanced(service *libvirt.Service) gin.HandlerFunc {
 			"data":    vm,
 		})
 	}
+}
+
+// LibvirtUnavailableRoutes registers virtualization routes that always report virtualization disabled.
+// This is used when libvirt is not available on the host so the frontend can show a clear message.
+func LibvirtUnavailableRoutes(api *gin.RouterGroup) {
+	virtualization := api.Group("/virtualization")
+
+	handler := func(c *gin.Context) {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"status": "error",
+			"error": gin.H{
+				"code":    "VIRTUALIZATION_DISABLED",
+				"message": "Virtualization features are disabled on this host.",
+				"details": "Libvirt is not installed or not running on this host. Install and start libvirt to enable VM management.",
+			},
+		})
+	}
+
+	// Match any virtualization-related path and method under this API group
+	virtualization.Any("/*any", handler)
 }

@@ -45,7 +45,7 @@ describe('TabBar', () => {
     `);
     
     const tabChangedHandler = vi.fn();
-    element.addEventListener('tab-changed', tabChangedHandler);
+    element.addEventListener('tab-change', tabChangedHandler);
     
     // Click on the network tab
     const networkTab = shadowQueryAll(element, '.tab')[1];
@@ -61,7 +61,7 @@ describe('TabBar', () => {
     `);
     
     const tabChangedHandler = vi.fn();
-    element.addEventListener('tab-changed', tabChangedHandler);
+    element.addEventListener('tab-change', tabChangedHandler);
     
     // Click on the already active dashboard tab
     const dashboardTab = shadowQueryAll(element, '.tab')[0];
@@ -102,7 +102,7 @@ describe('TabBar', () => {
     `);
     
     const tabChangedHandler = vi.fn();
-    element.addEventListener('tab-changed', tabChangedHandler);
+    element.addEventListener('tab-change', tabChangedHandler);
     
     // Simulate arrow key navigation
     const tabBar = shadowQuery(element, '.tab-bar');
@@ -123,7 +123,7 @@ describe('TabBar', () => {
     `);
     
     const tabChangedHandler = vi.fn();
-    element.addEventListener('tab-changed', tabChangedHandler);
+    element.addEventListener('tab-change', tabChangedHandler);
     
     const tabBar = shadowQuery(element, '.tab-bar');
     if (tabBar) {

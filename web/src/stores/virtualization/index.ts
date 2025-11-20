@@ -6,6 +6,7 @@ import { atom, computed, map } from 'nanostores';
 import { createStore } from '../utils/factory';
 import { getApiUrl } from '../../config';
 import { StoreEventType } from '../types';
+import { isVirtualizationDisabled, VirtualizationDisabledError, ApiErrorBody } from '../../utils/api-errors';
 import type { 
   VirtualMachine, 
   StoragePool,
@@ -18,6 +19,10 @@ import type {
   VirtualNetwork,
   StorageVolume
 } from '../../types/virtualization';
+
+// ============ Virtualization Global State ============
+export const $virtualizationEnabled = atom<boolean | null>(null);
+export const $virtualizationDisabledMessage = atom<string | null>(null);
 
 // ============ API Client Helper ============
 const API_BASE = '/virtualization';
@@ -37,14 +42,41 @@ async function apiRequest<T>(
       ...options.headers,
     },
   });
+
+  const status = response.status;
   
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: response.statusText }));
-    // Handle new error format with status and error fields
-    if (errorData.status === 'error' && errorData.error) {
-      throw new Error(errorData.error.message || errorData.error.details || `Request failed: ${response.status}`);
+    const errorData: ApiErrorBody | { message?: string } = await response.json().catch(
+      () => ({ message: response.statusText }),
+    );
+
+    if (isVirtualizationDisabled(status, errorData)) {
+      $virtualizationEnabled.set(false);
+      $virtualizationDisabledMessage.set(
+        errorData.error?.details ||
+          errorData.error?.message ||
+          'Virtualization is disabled on this host.',
+      );
+      throw new VirtualizationDisabledError(
+        errorData.error?.message || 'Virtualization is disabled on this host.',
+        errorData.error?.details,
+        status,
+      );
     }
-    throw new Error(errorData.message || `Request failed: ${response.status}`);
+
+    // Handle new error format with status and error fields
+    if ((errorData as any).status === 'error' && (errorData as any).error) {
+      const err = (errorData as any).error;
+      throw new Error(err.message || err.details || `Request failed: ${status}`);
+    }
+
+    throw new Error((errorData as any).message || `Request failed: ${status}`);
+  }
+
+  // Successful response - mark virtualization as enabled for this session
+  if ($virtualizationEnabled.get() !== true) {
+    $virtualizationEnabled.set(true);
+    $virtualizationDisabledMessage.set(null);
   }
   
   const jsonData = await response.json();

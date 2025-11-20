@@ -22,7 +22,8 @@ export default defineConfig({
       '@': resolve(__dirname, './src'),
       '@components': resolve(__dirname, './src/components'),
       '@views': resolve(__dirname, './src/views'),
-      '@types': resolve(__dirname, './src/types')
+      '@types': resolve(__dirname, './src/types'),
+      '@open-wc/testing-helpers': resolve(__dirname, './test/mocks/open-wc-testing-helpers.ts')
     }
   }
 });

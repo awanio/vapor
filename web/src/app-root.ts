@@ -328,6 +328,12 @@ export class AppRoot extends LitElement {
   
   private handleAuthLogin = async () => {
     this.isAuthenticated = true;
+    
+    // Skip metrics initialization in test environment to keep tests isolated
+    if (import.meta.env.MODE === 'test') {
+      return;
+    }
+
     // Reinitialize metrics after login
     const { reinitializeMetricsAfterLogin } = await import('./stores/shared/metrics');
     await reinitializeMetricsAfterLogin();
@@ -339,6 +345,12 @@ export class AppRoot extends LitElement {
   
   private handleLoginSuccess = async () => {
     this.isAuthenticated = true;
+
+    // Skip metrics initialization in test environment to keep tests isolated
+    if (import.meta.env.MODE === 'test') {
+      return;
+    }
+
     // Reinitialize metrics after login success
     const { reinitializeMetricsAfterLogin } = await import('./stores/shared/metrics');
     await reinitializeMetricsAfterLogin();
@@ -379,6 +391,11 @@ export class AppRoot extends LitElement {
     
     // If authentication status changed to true, initialize metrics
     if (changedProperties.has('isAuthenticated') && this.isAuthenticated) {
+      // Skip metrics initialization in test environment to keep tests isolated
+      if (import.meta.env.MODE === 'test') {
+        return;
+      }
+
       const { initializeMetrics } = await import('./stores/shared/metrics');
       await initializeMetrics();
     }

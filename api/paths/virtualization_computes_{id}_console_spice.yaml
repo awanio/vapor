@@ -1,0 +1,72 @@
+get:
+  summary: Get SPICE console information
+  description: |
+    Returns SPICE-specific console connection information for the virtual machine.
+    Use this endpoint to get SPICE server details before establishing a WebSocket connection.
+  tags:
+    - Virtualization Compute
+  operationId: getSPICEConsole
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: VM name or UUID
+      schema:
+        type: string
+  responses:
+    '200':
+      description: SPICE console information retrieved successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              type:
+                type: string
+                enum: [spice]
+                description: Console type (always 'spice')
+              host:
+                type: string
+                description: SPICE server host address
+              port:
+                type: integer
+                description: SPICE server port
+              tls_port:
+                type: integer
+                description: SPICE TLS port (if configured)
+              password:
+                type: string
+                description: SPICE password (if configured)
+              websocket_url:
+                type: string
+                description: WebSocket URL for SPICE console
+              autoport:
+                type: boolean
+                description: Whether port is automatically assigned
+              listen:
+                type: string
+                description: Listen address configuration
+              channels:
+                type: array
+                description: Available SPICE channels
+                items:
+                  type: string
+                  enum: [main, display, inputs, cursor, playback, record, smartcard, usbredir]
+            example:
+              type: "spice"
+              host: "0.0.0.0"
+              port: 5901
+              websocket_url: "/virtualization/computes/test-vm/console/spice/ws"
+              autoport: true
+              listen: "0.0.0.0"
+              channels: ["main", "display", "inputs", "cursor", "usbredir"]
+    '404':
+      description: VM not found or SPICE console not available
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml
+  security:
+    - bearerAuth: []

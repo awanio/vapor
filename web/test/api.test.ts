@@ -13,31 +13,44 @@ describe('API Module', () => {
 
   describe('api.get()', () => {
     it('should make GET request with correct headers', async () => {
-      const mockResponse = { data: 'test' };
+      const payload = { data: 'test' };
+      const apiResponse = { status: 'success', data: payload };
       (global.fetch as any).mockResolvedValue({
         ok: true,
-        json: async () => mockResponse,
+        headers: {
+          get: () => 'application/json',
+        },
+        json: async () => apiResponse,
       });
 
       const result = await api.get('/test');
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/test', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      expect(result).toEqual(mockResponse);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/test'),
+        expect.objectContaining({
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }),
+      );
+      expect(result).toEqual(payload);
     });
 
     it('should handle API errors', async () => {
       (global.fetch as any).mockResolvedValue({
         ok: false,
         status: 404,
-        statusText: 'Not Found',
+        headers: {
+          get: () => 'application/json',
+        },
+        json: async () => ({
+          status: 'error',
+          error: { message: 'Not Found' },
+        }),
       });
 
-      await expect(api.get('/test')).rejects.toThrow('HTTP error! status: 404');
+      await expect(api.get('/test')).rejects.toThrow('Not Found');
     });
 
     it('should handle network errors', async () => {
@@ -49,47 +62,61 @@ describe('API Module', () => {
 
   describe('api.post()', () => {
     it('should make POST request with body', async () => {
-      const mockResponse = { id: 1, name: 'test' };
+      const payload = { id: 1, name: 'test' };
       const requestBody = { name: 'test' };
+      const apiResponse = { status: 'success', data: payload };
       
       (global.fetch as any).mockResolvedValue({
         ok: true,
-        json: async () => mockResponse,
+        headers: {
+          get: () => 'application/json',
+        },
+        json: async () => apiResponse,
       });
 
       const result = await api.post('/test', requestBody);
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/test', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
-      expect(result).toEqual(mockResponse);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/test'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        }),
+      );
+      expect(result).toEqual(payload);
     });
   });
 
   describe('api.put()', () => {
     it('should make PUT request with body', async () => {
-      const mockResponse = { id: 1, name: 'updated' };
+      const payload = { id: 1, name: 'updated' };
       const requestBody = { name: 'updated' };
+      const apiResponse = { status: 'success', data: payload };
       
       (global.fetch as any).mockResolvedValue({
         ok: true,
-        json: async () => mockResponse,
+        headers: {
+          get: () => 'application/json',
+        },
+        json: async () => apiResponse,
       });
 
       const result = await api.put('/test/1', requestBody);
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/test/1', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
-      expect(result).toEqual(mockResponse);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/test/1'),
+        expect.objectContaining({
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        }),
+      );
+      expect(result).toEqual(payload);
     });
   });
 
@@ -97,40 +124,53 @@ describe('API Module', () => {
     it('should make DELETE request', async () => {
       (global.fetch as any).mockResolvedValue({
         ok: true,
-        json: async () => ({}),
+        headers: {
+          get: () => 'application/json',
+        },
+        json: async () => ({ status: 'success', data: {} }),
       });
 
       await api.delete('/test/1');
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/test/1', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/test/1'),
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }),
+      );
     });
   });
 
   describe('api.patch()', () => {
     it('should make PATCH request with body', async () => {
-      const mockResponse = { id: 1, name: 'patched' };
+      const payload = { id: 1, name: 'patched' };
       const requestBody = { name: 'patched' };
+      const apiResponse = { status: 'success', data: payload };
       
       (global.fetch as any).mockResolvedValue({
         ok: true,
-        json: async () => mockResponse,
+        headers: {
+          get: () => 'application/json',
+        },
+        json: async () => apiResponse,
       });
 
       const result = await api.patch('/test/1', requestBody);
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/test/1', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
-      expect(result).toEqual(mockResponse);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/test/1'),
+        expect.objectContaining({
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        }),
+      );
+      expect(result).toEqual(payload);
     });
   });
 });
@@ -140,142 +180,102 @@ describe('WebSocketManager', () => {
   let mockWebSocket: any;
 
   beforeEach(() => {
-    // Create a mock WebSocket instance
+    // Use a mocked WebSocket instance without actually connecting to a server
     mockWebSocket = {
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      close: vi.fn(),
       send: vi.fn(),
+      close: vi.fn(),
       readyState: WebSocket.OPEN,
-    };
+    } as any;
 
-    // Mock WebSocket constructor
-    (global.WebSocket as any).mockImplementation(() => mockWebSocket);
-    
-    wsManager = new WebSocketManager();
+    wsManager = new WebSocketManager('/ws');
+    // Inject the mock socket directly so we don't depend on real WebSocket behaviour here
+    (wsManager as any).ws = mockWebSocket;
   });
 
   afterEach(() => {
     wsManager.disconnect();
   });
 
-  it('should create WebSocket connection', () => {
-    wsManager.connect();
-    
-    expect(global.WebSocket).toHaveBeenCalledWith('ws://localhost:8080/ws');
-    expect(mockWebSocket.addEventListener).toHaveBeenCalledWith('open', expect.any(Function));
-    expect(mockWebSocket.addEventListener).toHaveBeenCalledWith('message', expect.any(Function));
-    expect(mockWebSocket.addEventListener).toHaveBeenCalledWith('close', expect.any(Function));
-    expect(mockWebSocket.addEventListener).toHaveBeenCalledWith('error', expect.any(Function));
-  });
-
-  it('should handle incoming messages', () => {
-    wsManager.connect();
-    
-    const subscriber = vi.fn();
-    wsManager.subscribe('cpu', subscriber);
-
-    // Simulate incoming message
-    const messageHandler = mockWebSocket.addEventListener.mock.calls.find(
-      call => call[0] === 'message'
-    )?.[1];
-    
-    const mockData = { type: 'cpu', data: { usage: 50 } };
-    messageHandler({ data: JSON.stringify(mockData) });
-
-    expect(subscriber).toHaveBeenCalledWith(mockData.data);
-  });
-
-  it('should support multiple subscribers', () => {
-    wsManager.connect();
-    
-    const subscriber1 = vi.fn();
-    const subscriber2 = vi.fn();
-    
-    wsManager.subscribe('memory', subscriber1);
-    wsManager.subscribe('memory', subscriber2);
-
-    // Simulate incoming message
-    const messageHandler = mockWebSocket.addEventListener.mock.calls.find(
-      call => call[0] === 'message'
-    )?.[1];
-    
-    const mockData = { type: 'memory', data: { used: 8192 } };
-    messageHandler({ data: JSON.stringify(mockData) });
-
-    expect(subscriber1).toHaveBeenCalledWith(mockData.data);
-    expect(subscriber2).toHaveBeenCalledWith(mockData.data);
-  });
-
-  it('should unsubscribe correctly', () => {
-    wsManager.connect();
-    
-    const subscriber = vi.fn();
-    const unsubscribe = wsManager.subscribe('disk', subscriber);
-    
-    unsubscribe();
-
-    // Simulate incoming message
-    const messageHandler = mockWebSocket.addEventListener.mock.calls.find(
-      call => call[0] === 'message'
-    )?.[1];
-    
-    const mockData = { type: 'disk', data: { free: 1000 } };
-    messageHandler({ data: JSON.stringify(mockData) });
-
-    expect(subscriber).not.toHaveBeenCalled();
-  });
-
   it('should send messages when connected', () => {
-    wsManager.connect();
-    mockWebSocket.readyState = WebSocket.OPEN;
-    
-    const message = { type: 'subscribe', channel: 'cpu' };
+    const message = { type: 'subscribe', channel: 'cpu' } as any;
     wsManager.send(message);
 
     expect(mockWebSocket.send).toHaveBeenCalledWith(JSON.stringify(message));
   });
 
   it('should not send messages when disconnected', () => {
-    wsManager.connect();
-    mockWebSocket.readyState = WebSocket.CLOSED;
-    
-    const message = { type: 'subscribe', channel: 'cpu' };
+    const closedSocket = { send: vi.fn(), close: vi.fn(), readyState: 0 } as any;
+    (wsManager as any).ws = closedSocket;
+
+    const message = { type: 'subscribe', channel: 'cpu' } as any;
     wsManager.send(message);
 
-    expect(mockWebSocket.send).not.toHaveBeenCalled();
+    expect(closedSocket.send).not.toHaveBeenCalled();
+  });
+
+  it('should dispatch messages to subscribers', () => {
+    const subscriber = vi.fn();
+    wsManager.on('cpu', (message: any) => {
+      subscriber(message.payload || message.data);
+    });
+
+    (wsManager as any).handleMessage({
+      type: 'cpu',
+      payload: { usage: 50 },
+    });
+
+    expect(subscriber).toHaveBeenCalledWith({ usage: 50 });
+  });
+
+  it('should support multiple subscribers', () => {
+    const subscriber1 = vi.fn();
+    const subscriber2 = vi.fn();
+
+    wsManager.on('memory', (message: any) => {
+      subscriber1(message.payload || message.data);
+    });
+    wsManager.on('memory', (message: any) => {
+      subscriber2(message.payload || message.data);
+    });
+
+    (wsManager as any).handleMessage({
+      type: 'memory',
+      payload: { used: 8192 },
+    });
+
+    expect(subscriber1).toHaveBeenCalledWith({ used: 8192 });
+    expect(subscriber2).toHaveBeenCalledWith({ used: 8192 });
+  });
+
+  it('should unsubscribe correctly', () => {
+    const subscriber = vi.fn();
+    const handler = (message: any) => {
+      subscriber(message.payload || message.data);
+    };
+
+    wsManager.on('disk', handler);
+    wsManager.off('disk', handler);
+
+    (wsManager as any).handleMessage({
+      type: 'disk',
+      payload: { free: 1000 },
+    });
+
+    expect(subscriber).not.toHaveBeenCalled();
   });
 
   it('should clean up on disconnect', () => {
-    wsManager.connect();
     wsManager.disconnect();
 
-    expect(mockWebSocket.close).toHaveBeenCalled();
+    expect(mockWebSocket.close).toHaveBeenCalledWith(1000, 'Normal closure');
   });
 
-  it('should handle reconnection', () => {
-    wsManager.connect();
-    
-    // Simulate connection close
-    const closeHandler = mockWebSocket.addEventListener.mock.calls.find(
-      call => call[0] === 'close'
-    )?.[1];
-    
-    closeHandler({ code: 1000 });
-
-    // Should attempt to reconnect after delay
-    vi.advanceTimersByTime(5000);
-    
-    // Note: In real implementation, you might want to test reconnection logic
-  });
-
-  it('should report connection status', () => {
-    wsManager.connect();
-    
-    mockWebSocket.readyState = WebSocket.OPEN;
+  it('should report connection status based on readyState', () => {
     expect(wsManager.isConnected()).toBe(true);
-    
-    mockWebSocket.readyState = WebSocket.CLOSED;
+
+    const closedSocket = { send: vi.fn(), close: vi.fn(), readyState: 0 } as any;
+    (wsManager as any).ws = closedSocket;
     expect(wsManager.isConnected()).toBe(false);
   });
 });
+

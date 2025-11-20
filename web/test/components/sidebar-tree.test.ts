@@ -8,6 +8,8 @@ vi.mock('../../src/i18n', () => ({
   i18n: {
     init: vi.fn().mockResolvedValue(undefined),
     t: vi.fn((key: string) => key),
+    isInitialized: vi.fn(() => true),
+    onChange: vi.fn(() => () => {}),
   },
   t: vi.fn((key: string) => key),
 }));
@@ -27,6 +29,15 @@ vi.mock('../../src/stores/shared/sidebar', () => ({
   isExpanded: vi.fn(() => false),
   getExpandedItemsArray: vi.fn(() => []),
 }));
+
+// Mock i18n-mixin to avoid subscribing to real i18n in tests
+vi.mock('../../src/i18n-mixin', async () => {
+  const { LitElement } = await import('lit');
+  return {
+    I18nLitElement: class I18nLitElement extends LitElement {},
+  };
+});
+
 
 describe('SidebarTree', () => {
   let element: SidebarTree;

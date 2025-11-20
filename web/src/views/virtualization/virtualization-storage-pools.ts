@@ -28,7 +28,10 @@ import {
   $storagePoolSearchQuery,
   $selectedStoragePool,
   storagePoolActions,
+  $virtualizationEnabled,
+  $virtualizationDisabledMessage,
 } from '../../stores/virtualization';
+import { VirtualizationDisabledError } from '../../utils/api-errors';
 
 // Internal interface with computed fields for display
 interface StoragePoolDisplay extends StoragePool {
@@ -55,6 +58,8 @@ export class VirtualizationStoragePools extends LitElement {
   // Store controllers for reactive updates
   private storeController = new StoreController(this, storagePoolStore.$state);
   private filteredPoolsController = new StoreController(this, $filteredStoragePools);
+  private virtualizationEnabledController = new StoreController(this, $virtualizationEnabled);
+  private virtualizationDisabledMessageController = new StoreController(this, $virtualizationDisabledMessage);
   // private statsController = new StoreController(this, $storagePoolStats); // Reserved for future stats display
   private selectedPoolController = new StoreController(this, $selectedStoragePool);
   private activeTabController = new StoreController(this, $activeStoragePoolTab);
@@ -154,6 +159,27 @@ export class VirtualizationStoragePools extends LitElement {
 
     .usage-danger {
       background: var(--vscode-testing-iconFailed);
+    }
+
+    .virtualization-disabled-banner {
+      margin-top: 16px;
+      padding: 16px 20px;
+      border-radius: 8px;
+      border: 1px solid var(--vscode-inputValidation-warningBorder, #e2c08d);
+      background: var(--vscode-inputValidation-warningBackground, rgba(229, 200, 144, 0.15));
+      color: var(--vscode-inputValidation-warningForeground, #e2c08d);
+    }
+
+    .virtualization-disabled-banner h2 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .virtualization-disabled-banner p {
+      margin: 0 0 4px 0;
+      font-size: 13px;
+      color: var(--vscode-descriptionForeground);
     }
   `;
 
@@ -427,7 +453,31 @@ export class VirtualizationStoragePools extends LitElement {
     return '';
   }
 
+  private renderVirtualizationDisabledBanner(details?: string | null) {
+    return html`
+      <div class="virtualization-disabled-banner">
+        <h2>Virtualization is disabled on this host</h2>
+        <p>Virtualization features are currently unavailable because libvirt is not installed or not running.\
+ To manage storage pools, install and start libvirt on this machine, then reload this page.</p>
+        ${details ? html`<p>${details}</p>` : ''}
+      </div>
+    `;
+  }
+
   override render() {
+    const virtualizationEnabled = this.virtualizationEnabledController.value;
+    if (virtualizationEnabled === false) {
+      const details = this.virtualizationDisabledMessageController.value;
+      return html`
+        <div class="container">
+          <div class="header">
+            <h1>Storage Pools</h1>
+          </div>
+          ${this.renderVirtualizationDisabledBanner(details)}
+        </div>
+      `;
+    }
+
     const state = this.storeController.value;
     const filteredData = this.getFilteredData();
     // const stats = this.statsController.value || {

@@ -110,11 +110,18 @@ func main() {
 
 	api := router.Group("/api/v1")
 
+	// Protected API routes
 	// Libvirt VM management endpoints
-	libvirtURI := cfg.GetLibvirtURI() // You'll need to add this to config
+	libvirtURI := cfg.GetLibvirtURI()
 	libvirtService, err := libvirt.NewService(libvirtURI)
 	if err != nil {
-		log.Printf("Warning: Libvirt integration disabled: %v", err)
+		log.Printf(
+			"Warning: Libvirt VM management disabled. Failed to connect to libvirt at URI %s. "+
+				"Install and start libvirt on this host to enable VM features. Underlying error: %v",
+			libvirtURI, err,
+		)
+		// Register virtualization routes that explicitly report virtualization disabled
+		routes.LibvirtUnavailableRoutes(api)
 	} else {
 		// Set database for backup tracking
 		libvirtService.SetDatabase(db.DB)
@@ -123,7 +130,6 @@ func main() {
 		defer libvirtService.Close() // Close service when server shuts down
 	}
 
-	// Protected API routes
 	api.Use(authService.AuthMiddleware())
 	{
 		// Network routes
@@ -331,53 +337,52 @@ func main() {
 		log.Println("WARNING: TLS is disabled. Consider enabling TLS for production use.")
 	}
 
+	// Wait for interrupt signal to gracefully shutdown the server
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
 
-// Wait for interrupt signal to gracefully shutdown the server
-quit := make(chan os.Signal, 1)
-signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-<-quit
+	log.Println("========================================")
+	log.Println("Received shutdown signal, starting graceful shutdown...")
+	log.Println("========================================")
 
-log.Println("========================================")
-log.Println("Received shutdown signal, starting graceful shutdown...")
-log.Println("========================================")
+	// Create shutdown context with timeout
+	shutdownTimeout := 30 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
 
-// Create shutdown context with timeout
-shutdownTimeout := 30 * time.Second
-ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-defer cancel()
+	// Channel to track shutdown completion
+	done := make(chan error, 1)
 
-// Channel to track shutdown completion
-done := make(chan error, 1)
+	// Perform graceful shutdown in a goroutine
+	go func() {
+		log.Println("Stopping HTTP/HTTPS server...")
+		if err := srv.Shutdown(ctx); err != nil {
+			done <- fmt.Errorf("server shutdown failed: %w", err)
+			return
+		}
+		log.Println("✓ HTTP/HTTPS server stopped")
+		done <- nil
+	}()
 
-// Perform graceful shutdown in a goroutine
-go func() {
-log.Println("Stopping HTTP/HTTPS server...")
-if err := srv.Shutdown(ctx); err != nil {
-done <- fmt.Errorf("server shutdown failed: %w", err)
-return
-}
-log.Println("✓ HTTP/HTTPS server stopped")
-done <- nil
-}()
+	// Wait for shutdown to complete or timeout
+	select {
+	case err := <-done:
+		if err != nil {
+			log.Printf("Error during shutdown: %v", err)
+			log.Println("Forcing shutdown...")
+			os.Exit(1)
+		}
+		log.Println("========================================")
+		log.Println("Graceful shutdown completed successfully")
+		log.Println("========================================")
+	case <-ctx.Done():
+		log.Printf("Shutdown timeout (%v) exceeded, forcing shutdown...", shutdownTimeout)
+		log.Println("Some connections may have been terminated abruptly")
+		os.Exit(1)
+	}
 
-// Wait for shutdown to complete or timeout
-select {
-case err := <-done:
-if err != nil {
-log.Printf("Error during shutdown: %v", err)
-log.Println("Forcing shutdown...")
-os.Exit(1)
-}
-log.Println("========================================")
-log.Println("Graceful shutdown completed successfully")
-log.Println("========================================")
-case <-ctx.Done():
-log.Printf("Shutdown timeout (%v) exceeded, forcing shutdown...", shutdownTimeout)
-log.Println("Some connections may have been terminated abruptly")
-os.Exit(1)
-}
-
-log.Println("Server exited")
+	log.Println("Server exited")
 }
 
 func corsMiddleware() gin.HandlerFunc {
