@@ -64,7 +64,7 @@ export class VirtualizationStoragePools extends LitElement {
   private selectedPoolController = new StoreController(this, $selectedStoragePool);
   private activeTabController = new StoreController(this, $activeStoragePoolTab);
   private searchQueryController = new StoreController(this, $storagePoolSearchQuery);
-  
+
   // Local UI state
   @state() private showDetails = false;
   @state() private showDeleteModal = false;
@@ -78,7 +78,6 @@ export class VirtualizationStoragePools extends LitElement {
     :host {
       display: block;
       height: 100%;
-      padding: 24px;
       box-sizing: border-box;
     }
 
@@ -89,16 +88,6 @@ export class VirtualizationStoragePools extends LitElement {
       gap: 1rem;
     }
 
-    .header {
-      margin-bottom: 1.5rem;
-    }
-
-    .header h1 {
-      margin: 0 0 24px 0;
-      font-size: 24px;
-      font-weight: 300;
-      flex-shrink: 0;
-    }
 
     .controls {
       display: flex;
@@ -275,7 +264,7 @@ export class VirtualizationStoragePools extends LitElement {
   private getFilteredData(): StoragePoolDisplay[] {
     // Use the computed store value which already handles filtering
     const filteredPools = this.filteredPoolsController.value || [];
-    
+
     // Transform to display format
     return filteredPools.map(pool => this.transformStoragePool(pool));
   }
@@ -293,7 +282,7 @@ export class VirtualizationStoragePools extends LitElement {
   private handleAction(event: CustomEvent) {
     const { action, item } = event.detail;
     const pool = item as StoragePoolDisplay;
-    
+
     switch (action) {
       case 'view':
         this.viewDetails(pool);
@@ -368,9 +357,9 @@ export class VirtualizationStoragePools extends LitElement {
 
   private async handleDelete(_event: CustomEvent) {
     if (!this.itemToDelete) return;
-    
+
     this.isDeleting = true;
-    
+
     try {
       // Find the pool by name from the itemToDelete
       const poolToDelete = this.getFilteredData().find(pool => pool.name === this.itemToDelete?.name);
@@ -378,7 +367,7 @@ export class VirtualizationStoragePools extends LitElement {
         await storagePoolActions.delete(poolToDelete.name);
         this.showNotification(`Storage pool "${poolToDelete.name}" deleted successfully`, 'success');
       }
-      
+
       this.showDeleteModal = false;
       this.itemToDelete = null;
     } catch (error) {
@@ -415,14 +404,14 @@ export class VirtualizationStoragePools extends LitElement {
 
   private async handleCreateResource(event: CustomEvent) {
     this.isCreating = true;
-    
+
     try {
       // Parse the JSON from the create drawer
       const poolData = JSON.parse(event.detail.value);
-      
+
       // Create the storage pool using the action
       await storagePoolActions.create(poolData);
-      
+
       this.showNotification('Storage pool created successfully', 'success');
       this.showCreateDrawer = false;
       this.createResourceValue = '';
@@ -470,9 +459,6 @@ export class VirtualizationStoragePools extends LitElement {
       const details = this.virtualizationDisabledMessageController.value;
       return html`
         <div class="container">
-          <div class="header">
-            <h1>Storage Pools</h1>
-          </div>
           ${this.renderVirtualizationDisabledBanner(details)}
         </div>
       `;
@@ -496,9 +482,6 @@ export class VirtualizationStoragePools extends LitElement {
 
     return html`
       <div class="container">
-        <div class="header">
-          <h1>Storage Pools</h1>
-        </div>
 
         <tab-group
           .tabs=${this.tabs}
@@ -530,17 +513,17 @@ export class VirtualizationStoragePools extends LitElement {
             <empty-state
               icon="🗄️"
               title="No storage pools found"
-              description=${searchQuery 
-                ? "No pools match your search criteria" 
-                : "Create your first storage pool to get started"}
+              description=${searchQuery
+          ? "No pools match your search criteria"
+          : "Create your first storage pool to get started"}
             ></empty-state>
           ` : html`
             <resource-table
               .columns=${this.getColumns()}
               .data=${filteredData.map(pool => ({
-                ...pool,
-                autostart: pool.autostart ? 'Yes' : 'No',
-                usage: html`
+            ...pool,
+            autostart: pool.autostart ? 'Yes' : 'No',
+            usage: html`
                   <div style="display: flex; align-items: center; gap: 8px;">
                     <span>${pool.usage}%</span>
                     <div class="usage-bar" style="width: 60px;">
@@ -549,7 +532,7 @@ export class VirtualizationStoragePools extends LitElement {
                     </div>
                   </div>
                 `
-              }))}
+          }))}
               .actions=${(item: StoragePoolDisplay) => this.getActions(item)}
               @cell-click=${this.handleCellClick}
               @action=${this.handleAction}
@@ -561,10 +544,10 @@ export class VirtualizationStoragePools extends LitElement {
           <detail-drawer
             .title=${selectedPool.name || 'Pool Details'}
             .open=${this.showDetails}
-            @close=${() => { 
-              this.showDetails = false; 
-              storagePoolActions.selectPool(null);
-            }}
+            @close=${() => {
+          this.showDetails = false;
+          storagePoolActions.selectPool(null);
+        }}
           >
             <div style="padding: 20px;">
               <h3>Storage Pool Information</h3>

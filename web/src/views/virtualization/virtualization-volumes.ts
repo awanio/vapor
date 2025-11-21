@@ -39,7 +39,6 @@ export class VirtualizationVolumes extends LitElement {
     :host {
       display: block;
       height: 100%;
-      padding: 24px;
       box-sizing: border-box;
     }
 
@@ -50,16 +49,7 @@ export class VirtualizationVolumes extends LitElement {
       gap: 1rem;
     }
 
-    .header {
-      margin-bottom: 1.5rem;
-    }
 
-    .header h1 {
-      margin: 0 0 24px 0;
-      font-size: 24px;
-      font-weight: 300;
-      flex-shrink: 0;
-    }
 
     /* Stats Bar */
     .stats-bar {
@@ -596,11 +586,11 @@ export class VirtualizationVolumes extends LitElement {
   // Transform volumes data for table display
   private transformVolumeData(volumes: StorageVolume[]) {
     return volumes.map(volume => {
-      const iconClass = volume.type === 'dir' ? 'dir' : 
-                       volume.format === 'iso' ? 'iso' : 'disk';
-      const icon = volume.type === 'dir' ? '📁' : 
-                  volume.format === 'iso' ? '💿' : '💾';
-      
+      const iconClass = volume.type === 'dir' ? 'dir' :
+        volume.format === 'iso' ? 'iso' : 'disk';
+      const icon = volume.type === 'dir' ? '📁' :
+        volume.format === 'iso' ? '💿' : '💾';
+
       return {
         ...volume,
         name: html`
@@ -753,9 +743,6 @@ export class VirtualizationVolumes extends LitElement {
       const details = this.virtualizationDisabledMessageController.value;
       return html`
         <div class="container">
-          <div class="header">
-            <h1>Storage Volumes</h1>
-          </div>
           ${this.renderVirtualizationDisabledBanner(details)}
         </div>
       `;
@@ -789,9 +776,6 @@ export class VirtualizationVolumes extends LitElement {
 
     return html`
       <div class="container">
-        <div class="header">
-          <h1>Storage Volumes</h1>
-        </div>
 
         <!-- Stats Bar -->
         <div class="stats-bar">
@@ -893,9 +877,9 @@ export class VirtualizationVolumes extends LitElement {
             <empty-state
               icon="📂"
               title="No volumes found"
-              description=${searchQuery 
-                ? "No volumes match your search criteria" 
-                : "No storage volumes available"}
+              description=${searchQuery
+          ? "No volumes match your search criteria"
+          : "No storage volumes available"}
             ></empty-state>
           ` : html`
             <resource-table

@@ -56,7 +56,6 @@ export class VirtualizationNetworks extends LitElement {
     :host {
       display: block;
       height: 100%;
-      padding: 24px;
       box-sizing: border-box;
     }
 
@@ -67,16 +66,7 @@ export class VirtualizationNetworks extends LitElement {
       gap: 1rem;
     }
 
-    .header {
-      margin-bottom: 1.5rem;
-    }
 
-    .header h1 {
-      margin: 0 0 24px 0;
-      font-size: 24px;
-      font-weight: 300;
-      flex-shrink: 0;
-    }
 
     .controls {
       display: flex;
@@ -475,13 +465,13 @@ export class VirtualizationNetworks extends LitElement {
   private async loadData() {
     this.loading = true;
     this.error = null;
-    
+
     try {
       // Use the virtualizationAPI service which handles authentication and response structure
       const response = await virtualizationAPI.listNetworks();
-      
+
       console.log('Networks API response:', response); // Debug log
-      
+
       // Map the response to match our local interface structure
       this.networks = (response || []).map(net => ({
         name: net.name || 'Unnamed Network',
@@ -569,7 +559,7 @@ export class VirtualizationNetworks extends LitElement {
     // Filter by search query
     if (this.searchQuery) {
       const query = this.searchQuery.toLowerCase();
-      data = data.filter(net => 
+      data = data.filter(net =>
         net.name.toLowerCase().includes(query) ||
         net.bridge.toLowerCase().includes(query) ||
         net.uuid.toLowerCase().includes(query) ||
@@ -587,7 +577,7 @@ export class VirtualizationNetworks extends LitElement {
 
   private handleCellClick(event: CustomEvent) {
     const { item, column } = event.detail;
-    
+
     // If the name column is clicked, open the detail drawer
     if (column.key === 'name') {
       this.viewNetworkDetail(item as VirtualNetwork);
@@ -597,7 +587,7 @@ export class VirtualizationNetworks extends LitElement {
   private handleAction(event: CustomEvent) {
     const { action, item } = event.detail;
     const network = item as VirtualNetwork;
-    
+
     switch (action) {
       case 'view':
         this.viewNetworkDetail(network);
@@ -626,15 +616,15 @@ export class VirtualizationNetworks extends LitElement {
     this.showDetailDrawer = true;
     this.isLoadingDetail = true;
     this.selectedNetwork = network;
-    
+
     console.log('Opening detail drawer for network:', network); // Debug log
-    
+
     try {
       // Fetch detailed information from API
       const detailedNetwork = await virtualizationAPI.getNetwork(network.name);
-      
+
       console.log('Detailed network response:', detailedNetwork); // Debug log
-      
+
       // Map the response to match our local interface structure
       this.selectedNetwork = {
         name: detailedNetwork.name || network.name || 'Unnamed Network',
@@ -724,15 +714,15 @@ export class VirtualizationNetworks extends LitElement {
 
   private async handleDelete() {
     if (!this.itemToDelete) return;
-    
+
     this.isDeleting = true;
-    
+
     try {
       const networkToDelete = this.networks.find(n => n.name === this.itemToDelete?.name);
-      
+
       if (networkToDelete) {
         await virtualizationAPI.deleteNetwork(networkToDelete.name);
-        
+
         // Reload the data after successful deletion
         await this.loadData();
       }
@@ -769,10 +759,10 @@ export class VirtualizationNetworks extends LitElement {
 
   private async handleCreateResource(event: CustomEvent) {
     this.isCreating = true;
-    
+
     try {
       const networkConfig = JSON.parse(event.detail.value);
-      
+
       // Transform the config to match the API expected format
       const apiConfig = {
         name: networkConfig.name,
@@ -783,12 +773,12 @@ export class VirtualizationNetworks extends LitElement {
         netmask: networkConfig.ip_range?.netmask,
         autostart: networkConfig.autostart
       };
-      
+
       await virtualizationAPI.createNetwork(apiConfig);
-      
+
       // Reload the data after successful creation
       await this.loadData();
-      
+
       this.showCreateDrawer = false;
       this.createResourceValue = '';
     } catch (error) {
@@ -804,18 +794,18 @@ export class VirtualizationNetworks extends LitElement {
 
   private renderNetworkMode(mode: string) {
     if (!mode) return html`<span>-</span>`;
-    const badgeClass = mode === 'nat' ? 'badge-nat' : 
-                      mode === 'bridge' ? 'badge-bridge' : 
-                      'badge-isolated';
+    const badgeClass = mode === 'nat' ? 'badge-nat' :
+      mode === 'bridge' ? 'badge-bridge' :
+        'badge-isolated';
     return html`<span class="network-type-badge ${badgeClass}">${mode || 'Default'}</span>`;
   }
 
   private renderDetailDrawer() {
     if (!this.selectedNetwork) return '';
-    
+
     const network = this.selectedNetwork;
     const extendedNetwork = network as any;
-    
+
     return html`
       <div class="drawer">
         <div class="drawer-header">
@@ -1095,12 +1085,12 @@ export class VirtualizationNetworks extends LitElement {
     try {
       const ipParts = ipAddress.split('.').map(Number);
       const maskParts = netmask.split('.').map(Number);
-      
+
       // Ensure both arrays have 4 parts (valid IPv4)
       if (ipParts.length !== 4 || maskParts.length !== 4) {
         return 'N/A';
       }
-      
+
       const broadcastParts = ipParts.map((ip, i) => {
         const mask = maskParts[i];
         // Add explicit undefined check for TypeScript
@@ -1143,9 +1133,6 @@ export class VirtualizationNetworks extends LitElement {
       const details = this.virtualizationDisabledMessageController.value;
       return html`
         <div class="container">
-          <div class="header">
-            <h1>Virtual Networks</h1>
-          </div>
           ${this.renderVirtualizationDisabledBanner(details)}
         </div>
       `;
@@ -1155,9 +1142,6 @@ export class VirtualizationNetworks extends LitElement {
 
     return html`
       <div class="container">
-        <div class="header">
-          <h1>Virtual Networks</h1>
-        </div>
 
         <tab-group
           .tabs=${this.tabs}
@@ -1189,23 +1173,23 @@ export class VirtualizationNetworks extends LitElement {
             <empty-state
               icon="🔗"
               title="No virtual networks found"
-              description=${this.searchQuery 
-                ? "No networks match your search criteria" 
-                : this.networks.length === 0 
-                  ? "No virtual networks configured. Create your first network to get started."
-                  : "No networks match the selected filter"}
+              description=${this.searchQuery
+          ? "No networks match your search criteria"
+          : this.networks.length === 0
+            ? "No virtual networks configured. Create your first network to get started."
+            : "No networks match the selected filter"}
             ></empty-state>
           ` : html`
             <resource-table
               .columns=${this.getColumns()}
               .data=${filteredData.map(net => ({
-                ...net,
-                mode: this.renderNetworkMode(net.mode),
-                ip_address: net.ip_range.address || 'Not configured',
-                netmask: net.ip_range.netmask || 'Not configured',
-                autostart: net.autostart ? 'Yes' : 'No',
-                persistent: net.persistent ? 'Yes' : 'No'
-              }))}
+              ...net,
+              mode: this.renderNetworkMode(net.mode),
+              ip_address: net.ip_range.address || 'Not configured',
+              netmask: net.ip_range.netmask || 'Not configured',
+              autostart: net.autostart ? 'Yes' : 'No',
+              persistent: net.persistent ? 'Yes' : 'No'
+            }))}
               .getActions=${(item: VirtualNetwork) => this.getActions(item)}
               @cell-click=${this.handleCellClick}
               @action=${this.handleAction}
@@ -1222,10 +1206,10 @@ export class VirtualizationNetworks extends LitElement {
             .item=${this.itemToDelete}
             .loading=${this.isDeleting}
             @confirm-delete=${this.handleDelete}
-            @cancel-delete=${() => { 
-              this.showDeleteModal = false; 
-              this.itemToDelete = null; 
-            }}
+            @cancel-delete=${() => {
+          this.showDeleteModal = false;
+          this.itemToDelete = null;
+        }}
           ></delete-modal>
         ` : ''}
 

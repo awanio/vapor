@@ -69,7 +69,6 @@ export class ISOManagement extends LitElement {
     :host {
       display: block;
       height: 100%;
-      padding: 24px;
       box-sizing: border-box;
     }
 
@@ -80,15 +79,7 @@ export class ISOManagement extends LitElement {
       gap: 1rem;
     }
 
-    .header {
-      margin-bottom: 1rem;
-    }
 
-    .header h1 {
-      margin: 0 0 16px 0;
-      font-size: 24px;
-      font-weight: 300;
-    }
 
     .controls {
       display: flex;
@@ -538,7 +529,7 @@ export class ISOManagement extends LitElement {
     try {
       // Ensure we have a fresh fetch from the API
       await isoStore.fetch();
-      
+
       // Also refresh storage pools if needed
       await storagePoolStore.fetch();
     } catch (error) {
@@ -573,21 +564,21 @@ export class ISOManagement extends LitElement {
     if (bytes === undefined || bytes === null || isNaN(bytes)) {
       return 'Unknown';
     }
-    
+
     // Handle zero or negative values
     if (bytes <= 0) {
       return '0 B';
     }
-    
+
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
     let size = bytes;
     let unitIndex = 0;
-    
+
     while (size >= 1024 && unitIndex < units.length - 1) {
       size /= 1024;
       unitIndex++;
     }
-    
+
     return `${size.toFixed(1)} ${units[unitIndex]}`;
   }
 
@@ -597,11 +588,11 @@ export class ISOManagement extends LitElement {
 
   private getFilteredISOs(): ISOImage[] {
     const isos = this.availableISOsController.value;
-    
+
     if (!this.searchQuery) {
       return isos;
     }
-    
+
     const query = this.searchQuery.toLowerCase();
     return isos.filter(iso =>
       iso.name.toLowerCase().includes(query) ||
@@ -617,7 +608,7 @@ export class ISOManagement extends LitElement {
   private handleAction(event: CustomEvent) {
     const { action, item } = event.detail;
     const iso = item as ISOImage;
-    
+
     switch (action) {
       case 'view-detail':
         this.viewISODetail(iso);
@@ -633,7 +624,7 @@ export class ISOManagement extends LitElement {
 
   private handleCellClick(event: CustomEvent) {
     const { item, column } = event.detail;
-    
+
     // If the name column is clicked, open the detail drawer
     if (column.key === 'name') {
       this.viewISODetail(item as ISOImage);
@@ -663,7 +654,7 @@ export class ISOManagement extends LitElement {
 
       // Get the blob from response
       const blob = await response.blob();
-      
+
       // Create download link
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -671,11 +662,11 @@ export class ISOManagement extends LitElement {
       link.download = iso.name;
       document.body.appendChild(link);
       link.click();
-      
+
       // Cleanup
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
+
       this.showNotification(`Downloading ${iso.name}...`, 'success');
     } catch (error) {
       console.error('Failed to download ISO:', error);
@@ -690,7 +681,7 @@ export class ISOManagement extends LitElement {
     this.showDetailDrawer = true;
     this.isLoadingDetail = true;
     this.selectedISO = iso;
-    
+
     try {
       // Fetch detailed information from API
       const detailedISO = await virtualizationAPI.getISO(iso.id);
@@ -724,9 +715,9 @@ export class ISOManagement extends LitElement {
 
   private async handleDelete() {
     if (!this.isoToDelete) return;
-    
+
     this.isDeleting = true;
-    
+
     try {
       await storageActions.deleteISO(this.isoToDelete.id);
       this.showNotification(`ISO "${this.isoToDelete.name}" deleted successfully`, 'success');
@@ -757,7 +748,7 @@ export class ISOManagement extends LitElement {
     if (this.currentUpload) {
       this.currentUpload.abort();
       this.currentUpload = null;
-      
+
       // Reset upload state when closing drawer with active upload
       $isoUploadState.set({
         isUploading: false,
@@ -768,7 +759,7 @@ export class ISOManagement extends LitElement {
     }
     this.showUploadDrawer = false;
     this.selectedFile = null;
-    
+
     // Reset metadata to defaults
     this.uploadMetadata = {
       os_type: 'linux',
@@ -790,7 +781,7 @@ export class ISOManagement extends LitElement {
   private handleDrop(event: DragEvent) {
     event.preventDefault();
     this.dragOver = false;
-    
+
     const files = event.dataTransfer?.files;
     if (files && files.length > 0) {
       const file = files[0];
@@ -803,7 +794,7 @@ export class ISOManagement extends LitElement {
   private handleFileSelect(event: Event) {
     const input = event.target as HTMLInputElement;
     const files = input.files;
-    
+
     if (files && files.length > 0) {
       const file = files[0];
       if (file && this.validateFile(file)) {
@@ -818,14 +809,14 @@ export class ISOManagement extends LitElement {
       this.showNotification('Please select an ISO file', 'error');
       return false;
     }
-    
+
     // Check file size (max 10GB)
     const maxSize = 10 * 1024 * 1024 * 1024; // 10GB
     if (file.size > maxSize) {
       this.showNotification('File size exceeds 10GB limit', 'error');
       return false;
     }
-    
+
     return true;
   }
 
@@ -838,7 +829,7 @@ export class ISOManagement extends LitElement {
       this.showNotification('Please select a file to upload', 'error');
       return;
     }
-    
+
     try {
       // Only initiate new upload session if we don't have one already (for resume)
       if (!this.uploadUrl || !this.uploadId) {
@@ -853,7 +844,7 @@ export class ISOManagement extends LitElement {
         this.uploadUrl = uploadUrl;
         this.uploadId = uploadId;
       }
-      
+
       // Set upload state
       $isoUploadState.set({
         isUploading: true,
@@ -861,9 +852,9 @@ export class ISOManagement extends LitElement {
         uploadId: this.uploadId,
         error: null,
       });
-      
+
       this.isPaused = false;
-      
+
       // Create TUS upload client
       this.currentUpload = new tus.Upload(this.selectedFile, {
         uploadUrl: this.uploadUrl!,
@@ -892,7 +883,7 @@ export class ISOManagement extends LitElement {
           console.error('Upload failed:', error);
           this.showNotification(`Upload failed: ${error.message}`, 'error');
           this.currentUpload = null;
-          
+
           // Reset upload state on error
           $isoUploadState.set({
             isUploading: false,
@@ -904,7 +895,7 @@ export class ISOManagement extends LitElement {
         onProgress: (bytesUploaded, bytesTotal) => {
           // Calculate progress based on total file size, not chunk size
           const percentage = Math.round((bytesUploaded / bytesTotal) * 100);
-          
+
           // Update the upload progress state
           $isoUploadState.set({
             ...$isoUploadState.get(),
@@ -915,7 +906,7 @@ export class ISOManagement extends LitElement {
           try {
             // Complete the upload
             await virtualizationAPI.completeISOUpload(this.uploadId!);
-            
+
             // Reset upload state
             $isoUploadState.set({
               isUploading: false,
@@ -923,16 +914,16 @@ export class ISOManagement extends LitElement {
               uploadId: null,
               error: null,
             });
-            
+
             // Refresh ISO list to show the newly uploaded ISO
             await isoStore.fetch();
-            
+
             this.showNotification('ISO uploaded successfully', 'success');
             this.closeUploadDrawer();
           } catch (error) {
             console.error('Failed to complete upload:', error);
             this.showNotification('Failed to complete upload', 'error');
-            
+
             // Reset upload state on error
             $isoUploadState.set({
               isUploading: false,
@@ -943,10 +934,10 @@ export class ISOManagement extends LitElement {
           }
         },
       });
-      
+
       // Start upload
       this.currentUpload.start();
-      
+
     } catch (error) {
       console.error('Failed to initiate upload:', error);
       this.showNotification(
@@ -960,13 +951,13 @@ export class ISOManagement extends LitElement {
     if (this.currentUpload) {
       this.currentUpload.abort();
       this.isPaused = true;
-      
+
       // Update store to reflect paused state
       $isoUploadState.set({
         ...$isoUploadState.get(),
         isUploading: false,
       });
-      
+
       this.showNotification('Upload paused - click Resume to continue', 'info');
     }
   }
@@ -985,7 +976,7 @@ export class ISOManagement extends LitElement {
       this.currentUpload.abort();
       this.currentUpload = null;
     }
-    
+
     // Reset upload state completely
     $isoUploadState.set({
       isUploading: false,
@@ -993,13 +984,13 @@ export class ISOManagement extends LitElement {
       uploadId: null,
       error: null,
     });
-    
+
     // Reset component state
     this.selectedFile = null;
     this.isPaused = false;
     this.uploadUrl = null;
     this.uploadId = null;
-    
+
     // Close the drawer
     this.closeUploadDrawer();
   }
@@ -1014,7 +1005,7 @@ export class ISOManagement extends LitElement {
 
   private renderDetailDrawer() {
     if (!this.selectedISO) return '';
-    
+
     return html`
       <div class="drawer">
         <div class="drawer-header">
@@ -1096,7 +1087,7 @@ export class ISOManagement extends LitElement {
   private renderUploadDrawer() {
     const uploadState = this._uploadStateController.value;
     const isUploading = uploadState.isUploading || this.isPaused;
-    
+
     return html`
       <div class="drawer">
         <div class="drawer-header">
@@ -1147,9 +1138,9 @@ export class ISOManagement extends LitElement {
               <label>OS Type</label>
               <select
                 .value=${this.uploadMetadata.os_type}
-                @change=${(e: Event) => 
-                  this.uploadMetadata.os_type = (e.target as HTMLSelectElement).value
-                }
+                @change=${(e: Event) =>
+        this.uploadMetadata.os_type = (e.target as HTMLSelectElement).value
+      }
                 ?disabled=${isUploading}
               >
                 <option value="linux">Linux</option>
@@ -1165,9 +1156,9 @@ export class ISOManagement extends LitElement {
                 type="text"
                 placeholder="e.g., ubuntu-22.04, windows-11, etc."
                 .value=${this.uploadMetadata.os_variant}
-                @input=${(e: InputEvent) => 
-                  this.uploadMetadata.os_variant = (e.target as HTMLInputElement).value
-                }
+                @input=${(e: InputEvent) =>
+        this.uploadMetadata.os_variant = (e.target as HTMLInputElement).value
+      }
                 ?disabled=${isUploading}
               />
               <div class="help-text">
@@ -1181,9 +1172,9 @@ export class ISOManagement extends LitElement {
                 rows="3"
                 placeholder="Additional notes about this ISO"
                 .value=${this.uploadMetadata.description}
-                @input=${(e: InputEvent) => 
-                  this.uploadMetadata.description = (e.target as HTMLTextAreaElement).value
-                }
+                @input=${(e: InputEvent) =>
+        this.uploadMetadata.description = (e.target as HTMLTextAreaElement).value
+      }
                 ?disabled=${isUploading}
               ></textarea>
             </div>
@@ -1253,9 +1244,6 @@ export class ISOManagement extends LitElement {
       const details = this.virtualizationDisabledMessageController.value;
       return html`
         <div class="container">
-          <div class="header">
-            <h1>ISO Images</h1>
-          </div>
           ${this.renderVirtualizationDisabledBanner(details)}
         </div>
       `;
@@ -1264,25 +1252,22 @@ export class ISOManagement extends LitElement {
     const state = this.isoStoreController.value;
     const filteredISOs = this.getFilteredISOs();
     // const uploadState = this.uploadStateController.value;
-    
+
     // Calculate total size (handle undefined/null size values)
     const totalSize = filteredISOs.reduce((sum, iso) => {
       const size = iso.size || 0;
       return sum + (isNaN(size) ? 0 : size);
     }, 0);
-    
+
     // Transform data for table
     const tableData = filteredISOs.map(iso => ({
       ...iso,
       size_formatted: this.formatFileSize(iso.size),
       uploaded_at_formatted: this.formatDate(iso.uploaded_at),
     }));
-    
+
     return html`
       <div class="container">
-        <div class="header">
-          <h1>ISO Images</h1>
-        </div>
         
         <!-- Stats Bar -->
         <div class="stats-bar">
@@ -1324,9 +1309,9 @@ export class ISOManagement extends LitElement {
             <empty-state
               icon="📀"
               title="No ISO images found"
-              description=${this.searchQuery 
-                ? "No ISOs match your search criteria" 
-                : "Upload your first ISO image to get started"}
+              description=${this.searchQuery
+          ? "No ISOs match your search criteria"
+          : "Upload your first ISO image to get started"}
             ></empty-state>
           ` : html`
             <resource-table
@@ -1352,11 +1337,11 @@ export class ISOManagement extends LitElement {
             .item=${{ name: this.isoToDelete.name, type: 'ISO Image' }}
             .loading=${this.isDeleting}
             @confirm-delete=${this.handleDelete}
-            @cancel-delete=${() => { 
-              this.showDeleteModal = false;
-              this.isoToDelete = null;
-              this.requestUpdate();
-            }}
+            @cancel-delete=${() => {
+          this.showDeleteModal = false;
+          this.isoToDelete = null;
+          this.requestUpdate();
+        }}
           ></delete-modal>
         ` : ''}
         
