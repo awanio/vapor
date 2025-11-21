@@ -1,0 +1,11 @@
+type: object
+required:
+  - capacity
+properties:
+  capacity:
+    type: integer
+    format: int64
+    description: >-
+      New capacity for the volume in bytes. Must be greater than the current
+      capacity.
+    minimum: 1

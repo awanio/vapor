@@ -444,9 +444,20 @@ type StoragePoolUpdateRequest struct {
 // VolumeCreateRequest for creating volumes
 type VolumeCreateRequest struct {
 	Name     string `json:"name" binding:"required"`
-	PoolName string `json:"pool_name" binding:"required"`
+	PoolName string `json:"pool_name"`
 	Capacity uint64 `json:"capacity" binding:"required"` // in bytes
 	Format   string `json:"format"`                      // qcow2, raw, vmdk
+}
+
+// VolumeResizeRequest for resizing existing volumes
+type VolumeResizeRequest struct {
+	Capacity uint64 `json:"capacity" binding:"required"` // new capacity in bytes (must be greater than current)
+}
+
+// VolumeCloneRequest for cloning a volume within or across pools
+type VolumeCloneRequest struct {
+	NewName    string `json:"new_name" binding:"required"`
+	TargetPool string `json:"target_pool,omitempty"`
 }
 
 // NetworkCreateRequest for creating networks

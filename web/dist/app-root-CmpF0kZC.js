@@ -1,4 +1,4 @@
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-CCmIBfqX.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-DhdrCj0L.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -1215,14 +1215,14 @@ class I18nLitElement extends i$2 {
     }
   }
 }
-var __defProp$S = Object.defineProperty;
-var __getOwnPropDesc$K = Object.getOwnPropertyDescriptor;
-var __decorateClass$T = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$K(target, key) : target;
+var __defProp$T = Object.defineProperty;
+var __getOwnPropDesc$L = Object.getOwnPropertyDescriptor;
+var __decorateClass$U = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$L(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$S(target, key, result);
+  if (kind && result) __defProp$T(target, key, result);
   return result;
 };
 let LoginPage = class extends I18nLitElement {
@@ -1496,22 +1496,22 @@ LoginPage.styles = i$5`
       fill: var(--primary);
     }
   `;
-__decorateClass$T([
+__decorateClass$U([
   r$1()
 ], LoginPage.prototype, "username", 2);
-__decorateClass$T([
+__decorateClass$U([
   r$1()
 ], LoginPage.prototype, "password", 2);
-__decorateClass$T([
+__decorateClass$U([
   r$1()
 ], LoginPage.prototype, "loading", 2);
-__decorateClass$T([
+__decorateClass$U([
   r$1()
 ], LoginPage.prototype, "error", 2);
-__decorateClass$T([
+__decorateClass$U([
   r$1()
 ], LoginPage.prototype, "showPassword", 2);
-LoginPage = __decorateClass$T([
+LoginPage = __decorateClass$U([
   t$2("login-page")
 ], LoginPage);
 /*!
@@ -16972,12 +16972,13 @@ class Api {
         headers: requestHeaders,
         body: body ? JSON.stringify(body) : void 0
       });
-      const contentType = response.headers.get("content-type");
-      if (!contentType?.includes("application/json")) {
+      const headers2 = response.headers || {};
+      const contentType = typeof headers2.get === "function" ? headers2.get("content-type") : void 0;
+      if (contentType && !contentType.includes("application/json")) {
         if (!response.ok) {
           throw new ApiError(`HTTP error! status: ${response.status}`, void 0, void 0, response.status);
         }
-        return response.text();
+        return await response.text();
       }
       const data = await response.json();
       if (!response.ok || data.status === "error") {
@@ -17028,12 +17029,13 @@ class Api {
         },
         body: content
       });
-      const responseContentType = response.headers.get("content-type");
-      if (!responseContentType?.includes("application/json")) {
+      const resHeaders = response.headers || {};
+      const responseContentType = typeof resHeaders.get === "function" ? resHeaders.get("content-type") : void 0;
+      if (responseContentType && !responseContentType.includes("application/json")) {
         if (!response.ok) {
           throw new ApiError(`HTTP error! status: ${response.status}`, void 0, void 0, response.status);
         }
-        return response.text();
+        return await response.text();
       }
       const data = await response.json();
       if (!response.ok || data.status === "error") {
@@ -17068,12 +17070,13 @@ class Api {
         },
         body: content
       });
-      const responseContentType = response.headers.get("content-type");
-      if (!responseContentType?.includes("application/json")) {
+      const resHeaders = response.headers || {};
+      const responseContentType = typeof resHeaders.get === "function" ? resHeaders.get("content-type") : void 0;
+      if (responseContentType && !responseContentType.includes("application/json")) {
         if (!response.ok) {
           throw new ApiError(`HTTP error! status: ${response.status}`, void 0, void 0, response.status);
         }
-        return response.text();
+        return await response.text();
       }
       const data = await response.json();
       if (!response.ok || data.status === "error") {
@@ -17097,7 +17100,7 @@ class Api {
   }
 }
 class WebSocketManager2 {
-  constructor(path) {
+  constructor(path = "/ws") {
     this.path = path;
     this.ws = null;
     this.reconnectInterval = 5e3;
@@ -17105,7 +17108,6 @@ class WebSocketManager2 {
     this.reconnectAttempts = 0;
     this.messageHandlers = /* @__PURE__ */ new Map();
     this.reconnectTimer = null;
-    this.authenticated = false;
     this.intentionalDisconnect = false;
   }
   connect() {
@@ -17134,7 +17136,6 @@ class WebSocketManager2 {
         };
         this.ws.onclose = (event) => {
           console.log("WebSocket closed", { code: event.code, reason: event.reason });
-          this.authenticated = false;
           if (!this.intentionalDisconnect && event.code !== 1e3) {
             this.scheduleReconnect();
           } else {
@@ -17158,7 +17159,6 @@ class WebSocketManager2 {
       const authHandler = (message) => {
         if (message.type === "auth" && message.payload?.authenticated === true) {
           clearTimeout(authTimeout);
-          this.authenticated = true;
           this.off("auth", authHandler);
           this.off("error", errorHandler);
           console.log(`WebSocket authenticated as ${message.payload.username}`);
@@ -17236,10 +17236,9 @@ class WebSocketManager2 {
       this.ws = null;
     }
     this.messageHandlers.clear();
-    this.authenticated = false;
   }
   isConnected() {
-    return this.ws !== null && this.ws.readyState === WebSocket.OPEN && this.authenticated;
+    return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
   }
 }
 const api = Api;
@@ -17408,7 +17407,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-CCmIBfqX.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-DhdrCj0L.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17453,7 +17452,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-CCmIBfqX.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-DhdrCj0L.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17517,7 +17516,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-CCmIBfqX.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-DhdrCj0L.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17597,9 +17596,9 @@ const metrics = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePrope
   updateMemoryMetrics,
   updateNetworkMetrics
 }, Symbol.toStringTag, { value: "Module" }));
-var __getOwnPropDesc$J = Object.getOwnPropertyDescriptor;
-var __decorateClass$S = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$J(target, key) : target;
+var __getOwnPropDesc$K = Object.getOwnPropertyDescriptor;
+var __decorateClass$T = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$K(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(result) || result;
@@ -17630,7 +17629,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-CCmIBfqX.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-DhdrCj0L.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -18250,7 +18249,7 @@ DashboardTabV2.styles = i$5`
       margin-bottom: 16px;
     }
   `;
-DashboardTabV2 = __decorateClass$S([
+DashboardTabV2 = __decorateClass$T([
   t$2("dashboard-tab-v2")
 ], DashboardTabV2);
 const $interfaces = atom([]);
@@ -18677,13 +18676,13 @@ async function initializeNetworkStore() {
   // Actions
   ...networkActions
 });
-var __defProp$R = Object.defineProperty;
-var __decorateClass$R = (decorators, target, key, kind) => {
+var __defProp$S = Object.defineProperty;
+var __decorateClass$S = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$R(target, key, result);
+  if (result) __defProp$S(target, key, result);
   return result;
 };
 class ModalDialog extends I18nLitElement {
@@ -18886,27 +18885,27 @@ class ModalDialog extends I18nLitElement {
     `;
   }
 }
-__decorateClass$R([
+__decorateClass$S([
   n2({ type: Boolean, reflect: true })
 ], ModalDialog.prototype, "open");
-__decorateClass$R([
+__decorateClass$S([
   n2({ type: String })
 ], ModalDialog.prototype, "title");
-__decorateClass$R([
+__decorateClass$S([
   n2({ type: String })
 ], ModalDialog.prototype, "size");
-__decorateClass$R([
+__decorateClass$S([
   n2({ type: Boolean })
 ], ModalDialog.prototype, "showFooter");
 customElements.define("modal-dialog", ModalDialog);
-var __defProp$Q = Object.defineProperty;
-var __getOwnPropDesc$I = Object.getOwnPropertyDescriptor;
-var __decorateClass$Q = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$I(target, key) : target;
+var __defProp$R = Object.defineProperty;
+var __getOwnPropDesc$J = Object.getOwnPropertyDescriptor;
+var __decorateClass$R = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$J(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$Q(target, key, result);
+  if (kind && result) __defProp$R(target, key, result);
   return result;
 };
 let OperationWarning = class extends i$2 {
@@ -19092,31 +19091,31 @@ OperationWarning.styles = i$5`
       color: var(--text-primary, var(--vscode-foreground, #cccccc));
     }
   `;
-__decorateClass$Q([
+__decorateClass$R([
   n2({ type: String })
 ], OperationWarning.prototype, "type", 2);
-__decorateClass$Q([
+__decorateClass$R([
   n2({ type: String })
 ], OperationWarning.prototype, "message", 2);
-__decorateClass$Q([
+__decorateClass$R([
   n2({ type: Array })
 ], OperationWarning.prototype, "failures", 2);
-__decorateClass$Q([
+__decorateClass$R([
   n2({ type: Array })
 ], OperationWarning.prototype, "successfulItems", 2);
-__decorateClass$Q([
+__decorateClass$R([
   n2({ type: Boolean })
 ], OperationWarning.prototype, "dismissible", 2);
-OperationWarning = __decorateClass$Q([
+OperationWarning = __decorateClass$R([
   t$2("operation-warning")
 ], OperationWarning);
-var __defProp$P = Object.defineProperty;
-var __decorateClass$P = (decorators, target, key, kind) => {
+var __defProp$Q = Object.defineProperty;
+var __decorateClass$Q = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$P(target, key, result);
+  if (result) __defProp$Q(target, key, result);
   return result;
 };
 class NetworkTab extends I18nLitElement {
@@ -21712,147 +21711,147 @@ ${this.interfaces.length > 0 ? x`
     `;
   }
 }
-__decorateClass$P([
+__decorateClass$Q([
   n2({ type: String })
 ], NetworkTab.prototype, "subRoute");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "activeTab");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "showConfigureDrawer");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "showDetailsDrawer");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "editingIpIndex");
-__decorateClass$P([
+__decorateClass$Q([
   r$1(),
   r$1()
 ], NetworkTab.prototype, "showAddIpModal");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "showEditIpModal");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "editIpAddress");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "editIpNetmask");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "editIpGateway");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "originalIpAddress");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "newIpAddress");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "newIpNetmask");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "newIpGateway");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "showBridgeDrawer");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "isEditingBridge");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "editingBridgeName");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "bridgeFormData");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "showBondDrawer");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "isEditingBond");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "editingBondName");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "bondFormData");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "vlanFormData");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "showVLANDrawer");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "interfaceTypes");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "isEditingVlan");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "editingVlanName");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "operationWarning");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "configureNetworkInterface");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "configureFormData");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "showConfirmModal");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "confirmAction");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "confirmTitle");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "confirmMessage");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "availableInterfacesForBridge");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "showBridgeInterfacesSuggestions");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "bridgeInterfaceInputValue");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "selectedSuggestionIndex");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "bondInterfaceInputValue");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "showBondInterfacesSuggestions");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "selectedBondSuggestionIndex");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "vlanInterfaceInputValue");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "showVlanInterfacesSuggestions");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], NetworkTab.prototype, "selectedVlanSuggestionIndex");
 customElements.define("network-tab", NetworkTab);
-var __defProp$O = Object.defineProperty;
-var __decorateClass$O = (decorators, target, key, kind) => {
+var __defProp$P = Object.defineProperty;
+var __decorateClass$P = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$O(target, key, result);
+  if (result) __defProp$P(target, key, result);
   return result;
 };
 class StorageTab extends I18nLitElement {
@@ -22873,46 +22872,46 @@ class StorageTab extends I18nLitElement {
     console.log("Show create subvolume dialog");
   }
 }
-__decorateClass$O([
+__decorateClass$P([
   n2({ type: Array })
 ], StorageTab.prototype, "disks");
-__decorateClass$O([
+__decorateClass$P([
   n2({ type: Array })
 ], StorageTab.prototype, "volumeGroups");
-__decorateClass$O([
+__decorateClass$P([
   n2({ type: Array })
 ], StorageTab.prototype, "logicalVolumes");
-__decorateClass$O([
+__decorateClass$P([
   n2({ type: Array })
 ], StorageTab.prototype, "physicalVolumes");
-__decorateClass$O([
+__decorateClass$P([
   n2({ type: Array })
 ], StorageTab.prototype, "raidDevices");
-__decorateClass$O([
+__decorateClass$P([
   n2({ type: Array })
 ], StorageTab.prototype, "availableRaidDisks");
-__decorateClass$O([
+__decorateClass$P([
   n2({ type: Array })
 ], StorageTab.prototype, "iscsiTargets");
-__decorateClass$O([
+__decorateClass$P([
   n2({ type: Array })
 ], StorageTab.prototype, "iscsiSessions");
-__decorateClass$O([
+__decorateClass$P([
   n2({ type: Array })
 ], StorageTab.prototype, "multipathDevices");
-__decorateClass$O([
+__decorateClass$P([
   n2({ type: Array })
 ], StorageTab.prototype, "btrfsSubvolumes");
-__decorateClass$O([
+__decorateClass$P([
   n2({ type: String })
 ], StorageTab.prototype, "activeSection");
-__decorateClass$O([
+__decorateClass$P([
   n2({ type: String })
 ], StorageTab.prototype, "subRoute");
-__decorateClass$O([
+__decorateClass$P([
   n2({ type: Boolean })
 ], StorageTab.prototype, "loading");
-__decorateClass$O([
+__decorateClass$P([
   n2({ type: String })
 ], StorageTab.prototype, "error");
 customElements.define("storage-tab", StorageTab);
@@ -22959,13 +22958,13 @@ let e$1 = class e extends i$1 {
 };
 e$1.directiveName = "unsafeHTML", e$1.resultType = 1;
 const o = e$2(e$1);
-var __defProp$N = Object.defineProperty;
-var __decorateClass$N = (decorators, target, key, kind) => {
+var __defProp$O = Object.defineProperty;
+var __decorateClass$O = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$N(target, key, result);
+  if (result) __defProp$O(target, key, result);
   return result;
 };
 class ContainersTab extends i$2 {
@@ -24849,89 +24848,89 @@ class ContainersTab extends i$2 {
     `;
   }
 }
-__decorateClass$N([
+__decorateClass$O([
   r$1()
 ], ContainersTab.prototype, "activeTab");
-__decorateClass$N([
+__decorateClass$O([
   r$1()
 ], ContainersTab.prototype, "containers");
-__decorateClass$N([
+__decorateClass$O([
   r$1()
 ], ContainersTab.prototype, "images");
-__decorateClass$N([
+__decorateClass$O([
   r$1()
 ], ContainersTab.prototype, "searchTerm");
-__decorateClass$N([
+__decorateClass$O([
   r$1()
 ], ContainersTab.prototype, "error");
-__decorateClass$N([
+__decorateClass$O([
   r$1()
 ], ContainersTab.prototype, "runtime");
-__decorateClass$N([
+__decorateClass$O([
   r$1()
 ], ContainersTab.prototype, "showConfirmModal");
-__decorateClass$N([
+__decorateClass$O([
   r$1()
 ], ContainersTab.prototype, "confirmAction");
-__decorateClass$N([
+__decorateClass$O([
   r$1()
 ], ContainersTab.prototype, "selectedContainer");
-__decorateClass$N([
+__decorateClass$O([
   r$1()
 ], ContainersTab.prototype, "selectedImage");
-__decorateClass$N([
+__decorateClass$O([
   r$1()
 ], ContainersTab.prototype, "showDrawer");
-__decorateClass$N([
+__decorateClass$O([
   r$1()
 ], ContainersTab.prototype, "detailError");
-__decorateClass$N([
+__decorateClass$O([
   r$1()
 ], ContainersTab.prototype, "confirmTitle");
-__decorateClass$N([
+__decorateClass$O([
   r$1()
 ], ContainersTab.prototype, "confirmMessage");
-__decorateClass$N([
+__decorateClass$O([
   r$1()
 ], ContainersTab.prototype, "showLogsDrawer");
-__decorateClass$N([
+__decorateClass$O([
   r$1()
 ], ContainersTab.prototype, "containerLogs");
-__decorateClass$N([
+__decorateClass$O([
   r$1()
 ], ContainersTab.prototype, "logsError");
-__decorateClass$N([
+__decorateClass$O([
   r$1()
 ], ContainersTab.prototype, "logsSearchTerm");
-__decorateClass$N([
+__decorateClass$O([
   r$1()
 ], ContainersTab.prototype, "showImageActionsDropdown");
-__decorateClass$N([
+__decorateClass$O([
   r$1()
 ], ContainersTab.prototype, "showPullImageModal");
-__decorateClass$N([
+__decorateClass$O([
   r$1()
 ], ContainersTab.prototype, "imageName");
-__decorateClass$N([
+__decorateClass$O([
   r$1()
 ], ContainersTab.prototype, "selectedFile");
-__decorateClass$N([
+__decorateClass$O([
   r$1()
 ], ContainersTab.prototype, "showUploadDrawer");
-__decorateClass$N([
+__decorateClass$O([
   r$1()
 ], ContainersTab.prototype, "uploadQueue");
-__decorateClass$N([
+__decorateClass$O([
   r$1()
 ], ContainersTab.prototype, "isUploading");
 customElements.define("containers-tab", ContainersTab);
-var __defProp$M = Object.defineProperty;
-var __decorateClass$M = (decorators, target, key, kind) => {
+var __defProp$N = Object.defineProperty;
+var __decorateClass$N = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$M(target, key, result);
+  if (result) __defProp$N(target, key, result);
   return result;
 };
 class LogsTab extends I18nLitElement {
@@ -25409,25 +25408,25 @@ class LogsTab extends I18nLitElement {
     `;
   }
 }
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], LogsTab.prototype, "logs");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], LogsTab.prototype, "serviceFilter");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], LogsTab.prototype, "priorityFilter");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], LogsTab.prototype, "sinceFilter");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], LogsTab.prototype, "follow");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], LogsTab.prototype, "connected");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], LogsTab.prototype, "autoScroll");
 customElements.define("logs-tab", LogsTab);
@@ -32348,14 +32347,14 @@ class TerminalStore {
   }
 }
 const terminalStore = new TerminalStore();
-var __defProp$L = Object.defineProperty;
-var __getOwnPropDesc$H = Object.getOwnPropertyDescriptor;
-var __decorateClass$L = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$H(target, key) : target;
+var __defProp$M = Object.defineProperty;
+var __getOwnPropDesc$I = Object.getOwnPropertyDescriptor;
+var __decorateClass$M = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$I(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$L(target, key, result);
+  if (kind && result) __defProp$M(target, key, result);
   return result;
 };
 let TerminalTabV2 = class extends i$2 {
@@ -33045,28 +33044,28 @@ TerminalTabV2.styles = [
     }
   `
 ];
-__decorateClass$L([
+__decorateClass$M([
   r$1()
 ], TerminalTabV2.prototype, "isFullscreen", 2);
-__decorateClass$L([
+__decorateClass$M([
   r$1()
 ], TerminalTabV2.prototype, "localSessions", 2);
-__decorateClass$L([
+__decorateClass$M([
   r$1()
 ], TerminalTabV2.prototype, "localActiveSessionId", 2);
-__decorateClass$L([
+__decorateClass$M([
   r$1()
 ], TerminalTabV2.prototype, "localActiveSession", 2);
-TerminalTabV2 = __decorateClass$L([
+TerminalTabV2 = __decorateClass$M([
   t$2("terminal-tab-v2")
 ], TerminalTabV2);
-var __defProp$K = Object.defineProperty;
-var __decorateClass$K = (decorators, target, key, kind) => {
+var __defProp$L = Object.defineProperty;
+var __decorateClass$L = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$K(target, key, result);
+  if (result) __defProp$L(target, key, result);
   return result;
 };
 class UsersTab extends i$2 {
@@ -33824,47 +33823,47 @@ class UsersTab extends i$2 {
     `;
   }
 }
-__decorateClass$K([
+__decorateClass$L([
   n2({ type: Array })
 ], UsersTab.prototype, "users");
-__decorateClass$K([
+__decorateClass$L([
   n2({ type: Boolean })
 ], UsersTab.prototype, "showCreateForm");
-__decorateClass$K([
+__decorateClass$L([
   n2({ type: Boolean })
 ], UsersTab.prototype, "showEditForm");
-__decorateClass$K([
+__decorateClass$L([
   n2({ type: Boolean })
 ], UsersTab.prototype, "showResetPasswordForm");
-__decorateClass$K([
+__decorateClass$L([
   n2({ type: Object })
 ], UsersTab.prototype, "newUser");
-__decorateClass$K([
+__decorateClass$L([
   n2({ type: Object })
 ], UsersTab.prototype, "editingUser");
-__decorateClass$K([
+__decorateClass$L([
   n2({ type: String })
 ], UsersTab.prototype, "userToDelete");
-__decorateClass$K([
+__decorateClass$L([
   n2({ type: String })
 ], UsersTab.prototype, "resetPasswordUsername");
-__decorateClass$K([
+__decorateClass$L([
   n2({ type: String })
 ], UsersTab.prototype, "newPassword");
-__decorateClass$K([
+__decorateClass$L([
   n2({ type: String })
 ], UsersTab.prototype, "confirmPassword");
-__decorateClass$K([
+__decorateClass$L([
   n2({ type: String })
 ], UsersTab.prototype, "searchQuery");
 customElements.define("users-tab", UsersTab);
-var __defProp$J = Object.defineProperty;
-var __decorateClass$J = (decorators, target, key, kind) => {
+var __defProp$K = Object.defineProperty;
+var __decorateClass$K = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$J(target, key, result);
+  if (result) __defProp$K(target, key, result);
   return result;
 };
 class DockerTab extends i$2 {
@@ -35848,79 +35847,79 @@ class DockerTab extends i$2 {
     }
   }
 }
-__decorateClass$J([
+__decorateClass$K([
   r$1()
 ], DockerTab.prototype, "activeTab");
-__decorateClass$J([
+__decorateClass$K([
   r$1()
 ], DockerTab.prototype, "containers");
-__decorateClass$J([
+__decorateClass$K([
   r$1()
 ], DockerTab.prototype, "images");
-__decorateClass$J([
+__decorateClass$K([
   r$1()
 ], DockerTab.prototype, "volumes");
-__decorateClass$J([
+__decorateClass$K([
   r$1()
 ], DockerTab.prototype, "networks");
-__decorateClass$J([
+__decorateClass$K([
   r$1()
 ], DockerTab.prototype, "searchTerm");
-__decorateClass$J([
+__decorateClass$K([
   r$1()
 ], DockerTab.prototype, "error");
-__decorateClass$J([
+__decorateClass$K([
   r$1()
 ], DockerTab.prototype, "showConfirmModal");
-__decorateClass$J([
+__decorateClass$K([
   r$1()
 ], DockerTab.prototype, "confirmAction");
-__decorateClass$J([
+__decorateClass$K([
   r$1()
 ], DockerTab.prototype, "selectedContainer");
-__decorateClass$J([
+__decorateClass$K([
   r$1()
 ], DockerTab.prototype, "selectedImage");
-__decorateClass$J([
+__decorateClass$K([
   r$1()
 ], DockerTab.prototype, "showDrawer");
-__decorateClass$J([
+__decorateClass$K([
   r$1()
 ], DockerTab.prototype, "detailError");
-__decorateClass$J([
+__decorateClass$K([
   r$1()
 ], DockerTab.prototype, "confirmTitle");
-__decorateClass$J([
+__decorateClass$K([
   r$1()
 ], DockerTab.prototype, "confirmMessage");
-__decorateClass$J([
+__decorateClass$K([
   r$1()
 ], DockerTab.prototype, "showLogsDrawer");
-__decorateClass$J([
+__decorateClass$K([
   r$1()
 ], DockerTab.prototype, "containerLogs");
-__decorateClass$J([
+__decorateClass$K([
   r$1()
 ], DockerTab.prototype, "logsError");
-__decorateClass$J([
+__decorateClass$K([
   r$1()
 ], DockerTab.prototype, "logsSearchTerm");
-__decorateClass$J([
+__decorateClass$K([
   r$1()
 ], DockerTab.prototype, "showImageActionsDropdown");
-__decorateClass$J([
+__decorateClass$K([
   r$1()
 ], DockerTab.prototype, "showPullImageModal");
-__decorateClass$J([
+__decorateClass$K([
   r$1()
 ], DockerTab.prototype, "imageName");
-__decorateClass$J([
+__decorateClass$K([
   r$1()
 ], DockerTab.prototype, "showUploadDrawer");
-__decorateClass$J([
+__decorateClass$K([
   r$1()
 ], DockerTab.prototype, "uploadQueue");
-__decorateClass$J([
+__decorateClass$K([
   r$1()
 ], DockerTab.prototype, "isUploading");
 customElements.define("docker-tab", DockerTab);
@@ -36359,7 +36358,7 @@ class KubernetesApi {
       if (contentType === "json") {
         parsedResource = JSON.parse(content);
       } else {
-        const yaml = await import("./index-Dgc_L4Vu.js");
+        const yaml = await import("./index-CuoTv4M_.js");
         parsedResource = yaml.parse(content);
       }
     } catch (error) {
@@ -36465,14 +36464,14 @@ class KubernetesApi {
     await Api.delete(endpoint);
   }
 }
-var __defProp$I = Object.defineProperty;
-var __getOwnPropDesc$G = Object.getOwnPropertyDescriptor;
-var __decorateClass$I = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$G(target, key) : target;
+var __defProp$J = Object.defineProperty;
+var __getOwnPropDesc$H = Object.getOwnPropertyDescriptor;
+var __decorateClass$J = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$H(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$I(target, key, result);
+  if (kind && result) __defProp$J(target, key, result);
   return result;
 };
 let SearchInput = class extends i$2 {
@@ -36560,29 +36559,29 @@ SearchInput.styles = i$5`
       cursor: not-allowed;
     }
   `;
-__decorateClass$I([
+__decorateClass$J([
   n2({ type: String })
 ], SearchInput.prototype, "value", 2);
-__decorateClass$I([
+__decorateClass$J([
   n2({ type: String })
 ], SearchInput.prototype, "placeholder", 2);
-__decorateClass$I([
+__decorateClass$J([
   n2({ type: Number })
 ], SearchInput.prototype, "width", 2);
-__decorateClass$I([
+__decorateClass$J([
   n2({ type: Boolean })
 ], SearchInput.prototype, "disabled", 2);
-SearchInput = __decorateClass$I([
+SearchInput = __decorateClass$J([
   t$2("search-input")
 ], SearchInput);
-var __defProp$H = Object.defineProperty;
-var __getOwnPropDesc$F = Object.getOwnPropertyDescriptor;
-var __decorateClass$H = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$F(target, key) : target;
+var __defProp$I = Object.defineProperty;
+var __getOwnPropDesc$G = Object.getOwnPropertyDescriptor;
+var __decorateClass$I = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$G(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$H(target, key, result);
+  if (kind && result) __defProp$I(target, key, result);
   return result;
 };
 let EmptyState = class extends i$2 {
@@ -36654,26 +36653,26 @@ EmptyState.styles = i$5`
       background: var(--vscode-button-hoverBackground, #005a9e);
     }
   `;
-__decorateClass$H([
+__decorateClass$I([
   n2({ type: String })
 ], EmptyState.prototype, "message", 2);
-__decorateClass$H([
+__decorateClass$I([
   n2({ type: String })
 ], EmptyState.prototype, "icon", 2);
-__decorateClass$H([
+__decorateClass$I([
   n2({ type: String })
 ], EmptyState.prototype, "actionLabel", 2);
-EmptyState = __decorateClass$H([
+EmptyState = __decorateClass$I([
   t$2("empty-state")
 ], EmptyState);
-var __defProp$G = Object.defineProperty;
-var __getOwnPropDesc$E = Object.getOwnPropertyDescriptor;
-var __decorateClass$G = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$E(target, key) : target;
+var __defProp$H = Object.defineProperty;
+var __getOwnPropDesc$F = Object.getOwnPropertyDescriptor;
+var __decorateClass$H = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$F(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$G(target, key, result);
+  if (kind && result) __defProp$H(target, key, result);
   return result;
 };
 let LoadingState = class extends i$2 {
@@ -36726,20 +36725,20 @@ LoadingState.styles = i$5`
       }
     }
   `;
-__decorateClass$G([
+__decorateClass$H([
   n2({ type: String })
 ], LoadingState.prototype, "message", 2);
-LoadingState = __decorateClass$G([
+LoadingState = __decorateClass$H([
   t$2("loading-state")
 ], LoadingState);
-var __defProp$F = Object.defineProperty;
-var __getOwnPropDesc$D = Object.getOwnPropertyDescriptor;
-var __decorateClass$F = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$D(target, key) : target;
+var __defProp$G = Object.defineProperty;
+var __getOwnPropDesc$E = Object.getOwnPropertyDescriptor;
+var __decorateClass$G = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$E(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$F(target, key, result);
+  if (kind && result) __defProp$G(target, key, result);
   return result;
 };
 let NamespaceDropdown = class extends i$2 {
@@ -37044,41 +37043,41 @@ NamespaceDropdown.styles = i$5`
       background: var(--scrollbar-thumb-hover, #5a5d6a);
     }
   `;
-__decorateClass$F([
+__decorateClass$G([
   n2({ type: Array })
 ], NamespaceDropdown.prototype, "namespaces", 2);
-__decorateClass$F([
+__decorateClass$G([
   n2({ type: String })
 ], NamespaceDropdown.prototype, "selectedNamespace", 2);
-__decorateClass$F([
+__decorateClass$G([
   n2({ type: Boolean })
 ], NamespaceDropdown.prototype, "loading", 2);
-__decorateClass$F([
+__decorateClass$G([
   n2({ type: String })
 ], NamespaceDropdown.prototype, "placeholder", 2);
-__decorateClass$F([
+__decorateClass$G([
   n2({ type: Boolean })
 ], NamespaceDropdown.prototype, "showCounts", 2);
-__decorateClass$F([
+__decorateClass$G([
   n2({ type: Boolean })
 ], NamespaceDropdown.prototype, "includeAllOption", 2);
-__decorateClass$F([
+__decorateClass$G([
   r$1()
 ], NamespaceDropdown.prototype, "isOpen", 2);
-__decorateClass$F([
+__decorateClass$G([
   r$1()
 ], NamespaceDropdown.prototype, "searchQuery", 2);
-NamespaceDropdown = __decorateClass$F([
+NamespaceDropdown = __decorateClass$G([
   t$2("namespace-dropdown")
 ], NamespaceDropdown);
-var __defProp$E = Object.defineProperty;
-var __getOwnPropDesc$C = Object.getOwnPropertyDescriptor;
-var __decorateClass$E = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$C(target, key) : target;
+var __defProp$F = Object.defineProperty;
+var __getOwnPropDesc$D = Object.getOwnPropertyDescriptor;
+var __decorateClass$F = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$D(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$E(target, key, result);
+  if (kind && result) __defProp$F(target, key, result);
   return result;
 };
 let TabGroup = class extends i$2 {
@@ -37146,23 +37145,23 @@ TabGroup.styles = i$5`
       font-size: 1rem;
     }
   `;
-__decorateClass$E([
+__decorateClass$F([
   n2({ type: Array })
 ], TabGroup.prototype, "tabs", 2);
-__decorateClass$E([
+__decorateClass$F([
   n2({ type: String })
 ], TabGroup.prototype, "activeTab", 2);
-TabGroup = __decorateClass$E([
+TabGroup = __decorateClass$F([
   t$2("tab-group")
 ], TabGroup);
-var __defProp$D = Object.defineProperty;
-var __getOwnPropDesc$B = Object.getOwnPropertyDescriptor;
-var __decorateClass$D = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$B(target, key) : target;
+var __defProp$E = Object.defineProperty;
+var __getOwnPropDesc$C = Object.getOwnPropertyDescriptor;
+var __decorateClass$E = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$C(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$D(target, key, result);
+  if (kind && result) __defProp$E(target, key, result);
   return result;
 };
 let ActionDropdown = class extends i$2 {
@@ -37324,29 +37323,29 @@ ActionDropdown.styles = i$5`
       background-color: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.1)));
     }
   `;
-__decorateClass$D([
+__decorateClass$E([
   n2({ type: Array })
 ], ActionDropdown.prototype, "actions", 2);
-__decorateClass$D([
+__decorateClass$E([
   n2({ type: String })
 ], ActionDropdown.prototype, "menuId", 2);
-__decorateClass$D([
+__decorateClass$E([
   r$1()
 ], ActionDropdown.prototype, "isOpen", 2);
-__decorateClass$D([
+__decorateClass$E([
   r$1()
 ], ActionDropdown.prototype, "dropdownPosition", 2);
-ActionDropdown = __decorateClass$D([
+ActionDropdown = __decorateClass$E([
   t$2("action-dropdown")
 ], ActionDropdown);
-var __defProp$C = Object.defineProperty;
-var __getOwnPropDesc$A = Object.getOwnPropertyDescriptor;
-var __decorateClass$C = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$A(target, key) : target;
+var __defProp$D = Object.defineProperty;
+var __getOwnPropDesc$B = Object.getOwnPropertyDescriptor;
+var __decorateClass$D = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$B(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$C(target, key, result);
+  if (kind && result) __defProp$D(target, key, result);
   return result;
 };
 let StatusBadge = class extends i$2 {
@@ -37408,23 +37407,23 @@ StatusBadge.styles = i$5`
       color: rgb(107, 114, 128);
     }
   `;
-__decorateClass$C([
+__decorateClass$D([
   n2({ type: String })
 ], StatusBadge.prototype, "status", 2);
-__decorateClass$C([
+__decorateClass$D([
   n2({ type: String })
 ], StatusBadge.prototype, "text", 2);
-StatusBadge = __decorateClass$C([
+StatusBadge = __decorateClass$D([
   t$2("status-badge")
 ], StatusBadge);
-var __defProp$B = Object.defineProperty;
-var __getOwnPropDesc$z = Object.getOwnPropertyDescriptor;
-var __decorateClass$B = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$z(target, key) : target;
+var __defProp$C = Object.defineProperty;
+var __getOwnPropDesc$A = Object.getOwnPropertyDescriptor;
+var __decorateClass$C = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$A(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$B(target, key, result);
+  if (kind && result) __defProp$C(target, key, result);
   return result;
 };
 let ResourceTable = class extends i$2 {
@@ -37579,35 +37578,35 @@ ResourceTable.styles = i$5`
       text-align: center;
     }
   `;
-__decorateClass$B([
+__decorateClass$C([
   n2({ type: Array })
 ], ResourceTable.prototype, "columns", 2);
-__decorateClass$B([
+__decorateClass$C([
   n2({ type: Array })
 ], ResourceTable.prototype, "data", 2);
-__decorateClass$B([
+__decorateClass$C([
   n2({ type: String })
 ], ResourceTable.prototype, "emptyMessage", 2);
-__decorateClass$B([
+__decorateClass$C([
   n2({ type: Boolean })
 ], ResourceTable.prototype, "showActions", 2);
-__decorateClass$B([
+__decorateClass$C([
   n2({ type: Function })
 ], ResourceTable.prototype, "getActions", 2);
-__decorateClass$B([
+__decorateClass$C([
   n2({ type: Object })
 ], ResourceTable.prototype, "customRenderers", 2);
-ResourceTable = __decorateClass$B([
+ResourceTable = __decorateClass$C([
   t$2("resource-table")
 ], ResourceTable);
-var __defProp$A = Object.defineProperty;
-var __getOwnPropDesc$y = Object.getOwnPropertyDescriptor;
-var __decorateClass$A = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$y(target, key) : target;
+var __defProp$B = Object.defineProperty;
+var __getOwnPropDesc$z = Object.getOwnPropertyDescriptor;
+var __decorateClass$B = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$z(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$A(target, key, result);
+  if (kind && result) __defProp$B(target, key, result);
   return result;
 };
 let DetailDrawer = class extends i$2 {
@@ -37727,29 +37726,29 @@ DetailDrawer.styles = i$5`
       padding-bottom: 40px; /* Extra padding at bottom to ensure last content is visible */
     }
   `;
-__decorateClass$A([
+__decorateClass$B([
   n2({ type: String })
 ], DetailDrawer.prototype, "title", 2);
-__decorateClass$A([
+__decorateClass$B([
   n2({ type: Boolean })
 ], DetailDrawer.prototype, "show", 2);
-__decorateClass$A([
+__decorateClass$B([
   n2({ type: Boolean })
 ], DetailDrawer.prototype, "loading", 2);
-__decorateClass$A([
+__decorateClass$B([
   n2({ type: Number })
 ], DetailDrawer.prototype, "width", 2);
-DetailDrawer = __decorateClass$A([
+DetailDrawer = __decorateClass$B([
   t$2("detail-drawer")
 ], DetailDrawer);
-var __defProp$z = Object.defineProperty;
-var __getOwnPropDesc$x = Object.getOwnPropertyDescriptor;
-var __decorateClass$z = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$x(target, key) : target;
+var __defProp$A = Object.defineProperty;
+var __getOwnPropDesc$y = Object.getOwnPropertyDescriptor;
+var __decorateClass$A = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$y(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$z(target, key, result);
+  if (kind && result) __defProp$A(target, key, result);
   return result;
 };
 let LogsDrawer = class extends i$2 {
@@ -38214,50 +38213,50 @@ LogsDrawer.styles = i$5`
       background: var(--vscode-scrollbarSlider-hoverBackground, rgba(100, 100, 100, 0.7));
     }
   `;
-__decorateClass$z([
+__decorateClass$A([
   n2({ type: Boolean, reflect: true })
 ], LogsDrawer.prototype, "show", 2);
-__decorateClass$z([
+__decorateClass$A([
   n2({ type: String })
 ], LogsDrawer.prototype, "title", 2);
-__decorateClass$z([
+__decorateClass$A([
   n2({ type: String })
 ], LogsDrawer.prototype, "subtitle", 2);
-__decorateClass$z([
+__decorateClass$A([
   n2({ type: String })
 ], LogsDrawer.prototype, "logs", 2);
-__decorateClass$z([
+__decorateClass$A([
   n2({ type: Boolean })
 ], LogsDrawer.prototype, "loading", 2);
-__decorateClass$z([
+__decorateClass$A([
   n2({ type: String })
 ], LogsDrawer.prototype, "error", 2);
-__decorateClass$z([
+__decorateClass$A([
   n2({ type: Boolean })
 ], LogsDrawer.prototype, "autoScroll", 2);
-__decorateClass$z([
+__decorateClass$A([
   n2({ type: Boolean })
 ], LogsDrawer.prototype, "showTimestamps", 2);
-__decorateClass$z([
+__decorateClass$A([
   n2({ type: Boolean })
 ], LogsDrawer.prototype, "colorize", 2);
-__decorateClass$z([
+__decorateClass$A([
   r$1()
 ], LogsDrawer.prototype, "searchQuery", 2);
-__decorateClass$z([
+__decorateClass$A([
   r$1()
 ], LogsDrawer.prototype, "isFollowing", 2);
-LogsDrawer = __decorateClass$z([
+LogsDrawer = __decorateClass$A([
   t$2("logs-drawer")
 ], LogsDrawer);
-var __defProp$y = Object.defineProperty;
-var __getOwnPropDesc$w = Object.getOwnPropertyDescriptor;
-var __decorateClass$y = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$w(target, key) : target;
+var __defProp$z = Object.defineProperty;
+var __getOwnPropDesc$x = Object.getOwnPropertyDescriptor;
+var __decorateClass$z = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$x(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$y(target, key, result);
+  if (kind && result) __defProp$z(target, key, result);
   return result;
 };
 let DeleteModal = class extends i$2 {
@@ -38270,6 +38269,10 @@ let DeleteModal = class extends i$2 {
     this.message = "";
     this.confirmLabel = "Delete";
     this.confirmButtonClass = "delete";
+    this.hasVolumes = false;
+    this.volumeCount = 0;
+    this.deleteVolumes = false;
+    this.acknowledge = false;
   }
   handleOverlayClick(event) {
     if (event.target === event.currentTarget && !this.loading) {
@@ -38278,7 +38281,7 @@ let DeleteModal = class extends i$2 {
   }
   handleConfirm() {
     this.dispatchEvent(new CustomEvent("confirm-delete", {
-      detail: { item: this.item },
+      detail: { item: this.item, deleteVolumes: this.deleteVolumes },
       bubbles: true,
       composed: true
     }));
@@ -38328,6 +38331,27 @@ let DeleteModal = class extends i$2 {
               <div><strong>Name:</strong> ${this.item.name}</div>
               ${this.item.namespace ? x`<div><strong>Namespace:</strong> ${this.item.namespace}</div>` : ""}
             </div>
+            ${this.hasVolumes ? x`
+              <div style="margin:12px 0; padding:12px; border:1px solid var(--vscode-widget-border); border-radius:4px; background: rgba(255, 193, 7, 0.08);">
+                <div style="color: var(--vscode-notificationsWarningIcon-foreground,#ff9800); font-weight:600; margin-bottom:6px;">
+                  ⚠️ Warning: This resource contains ${this.volumeCount} volume(s).
+                </div>
+                <label style="display:flex; align-items:center; gap:8px; margin-top:6px;">
+                  <input type="checkbox" .checked=${this.deleteVolumes} @change=${(e3) => {
+      this.deleteVolumes = e3.target.checked;
+    }} />
+                  Delete all volumes with this resource (dangerous - permanent data loss)
+                </label>
+                ${this.deleteVolumes ? x`
+                  <label style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+                    <input type="checkbox" .checked=${this.acknowledge} @change=${(e3) => {
+      this.acknowledge = e3.target.checked;
+    }} />
+                    I understand this will permanently delete all data
+                  </label>
+                ` : ""}
+              </div>
+            ` : ""}
             ${this.confirmButtonClass === "delete" ? x`
               <p><strong>This action cannot be undone.</strong></p>
             ` : ""}
@@ -38489,38 +38513,50 @@ DeleteModal.styles = i$5`
       cursor: not-allowed;
     }
   `;
-__decorateClass$y([
+__decorateClass$z([
   n2({ type: Object })
 ], DeleteModal.prototype, "item", 2);
-__decorateClass$y([
+__decorateClass$z([
   n2({ type: Boolean, reflect: true })
 ], DeleteModal.prototype, "show", 2);
-__decorateClass$y([
+__decorateClass$z([
   n2({ type: Boolean })
 ], DeleteModal.prototype, "loading", 2);
-__decorateClass$y([
+__decorateClass$z([
   n2({ type: String, attribute: "modal-title" })
 ], DeleteModal.prototype, "modalTitle", 2);
-__decorateClass$y([
+__decorateClass$z([
   n2({ type: String, attribute: "message" })
 ], DeleteModal.prototype, "message", 2);
-__decorateClass$y([
+__decorateClass$z([
   n2({ type: String, attribute: "confirm-label" })
 ], DeleteModal.prototype, "confirmLabel", 2);
-__decorateClass$y([
+__decorateClass$z([
   n2({ type: String, attribute: "confirm-button-class" })
 ], DeleteModal.prototype, "confirmButtonClass", 2);
-DeleteModal = __decorateClass$y([
+__decorateClass$z([
+  n2({ type: Boolean, attribute: "has-volumes" })
+], DeleteModal.prototype, "hasVolumes", 2);
+__decorateClass$z([
+  n2({ type: Number, attribute: "volume-count" })
+], DeleteModal.prototype, "volumeCount", 2);
+__decorateClass$z([
+  n2({ type: Boolean, attribute: "delete-volumes" })
+], DeleteModal.prototype, "deleteVolumes", 2);
+__decorateClass$z([
+  n2({ type: Boolean, attribute: "acknowledge" })
+], DeleteModal.prototype, "acknowledge", 2);
+DeleteModal = __decorateClass$z([
   t$2("delete-modal")
 ], DeleteModal);
-var __defProp$x = Object.defineProperty;
-var __getOwnPropDesc$v = Object.getOwnPropertyDescriptor;
-var __decorateClass$x = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$v(target, key) : target;
+var __defProp$y = Object.defineProperty;
+var __getOwnPropDesc$w = Object.getOwnPropertyDescriptor;
+var __decorateClass$y = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$w(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$x(target, key, result);
+  if (kind && result) __defProp$y(target, key, result);
   return result;
 };
 let SetImageModal = class extends i$2 {
@@ -38861,35 +38897,35 @@ SetImageModal.styles = i$5`
       to { transform: rotate(360deg); }
     }
   `;
-__decorateClass$x([
+__decorateClass$y([
   n2({ type: Boolean, reflect: true })
 ], SetImageModal.prototype, "show", 2);
-__decorateClass$x([
+__decorateClass$y([
   n2({ type: Boolean })
 ], SetImageModal.prototype, "loading", 2);
-__decorateClass$x([
+__decorateClass$y([
   n2({ type: String })
 ], SetImageModal.prototype, "deploymentName", 2);
-__decorateClass$x([
+__decorateClass$y([
   n2({ type: String })
 ], SetImageModal.prototype, "namespace", 2);
-__decorateClass$x([
+__decorateClass$y([
   n2({ type: Array })
 ], SetImageModal.prototype, "containers", 2);
-__decorateClass$x([
+__decorateClass$y([
   r$1()
 ], SetImageModal.prototype, "containerImages", 2);
-SetImageModal = __decorateClass$x([
+SetImageModal = __decorateClass$y([
   t$2("set-image-modal")
 ], SetImageModal);
-var __defProp$w = Object.defineProperty;
-var __getOwnPropDesc$u = Object.getOwnPropertyDescriptor;
-var __decorateClass$w = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$u(target, key) : target;
+var __defProp$x = Object.defineProperty;
+var __getOwnPropDesc$v = Object.getOwnPropertyDescriptor;
+var __decorateClass$x = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$v(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$w(target, key, result);
+  if (kind && result) __defProp$x(target, key, result);
   return result;
 };
 let ResourceDetailView = class extends i$2 {
@@ -39727,10 +39763,10 @@ ResourceDetailView.styles = i$5`
       opacity: 0.7;
     }
   `;
-__decorateClass$w([
+__decorateClass$x([
   n2({ type: Object })
 ], ResourceDetailView.prototype, "resource", 2);
-ResourceDetailView = __decorateClass$w([
+ResourceDetailView = __decorateClass$x([
   t$2("resource-detail-view")
 ], ResourceDetailView);
 const ALIAS = Symbol.for("yaml.alias");
@@ -46134,14 +46170,14 @@ const YAML = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty
   visit: visit$1,
   visitAsync
 }, Symbol.toStringTag, { value: "Module" }));
-var __defProp$v = Object.defineProperty;
-var __getOwnPropDesc$t = Object.getOwnPropertyDescriptor;
-var __decorateClass$v = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$t(target, key) : target;
+var __defProp$w = Object.defineProperty;
+var __getOwnPropDesc$u = Object.getOwnPropertyDescriptor;
+var __decorateClass$w = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$u(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$v(target, key, result);
+  if (kind && result) __defProp$w(target, key, result);
   return result;
 };
 let CreateResourceDrawer = class extends i$2 {
@@ -46741,44 +46777,44 @@ CreateResourceDrawer.styles = i$5`
       background: var(--scrollbar-thumb-hover, #5a5d6a);
     }
   `;
-__decorateClass$v([
+__decorateClass$w([
   n2({ type: Boolean, reflect: true })
 ], CreateResourceDrawer.prototype, "show", 2);
-__decorateClass$v([
+__decorateClass$w([
   n2({ type: String })
 ], CreateResourceDrawer.prototype, "title", 2);
-__decorateClass$v([
+__decorateClass$w([
   n2({ type: String })
 ], CreateResourceDrawer.prototype, "value", 2);
-__decorateClass$v([
+__decorateClass$w([
   n2({ type: Boolean })
 ], CreateResourceDrawer.prototype, "loading", 2);
-__decorateClass$v([
+__decorateClass$w([
   n2({ type: String })
 ], CreateResourceDrawer.prototype, "error", 2);
-__decorateClass$v([
+__decorateClass$w([
   n2({ type: String })
 ], CreateResourceDrawer.prototype, "format", 2);
-__decorateClass$v([
+__decorateClass$w([
   n2({ type: String })
 ], CreateResourceDrawer.prototype, "submitLabel", 2);
-__decorateClass$v([
+__decorateClass$w([
   r$1()
 ], CreateResourceDrawer.prototype, "validationMessage", 2);
-__decorateClass$v([
+__decorateClass$w([
   r$1()
 ], CreateResourceDrawer.prototype, "validationStatus", 2);
-CreateResourceDrawer = __decorateClass$v([
+CreateResourceDrawer = __decorateClass$w([
   t$2("create-resource-drawer")
 ], CreateResourceDrawer);
-var __defProp$u = Object.defineProperty;
-var __getOwnPropDesc$s = Object.getOwnPropertyDescriptor;
-var __decorateClass$u = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$s(target, key) : target;
+var __defProp$v = Object.defineProperty;
+var __getOwnPropDesc$t = Object.getOwnPropertyDescriptor;
+var __decorateClass$v = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$t(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$u(target, key, result);
+  if (kind && result) __defProp$v(target, key, result);
   return result;
 };
 let NotificationContainer = class extends i$2 {
@@ -47079,29 +47115,29 @@ NotificationContainer.styles = i$5`
       opacity: 0.3;
     }
   `;
-__decorateClass$u([
+__decorateClass$v([
   n2({ type: Array })
 ], NotificationContainer.prototype, "notifications", 2);
-__decorateClass$u([
+__decorateClass$v([
   n2({ type: Number })
 ], NotificationContainer.prototype, "defaultDuration", 2);
-__decorateClass$u([
+__decorateClass$v([
   n2({ type: Number })
 ], NotificationContainer.prototype, "maxNotifications", 2);
-__decorateClass$u([
+__decorateClass$v([
   r$1()
 ], NotificationContainer.prototype, "closingIds", 2);
-NotificationContainer = __decorateClass$u([
+NotificationContainer = __decorateClass$v([
   t$2("notification-container")
 ], NotificationContainer);
-var __defProp$t = Object.defineProperty;
-var __getOwnPropDesc$r = Object.getOwnPropertyDescriptor;
-var __decorateClass$t = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$r(target, key) : target;
+var __defProp$u = Object.defineProperty;
+var __getOwnPropDesc$s = Object.getOwnPropertyDescriptor;
+var __decorateClass$u = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$s(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$t(target, key, result);
+  if (kind && result) __defProp$u(target, key, result);
   return result;
 };
 let KubernetesWorkloads = class extends i$2 {
@@ -48043,122 +48079,122 @@ KubernetesWorkloads.styles = i$5`
       --option-selected-bg: var(--vscode-list-activeSelectionBackground, #094771);
     }
   `;
-__decorateClass$t([
+__decorateClass$u([
   n2({ type: Array })
 ], KubernetesWorkloads.prototype, "workloads", 2);
-__decorateClass$t([
+__decorateClass$u([
   n2({ type: Array })
 ], KubernetesWorkloads.prototype, "namespaces", 2);
-__decorateClass$t([
+__decorateClass$u([
   n2({ type: String })
 ], KubernetesWorkloads.prototype, "selectedNamespace", 2);
-__decorateClass$t([
+__decorateClass$u([
   n2({ type: String })
 ], KubernetesWorkloads.prototype, "searchQuery", 2);
-__decorateClass$t([
+__decorateClass$u([
   n2({ type: Boolean })
 ], KubernetesWorkloads.prototype, "loading", 2);
-__decorateClass$t([
+__decorateClass$u([
   n2({ type: String })
 ], KubernetesWorkloads.prototype, "error", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "activeTab", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "showDetails", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "selectedItem", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "loadingDetails", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "detailsData", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "showDeleteModal", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "itemToDelete", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "isDeleting", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "showCreateDrawer", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "createResourceValue", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "createDrawerTitle", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "isCreating", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "showLogsDrawer", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "logsData", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "logsLoading", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "logsError", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "logsPodName", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "logsNamespace", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "resourceFormat", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "isEditMode", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "editingResource", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "showRestartModal", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "showRollbackModal", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "showSetImageModal", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "workloadToRestart", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "workloadToRollback", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "workloadForSetImage", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "containerImages", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesWorkloads.prototype, "isPerformingAction", 2);
-KubernetesWorkloads = __decorateClass$t([
+KubernetesWorkloads = __decorateClass$u([
   t$2("kubernetes-workloads")
 ], KubernetesWorkloads);
-var __defProp$s = Object.defineProperty;
-var __getOwnPropDesc$q = Object.getOwnPropertyDescriptor;
-var __decorateClass$s = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$q(target, key) : target;
+var __defProp$t = Object.defineProperty;
+var __getOwnPropDesc$r = Object.getOwnPropertyDescriptor;
+var __decorateClass$t = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$r(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$s(target, key, result);
+  if (kind && result) __defProp$t(target, key, result);
   return result;
 };
 let KubernetesNetworks = class extends i$2 {
@@ -48707,80 +48743,80 @@ KubernetesNetworks.styles = i$5`
       --option-selected-bg: var(--vscode-list-activeSelectionBackground, #094771);
     }
   `;
-__decorateClass$s([
+__decorateClass$t([
   n2({ type: Array })
 ], KubernetesNetworks.prototype, "resources", 2);
-__decorateClass$s([
+__decorateClass$t([
   n2({ type: Array })
 ], KubernetesNetworks.prototype, "namespaces", 2);
-__decorateClass$s([
+__decorateClass$t([
   n2({ type: String })
 ], KubernetesNetworks.prototype, "selectedNamespace", 2);
-__decorateClass$s([
+__decorateClass$t([
   n2({ type: String })
 ], KubernetesNetworks.prototype, "searchQuery", 2);
-__decorateClass$s([
+__decorateClass$t([
   n2({ type: Boolean })
 ], KubernetesNetworks.prototype, "loading", 2);
-__decorateClass$s([
+__decorateClass$t([
   n2({ type: String })
 ], KubernetesNetworks.prototype, "error", 2);
-__decorateClass$s([
+__decorateClass$t([
   r$1()
 ], KubernetesNetworks.prototype, "activeTab", 2);
-__decorateClass$s([
+__decorateClass$t([
   r$1()
 ], KubernetesNetworks.prototype, "showDetails", 2);
-__decorateClass$s([
+__decorateClass$t([
   r$1()
 ], KubernetesNetworks.prototype, "selectedItem", 2);
-__decorateClass$s([
+__decorateClass$t([
   r$1()
 ], KubernetesNetworks.prototype, "loadingDetails", 2);
-__decorateClass$s([
+__decorateClass$t([
   r$1()
 ], KubernetesNetworks.prototype, "detailsData", 2);
-__decorateClass$s([
+__decorateClass$t([
   r$1()
 ], KubernetesNetworks.prototype, "showDeleteModal", 2);
-__decorateClass$s([
+__decorateClass$t([
   r$1()
 ], KubernetesNetworks.prototype, "itemToDelete", 2);
-__decorateClass$s([
+__decorateClass$t([
   r$1()
 ], KubernetesNetworks.prototype, "isDeleting", 2);
-__decorateClass$s([
+__decorateClass$t([
   r$1()
 ], KubernetesNetworks.prototype, "showCreateDrawer", 2);
-__decorateClass$s([
+__decorateClass$t([
   r$1()
 ], KubernetesNetworks.prototype, "createResourceValue", 2);
-__decorateClass$s([
+__decorateClass$t([
   r$1()
 ], KubernetesNetworks.prototype, "createDrawerTitle", 2);
-__decorateClass$s([
+__decorateClass$t([
   r$1()
 ], KubernetesNetworks.prototype, "isCreating", 2);
-__decorateClass$s([
+__decorateClass$t([
   r$1()
 ], KubernetesNetworks.prototype, "resourceFormat", 2);
-__decorateClass$s([
+__decorateClass$t([
   r$1()
 ], KubernetesNetworks.prototype, "isEditMode", 2);
-__decorateClass$s([
+__decorateClass$t([
   r$1()
 ], KubernetesNetworks.prototype, "editingResource", 2);
-KubernetesNetworks = __decorateClass$s([
+KubernetesNetworks = __decorateClass$t([
   t$2("kubernetes-networks")
 ], KubernetesNetworks);
-var __defProp$r = Object.defineProperty;
-var __getOwnPropDesc$p = Object.getOwnPropertyDescriptor;
-var __decorateClass$r = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$p(target, key) : target;
+var __defProp$s = Object.defineProperty;
+var __getOwnPropDesc$q = Object.getOwnPropertyDescriptor;
+var __decorateClass$s = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$q(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$r(target, key, result);
+  if (kind && result) __defProp$s(target, key, result);
   return result;
 };
 let KubernetesStorage = class extends i$2 {
@@ -49293,80 +49329,80 @@ KubernetesStorage.styles = i$5`
       color: var(--vscode-editor-background, #1e1e1e);
     }
   `;
-__decorateClass$r([
+__decorateClass$s([
   n2({ type: Array })
 ], KubernetesStorage.prototype, "resources", 2);
-__decorateClass$r([
+__decorateClass$s([
   n2({ type: Array })
 ], KubernetesStorage.prototype, "namespaces", 2);
-__decorateClass$r([
+__decorateClass$s([
   n2({ type: String })
 ], KubernetesStorage.prototype, "selectedNamespace", 2);
-__decorateClass$r([
+__decorateClass$s([
   n2({ type: String })
 ], KubernetesStorage.prototype, "searchQuery", 2);
-__decorateClass$r([
+__decorateClass$s([
   n2({ type: Boolean })
 ], KubernetesStorage.prototype, "loading", 2);
-__decorateClass$r([
+__decorateClass$s([
   n2({ type: String })
 ], KubernetesStorage.prototype, "error", 2);
-__decorateClass$r([
+__decorateClass$s([
   r$1()
 ], KubernetesStorage.prototype, "activeTab", 2);
-__decorateClass$r([
+__decorateClass$s([
   r$1()
 ], KubernetesStorage.prototype, "showDetails", 2);
-__decorateClass$r([
+__decorateClass$s([
   r$1()
 ], KubernetesStorage.prototype, "selectedItem", 2);
-__decorateClass$r([
+__decorateClass$s([
   r$1()
 ], KubernetesStorage.prototype, "loadingDetails", 2);
-__decorateClass$r([
+__decorateClass$s([
   r$1()
 ], KubernetesStorage.prototype, "detailsData", 2);
-__decorateClass$r([
+__decorateClass$s([
   r$1()
 ], KubernetesStorage.prototype, "showDeleteModal", 2);
-__decorateClass$r([
+__decorateClass$s([
   r$1()
 ], KubernetesStorage.prototype, "itemToDelete", 2);
-__decorateClass$r([
+__decorateClass$s([
   r$1()
 ], KubernetesStorage.prototype, "isDeleting", 2);
-__decorateClass$r([
+__decorateClass$s([
   r$1()
 ], KubernetesStorage.prototype, "showCreateDrawer", 2);
-__decorateClass$r([
+__decorateClass$s([
   r$1()
 ], KubernetesStorage.prototype, "createResourceValue", 2);
-__decorateClass$r([
+__decorateClass$s([
   r$1()
 ], KubernetesStorage.prototype, "createDrawerTitle", 2);
-__decorateClass$r([
+__decorateClass$s([
   r$1()
 ], KubernetesStorage.prototype, "isCreating", 2);
-__decorateClass$r([
+__decorateClass$s([
   r$1()
 ], KubernetesStorage.prototype, "resourceFormat", 2);
-__decorateClass$r([
+__decorateClass$s([
   r$1()
 ], KubernetesStorage.prototype, "isEditMode", 2);
-__decorateClass$r([
+__decorateClass$s([
   r$1()
 ], KubernetesStorage.prototype, "editingResource", 2);
-KubernetesStorage = __decorateClass$r([
+KubernetesStorage = __decorateClass$s([
   t$2("kubernetes-storage")
 ], KubernetesStorage);
-var __defProp$q = Object.defineProperty;
-var __getOwnPropDesc$o = Object.getOwnPropertyDescriptor;
-var __decorateClass$q = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$o(target, key) : target;
+var __defProp$r = Object.defineProperty;
+var __getOwnPropDesc$p = Object.getOwnPropertyDescriptor;
+var __decorateClass$r = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$p(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$q(target, key, result);
+  if (kind && result) __defProp$r(target, key, result);
   return result;
 };
 let KubernetesConfigurations = class extends i$2 {
@@ -49917,80 +49953,80 @@ KubernetesConfigurations.styles = i$5`
       border-radius: 4px;
     }
   `;
-__decorateClass$q([
+__decorateClass$r([
   n2({ type: Array })
 ], KubernetesConfigurations.prototype, "resources", 2);
-__decorateClass$q([
+__decorateClass$r([
   n2({ type: Array })
 ], KubernetesConfigurations.prototype, "namespaces", 2);
-__decorateClass$q([
+__decorateClass$r([
   n2({ type: String })
 ], KubernetesConfigurations.prototype, "selectedNamespace", 2);
-__decorateClass$q([
+__decorateClass$r([
   n2({ type: String })
 ], KubernetesConfigurations.prototype, "searchQuery", 2);
-__decorateClass$q([
+__decorateClass$r([
   n2({ type: Boolean })
 ], KubernetesConfigurations.prototype, "loading", 2);
-__decorateClass$q([
+__decorateClass$r([
   n2({ type: String })
 ], KubernetesConfigurations.prototype, "error", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], KubernetesConfigurations.prototype, "activeTab", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], KubernetesConfigurations.prototype, "showDetails", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], KubernetesConfigurations.prototype, "selectedItem", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], KubernetesConfigurations.prototype, "loadingDetails", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], KubernetesConfigurations.prototype, "detailsData", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], KubernetesConfigurations.prototype, "showDeleteModal", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], KubernetesConfigurations.prototype, "itemToDelete", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], KubernetesConfigurations.prototype, "isDeleting", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], KubernetesConfigurations.prototype, "showCreateDrawer", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], KubernetesConfigurations.prototype, "createResourceValue", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], KubernetesConfigurations.prototype, "createDrawerTitle", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], KubernetesConfigurations.prototype, "isCreating", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], KubernetesConfigurations.prototype, "resourceFormat", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], KubernetesConfigurations.prototype, "isEditMode", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], KubernetesConfigurations.prototype, "editingResource", 2);
-KubernetesConfigurations = __decorateClass$q([
+KubernetesConfigurations = __decorateClass$r([
   t$2("kubernetes-configurations")
 ], KubernetesConfigurations);
-var __defProp$p = Object.defineProperty;
-var __getOwnPropDesc$n = Object.getOwnPropertyDescriptor;
-var __decorateClass$p = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$n(target, key) : target;
+var __defProp$q = Object.defineProperty;
+var __getOwnPropDesc$o = Object.getOwnPropertyDescriptor;
+var __decorateClass$q = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$o(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$p(target, key, result);
+  if (kind && result) __defProp$q(target, key, result);
   return result;
 };
 let KubernetesHelm = class extends i$2 {
@@ -50495,59 +50531,59 @@ KubernetesHelm.styles = i$5`
       white-space: pre-wrap;
     }
   `;
-__decorateClass$p([
+__decorateClass$q([
   n2({ type: Array })
 ], KubernetesHelm.prototype, "releases", 2);
-__decorateClass$p([
+__decorateClass$q([
   n2({ type: Array })
 ], KubernetesHelm.prototype, "namespaces", 2);
-__decorateClass$p([
+__decorateClass$q([
   n2({ type: String })
 ], KubernetesHelm.prototype, "selectedNamespace", 2);
-__decorateClass$p([
+__decorateClass$q([
   n2({ type: String })
 ], KubernetesHelm.prototype, "searchQuery", 2);
-__decorateClass$p([
+__decorateClass$q([
   n2({ type: Boolean })
 ], KubernetesHelm.prototype, "loading", 2);
-__decorateClass$p([
+__decorateClass$q([
   n2({ type: String })
 ], KubernetesHelm.prototype, "error", 2);
-__decorateClass$p([
+__decorateClass$q([
   r$1()
 ], KubernetesHelm.prototype, "activeTab", 2);
-__decorateClass$p([
+__decorateClass$q([
   r$1()
 ], KubernetesHelm.prototype, "showDetails", 2);
-__decorateClass$p([
+__decorateClass$q([
   r$1()
 ], KubernetesHelm.prototype, "selectedItem", 2);
-__decorateClass$p([
+__decorateClass$q([
   r$1()
 ], KubernetesHelm.prototype, "loadingDetails", 2);
-__decorateClass$p([
+__decorateClass$q([
   r$1()
 ], KubernetesHelm.prototype, "detailsData", 2);
-__decorateClass$p([
+__decorateClass$q([
   r$1()
 ], KubernetesHelm.prototype, "showDeleteModal", 2);
-__decorateClass$p([
+__decorateClass$q([
   r$1()
 ], KubernetesHelm.prototype, "itemToDelete", 2);
-__decorateClass$p([
+__decorateClass$q([
   r$1()
 ], KubernetesHelm.prototype, "isDeleting", 2);
-KubernetesHelm = __decorateClass$p([
+KubernetesHelm = __decorateClass$q([
   t$2("kubernetes-helm")
 ], KubernetesHelm);
-var __defProp$o = Object.defineProperty;
-var __getOwnPropDesc$m = Object.getOwnPropertyDescriptor;
-var __decorateClass$o = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$m(target, key) : target;
+var __defProp$p = Object.defineProperty;
+var __getOwnPropDesc$n = Object.getOwnPropertyDescriptor;
+var __decorateClass$p = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$n(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$o(target, key, result);
+  if (kind && result) __defProp$p(target, key, result);
   return result;
 };
 let KubernetesNodes = class extends i$2 {
@@ -51173,40 +51209,40 @@ KubernetesNodes.styles = i$5`
     }
 
   `;
-__decorateClass$o([
+__decorateClass$p([
   n2({ type: Array })
 ], KubernetesNodes.prototype, "nodes", 2);
-__decorateClass$o([
+__decorateClass$p([
   n2({ type: String })
 ], KubernetesNodes.prototype, "searchQuery", 2);
-__decorateClass$o([
+__decorateClass$p([
   n2({ type: Boolean })
 ], KubernetesNodes.prototype, "loading", 2);
-__decorateClass$o([
+__decorateClass$p([
   n2({ type: String })
 ], KubernetesNodes.prototype, "error", 2);
-__decorateClass$o([
+__decorateClass$p([
   r$1()
 ], KubernetesNodes.prototype, "showDetails", 2);
-__decorateClass$o([
+__decorateClass$p([
   r$1()
 ], KubernetesNodes.prototype, "selectedNode", 2);
-__decorateClass$o([
+__decorateClass$p([
   r$1()
 ], KubernetesNodes.prototype, "loadingDetails", 2);
-__decorateClass$o([
+__decorateClass$p([
   r$1()
 ], KubernetesNodes.prototype, "nodeDetails", 2);
-__decorateClass$o([
+__decorateClass$p([
   r$1()
 ], KubernetesNodes.prototype, "showConfirmModal", 2);
-__decorateClass$o([
+__decorateClass$p([
   r$1()
 ], KubernetesNodes.prototype, "confirmAction", 2);
-__decorateClass$o([
+__decorateClass$p([
   r$1()
 ], KubernetesNodes.prototype, "nodeForAction", 2);
-KubernetesNodes = __decorateClass$o([
+KubernetesNodes = __decorateClass$p([
   t$2("kubernetes-nodes")
 ], KubernetesNodes);
 function evaluateJSONPath(obj, path) {
@@ -51301,14 +51337,14 @@ function formatColumnValue(value, type) {
       return String(value);
   }
 }
-var __defProp$n = Object.defineProperty;
-var __getOwnPropDesc$l = Object.getOwnPropertyDescriptor;
-var __decorateClass$n = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$l(target, key) : target;
+var __defProp$o = Object.defineProperty;
+var __getOwnPropDesc$m = Object.getOwnPropertyDescriptor;
+var __decorateClass$o = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$m(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$n(target, key, result);
+  if (kind && result) __defProp$o(target, key, result);
   return result;
 };
 let CRDInstancesDrawer = class extends i$2 {
@@ -52142,101 +52178,101 @@ CRDInstancesDrawer.styles = i$5`
       pointer-events: auto;
     }
   `;
-__decorateClass$n([
+__decorateClass$o([
   n2({ type: Boolean, reflect: true })
 ], CRDInstancesDrawer.prototype, "show", 2);
-__decorateClass$n([
+__decorateClass$o([
   n2({ type: String })
 ], CRDInstancesDrawer.prototype, "crdName", 2);
-__decorateClass$n([
+__decorateClass$o([
   n2({ type: String })
 ], CRDInstancesDrawer.prototype, "crdKind", 2);
-__decorateClass$n([
+__decorateClass$o([
   n2({ type: String })
 ], CRDInstancesDrawer.prototype, "crdGroup", 2);
-__decorateClass$n([
+__decorateClass$o([
   n2({ type: String })
 ], CRDInstancesDrawer.prototype, "crdVersion", 2);
-__decorateClass$n([
+__decorateClass$o([
   n2({ type: String })
 ], CRDInstancesDrawer.prototype, "crdScope", 2);
-__decorateClass$n([
+__decorateClass$o([
   n2({ type: Boolean })
 ], CRDInstancesDrawer.prototype, "loading", 2);
-__decorateClass$n([
+__decorateClass$o([
   n2({ type: String })
 ], CRDInstancesDrawer.prototype, "width", 2);
-__decorateClass$n([
+__decorateClass$o([
   n2({ type: Object })
 ], CRDInstancesDrawer.prototype, "crdDefinition", 2);
-__decorateClass$n([
+__decorateClass$o([
   r$1()
 ], CRDInstancesDrawer.prototype, "searchQuery", 2);
-__decorateClass$n([
+__decorateClass$o([
   r$1()
 ], CRDInstancesDrawer.prototype, "selectedNamespace", 2);
-__decorateClass$n([
+__decorateClass$o([
   r$1()
 ], CRDInstancesDrawer.prototype, "instances", 2);
-__decorateClass$n([
+__decorateClass$o([
   r$1()
 ], CRDInstancesDrawer.prototype, "showInstanceDetails", 2);
-__decorateClass$n([
+__decorateClass$o([
   r$1()
 ], CRDInstancesDrawer.prototype, "selectedInstance", 2);
-__decorateClass$n([
+__decorateClass$o([
   r$1()
 ], CRDInstancesDrawer.prototype, "instanceDetailsData", 2);
-__decorateClass$n([
+__decorateClass$o([
   r$1()
 ], CRDInstancesDrawer.prototype, "loadingDetails", 2);
-__decorateClass$n([
+__decorateClass$o([
   r$1()
 ], CRDInstancesDrawer.prototype, "error", 2);
-__decorateClass$n([
+__decorateClass$o([
   r$1()
 ], CRDInstancesDrawer.prototype, "showEditDrawer", 2);
-__decorateClass$n([
+__decorateClass$o([
   r$1()
 ], CRDInstancesDrawer.prototype, "editResourceContent", 2);
-__decorateClass$n([
+__decorateClass$o([
   r$1()
 ], CRDInstancesDrawer.prototype, "editResourceFormat", 2);
-__decorateClass$n([
+__decorateClass$o([
   r$1()
 ], CRDInstancesDrawer.prototype, "loadingEdit", 2);
-__decorateClass$n([
+__decorateClass$o([
   r$1()
 ], CRDInstancesDrawer.prototype, "deleting", 2);
-__decorateClass$n([
+__decorateClass$o([
   r$1()
 ], CRDInstancesDrawer.prototype, "showCreateDrawer", 2);
-__decorateClass$n([
+__decorateClass$o([
   r$1()
 ], CRDInstancesDrawer.prototype, "createResourceValue", 2);
-__decorateClass$n([
+__decorateClass$o([
   r$1()
 ], CRDInstancesDrawer.prototype, "createResourceFormat", 2);
-__decorateClass$n([
+__decorateClass$o([
   r$1()
 ], CRDInstancesDrawer.prototype, "isCreating", 2);
-__decorateClass$n([
+__decorateClass$o([
   r$1()
 ], CRDInstancesDrawer.prototype, "showDeleteModal", 2);
-__decorateClass$n([
+__decorateClass$o([
   r$1()
 ], CRDInstancesDrawer.prototype, "deleteItem", 2);
-CRDInstancesDrawer = __decorateClass$n([
+CRDInstancesDrawer = __decorateClass$o([
   t$2("crd-instances-drawer")
 ], CRDInstancesDrawer);
-var __defProp$m = Object.defineProperty;
-var __getOwnPropDesc$k = Object.getOwnPropertyDescriptor;
-var __decorateClass$m = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$k(target, key) : target;
+var __defProp$n = Object.defineProperty;
+var __getOwnPropDesc$l = Object.getOwnPropertyDescriptor;
+var __decorateClass$n = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$l(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$m(target, key, result);
+  if (kind && result) __defProp$n(target, key, result);
   return result;
 };
 let KubernetesCRDs = class extends i$2 {
@@ -52344,7 +52380,7 @@ let KubernetesCRDs = class extends i$2 {
         unwrapped = JSON.parse(JSON.stringify(unwrapped));
         delete unwrapped.metadata.managedFields;
       }
-      const yaml = await import("./index-Dgc_L4Vu.js");
+      const yaml = await import("./index-CuoTv4M_.js");
       this.createResourceValue = yaml.stringify(unwrapped);
       this.isCreating = false;
     } catch (error) {
@@ -52675,74 +52711,74 @@ KubernetesCRDs.styles = i$5`
       gap: 1rem;
     }
   `;
-__decorateClass$m([
+__decorateClass$n([
   n2({ type: Array })
 ], KubernetesCRDs.prototype, "resources", 2);
-__decorateClass$m([
+__decorateClass$n([
   n2({ type: String })
 ], KubernetesCRDs.prototype, "searchQuery", 2);
-__decorateClass$m([
+__decorateClass$n([
   n2({ type: Boolean })
 ], KubernetesCRDs.prototype, "loading", 2);
-__decorateClass$m([
+__decorateClass$n([
   n2({ type: String })
 ], KubernetesCRDs.prototype, "error", 2);
-__decorateClass$m([
+__decorateClass$n([
   r$1()
 ], KubernetesCRDs.prototype, "showDetails", 2);
-__decorateClass$m([
+__decorateClass$n([
   r$1()
 ], KubernetesCRDs.prototype, "selectedItem", 2);
-__decorateClass$m([
+__decorateClass$n([
   r$1()
 ], KubernetesCRDs.prototype, "loadingDetails", 2);
-__decorateClass$m([
+__decorateClass$n([
   r$1()
 ], KubernetesCRDs.prototype, "detailsData", 2);
-__decorateClass$m([
+__decorateClass$n([
   r$1()
 ], KubernetesCRDs.prototype, "showDeleteModal", 2);
-__decorateClass$m([
+__decorateClass$n([
   r$1()
 ], KubernetesCRDs.prototype, "itemToDelete", 2);
-__decorateClass$m([
+__decorateClass$n([
   r$1()
 ], KubernetesCRDs.prototype, "isDeleting", 2);
-__decorateClass$m([
+__decorateClass$n([
   r$1()
 ], KubernetesCRDs.prototype, "showCreateDrawer", 2);
-__decorateClass$m([
+__decorateClass$n([
   r$1()
 ], KubernetesCRDs.prototype, "createResourceValue", 2);
-__decorateClass$m([
+__decorateClass$n([
   r$1()
 ], KubernetesCRDs.prototype, "isCreating", 2);
-__decorateClass$m([
+__decorateClass$n([
   r$1()
 ], KubernetesCRDs.prototype, "isEditMode", 2);
-__decorateClass$m([
+__decorateClass$n([
   r$1()
 ], KubernetesCRDs.prototype, "editingResource", 2);
-__decorateClass$m([
+__decorateClass$n([
   r$1()
 ], KubernetesCRDs.prototype, "resourceFormat", 2);
-__decorateClass$m([
+__decorateClass$n([
   r$1()
 ], KubernetesCRDs.prototype, "showInstancesDrawer", 2);
-__decorateClass$m([
+__decorateClass$n([
   r$1()
 ], KubernetesCRDs.prototype, "selectedCRDForInstances", 2);
-KubernetesCRDs = __decorateClass$m([
+KubernetesCRDs = __decorateClass$n([
   t$2("kubernetes-crds")
 ], KubernetesCRDs);
-var __defProp$l = Object.defineProperty;
-var __getOwnPropDesc$j = Object.getOwnPropertyDescriptor;
-var __decorateClass$l = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$j(target, key) : target;
+var __defProp$m = Object.defineProperty;
+var __getOwnPropDesc$k = Object.getOwnPropertyDescriptor;
+var __decorateClass$m = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$k(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$l(target, key, result);
+  if (kind && result) __defProp$m(target, key, result);
   return result;
 };
 let KubernetesTab = class extends i$2 {
@@ -52836,23 +52872,23 @@ KubernetesTab.styles = i$5`
       color: var(--text-secondary);
     }
   `;
-__decorateClass$l([
+__decorateClass$m([
   n2({ type: String })
 ], KubernetesTab.prototype, "subRoute", 2);
-__decorateClass$l([
+__decorateClass$m([
   n2({ type: String })
 ], KubernetesTab.prototype, "activeView", 2);
-KubernetesTab = __decorateClass$l([
+KubernetesTab = __decorateClass$m([
   t$2("kubernetes-tab")
 ], KubernetesTab);
-var __defProp$k = Object.defineProperty;
-var __getOwnPropDesc$i = Object.getOwnPropertyDescriptor;
-var __decorateClass$k = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$i(target, key) : target;
+var __defProp$l = Object.defineProperty;
+var __getOwnPropDesc$j = Object.getOwnPropertyDescriptor;
+var __decorateClass$l = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$j(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$k(target, key, result);
+  if (kind && result) __defProp$l(target, key, result);
   return result;
 };
 let FilterDropdown = class extends i$2 {
@@ -53113,38 +53149,38 @@ FilterDropdown.styles = i$5`
       background: var(--vscode-scrollbarSlider-hoverBackground, #4e4e4e);
     }
   `;
-__decorateClass$k([
+__decorateClass$l([
   n2({ type: Array })
 ], FilterDropdown.prototype, "options", 2);
-__decorateClass$k([
+__decorateClass$l([
   n2({ type: String })
 ], FilterDropdown.prototype, "selectedValue", 2);
-__decorateClass$k([
+__decorateClass$l([
   n2({ type: String })
 ], FilterDropdown.prototype, "label", 2);
-__decorateClass$k([
+__decorateClass$l([
   n2({ type: Boolean })
 ], FilterDropdown.prototype, "showIcon", 2);
-__decorateClass$k([
+__decorateClass$l([
   n2({ type: Boolean })
 ], FilterDropdown.prototype, "showCounts", 2);
-__decorateClass$k([
+__decorateClass$l([
   n2({ type: Boolean })
 ], FilterDropdown.prototype, "showStatusIndicators", 2);
-__decorateClass$k([
+__decorateClass$l([
   r$1()
 ], FilterDropdown.prototype, "isOpen", 2);
-FilterDropdown = __decorateClass$k([
+FilterDropdown = __decorateClass$l([
   t$2("filter-dropdown")
 ], FilterDropdown);
-var __defProp$j = Object.defineProperty;
-var __getOwnPropDesc$h = Object.getOwnPropertyDescriptor;
-var __decorateClass$j = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$h(target, key) : target;
+var __defProp$k = Object.defineProperty;
+var __getOwnPropDesc$i = Object.getOwnPropertyDescriptor;
+var __decorateClass$k = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$i(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$j(target, key, result);
+  if (kind && result) __defProp$k(target, key, result);
   return result;
 };
 let VMConsole = class extends i$2 {
@@ -53744,44 +53780,44 @@ VMConsole.styles = i$5`
       display: block;
     }
   `;
-__decorateClass$j([
+__decorateClass$k([
   n2({ type: String })
 ], VMConsole.prototype, "vmId", 2);
-__decorateClass$j([
+__decorateClass$k([
   n2({ type: String })
 ], VMConsole.prototype, "vmName", 2);
-__decorateClass$j([
+__decorateClass$k([
   n2({ type: Boolean, reflect: true })
 ], VMConsole.prototype, "show", 2);
-__decorateClass$j([
+__decorateClass$k([
   r$1()
 ], VMConsole.prototype, "isConnecting", 2);
-__decorateClass$j([
+__decorateClass$k([
   r$1()
 ], VMConsole.prototype, "isWSConnected", 2);
-__decorateClass$j([
+__decorateClass$k([
   r$1()
 ], VMConsole.prototype, "error", 2);
-__decorateClass$j([
+__decorateClass$k([
   r$1()
 ], VMConsole.prototype, "connectionStatus", 2);
-__decorateClass$j([
+__decorateClass$k([
   r$1()
 ], VMConsole.prototype, "scaleViewport", 2);
-__decorateClass$j([
+__decorateClass$k([
   r$1()
 ], VMConsole.prototype, "showVirtualKeyboard", 2);
-VMConsole = __decorateClass$j([
+VMConsole = __decorateClass$k([
   t$2("vm-console")
 ], VMConsole);
-var __defProp$i = Object.defineProperty;
-var __getOwnPropDesc$g = Object.getOwnPropertyDescriptor;
-var __decorateClass$i = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$g(target, key) : target;
+var __defProp$j = Object.defineProperty;
+var __getOwnPropDesc$h = Object.getOwnPropertyDescriptor;
+var __decorateClass$j = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$h(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$i(target, key, result);
+  if (kind && result) __defProp$j(target, key, result);
   return result;
 };
 let VMDetailDrawer = class extends i$2 {
@@ -55591,46 +55627,46 @@ VMDetailDrawer.styles = i$5`
       background: var(--vscode-inputValidation-errorBorder, #be1100);
     }
   `;
-__decorateClass$i([
+__decorateClass$j([
   n2({ type: Boolean, reflect: true })
 ], VMDetailDrawer.prototype, "show", 2);
-__decorateClass$i([
+__decorateClass$j([
   n2({ type: Object })
 ], VMDetailDrawer.prototype, "vm", 2);
-__decorateClass$i([
+__decorateClass$j([
   r$1()
 ], VMDetailDrawer.prototype, "activeTab", 2);
-__decorateClass$i([
+__decorateClass$j([
   r$1()
 ], VMDetailDrawer.prototype, "isLoading", 2);
-__decorateClass$i([
+__decorateClass$j([
   r$1()
 ], VMDetailDrawer.prototype, "metrics", 2);
-__decorateClass$i([
+__decorateClass$j([
   r$1()
 ], VMDetailDrawer.prototype, "disks", 2);
-__decorateClass$i([
+__decorateClass$j([
   r$1()
 ], VMDetailDrawer.prototype, "networkInterfaces", 2);
-__decorateClass$i([
+__decorateClass$j([
   r$1()
 ], VMDetailDrawer.prototype, "vmDetails", 2);
-__decorateClass$i([
+__decorateClass$j([
   r$1()
 ], VMDetailDrawer.prototype, "isPowerActionLoading", 2);
-__decorateClass$i([
+__decorateClass$j([
   r$1()
 ], VMDetailDrawer.prototype, "showDeleteModal", 2);
-__decorateClass$i([
+__decorateClass$j([
   r$1()
 ], VMDetailDrawer.prototype, "isDeleting", 2);
-__decorateClass$i([
+__decorateClass$j([
   r$1()
 ], VMDetailDrawer.prototype, "isLoadingMetrics", 2);
-__decorateClass$i([
+__decorateClass$j([
   r$1()
 ], VMDetailDrawer.prototype, "showConsole", 2);
-VMDetailDrawer = __decorateClass$i([
+VMDetailDrawer = __decorateClass$j([
   t$2("vm-detail-drawer")
 ], VMDetailDrawer);
 var StoreEventType = /* @__PURE__ */ ((StoreEventType2) => {
@@ -56065,6 +56101,19 @@ function createStore(options) {
     destroy
   };
 }
+function isVirtualizationDisabled(status, body) {
+  return status === 503 && !!body && body.status === "error" && !!body.error && body.error.code === "VIRTUALIZATION_DISABLED";
+}
+class VirtualizationDisabledError extends Error {
+  constructor(message, details, status) {
+    super(message);
+    this.name = "VirtualizationDisabledError";
+    this.details = details;
+    this.status = status;
+  }
+}
+const $virtualizationEnabled = atom(null);
+const $virtualizationDisabledMessage = atom(null);
 const API_BASE$1 = "/virtualization";
 async function apiRequest$1(endpoint, options = {}) {
   const token = localStorage.getItem("jwt_token") || localStorage.getItem("auth_token");
@@ -56077,12 +56126,36 @@ async function apiRequest$1(endpoint, options = {}) {
       ...options.headers
     }
   });
+  const status = response.status;
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: response.statusText }));
-    if (errorData.status === "error" && errorData.error) {
-      throw new Error(errorData.error.message || errorData.error.details || `Request failed: ${response.status}`);
+    const errorData = await response.json().catch(
+      () => ({ message: response.statusText })
+    );
+    const isApiErrorBody = (data) => {
+      return data && typeof data === "object" && "error" in data;
+    };
+    if (isVirtualizationDisabled(status, isApiErrorBody(errorData) ? errorData : null)) {
+      $virtualizationEnabled.set(false);
+      const errorBody = isApiErrorBody(errorData) ? errorData : null;
+      $virtualizationDisabledMessage.set(
+        errorBody?.error?.details || errorBody?.error?.message || "Virtualization is disabled on this host."
+      );
+      throw new VirtualizationDisabledError(
+        errorBody?.error?.message || "Virtualization is disabled on this host.",
+        errorBody?.error?.details,
+        status
+      );
     }
-    throw new Error(errorData.message || `Request failed: ${response.status}`);
+    if (isApiErrorBody(errorData) && errorData.status === "error" && errorData.error) {
+      const err = errorData.error;
+      throw new Error(err.message || err.details || `Request failed: ${status}`);
+    }
+    const message = errorData.message;
+    throw new Error(message || `Request failed: ${status}`);
+  }
+  if ($virtualizationEnabled.get() !== true) {
+    $virtualizationEnabled.set(true);
+    $virtualizationDisabledMessage.set(null);
   }
   const jsonData = await response.json();
   if (jsonData.status === "success" && jsonData.data !== void 0) {
@@ -57385,8 +57458,9 @@ const storagePoolActions = {
       await storagePoolStore.update(poolName, { state: "inactive" });
     }
   },
-  async delete(poolName) {
-    await apiRequest$1(`/storages/pools/${poolName}`, { method: "DELETE" });
+  async delete(poolName, deleteVolumes = false) {
+    const params = deleteVolumes ? "?delete_volumes=true" : "";
+    await apiRequest$1(`/storages/pools/${poolName}${params}`, { method: "DELETE" });
     await storagePoolStore.delete(poolName);
     if ($selectedStoragePoolId.get() === poolName) {
       $selectedStoragePoolId.set(null);
@@ -57404,6 +57478,19 @@ const storagePoolActions = {
     items.set(response.name, response);
     storagePoolStore.$items.set(items);
     $selectedStoragePoolId.set(response.name);
+    return { success: true, data: response };
+  },
+  async update(poolName, config) {
+    const response = await apiRequest$1(
+      `/storages/pools/${poolName}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(config)
+      }
+    );
+    const items = new Map(storagePoolStore.$items.get());
+    items.set(response.name, response);
+    storagePoolStore.$items.set(items);
     return { success: true, data: response };
   },
   selectPool(poolName) {
@@ -57497,14 +57584,14 @@ async function initializeVirtualizationStores() {
     console.error("Failed to initialize virtualization stores:", error);
   }
 }
-var __defProp$h = Object.defineProperty;
-var __getOwnPropDesc$f = Object.getOwnPropertyDescriptor;
-var __decorateClass$h = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$f(target, key) : target;
+var __defProp$i = Object.defineProperty;
+var __getOwnPropDesc$g = Object.getOwnPropertyDescriptor;
+var __decorateClass$i = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$g(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$h(target, key, result);
+  if (kind && result) __defProp$i(target, key, result);
   return result;
 };
 let CreateVMWizard = class extends i$2 {
@@ -58657,26 +58744,26 @@ CreateVMWizard.styles = i$5`
       color: var(--close-hover-color, #e0e0e0);
     }
   `;
-__decorateClass$h([
+__decorateClass$i([
   r$1()
 ], CreateVMWizard.prototype, "isCreating", 2);
-__decorateClass$h([
+__decorateClass$i([
   r$1()
 ], CreateVMWizard.prototype, "validationErrors", 2);
-__decorateClass$h([
+__decorateClass$i([
   r$1()
 ], CreateVMWizard.prototype, "showAdvancedOptions", 2);
-CreateVMWizard = __decorateClass$h([
+CreateVMWizard = __decorateClass$i([
   t$2("create-vm-wizard")
 ], CreateVMWizard);
-var __defProp$g = Object.defineProperty;
-var __getOwnPropDesc$e = Object.getOwnPropertyDescriptor;
-var __decorateClass$g = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$e(target, key) : target;
+var __defProp$h = Object.defineProperty;
+var __getOwnPropDesc$f = Object.getOwnPropertyDescriptor;
+var __decorateClass$h = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$f(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$g(target, key, result);
+  if (kind && result) __defProp$h(target, key, result);
   return result;
 };
 let CreateVMWizardEnhanced = class extends i$2 {
@@ -60562,50 +60649,52 @@ CreateVMWizardEnhanced.styles = i$5`
       white-space: nowrap;
     }
   `;
-__decorateClass$g([
+__decorateClass$h([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "isCreating", 2);
-__decorateClass$g([
+__decorateClass$h([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "validationErrors", 2);
-__decorateClass$g([
+__decorateClass$h([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "expandedSections", 2);
-__decorateClass$g([
+__decorateClass$h([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "currentStep", 2);
-__decorateClass$g([
+__decorateClass$h([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "availablePCIDevices", 2);
-__decorateClass$g([
+__decorateClass$h([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "isLoadingPCIDevices", 2);
-__decorateClass$g([
+__decorateClass$h([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "editMode", 2);
-__decorateClass$g([
+__decorateClass$h([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "editingVmId", 2);
-__decorateClass$g([
+__decorateClass$h([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "formData", 2);
-CreateVMWizardEnhanced = __decorateClass$g([
+CreateVMWizardEnhanced = __decorateClass$h([
   t$2("create-vm-wizard-enhanced")
 ], CreateVMWizardEnhanced);
-var __defProp$f = Object.defineProperty;
-var __getOwnPropDesc$d = Object.getOwnPropertyDescriptor;
-var __decorateClass$f = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$d(target, key) : target;
+var __defProp$g = Object.defineProperty;
+var __getOwnPropDesc$e = Object.getOwnPropertyDescriptor;
+var __decorateClass$g = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$e(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$f(target, key, result);
+  if (kind && result) __defProp$g(target, key, result);
   return result;
 };
 let VirtualizationVMsEnhanced = class extends i$2 {
   constructor() {
     super(...arguments);
     this.vmStoreController = new lib.StoreController(this, vmStore.$items);
+    this.virtualizationEnabledController = new lib.StoreController(this, $virtualizationEnabled);
+    this.virtualizationDisabledMessageController = new lib.StoreController(this, $virtualizationDisabledMessage);
     this.filteredVMsController = new lib.StoreController(this, $filteredVMs);
     this.searchQueryController = new lib.StoreController(this, $vmSearchQuery);
     this.showDeleteModal = false;
@@ -60651,7 +60740,9 @@ let VirtualizationVMsEnhanced = class extends i$2 {
       });
     } catch (error) {
       console.error("Failed to initialize virtualization stores:", error);
-      this.showNotification("Failed to load virtual machines", "error");
+      if (!(error instanceof VirtualizationDisabledError)) {
+        this.showNotification("Failed to load virtual machines", "error");
+      }
     }
   }
   getColumns() {
@@ -60882,7 +60973,9 @@ let VirtualizationVMsEnhanced = class extends i$2 {
         this.showNotification("VMs refreshed", "success");
       }
     } catch (error) {
-      this.showNotification(`Failed to refresh ${this.activeMainTab}`, "error");
+      if (!(error instanceof VirtualizationDisabledError)) {
+        this.showNotification(`Failed to refresh ${this.activeMainTab}`, "error");
+      }
     }
   }
   showNotification(message, type = "info") {
@@ -60941,7 +61034,26 @@ let VirtualizationVMsEnhanced = class extends i$2 {
     const { vm } = event.detail;
     await this.openConsole(vm);
   }
+  renderVirtualizationDisabledBanner(details) {
+    return x`
+      <div class="virtualization-disabled-banner">
+        <h2>Virtualization is disabled on this host</h2>
+        <p>Virtualization features are currently unavailable because libvirt is not installed or not running.\
+ To enable VM management, install and start libvirt on this machine, then reload this page.</p>
+        ${details ? x`<p>${details}</p>` : ""}
+      </div>
+    `;
+  }
   render() {
+    const virtualizationEnabled = this.virtualizationEnabledController.value;
+    if (virtualizationEnabled === false) {
+      const details = this.virtualizationDisabledMessageController.value;
+      return x`
+        <div class="container">
+          ${this.renderVirtualizationDisabledBanner(details)}
+        </div>
+      `;
+    }
     const vmItems = this.vmStoreController.value;
     const filteredVMs = this.filteredVMsController.value || [];
     const allVMs = Array.isArray(vmItems) ? vmItems : vmItems instanceof Map ? [...vmItems.values()] : typeof vmItems === "object" && vmItems ? Object.values(vmItems) : [];
@@ -60975,9 +61087,6 @@ let VirtualizationVMsEnhanced = class extends i$2 {
     }));
     return x`
       <div class="container">
-        <div class="header">
-          <h1>Virtual Machines</h1>
-        </div>
 
         <!-- Stats Bar -->
         <div class="stats-bar">
@@ -61149,7 +61258,6 @@ VirtualizationVMsEnhanced.styles = i$5`
     :host {
       display: block;
       height: 100%;
-      padding: 24px;
       box-sizing: border-box;
     }
 
@@ -61160,16 +61268,7 @@ VirtualizationVMsEnhanced.styles = i$5`
       gap: 1rem;
     }
 
-    .header {
-      margin-bottom: 1rem;
-    }
 
-    .header h1 {
-      margin: 0 0 16px 0;
-      font-size: 24px;
-      font-weight: 300;
-      flex-shrink: 0;
-    }
 
     .stats-bar {
       display: grid;
@@ -61406,547 +61505,600 @@ VirtualizationVMsEnhanced.styles = i$5`
       color: var(--vscode-badge-foreground);
     }
 
+    .virtualization-disabled-banner {
+      margin-top: 16px;
+      padding: 16px 20px;
+      border-radius: 8px;
+      border: 1px solid var(--vscode-inputValidation-warningBorder, #e2c08d);
+      background: var(--vscode-inputValidation-warningBackground, rgba(229, 200, 144, 0.15));
+      color: var(--vscode-inputValidation-warningForeground, #e2c08d);
+    }
+
+    .virtualization-disabled-banner h2 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .virtualization-disabled-banner p {
+      margin: 0 0 4px 0;
+      font-size: 13px;
+      color: var(--vscode-descriptionForeground);
+    }
+
   `;
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "showDeleteModal", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "vmToDelete", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "isDeleting", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "showDetailsDrawer", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "useEnhancedWizard", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "activeMainTab", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "stateFilter", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "templates", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "selectedVMForDetails", 2);
-VirtualizationVMsEnhanced = __decorateClass$f([
+VirtualizationVMsEnhanced = __decorateClass$g([
   t$2("virtualization-vms-enhanced")
 ], VirtualizationVMsEnhanced);
-var __defProp$e = Object.defineProperty;
-var __getOwnPropDesc$c = Object.getOwnPropertyDescriptor;
-var __decorateClass$e = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$c(target, key) : target;
+var __defProp$f = Object.defineProperty;
+var __getOwnPropDesc$d = Object.getOwnPropertyDescriptor;
+var __decorateClass$f = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$d(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$e(target, key, result);
+  if (kind && result) __defProp$f(target, key, result);
   return result;
 };
-let VirtualizationStoragePools = class extends i$2 {
+let StoragePoolFormDrawer = class extends i$2 {
   constructor() {
     super(...arguments);
-    this.storeController = new lib.StoreController(this, storagePoolStore.$state);
-    this.filteredPoolsController = new lib.StoreController(this, $filteredStoragePools);
-    this.selectedPoolController = new lib.StoreController(this, $selectedStoragePool);
-    this.activeTabController = new lib.StoreController(this, $activeStoragePoolTab);
-    this.searchQueryController = new lib.StoreController(this, $storagePoolSearchQuery);
-    this.showDetails = false;
-    this.showDeleteModal = false;
-    this.itemToDelete = null;
-    this.isDeleting = false;
-    this.showCreateDrawer = false;
-    this.createResourceValue = "";
-    this.isCreating = false;
-    this.tabs = [
-      { id: "all", label: "All Pools" },
-      { id: "active", label: "Active" },
-      { id: "inactive", label: "Inactive" },
-      { id: "local", label: "Local Storage" },
-      { id: "network", label: "Network Storage" }
-    ];
+    this.show = false;
+    this.loading = false;
+    this.editMode = false;
+    this.poolData = null;
+    this.formData = {
+      name: "",
+      type: "dir",
+      path: "",
+      source: "",
+      target: "",
+      autostart: true
+    };
+    this.errors = {};
+    this.handleEscape = (e3) => {
+      if (e3.key === "Escape" && this.show && !this.loading) {
+        this.handleClose();
+      }
+    };
   }
-  async connectedCallback() {
+  // Sanitization methods to prevent injection attacks
+  sanitizePath(path) {
+    return path.trim().replace(/[;|&$`]/g, "");
+  }
+  sanitizeName(name) {
+    return name.trim().replace(/[^\w-]/g, "");
+  }
+  sanitizeInput(input) {
+    return input.trim().replace(/[<>]/g, "");
+  }
+  connectedCallback() {
     super.connectedCallback();
-    await this.loadData();
+    window.addEventListener("keydown", this.handleEscape);
   }
-  formatBytes(bytes) {
-    if (bytes === 0) return "0 B";
-    const k2 = 1024;
-    const sizes = ["B", "KB", "MB", "GB", "TB", "PB"];
-    const i4 = Math.floor(Math.log(bytes) / Math.log(k2));
-    return parseFloat((bytes / Math.pow(k2, i4)).toFixed(2)) + " " + sizes[i4];
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    window.removeEventListener("keydown", this.handleEscape);
   }
-  calculateUsagePercentage(allocated, capacity) {
-    if (capacity === 0) return 0;
-    return Math.round(allocated / capacity * 100);
-  }
-  transformStoragePool(pool) {
-    return {
-      ...pool,
-      id: pool.name,
-      // Use name as ID
-      capacityFormatted: this.formatBytes(pool.capacity),
-      allocatedFormatted: this.formatBytes(pool.allocation),
-      availableFormatted: this.formatBytes(pool.available),
-      usage: this.calculateUsagePercentage(pool.allocation, pool.capacity)
-    };
-  }
-  async loadData() {
-    try {
-      await storagePoolActions.fetchAll();
-    } catch (error) {
-      console.error("Error loading storage pools:", error);
-      this.showNotification(
-        `Failed to load storage pools: ${error instanceof Error ? error.message : "Unknown error"}`,
-        "error"
-      );
+  willUpdate(changedProperties) {
+    if (changedProperties.has("poolData") && this.poolData) {
+      this.formData = {
+        name: this.poolData.name || "",
+        type: this.poolData.type || "dir",
+        path: this.poolData.path || "",
+        source: "",
+        target: "",
+        autostart: this.poolData.autostart !== void 0 ? this.poolData.autostart : true
+      };
+      this.errors = {};
     }
-  }
-  getColumns() {
-    return [
-      { key: "name", label: "Name", type: "link" },
-      { key: "type", label: "Type" },
-      { key: "state", label: "State", type: "status" },
-      { key: "capacityFormatted", label: "Capacity" },
-      { key: "allocatedFormatted", label: "Allocated" },
-      { key: "availableFormatted", label: "Available" },
-      { key: "usage", label: "Usage %" },
-      { key: "path", label: "Path/Target" },
-      { key: "autostart", label: "Autostart" }
-    ];
-  }
-  getActions(pool) {
-    const actions = [
-      { label: "View Details", action: "view" },
-      { label: "Browse", action: "browse" }
-    ];
-    if (pool.state === "active") {
-      actions.push(
-        { label: "Refresh", action: "refresh" },
-        { label: "Stop", action: "stop" }
-      );
-    } else {
-      actions.push(
-        { label: "Start", action: "start" }
-      );
-    }
-    actions.push(
-      { label: "Edit", action: "edit" },
-      { label: "Delete", action: "delete", danger: true }
-    );
-    return actions;
-  }
-  getFilteredData() {
-    const filteredPools = this.filteredPoolsController.value || [];
-    return filteredPools.map((pool) => this.transformStoragePool(pool));
-  }
-  async handleTabChange(event) {
-    storagePoolActions.setActiveTab(event.detail.tabId);
-  }
-  handleCellClick(event) {
-    const pool = event.detail.item;
-    this.viewDetails(pool);
-  }
-  handleAction(event) {
-    const { action, item } = event.detail;
-    const pool = item;
-    switch (action) {
-      case "view":
-        this.viewDetails(pool);
-        break;
-      case "browse":
-        this.browsePool(pool);
-        break;
-      case "refresh":
-        this.refreshPool(pool);
-        break;
-      case "start":
-      case "stop":
-        this.changePoolState(pool, action);
-        break;
-      case "edit":
-        this.editPool(pool);
-        break;
-      case "delete":
-        this.deletePool(pool);
-        break;
-    }
-  }
-  viewDetails(pool) {
-    storagePoolActions.selectPool(pool.name);
-    this.showDetails = true;
-  }
-  browsePool(pool) {
-    console.log("Browsing pool:", pool.name);
-  }
-  async refreshPool(pool) {
-    try {
-      await storagePoolActions.refresh(pool.name);
-      this.showNotification(`Refreshed pool: ${pool.name}`, "success");
-    } catch (error) {
-      this.showNotification(`Failed to refresh pool: ${pool.name}`, "error");
-    }
-  }
-  async changePoolState(pool, action) {
-    try {
-      if (action === "start") {
-        await storagePoolActions.start(pool.name);
-        this.showNotification(`Starting pool: ${pool.name}`, "success");
-      } else if (action === "stop") {
-        await storagePoolActions.stop(pool.name);
-        this.showNotification(`Stopping pool: ${pool.name}`, "success");
+    if (changedProperties.has("show")) {
+      if (this.show) {
+        setTimeout(() => {
+          const firstInput = this.shadowRoot?.querySelector("#pool-name");
+          if (firstInput) {
+            firstInput.focus();
+          }
+        }, 100);
+      } else {
+        setTimeout(() => {
+          if (!this.show) {
+            this.formData = {
+              name: "",
+              type: "dir",
+              path: "",
+              source: "",
+              target: "",
+              autostart: true
+            };
+            this.errors = {};
+          }
+        }, 300);
       }
-    } catch (error) {
-      this.showNotification(
-        `Failed to ${action} pool: ${error instanceof Error ? error.message : "Unknown error"}`,
-        "error"
-      );
     }
   }
-  editPool(pool) {
-    console.log("Editing pool:", pool.name);
-  }
-  deletePool(pool) {
-    this.itemToDelete = {
-      name: pool.name,
-      type: "Storage Pool"
-    };
-    this.showDeleteModal = true;
-  }
-  async handleDelete(_event) {
-    if (!this.itemToDelete) return;
-    this.isDeleting = true;
-    try {
-      const poolToDelete = this.getFilteredData().find((pool) => pool.name === this.itemToDelete?.name);
-      if (poolToDelete) {
-        await storagePoolActions.delete(poolToDelete.name);
-        this.showNotification(`Storage pool "${poolToDelete.name}" deleted successfully`, "success");
-      }
-      this.showDeleteModal = false;
-      this.itemToDelete = null;
-    } catch (error) {
-      console.error("Failed to delete storage pool:", error);
-      this.showNotification(
-        `Failed to delete storage pool: ${error instanceof Error ? error.message : "Unknown error"}`,
-        "error"
-      );
-    } finally {
-      this.isDeleting = false;
-    }
-  }
-  handleCreateNew() {
-    this.createResourceValue = JSON.stringify({
-      apiVersion: "v1",
-      kind: "StoragePool",
-      metadata: {
-        name: "new-pool",
-        namespace: "default"
-      },
-      spec: {
-        type: "dir",
-        capacity: "100Gi",
-        path: "/var/lib/libvirt/images"
-      }
-    }, null, 2);
-    this.showCreateDrawer = true;
-  }
-  handleSearchChange(e3) {
-    storagePoolActions.setSearchQuery(e3.detail.value);
-  }
-  async handleCreateResource(event) {
-    this.isCreating = true;
-    try {
-      const poolData = JSON.parse(event.detail.value);
-      await storagePoolActions.create(poolData);
-      this.showNotification("Storage pool created successfully", "success");
-      this.showCreateDrawer = false;
-      this.createResourceValue = "";
-    } catch (error) {
-      console.error("Failed to create pool:", error);
-      this.showNotification(
-        `Failed to create storage pool: ${error instanceof Error ? error.message : "Unknown error"}`,
-        "error"
-      );
-    } finally {
-      this.isCreating = false;
-    }
-  }
-  showNotification(message, type = "info") {
-    this.dispatchEvent(new CustomEvent("show-notification", {
-      detail: { message, type },
+  handleClose() {
+    this.dispatchEvent(new CustomEvent("close", {
       bubbles: true,
       composed: true
     }));
   }
-  getUsageClass(usage) {
-    if (usage >= 90) return "usage-danger";
-    if (usage >= 75) return "usage-warning";
-    return "";
+  validateField(field) {
+    let error = "";
+    switch (field) {
+      case "name":
+        if (!this.formData.name) {
+          error = "Name is required";
+        } else if (!/^[a-zA-Z0-9_-]+$/.test(this.formData.name)) {
+          error = "Name must contain only alphanumeric characters, hyphens, and underscores";
+        }
+        break;
+      case "path":
+        if (this.formData.type === "dir" && !this.formData.path) {
+          error = "Path is required for directory pools";
+        } else if (this.formData.path && !this.formData.path.startsWith("/")) {
+          error = "Path must be an absolute path (start with /)";
+        }
+        break;
+      case "source":
+        if (this.formData.type === "netfs" && !this.formData.source) {
+          error = "Source is required for network file system pools";
+        }
+        break;
+      case "target":
+        if (this.formData.type === "netfs" && !this.formData.target) {
+          error = "Target is required for network file system pools";
+        }
+        break;
+    }
+    if (error) {
+      this.errors = { ...this.errors, [field]: error };
+      return false;
+    } else {
+      const { [field]: removed, ...rest } = this.errors;
+      this.errors = rest;
+      return true;
+    }
+  }
+  validateForm() {
+    const fields = ["name"];
+    if (this.formData.type === "dir") {
+      fields.push("path");
+    } else if (this.formData.type === "netfs") {
+      fields.push("source", "target");
+    }
+    let isValid2 = true;
+    fields.forEach((field) => {
+      if (!this.validateField(field)) {
+        isValid2 = false;
+      }
+    });
+    return isValid2;
+  }
+  handleInputChange(field, value) {
+    this.formData = { ...this.formData, [field]: value };
+    if (typeof value === "string" && field !== "type") {
+      this.validateField(field);
+    }
+    this.requestUpdate();
+  }
+  handleTypeChange(value) {
+    this.formData = { ...this.formData, type: value };
+    if (value !== "dir") {
+      const { path, ...rest } = this.errors;
+      this.errors = rest;
+    }
+    if (value !== "netfs") {
+      const { source, target, ...rest } = this.errors;
+      this.errors = rest;
+    }
+    this.requestUpdate();
+  }
+  handleSubmit(e3) {
+    e3.preventDefault();
+    if (this.loading || !this.validateForm()) {
+      return;
+    }
+    const sanitizedFormData = {
+      name: this.sanitizeName(this.formData.name),
+      type: this.formData.type,
+      path: this.formData.path ? this.sanitizePath(this.formData.path) : void 0,
+      source: this.formData.source ? this.sanitizeInput(this.formData.source) : void 0,
+      target: this.formData.target ? this.sanitizePath(this.formData.target) : void 0,
+      autostart: this.formData.autostart
+    };
+    this.dispatchEvent(new CustomEvent("save", {
+      detail: { formData: sanitizedFormData },
+      bubbles: true,
+      composed: true
+    }));
   }
   render() {
-    const state2 = this.storeController.value;
-    const filteredData = this.getFilteredData();
-    const activeTab = this.activeTabController.value;
-    const searchQuery = this.searchQueryController.value;
-    const selectedPool = this.selectedPoolController.value;
+    const isReadOnly = this.editMode;
     return x`
-      <div class="container">
-        <div class="header">
-          <h1>Storage Pools</h1>
+      <div class="drawer">
+        <div class="drawer-header">
+          <h2 class="header-title">${this.editMode ? "Edit Storage Pool" : "Create Storage Pool"}</h2>
+          <button class="close-button" @click=${this.handleClose} ?disabled=${this.loading}>×</button>
         </div>
 
-        <tab-group
-          .tabs=${this.tabs}
-          .activeTab=${activeTab}
-          @tab-change=${this.handleTabChange}
-        ></tab-group>
+        <form class="drawer-content" @submit=${this.handleSubmit}>
+          ${this.editMode ? x`
+            <div class="edit-note">
+              <strong>Note:</strong> Currently, only autostart settings can be modified. Pool type and path cannot be changed.
+            </div>
+          ` : ""}
 
-        <div class="controls">
-          <search-input
-            .placeholder=${"Search storage pools..."}
-            .value=${searchQuery}
-            @search-change=${this.handleSearchChange}
-          ></search-input>
-          <button class="btn-create" @click=${this.handleCreateNew}>
-            <span>+ New Pool</span>
+          <div class="form-field">
+            <label class="form-label" for="pool-name">Name *</label>
+            <input
+              id="pool-name"
+              type="text"
+              class="form-input ${this.errors.name ? "error" : ""}"
+              .value=${this.formData.name}
+              @input=${(e3) => this.handleInputChange("name", e3.target.value)}
+              ?disabled=${isReadOnly || this.loading}
+              placeholder="my-storage-pool"
+              aria-label="Storage pool name"
+              aria-required="true"
+              aria-invalid=${this.errors.name ? "true" : "false"}
+              aria-describedby=${this.errors.name ? "name-error" : void 0}
+            />
+            ${this.errors.name ? x`<span id="name-error" class="form-error" role="alert">${this.errors.name}</span>` : ""}
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="pool-type">Type *</label>
+            <select
+              id="pool-type"
+              class="form-select"
+              .value=${this.formData.type}
+              @change=${(e3) => this.handleTypeChange(e3.target.value)}
+              ?disabled=${isReadOnly || this.loading}
+              aria-label="Storage pool type"
+              aria-required="true"
+            >
+              <option value="dir">Directory</option>
+              <option value="netfs">Network File System (NFS)</option>
+              <option value="logical">Logical Volume (LVM)</option>
+            </select>
+          </div>
+
+          ${this.formData.type === "dir" ? x`
+            <div class="form-field">
+              <label class="form-label" for="pool-path">Storage Path *</label>
+              <input
+                id="pool-path"
+                type="text"
+                class="form-input ${this.errors.path ? "error" : ""}"
+                .value=${this.formData.path || ""}
+                @input=${(e3) => this.handleInputChange("path", e3.target.value)}
+                ?disabled=${isReadOnly || this.loading}
+                placeholder="/var/lib/libvirt/images/pool-name"
+                aria-label="Storage path"
+                aria-required="true"
+                aria-invalid=${this.errors.path ? "true" : "false"}
+                aria-describedby=${this.errors.path ? "path-error path-hint" : "path-hint"}
+              />
+              ${this.errors.path ? x`<span id="path-error" class="form-error" role="alert">${this.errors.path}</span>` : ""}
+              <span id="path-hint" class="form-hint">Must be an absolute path (e.g., /path/to/storage)</span>
+            </div>
+          ` : ""}
+
+          ${this.formData.type === "netfs" ? x`
+            <div class="form-field">
+              <label class="form-label" for="pool-source">NFS Server *</label>
+              <input
+                id="pool-source"
+                type="text"
+                class="form-input ${this.errors.source ? "error" : ""}"
+                .value=${this.formData.source || ""}
+                @input=${(e3) => this.handleInputChange("source", e3.target.value)}
+                ?disabled=${isReadOnly || this.loading}
+                placeholder="nfs.example.com:/export/path"
+                aria-label="NFS server source"
+                aria-required="true"
+                aria-invalid=${this.errors.source ? "true" : "false"}
+                aria-describedby=${this.errors.source ? "source-error" : void 0}
+              />
+              ${this.errors.source ? x`<span id="source-error" class="form-error" role="alert">${this.errors.source}</span>` : ""}
+            </div>
+
+            <div class="form-field">
+              <label class="form-label" for="pool-target">Mount Point *</label>
+              <input
+                id="pool-target"
+                type="text"
+                class="form-input ${this.errors.target ? "error" : ""}"
+                .value=${this.formData.target || ""}
+                @input=${(e3) => this.handleInputChange("target", e3.target.value)}
+                ?disabled=${isReadOnly || this.loading}
+                placeholder="/mnt/nfs-storage"
+                aria-label="NFS mount point"
+                aria-required="true"
+                aria-invalid=${this.errors.target ? "true" : "false"}
+                aria-describedby=${this.errors.target ? "target-error" : void 0}
+              />
+              ${this.errors.target ? x`<span id="target-error" class="form-error" role="alert">${this.errors.target}</span>` : ""}
+            </div>
+          ` : ""}
+
+          <div class="form-field">
+            <div class="form-checkbox-wrapper">
+              <input
+                type="checkbox"
+                class="form-checkbox"
+                .checked=${this.formData.autostart}
+                @change=${(e3) => this.handleInputChange("autostart", e3.target.checked)}
+                ?disabled=${this.loading}
+                id="autostart-checkbox"
+              />
+              <label class="form-label" for="autostart-checkbox" style="margin: 0;">
+                Start pool automatically on boot
+              </label>
+            </div>
+          </div>
+        </form>
+
+        <div class="drawer-footer">
+          <button
+            type="button"
+            class="btn btn-cancel"
+            @click=${this.handleClose}
+            ?disabled=${this.loading}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="btn btn-primary"
+            @click=${this.handleSubmit}
+            ?disabled=${this.loading}
+          >
+            ${this.loading ? this.editMode ? "Updating..." : "Creating..." : this.editMode ? "Update" : "Create"}
           </button>
         </div>
-
-        <div class="content">
-          ${state2.loading ? x`
-            <loading-state message="Loading storage pools..."></loading-state>
-          ` : state2.error ? x`
-            <empty-state
-              icon="❌"
-              title="Error loading storage pools"
-              description=${state2.error.message}
-            ></empty-state>
-          ` : filteredData.length === 0 ? x`
-            <empty-state
-              icon="🗄️"
-              title="No storage pools found"
-              description=${searchQuery ? "No pools match your search criteria" : "Create your first storage pool to get started"}
-            ></empty-state>
-          ` : x`
-            <resource-table
-              .columns=${this.getColumns()}
-              .data=${filteredData.map((pool) => ({
-      ...pool,
-      autostart: pool.autostart ? "Yes" : "No",
-      usage: x`
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <span>${pool.usage}%</span>
-                    <div class="usage-bar" style="width: 60px;">
-                      <div class="usage-fill ${this.getUsageClass(pool.usage)}" 
-                           style="width: ${pool.usage}%"></div>
-                    </div>
-                  </div>
-                `
-    }))}
-              .actions=${(item) => this.getActions(item)}
-              @cell-click=${this.handleCellClick}
-              @action=${this.handleAction}
-            ></resource-table>
-          `}
-        </div>
-
-        ${this.showDetails && selectedPool ? x`
-          <detail-drawer
-            .title=${selectedPool.name || "Pool Details"}
-            .open=${this.showDetails}
-            @close=${() => {
-      this.showDetails = false;
-      storagePoolActions.selectPool(null);
-    }}
-          >
-            <div style="padding: 20px;">
-              <h3>Storage Pool Information</h3>
-              <div style="display: grid; grid-template-columns: 150px 1fr; gap: 12px; margin-bottom: 20px;">
-                <strong>Name:</strong> <span>${selectedPool.name}</span>
-                <strong>Type:</strong> <span>${selectedPool.type}</span>
-                <strong>State:</strong> <span>${selectedPool.state}</span>
-                <strong>Path:</strong> <span>${selectedPool.path}</span>
-                <strong>Capacity:</strong> <span>${this.formatBytes(selectedPool.capacity)}</span>
-                <strong>Allocated:</strong> <span>${this.formatBytes(selectedPool.allocation)}</span>
-                <strong>Available:</strong> <span>${this.formatBytes(selectedPool.available)}</span>
-                <strong>Usage:</strong> <span>${this.calculateUsagePercentage(selectedPool.allocation, selectedPool.capacity)}%</span>
-                <strong>Autostart:</strong> <span>${selectedPool.autostart ? "Yes" : "No"}</span>
-              </div>
-              ${selectedPool.volumes && selectedPool.volumes.length > 0 ? x`
-                <h4>Volumes (${selectedPool.volumes.length})</h4>
-                <div style="max-height: 300px; overflow-y: auto;">
-                  <table style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                      <tr style="border-bottom: 1px solid var(--vscode-widget-border);">
-                        <th style="text-align: left; padding: 8px;">Name</th>
-                        <th style="text-align: left; padding: 8px;">Type</th>
-                        <th style="text-align: left; padding: 8px;">Format</th>
-                        <th style="text-align: right; padding: 8px;">Size</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      ${selectedPool.volumes.map((vol) => x`
-                        <tr style="border-bottom: 1px solid var(--vscode-widget-border);">
-                          <td style="padding: 8px;">${vol.name}</td>
-                          <td style="padding: 8px;">${vol.type}</td>
-                          <td style="padding: 8px;">${vol.format}</td>
-                          <td style="text-align: right; padding: 8px;">${this.formatBytes(vol.capacity)}</td>
-                        </tr>
-                      `)}
-                    </tbody>
-                  </table>
-                </div>
-              ` : ""}
-            </div>
-          </detail-drawer>
-        ` : ""}
-
-        ${this.showDeleteModal ? x`
-          <delete-modal
-            .open=${this.showDeleteModal}
-            .item=${this.itemToDelete}
-            .loading=${this.isDeleting}
-            @delete=${this.handleDelete}
-            @close=${() => {
-      this.showDeleteModal = false;
-      this.itemToDelete = null;
-    }}
-          ></delete-modal>
-        ` : ""}
-
-        ${this.showCreateDrawer ? x`
-          <create-resource-drawer
-            .open=${this.showCreateDrawer}
-            .title=${"Create Storage Pool"}
-            .value=${this.createResourceValue}
-            .loading=${this.isCreating}
-            @save=${this.handleCreateResource}
-            @close=${() => {
-      this.showCreateDrawer = false;
-      this.createResourceValue = "";
-    }}
-          ></create-resource-drawer>
-        ` : ""}
       </div>
     `;
   }
 };
-VirtualizationStoragePools.styles = i$5`
+StoragePoolFormDrawer.styles = i$5`
     :host {
       display: block;
-      height: 100%;
-      padding: 24px;
-      box-sizing: border-box;
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 700px;
+      height: 100vh;
+      z-index: 1000;
+      pointer-events: none;
     }
 
-    .container {
+    :host([show]) {
+      pointer-events: auto;
+    }
+
+    .drawer {
+      width: 100%;
+      height: 100%;
+      background: var(--vscode-editor-background, var(--vscode-bg-light));
+      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
       display: flex;
       flex-direction: column;
-      height: 100%;
-      gap: 1rem;
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+      border-left: 1px solid var(--vscode-widget-border, #454545);
     }
 
-    .header {
-      margin-bottom: 1.5rem;
+    :host([show]) .drawer {
+      transform: translateX(0);
     }
 
-    .header h1 {
-      margin: 0 0 24px 0;
-      font-size: 24px;
-      font-weight: 300;
+    .drawer-header {
+      padding: 20px;
+      background: var(--vscode-sideBar-background, #252526);
+      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       flex-shrink: 0;
     }
 
-    .controls {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-      gap: 1rem;
+    .header-title {
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--vscode-foreground, #cccccc);
     }
 
-    search-input {
-      flex: 1;
-      max-width: 400px;
+    .close-button {
+      background: none;
+      border: none;
+      color: var(--vscode-foreground, #cccccc);
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 20px;
+      transition: background 0.2s;
     }
 
-    .content {
+    .close-button:hover {
+      background: var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.1));
+    }
+
+    .drawer-content {
       flex: 1;
+      padding: 20px;
       overflow-y: auto;
     }
 
-    .btn-create {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 16px;
-      background: var(--vscode-button-background, #007acc);
-      color: var(--vscode-button-foreground, white);
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
+    .form-field {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: 6px;
       font-size: 13px;
       font-weight: 500;
+      color: var(--vscode-foreground, #cccccc);
+    }
+
+    .form-input,
+    .form-select {
+      width: 100%;
+      padding: 8px 12px;
+      background: var(--vscode-input-background, #3c3c3c);
+      border: 1px solid var(--vscode-input-border, #3c3c3c);
+      border-radius: 4px;
+      color: var(--vscode-input-foreground, #cccccc);
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      box-sizing: border-box;
+    }
+
+    .form-input:focus,
+    .form-select:focus {
+      border-color: var(--vscode-focusBorder, #007acc);
+    }
+
+    .form-input:disabled,
+    .form-select:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .form-input.error {
+      border-color: var(--vscode-inputValidation-errorBorder, #f48771);
+    }
+
+    .form-hint {
+      display: block;
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground, #999999);
+    }
+
+    .form-error {
+      display: block;
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--vscode-inputValidation-errorForeground, #f48771);
+    }
+
+    .form-checkbox-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .form-checkbox {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
+    .edit-note {
+      padding: 12px;
+      margin-bottom: 16px;
+      background: var(--vscode-inputValidation-infoBorder, rgba(0, 122, 204, 0.1));
+      border: 1px solid var(--vscode-inputValidation-infoBorder, #007acc);
+      border-radius: 4px;
+      color: var(--vscode-foreground, #cccccc);
+      font-size: 13px;
+    }
+
+    .drawer-footer {
+      padding: 16px 20px;
+      background: var(--vscode-sideBar-background, #252526);
+      border-top: 1px solid var(--vscode-widget-border, #454545);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid transparent;
       transition: all 0.2s;
     }
 
-    .btn-create:hover {
-      background: var(--vscode-button-hoverBackground, #005a9e);
+    .btn-cancel {
+      background: var(--vscode-button-secondaryBackground, #3a3d41);
+      color: var(--vscode-button-secondaryForeground, #cccccc);
     }
 
-
-    .usage-bar {
-      width: 100%;
-      height: 6px;
-      background: var(--vscode-progressBar-background);
-      border-radius: 3px;
-      overflow: hidden;
-      margin-top: 4px;
+    .btn-cancel:hover {
+      background: var(--vscode-button-secondaryHoverBackground, #45494e);
     }
 
-    .usage-fill {
-      height: 100%;
-      background: var(--vscode-progressBar-foreground);
-      transition: width 0.3s ease;
+    .btn-primary {
+      background: var(--vscode-button-background, #0e639c);
+      color: var(--vscode-button-foreground, white);
     }
 
-    .usage-warning {
-      background: var(--vscode-testing-iconQueued);
+    .btn-primary:hover {
+      background: var(--vscode-button-hoverBackground, #1177bb);
     }
 
-    .usage-danger {
-      background: var(--vscode-testing-iconFailed);
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
   `;
-__decorateClass$e([
+__decorateClass$f([
+  n2({ type: Boolean, reflect: true })
+], StoragePoolFormDrawer.prototype, "show", 2);
+__decorateClass$f([
+  n2({ type: Boolean })
+], StoragePoolFormDrawer.prototype, "loading", 2);
+__decorateClass$f([
+  n2({ type: Boolean })
+], StoragePoolFormDrawer.prototype, "editMode", 2);
+__decorateClass$f([
+  n2({ type: Object })
+], StoragePoolFormDrawer.prototype, "poolData", 2);
+__decorateClass$f([
   r$1()
-], VirtualizationStoragePools.prototype, "showDetails", 2);
-__decorateClass$e([
+], StoragePoolFormDrawer.prototype, "formData", 2);
+__decorateClass$f([
   r$1()
-], VirtualizationStoragePools.prototype, "showDeleteModal", 2);
-__decorateClass$e([
-  r$1()
-], VirtualizationStoragePools.prototype, "itemToDelete", 2);
-__decorateClass$e([
-  r$1()
-], VirtualizationStoragePools.prototype, "isDeleting", 2);
-__decorateClass$e([
-  r$1()
-], VirtualizationStoragePools.prototype, "showCreateDrawer", 2);
-__decorateClass$e([
-  r$1()
-], VirtualizationStoragePools.prototype, "createResourceValue", 2);
-__decorateClass$e([
-  r$1()
-], VirtualizationStoragePools.prototype, "isCreating", 2);
-VirtualizationStoragePools = __decorateClass$e([
-  t$2("virtualization-storage-pools")
-], VirtualizationStoragePools);
+], StoragePoolFormDrawer.prototype, "errors", 2);
+StoragePoolFormDrawer = __decorateClass$f([
+  t$2("storage-pool-form-drawer")
+], StoragePoolFormDrawer);
 const API_BASE = "/virtualization";
 class VirtualizationAPIError extends Error {
   constructor(code, message, details) {
@@ -61976,23 +62128,51 @@ async function apiRequest(endpoint, options = {}) {
   try {
     const url = getApiUrl(`${API_BASE}${endpoint}`);
     const response = await fetch(url, config);
+    const status = response.status;
     if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        code: "API_ERROR",
-        message: response.statusText
+      const errorBody = await response.json().catch(() => ({
+        status: "error",
+        error: { code: "API_ERROR", message: response.statusText }
       }));
+      if (isVirtualizationDisabled(status, errorBody)) {
+        $virtualizationEnabled.set(false);
+        $virtualizationDisabledMessage.set(
+          errorBody.error?.details || errorBody.error?.message || "Virtualization is disabled on this host."
+        );
+        throw new VirtualizationDisabledError(
+          errorBody.error?.message || "Virtualization is disabled on this host.",
+          errorBody.error?.details,
+          status
+        );
+      }
+      const apiBody = errorBody;
+      if (apiBody.status === "error" && apiBody.error) {
+        throw new VirtualizationAPIError(
+          apiBody.error.code || "API_ERROR",
+          apiBody.error.message || `Request failed: ${status}`,
+          apiBody.error.details
+        );
+      }
       throw new VirtualizationAPIError(
-        error.code || "API_ERROR",
-        error.message || `Request failed: ${response.status}`,
-        error.details
+        apiBody.code || "API_ERROR",
+        apiBody.message || `Request failed: ${status}`,
+        apiBody.details
       );
     }
     if (response.status === 204) {
+      if ($virtualizationEnabled.get() !== true) {
+        $virtualizationEnabled.set(true);
+        $virtualizationDisabledMessage.set(null);
+      }
       return {};
+    }
+    if ($virtualizationEnabled.get() !== true) {
+      $virtualizationEnabled.set(true);
+      $virtualizationDisabledMessage.set(null);
     }
     return await response.json();
   } catch (error) {
-    if (error instanceof VirtualizationAPIError) {
+    if (error instanceof VirtualizationAPIError || error instanceof VirtualizationDisabledError) {
       throw error;
     }
     throw new VirtualizationAPIError(
@@ -62258,9 +62438,19 @@ class VirtualizationAPI {
   /**
    * Delete a storage pool
    */
-  async deleteStoragePool(name) {
-    return apiRequest(`/storages/pools/${name}`, {
+  async deleteStoragePool(name, deleteVolumes = false) {
+    const params = deleteVolumes ? "?delete_volumes=true" : "";
+    return apiRequest(`/storages/pools/${name}${params}`, {
       method: "DELETE"
+    });
+  }
+  /**
+   * Update a storage pool (currently supports autostart only)
+   */
+  async updateStoragePool(name, config) {
+    return apiRequest(`/storages/pools/${name}`, {
+      method: "PUT",
+      body: JSON.stringify(config)
     });
   }
   /**
@@ -62537,6 +62727,627 @@ class VirtualizationAPI {
   }
 }
 const virtualizationAPI = new VirtualizationAPI();
+var __defProp$e = Object.defineProperty;
+var __getOwnPropDesc$c = Object.getOwnPropertyDescriptor;
+var __decorateClass$e = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$c(target, key) : target;
+  for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
+    if (decorator = decorators[i4])
+      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
+  if (kind && result) __defProp$e(target, key, result);
+  return result;
+};
+let VirtualizationStoragePools = class extends i$2 {
+  constructor() {
+    super(...arguments);
+    this.storeController = new lib.StoreController(this, storagePoolStore.$state);
+    this.filteredPoolsController = new lib.StoreController(this, $filteredStoragePools);
+    this.virtualizationEnabledController = new lib.StoreController(this, $virtualizationEnabled);
+    this.virtualizationDisabledMessageController = new lib.StoreController(this, $virtualizationDisabledMessage);
+    this.selectedPoolController = new lib.StoreController(this, $selectedStoragePool);
+    this.activeTabController = new lib.StoreController(this, $activeStoragePoolTab);
+    this.searchQueryController = new lib.StoreController(this, $storagePoolSearchQuery);
+    this.showDetails = false;
+    this.showDeleteModal = false;
+    this.itemToDelete = null;
+    this.isDeleting = false;
+    this.showFormDrawer = false;
+    this.showEditDrawer = false;
+    this.editingPool = null;
+    this.isCreating = false;
+    this.isUpdating = false;
+    this.hasVolumes = false;
+    this.volumeCount = 0;
+    this.tabs = [
+      { id: "all", label: "All Pools" },
+      { id: "active", label: "Active" },
+      { id: "inactive", label: "Inactive" },
+      { id: "local", label: "Local Storage" },
+      { id: "network", label: "Network Storage" }
+    ];
+  }
+  async connectedCallback() {
+    super.connectedCallback();
+    await this.loadData();
+  }
+  formatBytes(bytes) {
+    if (bytes === 0) return "0 B";
+    const k2 = 1024;
+    const sizes = ["B", "KB", "MB", "GB", "TB", "PB"];
+    const i4 = Math.floor(Math.log(bytes) / Math.log(k2));
+    return parseFloat((bytes / Math.pow(k2, i4)).toFixed(2)) + " " + sizes[i4];
+  }
+  calculateUsagePercentage(allocated, capacity) {
+    if (capacity === 0) return 0;
+    return Math.round(allocated / capacity * 100);
+  }
+  transformStoragePool(pool) {
+    return {
+      ...pool,
+      id: pool.name,
+      // Use name as ID
+      capacityFormatted: this.formatBytes(pool.capacity),
+      allocatedFormatted: this.formatBytes(pool.allocation),
+      availableFormatted: this.formatBytes(pool.available),
+      usage: this.calculateUsagePercentage(pool.allocation, pool.capacity)
+    };
+  }
+  async loadData() {
+    try {
+      await storagePoolActions.fetchAll();
+    } catch (error) {
+      console.error("Error loading storage pools:", error);
+      this.showNotification(
+        `Failed to load storage pools: ${error instanceof Error ? error.message : "Unknown error"}`,
+        "error"
+      );
+    }
+  }
+  getColumns() {
+    return [
+      { key: "name", label: "Name", type: "link" },
+      { key: "type", label: "Type" },
+      { key: "state", label: "State", type: "status" },
+      { key: "capacityFormatted", label: "Capacity" },
+      { key: "allocatedFormatted", label: "Allocated" },
+      { key: "availableFormatted", label: "Available" },
+      { key: "usage", label: "Usage %" },
+      { key: "path", label: "Path/Target" },
+      { key: "autostart", label: "Autostart" }
+    ];
+  }
+  getActions(pool) {
+    const actions = [
+      { label: "View Details", action: "view" },
+      { label: "Browse", action: "browse" }
+    ];
+    if (pool.state === "active") {
+      actions.push(
+        { label: "Refresh", action: "refresh" },
+        { label: "Stop", action: "stop" }
+      );
+    } else {
+      actions.push(
+        { label: "Start", action: "start" }
+      );
+    }
+    actions.push(
+      { label: "Edit", action: "edit" },
+      { label: "Delete", action: "delete", danger: true }
+    );
+    return actions;
+  }
+  getFilteredData() {
+    const filteredPools = this.filteredPoolsController.value || [];
+    return filteredPools.map((pool) => this.transformStoragePool(pool));
+  }
+  async handleTabChange(event) {
+    storagePoolActions.setActiveTab(event.detail.tabId);
+  }
+  handleCellClick(event) {
+    const pool = event.detail.item;
+    this.viewDetails(pool);
+  }
+  handleAction(event) {
+    const { action, item } = event.detail;
+    const pool = item;
+    switch (action) {
+      case "view":
+        this.viewDetails(pool);
+        break;
+      case "browse":
+        this.browsePool(pool);
+        break;
+      case "refresh":
+        this.refreshPool(pool);
+        break;
+      case "start":
+      case "stop":
+        this.changePoolState(pool, action);
+        break;
+      case "edit":
+        this.editPool(pool);
+        break;
+      case "delete":
+        this.deletePool(pool);
+        break;
+    }
+  }
+  viewDetails(pool) {
+    storagePoolActions.selectPool(pool.name);
+    this.showDetails = true;
+  }
+  browsePool(pool) {
+    console.log("Browsing pool:", pool.name);
+  }
+  async refreshPool(pool) {
+    try {
+      await storagePoolActions.refresh(pool.name);
+      this.showNotification(`Refreshed pool: ${pool.name}`, "success");
+    } catch (error) {
+      this.showNotification(`Failed to refresh pool: ${pool.name}`, "error");
+    }
+  }
+  async changePoolState(pool, action) {
+    try {
+      if (action === "start") {
+        await storagePoolActions.start(pool.name);
+        this.showNotification(`Starting pool: ${pool.name}`, "success");
+      } else if (action === "stop") {
+        await storagePoolActions.stop(pool.name);
+        this.showNotification(`Stopping pool: ${pool.name}`, "success");
+      }
+    } catch (error) {
+      this.showNotification(
+        `Failed to ${action} pool: ${error instanceof Error ? error.message : "Unknown error"}`,
+        "error"
+      );
+    }
+  }
+  editPool(pool) {
+    this.editingPool = pool;
+    this.showEditDrawer = true;
+  }
+  deletePool(pool) {
+    this.itemToDelete = {
+      name: pool.name,
+      type: "Storage Pool"
+    };
+    this.hasVolumes = pool.volumes && pool.volumes.length > 0 || false;
+    this.volumeCount = pool.volumes?.length || 0;
+    this.showDeleteModal = true;
+  }
+  async handleDelete(event) {
+    if (!this.itemToDelete) return;
+    const deleteVolumes = event.detail?.deleteVolumes || false;
+    this.isDeleting = true;
+    try {
+      const poolToDelete = this.getFilteredData().find((pool) => pool.name === this.itemToDelete?.name);
+      if (poolToDelete) {
+        await virtualizationAPI.deleteStoragePool(poolToDelete.name, deleteVolumes);
+        this.showNotification(`Storage pool "${poolToDelete.name}" deleted successfully`, "success");
+        try {
+          await storagePoolActions.fetchAll();
+        } catch (fetchError) {
+          console.warn("Failed to refresh pool list after delete:", fetchError);
+        }
+      }
+      this.showDeleteModal = false;
+      this.itemToDelete = null;
+      this.hasVolumes = false;
+      this.volumeCount = 0;
+    } catch (error) {
+      console.error("Failed to delete storage pool:", error);
+      let errorMessage = "Unknown error";
+      if (error.message) {
+        errorMessage = error.message;
+        if (error.message.includes("volume") || error.code === "POOL_NOT_EMPTY") {
+          const match = error.message.match(/contains (\d+) volume/);
+          const actualCount = match ? parseInt(match[1]) : this.volumeCount;
+          errorMessage = `Cannot delete pool: contains ${actualCount} volume(s). Delete volumes first or check 'Delete all volumes' option.`;
+        } else if (error.code === "NOT_FOUND" || error.message.includes("not found")) {
+          errorMessage = "Storage pool not found. It may have already been deleted.";
+          this.showDeleteModal = false;
+          this.itemToDelete = null;
+          this.hasVolumes = false;
+          this.volumeCount = 0;
+          try {
+            await storagePoolActions.fetchAll();
+          } catch (fetchError) {
+            console.warn("Failed to refresh pool list:", fetchError);
+          }
+        }
+      }
+      this.showNotification(`Failed to delete storage pool: ${errorMessage}`, "error");
+    } finally {
+      this.isDeleting = false;
+    }
+  }
+  handleCreateNew() {
+    this.editingPool = null;
+    this.showFormDrawer = true;
+  }
+  handleSearchChange(e3) {
+    storagePoolActions.setSearchQuery(e3.detail.value);
+  }
+  async handleFormSave(event) {
+    const { formData } = event.detail;
+    this.isCreating = true;
+    try {
+      const payload = {
+        name: formData.name,
+        type: formData.type,
+        autostart: formData.autostart
+      };
+      if (formData.type === "dir" && formData.path) {
+        payload.path = formData.path;
+      } else if (formData.type === "netfs") {
+        payload.source = formData.source;
+        payload.target = formData.target;
+      }
+      await storagePoolActions.create(payload);
+      this.showNotification(`Storage pool "${formData.name}" created successfully`, "success");
+      this.showFormDrawer = false;
+    } catch (error) {
+      console.error("Failed to create pool:", error);
+      let errorMessage = "Unknown error";
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (error.details) {
+        errorMessage = error.details;
+      }
+      this.showNotification(`Failed to create storage pool: ${errorMessage}`, "error");
+    } finally {
+      this.isCreating = false;
+    }
+  }
+  async handleEditSave(event) {
+    if (!this.editingPool) return;
+    const { formData } = event.detail;
+    this.isUpdating = true;
+    try {
+      await storagePoolActions.update(this.editingPool.name, {
+        autostart: formData.autostart
+      });
+      this.showNotification(`Storage pool "${this.editingPool.name}" updated successfully`, "success");
+      this.showEditDrawer = false;
+      this.editingPool = null;
+    } catch (error) {
+      console.error("Failed to update pool:", error);
+      let errorMessage = "Unknown error";
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      this.showNotification(`Failed to update storage pool: ${errorMessage}`, "error");
+    } finally {
+      this.isUpdating = false;
+    }
+  }
+  showNotification(message, type = "info") {
+    this.dispatchEvent(new CustomEvent("show-notification", {
+      detail: { message, type },
+      bubbles: true,
+      composed: true
+    }));
+  }
+  getUsageClass(usage) {
+    if (usage >= 90) return "usage-danger";
+    if (usage >= 75) return "usage-warning";
+    return "";
+  }
+  renderVirtualizationDisabledBanner(details) {
+    return x`
+      <div class="virtualization-disabled-banner">
+        <h2>Virtualization is disabled on this host</h2>
+        <p>Virtualization features are currently unavailable because libvirt is not installed or not running.\
+ To manage storage pools, install and start libvirt on this machine, then reload this page.</p>
+        ${details ? x`<p>${details}</p>` : ""}
+      </div>
+    `;
+  }
+  render() {
+    const virtualizationEnabled = this.virtualizationEnabledController.value;
+    if (virtualizationEnabled === false) {
+      const details = this.virtualizationDisabledMessageController.value;
+      return x`
+        <div class="container">
+          ${this.renderVirtualizationDisabledBanner(details)}
+        </div>
+      `;
+    }
+    const state2 = this.storeController.value;
+    const filteredData = this.getFilteredData();
+    const activeTab = this.activeTabController.value;
+    const searchQuery = this.searchQueryController.value;
+    const selectedPool = this.selectedPoolController.value;
+    return x`
+      <div class="container">
+
+        <tab-group
+          .tabs=${this.tabs}
+          .activeTab=${activeTab}
+          @tab-change=${this.handleTabChange}
+        ></tab-group>
+
+        <div class="controls">
+          <search-input
+            .placeholder=${"Search storage pools..."}
+            .value=${searchQuery}
+            @search-change=${this.handleSearchChange}
+          ></search-input>
+          <button class="btn-create" @click=${this.handleCreateNew}>
+            <span>+ New Pool</span>
+          </button>
+        </div>
+
+        <div class="content">
+          ${state2.loading ? x`
+            <loading-state message="Loading storage pools..."></loading-state>
+          ` : state2.error ? x`
+            <empty-state
+              icon="❌"
+              title="Error loading storage pools"
+              description=${state2.error.message}
+            ></empty-state>
+          ` : filteredData.length === 0 ? x`
+            <empty-state
+              icon="🗄️"
+              title="No storage pools found"
+              description=${searchQuery ? "No pools match your search criteria" : "Create your first storage pool to get started"}
+            ></empty-state>
+          ` : x`
+            <resource-table
+              .columns=${this.getColumns()}
+              .data=${filteredData.map((pool) => ({
+      ...pool,
+      autostart: pool.autostart ? "Yes" : "No",
+      usage: x`
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span>${pool.usage}%</span>
+                    <div class="usage-bar" style="width: 60px;">
+                      <div class="usage-fill ${this.getUsageClass(pool.usage)}" 
+                           style="width: ${pool.usage}%"></div>
+                    </div>
+                  </div>
+                `
+    }))}
+              .actions=${(item) => this.getActions(item)}
+              @cell-click=${this.handleCellClick}
+              @action=${this.handleAction}
+            ></resource-table>
+          `}
+        </div>
+
+        ${this.showDetails && selectedPool ? x`
+          <detail-drawer
+            .title=${selectedPool.name || "Pool Details"}
+            .show=${this.showDetails}
+            @close=${() => {
+      this.showDetails = false;
+      storagePoolActions.selectPool(null);
+    }}
+          >
+            <div style="padding: 20px;">
+              <h3>Storage Pool Information</h3>
+              <div style="display: grid; grid-template-columns: 150px 1fr; gap: 12px; margin-bottom: 20px;">
+                <strong>Name:</strong> <span>${selectedPool.name}</span>
+                <strong>Type:</strong> <span>${selectedPool.type}</span>
+                <strong>State:</strong> <span>${selectedPool.state}</span>
+                <strong>Path:</strong> <span>${selectedPool.path}</span>
+                <strong>Capacity:</strong> <span>${this.formatBytes(selectedPool.capacity)}</span>
+                <strong>Allocated:</strong> <span>${this.formatBytes(selectedPool.allocation)}</span>
+                <strong>Available:</strong> <span>${this.formatBytes(selectedPool.available)}</span>
+                <strong>Usage:</strong> <span>${this.calculateUsagePercentage(selectedPool.allocation, selectedPool.capacity)}%</span>
+                <strong>Autostart:</strong> <span>${selectedPool.autostart ? "Yes" : "No"}</span>
+              </div>
+              ${selectedPool.volumes && selectedPool.volumes.length > 0 ? x`
+                <h4>Volumes (${selectedPool.volumes.length})</h4>
+                <div style="max-height: 300px; overflow-y: auto;">
+                  <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                      <tr style="border-bottom: 1px solid var(--vscode-widget-border);">
+                        <th style="text-align: left; padding: 8px;">Name</th>
+                        <th style="text-align: left; padding: 8px;">Type</th>
+                        <th style="text-align: left; padding: 8px;">Format</th>
+                        <th style="text-align: right; padding: 8px;">Size</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${selectedPool.volumes.map((vol) => x`
+                        <tr style="border-bottom: 1px solid var(--vscode-widget-border);">
+                          <td style="padding: 8px;">${vol.name}</td>
+                          <td style="padding: 8px;">${vol.type}</td>
+                          <td style="padding: 8px;">${vol.format}</td>
+                          <td style="text-align: right; padding: 8px;">${this.formatBytes(vol.capacity)}</td>
+                        </tr>
+                      `)}
+                    </tbody>
+                  </table>
+                </div>
+              ` : ""}
+            </div>
+          </detail-drawer>
+        ` : ""}
+
+        
+        
+        
+        ${this.showDeleteModal ? x`
+          <delete-modal
+            .show=${this.showDeleteModal}
+            .item=${this.itemToDelete}
+            .loading=${this.isDeleting}
+            .hasVolumes=${this.hasVolumes}
+            .volumeCount=${this.volumeCount}
+            @confirm-delete=${this.handleDelete}
+            @cancel-delete=${() => {
+      this.showDeleteModal = false;
+      this.itemToDelete = null;
+      this.hasVolumes = false;
+      this.volumeCount = 0;
+    }}
+          ></delete-modal>
+        ` : ""}
+
+        <storage-pool-form-drawer
+          .show=${this.showFormDrawer}
+          .loading=${this.isCreating}
+          .editMode=${false}
+          .poolData=${null}
+          @save=${this.handleFormSave}
+          @close=${() => {
+      this.showFormDrawer = false;
+    }}
+        ></storage-pool-form-drawer>
+
+        <storage-pool-form-drawer
+          .show=${this.showEditDrawer}
+          .loading=${this.isUpdating}
+          .editMode=${true}
+          .poolData=${this.editingPool}
+          @save=${this.handleEditSave}
+          @close=${() => {
+      this.showEditDrawer = false;
+      this.editingPool = null;
+    }}
+        ></storage-pool-form-drawer>
+      </div>
+    `;
+  }
+};
+VirtualizationStoragePools.styles = i$5`
+    :host {
+      display: block;
+      height: 100%;
+      box-sizing: border-box;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      gap: 1rem;
+    }
+
+
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      gap: 1rem;
+    }
+
+    search-input {
+      flex: 1;
+      max-width: 400px;
+    }
+
+    .content {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .btn-create {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: var(--vscode-button-background, #007acc);
+      color: var(--vscode-button-foreground, white);
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .btn-create:hover {
+      background: var(--vscode-button-hoverBackground, #005a9e);
+    }
+
+
+    .usage-bar {
+      width: 100%;
+      height: 6px;
+      background: var(--vscode-progressBar-background);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+
+    .usage-fill {
+      height: 100%;
+      background: var(--vscode-progressBar-foreground);
+      transition: width 0.3s ease;
+    }
+
+    .usage-warning {
+      background: var(--vscode-testing-iconQueued);
+    }
+
+    .usage-danger {
+      background: var(--vscode-testing-iconFailed);
+    }
+
+    .virtualization-disabled-banner {
+      margin-top: 16px;
+      padding: 16px 20px;
+      border-radius: 8px;
+      border: 1px solid var(--vscode-inputValidation-warningBorder, #e2c08d);
+      background: var(--vscode-inputValidation-warningBackground, rgba(229, 200, 144, 0.15));
+      color: var(--vscode-inputValidation-warningForeground, #e2c08d);
+    }
+
+    .virtualization-disabled-banner h2 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .virtualization-disabled-banner p {
+      margin: 0 0 4px 0;
+      font-size: 13px;
+      color: var(--vscode-descriptionForeground);
+    }
+  `;
+__decorateClass$e([
+  r$1()
+], VirtualizationStoragePools.prototype, "showDetails", 2);
+__decorateClass$e([
+  r$1()
+], VirtualizationStoragePools.prototype, "showDeleteModal", 2);
+__decorateClass$e([
+  r$1()
+], VirtualizationStoragePools.prototype, "itemToDelete", 2);
+__decorateClass$e([
+  r$1()
+], VirtualizationStoragePools.prototype, "isDeleting", 2);
+__decorateClass$e([
+  r$1()
+], VirtualizationStoragePools.prototype, "showFormDrawer", 2);
+__decorateClass$e([
+  r$1()
+], VirtualizationStoragePools.prototype, "showEditDrawer", 2);
+__decorateClass$e([
+  r$1()
+], VirtualizationStoragePools.prototype, "editingPool", 2);
+__decorateClass$e([
+  r$1()
+], VirtualizationStoragePools.prototype, "isCreating", 2);
+__decorateClass$e([
+  r$1()
+], VirtualizationStoragePools.prototype, "isUpdating", 2);
+__decorateClass$e([
+  r$1()
+], VirtualizationStoragePools.prototype, "hasVolumes", 2);
+__decorateClass$e([
+  r$1()
+], VirtualizationStoragePools.prototype, "volumeCount", 2);
+VirtualizationStoragePools = __decorateClass$e([
+  t$2("virtualization-storage-pools")
+], VirtualizationStoragePools);
 var __defProp$d = Object.defineProperty;
 var __getOwnPropDesc$b = Object.getOwnPropertyDescriptor;
 var __decorateClass$d = (decorators, target, key, kind) => {
@@ -62550,6 +63361,8 @@ var __decorateClass$d = (decorators, target, key, kind) => {
 let VirtualizationNetworks = class extends i$2 {
   constructor() {
     super(...arguments);
+    this.virtualizationEnabledController = new lib.StoreController(this, $virtualizationEnabled);
+    this.virtualizationDisabledMessageController = new lib.StoreController(this, $virtualizationDisabledMessage);
     this.networks = [];
     this.searchQuery = "";
     this.loading = false;
@@ -62597,7 +63410,9 @@ let VirtualizationNetworks = class extends i$2 {
       }));
     } catch (error) {
       console.error("Failed to load networks:", error);
-      this.error = error instanceof Error ? error.message : "Failed to load networks";
+      if (!(error instanceof VirtualizationDisabledError)) {
+        this.error = error instanceof Error ? error.message : "Failed to load networks";
+      }
       this.networks = [];
     } finally {
       this.loading = false;
@@ -62723,7 +63538,9 @@ let VirtualizationNetworks = class extends i$2 {
       };
     } catch (error) {
       console.error("Failed to fetch network details:", error);
-      this.error = error instanceof Error ? error.message : "Failed to load network details";
+      if (!(error instanceof VirtualizationDisabledError)) {
+        this.error = error instanceof Error ? error.message : "Failed to load network details";
+      }
     } finally {
       this.isLoadingDetail = false;
     }
@@ -62786,7 +63603,9 @@ let VirtualizationNetworks = class extends i$2 {
       }
     } catch (error) {
       console.error("Failed to delete network:", error);
-      this.error = error instanceof Error ? error.message : "Failed to delete network";
+      if (!(error instanceof VirtualizationDisabledError)) {
+        this.error = error instanceof Error ? error.message : "Failed to delete network";
+      }
     } finally {
       this.isDeleting = false;
       this.showDeleteModal = false;
@@ -62830,7 +63649,9 @@ let VirtualizationNetworks = class extends i$2 {
       this.createResourceValue = "";
     } catch (error) {
       console.error("Failed to create network:", error);
-      this.error = error instanceof Error ? error.message : "Failed to create network";
+      if (!(error instanceof VirtualizationDisabledError)) {
+        this.error = error instanceof Error ? error.message : "Failed to create network";
+      }
     } finally {
       this.isCreating = false;
     }
@@ -63147,13 +63968,29 @@ let VirtualizationNetworks = class extends i$2 {
       return 0;
     }
   }
+  renderVirtualizationDisabledBanner(details) {
+    return x`
+      <div class="virtualization-disabled-banner">
+        <h2>Virtualization is disabled on this host</h2>
+        <p>Virtualization features are currently unavailable because libvirt is not installed or not running.\
+ To manage virtual networks, install and start libvirt on this machine, then reload this page.</p>
+        ${details ? x`<p>${details}</p>` : ""}
+      </div>
+    `;
+  }
   render() {
+    const virtualizationEnabled = this.virtualizationEnabledController.value;
+    if (virtualizationEnabled === false) {
+      const details = this.virtualizationDisabledMessageController.value;
+      return x`
+        <div class="container">
+          ${this.renderVirtualizationDisabledBanner(details)}
+        </div>
+      `;
+    }
     const filteredData = this.getFilteredData();
     return x`
       <div class="container">
-        <div class="header">
-          <h1>Virtual Networks</h1>
-        </div>
 
         <tab-group
           .tabs=${this.tabs}
@@ -63242,7 +64079,6 @@ VirtualizationNetworks.styles = i$5`
     :host {
       display: block;
       height: 100%;
-      padding: 24px;
       box-sizing: border-box;
     }
 
@@ -63253,16 +64089,7 @@ VirtualizationNetworks.styles = i$5`
       gap: 1rem;
     }
 
-    .header {
-      margin-bottom: 1.5rem;
-    }
 
-    .header h1 {
-      margin: 0 0 24px 0;
-      font-size: 24px;
-      font-weight: 300;
-      flex-shrink: 0;
-    }
 
     .controls {
       display: flex;
@@ -63620,6 +64447,27 @@ VirtualizationNetworks.styles = i$5`
     .btn-secondary:disabled {
       opacity: 0.5;
       cursor: not-allowed;
+    }
+
+    .virtualization-disabled-banner {
+      margin-top: 16px;
+      padding: 16px 20px;
+      border-radius: 8px;
+      border: 1px solid var(--vscode-inputValidation-warningBorder, #e2c08d);
+      background: var(--vscode-inputValidation-warningBackground, rgba(229, 200, 144, 0.15));
+      color: var(--vscode-inputValidation-warningForeground, #e2c08d);
+    }
+
+    .virtualization-disabled-banner h2 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .virtualization-disabled-banner p {
+      margin: 0 0 4px 0;
+      font-size: 13px;
+      color: var(--vscode-descriptionForeground);
     }
   `;
 __decorateClass$d([
@@ -66625,6 +67473,8 @@ let ISOManagement = class extends i$2 {
     this.isoStoreController = new lib.StoreController(this, isoStore.$state);
     this.availableISOsController = new lib.StoreController(this, $availableISOs);
     this._uploadStateController = new lib.StoreController(this, $isoUploadState);
+    this.virtualizationEnabledController = new lib.StoreController(this, $virtualizationEnabled);
+    this.virtualizationDisabledMessageController = new lib.StoreController(this, $virtualizationDisabledMessage);
     this.searchQuery = "";
     this.showUploadDrawer = false;
     this.showDeleteModal = false;
@@ -66655,7 +67505,9 @@ let ISOManagement = class extends i$2 {
       await storagePoolStore.fetch();
     } catch (error) {
       console.error("Failed to load ISOs:", error);
-      this.showNotification("Failed to load ISO images", "error");
+      if (!(error instanceof VirtualizationDisabledError)) {
+        this.showNotification("Failed to load ISO images", "error");
+      }
     }
   }
   getColumns() {
@@ -67237,7 +68089,26 @@ let ISOManagement = class extends i$2 {
       </div>
     `;
   }
+  renderVirtualizationDisabledBanner(details) {
+    return x`
+      <div class="virtualization-disabled-banner">
+        <h2>Virtualization is disabled on this host</h2>
+        <p>Virtualization features are currently unavailable because libvirt is not installed or not running.\
+ ISO image management is disabled until virtualization support is available on this host.</p>
+        ${details ? x`<p>${details}</p>` : ""}
+      </div>
+    `;
+  }
   render() {
+    const virtualizationEnabled = this.virtualizationEnabledController.value;
+    if (virtualizationEnabled === false) {
+      const details = this.virtualizationDisabledMessageController.value;
+      return x`
+        <div class="container">
+          ${this.renderVirtualizationDisabledBanner(details)}
+        </div>
+      `;
+    }
     const state2 = this.isoStoreController.value;
     const filteredISOs = this.getFilteredISOs();
     const totalSize = filteredISOs.reduce((sum, iso) => {
@@ -67251,9 +68122,6 @@ let ISOManagement = class extends i$2 {
     }));
     return x`
       <div class="container">
-        <div class="header">
-          <h1>ISO Images</h1>
-        </div>
         
         <!-- Stats Bar -->
         <div class="stats-bar">
@@ -67339,7 +68207,6 @@ ISOManagement.styles = i$5`
     :host {
       display: block;
       height: 100%;
-      padding: 24px;
       box-sizing: border-box;
     }
 
@@ -67350,15 +68217,7 @@ ISOManagement.styles = i$5`
       gap: 1rem;
     }
 
-    .header {
-      margin-bottom: 1rem;
-    }
 
-    .header h1 {
-      margin: 0 0 16px 0;
-      font-size: 24px;
-      font-weight: 300;
-    }
 
     .controls {
       display: flex;
@@ -67713,6 +68572,27 @@ ISOManagement.styles = i$5`
       cursor: not-allowed;
     }
 
+    .virtualization-disabled-banner {
+      margin-top: 16px;
+      padding: 16px 20px;
+      border-radius: 8px;
+      border: 1px solid var(--vscode-inputValidation-warningBorder, #e2c08d);
+      background: var(--vscode-inputValidation-warningBackground, rgba(229, 200, 144, 0.15));
+      color: var(--vscode-inputValidation-warningForeground, #e2c08d);
+    }
+
+    .virtualization-disabled-banner h2 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .virtualization-disabled-banner p {
+      margin: 0 0 4px 0;
+      font-size: 13px;
+      color: var(--vscode-descriptionForeground);
+    }
+
     /* Stats Bar */
     .stats-bar {
       display: flex;
@@ -67861,6 +68741,8 @@ let VirtualizationVolumes = class extends i$2 {
     this.volumeStatsController = new lib.StoreController(this, $volumeStats);
     this.searchQueryController = new lib.StoreController(this, $volumeSearchQuery);
     this.activeTabController = new lib.StoreController(this, $activeVolumeTab);
+    this.virtualizationEnabledController = new lib.StoreController(this, $virtualizationEnabled);
+    this.virtualizationDisabledMessageController = new lib.StoreController(this, $virtualizationDisabledMessage);
     this.tabs = [
       { id: "all", label: "All Volumes" },
       { id: "disk-images", label: "Disk Images" },
@@ -68001,7 +68883,13 @@ let VirtualizationVolumes = class extends i$2 {
     }
   }
   async handleRefresh() {
-    await this.loadData();
+    try {
+      await this.loadData();
+    } catch (error) {
+      if (!(error instanceof VirtualizationDisabledError)) {
+        this.showNotification("Failed to refresh volumes", "error");
+      }
+    }
   }
   async handleDelete(volume) {
     if (confirm(`Are you sure you want to delete volume "${volume.name}"?`)) {
@@ -68018,7 +68906,26 @@ let VirtualizationVolumes = class extends i$2 {
     if (percent >= 70) return "medium";
     return "low";
   }
+  renderVirtualizationDisabledBanner(details) {
+    return x`
+      <div class="virtualization-disabled-banner">
+        <h2>Virtualization is disabled on this host</h2>
+        <p>Virtualization features are currently unavailable because libvirt is not installed or not running.\
+ To manage storage volumes, install and start libvirt on this machine, then reload this page.</p>
+        ${details ? x`<p>${details}</p>` : ""}
+      </div>
+    `;
+  }
   render() {
+    const virtualizationEnabled = this.virtualizationEnabledController.value;
+    if (virtualizationEnabled === false) {
+      const details = this.virtualizationDisabledMessageController.value;
+      return x`
+        <div class="container">
+          ${this.renderVirtualizationDisabledBanner(details)}
+        </div>
+      `;
+    }
     const state2 = this.storeController.value;
     const volumes = this.filteredVolumesController.value || [];
     const stats = this.volumeStatsController.value || {
@@ -68042,9 +68949,6 @@ let VirtualizationVolumes = class extends i$2 {
     }
     return x`
       <div class="container">
-        <div class="header">
-          <h1>Storage Volumes</h1>
-        </div>
 
         <!-- Stats Bar -->
         <div class="stats-bar">
@@ -68168,7 +69072,6 @@ VirtualizationVolumes.styles = i$5`
     :host {
       display: block;
       height: 100%;
-      padding: 24px;
       box-sizing: border-box;
     }
 
@@ -68179,16 +69082,7 @@ VirtualizationVolumes.styles = i$5`
       gap: 1rem;
     }
 
-    .header {
-      margin-bottom: 1.5rem;
-    }
 
-    .header h1 {
-      margin: 0 0 24px 0;
-      font-size: 24px;
-      font-weight: 300;
-      flex-shrink: 0;
-    }
 
     /* Stats Bar */
     .stats-bar {
@@ -68647,6 +69541,27 @@ VirtualizationVolumes.styles = i$5`
 
     .btn-refresh:hover {
       background: var(--vscode-button-secondaryHoverBackground);
+    }
+
+    .virtualization-disabled-banner {
+      margin-top: 16px;
+      padding: 16px 20px;
+      border-radius: 8px;
+      border: 1px solid var(--vscode-inputValidation-warningBorder, #e2c08d);
+      background: var(--vscode-inputValidation-warningBackground, rgba(229, 200, 144, 0.15));
+      color: var(--vscode-inputValidation-warningForeground, #e2c08d);
+    }
+
+    .virtualization-disabled-banner h2 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .virtualization-disabled-banner p {
+      margin: 0 0 4px 0;
+      font-size: 13px;
+      color: var(--vscode-descriptionForeground);
     }
   `;
 __decorateClass$b([
@@ -73616,6 +74531,7 @@ class SidebarTree extends I18nLitElement {
     this.activeItemId = "dashboard";
     this.expandedItemsArray = [];
     this.translationsLoaded = false;
+    this.virtualizationEnabledController = new lib.StoreController(this, $virtualizationEnabled);
     this.storeUnsubscribers = [];
     this.navigationItems = [
       {
@@ -73935,6 +74851,12 @@ class SidebarTree extends I18nLitElement {
       color: var(--vscode-accent);
     }
 
+    .tree-item.disabled {
+      opacity: 0.5;
+      cursor: default;
+      pointer-events: none;
+    }
+
     .tree-item.active .tree-item-icon {
       color: var(--vscode-accent);
     }
@@ -74111,10 +75033,17 @@ class SidebarTree extends I18nLitElement {
     }
     return t$5(key) || key;
   }
+  isVirtualizationItemDisabled(item) {
+    const virtualizationEnabled = this.virtualizationEnabledController.value;
+    const virtualizationDisabled = virtualizationEnabled === false;
+    const isVirtualizationItem = item.id === "virtualization" || item.id.startsWith("virtualization-");
+    return virtualizationDisabled && isVirtualizationItem;
+  }
   renderNavItem(item) {
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded$1 = isExpanded(item.id);
     const isActive = this.isItemActive(item);
+    const isDisabled = this.isVirtualizationItemDisabled(item);
     const renderIcon = () => {
       if (item.icon === "kubernetes") {
         return x`
@@ -74153,8 +75082,8 @@ class SidebarTree extends I18nLitElement {
     return x`
       <li>
         <div
-          class="tree-item ${isActive ? "active" : ""}"
-          @click=${(e3) => this.handleItemClick(item, e3)}
+          class="tree-item ${isActive ? "active" : ""} ${isDisabled ? "disabled" : ""}"
+          @click=${(e3) => !isDisabled && this.handleItemClick(item, e3)}
           @keydown=${(e3) => this.handleKeyDown(item, e3)}
           title=${this.collapsed ? this.getTranslation(item.label) : ""}
           tabindex="0"
@@ -74251,7 +75180,7 @@ class SidebarTree extends I18nLitElement {
       </div>
       <div class="sidebar-footer">
         <div class="sidebar-footer-brand">Vapor by Awanio</div>
-        <div class="sidebar-footer-copyright">© ${currentYear} Awanio.</div>
+        <div class="sidebar-footer-copyright">© ${currentYear} Awanio. All rights reserved.</div>
       </div>
     `;
   }

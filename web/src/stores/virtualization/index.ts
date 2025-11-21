@@ -50,27 +50,35 @@ async function apiRequest<T>(
       () => ({ message: response.statusText }),
     );
 
-    if (isVirtualizationDisabled(status, errorData)) {
+    // Type guard to check if errorData is ApiErrorBody
+    const isApiErrorBody = (data: any): data is ApiErrorBody => {
+      return data && typeof data === 'object' && 'error' in data;
+    };
+
+    if (isVirtualizationDisabled(status, isApiErrorBody(errorData) ? errorData : null)) {
       $virtualizationEnabled.set(false);
+      const errorBody = isApiErrorBody(errorData) ? errorData : null;
       $virtualizationDisabledMessage.set(
-        errorData.error?.details ||
-          errorData.error?.message ||
+        errorBody?.error?.details ||
+          errorBody?.error?.message ||
           'Virtualization is disabled on this host.',
       );
       throw new VirtualizationDisabledError(
-        errorData.error?.message || 'Virtualization is disabled on this host.',
-        errorData.error?.details,
+        errorBody?.error?.message || 'Virtualization is disabled on this host.',
+        errorBody?.error?.details,
         status,
       );
     }
 
     // Handle new error format with status and error fields
-    if ((errorData as any).status === 'error' && (errorData as any).error) {
-      const err = (errorData as any).error;
+    if (isApiErrorBody(errorData) && errorData.status === 'error' && errorData.error) {
+      const err = errorData.error;
       throw new Error(err.message || err.details || `Request failed: ${status}`);
     }
 
-    throw new Error((errorData as any).message || `Request failed: ${status}`);
+    // Handle simple error message format
+    const message = (errorData as { message?: string }).message;
+    throw new Error(message || `Request failed: ${status}`);
   }
 
   // Successful response - mark virtualization as enabled for this session
@@ -1791,8 +1799,9 @@ export const storagePoolActions = {
     }
   },
   
-  async delete(poolName: string) {
-    await apiRequest(`/storages/pools/${poolName}`, { method: 'DELETE' });
+  async delete(poolName: string, deleteVolumes: boolean = false) {
+    const params = deleteVolumes ? '?delete_volumes=true' : '';
+    await apiRequest(`/storages/pools/${poolName}${params}`, { method: 'DELETE' });
     await storagePoolStore.delete(poolName);
     
     // Clear selection if deleted pool was selected
@@ -1817,6 +1826,23 @@ export const storagePoolActions = {
     
     // Select the new pool
     $selectedStoragePoolId.set(response.name);
+    
+    return { success: true, data: response };
+  },
+  
+  async update(poolName: string, config: { autostart?: boolean }) {
+    const response = await apiRequest<StoragePool & { id: string }>(
+      `/storages/pools/${poolName}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(config),
+      }
+    );
+    
+    // Update in store
+    const items = new Map(storagePoolStore.$items.get());
+    items.set(response.name, response);
+    storagePoolStore.$items.set(items);
     
     return { success: true, data: response };
   },

@@ -1,8 +1,29 @@
 type: object
+required:
+  - name
+  - capacity
 properties:
   name:
     type: string
+    description: >-
+      Unique volume name within the storage pool. Allowed characters are
+      letters, digits, hyphen (-) and underscore (_).
+    minLength: 1
+    maxLength: 255
+    pattern: "^[a-zA-Z0-9_-]+$"
   capacity:
     type: integer
+    format: int64
+    description: >-
+      Volume capacity in bytes. Must be greater than 0 and at least 1 MiB.
+    minimum: 1048576
   format:
     type: string
+    description: >-
+      Volume format. If omitted, the backend defaults to `qcow2`.
+    enum:
+      - qcow2
+      - raw
+      - vmdk
+      - qed
+      - vdi

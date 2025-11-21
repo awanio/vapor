@@ -24,6 +24,18 @@ get:
       $ref: ../components/responses/InternalError.yaml
 post:
   summary: Create a new volume in a storage pool
+  description: |
+    Creates a new storage volume within the specified storage pool.
+
+    **Validation rules:**
+
+    - `name` must be unique within the pool and use only letters, digits,
+      hyphen (-) and underscore (_)
+    - `capacity` is required and must be at least 1 MiB (1,048,576 bytes)
+    - `format`, if provided, must be one of: `qcow2`, `raw`, `vmdk`, `qed`, `vdi`
+
+    If the pool does not have enough free space, the request will fail with a
+    validation error.
   tags:
     - Virtualization Volume
   security:
@@ -49,8 +61,15 @@ post:
           schema:
             $ref: ../components/schemas/StorageVolumeCreateResponse.yaml
     '400':
+      description: Invalid volume creation request (validation failed)
       $ref: ../components/responses/BadRequest.yaml
     '404':
       $ref: ../components/responses/NotFound.yaml
+    '409':
+      description: A volume with the same name already exists in the pool
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
     '500':
       $ref: ../components/responses/InternalError.yaml

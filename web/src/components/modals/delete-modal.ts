@@ -17,6 +17,12 @@ export class DeleteModal extends LitElement {
   @property({ type: String, attribute: 'confirm-label' }) confirmLabel = 'Delete';
   @property({ type: String, attribute: 'confirm-button-class' }) confirmButtonClass = 'delete';
 
+  // Enhanced options for dangerous deletions (e.g., storage pools with volumes)
+  @property({ type: Boolean, attribute: 'has-volumes' }) hasVolumes = false;
+  @property({ type: Number, attribute: 'volume-count' }) volumeCount = 0;
+  @property({ type: Boolean, attribute: 'delete-volumes' }) deleteVolumes = false;
+  @property({ type: Boolean, attribute: 'acknowledge' }) acknowledge = false;
+
   static override styles = css`
     .modal-overlay {
       position: fixed;
@@ -162,7 +168,7 @@ export class DeleteModal extends LitElement {
 
   private handleConfirm() {
     this.dispatchEvent(new CustomEvent('confirm-delete', {
-      detail: { item: this.item },
+      detail: { item: this.item, deleteVolumes: this.deleteVolumes },
       bubbles: true,
       composed: true
     }));
@@ -219,6 +225,23 @@ export class DeleteModal extends LitElement {
               <div><strong>Name:</strong> ${this.item.name}</div>
               ${this.item.namespace ? html`<div><strong>Namespace:</strong> ${this.item.namespace}</div>` : ''}
             </div>
+            ${this.hasVolumes ? html`
+              <div style="margin:12px 0; padding:12px; border:1px solid var(--vscode-widget-border); border-radius:4px; background: rgba(255, 193, 7, 0.08);">
+                <div style="color: var(--vscode-notificationsWarningIcon-foreground,#ff9800); font-weight:600; margin-bottom:6px;">
+                  ⚠️ Warning: This resource contains ${this.volumeCount} volume(s).
+                </div>
+                <label style="display:flex; align-items:center; gap:8px; margin-top:6px;">
+                  <input type="checkbox" .checked=${this.deleteVolumes} @change=${(e: Event) => { this.deleteVolumes = (e.target as HTMLInputElement).checked; }} />
+                  Delete all volumes with this resource (dangerous - permanent data loss)
+                </label>
+                ${this.deleteVolumes ? html`
+                  <label style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+                    <input type="checkbox" .checked=${this.acknowledge} @change=${(e: Event) => { this.acknowledge = (e.target as HTMLInputElement).checked; }} />
+                    I understand this will permanently delete all data
+                  </label>
+                ` : ''}
+              </div>
+            ` : ''}
             ${this.confirmButtonClass === 'delete' ? html`
               <p><strong>This action cannot be undone.</strong></p>
             ` : ''}

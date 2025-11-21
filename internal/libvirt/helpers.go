@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -123,6 +124,81 @@ func (s *Service) GetVolume(ctx context.Context, poolName, volumeName string) (*
 	defer vol.Free()
 
 	return s.storageVolumeToType(vol)
+}
+
+// getVMsUsingVolume returns a list of VM names that reference the given volume path.
+func (s *Service) getVMsUsingVolume(ctx context.Context, volumePath string) ([]string, error) {
+	domains, err := s.conn.ListAllDomains(0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list domains: %w", err)
+	}
+
+	var usingVMs []string
+	for _, domain := range domains {
+		xmlDesc, err := domain.GetXMLDesc(0)
+		if err != nil {
+			domain.Free()
+			continue
+		}
+
+		if strings.Contains(xmlDesc, volumePath) {
+			name, err := domain.GetName()
+			if err == nil {
+				usingVMs = append(usingVMs, name)
+			}
+		}
+
+		domain.Free()
+	}
+
+	return usingVMs, nil
+}
+
+// validateVolumeCreateRequest validates parameters for creating a storage volume.
+func validateVolumeCreateRequest(req *VolumeCreateRequest) error {
+	if req == nil {
+		return fmt.Errorf("volume request cannot be nil")
+	}
+
+	// Name validation
+	if !isValidVolumeName(req.Name) {
+		return fmt.Errorf("invalid volume name: must contain only alphanumeric characters, hyphens, and underscores")
+	}
+
+	// Capacity validation
+	if req.Capacity == 0 {
+		return fmt.Errorf("volume capacity must be greater than 0")
+	}
+
+	// Minimum capacity: 1 MiB
+	if req.Capacity < 1024*1024 {
+		return fmt.Errorf("volume capacity must be at least 1 MiB")
+	}
+
+	// Format validation (optional)
+	if req.Format != "" {
+		validFormats := map[string]bool{
+			"qcow2": true,
+			"raw":   true,
+			"vmdk":  true,
+			"qed":   true,
+			"vdi":   true,
+		}
+		if !validFormats[req.Format] {
+			return fmt.Errorf("invalid format: %s (valid: qcow2, raw, vmdk, qed, vdi)", req.Format)
+		}
+	}
+
+	return nil
+}
+
+// isValidVolumeName validates the volume name using a conservative pattern.
+func isValidVolumeName(name string) bool {
+	if name == "" || len(name) > 255 {
+		return false
+	}
+	matched, _ := regexp.MatchString(`^[a-zA-Z0-9_-]+$`, name)
+	return matched
 }
 
 // createDisk creates a new disk in a storage pool

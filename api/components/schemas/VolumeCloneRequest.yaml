@@ -1,0 +1,17 @@
+type: object
+required:
+  - new_name
+properties:
+  new_name:
+    type: string
+    description: >-
+      Name for the cloned volume. Must be unique within the target pool and
+      use the same naming rules as volume creation.
+    minLength: 1
+    maxLength: 255
+    pattern: "^[a-zA-Z0-9_-]+$"
+  target_pool:
+    type: string
+    description: >-
+      Optional target storage pool name. If omitted, the volume is cloned into
+      the same pool as the source volume.

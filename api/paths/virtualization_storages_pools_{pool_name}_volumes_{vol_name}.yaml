@@ -28,8 +28,15 @@ get:
       $ref: ../components/responses/NotFound.yaml
     '500':
       $ref: ../components/responses/InternalError.yaml
+
 delete:
   summary: Delete a storage volume
+  description: |
+    Deletes a storage volume from the specified storage pool.
+
+    By default, the API will prevent deletion of volumes that are still in
+    use by one or more virtual machines. To force deletion of an in-use
+    volume, set the `force` query parameter to `true`.
   tags:
     - Virtualization Volume
   security:
@@ -47,10 +54,150 @@ delete:
       schema:
         type: string
       description: Storage volume name
+    - name: force
+      in: query
+      required: false
+      schema:
+        type: boolean
+        default: false
+      description: >-
+        When set to `true`, forces deletion of the volume even if it is
+        currently attached to one or more virtual machines.
   responses:
     '204':
       description: Storage volume deleted successfully
     '404':
       $ref: ../components/responses/NotFound.yaml
+    '409':
+      description: |
+        Conflict - the volume is in use by one or more virtual machines and
+        `force` was not set to `true`.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
     '500':
       $ref: ../components/responses/InternalError.yaml
+
+post:
+  summary: Resize or clone a storage volume
+  description: |
+    This path supports two sub-operations implemented as sub-resources:
+
+    - `POST /resize` - Resize an existing volume
+    - `POST /clone`  - Clone an existing volume
+
+    See the individual operations below for details.
+  tags:
+    - Virtualization Volume
+  security:
+    - bearerAuth: []
+  responses:
+    '405':
+      description: Method not allowed on the base volume resource
+
+/resize:
+  post:
+    summary: Resize a storage volume
+    description: |
+      Resizes an existing storage volume to a larger capacity.
+
+      **Constraints:**
+
+      - The new capacity must be greater than the current capacity.
+      - Shrinking volumes is not supported.
+    tags:
+      - Virtualization Volume
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: pool_name
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Storage pool name
+      - name: vol_name
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Storage volume name
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/VolumeResizeRequest.yaml
+    responses:
+      '200':
+        description: Storage volume resized successfully
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/StorageVolume.yaml
+      '400':
+        description: Invalid resize request (e.g., new capacity not greater than current)
+        $ref: ../components/responses/BadRequest.yaml
+      '404':
+        $ref: ../components/responses/NotFound.yaml
+      '500':
+        $ref: ../components/responses/InternalError.yaml
+
+/clone:
+  post:
+    summary: Clone a storage volume
+    description: |
+      Performs a full clone of an existing volume. By default, the clone is
+      created in the same storage pool as the source volume. A different
+      target pool can be specified in the request body.
+
+      **Constraints:**
+
+      - `new_name` must follow the same naming rules as volume creation and be
+        unique in the target pool.
+      - The target storage pool must exist and be active.
+    tags:
+      - Virtualization Volume
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: pool_name
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Source storage pool name
+      - name: vol_name
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Source storage volume name
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/VolumeCloneRequest.yaml
+    responses:
+      '201':
+        description: Volume cloned successfully
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/StorageVolumeWithPool.yaml
+      '400':
+        description: Invalid clone request (e.g., invalid name)
+        $ref: ../components/responses/BadRequest.yaml
+      '404':
+        description: Source volume or target pool not found
+        $ref: ../components/responses/NotFound.yaml
+      '409':
+        description: A volume with the same name already exists in the target pool
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/ErrorResponse.yaml
+      '500':
+        $ref: ../components/responses/InternalError.yaml

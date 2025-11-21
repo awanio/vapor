@@ -247,7 +247,6 @@ export class WebSocketManager {
   private reconnectAttempts: number = 0;
   private messageHandlers: Map<string, Set<(message: WSMessage) => void>> = new Map();
   private reconnectTimer: number | null = null;
-  private authenticated: boolean = false;
   private intentionalDisconnect: boolean = false;
 
   constructor(private path: string = '/ws') {
@@ -286,7 +285,6 @@ export class WebSocketManager {
 
         this.ws.onclose = (event) => {
           console.log('WebSocket closed', { code: event.code, reason: event.reason });
-          this.authenticated = false;
 
           // Only reconnect if not intentionally disconnected and not a normal closure
           if (!this.intentionalDisconnect && event.code !== 1000) {
@@ -315,7 +313,6 @@ export class WebSocketManager {
       const authHandler = (message: WSMessage) => {
         if (message.type === 'auth' && message.payload?.authenticated === true) {
           clearTimeout(authTimeout);
-          this.authenticated = true;
           this.off('auth', authHandler);
           this.off('error', errorHandler);
           console.log(`WebSocket authenticated as ${message.payload.username}`);
@@ -411,7 +408,6 @@ export class WebSocketManager {
     }
 
     this.messageHandlers.clear();
-    this.authenticated = false;
   }
 
   isConnected(): boolean {

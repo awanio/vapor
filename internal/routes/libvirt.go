@@ -144,10 +144,12 @@ func LibvirtRoutes(r *gin.RouterGroup, authService *auth.EnhancedService, servic
 
 			volumesGroup := poolsGroup.Group("/:name/volumes")
 			{
-				volumesGroup.GET("", listVolumesInPool(service))         // List volumes in a pool
-				volumesGroup.POST("", createVolumeInPool(service))       // Create a volume in a pool
-				volumesGroup.GET("/:vol_name", getVolume(service))       // Get volume details
-				volumesGroup.DELETE("/:vol_name", deleteVolume(service)) // Delete a volume
+				volumesGroup.GET("", listVolumesInPool(service))                    // List volumes in a pool
+				volumesGroup.POST("", createVolumeInPool(service))                  // Create a volume in a pool
+				volumesGroup.GET("/:vol_name", getVolume(service))                  // Get volume details
+				volumesGroup.DELETE("/:vol_name", deleteVolume(service))            // Delete a volume
+				volumesGroup.POST("/:vol_name/resize", resizeVolumeInPool(service)) // Resize a volume
+				volumesGroup.POST("/:vol_name/clone", cloneVolumeInPool(service))   // Clone a volume
 			}
 		}
 	}
@@ -1346,14 +1348,38 @@ func createVolumeInPool(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req libvirt.VolumeCreateRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			sendStorageError(c, "INVALID_VOLUME_REQUEST", "Invalid volume create request", err, http.StatusBadRequest)
 			return
 		}
 
 		req.PoolName = c.Param("name")
 		volume, err := service.CreateVolume(c.Request.Context(), &req)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			msg := err.Error()
+
+			// Pool not found
+			if strings.Contains(msg, "storage pool not found") {
+				sendStorageError(c, "POOL_NOT_FOUND", "Storage pool not found", err, http.StatusNotFound)
+				return
+			}
+
+			// Validation / user errors
+			if strings.Contains(msg, "invalid volume name") ||
+				strings.Contains(msg, "volume capacity must") ||
+				strings.Contains(msg, "invalid format") ||
+				strings.Contains(msg, "insufficient space") {
+				sendStorageError(c, "INVALID_VOLUME_REQUEST", "Invalid volume create request", err, http.StatusBadRequest)
+				return
+			}
+
+			// Duplicate name
+			if strings.Contains(msg, "already exists in pool") {
+				sendStorageError(c, "VOLUME_ALREADY_EXISTS", "Volume with the same name already exists in the pool", err, http.StatusConflict)
+				return
+			}
+
+			// Generic failure
+			sendStorageError(c, "CREATE_VOLUME_FAILED", "Failed to create storage volume", err, http.StatusInternalServerError)
 			return
 		}
 
@@ -1378,13 +1404,110 @@ func deleteVolume(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		poolName := c.Param("name")
 		volName := c.Param("vol_name")
-		err := service.DeleteVolume(c.Request.Context(), poolName, volName)
+		force := c.Query("force") == "true"
+
+		err := service.DeleteVolume(c.Request.Context(), poolName, volName, force)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			msg := err.Error()
+
+			// Volume in use -> 409 Conflict
+			if strings.Contains(msg, "in use") {
+				sendStorageError(c, "VOLUME_IN_USE", "Cannot delete volume that is in use by one or more VMs", err, http.StatusConflict)
+				return
+			}
+
+			// Not found errors
+			if strings.Contains(msg, "storage pool not found") || strings.Contains(msg, "volume not found") {
+				sendStorageError(c, "VOLUME_NOT_FOUND", "Storage volume not found", err, http.StatusNotFound)
+				return
+			}
+
+			// Generic failure
+			sendStorageError(c, "DELETE_VOLUME_FAILED", "Failed to delete storage volume", err, http.StatusInternalServerError)
 			return
 		}
 
 		c.JSON(http.StatusNoContent, nil)
+	}
+}
+
+func resizeVolumeInPool(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		poolName := c.Param("name")
+		volName := c.Param("vol_name")
+
+		var req libvirt.VolumeResizeRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			sendStorageError(c, "INVALID_VOLUME_REQUEST", "Invalid volume resize request", err, http.StatusBadRequest)
+			return
+		}
+
+		volume, err := service.ResizeVolume(c.Request.Context(), poolName, volName, req.Capacity)
+		if err != nil {
+			msg := err.Error()
+
+			// Not found errors
+			if strings.Contains(msg, "storage pool not found") || strings.Contains(msg, "volume not found") {
+				sendStorageError(c, "VOLUME_NOT_FOUND", "Storage volume not found", err, http.StatusNotFound)
+				return
+			}
+
+			// Validation / user errors
+			if strings.Contains(msg, "new capacity must") {
+				sendStorageError(c, "INVALID_VOLUME_REQUEST", "Invalid volume resize request", err, http.StatusBadRequest)
+				return
+			}
+
+			// Generic failure
+			sendStorageError(c, "RESIZE_VOLUME_FAILED", "Failed to resize storage volume", err, http.StatusInternalServerError)
+			return
+		}
+
+		c.JSON(http.StatusOK, volume)
+	}
+}
+
+func cloneVolumeInPool(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		poolName := c.Param("name")
+		volName := c.Param("vol_name")
+
+		var req libvirt.VolumeCloneRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			sendStorageError(c, "INVALID_VOLUME_REQUEST", "Invalid volume clone request", err, http.StatusBadRequest)
+			return
+		}
+
+		cloned, err := service.CloneVolume(c.Request.Context(), poolName, volName, &req)
+		if err != nil {
+			msg := err.Error()
+
+			// Source/target pool or volume not found
+			if strings.Contains(msg, "source storage pool not found") ||
+				strings.Contains(msg, "source volume not found") ||
+				strings.Contains(msg, "target storage pool not found") {
+				sendStorageError(c, "VOLUME_NOT_FOUND", "Source or target resource not found", err, http.StatusNotFound)
+				return
+			}
+
+			// Validation / user errors
+			if strings.Contains(msg, "invalid volume name") {
+				sendStorageError(c, "INVALID_VOLUME_REQUEST", "Invalid volume clone request", err, http.StatusBadRequest)
+				return
+			}
+
+			// Duplicate name
+			if strings.Contains(msg, "already exists in pool") {
+				sendStorageError(c, "VOLUME_ALREADY_EXISTS", "Volume with the same name already exists in the target pool", err, http.StatusConflict)
+				return
+			}
+
+			// Generic failure
+			sendStorageError(c, "CLONE_VOLUME_FAILED", "Failed to clone storage volume", err, http.StatusInternalServerError)
+			return
+		}
+
+		c.JSON(http.StatusCreated, cloned)
 	}
 }
 

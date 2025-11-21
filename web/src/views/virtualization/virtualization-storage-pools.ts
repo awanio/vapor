@@ -11,6 +11,7 @@ import '../../components/tables/resource-table.js';
 import '../../components/drawers/detail-drawer.js';
 import '../../components/modals/delete-modal.js';
 import '../../components/drawers/create-resource-drawer';
+import '../../components/virtualization/storage-pool-form-drawer';
 
 // Import types
 import type { Tab } from '../../components/tabs/tab-group.js';
@@ -31,7 +32,8 @@ import {
   $virtualizationEnabled,
   $virtualizationDisabledMessage,
 } from '../../stores/virtualization';
-import { VirtualizationDisabledError } from '../../utils/api-errors';
+import { virtualizationAPI } from '../../services/virtualization-api';
+import type { StoragePoolFormData } from '../../components/virtualization/storage-pool-form-drawer';
 
 // Internal interface with computed fields for display
 interface StoragePoolDisplay extends StoragePool {
@@ -70,9 +72,13 @@ export class VirtualizationStoragePools extends LitElement {
   @state() private showDeleteModal = false;
   @state() private itemToDelete: DeleteItem | null = null;
   @state() private isDeleting = false;
-  @state() private showCreateDrawer = false;
-  @state() private createResourceValue = '';
+  @state() private showFormDrawer = false;
+  @state() private showEditDrawer = false;
+  @state() private editingPool: StoragePoolDisplay | null = null;
   @state() private isCreating = false;
+  @state() private isUpdating = false;
+  @state() private hasVolumes = false;
+  @state() private volumeCount = 0;
 
   static override styles = css`
     :host {
@@ -343,8 +349,8 @@ export class VirtualizationStoragePools extends LitElement {
   }
 
   private editPool(pool: StoragePoolDisplay) {
-    console.log('Editing pool:', pool.name);
-    // Would open edit dialog
+    this.editingPool = pool;
+    this.showEditDrawer = true;
   }
 
   private deletePool(pool: StoragePoolDisplay) {
@@ -352,77 +358,148 @@ export class VirtualizationStoragePools extends LitElement {
       name: pool.name,
       type: 'Storage Pool'
     };
+    // Check if pool has volumes
+    this.hasVolumes = (pool.volumes && pool.volumes.length > 0) || false;
+    this.volumeCount = pool.volumes?.length || 0;
     this.showDeleteModal = true;
   }
 
-  private async handleDelete(_event: CustomEvent) {
+  private async handleDelete(event: CustomEvent) {
     if (!this.itemToDelete) return;
 
+    const deleteVolumes = event.detail?.deleteVolumes || false;
     this.isDeleting = true;
 
     try {
       // Find the pool by name from the itemToDelete
       const poolToDelete = this.getFilteredData().find(pool => pool.name === this.itemToDelete?.name);
       if (poolToDelete) {
-        await storagePoolActions.delete(poolToDelete.name);
+        // Call API directly with deleteVolumes parameter
+        await virtualizationAPI.deleteStoragePool(poolToDelete.name, deleteVolumes);
+        
         this.showNotification(`Storage pool "${poolToDelete.name}" deleted successfully`, 'success');
+        
+        // Refresh list with error handling to prevent race condition
+        try {
+          await storagePoolActions.fetchAll();
+        } catch (fetchError) {
+          console.warn('Failed to refresh pool list after delete:', fetchError);
+          // Pool is still deleted on backend, just refresh failed
+          // Don't show error to user since the delete operation succeeded
+        }
       }
 
       this.showDeleteModal = false;
       this.itemToDelete = null;
-    } catch (error) {
+      this.hasVolumes = false;
+      this.volumeCount = 0;
+    } catch (error: any) {
       console.error('Failed to delete storage pool:', error);
-      this.showNotification(
-        `Failed to delete storage pool: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        'error'
-      );
+      
+      // Handle specific error cases
+      let errorMessage = 'Unknown error';
+      if (error.message) {
+        errorMessage = error.message;
+        // Check for 409 Conflict (pool contains volumes)
+        if (error.message.includes('volume') || error.code === 'POOL_NOT_EMPTY') {
+          // Try to extract actual volume count from error message
+          const match = error.message.match(/contains (\d+) volume/);
+          const actualCount = match ? parseInt(match[1]) : this.volumeCount;
+          errorMessage = `Cannot delete pool: contains ${actualCount} volume(s). Delete volumes first or check 'Delete all volumes' option.`;
+        }
+        // Check for 404 Not Found
+        else if (error.code === 'NOT_FOUND' || error.message.includes('not found')) {
+          errorMessage = 'Storage pool not found. It may have already been deleted.';
+          // Close modal and refresh since pool no longer exists
+          this.showDeleteModal = false;
+          this.itemToDelete = null;
+          this.hasVolumes = false;
+          this.volumeCount = 0;
+          try {
+            await storagePoolActions.fetchAll();
+          } catch (fetchError) {
+            console.warn('Failed to refresh pool list:', fetchError);
+          }
+        }
+      }
+      
+      this.showNotification(`Failed to delete storage pool: ${errorMessage}`, 'error');
     } finally {
       this.isDeleting = false;
     }
   }
 
   private handleCreateNew() {
-    this.createResourceValue = JSON.stringify({
-      apiVersion: 'v1',
-      kind: 'StoragePool',
-      metadata: {
-        name: 'new-pool',
-        namespace: 'default'
-      },
-      spec: {
-        type: 'dir',
-        capacity: '100Gi',
-        path: '/var/lib/libvirt/images'
-      }
-    }, null, 2);
-    this.showCreateDrawer = true;
+    this.editingPool = null;
+    this.showFormDrawer = true;
   }
 
   private handleSearchChange(e: CustomEvent) {
     storagePoolActions.setSearchQuery(e.detail.value);
   }
 
-  private async handleCreateResource(event: CustomEvent) {
+  private async handleFormSave(event: CustomEvent) {
+    const { formData } = event.detail as { formData: StoragePoolFormData };
     this.isCreating = true;
 
     try {
-      // Parse the JSON from the create drawer
-      const poolData = JSON.parse(event.detail.value);
+      // Build the API payload
+      const payload: any = {
+        name: formData.name,
+        type: formData.type,
+        autostart: formData.autostart,
+      };
 
-      // Create the storage pool using the action
-      await storagePoolActions.create(poolData);
+      // Add type-specific fields
+      if (formData.type === 'dir' && formData.path) {
+        payload.path = formData.path;
+      } else if (formData.type === 'netfs') {
+        payload.source = formData.source;
+        payload.target = formData.target;
+      }
 
-      this.showNotification('Storage pool created successfully', 'success');
-      this.showCreateDrawer = false;
-      this.createResourceValue = '';
-    } catch (error) {
+      await storagePoolActions.create(payload);
+      this.showNotification(`Storage pool "${formData.name}" created successfully`, 'success');
+      this.showFormDrawer = false;
+    } catch (error: any) {
       console.error('Failed to create pool:', error);
-      this.showNotification(
-        `Failed to create storage pool: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        'error'
-      );
+      // Extract error message from API response
+      let errorMessage = 'Unknown error';
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (error.details) {
+        errorMessage = error.details;
+      }
+      this.showNotification(`Failed to create storage pool: ${errorMessage}`, 'error');
     } finally {
       this.isCreating = false;
+    }
+  }
+
+  private async handleEditSave(event: CustomEvent) {
+    if (!this.editingPool) return;
+    
+    const { formData } = event.detail as { formData: StoragePoolFormData };
+    this.isUpdating = true;
+
+    try {
+      // Only autostart can be updated
+      await storagePoolActions.update(this.editingPool.name, {
+        autostart: formData.autostart,
+      });
+      
+      this.showNotification(`Storage pool "${this.editingPool.name}" updated successfully`, 'success');
+      this.showEditDrawer = false;
+      this.editingPool = null;
+    } catch (error: any) {
+      console.error('Failed to update pool:', error);
+      let errorMessage = 'Unknown error';
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      this.showNotification(`Failed to update storage pool: ${errorMessage}`, 'error');
+    } finally {
+      this.isUpdating = false;
     }
   }
 
@@ -543,7 +620,7 @@ export class VirtualizationStoragePools extends LitElement {
         ${this.showDetails && selectedPool ? html`
           <detail-drawer
             .title=${selectedPool.name || 'Pool Details'}
-            .open=${this.showDetails}
+            .show=${this.showDetails}
             @close=${() => {
           this.showDetails = false;
           storagePoolActions.selectPool(null);
@@ -591,26 +668,43 @@ export class VirtualizationStoragePools extends LitElement {
           </detail-drawer>
         ` : ''}
 
+        
+        
+        
         ${this.showDeleteModal ? html`
           <delete-modal
-            .open=${this.showDeleteModal}
+            .show=${this.showDeleteModal}
             .item=${this.itemToDelete}
             .loading=${this.isDeleting}
-            @delete=${this.handleDelete}
-            @close=${() => { this.showDeleteModal = false; this.itemToDelete = null; }}
+            .hasVolumes=${this.hasVolumes}
+            .volumeCount=${this.volumeCount}
+            @confirm-delete=${this.handleDelete}
+            @cancel-delete=${() => { 
+              this.showDeleteModal = false; 
+              this.itemToDelete = null; 
+              this.hasVolumes = false;
+              this.volumeCount = 0;
+            }}
           ></delete-modal>
         ` : ''}
 
-        ${this.showCreateDrawer ? html`
-          <create-resource-drawer
-            .open=${this.showCreateDrawer}
-            .title=${'Create Storage Pool'}
-            .value=${this.createResourceValue}
-            .loading=${this.isCreating}
-            @save=${this.handleCreateResource}
-            @close=${() => { this.showCreateDrawer = false; this.createResourceValue = ''; }}
-          ></create-resource-drawer>
-        ` : ''}
+        <storage-pool-form-drawer
+          .show=${this.showFormDrawer}
+          .loading=${this.isCreating}
+          .editMode=${false}
+          .poolData=${null}
+          @save=${this.handleFormSave}
+          @close=${() => { this.showFormDrawer = false; }}
+        ></storage-pool-form-drawer>
+
+        <storage-pool-form-drawer
+          .show=${this.showEditDrawer}
+          .loading=${this.isUpdating}
+          .editMode=${true}
+          .poolData=${this.editingPool}
+          @save=${this.handleEditSave}
+          @close=${() => { this.showEditDrawer = false; this.editingPool = null; }}
+        ></storage-pool-form-drawer>
       </div>
     `;
   }

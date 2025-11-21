@@ -456,9 +456,20 @@ export class VirtualizationAPI {
   /**
    * Delete a storage pool
    */
-  async deleteStoragePool(name: string): Promise<OperationResult> {
-    return apiRequest<OperationResult>(`/storages/pools/${name}`, {
+  async deleteStoragePool(name: string, deleteVolumes: boolean = false): Promise<OperationResult> {
+    const params = deleteVolumes ? '?delete_volumes=true' : '';
+    return apiRequest<OperationResult>(`/storages/pools/${name}${params}`, {
       method: 'DELETE',
+    });
+  }
+
+  /**
+   * Update a storage pool (currently supports autostart only)
+   */
+  async updateStoragePool(name: string, config: { autostart?: boolean }): Promise<StoragePool> {
+    return apiRequest<StoragePool>(`/storages/pools/${name}`, {
+      method: 'PUT',
+      body: JSON.stringify(config),
     });
   }
   
