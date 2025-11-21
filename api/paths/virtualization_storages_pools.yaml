@@ -111,6 +111,20 @@ get:
       $ref: ../components/responses/InternalError.yaml
 post:
   summary: Create a new storage pool
+  description: |
+    Creates a new storage pool with validation for directory-type pools.
+    
+    **Path Validation (for `type: "dir"`):**
+    - Path must not be empty
+    - Path must be absolute (start with `/`)
+    - Parent directory must exist
+    - Parent directory must be writable
+    - If path exists, it must be a directory (not a file)
+    
+    **Build Process:**
+    - For directory pools, libvirt will attempt to create the directory if it doesn't exist
+    - Build failures for `dir` pools are treated as critical errors
+    - Pool will be undefined if build or start fails
   tags:
   - Virtualization Storage
   security:
@@ -121,6 +135,23 @@ post:
       application/json:
         schema:
           $ref: ../components/schemas/StoragePoolCreateRequest.yaml
+        examples:
+          dir_pool:
+            summary: Directory-based storage pool
+            value:
+              name: "vm-storage"
+              type: "dir"
+              path: "/var/lib/libvirt/images/vm-storage"
+              autostart: true
+          netfs_pool:
+            summary: NFS storage pool
+            value:
+              name: "nfs-storage"
+              type: "netfs"
+              source: "nfs.example.com"
+              path: "/exports/vms"
+              target: "/mnt/nfs-storage"
+              autostart: false
   responses:
     '201':
       description: Storage pool created successfully
@@ -129,6 +160,36 @@ post:
           schema:
             $ref: ../components/schemas/StoragePoolCreateResponse.yaml
     '400':
-      $ref: ../components/responses/BadRequest.yaml
+      description: |
+        Bad request - validation failed
+        
+        **Common validation errors:**
+        - `path is required for directory-type storage pools`
+        - `path must be an absolute path, got: <path>`
+        - `parent directory does not exist: <dir>`
+        - `parent directory is not writable: <dir>`
+        - `path exists but is not a directory: <path>`
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "path is required for directory-type storage pools"
     '500':
-      $ref: ../components/responses/InternalError.yaml
+      description: |
+        Internal server error - pool creation failed
+        
+        **Common errors:**
+        - `failed to define storage pool` - libvirt couldn't parse pool XML
+        - `failed to build storage pool (could not create directory)` - directory creation failed
+        - `failed to start storage pool` - pool couldn't be activated
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "failed to build storage pool (could not create directory): Permission denied"

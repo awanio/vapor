@@ -24,6 +24,22 @@ get:
       $ref: ../components/responses/InternalError.yaml
 delete:
   summary: Delete a storage pool
+  description: |
+    Deletes a storage pool with validation to prevent accidental data loss.
+    
+    **Safety Features:**
+    - Pool with existing volumes cannot be deleted without explicit `delete_volumes=true`
+    - Returns `409 Conflict` if pool contains volumes and `delete_volumes` is `false` or not set
+    - Error message includes volume count to inform the user
+    
+    **Deletion Process:**
+    1. Check for existing volumes in the pool
+    2. If volumes exist and `delete_volumes=false`: reject with error
+    3. Stop the pool if it's active
+    4. Delete volumes if `delete_volumes=true`
+    5. Undefine the pool
+    
+    **⚠️ Warning:** Setting `delete_volumes=true` will **permanently delete all volumes** in the pool!
   tags:
     - Virtualization Storage
   security:
@@ -35,19 +51,91 @@ delete:
       schema:
         type: string
       description: Storage pool name
+      example: "old-storage-pool"
     - name: delete_volumes
       in: query
       required: false
       schema:
         type: boolean
-      description: Whether to delete associated volumes
+        default: false
+      description: |
+        Whether to delete all volumes in the pool.
+        
+        - `false` (default): Reject deletion if pool contains volumes
+        - `true`: Delete all volumes along with the pool (**DANGEROUS**)
+      example: false
   responses:
     '204':
-      description: Storage pool deleted successfully
+      description: Storage pool deleted successfully (no content returned)
     '404':
-      $ref: ../components/responses/NotFound.yaml
+      description: Storage pool not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "error"
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "POOL_NOT_FOUND"
+                  message:
+                    type: string
+                    example: "Storage pool not found"
+                  details:
+                    type: string
+                    example: "storage pool not found: Domain not found: no storage pool with matching name 'nonexistent'"
+    '409':
+      description: |
+        Conflict - pool contains volumes and `delete_volumes` was not set to `true`
+        
+        This prevents accidental deletion of data. To force deletion, set `delete_volumes=true`.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "error"
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "POOL_NOT_EMPTY"
+                  message:
+                    type: string
+                    example: "Cannot delete storage pool with existing volumes"
+                  details:
+                    type: string
+                    example: "storage pool contains 5 volume(s). Set delete_volumes=true to force deletion, or delete volumes first"
     '500':
-      $ref: ../components/responses/InternalError.yaml
+      description: Internal server error during deletion
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "error"
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "DELETE_POOL_FAILED"
+                  message:
+                    type: string
+                    example: "Failed to delete storage pool"
+                  details:
+                    type: string
+                    example: "failed to stop storage pool: internal error"
 put:
   summary: Update storage pool configuration
   description: |
