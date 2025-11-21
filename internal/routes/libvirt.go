@@ -1204,7 +1204,20 @@ func deleteStoragePool(service *libvirt.Service) gin.HandlerFunc {
 
 		err := service.DeleteStoragePool(c.Request.Context(), name, deleteVolumes)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			// Pool contains volumes and force flag not provided
+			if !deleteVolumes && (strings.Contains(err.Error(), "volume(s)") || strings.Contains(err.Error(), "contains")) {
+				sendStorageError(c, "POOL_NOT_EMPTY", "Cannot delete storage pool with existing volumes", err, http.StatusConflict)
+				return
+			}
+
+			// Pool not found
+			if strings.Contains(err.Error(), "not found") {
+				sendStorageError(c, "POOL_NOT_FOUND", "Storage pool not found", err, http.StatusNotFound)
+				return
+			}
+
+			// Other errors
+			sendStorageError(c, "DELETE_POOL_FAILED", "Failed to delete storage pool", err, http.StatusInternalServerError)
 			return
 		}
 
@@ -1218,6 +1231,11 @@ func updateStoragePool(service *libvirt.Service) gin.HandlerFunc {
 		var req libvirt.StoragePoolUpdateRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			sendStorageError(c, "INVALID_REQUEST", "Invalid request payload", err, http.StatusBadRequest)
+			return
+		}
+		// Validate that at least one field is being updated
+		if req.Autostart == nil {
+			sendStorageError(c, "INVALID_REQUEST", "No fields to update. Provide 'autostart' to change the autostart setting.", nil, http.StatusBadRequest)
 			return
 		}
 

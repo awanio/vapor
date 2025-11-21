@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/xml"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"libvirt.org/go/libvirt"
@@ -171,10 +174,61 @@ func (s *Service) GetStoragePool(ctx context.Context, name string) (*StoragePool
 	return s.storagePoolToType(pool)
 }
 
+// validateDirPoolPath validates the path for directory-type storage pools
+func validateDirPoolPath(path string) error {
+	// Check if path is provided
+	if strings.TrimSpace(path) == "" {
+		return fmt.Errorf("path is required for directory-type storage pools")
+	}
+
+	// Check if path is absolute
+	if !filepath.IsAbs(path) {
+		return fmt.Errorf("path must be an absolute path, got: %s", path)
+	}
+
+	// Clean the path
+	cleanPath := filepath.Clean(path)
+
+	// Check if parent directory exists and is writable
+	parentDir := filepath.Dir(cleanPath)
+	parentInfo, err := os.Stat(parentDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("parent directory does not exist: %s", parentDir)
+		}
+		return fmt.Errorf("cannot access parent directory %s: %w", parentDir, err)
+	}
+
+	if !parentInfo.IsDir() {
+		return fmt.Errorf("parent path is not a directory: %s", parentDir)
+	}
+
+	// Check if parent directory is writable
+	if parentInfo.Mode().Perm()&0200 == 0 {
+		return fmt.Errorf("parent directory is not writable: %s", parentDir)
+	}
+
+	// If the target path already exists, check if it's a directory
+	if info, err := os.Stat(cleanPath); err == nil {
+		if !info.IsDir() {
+			return fmt.Errorf("path exists but is not a directory: %s", cleanPath)
+		}
+	}
+
+	return nil
+}
+
 // CreateStoragePool creates a new storage pool
 func (s *Service) CreateStoragePool(ctx context.Context, req *StoragePoolCreateRequest) (*StoragePool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	// Validate path for dir-type pools
+	if req.Type == "dir" || req.Type == "" {
+		if err := validateDirPoolPath(req.Path); err != nil {
+			return nil, err
+		}
+	}
 
 	// Generate pool XML
 	poolXML := s.generateStoragePoolXML(req)
@@ -218,6 +272,28 @@ func (s *Service) DeleteStoragePool(ctx context.Context, name string, deleteVolu
 	}
 	defer pool.Free()
 
+	// Refresh pool to get current volume list
+	if active, _ := pool.IsActive(); active {
+		pool.Refresh(0) // Ignore refresh errors
+	}
+
+	// Check for existing volumes
+	volumes, err := pool.ListAllStorageVolumes(0)
+	if err != nil {
+		return fmt.Errorf("failed to list volumes in pool: %w", err)
+	}
+
+	volumeCount := len(volumes)
+	// Free volume handles
+	for _, vol := range volumes {
+		vol.Free()
+	}
+
+	// Validate deletion request
+	if volumeCount > 0 && !deleteVolumes {
+		return fmt.Errorf("storage pool contains %d volume(s). Set delete_volumes=true to force deletion, or delete volumes first", volumeCount)
+	}
+
 	// Stop the pool if active
 	if active, _ := pool.IsActive(); active {
 		if err := pool.Destroy(); err != nil {
@@ -225,10 +301,10 @@ func (s *Service) DeleteStoragePool(ctx context.Context, name string, deleteVolu
 		}
 	}
 
-	// Delete the pool
-	if deleteVolumes {
+	// Delete volumes if requested
+	if deleteVolumes && volumeCount > 0 {
 		if err := pool.Delete(libvirt.STORAGE_POOL_DELETE_NORMAL); err != nil {
-			return fmt.Errorf("failed to delete storage pool: %w", err)
+			return fmt.Errorf("failed to delete storage pool with volumes: %w", err)
 		}
 	}
 
