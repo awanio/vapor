@@ -51,6 +51,9 @@ post:
             description:
               type: string
               description: Description of the ISO
+            pool_name:
+              type: string
+              description: Optional associated storage pool name. Defaults to "default" when omitted.
       application/json:
         schema:
           type: object
@@ -67,6 +70,9 @@ post:
             description:
               type: string
               description: Description of the ISO
+            pool_name:
+              type: string
+              description: Optional associated storage pool name. Defaults to "default" when omitted.
   responses:
     '201':
       description: ISO uploaded successfully

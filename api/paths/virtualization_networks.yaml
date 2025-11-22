@@ -10,12 +10,7 @@ get:
       content:
         application/json:
           schema:
-            type: object
-            properties:
-              networks:
-                type: array
-                items:
-                  $ref: ../components/schemas/VirtualNetwork.yaml
+            $ref: ../components/schemas/VirtualNetworksResponse.yaml
     '500':
       $ref: ../components/responses/InternalError.yaml
 post:

@@ -53,6 +53,6 @@ properties:
     example: uploaded
   metadata:
     type: object
-    description: Additional metadata
+    description: Additional metadata. Common keys include `pool_name` (associated storage pool name).
     additionalProperties:
       type: string

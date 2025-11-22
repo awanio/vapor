@@ -12,7 +12,7 @@ post:
     - Upload-Length: Total size of the ISO file in bytes
 
     - Upload-Metadata: Base64-encoded metadata (filename, os_type, os_variant,
-    architecture, description, tags)
+    architecture, description, tags, pool_name). If pool_name is omitted, the ISO will be associated with the "default" pool.
 
 
     Example Upload-Metadata header:
@@ -93,6 +93,9 @@ post:
                     type: string
                   description:
                     type: string
+                  pool_name:
+                    type: string
+                    description: Optional associated storage pool name for the ISO
     '400':
       description: Invalid request (missing headers or invalid metadata)
       content:
