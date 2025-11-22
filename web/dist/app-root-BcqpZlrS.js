@@ -1,4 +1,4 @@
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-DhdrCj0L.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-C186YdN7.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -1215,14 +1215,14 @@ class I18nLitElement extends i$2 {
     }
   }
 }
-var __defProp$T = Object.defineProperty;
-var __getOwnPropDesc$L = Object.getOwnPropertyDescriptor;
-var __decorateClass$U = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$L(target, key) : target;
+var __defProp$V = Object.defineProperty;
+var __getOwnPropDesc$N = Object.getOwnPropertyDescriptor;
+var __decorateClass$W = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$N(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$T(target, key, result);
+  if (kind && result) __defProp$V(target, key, result);
   return result;
 };
 let LoginPage = class extends I18nLitElement {
@@ -1496,22 +1496,22 @@ LoginPage.styles = i$5`
       fill: var(--primary);
     }
   `;
-__decorateClass$U([
+__decorateClass$W([
   r$1()
 ], LoginPage.prototype, "username", 2);
-__decorateClass$U([
+__decorateClass$W([
   r$1()
 ], LoginPage.prototype, "password", 2);
-__decorateClass$U([
+__decorateClass$W([
   r$1()
 ], LoginPage.prototype, "loading", 2);
-__decorateClass$U([
+__decorateClass$W([
   r$1()
 ], LoginPage.prototype, "error", 2);
-__decorateClass$U([
+__decorateClass$W([
   r$1()
 ], LoginPage.prototype, "showPassword", 2);
-LoginPage = __decorateClass$U([
+LoginPage = __decorateClass$W([
   t$2("login-page")
 ], LoginPage);
 /*!
@@ -17407,7 +17407,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-DhdrCj0L.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-C186YdN7.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17452,7 +17452,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-DhdrCj0L.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-C186YdN7.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17516,7 +17516,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-DhdrCj0L.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-C186YdN7.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17596,9 +17596,9 @@ const metrics = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePrope
   updateMemoryMetrics,
   updateNetworkMetrics
 }, Symbol.toStringTag, { value: "Module" }));
-var __getOwnPropDesc$K = Object.getOwnPropertyDescriptor;
-var __decorateClass$T = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$K(target, key) : target;
+var __getOwnPropDesc$M = Object.getOwnPropertyDescriptor;
+var __decorateClass$V = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$M(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(result) || result;
@@ -17629,7 +17629,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-DhdrCj0L.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-C186YdN7.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -18249,7 +18249,7 @@ DashboardTabV2.styles = i$5`
       margin-bottom: 16px;
     }
   `;
-DashboardTabV2 = __decorateClass$T([
+DashboardTabV2 = __decorateClass$V([
   t$2("dashboard-tab-v2")
 ], DashboardTabV2);
 const $interfaces = atom([]);
@@ -18676,13 +18676,13 @@ async function initializeNetworkStore() {
   // Actions
   ...networkActions
 });
-var __defProp$S = Object.defineProperty;
-var __decorateClass$S = (decorators, target, key, kind) => {
+var __defProp$U = Object.defineProperty;
+var __decorateClass$U = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$S(target, key, result);
+  if (result) __defProp$U(target, key, result);
   return result;
 };
 class ModalDialog extends I18nLitElement {
@@ -18885,27 +18885,27 @@ class ModalDialog extends I18nLitElement {
     `;
   }
 }
-__decorateClass$S([
+__decorateClass$U([
   n2({ type: Boolean, reflect: true })
 ], ModalDialog.prototype, "open");
-__decorateClass$S([
+__decorateClass$U([
   n2({ type: String })
 ], ModalDialog.prototype, "title");
-__decorateClass$S([
+__decorateClass$U([
   n2({ type: String })
 ], ModalDialog.prototype, "size");
-__decorateClass$S([
+__decorateClass$U([
   n2({ type: Boolean })
 ], ModalDialog.prototype, "showFooter");
 customElements.define("modal-dialog", ModalDialog);
-var __defProp$R = Object.defineProperty;
-var __getOwnPropDesc$J = Object.getOwnPropertyDescriptor;
-var __decorateClass$R = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$J(target, key) : target;
+var __defProp$T = Object.defineProperty;
+var __getOwnPropDesc$L = Object.getOwnPropertyDescriptor;
+var __decorateClass$T = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$L(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$R(target, key, result);
+  if (kind && result) __defProp$T(target, key, result);
   return result;
 };
 let OperationWarning = class extends i$2 {
@@ -19091,31 +19091,31 @@ OperationWarning.styles = i$5`
       color: var(--text-primary, var(--vscode-foreground, #cccccc));
     }
   `;
-__decorateClass$R([
+__decorateClass$T([
   n2({ type: String })
 ], OperationWarning.prototype, "type", 2);
-__decorateClass$R([
+__decorateClass$T([
   n2({ type: String })
 ], OperationWarning.prototype, "message", 2);
-__decorateClass$R([
+__decorateClass$T([
   n2({ type: Array })
 ], OperationWarning.prototype, "failures", 2);
-__decorateClass$R([
+__decorateClass$T([
   n2({ type: Array })
 ], OperationWarning.prototype, "successfulItems", 2);
-__decorateClass$R([
+__decorateClass$T([
   n2({ type: Boolean })
 ], OperationWarning.prototype, "dismissible", 2);
-OperationWarning = __decorateClass$R([
+OperationWarning = __decorateClass$T([
   t$2("operation-warning")
 ], OperationWarning);
-var __defProp$Q = Object.defineProperty;
-var __decorateClass$Q = (decorators, target, key, kind) => {
+var __defProp$S = Object.defineProperty;
+var __decorateClass$S = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$Q(target, key, result);
+  if (result) __defProp$S(target, key, result);
   return result;
 };
 class NetworkTab extends I18nLitElement {
@@ -21711,147 +21711,147 @@ ${this.interfaces.length > 0 ? x`
     `;
   }
 }
-__decorateClass$Q([
+__decorateClass$S([
   n2({ type: String })
 ], NetworkTab.prototype, "subRoute");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "activeTab");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "showConfigureDrawer");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "showDetailsDrawer");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "editingIpIndex");
-__decorateClass$Q([
+__decorateClass$S([
   r$1(),
   r$1()
 ], NetworkTab.prototype, "showAddIpModal");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "showEditIpModal");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "editIpAddress");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "editIpNetmask");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "editIpGateway");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "originalIpAddress");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "newIpAddress");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "newIpNetmask");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "newIpGateway");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "showBridgeDrawer");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "isEditingBridge");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "editingBridgeName");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "bridgeFormData");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "showBondDrawer");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "isEditingBond");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "editingBondName");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "bondFormData");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "vlanFormData");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "showVLANDrawer");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "interfaceTypes");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "isEditingVlan");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "editingVlanName");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "operationWarning");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "configureNetworkInterface");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "configureFormData");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "showConfirmModal");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "confirmAction");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "confirmTitle");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "confirmMessage");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "availableInterfacesForBridge");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "showBridgeInterfacesSuggestions");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "bridgeInterfaceInputValue");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "selectedSuggestionIndex");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "bondInterfaceInputValue");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "showBondInterfacesSuggestions");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "selectedBondSuggestionIndex");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "vlanInterfaceInputValue");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "showVlanInterfacesSuggestions");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], NetworkTab.prototype, "selectedVlanSuggestionIndex");
 customElements.define("network-tab", NetworkTab);
-var __defProp$P = Object.defineProperty;
-var __decorateClass$P = (decorators, target, key, kind) => {
+var __defProp$R = Object.defineProperty;
+var __decorateClass$R = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$P(target, key, result);
+  if (result) __defProp$R(target, key, result);
   return result;
 };
 class StorageTab extends I18nLitElement {
@@ -22872,46 +22872,46 @@ class StorageTab extends I18nLitElement {
     console.log("Show create subvolume dialog");
   }
 }
-__decorateClass$P([
+__decorateClass$R([
   n2({ type: Array })
 ], StorageTab.prototype, "disks");
-__decorateClass$P([
+__decorateClass$R([
   n2({ type: Array })
 ], StorageTab.prototype, "volumeGroups");
-__decorateClass$P([
+__decorateClass$R([
   n2({ type: Array })
 ], StorageTab.prototype, "logicalVolumes");
-__decorateClass$P([
+__decorateClass$R([
   n2({ type: Array })
 ], StorageTab.prototype, "physicalVolumes");
-__decorateClass$P([
+__decorateClass$R([
   n2({ type: Array })
 ], StorageTab.prototype, "raidDevices");
-__decorateClass$P([
+__decorateClass$R([
   n2({ type: Array })
 ], StorageTab.prototype, "availableRaidDisks");
-__decorateClass$P([
+__decorateClass$R([
   n2({ type: Array })
 ], StorageTab.prototype, "iscsiTargets");
-__decorateClass$P([
+__decorateClass$R([
   n2({ type: Array })
 ], StorageTab.prototype, "iscsiSessions");
-__decorateClass$P([
+__decorateClass$R([
   n2({ type: Array })
 ], StorageTab.prototype, "multipathDevices");
-__decorateClass$P([
+__decorateClass$R([
   n2({ type: Array })
 ], StorageTab.prototype, "btrfsSubvolumes");
-__decorateClass$P([
+__decorateClass$R([
   n2({ type: String })
 ], StorageTab.prototype, "activeSection");
-__decorateClass$P([
+__decorateClass$R([
   n2({ type: String })
 ], StorageTab.prototype, "subRoute");
-__decorateClass$P([
+__decorateClass$R([
   n2({ type: Boolean })
 ], StorageTab.prototype, "loading");
-__decorateClass$P([
+__decorateClass$R([
   n2({ type: String })
 ], StorageTab.prototype, "error");
 customElements.define("storage-tab", StorageTab);
@@ -22958,13 +22958,13 @@ let e$1 = class e extends i$1 {
 };
 e$1.directiveName = "unsafeHTML", e$1.resultType = 1;
 const o = e$2(e$1);
-var __defProp$O = Object.defineProperty;
-var __decorateClass$O = (decorators, target, key, kind) => {
+var __defProp$Q = Object.defineProperty;
+var __decorateClass$Q = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$O(target, key, result);
+  if (result) __defProp$Q(target, key, result);
   return result;
 };
 class ContainersTab extends i$2 {
@@ -24848,89 +24848,89 @@ class ContainersTab extends i$2 {
     `;
   }
 }
-__decorateClass$O([
+__decorateClass$Q([
   r$1()
 ], ContainersTab.prototype, "activeTab");
-__decorateClass$O([
+__decorateClass$Q([
   r$1()
 ], ContainersTab.prototype, "containers");
-__decorateClass$O([
+__decorateClass$Q([
   r$1()
 ], ContainersTab.prototype, "images");
-__decorateClass$O([
+__decorateClass$Q([
   r$1()
 ], ContainersTab.prototype, "searchTerm");
-__decorateClass$O([
+__decorateClass$Q([
   r$1()
 ], ContainersTab.prototype, "error");
-__decorateClass$O([
+__decorateClass$Q([
   r$1()
 ], ContainersTab.prototype, "runtime");
-__decorateClass$O([
+__decorateClass$Q([
   r$1()
 ], ContainersTab.prototype, "showConfirmModal");
-__decorateClass$O([
+__decorateClass$Q([
   r$1()
 ], ContainersTab.prototype, "confirmAction");
-__decorateClass$O([
+__decorateClass$Q([
   r$1()
 ], ContainersTab.prototype, "selectedContainer");
-__decorateClass$O([
+__decorateClass$Q([
   r$1()
 ], ContainersTab.prototype, "selectedImage");
-__decorateClass$O([
+__decorateClass$Q([
   r$1()
 ], ContainersTab.prototype, "showDrawer");
-__decorateClass$O([
+__decorateClass$Q([
   r$1()
 ], ContainersTab.prototype, "detailError");
-__decorateClass$O([
+__decorateClass$Q([
   r$1()
 ], ContainersTab.prototype, "confirmTitle");
-__decorateClass$O([
+__decorateClass$Q([
   r$1()
 ], ContainersTab.prototype, "confirmMessage");
-__decorateClass$O([
+__decorateClass$Q([
   r$1()
 ], ContainersTab.prototype, "showLogsDrawer");
-__decorateClass$O([
+__decorateClass$Q([
   r$1()
 ], ContainersTab.prototype, "containerLogs");
-__decorateClass$O([
+__decorateClass$Q([
   r$1()
 ], ContainersTab.prototype, "logsError");
-__decorateClass$O([
+__decorateClass$Q([
   r$1()
 ], ContainersTab.prototype, "logsSearchTerm");
-__decorateClass$O([
+__decorateClass$Q([
   r$1()
 ], ContainersTab.prototype, "showImageActionsDropdown");
-__decorateClass$O([
+__decorateClass$Q([
   r$1()
 ], ContainersTab.prototype, "showPullImageModal");
-__decorateClass$O([
+__decorateClass$Q([
   r$1()
 ], ContainersTab.prototype, "imageName");
-__decorateClass$O([
+__decorateClass$Q([
   r$1()
 ], ContainersTab.prototype, "selectedFile");
-__decorateClass$O([
+__decorateClass$Q([
   r$1()
 ], ContainersTab.prototype, "showUploadDrawer");
-__decorateClass$O([
+__decorateClass$Q([
   r$1()
 ], ContainersTab.prototype, "uploadQueue");
-__decorateClass$O([
+__decorateClass$Q([
   r$1()
 ], ContainersTab.prototype, "isUploading");
 customElements.define("containers-tab", ContainersTab);
-var __defProp$N = Object.defineProperty;
-var __decorateClass$N = (decorators, target, key, kind) => {
+var __defProp$P = Object.defineProperty;
+var __decorateClass$P = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$N(target, key, result);
+  if (result) __defProp$P(target, key, result);
   return result;
 };
 class LogsTab extends I18nLitElement {
@@ -25408,25 +25408,25 @@ class LogsTab extends I18nLitElement {
     `;
   }
 }
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], LogsTab.prototype, "logs");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], LogsTab.prototype, "serviceFilter");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], LogsTab.prototype, "priorityFilter");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], LogsTab.prototype, "sinceFilter");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], LogsTab.prototype, "follow");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], LogsTab.prototype, "connected");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], LogsTab.prototype, "autoScroll");
 customElements.define("logs-tab", LogsTab);
@@ -32347,14 +32347,14 @@ class TerminalStore {
   }
 }
 const terminalStore = new TerminalStore();
-var __defProp$M = Object.defineProperty;
-var __getOwnPropDesc$I = Object.getOwnPropertyDescriptor;
-var __decorateClass$M = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$I(target, key) : target;
+var __defProp$O = Object.defineProperty;
+var __getOwnPropDesc$K = Object.getOwnPropertyDescriptor;
+var __decorateClass$O = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$K(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$M(target, key, result);
+  if (kind && result) __defProp$O(target, key, result);
   return result;
 };
 let TerminalTabV2 = class extends i$2 {
@@ -33044,28 +33044,28 @@ TerminalTabV2.styles = [
     }
   `
 ];
-__decorateClass$M([
+__decorateClass$O([
   r$1()
 ], TerminalTabV2.prototype, "isFullscreen", 2);
-__decorateClass$M([
+__decorateClass$O([
   r$1()
 ], TerminalTabV2.prototype, "localSessions", 2);
-__decorateClass$M([
+__decorateClass$O([
   r$1()
 ], TerminalTabV2.prototype, "localActiveSessionId", 2);
-__decorateClass$M([
+__decorateClass$O([
   r$1()
 ], TerminalTabV2.prototype, "localActiveSession", 2);
-TerminalTabV2 = __decorateClass$M([
+TerminalTabV2 = __decorateClass$O([
   t$2("terminal-tab-v2")
 ], TerminalTabV2);
-var __defProp$L = Object.defineProperty;
-var __decorateClass$L = (decorators, target, key, kind) => {
+var __defProp$N = Object.defineProperty;
+var __decorateClass$N = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$L(target, key, result);
+  if (result) __defProp$N(target, key, result);
   return result;
 };
 class UsersTab extends i$2 {
@@ -33823,47 +33823,47 @@ class UsersTab extends i$2 {
     `;
   }
 }
-__decorateClass$L([
+__decorateClass$N([
   n2({ type: Array })
 ], UsersTab.prototype, "users");
-__decorateClass$L([
+__decorateClass$N([
   n2({ type: Boolean })
 ], UsersTab.prototype, "showCreateForm");
-__decorateClass$L([
+__decorateClass$N([
   n2({ type: Boolean })
 ], UsersTab.prototype, "showEditForm");
-__decorateClass$L([
+__decorateClass$N([
   n2({ type: Boolean })
 ], UsersTab.prototype, "showResetPasswordForm");
-__decorateClass$L([
+__decorateClass$N([
   n2({ type: Object })
 ], UsersTab.prototype, "newUser");
-__decorateClass$L([
+__decorateClass$N([
   n2({ type: Object })
 ], UsersTab.prototype, "editingUser");
-__decorateClass$L([
+__decorateClass$N([
   n2({ type: String })
 ], UsersTab.prototype, "userToDelete");
-__decorateClass$L([
+__decorateClass$N([
   n2({ type: String })
 ], UsersTab.prototype, "resetPasswordUsername");
-__decorateClass$L([
+__decorateClass$N([
   n2({ type: String })
 ], UsersTab.prototype, "newPassword");
-__decorateClass$L([
+__decorateClass$N([
   n2({ type: String })
 ], UsersTab.prototype, "confirmPassword");
-__decorateClass$L([
+__decorateClass$N([
   n2({ type: String })
 ], UsersTab.prototype, "searchQuery");
 customElements.define("users-tab", UsersTab);
-var __defProp$K = Object.defineProperty;
-var __decorateClass$K = (decorators, target, key, kind) => {
+var __defProp$M = Object.defineProperty;
+var __decorateClass$M = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$K(target, key, result);
+  if (result) __defProp$M(target, key, result);
   return result;
 };
 class DockerTab extends i$2 {
@@ -35847,79 +35847,79 @@ class DockerTab extends i$2 {
     }
   }
 }
-__decorateClass$K([
+__decorateClass$M([
   r$1()
 ], DockerTab.prototype, "activeTab");
-__decorateClass$K([
+__decorateClass$M([
   r$1()
 ], DockerTab.prototype, "containers");
-__decorateClass$K([
+__decorateClass$M([
   r$1()
 ], DockerTab.prototype, "images");
-__decorateClass$K([
+__decorateClass$M([
   r$1()
 ], DockerTab.prototype, "volumes");
-__decorateClass$K([
+__decorateClass$M([
   r$1()
 ], DockerTab.prototype, "networks");
-__decorateClass$K([
+__decorateClass$M([
   r$1()
 ], DockerTab.prototype, "searchTerm");
-__decorateClass$K([
+__decorateClass$M([
   r$1()
 ], DockerTab.prototype, "error");
-__decorateClass$K([
+__decorateClass$M([
   r$1()
 ], DockerTab.prototype, "showConfirmModal");
-__decorateClass$K([
+__decorateClass$M([
   r$1()
 ], DockerTab.prototype, "confirmAction");
-__decorateClass$K([
+__decorateClass$M([
   r$1()
 ], DockerTab.prototype, "selectedContainer");
-__decorateClass$K([
+__decorateClass$M([
   r$1()
 ], DockerTab.prototype, "selectedImage");
-__decorateClass$K([
+__decorateClass$M([
   r$1()
 ], DockerTab.prototype, "showDrawer");
-__decorateClass$K([
+__decorateClass$M([
   r$1()
 ], DockerTab.prototype, "detailError");
-__decorateClass$K([
+__decorateClass$M([
   r$1()
 ], DockerTab.prototype, "confirmTitle");
-__decorateClass$K([
+__decorateClass$M([
   r$1()
 ], DockerTab.prototype, "confirmMessage");
-__decorateClass$K([
+__decorateClass$M([
   r$1()
 ], DockerTab.prototype, "showLogsDrawer");
-__decorateClass$K([
+__decorateClass$M([
   r$1()
 ], DockerTab.prototype, "containerLogs");
-__decorateClass$K([
+__decorateClass$M([
   r$1()
 ], DockerTab.prototype, "logsError");
-__decorateClass$K([
+__decorateClass$M([
   r$1()
 ], DockerTab.prototype, "logsSearchTerm");
-__decorateClass$K([
+__decorateClass$M([
   r$1()
 ], DockerTab.prototype, "showImageActionsDropdown");
-__decorateClass$K([
+__decorateClass$M([
   r$1()
 ], DockerTab.prototype, "showPullImageModal");
-__decorateClass$K([
+__decorateClass$M([
   r$1()
 ], DockerTab.prototype, "imageName");
-__decorateClass$K([
+__decorateClass$M([
   r$1()
 ], DockerTab.prototype, "showUploadDrawer");
-__decorateClass$K([
+__decorateClass$M([
   r$1()
 ], DockerTab.prototype, "uploadQueue");
-__decorateClass$K([
+__decorateClass$M([
   r$1()
 ], DockerTab.prototype, "isUploading");
 customElements.define("docker-tab", DockerTab);
@@ -36358,7 +36358,7 @@ class KubernetesApi {
       if (contentType === "json") {
         parsedResource = JSON.parse(content);
       } else {
-        const yaml = await import("./index-CuoTv4M_.js");
+        const yaml = await import("./index-BQ7W1jnj.js");
         parsedResource = yaml.parse(content);
       }
     } catch (error) {
@@ -36464,14 +36464,14 @@ class KubernetesApi {
     await Api.delete(endpoint);
   }
 }
-var __defProp$J = Object.defineProperty;
-var __getOwnPropDesc$H = Object.getOwnPropertyDescriptor;
-var __decorateClass$J = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$H(target, key) : target;
+var __defProp$L = Object.defineProperty;
+var __getOwnPropDesc$J = Object.getOwnPropertyDescriptor;
+var __decorateClass$L = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$J(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$J(target, key, result);
+  if (kind && result) __defProp$L(target, key, result);
   return result;
 };
 let SearchInput = class extends i$2 {
@@ -36559,29 +36559,29 @@ SearchInput.styles = i$5`
       cursor: not-allowed;
     }
   `;
-__decorateClass$J([
+__decorateClass$L([
   n2({ type: String })
 ], SearchInput.prototype, "value", 2);
-__decorateClass$J([
+__decorateClass$L([
   n2({ type: String })
 ], SearchInput.prototype, "placeholder", 2);
-__decorateClass$J([
+__decorateClass$L([
   n2({ type: Number })
 ], SearchInput.prototype, "width", 2);
-__decorateClass$J([
+__decorateClass$L([
   n2({ type: Boolean })
 ], SearchInput.prototype, "disabled", 2);
-SearchInput = __decorateClass$J([
+SearchInput = __decorateClass$L([
   t$2("search-input")
 ], SearchInput);
-var __defProp$I = Object.defineProperty;
-var __getOwnPropDesc$G = Object.getOwnPropertyDescriptor;
-var __decorateClass$I = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$G(target, key) : target;
+var __defProp$K = Object.defineProperty;
+var __getOwnPropDesc$I = Object.getOwnPropertyDescriptor;
+var __decorateClass$K = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$I(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$I(target, key, result);
+  if (kind && result) __defProp$K(target, key, result);
   return result;
 };
 let EmptyState = class extends i$2 {
@@ -36653,26 +36653,26 @@ EmptyState.styles = i$5`
       background: var(--vscode-button-hoverBackground, #005a9e);
     }
   `;
-__decorateClass$I([
+__decorateClass$K([
   n2({ type: String })
 ], EmptyState.prototype, "message", 2);
-__decorateClass$I([
+__decorateClass$K([
   n2({ type: String })
 ], EmptyState.prototype, "icon", 2);
-__decorateClass$I([
+__decorateClass$K([
   n2({ type: String })
 ], EmptyState.prototype, "actionLabel", 2);
-EmptyState = __decorateClass$I([
+EmptyState = __decorateClass$K([
   t$2("empty-state")
 ], EmptyState);
-var __defProp$H = Object.defineProperty;
-var __getOwnPropDesc$F = Object.getOwnPropertyDescriptor;
-var __decorateClass$H = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$F(target, key) : target;
+var __defProp$J = Object.defineProperty;
+var __getOwnPropDesc$H = Object.getOwnPropertyDescriptor;
+var __decorateClass$J = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$H(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$H(target, key, result);
+  if (kind && result) __defProp$J(target, key, result);
   return result;
 };
 let LoadingState = class extends i$2 {
@@ -36725,20 +36725,20 @@ LoadingState.styles = i$5`
       }
     }
   `;
-__decorateClass$H([
+__decorateClass$J([
   n2({ type: String })
 ], LoadingState.prototype, "message", 2);
-LoadingState = __decorateClass$H([
+LoadingState = __decorateClass$J([
   t$2("loading-state")
 ], LoadingState);
-var __defProp$G = Object.defineProperty;
-var __getOwnPropDesc$E = Object.getOwnPropertyDescriptor;
-var __decorateClass$G = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$E(target, key) : target;
+var __defProp$I = Object.defineProperty;
+var __getOwnPropDesc$G = Object.getOwnPropertyDescriptor;
+var __decorateClass$I = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$G(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$G(target, key, result);
+  if (kind && result) __defProp$I(target, key, result);
   return result;
 };
 let NamespaceDropdown = class extends i$2 {
@@ -37043,41 +37043,41 @@ NamespaceDropdown.styles = i$5`
       background: var(--scrollbar-thumb-hover, #5a5d6a);
     }
   `;
-__decorateClass$G([
+__decorateClass$I([
   n2({ type: Array })
 ], NamespaceDropdown.prototype, "namespaces", 2);
-__decorateClass$G([
+__decorateClass$I([
   n2({ type: String })
 ], NamespaceDropdown.prototype, "selectedNamespace", 2);
-__decorateClass$G([
+__decorateClass$I([
   n2({ type: Boolean })
 ], NamespaceDropdown.prototype, "loading", 2);
-__decorateClass$G([
+__decorateClass$I([
   n2({ type: String })
 ], NamespaceDropdown.prototype, "placeholder", 2);
-__decorateClass$G([
+__decorateClass$I([
   n2({ type: Boolean })
 ], NamespaceDropdown.prototype, "showCounts", 2);
-__decorateClass$G([
+__decorateClass$I([
   n2({ type: Boolean })
 ], NamespaceDropdown.prototype, "includeAllOption", 2);
-__decorateClass$G([
+__decorateClass$I([
   r$1()
 ], NamespaceDropdown.prototype, "isOpen", 2);
-__decorateClass$G([
+__decorateClass$I([
   r$1()
 ], NamespaceDropdown.prototype, "searchQuery", 2);
-NamespaceDropdown = __decorateClass$G([
+NamespaceDropdown = __decorateClass$I([
   t$2("namespace-dropdown")
 ], NamespaceDropdown);
-var __defProp$F = Object.defineProperty;
-var __getOwnPropDesc$D = Object.getOwnPropertyDescriptor;
-var __decorateClass$F = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$D(target, key) : target;
+var __defProp$H = Object.defineProperty;
+var __getOwnPropDesc$F = Object.getOwnPropertyDescriptor;
+var __decorateClass$H = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$F(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$F(target, key, result);
+  if (kind && result) __defProp$H(target, key, result);
   return result;
 };
 let TabGroup = class extends i$2 {
@@ -37145,23 +37145,23 @@ TabGroup.styles = i$5`
       font-size: 1rem;
     }
   `;
-__decorateClass$F([
+__decorateClass$H([
   n2({ type: Array })
 ], TabGroup.prototype, "tabs", 2);
-__decorateClass$F([
+__decorateClass$H([
   n2({ type: String })
 ], TabGroup.prototype, "activeTab", 2);
-TabGroup = __decorateClass$F([
+TabGroup = __decorateClass$H([
   t$2("tab-group")
 ], TabGroup);
-var __defProp$E = Object.defineProperty;
-var __getOwnPropDesc$C = Object.getOwnPropertyDescriptor;
-var __decorateClass$E = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$C(target, key) : target;
+var __defProp$G = Object.defineProperty;
+var __getOwnPropDesc$E = Object.getOwnPropertyDescriptor;
+var __decorateClass$G = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$E(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$E(target, key, result);
+  if (kind && result) __defProp$G(target, key, result);
   return result;
 };
 let ActionDropdown = class extends i$2 {
@@ -37323,29 +37323,29 @@ ActionDropdown.styles = i$5`
       background-color: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.1)));
     }
   `;
-__decorateClass$E([
+__decorateClass$G([
   n2({ type: Array })
 ], ActionDropdown.prototype, "actions", 2);
-__decorateClass$E([
+__decorateClass$G([
   n2({ type: String })
 ], ActionDropdown.prototype, "menuId", 2);
-__decorateClass$E([
+__decorateClass$G([
   r$1()
 ], ActionDropdown.prototype, "isOpen", 2);
-__decorateClass$E([
+__decorateClass$G([
   r$1()
 ], ActionDropdown.prototype, "dropdownPosition", 2);
-ActionDropdown = __decorateClass$E([
+ActionDropdown = __decorateClass$G([
   t$2("action-dropdown")
 ], ActionDropdown);
-var __defProp$D = Object.defineProperty;
-var __getOwnPropDesc$B = Object.getOwnPropertyDescriptor;
-var __decorateClass$D = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$B(target, key) : target;
+var __defProp$F = Object.defineProperty;
+var __getOwnPropDesc$D = Object.getOwnPropertyDescriptor;
+var __decorateClass$F = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$D(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$D(target, key, result);
+  if (kind && result) __defProp$F(target, key, result);
   return result;
 };
 let StatusBadge = class extends i$2 {
@@ -37407,23 +37407,23 @@ StatusBadge.styles = i$5`
       color: rgb(107, 114, 128);
     }
   `;
-__decorateClass$D([
+__decorateClass$F([
   n2({ type: String })
 ], StatusBadge.prototype, "status", 2);
-__decorateClass$D([
+__decorateClass$F([
   n2({ type: String })
 ], StatusBadge.prototype, "text", 2);
-StatusBadge = __decorateClass$D([
+StatusBadge = __decorateClass$F([
   t$2("status-badge")
 ], StatusBadge);
-var __defProp$C = Object.defineProperty;
-var __getOwnPropDesc$A = Object.getOwnPropertyDescriptor;
-var __decorateClass$C = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$A(target, key) : target;
+var __defProp$E = Object.defineProperty;
+var __getOwnPropDesc$C = Object.getOwnPropertyDescriptor;
+var __decorateClass$E = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$C(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$C(target, key, result);
+  if (kind && result) __defProp$E(target, key, result);
   return result;
 };
 let ResourceTable = class extends i$2 {
@@ -37578,35 +37578,35 @@ ResourceTable.styles = i$5`
       text-align: center;
     }
   `;
-__decorateClass$C([
+__decorateClass$E([
   n2({ type: Array })
 ], ResourceTable.prototype, "columns", 2);
-__decorateClass$C([
+__decorateClass$E([
   n2({ type: Array })
 ], ResourceTable.prototype, "data", 2);
-__decorateClass$C([
+__decorateClass$E([
   n2({ type: String })
 ], ResourceTable.prototype, "emptyMessage", 2);
-__decorateClass$C([
+__decorateClass$E([
   n2({ type: Boolean })
 ], ResourceTable.prototype, "showActions", 2);
-__decorateClass$C([
+__decorateClass$E([
   n2({ type: Function })
 ], ResourceTable.prototype, "getActions", 2);
-__decorateClass$C([
+__decorateClass$E([
   n2({ type: Object })
 ], ResourceTable.prototype, "customRenderers", 2);
-ResourceTable = __decorateClass$C([
+ResourceTable = __decorateClass$E([
   t$2("resource-table")
 ], ResourceTable);
-var __defProp$B = Object.defineProperty;
-var __getOwnPropDesc$z = Object.getOwnPropertyDescriptor;
-var __decorateClass$B = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$z(target, key) : target;
+var __defProp$D = Object.defineProperty;
+var __getOwnPropDesc$B = Object.getOwnPropertyDescriptor;
+var __decorateClass$D = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$B(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$B(target, key, result);
+  if (kind && result) __defProp$D(target, key, result);
   return result;
 };
 let DetailDrawer = class extends i$2 {
@@ -37726,29 +37726,29 @@ DetailDrawer.styles = i$5`
       padding-bottom: 40px; /* Extra padding at bottom to ensure last content is visible */
     }
   `;
-__decorateClass$B([
+__decorateClass$D([
   n2({ type: String })
 ], DetailDrawer.prototype, "title", 2);
-__decorateClass$B([
+__decorateClass$D([
   n2({ type: Boolean })
 ], DetailDrawer.prototype, "show", 2);
-__decorateClass$B([
+__decorateClass$D([
   n2({ type: Boolean })
 ], DetailDrawer.prototype, "loading", 2);
-__decorateClass$B([
+__decorateClass$D([
   n2({ type: Number })
 ], DetailDrawer.prototype, "width", 2);
-DetailDrawer = __decorateClass$B([
+DetailDrawer = __decorateClass$D([
   t$2("detail-drawer")
 ], DetailDrawer);
-var __defProp$A = Object.defineProperty;
-var __getOwnPropDesc$y = Object.getOwnPropertyDescriptor;
-var __decorateClass$A = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$y(target, key) : target;
+var __defProp$C = Object.defineProperty;
+var __getOwnPropDesc$A = Object.getOwnPropertyDescriptor;
+var __decorateClass$C = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$A(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$A(target, key, result);
+  if (kind && result) __defProp$C(target, key, result);
   return result;
 };
 let LogsDrawer = class extends i$2 {
@@ -38213,50 +38213,50 @@ LogsDrawer.styles = i$5`
       background: var(--vscode-scrollbarSlider-hoverBackground, rgba(100, 100, 100, 0.7));
     }
   `;
-__decorateClass$A([
+__decorateClass$C([
   n2({ type: Boolean, reflect: true })
 ], LogsDrawer.prototype, "show", 2);
-__decorateClass$A([
+__decorateClass$C([
   n2({ type: String })
 ], LogsDrawer.prototype, "title", 2);
-__decorateClass$A([
+__decorateClass$C([
   n2({ type: String })
 ], LogsDrawer.prototype, "subtitle", 2);
-__decorateClass$A([
+__decorateClass$C([
   n2({ type: String })
 ], LogsDrawer.prototype, "logs", 2);
-__decorateClass$A([
+__decorateClass$C([
   n2({ type: Boolean })
 ], LogsDrawer.prototype, "loading", 2);
-__decorateClass$A([
+__decorateClass$C([
   n2({ type: String })
 ], LogsDrawer.prototype, "error", 2);
-__decorateClass$A([
+__decorateClass$C([
   n2({ type: Boolean })
 ], LogsDrawer.prototype, "autoScroll", 2);
-__decorateClass$A([
+__decorateClass$C([
   n2({ type: Boolean })
 ], LogsDrawer.prototype, "showTimestamps", 2);
-__decorateClass$A([
+__decorateClass$C([
   n2({ type: Boolean })
 ], LogsDrawer.prototype, "colorize", 2);
-__decorateClass$A([
+__decorateClass$C([
   r$1()
 ], LogsDrawer.prototype, "searchQuery", 2);
-__decorateClass$A([
+__decorateClass$C([
   r$1()
 ], LogsDrawer.prototype, "isFollowing", 2);
-LogsDrawer = __decorateClass$A([
+LogsDrawer = __decorateClass$C([
   t$2("logs-drawer")
 ], LogsDrawer);
-var __defProp$z = Object.defineProperty;
-var __getOwnPropDesc$x = Object.getOwnPropertyDescriptor;
-var __decorateClass$z = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$x(target, key) : target;
+var __defProp$B = Object.defineProperty;
+var __getOwnPropDesc$z = Object.getOwnPropertyDescriptor;
+var __decorateClass$B = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$z(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$z(target, key, result);
+  if (kind && result) __defProp$B(target, key, result);
   return result;
 };
 let DeleteModal = class extends i$2 {
@@ -38513,50 +38513,50 @@ DeleteModal.styles = i$5`
       cursor: not-allowed;
     }
   `;
-__decorateClass$z([
+__decorateClass$B([
   n2({ type: Object })
 ], DeleteModal.prototype, "item", 2);
-__decorateClass$z([
+__decorateClass$B([
   n2({ type: Boolean, reflect: true })
 ], DeleteModal.prototype, "show", 2);
-__decorateClass$z([
+__decorateClass$B([
   n2({ type: Boolean })
 ], DeleteModal.prototype, "loading", 2);
-__decorateClass$z([
+__decorateClass$B([
   n2({ type: String, attribute: "modal-title" })
 ], DeleteModal.prototype, "modalTitle", 2);
-__decorateClass$z([
+__decorateClass$B([
   n2({ type: String, attribute: "message" })
 ], DeleteModal.prototype, "message", 2);
-__decorateClass$z([
+__decorateClass$B([
   n2({ type: String, attribute: "confirm-label" })
 ], DeleteModal.prototype, "confirmLabel", 2);
-__decorateClass$z([
+__decorateClass$B([
   n2({ type: String, attribute: "confirm-button-class" })
 ], DeleteModal.prototype, "confirmButtonClass", 2);
-__decorateClass$z([
+__decorateClass$B([
   n2({ type: Boolean, attribute: "has-volumes" })
 ], DeleteModal.prototype, "hasVolumes", 2);
-__decorateClass$z([
+__decorateClass$B([
   n2({ type: Number, attribute: "volume-count" })
 ], DeleteModal.prototype, "volumeCount", 2);
-__decorateClass$z([
+__decorateClass$B([
   n2({ type: Boolean, attribute: "delete-volumes" })
 ], DeleteModal.prototype, "deleteVolumes", 2);
-__decorateClass$z([
+__decorateClass$B([
   n2({ type: Boolean, attribute: "acknowledge" })
 ], DeleteModal.prototype, "acknowledge", 2);
-DeleteModal = __decorateClass$z([
+DeleteModal = __decorateClass$B([
   t$2("delete-modal")
 ], DeleteModal);
-var __defProp$y = Object.defineProperty;
-var __getOwnPropDesc$w = Object.getOwnPropertyDescriptor;
-var __decorateClass$y = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$w(target, key) : target;
+var __defProp$A = Object.defineProperty;
+var __getOwnPropDesc$y = Object.getOwnPropertyDescriptor;
+var __decorateClass$A = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$y(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$y(target, key, result);
+  if (kind && result) __defProp$A(target, key, result);
   return result;
 };
 let SetImageModal = class extends i$2 {
@@ -38897,35 +38897,35 @@ SetImageModal.styles = i$5`
       to { transform: rotate(360deg); }
     }
   `;
-__decorateClass$y([
+__decorateClass$A([
   n2({ type: Boolean, reflect: true })
 ], SetImageModal.prototype, "show", 2);
-__decorateClass$y([
+__decorateClass$A([
   n2({ type: Boolean })
 ], SetImageModal.prototype, "loading", 2);
-__decorateClass$y([
+__decorateClass$A([
   n2({ type: String })
 ], SetImageModal.prototype, "deploymentName", 2);
-__decorateClass$y([
+__decorateClass$A([
   n2({ type: String })
 ], SetImageModal.prototype, "namespace", 2);
-__decorateClass$y([
+__decorateClass$A([
   n2({ type: Array })
 ], SetImageModal.prototype, "containers", 2);
-__decorateClass$y([
+__decorateClass$A([
   r$1()
 ], SetImageModal.prototype, "containerImages", 2);
-SetImageModal = __decorateClass$y([
+SetImageModal = __decorateClass$A([
   t$2("set-image-modal")
 ], SetImageModal);
-var __defProp$x = Object.defineProperty;
-var __getOwnPropDesc$v = Object.getOwnPropertyDescriptor;
-var __decorateClass$x = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$v(target, key) : target;
+var __defProp$z = Object.defineProperty;
+var __getOwnPropDesc$x = Object.getOwnPropertyDescriptor;
+var __decorateClass$z = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$x(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$x(target, key, result);
+  if (kind && result) __defProp$z(target, key, result);
   return result;
 };
 let ResourceDetailView = class extends i$2 {
@@ -39763,10 +39763,10 @@ ResourceDetailView.styles = i$5`
       opacity: 0.7;
     }
   `;
-__decorateClass$x([
+__decorateClass$z([
   n2({ type: Object })
 ], ResourceDetailView.prototype, "resource", 2);
-ResourceDetailView = __decorateClass$x([
+ResourceDetailView = __decorateClass$z([
   t$2("resource-detail-view")
 ], ResourceDetailView);
 const ALIAS = Symbol.for("yaml.alias");
@@ -46170,14 +46170,14 @@ const YAML = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty
   visit: visit$1,
   visitAsync
 }, Symbol.toStringTag, { value: "Module" }));
-var __defProp$w = Object.defineProperty;
-var __getOwnPropDesc$u = Object.getOwnPropertyDescriptor;
-var __decorateClass$w = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$u(target, key) : target;
+var __defProp$y = Object.defineProperty;
+var __getOwnPropDesc$w = Object.getOwnPropertyDescriptor;
+var __decorateClass$y = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$w(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$w(target, key, result);
+  if (kind && result) __defProp$y(target, key, result);
   return result;
 };
 let CreateResourceDrawer = class extends i$2 {
@@ -46777,44 +46777,44 @@ CreateResourceDrawer.styles = i$5`
       background: var(--scrollbar-thumb-hover, #5a5d6a);
     }
   `;
-__decorateClass$w([
+__decorateClass$y([
   n2({ type: Boolean, reflect: true })
 ], CreateResourceDrawer.prototype, "show", 2);
-__decorateClass$w([
+__decorateClass$y([
   n2({ type: String })
 ], CreateResourceDrawer.prototype, "title", 2);
-__decorateClass$w([
+__decorateClass$y([
   n2({ type: String })
 ], CreateResourceDrawer.prototype, "value", 2);
-__decorateClass$w([
+__decorateClass$y([
   n2({ type: Boolean })
 ], CreateResourceDrawer.prototype, "loading", 2);
-__decorateClass$w([
+__decorateClass$y([
   n2({ type: String })
 ], CreateResourceDrawer.prototype, "error", 2);
-__decorateClass$w([
+__decorateClass$y([
   n2({ type: String })
 ], CreateResourceDrawer.prototype, "format", 2);
-__decorateClass$w([
+__decorateClass$y([
   n2({ type: String })
 ], CreateResourceDrawer.prototype, "submitLabel", 2);
-__decorateClass$w([
+__decorateClass$y([
   r$1()
 ], CreateResourceDrawer.prototype, "validationMessage", 2);
-__decorateClass$w([
+__decorateClass$y([
   r$1()
 ], CreateResourceDrawer.prototype, "validationStatus", 2);
-CreateResourceDrawer = __decorateClass$w([
+CreateResourceDrawer = __decorateClass$y([
   t$2("create-resource-drawer")
 ], CreateResourceDrawer);
-var __defProp$v = Object.defineProperty;
-var __getOwnPropDesc$t = Object.getOwnPropertyDescriptor;
-var __decorateClass$v = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$t(target, key) : target;
+var __defProp$x = Object.defineProperty;
+var __getOwnPropDesc$v = Object.getOwnPropertyDescriptor;
+var __decorateClass$x = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$v(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$v(target, key, result);
+  if (kind && result) __defProp$x(target, key, result);
   return result;
 };
 let NotificationContainer = class extends i$2 {
@@ -47115,29 +47115,29 @@ NotificationContainer.styles = i$5`
       opacity: 0.3;
     }
   `;
-__decorateClass$v([
+__decorateClass$x([
   n2({ type: Array })
 ], NotificationContainer.prototype, "notifications", 2);
-__decorateClass$v([
+__decorateClass$x([
   n2({ type: Number })
 ], NotificationContainer.prototype, "defaultDuration", 2);
-__decorateClass$v([
+__decorateClass$x([
   n2({ type: Number })
 ], NotificationContainer.prototype, "maxNotifications", 2);
-__decorateClass$v([
+__decorateClass$x([
   r$1()
 ], NotificationContainer.prototype, "closingIds", 2);
-NotificationContainer = __decorateClass$v([
+NotificationContainer = __decorateClass$x([
   t$2("notification-container")
 ], NotificationContainer);
-var __defProp$u = Object.defineProperty;
-var __getOwnPropDesc$s = Object.getOwnPropertyDescriptor;
-var __decorateClass$u = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$s(target, key) : target;
+var __defProp$w = Object.defineProperty;
+var __getOwnPropDesc$u = Object.getOwnPropertyDescriptor;
+var __decorateClass$w = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$u(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$u(target, key, result);
+  if (kind && result) __defProp$w(target, key, result);
   return result;
 };
 let KubernetesWorkloads = class extends i$2 {
@@ -48079,122 +48079,122 @@ KubernetesWorkloads.styles = i$5`
       --option-selected-bg: var(--vscode-list-activeSelectionBackground, #094771);
     }
   `;
-__decorateClass$u([
+__decorateClass$w([
   n2({ type: Array })
 ], KubernetesWorkloads.prototype, "workloads", 2);
-__decorateClass$u([
+__decorateClass$w([
   n2({ type: Array })
 ], KubernetesWorkloads.prototype, "namespaces", 2);
-__decorateClass$u([
+__decorateClass$w([
   n2({ type: String })
 ], KubernetesWorkloads.prototype, "selectedNamespace", 2);
-__decorateClass$u([
+__decorateClass$w([
   n2({ type: String })
 ], KubernetesWorkloads.prototype, "searchQuery", 2);
-__decorateClass$u([
+__decorateClass$w([
   n2({ type: Boolean })
 ], KubernetesWorkloads.prototype, "loading", 2);
-__decorateClass$u([
+__decorateClass$w([
   n2({ type: String })
 ], KubernetesWorkloads.prototype, "error", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "activeTab", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "showDetails", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "selectedItem", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "loadingDetails", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "detailsData", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "showDeleteModal", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "itemToDelete", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "isDeleting", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "showCreateDrawer", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "createResourceValue", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "createDrawerTitle", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "isCreating", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "showLogsDrawer", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "logsData", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "logsLoading", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "logsError", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "logsPodName", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "logsNamespace", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "resourceFormat", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "isEditMode", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "editingResource", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "showRestartModal", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "showRollbackModal", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "showSetImageModal", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "workloadToRestart", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "workloadToRollback", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "workloadForSetImage", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "containerImages", 2);
-__decorateClass$u([
+__decorateClass$w([
   r$1()
 ], KubernetesWorkloads.prototype, "isPerformingAction", 2);
-KubernetesWorkloads = __decorateClass$u([
+KubernetesWorkloads = __decorateClass$w([
   t$2("kubernetes-workloads")
 ], KubernetesWorkloads);
-var __defProp$t = Object.defineProperty;
-var __getOwnPropDesc$r = Object.getOwnPropertyDescriptor;
-var __decorateClass$t = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$r(target, key) : target;
+var __defProp$v = Object.defineProperty;
+var __getOwnPropDesc$t = Object.getOwnPropertyDescriptor;
+var __decorateClass$v = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$t(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$t(target, key, result);
+  if (kind && result) __defProp$v(target, key, result);
   return result;
 };
 let KubernetesNetworks = class extends i$2 {
@@ -48743,80 +48743,80 @@ KubernetesNetworks.styles = i$5`
       --option-selected-bg: var(--vscode-list-activeSelectionBackground, #094771);
     }
   `;
-__decorateClass$t([
+__decorateClass$v([
   n2({ type: Array })
 ], KubernetesNetworks.prototype, "resources", 2);
-__decorateClass$t([
+__decorateClass$v([
   n2({ type: Array })
 ], KubernetesNetworks.prototype, "namespaces", 2);
-__decorateClass$t([
+__decorateClass$v([
   n2({ type: String })
 ], KubernetesNetworks.prototype, "selectedNamespace", 2);
-__decorateClass$t([
+__decorateClass$v([
   n2({ type: String })
 ], KubernetesNetworks.prototype, "searchQuery", 2);
-__decorateClass$t([
+__decorateClass$v([
   n2({ type: Boolean })
 ], KubernetesNetworks.prototype, "loading", 2);
-__decorateClass$t([
+__decorateClass$v([
   n2({ type: String })
 ], KubernetesNetworks.prototype, "error", 2);
-__decorateClass$t([
+__decorateClass$v([
   r$1()
 ], KubernetesNetworks.prototype, "activeTab", 2);
-__decorateClass$t([
+__decorateClass$v([
   r$1()
 ], KubernetesNetworks.prototype, "showDetails", 2);
-__decorateClass$t([
+__decorateClass$v([
   r$1()
 ], KubernetesNetworks.prototype, "selectedItem", 2);
-__decorateClass$t([
+__decorateClass$v([
   r$1()
 ], KubernetesNetworks.prototype, "loadingDetails", 2);
-__decorateClass$t([
+__decorateClass$v([
   r$1()
 ], KubernetesNetworks.prototype, "detailsData", 2);
-__decorateClass$t([
+__decorateClass$v([
   r$1()
 ], KubernetesNetworks.prototype, "showDeleteModal", 2);
-__decorateClass$t([
+__decorateClass$v([
   r$1()
 ], KubernetesNetworks.prototype, "itemToDelete", 2);
-__decorateClass$t([
+__decorateClass$v([
   r$1()
 ], KubernetesNetworks.prototype, "isDeleting", 2);
-__decorateClass$t([
+__decorateClass$v([
   r$1()
 ], KubernetesNetworks.prototype, "showCreateDrawer", 2);
-__decorateClass$t([
+__decorateClass$v([
   r$1()
 ], KubernetesNetworks.prototype, "createResourceValue", 2);
-__decorateClass$t([
+__decorateClass$v([
   r$1()
 ], KubernetesNetworks.prototype, "createDrawerTitle", 2);
-__decorateClass$t([
+__decorateClass$v([
   r$1()
 ], KubernetesNetworks.prototype, "isCreating", 2);
-__decorateClass$t([
+__decorateClass$v([
   r$1()
 ], KubernetesNetworks.prototype, "resourceFormat", 2);
-__decorateClass$t([
+__decorateClass$v([
   r$1()
 ], KubernetesNetworks.prototype, "isEditMode", 2);
-__decorateClass$t([
+__decorateClass$v([
   r$1()
 ], KubernetesNetworks.prototype, "editingResource", 2);
-KubernetesNetworks = __decorateClass$t([
+KubernetesNetworks = __decorateClass$v([
   t$2("kubernetes-networks")
 ], KubernetesNetworks);
-var __defProp$s = Object.defineProperty;
-var __getOwnPropDesc$q = Object.getOwnPropertyDescriptor;
-var __decorateClass$s = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$q(target, key) : target;
+var __defProp$u = Object.defineProperty;
+var __getOwnPropDesc$s = Object.getOwnPropertyDescriptor;
+var __decorateClass$u = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$s(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$s(target, key, result);
+  if (kind && result) __defProp$u(target, key, result);
   return result;
 };
 let KubernetesStorage = class extends i$2 {
@@ -49329,80 +49329,80 @@ KubernetesStorage.styles = i$5`
       color: var(--vscode-editor-background, #1e1e1e);
     }
   `;
-__decorateClass$s([
+__decorateClass$u([
   n2({ type: Array })
 ], KubernetesStorage.prototype, "resources", 2);
-__decorateClass$s([
+__decorateClass$u([
   n2({ type: Array })
 ], KubernetesStorage.prototype, "namespaces", 2);
-__decorateClass$s([
+__decorateClass$u([
   n2({ type: String })
 ], KubernetesStorage.prototype, "selectedNamespace", 2);
-__decorateClass$s([
+__decorateClass$u([
   n2({ type: String })
 ], KubernetesStorage.prototype, "searchQuery", 2);
-__decorateClass$s([
+__decorateClass$u([
   n2({ type: Boolean })
 ], KubernetesStorage.prototype, "loading", 2);
-__decorateClass$s([
+__decorateClass$u([
   n2({ type: String })
 ], KubernetesStorage.prototype, "error", 2);
-__decorateClass$s([
+__decorateClass$u([
   r$1()
 ], KubernetesStorage.prototype, "activeTab", 2);
-__decorateClass$s([
+__decorateClass$u([
   r$1()
 ], KubernetesStorage.prototype, "showDetails", 2);
-__decorateClass$s([
+__decorateClass$u([
   r$1()
 ], KubernetesStorage.prototype, "selectedItem", 2);
-__decorateClass$s([
+__decorateClass$u([
   r$1()
 ], KubernetesStorage.prototype, "loadingDetails", 2);
-__decorateClass$s([
+__decorateClass$u([
   r$1()
 ], KubernetesStorage.prototype, "detailsData", 2);
-__decorateClass$s([
+__decorateClass$u([
   r$1()
 ], KubernetesStorage.prototype, "showDeleteModal", 2);
-__decorateClass$s([
+__decorateClass$u([
   r$1()
 ], KubernetesStorage.prototype, "itemToDelete", 2);
-__decorateClass$s([
+__decorateClass$u([
   r$1()
 ], KubernetesStorage.prototype, "isDeleting", 2);
-__decorateClass$s([
+__decorateClass$u([
   r$1()
 ], KubernetesStorage.prototype, "showCreateDrawer", 2);
-__decorateClass$s([
+__decorateClass$u([
   r$1()
 ], KubernetesStorage.prototype, "createResourceValue", 2);
-__decorateClass$s([
+__decorateClass$u([
   r$1()
 ], KubernetesStorage.prototype, "createDrawerTitle", 2);
-__decorateClass$s([
+__decorateClass$u([
   r$1()
 ], KubernetesStorage.prototype, "isCreating", 2);
-__decorateClass$s([
+__decorateClass$u([
   r$1()
 ], KubernetesStorage.prototype, "resourceFormat", 2);
-__decorateClass$s([
+__decorateClass$u([
   r$1()
 ], KubernetesStorage.prototype, "isEditMode", 2);
-__decorateClass$s([
+__decorateClass$u([
   r$1()
 ], KubernetesStorage.prototype, "editingResource", 2);
-KubernetesStorage = __decorateClass$s([
+KubernetesStorage = __decorateClass$u([
   t$2("kubernetes-storage")
 ], KubernetesStorage);
-var __defProp$r = Object.defineProperty;
-var __getOwnPropDesc$p = Object.getOwnPropertyDescriptor;
-var __decorateClass$r = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$p(target, key) : target;
+var __defProp$t = Object.defineProperty;
+var __getOwnPropDesc$r = Object.getOwnPropertyDescriptor;
+var __decorateClass$t = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$r(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$r(target, key, result);
+  if (kind && result) __defProp$t(target, key, result);
   return result;
 };
 let KubernetesConfigurations = class extends i$2 {
@@ -49953,80 +49953,80 @@ KubernetesConfigurations.styles = i$5`
       border-radius: 4px;
     }
   `;
-__decorateClass$r([
+__decorateClass$t([
   n2({ type: Array })
 ], KubernetesConfigurations.prototype, "resources", 2);
-__decorateClass$r([
+__decorateClass$t([
   n2({ type: Array })
 ], KubernetesConfigurations.prototype, "namespaces", 2);
-__decorateClass$r([
+__decorateClass$t([
   n2({ type: String })
 ], KubernetesConfigurations.prototype, "selectedNamespace", 2);
-__decorateClass$r([
+__decorateClass$t([
   n2({ type: String })
 ], KubernetesConfigurations.prototype, "searchQuery", 2);
-__decorateClass$r([
+__decorateClass$t([
   n2({ type: Boolean })
 ], KubernetesConfigurations.prototype, "loading", 2);
-__decorateClass$r([
+__decorateClass$t([
   n2({ type: String })
 ], KubernetesConfigurations.prototype, "error", 2);
-__decorateClass$r([
+__decorateClass$t([
   r$1()
 ], KubernetesConfigurations.prototype, "activeTab", 2);
-__decorateClass$r([
+__decorateClass$t([
   r$1()
 ], KubernetesConfigurations.prototype, "showDetails", 2);
-__decorateClass$r([
+__decorateClass$t([
   r$1()
 ], KubernetesConfigurations.prototype, "selectedItem", 2);
-__decorateClass$r([
+__decorateClass$t([
   r$1()
 ], KubernetesConfigurations.prototype, "loadingDetails", 2);
-__decorateClass$r([
+__decorateClass$t([
   r$1()
 ], KubernetesConfigurations.prototype, "detailsData", 2);
-__decorateClass$r([
+__decorateClass$t([
   r$1()
 ], KubernetesConfigurations.prototype, "showDeleteModal", 2);
-__decorateClass$r([
+__decorateClass$t([
   r$1()
 ], KubernetesConfigurations.prototype, "itemToDelete", 2);
-__decorateClass$r([
+__decorateClass$t([
   r$1()
 ], KubernetesConfigurations.prototype, "isDeleting", 2);
-__decorateClass$r([
+__decorateClass$t([
   r$1()
 ], KubernetesConfigurations.prototype, "showCreateDrawer", 2);
-__decorateClass$r([
+__decorateClass$t([
   r$1()
 ], KubernetesConfigurations.prototype, "createResourceValue", 2);
-__decorateClass$r([
+__decorateClass$t([
   r$1()
 ], KubernetesConfigurations.prototype, "createDrawerTitle", 2);
-__decorateClass$r([
+__decorateClass$t([
   r$1()
 ], KubernetesConfigurations.prototype, "isCreating", 2);
-__decorateClass$r([
+__decorateClass$t([
   r$1()
 ], KubernetesConfigurations.prototype, "resourceFormat", 2);
-__decorateClass$r([
+__decorateClass$t([
   r$1()
 ], KubernetesConfigurations.prototype, "isEditMode", 2);
-__decorateClass$r([
+__decorateClass$t([
   r$1()
 ], KubernetesConfigurations.prototype, "editingResource", 2);
-KubernetesConfigurations = __decorateClass$r([
+KubernetesConfigurations = __decorateClass$t([
   t$2("kubernetes-configurations")
 ], KubernetesConfigurations);
-var __defProp$q = Object.defineProperty;
-var __getOwnPropDesc$o = Object.getOwnPropertyDescriptor;
-var __decorateClass$q = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$o(target, key) : target;
+var __defProp$s = Object.defineProperty;
+var __getOwnPropDesc$q = Object.getOwnPropertyDescriptor;
+var __decorateClass$s = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$q(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$q(target, key, result);
+  if (kind && result) __defProp$s(target, key, result);
   return result;
 };
 let KubernetesHelm = class extends i$2 {
@@ -50531,59 +50531,59 @@ KubernetesHelm.styles = i$5`
       white-space: pre-wrap;
     }
   `;
-__decorateClass$q([
+__decorateClass$s([
   n2({ type: Array })
 ], KubernetesHelm.prototype, "releases", 2);
-__decorateClass$q([
+__decorateClass$s([
   n2({ type: Array })
 ], KubernetesHelm.prototype, "namespaces", 2);
-__decorateClass$q([
+__decorateClass$s([
   n2({ type: String })
 ], KubernetesHelm.prototype, "selectedNamespace", 2);
-__decorateClass$q([
+__decorateClass$s([
   n2({ type: String })
 ], KubernetesHelm.prototype, "searchQuery", 2);
-__decorateClass$q([
+__decorateClass$s([
   n2({ type: Boolean })
 ], KubernetesHelm.prototype, "loading", 2);
-__decorateClass$q([
+__decorateClass$s([
   n2({ type: String })
 ], KubernetesHelm.prototype, "error", 2);
-__decorateClass$q([
+__decorateClass$s([
   r$1()
 ], KubernetesHelm.prototype, "activeTab", 2);
-__decorateClass$q([
+__decorateClass$s([
   r$1()
 ], KubernetesHelm.prototype, "showDetails", 2);
-__decorateClass$q([
+__decorateClass$s([
   r$1()
 ], KubernetesHelm.prototype, "selectedItem", 2);
-__decorateClass$q([
+__decorateClass$s([
   r$1()
 ], KubernetesHelm.prototype, "loadingDetails", 2);
-__decorateClass$q([
+__decorateClass$s([
   r$1()
 ], KubernetesHelm.prototype, "detailsData", 2);
-__decorateClass$q([
+__decorateClass$s([
   r$1()
 ], KubernetesHelm.prototype, "showDeleteModal", 2);
-__decorateClass$q([
+__decorateClass$s([
   r$1()
 ], KubernetesHelm.prototype, "itemToDelete", 2);
-__decorateClass$q([
+__decorateClass$s([
   r$1()
 ], KubernetesHelm.prototype, "isDeleting", 2);
-KubernetesHelm = __decorateClass$q([
+KubernetesHelm = __decorateClass$s([
   t$2("kubernetes-helm")
 ], KubernetesHelm);
-var __defProp$p = Object.defineProperty;
-var __getOwnPropDesc$n = Object.getOwnPropertyDescriptor;
-var __decorateClass$p = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$n(target, key) : target;
+var __defProp$r = Object.defineProperty;
+var __getOwnPropDesc$p = Object.getOwnPropertyDescriptor;
+var __decorateClass$r = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$p(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$p(target, key, result);
+  if (kind && result) __defProp$r(target, key, result);
   return result;
 };
 let KubernetesNodes = class extends i$2 {
@@ -51209,40 +51209,40 @@ KubernetesNodes.styles = i$5`
     }
 
   `;
-__decorateClass$p([
+__decorateClass$r([
   n2({ type: Array })
 ], KubernetesNodes.prototype, "nodes", 2);
-__decorateClass$p([
+__decorateClass$r([
   n2({ type: String })
 ], KubernetesNodes.prototype, "searchQuery", 2);
-__decorateClass$p([
+__decorateClass$r([
   n2({ type: Boolean })
 ], KubernetesNodes.prototype, "loading", 2);
-__decorateClass$p([
+__decorateClass$r([
   n2({ type: String })
 ], KubernetesNodes.prototype, "error", 2);
-__decorateClass$p([
+__decorateClass$r([
   r$1()
 ], KubernetesNodes.prototype, "showDetails", 2);
-__decorateClass$p([
+__decorateClass$r([
   r$1()
 ], KubernetesNodes.prototype, "selectedNode", 2);
-__decorateClass$p([
+__decorateClass$r([
   r$1()
 ], KubernetesNodes.prototype, "loadingDetails", 2);
-__decorateClass$p([
+__decorateClass$r([
   r$1()
 ], KubernetesNodes.prototype, "nodeDetails", 2);
-__decorateClass$p([
+__decorateClass$r([
   r$1()
 ], KubernetesNodes.prototype, "showConfirmModal", 2);
-__decorateClass$p([
+__decorateClass$r([
   r$1()
 ], KubernetesNodes.prototype, "confirmAction", 2);
-__decorateClass$p([
+__decorateClass$r([
   r$1()
 ], KubernetesNodes.prototype, "nodeForAction", 2);
-KubernetesNodes = __decorateClass$p([
+KubernetesNodes = __decorateClass$r([
   t$2("kubernetes-nodes")
 ], KubernetesNodes);
 function evaluateJSONPath(obj, path) {
@@ -51337,14 +51337,14 @@ function formatColumnValue(value, type) {
       return String(value);
   }
 }
-var __defProp$o = Object.defineProperty;
-var __getOwnPropDesc$m = Object.getOwnPropertyDescriptor;
-var __decorateClass$o = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$m(target, key) : target;
+var __defProp$q = Object.defineProperty;
+var __getOwnPropDesc$o = Object.getOwnPropertyDescriptor;
+var __decorateClass$q = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$o(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$o(target, key, result);
+  if (kind && result) __defProp$q(target, key, result);
   return result;
 };
 let CRDInstancesDrawer = class extends i$2 {
@@ -52178,101 +52178,101 @@ CRDInstancesDrawer.styles = i$5`
       pointer-events: auto;
     }
   `;
-__decorateClass$o([
+__decorateClass$q([
   n2({ type: Boolean, reflect: true })
 ], CRDInstancesDrawer.prototype, "show", 2);
-__decorateClass$o([
+__decorateClass$q([
   n2({ type: String })
 ], CRDInstancesDrawer.prototype, "crdName", 2);
-__decorateClass$o([
+__decorateClass$q([
   n2({ type: String })
 ], CRDInstancesDrawer.prototype, "crdKind", 2);
-__decorateClass$o([
+__decorateClass$q([
   n2({ type: String })
 ], CRDInstancesDrawer.prototype, "crdGroup", 2);
-__decorateClass$o([
+__decorateClass$q([
   n2({ type: String })
 ], CRDInstancesDrawer.prototype, "crdVersion", 2);
-__decorateClass$o([
+__decorateClass$q([
   n2({ type: String })
 ], CRDInstancesDrawer.prototype, "crdScope", 2);
-__decorateClass$o([
+__decorateClass$q([
   n2({ type: Boolean })
 ], CRDInstancesDrawer.prototype, "loading", 2);
-__decorateClass$o([
+__decorateClass$q([
   n2({ type: String })
 ], CRDInstancesDrawer.prototype, "width", 2);
-__decorateClass$o([
+__decorateClass$q([
   n2({ type: Object })
 ], CRDInstancesDrawer.prototype, "crdDefinition", 2);
-__decorateClass$o([
+__decorateClass$q([
   r$1()
 ], CRDInstancesDrawer.prototype, "searchQuery", 2);
-__decorateClass$o([
+__decorateClass$q([
   r$1()
 ], CRDInstancesDrawer.prototype, "selectedNamespace", 2);
-__decorateClass$o([
+__decorateClass$q([
   r$1()
 ], CRDInstancesDrawer.prototype, "instances", 2);
-__decorateClass$o([
+__decorateClass$q([
   r$1()
 ], CRDInstancesDrawer.prototype, "showInstanceDetails", 2);
-__decorateClass$o([
+__decorateClass$q([
   r$1()
 ], CRDInstancesDrawer.prototype, "selectedInstance", 2);
-__decorateClass$o([
+__decorateClass$q([
   r$1()
 ], CRDInstancesDrawer.prototype, "instanceDetailsData", 2);
-__decorateClass$o([
+__decorateClass$q([
   r$1()
 ], CRDInstancesDrawer.prototype, "loadingDetails", 2);
-__decorateClass$o([
+__decorateClass$q([
   r$1()
 ], CRDInstancesDrawer.prototype, "error", 2);
-__decorateClass$o([
+__decorateClass$q([
   r$1()
 ], CRDInstancesDrawer.prototype, "showEditDrawer", 2);
-__decorateClass$o([
+__decorateClass$q([
   r$1()
 ], CRDInstancesDrawer.prototype, "editResourceContent", 2);
-__decorateClass$o([
+__decorateClass$q([
   r$1()
 ], CRDInstancesDrawer.prototype, "editResourceFormat", 2);
-__decorateClass$o([
+__decorateClass$q([
   r$1()
 ], CRDInstancesDrawer.prototype, "loadingEdit", 2);
-__decorateClass$o([
+__decorateClass$q([
   r$1()
 ], CRDInstancesDrawer.prototype, "deleting", 2);
-__decorateClass$o([
+__decorateClass$q([
   r$1()
 ], CRDInstancesDrawer.prototype, "showCreateDrawer", 2);
-__decorateClass$o([
+__decorateClass$q([
   r$1()
 ], CRDInstancesDrawer.prototype, "createResourceValue", 2);
-__decorateClass$o([
+__decorateClass$q([
   r$1()
 ], CRDInstancesDrawer.prototype, "createResourceFormat", 2);
-__decorateClass$o([
+__decorateClass$q([
   r$1()
 ], CRDInstancesDrawer.prototype, "isCreating", 2);
-__decorateClass$o([
+__decorateClass$q([
   r$1()
 ], CRDInstancesDrawer.prototype, "showDeleteModal", 2);
-__decorateClass$o([
+__decorateClass$q([
   r$1()
 ], CRDInstancesDrawer.prototype, "deleteItem", 2);
-CRDInstancesDrawer = __decorateClass$o([
+CRDInstancesDrawer = __decorateClass$q([
   t$2("crd-instances-drawer")
 ], CRDInstancesDrawer);
-var __defProp$n = Object.defineProperty;
-var __getOwnPropDesc$l = Object.getOwnPropertyDescriptor;
-var __decorateClass$n = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$l(target, key) : target;
+var __defProp$p = Object.defineProperty;
+var __getOwnPropDesc$n = Object.getOwnPropertyDescriptor;
+var __decorateClass$p = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$n(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$n(target, key, result);
+  if (kind && result) __defProp$p(target, key, result);
   return result;
 };
 let KubernetesCRDs = class extends i$2 {
@@ -52380,7 +52380,7 @@ let KubernetesCRDs = class extends i$2 {
         unwrapped = JSON.parse(JSON.stringify(unwrapped));
         delete unwrapped.metadata.managedFields;
       }
-      const yaml = await import("./index-CuoTv4M_.js");
+      const yaml = await import("./index-BQ7W1jnj.js");
       this.createResourceValue = yaml.stringify(unwrapped);
       this.isCreating = false;
     } catch (error) {
@@ -52711,74 +52711,74 @@ KubernetesCRDs.styles = i$5`
       gap: 1rem;
     }
   `;
-__decorateClass$n([
+__decorateClass$p([
   n2({ type: Array })
 ], KubernetesCRDs.prototype, "resources", 2);
-__decorateClass$n([
+__decorateClass$p([
   n2({ type: String })
 ], KubernetesCRDs.prototype, "searchQuery", 2);
-__decorateClass$n([
+__decorateClass$p([
   n2({ type: Boolean })
 ], KubernetesCRDs.prototype, "loading", 2);
-__decorateClass$n([
+__decorateClass$p([
   n2({ type: String })
 ], KubernetesCRDs.prototype, "error", 2);
-__decorateClass$n([
+__decorateClass$p([
   r$1()
 ], KubernetesCRDs.prototype, "showDetails", 2);
-__decorateClass$n([
+__decorateClass$p([
   r$1()
 ], KubernetesCRDs.prototype, "selectedItem", 2);
-__decorateClass$n([
+__decorateClass$p([
   r$1()
 ], KubernetesCRDs.prototype, "loadingDetails", 2);
-__decorateClass$n([
+__decorateClass$p([
   r$1()
 ], KubernetesCRDs.prototype, "detailsData", 2);
-__decorateClass$n([
+__decorateClass$p([
   r$1()
 ], KubernetesCRDs.prototype, "showDeleteModal", 2);
-__decorateClass$n([
+__decorateClass$p([
   r$1()
 ], KubernetesCRDs.prototype, "itemToDelete", 2);
-__decorateClass$n([
+__decorateClass$p([
   r$1()
 ], KubernetesCRDs.prototype, "isDeleting", 2);
-__decorateClass$n([
+__decorateClass$p([
   r$1()
 ], KubernetesCRDs.prototype, "showCreateDrawer", 2);
-__decorateClass$n([
+__decorateClass$p([
   r$1()
 ], KubernetesCRDs.prototype, "createResourceValue", 2);
-__decorateClass$n([
+__decorateClass$p([
   r$1()
 ], KubernetesCRDs.prototype, "isCreating", 2);
-__decorateClass$n([
+__decorateClass$p([
   r$1()
 ], KubernetesCRDs.prototype, "isEditMode", 2);
-__decorateClass$n([
+__decorateClass$p([
   r$1()
 ], KubernetesCRDs.prototype, "editingResource", 2);
-__decorateClass$n([
+__decorateClass$p([
   r$1()
 ], KubernetesCRDs.prototype, "resourceFormat", 2);
-__decorateClass$n([
+__decorateClass$p([
   r$1()
 ], KubernetesCRDs.prototype, "showInstancesDrawer", 2);
-__decorateClass$n([
+__decorateClass$p([
   r$1()
 ], KubernetesCRDs.prototype, "selectedCRDForInstances", 2);
-KubernetesCRDs = __decorateClass$n([
+KubernetesCRDs = __decorateClass$p([
   t$2("kubernetes-crds")
 ], KubernetesCRDs);
-var __defProp$m = Object.defineProperty;
-var __getOwnPropDesc$k = Object.getOwnPropertyDescriptor;
-var __decorateClass$m = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$k(target, key) : target;
+var __defProp$o = Object.defineProperty;
+var __getOwnPropDesc$m = Object.getOwnPropertyDescriptor;
+var __decorateClass$o = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$m(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$m(target, key, result);
+  if (kind && result) __defProp$o(target, key, result);
   return result;
 };
 let KubernetesTab = class extends i$2 {
@@ -52872,23 +52872,23 @@ KubernetesTab.styles = i$5`
       color: var(--text-secondary);
     }
   `;
-__decorateClass$m([
+__decorateClass$o([
   n2({ type: String })
 ], KubernetesTab.prototype, "subRoute", 2);
-__decorateClass$m([
+__decorateClass$o([
   n2({ type: String })
 ], KubernetesTab.prototype, "activeView", 2);
-KubernetesTab = __decorateClass$m([
+KubernetesTab = __decorateClass$o([
   t$2("kubernetes-tab")
 ], KubernetesTab);
-var __defProp$l = Object.defineProperty;
-var __getOwnPropDesc$j = Object.getOwnPropertyDescriptor;
-var __decorateClass$l = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$j(target, key) : target;
+var __defProp$n = Object.defineProperty;
+var __getOwnPropDesc$l = Object.getOwnPropertyDescriptor;
+var __decorateClass$n = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$l(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$l(target, key, result);
+  if (kind && result) __defProp$n(target, key, result);
   return result;
 };
 let FilterDropdown = class extends i$2 {
@@ -53149,38 +53149,38 @@ FilterDropdown.styles = i$5`
       background: var(--vscode-scrollbarSlider-hoverBackground, #4e4e4e);
     }
   `;
-__decorateClass$l([
+__decorateClass$n([
   n2({ type: Array })
 ], FilterDropdown.prototype, "options", 2);
-__decorateClass$l([
+__decorateClass$n([
   n2({ type: String })
 ], FilterDropdown.prototype, "selectedValue", 2);
-__decorateClass$l([
+__decorateClass$n([
   n2({ type: String })
 ], FilterDropdown.prototype, "label", 2);
-__decorateClass$l([
+__decorateClass$n([
   n2({ type: Boolean })
 ], FilterDropdown.prototype, "showIcon", 2);
-__decorateClass$l([
+__decorateClass$n([
   n2({ type: Boolean })
 ], FilterDropdown.prototype, "showCounts", 2);
-__decorateClass$l([
+__decorateClass$n([
   n2({ type: Boolean })
 ], FilterDropdown.prototype, "showStatusIndicators", 2);
-__decorateClass$l([
+__decorateClass$n([
   r$1()
 ], FilterDropdown.prototype, "isOpen", 2);
-FilterDropdown = __decorateClass$l([
+FilterDropdown = __decorateClass$n([
   t$2("filter-dropdown")
 ], FilterDropdown);
-var __defProp$k = Object.defineProperty;
-var __getOwnPropDesc$i = Object.getOwnPropertyDescriptor;
-var __decorateClass$k = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$i(target, key) : target;
+var __defProp$m = Object.defineProperty;
+var __getOwnPropDesc$k = Object.getOwnPropertyDescriptor;
+var __decorateClass$m = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$k(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$k(target, key, result);
+  if (kind && result) __defProp$m(target, key, result);
   return result;
 };
 let VMConsole = class extends i$2 {
@@ -53780,44 +53780,44 @@ VMConsole.styles = i$5`
       display: block;
     }
   `;
-__decorateClass$k([
+__decorateClass$m([
   n2({ type: String })
 ], VMConsole.prototype, "vmId", 2);
-__decorateClass$k([
+__decorateClass$m([
   n2({ type: String })
 ], VMConsole.prototype, "vmName", 2);
-__decorateClass$k([
+__decorateClass$m([
   n2({ type: Boolean, reflect: true })
 ], VMConsole.prototype, "show", 2);
-__decorateClass$k([
+__decorateClass$m([
   r$1()
 ], VMConsole.prototype, "isConnecting", 2);
-__decorateClass$k([
+__decorateClass$m([
   r$1()
 ], VMConsole.prototype, "isWSConnected", 2);
-__decorateClass$k([
+__decorateClass$m([
   r$1()
 ], VMConsole.prototype, "error", 2);
-__decorateClass$k([
+__decorateClass$m([
   r$1()
 ], VMConsole.prototype, "connectionStatus", 2);
-__decorateClass$k([
+__decorateClass$m([
   r$1()
 ], VMConsole.prototype, "scaleViewport", 2);
-__decorateClass$k([
+__decorateClass$m([
   r$1()
 ], VMConsole.prototype, "showVirtualKeyboard", 2);
-VMConsole = __decorateClass$k([
+VMConsole = __decorateClass$m([
   t$2("vm-console")
 ], VMConsole);
-var __defProp$j = Object.defineProperty;
-var __getOwnPropDesc$h = Object.getOwnPropertyDescriptor;
-var __decorateClass$j = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$h(target, key) : target;
+var __defProp$l = Object.defineProperty;
+var __getOwnPropDesc$j = Object.getOwnPropertyDescriptor;
+var __decorateClass$l = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$j(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$j(target, key, result);
+  if (kind && result) __defProp$l(target, key, result);
   return result;
 };
 let VMDetailDrawer = class extends i$2 {
@@ -55627,46 +55627,46 @@ VMDetailDrawer.styles = i$5`
       background: var(--vscode-inputValidation-errorBorder, #be1100);
     }
   `;
-__decorateClass$j([
+__decorateClass$l([
   n2({ type: Boolean, reflect: true })
 ], VMDetailDrawer.prototype, "show", 2);
-__decorateClass$j([
+__decorateClass$l([
   n2({ type: Object })
 ], VMDetailDrawer.prototype, "vm", 2);
-__decorateClass$j([
+__decorateClass$l([
   r$1()
 ], VMDetailDrawer.prototype, "activeTab", 2);
-__decorateClass$j([
+__decorateClass$l([
   r$1()
 ], VMDetailDrawer.prototype, "isLoading", 2);
-__decorateClass$j([
+__decorateClass$l([
   r$1()
 ], VMDetailDrawer.prototype, "metrics", 2);
-__decorateClass$j([
+__decorateClass$l([
   r$1()
 ], VMDetailDrawer.prototype, "disks", 2);
-__decorateClass$j([
+__decorateClass$l([
   r$1()
 ], VMDetailDrawer.prototype, "networkInterfaces", 2);
-__decorateClass$j([
+__decorateClass$l([
   r$1()
 ], VMDetailDrawer.prototype, "vmDetails", 2);
-__decorateClass$j([
+__decorateClass$l([
   r$1()
 ], VMDetailDrawer.prototype, "isPowerActionLoading", 2);
-__decorateClass$j([
+__decorateClass$l([
   r$1()
 ], VMDetailDrawer.prototype, "showDeleteModal", 2);
-__decorateClass$j([
+__decorateClass$l([
   r$1()
 ], VMDetailDrawer.prototype, "isDeleting", 2);
-__decorateClass$j([
+__decorateClass$l([
   r$1()
 ], VMDetailDrawer.prototype, "isLoadingMetrics", 2);
-__decorateClass$j([
+__decorateClass$l([
   r$1()
 ], VMDetailDrawer.prototype, "showConsole", 2);
-VMDetailDrawer = __decorateClass$j([
+VMDetailDrawer = __decorateClass$l([
   t$2("vm-detail-drawer")
 ], VMDetailDrawer);
 var StoreEventType = /* @__PURE__ */ ((StoreEventType2) => {
@@ -57511,7 +57511,15 @@ const volumeActions = {
     await volumeStore.fetch();
   },
   async delete(volumeId) {
-    await apiRequest$1(`/volumes/${volumeId}`, { method: "DELETE" });
+    const [poolName, volumeName] = volumeId.includes(":") ? (() => {
+      const parts = volumeId.split(":");
+      return [parts[0] || null, parts[1] || null];
+    })() : [null, null];
+    if (poolName && volumeName) {
+      await apiRequest$1(`/storages/pools/${poolName}/volumes/${volumeName}`, { method: "DELETE" });
+    } else {
+      await apiRequest$1(`/volumes/${volumeId}`, { method: "DELETE" });
+    }
     await volumeStore.delete(volumeId);
     if ($selectedVolumeId.get() === volumeId) {
       $selectedVolumeId.set(null);
@@ -57584,14 +57592,14 @@ async function initializeVirtualizationStores() {
     console.error("Failed to initialize virtualization stores:", error);
   }
 }
-var __defProp$i = Object.defineProperty;
-var __getOwnPropDesc$g = Object.getOwnPropertyDescriptor;
-var __decorateClass$i = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$g(target, key) : target;
+var __defProp$k = Object.defineProperty;
+var __getOwnPropDesc$i = Object.getOwnPropertyDescriptor;
+var __decorateClass$k = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$i(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$i(target, key, result);
+  if (kind && result) __defProp$k(target, key, result);
   return result;
 };
 let CreateVMWizard = class extends i$2 {
@@ -58744,26 +58752,26 @@ CreateVMWizard.styles = i$5`
       color: var(--close-hover-color, #e0e0e0);
     }
   `;
-__decorateClass$i([
+__decorateClass$k([
   r$1()
 ], CreateVMWizard.prototype, "isCreating", 2);
-__decorateClass$i([
+__decorateClass$k([
   r$1()
 ], CreateVMWizard.prototype, "validationErrors", 2);
-__decorateClass$i([
+__decorateClass$k([
   r$1()
 ], CreateVMWizard.prototype, "showAdvancedOptions", 2);
-CreateVMWizard = __decorateClass$i([
+CreateVMWizard = __decorateClass$k([
   t$2("create-vm-wizard")
 ], CreateVMWizard);
-var __defProp$h = Object.defineProperty;
-var __getOwnPropDesc$f = Object.getOwnPropertyDescriptor;
-var __decorateClass$h = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$f(target, key) : target;
+var __defProp$j = Object.defineProperty;
+var __getOwnPropDesc$h = Object.getOwnPropertyDescriptor;
+var __decorateClass$j = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$h(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$h(target, key, result);
+  if (kind && result) __defProp$j(target, key, result);
   return result;
 };
 let CreateVMWizardEnhanced = class extends i$2 {
@@ -60649,44 +60657,44 @@ CreateVMWizardEnhanced.styles = i$5`
       white-space: nowrap;
     }
   `;
-__decorateClass$h([
+__decorateClass$j([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "isCreating", 2);
-__decorateClass$h([
+__decorateClass$j([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "validationErrors", 2);
-__decorateClass$h([
+__decorateClass$j([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "expandedSections", 2);
-__decorateClass$h([
+__decorateClass$j([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "currentStep", 2);
-__decorateClass$h([
+__decorateClass$j([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "availablePCIDevices", 2);
-__decorateClass$h([
+__decorateClass$j([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "isLoadingPCIDevices", 2);
-__decorateClass$h([
+__decorateClass$j([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "editMode", 2);
-__decorateClass$h([
+__decorateClass$j([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "editingVmId", 2);
-__decorateClass$h([
+__decorateClass$j([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "formData", 2);
-CreateVMWizardEnhanced = __decorateClass$h([
+CreateVMWizardEnhanced = __decorateClass$j([
   t$2("create-vm-wizard-enhanced")
 ], CreateVMWizardEnhanced);
-var __defProp$g = Object.defineProperty;
-var __getOwnPropDesc$e = Object.getOwnPropertyDescriptor;
-var __decorateClass$g = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$e(target, key) : target;
+var __defProp$i = Object.defineProperty;
+var __getOwnPropDesc$g = Object.getOwnPropertyDescriptor;
+var __decorateClass$i = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$g(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$g(target, key, result);
+  if (kind && result) __defProp$i(target, key, result);
   return result;
 };
 let VirtualizationVMsEnhanced = class extends i$2 {
@@ -61206,7 +61214,7 @@ let VirtualizationVMsEnhanced = class extends i$2 {
             <resource-table
               .columns=${this.getColumns()}
               .data=${tableData}
-              .actions=${(item) => this.activeMainTab === "templates" ? [] : this.getActions(item)}
+              .getActions=${(item) => this.activeMainTab === "templates" ? [] : this.getActions(item)}
               @cell-click=${this.handleCellClick}
               @action=${this.handleAction}
             ></resource-table>
@@ -61527,44 +61535,44 @@ VirtualizationVMsEnhanced.styles = i$5`
     }
 
   `;
-__decorateClass$g([
+__decorateClass$i([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "showDeleteModal", 2);
-__decorateClass$g([
+__decorateClass$i([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "vmToDelete", 2);
-__decorateClass$g([
+__decorateClass$i([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "isDeleting", 2);
-__decorateClass$g([
+__decorateClass$i([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "showDetailsDrawer", 2);
-__decorateClass$g([
+__decorateClass$i([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "useEnhancedWizard", 2);
-__decorateClass$g([
+__decorateClass$i([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "activeMainTab", 2);
-__decorateClass$g([
+__decorateClass$i([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "stateFilter", 2);
-__decorateClass$g([
+__decorateClass$i([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "templates", 2);
-__decorateClass$g([
+__decorateClass$i([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "selectedVMForDetails", 2);
-VirtualizationVMsEnhanced = __decorateClass$g([
+VirtualizationVMsEnhanced = __decorateClass$i([
   t$2("virtualization-vms-enhanced")
 ], VirtualizationVMsEnhanced);
-var __defProp$f = Object.defineProperty;
-var __getOwnPropDesc$d = Object.getOwnPropertyDescriptor;
-var __decorateClass$f = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$d(target, key) : target;
+var __defProp$h = Object.defineProperty;
+var __getOwnPropDesc$f = Object.getOwnPropertyDescriptor;
+var __decorateClass$h = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$f(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$f(target, key, result);
+  if (kind && result) __defProp$h(target, key, result);
   return result;
 };
 let StoragePoolFormDrawer = class extends i$2 {
@@ -62078,25 +62086,25 @@ StoragePoolFormDrawer.styles = i$5`
       cursor: not-allowed;
     }
   `;
-__decorateClass$f([
+__decorateClass$h([
   n2({ type: Boolean, reflect: true })
 ], StoragePoolFormDrawer.prototype, "show", 2);
-__decorateClass$f([
+__decorateClass$h([
   n2({ type: Boolean })
 ], StoragePoolFormDrawer.prototype, "loading", 2);
-__decorateClass$f([
+__decorateClass$h([
   n2({ type: Boolean })
 ], StoragePoolFormDrawer.prototype, "editMode", 2);
-__decorateClass$f([
+__decorateClass$h([
   n2({ type: Object })
 ], StoragePoolFormDrawer.prototype, "poolData", 2);
-__decorateClass$f([
+__decorateClass$h([
   r$1()
 ], StoragePoolFormDrawer.prototype, "formData", 2);
-__decorateClass$f([
+__decorateClass$h([
   r$1()
 ], StoragePoolFormDrawer.prototype, "errors", 2);
-StoragePoolFormDrawer = __decorateClass$f([
+StoragePoolFormDrawer = __decorateClass$h([
   t$2("storage-pool-form-drawer")
 ], StoragePoolFormDrawer);
 const API_BASE = "/virtualization";
@@ -62493,6 +62501,12 @@ class VirtualizationAPI {
     return apiRequest(`/storages/pools/${poolName}/volumes`);
   }
   /**
+   * Get volume details
+   */
+  async getVolume(poolName, volumeName) {
+    return apiRequest(`/storages/pools/${poolName}/volumes/${volumeName}`);
+  }
+  /**
    * Create a volume in a storage pool
    */
   async createVolume(poolName, config) {
@@ -62502,13 +62516,34 @@ class VirtualizationAPI {
     });
   }
   /**
+   * Resize a volume
+   */
+  async resizeVolume(poolName, volumeName, capacity) {
+    return apiRequest(`/storages/pools/${poolName}/volumes/${volumeName}/resize`, {
+      method: "POST",
+      body: JSON.stringify({ capacity })
+    });
+  }
+  /**
+   * Clone a volume
+   */
+  async cloneVolume(poolName, volumeName, payload) {
+    return apiRequest(
+      `/storages/pools/${poolName}/volumes/${volumeName}/clone`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload)
+      }
+    );
+  }
+  /**
    * Delete a volume
    */
-  async deleteVolume(poolName, volumeName) {
-    return apiRequest(
-      `/storages/pools/${poolName}/volumes/${volumeName}`,
-      { method: "DELETE" }
-    );
+  async deleteVolume(poolName, volumeName, force = false) {
+    const suffix = force ? "?force=true" : "";
+    await apiRequest(`/storages/pools/${poolName}/volumes/${volumeName}${suffix}`, {
+      method: "DELETE"
+    });
   }
   // ============ ISO Management ============
   /**
@@ -62727,14 +62762,14 @@ class VirtualizationAPI {
   }
 }
 const virtualizationAPI = new VirtualizationAPI();
-var __defProp$e = Object.defineProperty;
-var __getOwnPropDesc$c = Object.getOwnPropertyDescriptor;
-var __decorateClass$e = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$c(target, key) : target;
+var __defProp$g = Object.defineProperty;
+var __getOwnPropDesc$e = Object.getOwnPropertyDescriptor;
+var __decorateClass$g = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$e(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$e(target, key, result);
+  if (kind && result) __defProp$g(target, key, result);
   return result;
 };
 let VirtualizationStoragePools = class extends i$2 {
@@ -63111,7 +63146,7 @@ let VirtualizationStoragePools = class extends i$2 {
                   </div>
                 `
     }))}
-              .actions=${(item) => this.getActions(item)}
+              .getActions=${(item) => this.getActions(item)}
               @cell-click=${this.handleCellClick}
               @action=${this.handleAction}
             ></resource-table>
@@ -63312,50 +63347,50 @@ VirtualizationStoragePools.styles = i$5`
       color: var(--vscode-descriptionForeground);
     }
   `;
-__decorateClass$e([
+__decorateClass$g([
   r$1()
 ], VirtualizationStoragePools.prototype, "showDetails", 2);
-__decorateClass$e([
+__decorateClass$g([
   r$1()
 ], VirtualizationStoragePools.prototype, "showDeleteModal", 2);
-__decorateClass$e([
+__decorateClass$g([
   r$1()
 ], VirtualizationStoragePools.prototype, "itemToDelete", 2);
-__decorateClass$e([
+__decorateClass$g([
   r$1()
 ], VirtualizationStoragePools.prototype, "isDeleting", 2);
-__decorateClass$e([
+__decorateClass$g([
   r$1()
 ], VirtualizationStoragePools.prototype, "showFormDrawer", 2);
-__decorateClass$e([
+__decorateClass$g([
   r$1()
 ], VirtualizationStoragePools.prototype, "showEditDrawer", 2);
-__decorateClass$e([
+__decorateClass$g([
   r$1()
 ], VirtualizationStoragePools.prototype, "editingPool", 2);
-__decorateClass$e([
+__decorateClass$g([
   r$1()
 ], VirtualizationStoragePools.prototype, "isCreating", 2);
-__decorateClass$e([
+__decorateClass$g([
   r$1()
 ], VirtualizationStoragePools.prototype, "isUpdating", 2);
-__decorateClass$e([
+__decorateClass$g([
   r$1()
 ], VirtualizationStoragePools.prototype, "hasVolumes", 2);
-__decorateClass$e([
+__decorateClass$g([
   r$1()
 ], VirtualizationStoragePools.prototype, "volumeCount", 2);
-VirtualizationStoragePools = __decorateClass$e([
+VirtualizationStoragePools = __decorateClass$g([
   t$2("virtualization-storage-pools")
 ], VirtualizationStoragePools);
-var __defProp$d = Object.defineProperty;
-var __getOwnPropDesc$b = Object.getOwnPropertyDescriptor;
-var __decorateClass$d = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$b(target, key) : target;
+var __defProp$f = Object.defineProperty;
+var __getOwnPropDesc$d = Object.getOwnPropertyDescriptor;
+var __decorateClass$f = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$d(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$d(target, key, result);
+  if (kind && result) __defProp$f(target, key, result);
   return result;
 };
 let VirtualizationNetworks = class extends i$2 {
@@ -64470,49 +64505,49 @@ VirtualizationNetworks.styles = i$5`
       color: var(--vscode-descriptionForeground);
     }
   `;
-__decorateClass$d([
+__decorateClass$f([
   r$1()
 ], VirtualizationNetworks.prototype, "networks", 2);
-__decorateClass$d([
+__decorateClass$f([
   r$1()
 ], VirtualizationNetworks.prototype, "searchQuery", 2);
-__decorateClass$d([
+__decorateClass$f([
   r$1()
 ], VirtualizationNetworks.prototype, "loading", 2);
-__decorateClass$d([
+__decorateClass$f([
   r$1()
 ], VirtualizationNetworks.prototype, "error", 2);
-__decorateClass$d([
+__decorateClass$f([
   r$1()
 ], VirtualizationNetworks.prototype, "activeTab", 2);
-__decorateClass$d([
+__decorateClass$f([
   r$1()
 ], VirtualizationNetworks.prototype, "showDetailDrawer", 2);
-__decorateClass$d([
+__decorateClass$f([
   r$1()
 ], VirtualizationNetworks.prototype, "selectedNetwork", 2);
-__decorateClass$d([
+__decorateClass$f([
   r$1()
 ], VirtualizationNetworks.prototype, "isLoadingDetail", 2);
-__decorateClass$d([
+__decorateClass$f([
   r$1()
 ], VirtualizationNetworks.prototype, "showDeleteModal", 2);
-__decorateClass$d([
+__decorateClass$f([
   r$1()
 ], VirtualizationNetworks.prototype, "itemToDelete", 2);
-__decorateClass$d([
+__decorateClass$f([
   r$1()
 ], VirtualizationNetworks.prototype, "isDeleting", 2);
-__decorateClass$d([
+__decorateClass$f([
   r$1()
 ], VirtualizationNetworks.prototype, "showCreateDrawer", 2);
-__decorateClass$d([
+__decorateClass$f([
   r$1()
 ], VirtualizationNetworks.prototype, "createResourceValue", 2);
-__decorateClass$d([
+__decorateClass$f([
   r$1()
 ], VirtualizationNetworks.prototype, "isCreating", 2);
-VirtualizationNetworks = __decorateClass$d([
+VirtualizationNetworks = __decorateClass$f([
   t$2("virtualization-networks")
 ], VirtualizationNetworks);
 const version = "3.7.8";
@@ -67457,14 +67492,14 @@ var Upload = /* @__PURE__ */ function(_BaseUpload) {
   }]);
   return Upload2;
 }(BaseUpload);
-var __defProp$c = Object.defineProperty;
-var __getOwnPropDesc$a = Object.getOwnPropertyDescriptor;
-var __decorateClass$c = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$a(target, key) : target;
+var __defProp$e = Object.defineProperty;
+var __getOwnPropDesc$c = Object.getOwnPropertyDescriptor;
+var __decorateClass$e = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$c(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$c(target, key, result);
+  if (kind && result) __defProp$e(target, key, result);
   return result;
 };
 let ISOManagement = class extends i$2 {
@@ -68657,54 +68692,1217 @@ ISOManagement.styles = i$5`
       font-size: 12px;
     }
   `;
-__decorateClass$c([
+__decorateClass$e([
   r$1()
 ], ISOManagement.prototype, "searchQuery", 2);
-__decorateClass$c([
+__decorateClass$e([
   r$1()
 ], ISOManagement.prototype, "showUploadDrawer", 2);
-__decorateClass$c([
+__decorateClass$e([
   r$1()
 ], ISOManagement.prototype, "showDeleteModal", 2);
-__decorateClass$c([
+__decorateClass$e([
   r$1()
 ], ISOManagement.prototype, "showDetailDrawer", 2);
-__decorateClass$c([
+__decorateClass$e([
   r$1()
 ], ISOManagement.prototype, "isoToDelete", 2);
-__decorateClass$c([
+__decorateClass$e([
   r$1()
 ], ISOManagement.prototype, "selectedISO", 2);
-__decorateClass$c([
+__decorateClass$e([
   r$1()
 ], ISOManagement.prototype, "isLoadingDetail", 2);
-__decorateClass$c([
+__decorateClass$e([
   r$1()
 ], ISOManagement.prototype, "isDeleting", 2);
-__decorateClass$c([
+__decorateClass$e([
   r$1()
 ], ISOManagement.prototype, "selectedFile", 2);
-__decorateClass$c([
+__decorateClass$e([
   r$1()
 ], ISOManagement.prototype, "uploadMetadata", 2);
-__decorateClass$c([
+__decorateClass$e([
   r$1()
 ], ISOManagement.prototype, "currentUpload", 2);
-__decorateClass$c([
+__decorateClass$e([
   r$1()
 ], ISOManagement.prototype, "dragOver", 2);
-__decorateClass$c([
+__decorateClass$e([
   r$1()
 ], ISOManagement.prototype, "isPaused", 2);
-__decorateClass$c([
+__decorateClass$e([
   r$1()
 ], ISOManagement.prototype, "uploadUrl", 2);
-__decorateClass$c([
+__decorateClass$e([
   r$1()
 ], ISOManagement.prototype, "uploadId", 2);
-ISOManagement = __decorateClass$c([
+ISOManagement = __decorateClass$e([
   t$2("iso-management")
 ], ISOManagement);
+const $notifications = map$3({});
+const notificationActions = {
+  addNotification(notification) {
+    const id = crypto.randomUUID();
+    const newNotification = {
+      ...notification,
+      id,
+      timestamp: Date.now(),
+      duration: notification.duration ?? 5e3
+    };
+    $notifications.setKey(id, newNotification);
+    if (newNotification.duration && newNotification.duration > 0) {
+      setTimeout(() => {
+        this.removeNotification(id);
+      }, newNotification.duration);
+    }
+    return id;
+  },
+  removeNotification(id) {
+    const notifications = $notifications.get();
+    if (notifications[id]) {
+      const newNotifications = { ...notifications };
+      delete newNotifications[id];
+      $notifications.set(newNotifications);
+    }
+  },
+  clearAll() {
+    $notifications.set({});
+  }
+};
+var __defProp$d = Object.defineProperty;
+var __getOwnPropDesc$b = Object.getOwnPropertyDescriptor;
+var __decorateClass$d = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$b(target, key) : target;
+  for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
+    if (decorator = decorators[i4])
+      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
+  if (kind && result) __defProp$d(target, key, result);
+  return result;
+};
+let VolumeDialog = class extends i$2 {
+  constructor() {
+    super(...arguments);
+    this.show = false;
+    this.mode = "create";
+    this.formData = {
+      name: "",
+      capacity: 10,
+      capacityUnit: "GB",
+      allocation: 0,
+      allocationUnit: "GB",
+      format: "qcow2"
+    };
+    this.isSubmitting = false;
+    this.errors = /* @__PURE__ */ new Map();
+    this.handleEscape = (e3) => {
+      if (e3.key === "Escape" && this.show && !this.isSubmitting) {
+        this.handleClose();
+      }
+    };
+  }
+  connectedCallback() {
+    super.connectedCallback();
+    window.addEventListener("keydown", this.handleEscape);
+    this.initializeFormFromProps();
+  }
+  disconnectedCallback() {
+    window.removeEventListener("keydown", this.handleEscape);
+    super.disconnectedCallback();
+  }
+  willUpdate(changed) {
+    if (changed.has("volume") || changed.has("mode") || changed.has("pool")) {
+      this.initializeFormFromProps();
+    }
+    if (changed.has("show")) {
+      if (this.show) {
+        setTimeout(() => {
+          const input = this.shadowRoot?.querySelector("#volume-name");
+          if (input) input.focus();
+        }, 100);
+      } else {
+        this.errors.clear();
+      }
+    }
+  }
+  initializeFormFromProps() {
+    if (!this.pool) return;
+    if (this.mode === "resize" && this.volume) {
+      this.formData = {
+        name: this.volume.name,
+        capacity: this.convertBytesToUnit(this.volume.capacity, "GB"),
+        capacityUnit: "GB",
+        allocation: this.convertBytesToUnit(this.volume.allocation || 0, "GB"),
+        allocationUnit: "GB",
+        format: this.volume.format || "qcow2"
+      };
+      this.errors.clear();
+      this.requestUpdate();
+      return;
+    }
+    this.formData = {
+      name: "",
+      capacity: 10,
+      capacityUnit: "GB",
+      allocation: 0,
+      allocationUnit: "GB",
+      format: "qcow2"
+    };
+    this.errors.clear();
+  }
+  convertBytesToUnit(bytes, unit) {
+    const divisor = unit === "TB" ? 1024 * 1024 * 1024 * 1024 : 1024 * 1024 * 1024;
+    return Math.round(bytes / divisor * 100) / 100;
+  }
+  convertToBytes(value, unit) {
+    const multiplier = unit === "TB" ? 1024 * 1024 * 1024 * 1024 : 1024 * 1024 * 1024;
+    return Math.round(value * multiplier);
+  }
+  formatSize(bytes) {
+    const gb = bytes / (1024 * 1024 * 1024);
+    if (gb >= 1024) {
+      return `${(gb / 1024).toFixed(2)} TB`;
+    }
+    return `${gb.toFixed(2)} GB`;
+  }
+  validateForm() {
+    this.errors.clear();
+    if (this.mode === "create") {
+      if (!this.formData.name) {
+        this.errors.set("name", "Volume name is required");
+      } else if (!/^[a-zA-Z0-9-_]+$/.test(this.formData.name)) {
+        this.errors.set("name", "Volume name can only contain letters, numbers, hyphens, and underscores");
+      }
+    }
+    if (this.formData.capacity <= 0) {
+      this.errors.set("capacity", "Capacity must be greater than 0");
+    }
+    if (this.formData.allocation < 0) {
+      this.errors.set("allocation", "Allocation cannot be negative");
+    }
+    const capacityBytes = this.convertToBytes(this.formData.capacity, this.formData.capacityUnit);
+    const allocationBytes = this.convertToBytes(this.formData.allocation, this.formData.allocationUnit);
+    const currentCapacity = this.volume?.capacity || 0;
+    if (allocationBytes > capacityBytes) {
+      this.errors.set("allocation", "Allocation cannot exceed capacity");
+    }
+    if (this.mode === "create") {
+      if (capacityBytes > this.pool.available) {
+        this.errors.set("capacity", `Capacity exceeds available space (${this.formatSize(this.pool.available)})`);
+      }
+    } else if (this.mode === "resize") {
+      if (capacityBytes <= currentCapacity) {
+        this.errors.set("capacity", "New capacity must be greater than current capacity");
+      }
+      const maxCapacity = currentCapacity + (this.pool.available || 0);
+      if (capacityBytes > maxCapacity) {
+        this.errors.set("capacity", `Capacity exceeds available space (${this.formatSize(maxCapacity)})`);
+      }
+    }
+    this.requestUpdate();
+    return this.errors.size === 0;
+  }
+  async handleSubmit() {
+    if (!this.validateForm() || !this.pool) {
+      return;
+    }
+    this.isSubmitting = true;
+    try {
+      const capacityBytes = this.convertToBytes(this.formData.capacity, this.formData.capacityUnit);
+      const allocationBytes = this.convertToBytes(this.formData.allocation, this.formData.allocationUnit);
+      if (this.mode === "resize" && this.volume) {
+        const updated = await virtualizationAPI.resizeVolume(this.pool.name, this.volume.name, capacityBytes);
+        this.dispatchEvent(new CustomEvent("volume-resized", {
+          detail: { pool: this.pool, volume: updated },
+          bubbles: true,
+          composed: true
+        }));
+      } else {
+        const payload = {
+          name: this.formData.name,
+          capacity: capacityBytes
+        };
+        if (allocationBytes > 0) payload.allocation = allocationBytes;
+        if (this.formData.format) payload.format = this.formData.format;
+        const volume = await virtualizationAPI.createVolume(this.pool.name, payload);
+        this.dispatchEvent(new CustomEvent("volume-created", {
+          detail: { pool: this.pool, volume },
+          bubbles: true,
+          composed: true
+        }));
+      }
+      this.handleClose();
+    } catch (error) {
+      let message = "Unknown error";
+      if (error instanceof VirtualizationAPIError) {
+        switch (error.code) {
+          case "VOLUME_ALREADY_EXISTS":
+            message = "A volume with this name already exists in the pool.";
+            break;
+          case "INVALID_VOLUME_REQUEST":
+            message = typeof error.details === "string" ? error.details : error.message;
+            break;
+          default:
+            message = error.message;
+        }
+      } else if (error instanceof Error) {
+        message = error.message;
+      }
+      const title = this.mode === "resize" ? "Failed to resize volume" : "Failed to create volume";
+      notificationActions.addNotification({
+        type: "error",
+        title,
+        message
+      });
+    } finally {
+      this.isSubmitting = false;
+    }
+  }
+  handleClose() {
+    this.dispatchEvent(new CustomEvent("close", {
+      bubbles: true,
+      composed: true
+    }));
+  }
+  handleInputChange(field, value) {
+    this.formData = {
+      ...this.formData,
+      [field]: value
+    };
+    if (this.errors.has(field)) {
+      this.errors.delete(field);
+      this.requestUpdate();
+    }
+  }
+  renderFormatOptions(isResize) {
+    const formats = [
+      {
+        value: "qcow2",
+        name: "QCOW2",
+        description: "QEMU copy-on-write, supports snapshots"
+      },
+      {
+        value: "raw",
+        name: "Raw",
+        description: "Raw disk image, best performance"
+      },
+      {
+        value: "vmdk",
+        name: "VMDK",
+        description: "VMware disk format"
+      },
+      {
+        value: "vdi",
+        name: "VDI",
+        description: "VirtualBox disk format"
+      }
+    ];
+    return x`
+      <div class="format-options">
+        ${formats.map((format) => {
+      const selected = this.formData.format === format.value;
+      const classes = [
+        "format-option",
+        selected ? "selected" : "",
+        isResize ? "disabled" : ""
+      ].filter(Boolean).join(" ");
+      return x`
+            <div 
+              class="${classes}"
+              @click=${() => {
+        if (!isResize) {
+          this.handleInputChange("format", format.value);
+        }
+      }}
+            >
+              <div class="format-name">${format.name}</div>
+              <div class="format-description">${format.description}</div>
+            </div>
+          `;
+    })}
+      </div>
+    `;
+  }
+  render() {
+    if (!this.pool) {
+      return x``;
+    }
+    const isResize = this.mode === "resize";
+    const title = isResize ? "Resize Volume" : "Create Volume";
+    return x`
+      <div class="drawer">
+        <div class="drawer-header">
+          <h2 class="header-title drawer-title">${title}</h2>
+          <button class="close-button close-btn" @click=${this.handleClose} ?disabled=${this.isSubmitting}>×</button>
+        </div>
+
+        <div class="drawer-content">
+          <div class="form-container">
+            <div class="pool-info">
+              <div class="info-item">
+                <div class="info-label">Pool</div>
+                <div class="info-value">${this.pool.name}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">Type</div>
+                <div class="info-value">${this.pool.type}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">Available</div>
+                <div class="info-value">${this.formatSize(this.pool.available)}</div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label ${!isResize ? "required" : ""}">Volume Name</label>
+              <input
+                id="volume-name"
+                type="text"
+                class="form-input ${this.errors.has("name") ? "error" : ""}"
+                placeholder="my-volume"
+                .value=${this.formData.name}
+                @input=${(e3) => {
+      this.handleInputChange("name", e3.target.value);
+    }}
+                ?disabled=${isResize || this.isSubmitting}
+              />
+              ${this.errors.has("name") ? x`
+                <div class="form-error">${this.errors.get("name")}</div>
+              ` : x`
+                <div class="form-hint">
+                  Only letters, numbers, hyphens, and underscores allowed
+                </div>
+              `}
+            </div>
+
+            <div class="form-group">
+              <label class="form-label required">Capacity</label>
+              <div class="input-group">
+                <input
+                  type="number"
+                  class="form-input ${this.errors.has("capacity") ? "error" : ""}"
+                  min="1"
+                  step="1"
+                  .value=${this.formData.capacity}
+                  @input=${(e3) => {
+      this.handleInputChange("capacity", Number(e3.target.value));
+    }}
+                  ?disabled=${this.isSubmitting}
+                />
+                <select
+                  class="form-select unit-select"
+                  .value=${this.formData.capacityUnit}
+                  @change=${(e3) => {
+      this.handleInputChange("capacityUnit", e3.target.value);
+    }}
+                  ?disabled=${this.isSubmitting}
+                >
+                  <option value="GB">GB</option>
+                  <option value="TB">TB</option>
+                </select>
+              </div>
+              ${this.errors.has("capacity") ? x`
+                <div class="form-error">${this.errors.get("capacity")}</div>
+              ` : x`
+                <div class="form-hint">
+                  Maximum size of the volume
+                </div>
+              `}
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Initial Allocation</label>
+              <div class="input-group">
+                <input
+                  type="number"
+                  class="form-input ${this.errors.has("allocation") ? "error" : ""}"
+                  min="0"
+                  step="1"
+                  .value=${this.formData.allocation}
+                  @input=${(e3) => {
+      this.handleInputChange("allocation", Number(e3.target.value));
+    }}
+                  ?disabled=${isResize || this.isSubmitting}
+                />
+                <select
+                  class="form-select unit-select"
+                  .value=${this.formData.allocationUnit}
+                  @change=${(e3) => {
+      this.handleInputChange("allocationUnit", e3.target.value);
+    }}
+                  ?disabled=${isResize || this.isSubmitting}
+                >
+                  <option value="GB">GB</option>
+                  <option value="TB">TB</option>
+                </select>
+              </div>
+              ${this.errors.has("allocation") ? x`
+                <div class="form-error">${this.errors.get("allocation")}</div>
+              ` : x`
+                <div class="form-hint">
+                  Initial disk space to allocate (0 for thin provisioning)
+                </div>
+              `}
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Format</label>
+              ${this.renderFormatOptions(isResize)}
+            </div>
+          </div>
+        </div>
+
+        <div class="drawer-footer">
+          <button 
+            class="btn btn-secondary"
+            @click=${this.handleClose}
+            ?disabled=${this.isSubmitting}
+          >
+            Cancel
+          </button>
+          <button 
+            class="btn btn-primary"
+            @click=${this.handleSubmit}
+            ?disabled=${this.isSubmitting}
+          >
+            ${this.isSubmitting ? this.mode === "resize" ? "Resizing..." : "Creating..." : this.mode === "resize" ? "Resize" : "Create Volume"}
+          </button>
+        </div>
+      </div>
+    `;
+  }
+};
+VolumeDialog.styles = i$5`
+    :host {
+      display: block;
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 700px;
+      height: 100vh;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    :host([show]) {
+      pointer-events: auto;
+    }
+
+    .drawer {
+      width: 100%;
+      height: 100%;
+      background: var(--vscode-editor-background, var(--vscode-bg-light));
+      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+      display: flex;
+      flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+      border-left: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+    }
+
+    :host([show]) .drawer {
+      transform: translateX(0);
+    }
+
+    .drawer-header {
+      padding: 20px;
+      background: var(--vscode-sideBar-background, #252526);
+      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .header-title {
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--vscode-foreground, #cccccc);
+    }
+
+    /* Alias for consistency with other drawers */
+    .drawer-title {
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--vscode-foreground, #cccccc);
+    }
+
+    .close-button,
+    .close-btn {
+      background: none;
+      border: none;
+      color: var(--vscode-foreground, #cccccc);
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 20px;
+      transition: background 0.2s;
+    }
+
+    .close-button:hover,
+    .close-btn:hover {
+      background: var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.1));
+    }
+
+    .drawer-content {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .drawer-footer {
+      padding: 16px 20px;
+      background: var(--vscode-sideBar-background, #252526);
+      border-top: 1px solid var(--vscode-widget-border, #454545);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .form-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      min-width: 0;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--vscode-foreground, #cccccc);
+    }
+
+    .form-label.required::after {
+      content: ' *';
+      color: var(--vscode-inputValidation-errorForeground, #f48771);
+    }
+
+    .form-input,
+    .form-select {
+      width: 100%;
+      padding: 8px 12px;
+      background: var(--vscode-input-background, #3c3c3c);
+      border: 1px solid var(--vscode-input-border, #5a5a5a);
+      border-radius: 4px;
+      color: var(--vscode-input-foreground, #cccccc);
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      box-sizing: border-box;
+      transition: all 0.2s;
+    }
+
+    .form-input:focus,
+    .form-select:focus {
+      border-color: var(--vscode-focusBorder, #007acc);
+      box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc);
+    }
+
+    .form-input.error,
+    .form-select.error {
+      border-color: var(--vscode-inputValidation-errorBorder, #f48771);
+    }
+
+    .form-input:disabled,
+    .form-select:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .input-group .form-input {
+      flex: 1;
+    }
+
+    .unit-select {
+      width: 80px;
+    }
+
+    .form-hint {
+      display: block;
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground, #999999);
+    }
+
+    .error-message {
+      display: block;
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--vscode-inputValidation-errorForeground, #f48771);
+    }
+
+    .form-error {
+      display: block;
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--vscode-inputValidation-errorForeground, #f48771);
+    }
+
+    .pool-info {
+      padding: 12px;
+      background: var(--vscode-editor-background);
+      border: 1px solid var(--vscode-editorWidget-border);
+      border-radius: 4px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .info-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .info-label {
+      font-size: 11px;
+      color: var(--vscode-descriptionForeground);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .info-value {
+      font-size: 13px;
+      color: var(--vscode-foreground);
+      font-weight: 500;
+    }
+
+    .format-options {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .format-option {
+      padding: 12px;
+      background: var(--vscode-editor-background);
+      border: 2px solid var(--vscode-editorWidget-border);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .format-option:hover {
+      border-color: var(--vscode-focusBorder);
+    }
+
+    .format-option.selected {
+      border-color: var(--vscode-textLink-foreground);
+      background: var(--vscode-list-activeSelectionBackground);
+    }
+
+    .format-option.disabled {
+      cursor: default;
+      opacity: 0.7;
+    }
+
+    .format-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--vscode-foreground);
+      margin-bottom: 4px;
+    }
+
+    .format-description {
+      font-size: 11px;
+      color: var(--vscode-descriptionForeground);
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+    }
+
+    .btn-primary {
+      background: var(--vscode-button-background, #0e639c);
+      color: var(--vscode-button-foreground, #ffffff);
+      border: 1px solid var(--vscode-button-background, #0e639c);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--vscode-button-hoverBackground, #1177bb);
+      border-color: var(--vscode-button-hoverBackground, #1177bb);
+    }
+
+    .btn-secondary {
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      color: var(--vscode-button-secondaryForeground, #cccccc);
+      border: 1px solid var(--vscode-button-border, #5a5a5a);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--vscode-button-secondaryHoverBackground, #45494e);
+      border-color: var(--vscode-button-border, #5a5a5a);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .advanced-section {
+      margin-top: 8px;
+      padding-top: 16px;
+      border-top: 1px solid var(--vscode-editorWidget-border);
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--vscode-foreground);
+      margin-bottom: 12px;
+    }
+  `;
+__decorateClass$d([
+  n2({ type: Boolean, reflect: true })
+], VolumeDialog.prototype, "show", 2);
+__decorateClass$d([
+  n2({ type: String })
+], VolumeDialog.prototype, "mode", 2);
+__decorateClass$d([
+  n2({ type: Object })
+], VolumeDialog.prototype, "pool", 2);
+__decorateClass$d([
+  n2({ type: Object })
+], VolumeDialog.prototype, "volume", 2);
+__decorateClass$d([
+  r$1()
+], VolumeDialog.prototype, "formData", 2);
+__decorateClass$d([
+  r$1()
+], VolumeDialog.prototype, "isSubmitting", 2);
+__decorateClass$d([
+  r$1()
+], VolumeDialog.prototype, "errors", 2);
+VolumeDialog = __decorateClass$d([
+  t$2("volume-dialog")
+], VolumeDialog);
+var __defProp$c = Object.defineProperty;
+var __getOwnPropDesc$a = Object.getOwnPropertyDescriptor;
+var __decorateClass$c = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$a(target, key) : target;
+  for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
+    if (decorator = decorators[i4])
+      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
+  if (kind && result) __defProp$c(target, key, result);
+  return result;
+};
+let VolumeCloneDialog = class extends i$2 {
+  constructor() {
+    super(...arguments);
+    this.show = false;
+    this.newName = "";
+    this.targetPool = "";
+    this.isCloning = false;
+    this.errors = /* @__PURE__ */ new Map();
+    this.handleEscape = (e3) => {
+      if (e3.key === "Escape" && this.show && !this.isCloning) {
+        this.handleClose();
+      }
+    };
+  }
+  connectedCallback() {
+    super.connectedCallback();
+    window.addEventListener("keydown", this.handleEscape);
+  }
+  disconnectedCallback() {
+    window.removeEventListener("keydown", this.handleEscape);
+    super.disconnectedCallback();
+  }
+  willUpdate(changed) {
+    if (changed.has("show") && this.show) {
+      setTimeout(() => {
+        const input = this.shadowRoot?.querySelector("#clone-name");
+        if (input) input.focus();
+      }, 100);
+    }
+    if (changed.has("volume") && this.volume) {
+      this.newName = `${this.volume.name}-clone`;
+    }
+  }
+  validate() {
+    this.errors.clear();
+    if (!this.newName) {
+      this.errors.set("name", "New volume name is required");
+    } else if (!/^[a-zA-Z0-9-_]+$/.test(this.newName)) {
+      this.errors.set("name", "Name can only contain letters, numbers, hyphens, and underscores");
+    }
+    if (this.targetPool && !/^[a-zA-Z0-9-_]+$/.test(this.targetPool)) {
+      this.errors.set("targetPool", "Target pool name can only contain letters, numbers, hyphens, and underscores");
+    }
+    this.requestUpdate();
+    return this.errors.size === 0;
+  }
+  async handleClone() {
+    if (!this.pool || !this.volume || !this.validate()) return;
+    this.isCloning = true;
+    try {
+      const payload = { new_name: this.newName };
+      const trimmedTarget = this.targetPool.trim();
+      if (trimmedTarget && trimmedTarget !== this.pool.name) {
+        payload.target_pool = trimmedTarget;
+      }
+      const cloned = await virtualizationAPI.cloneVolume(this.pool.name, this.volume.name, payload);
+      this.dispatchEvent(new CustomEvent("volume-cloned", {
+        detail: { poolName: cloned.pool_name, volume: cloned },
+        bubbles: true,
+        composed: true
+      }));
+      this.handleClose();
+    } catch (error) {
+      let message = "Unknown error";
+      if (error instanceof VirtualizationAPIError) {
+        switch (error.code) {
+          case "VOLUME_ALREADY_EXISTS":
+            message = "A volume with this name already exists in the target pool.";
+            break;
+          case "INVALID_VOLUME_REQUEST":
+            message = typeof error.details === "string" ? error.details : error.message;
+            break;
+          case "VOLUME_NOT_FOUND":
+            message = "Source volume not found. It may have been deleted.";
+            break;
+          default:
+            message = error.message;
+        }
+      } else if (error instanceof Error) {
+        message = error.message;
+      }
+      notificationActions.addNotification({
+        type: "error",
+        title: "Failed to clone volume",
+        message
+      });
+    } finally {
+      this.isCloning = false;
+    }
+  }
+  handleClose() {
+    this.dispatchEvent(new CustomEvent("close", {
+      bubbles: true,
+      composed: true
+    }));
+  }
+  render() {
+    if (!this.pool || !this.volume) {
+      return x``;
+    }
+    return x`
+      <div class="drawer">
+        <div class="drawer-header">
+          <h2 class="header-title">Clone Volume</h2>
+          <button class="close-button" @click=${this.handleClose} ?disabled=${this.isCloning}>×</button>
+        </div>
+
+        <div class="drawer-content">
+          <div class="form-container">
+            <div class="info-box">
+              <div class="info-row">
+                <span class="info-label">Source volume</span>
+                <span>${this.volume.name}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Source pool</span>
+                <span>${this.pool.name}</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label required" for="clone-name">New volume name</label>
+              <input
+                id="clone-name"
+                type="text"
+                class="form-input ${this.errors.has("name") ? "error" : ""}"
+                .value=${this.newName}
+                @input=${(e3) => {
+      this.newName = e3.target.value;
+    }}
+                ?disabled=${this.isCloning}
+              />
+              ${this.errors.has("name") ? x`
+                <div class="error-message">${this.errors.get("name")}</div>
+              ` : x`
+                <div class="form-hint">Name of the cloned volume in the target pool.</div>
+              `}
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="target-pool">Target pool (optional)</label>
+              <input
+                id="target-pool"
+                type="text"
+                class="form-input ${this.errors.has("targetPool") ? "error" : ""}"
+                placeholder=${`Leave empty to clone into "${this.pool.name}"`}
+                .value=${this.targetPool}
+                @input=${(e3) => {
+      this.targetPool = e3.target.value;
+    }}
+                ?disabled=${this.isCloning}
+              />
+              ${this.errors.has("targetPool") ? x`
+                <div class="error-message">${this.errors.get("targetPool")}</div>
+              ` : x`
+                <div class="form-hint">Specify another pool name to clone into a different pool.</div>
+              `}
+            </div>
+          </div>
+        </div>
+
+        <div class="drawer-footer">
+          <button
+            class="btn btn-secondary"
+            @click=${this.handleClose}
+            ?disabled=${this.isCloning}
+          >
+            Cancel
+          </button>
+          <button
+            class="btn btn-primary"
+            @click=${this.handleClone}
+            ?disabled=${this.isCloning}
+          >
+            ${this.isCloning ? "Cloning..." : "Clone Volume"}
+          </button>
+        </div>
+      </div>
+    `;
+  }
+};
+VolumeCloneDialog.styles = i$5`
+    :host {
+      display: block;
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 500px;
+      height: 100vh;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    :host([show]) {
+      pointer-events: auto;
+    }
+
+    .drawer {
+      width: 100%;
+      height: 100%;
+      background: var(--vscode-editor-background, var(--vscode-bg-light));
+      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+      display: flex;
+      flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+      border-left: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+    }
+
+    :host([show]) .drawer {
+      transform: translateX(0);
+    }
+
+    .drawer-header {
+      padding: 20px;
+      background: var(--vscode-sideBar-background, #252526);
+      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .header-title {
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--vscode-foreground, #cccccc);
+    }
+
+    .close-button {
+      background: none;
+      border: none;
+      color: var(--vscode-foreground, #cccccc);
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 20px;
+      transition: background 0.2s;
+    }
+
+    .close-button:hover {
+      background: var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.1));
+    }
+
+    .drawer-content {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .drawer-footer {
+      padding: 16px 20px;
+      background: var(--vscode-sideBar-background, #252526);
+      border-top: 1px solid var(--vscode-widget-border, #454545);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .form-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .form-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--vscode-foreground);
+    }
+
+    .form-label.required::after {
+      content: ' *';
+      color: var(--vscode-inputValidation-errorForeground);
+    }
+
+    .form-input {
+      padding: 8px 12px;
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+      border: 1px solid var(--vscode-input-border);
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--vscode-focusBorder);
+    }
+
+    .form-input.error {
+      border-color: var(--vscode-inputValidation-errorBorder);
+    }
+
+    .form-input:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    .form-hint {
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground);
+      margin-top: -4px;
+    }
+
+    .error-message {
+      font-size: 12px;
+      color: var(--vscode-inputValidation-errorForeground);
+      margin-top: -4px;
+    }
+
+    .info-box {
+      padding: 12px;
+      background: var(--vscode-editor-background);
+      border: 1px solid var(--vscode-editorWidget-border);
+      border-radius: 4px;
+      font-size: 13px;
+      color: var(--vscode-foreground);
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .info-label {
+      color: var(--vscode-descriptionForeground);
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+    }
+
+    .btn-primary {
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--vscode-button-hoverBackground);
+    }
+
+    .btn-secondary {
+      background: var(--vscode-button-secondaryBackground);
+      color: var(--vscode-button-secondaryForeground);
+      border: 1px solid var(--vscode-button-border);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--vscode-button-secondaryHoverBackground);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  `;
+__decorateClass$c([
+  n2({ type: Boolean, reflect: true })
+], VolumeCloneDialog.prototype, "show", 2);
+__decorateClass$c([
+  n2({ type: Object })
+], VolumeCloneDialog.prototype, "pool", 2);
+__decorateClass$c([
+  n2({ type: Object })
+], VolumeCloneDialog.prototype, "volume", 2);
+__decorateClass$c([
+  r$1()
+], VolumeCloneDialog.prototype, "newName", 2);
+__decorateClass$c([
+  r$1()
+], VolumeCloneDialog.prototype, "targetPool", 2);
+__decorateClass$c([
+  r$1()
+], VolumeCloneDialog.prototype, "isCloning", 2);
+__decorateClass$c([
+  r$1()
+], VolumeCloneDialog.prototype, "errors", 2);
+VolumeCloneDialog = __decorateClass$c([
+  t$2("volume-clone-dialog")
+], VolumeCloneDialog);
 function formatBytes(bytes) {
   if (bytes === 0) return "0 Bytes";
   const k2 = 1024;
@@ -68736,6 +69934,20 @@ let VirtualizationVolumes = class extends i$2 {
   constructor() {
     super(...arguments);
     this.poolFilter = "all";
+    this.showDetails = false;
+    this.selectedVolume = null;
+    this.detailsLoading = false;
+    this.showVolumeDialog = false;
+    this.volumeDialogMode = "create";
+    this.dialogPool = null;
+    this.dialogVolume = null;
+    this.showCloneDialog = false;
+    this.clonePool = null;
+    this.cloneVolume = null;
+    this.showDeleteModal = false;
+    this.deleteItem = null;
+    this.deletingVolume = null;
+    this.isDeleting = false;
     this.storeController = new lib.StoreController(this, volumeStore.$state);
     this.filteredVolumesController = new lib.StoreController(this, $filteredVolumes);
     this.volumeStatsController = new lib.StoreController(this, $volumeStats);
@@ -68754,43 +69966,55 @@ let VirtualizationVolumes = class extends i$2 {
   getColumns() {
     return [
       {
-        key: "name",
+        key: "nameCell",
         label: "Name",
         type: "custom"
       },
       {
-        key: "format",
+        key: "formatCell",
         label: "Format",
         type: "custom"
       },
       {
-        key: "capacity",
+        key: "capacityCell",
         label: "Capacity",
         type: "custom"
       },
       {
-        key: "usage",
+        key: "usageCell",
         label: "Usage",
         type: "custom"
       },
       {
-        key: "pool_name",
-        label: "Pool"
+        key: "poolCell",
+        label: "Pool",
+        type: "custom"
       },
       {
-        key: "created_at",
-        label: "Created"
+        key: "createdAtCell",
+        label: "Created",
+        type: "custom"
       }
     ];
   }
   // Transform volumes data for table display
   transformVolumeData(volumes) {
-    return volumes.map((volume) => {
-      const iconClass = volume.type === "dir" ? "dir" : volume.format === "iso" ? "iso" : "disk";
-      const icon = volume.type === "dir" ? "📁" : volume.format === "iso" ? "💿" : "💾";
-      return {
-        ...volume,
-        name: x`
+    return volumes.map((volume) => ({
+      ...volume,
+      nameCell: volume,
+      formatCell: volume,
+      capacityCell: volume,
+      usageCell: volume,
+      poolCell: volume,
+      createdAtCell: volume
+    }));
+  }
+  getCustomRenderers() {
+    return {
+      nameCell: (volume) => {
+        const iconClass = volume.type === "dir" ? "dir" : volume.format === "iso" ? "iso" : "disk";
+        const icon = volume.type === "dir" ? "📁" : volume.format === "iso" ? "💿" : "💾";
+        return x`
           <div class="volume-name">
             <span class="volume-icon ${iconClass}">${icon}</span>
             <div class="volume-details">
@@ -68798,44 +70022,56 @@ let VirtualizationVolumes = class extends i$2 {
               <div class="volume-path">${volume.path}</div>
             </div>
           </div>
-        `,
-        format: x`
-          <span class="format-badge ${volume.format}">
-            ${volume.format}
-          </span>
-        `,
-        capacity: x`
-          <div class="size-info">
-            <div class="size-value">${formatBytes(volume.capacity)}</div>
-            <div class="size-usage">${formatBytes(volume.allocation)} used</div>
+        `;
+      },
+      formatCell: (volume) => x`
+        <span class="format-badge ${volume.format}">
+          ${volume.format}
+        </span>
+      `,
+      capacityCell: (volume) => x`
+        <div class="size-info">
+          <div class="size-value">${formatBytes(volume.capacity)}</div>
+          <div class="size-usage">${formatBytes(volume.allocation)} used</div>
+        </div>
+      `,
+      usageCell: (volume) => x`
+        <div>
+          <div class="usage-bar">
+            <div 
+              class="usage-fill ${this.getUsageClass(volume.used_percent || 0)}"
+              style="width: ${volume.used_percent || 0}%"
+            ></div>
           </div>
-        `,
-        usage: x`
-          <div>
-            <div class="usage-bar">
-              <div 
-                class="usage-fill ${this.getUsageClass(volume.used_percent || 0)}"
-                style="width: ${volume.used_percent || 0}%"
-              ></div>
-            </div>
-            <div class="usage-percent">${volume.used_percent || 0}%</div>
-          </div>
-        `,
-        pool_name: x`<span class="pool-badge">${volume.pool_name}</span>`,
-        created_at: formatDate(volume.created_at)
-      };
-    });
+          <div class="usage-percent">${volume.used_percent || 0}%</div>
+        </div>
+      `,
+      poolCell: (volume) => x`
+        <span class="pool-badge">${volume.pool_name}</span>
+      `,
+      createdAtCell: (volume) => volume.created_at ? formatDate(volume.created_at) : "-"
+    };
   }
   // Table actions configuration
   getActions(_volume) {
     return [
       {
-        id: "view",
+        action: "view",
         label: "View Details",
         icon: "👁️"
       },
       {
-        id: "delete",
+        action: "resize",
+        label: "Resize",
+        icon: "📏"
+      },
+      {
+        action: "clone",
+        label: "Clone",
+        icon: "🧬"
+      },
+      {
+        action: "delete",
         label: "Delete",
         icon: "🗑️",
         danger: true
@@ -68848,7 +70084,13 @@ let VirtualizationVolumes = class extends i$2 {
   }
   async loadData() {
     try {
-      await volumeActions.fetchAll();
+      await Promise.all([
+        volumeActions.fetchAll(),
+        // Load storage pools so create/resize/clone flows have pool metadata
+        storagePoolStore.fetch().catch((err) => {
+          console.error("Failed to load storage pools for volumes view:", err);
+        })
+      ]);
     } catch (error) {
       console.error("Failed to fetch volumes:", error);
       this.showNotification(
@@ -68876,10 +70118,20 @@ let VirtualizationVolumes = class extends i$2 {
   }
   handleAction(e3) {
     const { action, item } = e3.detail;
-    if (action === "delete") {
-      this.handleDelete(item);
-    } else if (action === "view") {
-      console.log("View details for:", item);
+    const volume = item;
+    switch (action) {
+      case "view":
+        this.openDetails(volume);
+        break;
+      case "resize":
+        this.openResizeDialog(volume);
+        break;
+      case "clone":
+        this.openCloneDialog(volume);
+        break;
+      case "delete":
+        this.openDeleteModal(volume);
+        break;
     }
   }
   async handleRefresh() {
@@ -68891,13 +70143,178 @@ let VirtualizationVolumes = class extends i$2 {
       }
     }
   }
-  async handleDelete(volume) {
-    if (confirm(`Are you sure you want to delete volume "${volume.name}"?`)) {
-      try {
-        const volumeId = volume.id || `${volume.pool_name}:${volume.name}`;
-        await volumeStore.delete(volumeId);
-      } catch (error) {
-        console.error("Failed to delete volume:", error);
+  async openDetails(volume) {
+    this.detailsLoading = true;
+    try {
+      const full = await virtualizationAPI.getVolume(volume.pool_name, volume.name);
+      this.selectedVolume = full;
+      this.showDetails = true;
+    } catch (error) {
+      if (error instanceof VirtualizationDisabledError) {
+        this.showNotification("Virtualization is disabled on this host", "error");
+      } else if (error instanceof VirtualizationAPIError) {
+        this.showNotification(`Failed to load volume details: ${error.message}`, "error");
+      } else if (error instanceof Error) {
+        this.showNotification(`Failed to load volume details: ${error.message}`, "error");
+      }
+    } finally {
+      this.detailsLoading = false;
+    }
+  }
+  getPoolByName(name) {
+    const poolsMap = storagePoolStore.$items.get();
+    if (!poolsMap) return null;
+    if (poolsMap instanceof Map) {
+      return poolsMap.get(name) || null;
+    }
+    if (typeof poolsMap === "object") {
+      return poolsMap[name] || null;
+    }
+    return null;
+  }
+  openResizeDialog(volume) {
+    const pool = this.getPoolByName(volume.pool_name);
+    if (!pool) {
+      this.showNotification(`Storage pool "${volume.pool_name}" not found for this volume`, "error");
+      return;
+    }
+    this.dialogPool = pool;
+    this.dialogVolume = volume;
+    this.volumeDialogMode = "resize";
+    this.showVolumeDialog = true;
+  }
+  openCloneDialog(volume) {
+    const pool = this.getPoolByName(volume.pool_name);
+    if (!pool) {
+      this.showNotification(`Storage pool "${volume.pool_name}" not found for this volume`, "error");
+      return;
+    }
+    this.clonePool = pool;
+    this.cloneVolume = volume;
+    this.showCloneDialog = true;
+  }
+  openDeleteModal(volume) {
+    this.deletingVolume = volume;
+    this.deleteItem = {
+      type: "Volume",
+      name: volume.name
+    };
+    this.showDeleteModal = true;
+  }
+  async handleConfirmDelete(_e) {
+    if (!this.deletingVolume) return;
+    this.isDeleting = true;
+    const volume = this.deletingVolume;
+    try {
+      await virtualizationAPI.deleteVolume(volume.pool_name, volume.name, false);
+      await volumeActions.fetchAll();
+      this.showNotification(`Volume "${volume.name}" deleted successfully`, "success");
+      this.showDeleteModal = false;
+      this.deleteItem = null;
+      this.deletingVolume = null;
+    } catch (error) {
+      let message = "Unknown error";
+      if (error instanceof VirtualizationAPIError) {
+        switch (error.code) {
+          case "VOLUME_NOT_FOUND":
+            message = "Volume not found. It may have already been deleted.";
+            break;
+          case "VOLUME_IN_USE":
+            message = "This volume is currently attached to one or more virtual machines.";
+            break;
+          default:
+            message = error.message;
+        }
+      } else if (error instanceof Error) {
+        message = error.message;
+      }
+      this.showNotification(`Failed to delete volume: ${message}`, "error");
+    } finally {
+      this.isDeleting = false;
+    }
+  }
+  handleCancelDelete() {
+    this.showDeleteModal = false;
+    this.deleteItem = null;
+    this.deletingVolume = null;
+  }
+  handleCreateVolume() {
+    let pool = null;
+    if (this.poolFilter === "all") {
+      pool = this.getPoolByName("default");
+      if (!pool) {
+        const poolsMap = storagePoolStore.$items.get();
+        if (poolsMap instanceof Map) {
+          const first = poolsMap.values().next().value;
+          pool = first || null;
+        } else if (poolsMap && typeof poolsMap === "object") {
+          const keys = Object.keys(poolsMap);
+          const firstKey = keys.length ? keys[0] : void 0;
+          pool = firstKey ? poolsMap[firstKey] : null;
+        }
+      }
+      if (!pool) {
+        this.showNotification("No storage pools available to create a volume.", "error");
+        return;
+      }
+    } else {
+      pool = this.getPoolByName(this.poolFilter);
+      if (!pool) {
+        this.showNotification(`Storage pool "${this.poolFilter}" not found.`, "error");
+        return;
+      }
+    }
+    this.dialogPool = pool;
+    this.dialogVolume = null;
+    this.volumeDialogMode = "create";
+    this.showVolumeDialog = true;
+  }
+  handleVolumeDialogClose() {
+    this.showVolumeDialog = false;
+    this.dialogPool = null;
+    this.dialogVolume = null;
+  }
+  async handleVolumeCreated(_e) {
+    this.showVolumeDialog = false;
+    this.dialogPool = null;
+    this.dialogVolume = null;
+    try {
+      await volumeActions.fetchAll();
+      this.showNotification("Volume created successfully", "success");
+    } catch (error) {
+      if (!(error instanceof VirtualizationDisabledError)) {
+        this.showNotification("Volume was created but failed to refresh list", "error");
+      }
+    }
+  }
+  async handleVolumeResized(_e) {
+    this.showVolumeDialog = false;
+    this.dialogPool = null;
+    this.dialogVolume = null;
+    try {
+      await volumeActions.fetchAll();
+      this.showNotification("Volume resized successfully", "success");
+    } catch (error) {
+      if (!(error instanceof VirtualizationDisabledError)) {
+        this.showNotification("Volume was resized but failed to refresh list", "error");
+      }
+    }
+  }
+  handleCloneDialogClose() {
+    this.showCloneDialog = false;
+    this.clonePool = null;
+    this.cloneVolume = null;
+  }
+  async handleVolumeCloned(_e) {
+    this.showCloneDialog = false;
+    this.clonePool = null;
+    this.cloneVolume = null;
+    try {
+      await volumeActions.fetchAll();
+      this.showNotification("Volume cloned successfully", "success");
+    } catch (error) {
+      if (!(error instanceof VirtualizationDisabledError)) {
+        this.showNotification("Volume was cloned but failed to refresh list", "error");
       }
     }
   }
@@ -69030,8 +70447,15 @@ let VirtualizationVolumes = class extends i$2 {
             ></search-input>
           </div>
           <div class="actions-section">
-            <button class="btn-refresh" @click=${this.handleRefresh} title="Refresh">
+            <button class="btn btn-secondary" @click=${this.handleRefresh} title="Refresh">
               🔄
+            </button>
+            <button
+              class="btn btn-primary"
+              @click=${this.handleCreateVolume}
+              title="Create Volume"
+            >
+              + Volume
             </button>
           </div>
         </div>
@@ -69056,7 +70480,8 @@ let VirtualizationVolumes = class extends i$2 {
             <resource-table
               .columns=${this.getColumns()}
               .data=${this.transformVolumeData(displayVolumes)}
-              .actions=${(item) => this.getActions(item)}
+              .getActions=${(item) => this.getActions(item)}
+              .customRenderers=${this.getCustomRenderers()}
               @action=${this.handleAction}
             ></resource-table>
           `}
@@ -69064,6 +70489,61 @@ let VirtualizationVolumes = class extends i$2 {
 
         <!-- Notification Container -->
         <notification-container></notification-container>
+
+        ${this.showDetails && this.selectedVolume ? x`
+          <detail-drawer
+            .title=${`Volume: ${this.selectedVolume.name}`}
+            .show=${this.showDetails}
+            .loading=${this.detailsLoading}
+            @close=${() => {
+      this.showDetails = false;
+      this.selectedVolume = null;
+    }}
+          >
+            <div style="padding: 20px;">
+              <h3>Volume Information</h3>
+              <div style="display: grid; grid-template-columns: 150px 1fr; gap: 12px; margin-bottom: 20px;">
+                <strong>Name:</strong> <span>${this.selectedVolume.name}</span>
+                <strong>Pool:</strong> <span>${this.selectedVolume.pool_name}</span>
+                <strong>Type:</strong> <span>${this.selectedVolume.type}</span>
+                <strong>Format:</strong> <span>${this.selectedVolume.format}</span>
+                <strong>Capacity:</strong> <span>${formatBytes(this.selectedVolume.capacity)}</span>
+                <strong>Allocation:</strong> <span>${formatBytes(this.selectedVolume.allocation || 0)}</span>
+                <strong>Usage:</strong> <span>${this.selectedVolume.used_percent || 0}%</span>
+                <strong>Path:</strong> <span>${this.selectedVolume.path}</span>
+                <strong>Created:</strong> <span>${formatDate(this.selectedVolume.created_at)}</span>
+              </div>
+            </div>
+          </detail-drawer>
+        ` : ""}
+
+        ${this.showDeleteModal && this.deleteItem ? x`
+          <delete-modal
+            .show=${this.showDeleteModal}
+            .item=${this.deleteItem}
+            .loading=${this.isDeleting}
+            @confirm-delete=${this.handleConfirmDelete}
+            @cancel-delete=${this.handleCancelDelete}
+          ></delete-modal>
+        ` : ""}
+
+        <volume-dialog
+          .show=${this.showVolumeDialog}
+          .mode=${this.volumeDialogMode}
+          .pool=${this.dialogPool}
+          .volume=${this.dialogVolume}
+          @close=${this.handleVolumeDialogClose}
+          @volume-created=${this.handleVolumeCreated}
+          @volume-resized=${this.handleVolumeResized}
+        ></volume-dialog>
+
+        <volume-clone-dialog
+          .show=${this.showCloneDialog}
+          .pool=${this.clonePool}
+          .volume=${this.cloneVolume}
+          @close=${this.handleCloneDialogClose}
+          @volume-cloned=${this.handleVolumeCloned}
+        ></volume-clone-dialog>
       </div>
     `;
   }
@@ -69232,6 +70712,38 @@ VirtualizationVolumes.styles = i$5`
       display: flex;
       align-items: center;
       gap: 8px;
+    }
+
+    /* Buttons (aligned with ISO and Pool drawers) */
+    .btn {
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+      font-family: inherit;
+    }
+
+    .btn-primary {
+      background: var(--vscode-button-background, #0e639c);
+      color: var(--vscode-button-foreground, #ffffff);
+      border: 1px solid var(--vscode-button-background, #0e639c);
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: var(--vscode-button-hoverBackground, #1177bb);
+      border-color: var(--vscode-button-hoverBackground, #1177bb);
+    }
+
+    .btn-secondary {
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      color: var(--vscode-button-secondaryForeground, #cccccc);
+      border: 1px solid var(--vscode-button-border, #5a5a5a);
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--vscode-button-secondaryHoverBackground, #45494e);
+      border-color: var(--vscode-button-border, #5a5a5a);
     }
 
     search-input {
@@ -69567,6 +71079,48 @@ VirtualizationVolumes.styles = i$5`
 __decorateClass$b([
   r$1()
 ], VirtualizationVolumes.prototype, "poolFilter", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationVolumes.prototype, "showDetails", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationVolumes.prototype, "selectedVolume", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationVolumes.prototype, "detailsLoading", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationVolumes.prototype, "showVolumeDialog", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationVolumes.prototype, "volumeDialogMode", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationVolumes.prototype, "dialogPool", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationVolumes.prototype, "dialogVolume", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationVolumes.prototype, "showCloneDialog", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationVolumes.prototype, "clonePool", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationVolumes.prototype, "cloneVolume", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationVolumes.prototype, "showDeleteModal", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationVolumes.prototype, "deleteItem", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationVolumes.prototype, "deletingVolume", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationVolumes.prototype, "isDeleting", 2);
 VirtualizationVolumes = __decorateClass$b([
   t$2("virtualization-volumes")
 ], VirtualizationVolumes);

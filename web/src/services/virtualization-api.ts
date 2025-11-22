@@ -518,11 +518,18 @@ export class VirtualizationAPI {
   }
   
   /**
+   * Get volume details
+   */
+  async getVolume(poolName: string, volumeName: string): Promise<Volume> {
+    return apiRequest<Volume>(`/storages/pools/${poolName}/volumes/${volumeName}`);
+  }
+  
+  /**
    * Create a volume in a storage pool
    */
   async createVolume(
     poolName: string,
-    config: Partial<Volume>
+    config: { name: string; capacity: number; allocation?: number; format?: string }
   ): Promise<Volume> {
     return apiRequest<Volume>(`/storages/pools/${poolName}/volumes`, {
       method: 'POST',
@@ -531,13 +538,40 @@ export class VirtualizationAPI {
   }
   
   /**
+   * Resize a volume
+   */
+  async resizeVolume(poolName: string, volumeName: string, capacity: number): Promise<Volume> {
+    return apiRequest<Volume>(`/storages/pools/${poolName}/volumes/${volumeName}/resize`, {
+      method: 'POST',
+      body: JSON.stringify({ capacity }),
+    });
+  }
+  
+  /**
+   * Clone a volume
+   */
+  async cloneVolume(
+    poolName: string,
+    volumeName: string,
+    payload: { new_name: string; target_pool?: string }
+  ): Promise<Volume & { pool_name: string }> {
+    return apiRequest<Volume & { pool_name: string }>(
+      `/storages/pools/${poolName}/volumes/${volumeName}/clone`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    );
+  }
+  
+  /**
    * Delete a volume
    */
-  async deleteVolume(poolName: string, volumeName: string): Promise<OperationResult> {
-    return apiRequest<OperationResult>(
-      `/storages/pools/${poolName}/volumes/${volumeName}`,
-      { method: 'DELETE' }
-    );
+  async deleteVolume(poolName: string, volumeName: string, force = false): Promise<void> {
+    const suffix = force ? '?force=true' : '';
+    await apiRequest<void>(`/storages/pools/${poolName}/volumes/${volumeName}${suffix}`, {
+      method: 'DELETE',
+    });
   }
   
   // ============ ISO Management ============

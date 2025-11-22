@@ -1943,7 +1943,20 @@ export const volumeActions = {
   },
   
   async delete(volumeId: string) {
-    await apiRequest(`/volumes/${volumeId}`, { method: 'DELETE' });
+    // volumeId is typically `${pool_name}:${volume_name}`; fall back to legacy /volumes/{id} if parsing fails
+    const [poolName, volumeName] = volumeId.includes(':')
+      ? ((): [string | null, string | null] => {
+          const parts = volumeId.split(':');
+          return [parts[0] || null, parts[1] || null];
+        })()
+      : [null, null];
+
+    if (poolName && volumeName) {
+      await apiRequest(`/storages/pools/${poolName}/volumes/${volumeName}`, { method: 'DELETE' });
+    } else {
+      await apiRequest(`/volumes/${volumeId}`, { method: 'DELETE' });
+    }
+
     await volumeStore.delete(volumeId);
     
     // Clear selection if deleted volume was selected

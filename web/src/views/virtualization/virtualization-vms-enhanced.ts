@@ -939,7 +939,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
             <resource-table
               .columns=${this.getColumns()}
               .data=${tableData}
-              .actions=${(item: any) => this.activeMainTab === 'templates' ? [] : this.getActions(item)}
+              .getActions=${(item: any) => this.activeMainTab === 'templates' ? [] : this.getActions(item)}
               @cell-click=${this.handleCellClick}
               @action=${this.handleAction}
             ></resource-table>

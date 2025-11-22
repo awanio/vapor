@@ -10,9 +10,14 @@ import '../../components/ui/filter-dropdown.js';
 import '../../components/tabs/tab-group.js';
 import '../../components/tables/resource-table.js';
 import '../../components/ui/notification-container.js';
+import '../../components/drawers/detail-drawer.js';
+import '../../components/modals/delete-modal.js';
+import '../../components/virtualization/volume-dialog.js';
+import '../../components/virtualization/volume-clone-dialog.js';
 
 // Import types
 import type { Tab } from '../../components/tabs/tab-group.js';
+import type { DeleteItem } from '../../components/modals/delete-modal.js';
 
 // Import utilities
 import { formatBytes, formatDate } from "../../utils/formatters";
@@ -27,14 +32,30 @@ import {
   volumeActions,
   $virtualizationEnabled,
   $virtualizationDisabledMessage,
+  storagePoolStore,
 } from "../../stores/virtualization";
-import type { StorageVolume } from "../../types/virtualization";
+import type { StoragePool, StorageVolume } from "../../types/virtualization";
 import { VirtualizationDisabledError } from "../../utils/api-errors";
+import { virtualizationAPI, VirtualizationAPIError } from "../../services/virtualization-api";
 
 @customElement('virtualization-volumes')
 export class VirtualizationVolumes extends LitElement {
   // Local UI state
   @state() private poolFilter: string = 'all';
+  @state() private showDetails = false;
+  @state() private selectedVolume: StorageVolume | null = null;
+  @state() private detailsLoading = false;
+  @state() private showVolumeDialog = false;
+  @state() private volumeDialogMode: 'create' | 'resize' = 'create';
+  @state() private dialogPool: StoragePool | null = null;
+  @state() private dialogVolume: StorageVolume | null = null;
+  @state() private showCloneDialog = false;
+  @state() private clonePool: StoragePool | null = null;
+  @state() private cloneVolume: StorageVolume | null = null;
+  @state() private showDeleteModal = false;
+  @state() private deleteItem: DeleteItem | null = null;
+  @state() private deletingVolume: StorageVolume | null = null;
+  @state() private isDeleting = false;
   static override styles = css`
     :host {
       display: block;
@@ -199,6 +220,38 @@ export class VirtualizationVolumes extends LitElement {
       display: flex;
       align-items: center;
       gap: 8px;
+    }
+
+    /* Buttons (aligned with ISO and Pool drawers) */
+    .btn {
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+      font-family: inherit;
+    }
+
+    .btn-primary {
+      background: var(--vscode-button-background, #0e639c);
+      color: var(--vscode-button-foreground, #ffffff);
+      border: 1px solid var(--vscode-button-background, #0e639c);
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: var(--vscode-button-hoverBackground, #1177bb);
+      border-color: var(--vscode-button-hoverBackground, #1177bb);
+    }
+
+    .btn-secondary {
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      color: var(--vscode-button-secondaryForeground, #cccccc);
+      border: 1px solid var(--vscode-button-border, #5a5a5a);
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--vscode-button-secondaryHoverBackground, #45494e);
+      border-color: var(--vscode-button-border, #5a5a5a);
     }
 
     search-input {
@@ -553,47 +606,62 @@ export class VirtualizationVolumes extends LitElement {
   private getColumns() {
     return [
       {
-        key: 'name',
+        key: 'nameCell',
         label: 'Name',
-        type: 'custom' as const
+        type: 'custom' as const,
       },
       {
-        key: 'format',
+        key: 'formatCell',
         label: 'Format',
-        type: 'custom' as const
+        type: 'custom' as const,
       },
       {
-        key: 'capacity',
+        key: 'capacityCell',
         label: 'Capacity',
-        type: 'custom' as const
+        type: 'custom' as const,
       },
       {
-        key: 'usage',
+        key: 'usageCell',
         label: 'Usage',
-        type: 'custom' as const
+        type: 'custom' as const,
       },
       {
-        key: 'pool_name',
-        label: 'Pool'
+        key: 'poolCell',
+        label: 'Pool',
+        type: 'custom' as const,
       },
       {
-        key: 'created_at',
-        label: 'Created'
-      }
+        key: 'createdAtCell',
+        label: 'Created',
+        type: 'custom' as const,
+      },
     ];
   }
 
   // Transform volumes data for table display
   private transformVolumeData(volumes: StorageVolume[]) {
-    return volumes.map(volume => {
-      const iconClass = volume.type === 'dir' ? 'dir' :
-        volume.format === 'iso' ? 'iso' : 'disk';
-      const icon = volume.type === 'dir' ? '📁' :
-        volume.format === 'iso' ? '💿' : '💾';
+    return volumes.map(volume => ({
+      ...volume,
+      nameCell: volume,
+      formatCell: volume,
+      capacityCell: volume,
+      usageCell: volume,
+      poolCell: volume,
+      createdAtCell: volume,
+    }));
+  }
 
-      return {
-        ...volume,
-        name: html`
+  private getCustomRenderers() {
+    return {
+      nameCell: (volume: StorageVolume) => {
+        const iconClass = volume.type === 'dir' ? 'dir'
+          : volume.format === 'iso' ? 'iso'
+          : 'disk';
+        const icon = volume.type === 'dir' ? '📁'
+          : volume.format === 'iso' ? '💿'
+          : '💾';
+
+        return html`
           <div class="volume-name">
             <span class="volume-icon ${iconClass}">${icon}</span>
             <div class="volume-details">
@@ -601,49 +669,63 @@ export class VirtualizationVolumes extends LitElement {
               <div class="volume-path">${volume.path}</div>
             </div>
           </div>
-        `,
-        format: html`
-          <span class="format-badge ${volume.format}">
-            ${volume.format}
-          </span>
-        `,
-        capacity: html`
-          <div class="size-info">
-            <div class="size-value">${formatBytes(volume.capacity)}</div>
-            <div class="size-usage">${formatBytes(volume.allocation)} used</div>
+        `;
+      },
+      formatCell: (volume: StorageVolume) => html`
+        <span class="format-badge ${volume.format}">
+          ${volume.format}
+        </span>
+      `,
+      capacityCell: (volume: StorageVolume) => html`
+        <div class="size-info">
+          <div class="size-value">${formatBytes(volume.capacity)}</div>
+          <div class="size-usage">${formatBytes(volume.allocation)} used</div>
+        </div>
+      `,
+      usageCell: (volume: StorageVolume) => html`
+        <div>
+          <div class="usage-bar">
+            <div 
+              class="usage-fill ${this.getUsageClass(volume.used_percent || 0)}"
+              style="width: ${volume.used_percent || 0}%"
+            ></div>
           </div>
-        `,
-        usage: html`
-          <div>
-            <div class="usage-bar">
-              <div 
-                class="usage-fill ${this.getUsageClass(volume.used_percent || 0)}"
-                style="width: ${volume.used_percent || 0}%"
-              ></div>
-            </div>
-            <div class="usage-percent">${volume.used_percent || 0}%</div>
-          </div>
-        `,
-        pool_name: html`<span class="pool-badge">${volume.pool_name}</span>`,
-        created_at: formatDate(volume.created_at)
-      };
-    });
+          <div class="usage-percent">${volume.used_percent || 0}%</div>
+        </div>
+      `,
+      poolCell: (volume: StorageVolume) => html`
+        <span class="pool-badge">${volume.pool_name}</span>
+      `,
+      createdAtCell: (volume: StorageVolume) => volume.created_at
+        ? formatDate(volume.created_at)
+        : '-',
+    };
   }
 
   // Table actions configuration
   private getActions(_volume: any) {
     return [
       {
-        id: 'view',
+        action: 'view',
         label: 'View Details',
-        icon: '👁️'
+        icon: '👁️',
       },
       {
-        id: 'delete',
+        action: 'resize',
+        label: 'Resize',
+        icon: '📏',
+      },
+      {
+        action: 'clone',
+        label: 'Clone',
+        icon: '🧬',
+      },
+      {
+        action: 'delete',
         label: 'Delete',
         icon: '🗑️',
-        danger: true
-      }
+        danger: true,
+      },
     ];
   }
 
@@ -655,7 +737,13 @@ export class VirtualizationVolumes extends LitElement {
 
   private async loadData() {
     try {
-      await volumeActions.fetchAll();
+      await Promise.all([
+        volumeActions.fetchAll(),
+        // Load storage pools so create/resize/clone flows have pool metadata
+        storagePoolStore.fetch().catch((err: unknown) => {
+          console.error('Failed to load storage pools for volumes view:', err);
+        }),
+      ]);
     } catch (error) {
       console.error('Failed to fetch volumes:', error);
       this.showNotification(
@@ -689,11 +777,21 @@ export class VirtualizationVolumes extends LitElement {
 
   private handleAction(e: CustomEvent) {
     const { action, item } = e.detail;
-    if (action === 'delete') {
-      this.handleDelete(item as StorageVolume);
-    } else if (action === 'view') {
-      // Handle view details
-      console.log('View details for:', item);
+    const volume = item as StorageVolume;
+
+    switch (action) {
+      case 'view':
+        this.openDetails(volume);
+        break;
+      case 'resize':
+        this.openResizeDialog(volume);
+        break;
+      case 'clone':
+        this.openCloneDialog(volume);
+        break;
+      case 'delete':
+        this.openDeleteModal(volume);
+        break;
     }
   }
 
@@ -707,18 +805,197 @@ export class VirtualizationVolumes extends LitElement {
     }
   }
 
-  private async handleDelete(volume: StorageVolume) {
-    if (confirm(`Are you sure you want to delete volume "${volume.name}"?`)) {
-      try {
-        // StorageVolume may have optional id, check first
-        const volumeId = (volume as any).id || `${volume.pool_name}:${volume.name}`;
-        await volumeStore.delete(volumeId);
-      } catch (error) {
-        console.error('Failed to delete volume:', error);
+  private async openDetails(volume: StorageVolume) {
+    this.detailsLoading = true;
+    try {
+      const full = await virtualizationAPI.getVolume(volume.pool_name, volume.name);
+      this.selectedVolume = full as unknown as StorageVolume;
+      this.showDetails = true;
+    } catch (error) {
+      if (error instanceof VirtualizationDisabledError) {
+        this.showNotification('Virtualization is disabled on this host', 'error');
+      } else if (error instanceof VirtualizationAPIError) {
+        this.showNotification(`Failed to load volume details: ${error.message}`, 'error');
+      } else if (error instanceof Error) {
+        this.showNotification(`Failed to load volume details: ${error.message}`, 'error');
+      }
+    } finally {
+      this.detailsLoading = false;
+    }
+  }
+
+  private getPoolByName(name: string): StoragePool | null {
+    const poolsMap = storagePoolStore.$items.get();
+    if (!poolsMap) return null;
+
+    if (poolsMap instanceof Map) {
+      return (poolsMap.get(name) as StoragePool & { id: string }) || null;
+    }
+    if (typeof poolsMap === 'object') {
+      return (poolsMap as any)[name] || null;
+    }
+    return null;
+  }
+
+  private openResizeDialog(volume: StorageVolume) {
+    const pool = this.getPoolByName(volume.pool_name);
+    if (!pool) {
+      this.showNotification(`Storage pool "${volume.pool_name}" not found for this volume`, 'error');
+      return;
+    }
+    this.dialogPool = pool;
+    this.dialogVolume = volume;
+    this.volumeDialogMode = 'resize';
+    this.showVolumeDialog = true;
+  }
+
+  private openCloneDialog(volume: StorageVolume) {
+    const pool = this.getPoolByName(volume.pool_name);
+    if (!pool) {
+      this.showNotification(`Storage pool "${volume.pool_name}" not found for this volume`, 'error');
+      return;
+    }
+    this.clonePool = pool;
+    this.cloneVolume = volume;
+    this.showCloneDialog = true;
+  }
+
+  private openDeleteModal(volume: StorageVolume) {
+    this.deletingVolume = volume;
+    this.deleteItem = {
+      type: 'Volume',
+      name: volume.name,
+    };
+    this.showDeleteModal = true;
+  }
+
+  private async handleConfirmDelete(_e: CustomEvent) {
+    if (!this.deletingVolume) return;
+
+    this.isDeleting = true;
+    const volume = this.deletingVolume;
+    try {
+      await virtualizationAPI.deleteVolume(volume.pool_name, volume.name, false);
+      await volumeActions.fetchAll();
+      this.showNotification(`Volume "${volume.name}" deleted successfully`, 'success');
+      this.showDeleteModal = false;
+      this.deleteItem = null;
+      this.deletingVolume = null;
+    } catch (error) {
+      let message = 'Unknown error';
+      if (error instanceof VirtualizationAPIError) {
+        switch (error.code) {
+          case 'VOLUME_NOT_FOUND':
+            message = 'Volume not found. It may have already been deleted.';
+            break;
+          case 'VOLUME_IN_USE':
+            message = 'This volume is currently attached to one or more virtual machines.';
+            break;
+          default:
+            message = error.message;
+        }
+      } else if (error instanceof Error) {
+        message = error.message;
+      }
+      this.showNotification(`Failed to delete volume: ${message}`, 'error');
+    } finally {
+      this.isDeleting = false;
+    }
+  }
+
+  private handleCancelDelete() {
+    this.showDeleteModal = false;
+    this.deleteItem = null;
+    this.deletingVolume = null;
+  }
+
+  private handleCreateVolume() {
+    let pool: StoragePool | null = null;
+    if (this.poolFilter === 'all') {
+      // Prefer a pool named "default" if it exists
+      pool = this.getPoolByName('default');
+      if (!pool) {
+        // Fall back to the first available pool from the store
+        const poolsMap = storagePoolStore.$items.get();
+        if (poolsMap instanceof Map) {
+          const first = poolsMap.values().next().value as StoragePool | undefined;
+          pool = first || null;
+        } else if (poolsMap && typeof poolsMap === 'object') {
+          const keys = Object.keys(poolsMap as any);
+          const firstKey = keys.length ? keys[0] : undefined;
+          pool = firstKey ? (poolsMap as any)[firstKey] as StoragePool : null;
+        }
+      }
+      if (!pool) {
+        this.showNotification('No storage pools available to create a volume.', 'error');
+        return;
+      }
+    } else {
+      pool = this.getPoolByName(this.poolFilter);
+      if (!pool) {
+        this.showNotification(`Storage pool "${this.poolFilter}" not found.`, 'error');
+        return;
+      }
+    }
+    this.dialogPool = pool;
+    this.dialogVolume = null;
+    this.volumeDialogMode = 'create';
+    this.showVolumeDialog = true;
+  }
+
+  private handleVolumeDialogClose() {
+    this.showVolumeDialog = false;
+    this.dialogPool = null;
+    this.dialogVolume = null;
+  }
+
+  private async handleVolumeCreated(_e: CustomEvent) {
+    this.showVolumeDialog = false;
+    this.dialogPool = null;
+    this.dialogVolume = null;
+    try {
+      await volumeActions.fetchAll();
+      this.showNotification('Volume created successfully', 'success');
+    } catch (error) {
+      if (!(error instanceof VirtualizationDisabledError)) {
+        this.showNotification('Volume was created but failed to refresh list', 'error');
       }
     }
   }
 
+  private async handleVolumeResized(_e: CustomEvent) {
+    this.showVolumeDialog = false;
+    this.dialogPool = null;
+    this.dialogVolume = null;
+    try {
+      await volumeActions.fetchAll();
+      this.showNotification('Volume resized successfully', 'success');
+    } catch (error) {
+      if (!(error instanceof VirtualizationDisabledError)) {
+        this.showNotification('Volume was resized but failed to refresh list', 'error');
+      }
+    }
+  }
+
+  private handleCloneDialogClose() {
+    this.showCloneDialog = false;
+    this.clonePool = null;
+    this.cloneVolume = null;
+  }
+
+  private async handleVolumeCloned(_e: CustomEvent) {
+    this.showCloneDialog = false;
+    this.clonePool = null;
+    this.cloneVolume = null;
+    try {
+      await volumeActions.fetchAll();
+      this.showNotification('Volume cloned successfully', 'success');
+    } catch (error) {
+      if (!(error instanceof VirtualizationDisabledError)) {
+        this.showNotification('Volume was cloned but failed to refresh list', 'error');
+      }
+    }
+  }
 
   private getUsageClass(percent: number) {
     if (percent >= 90) return 'high';
@@ -857,8 +1134,15 @@ export class VirtualizationVolumes extends LitElement {
             ></search-input>
           </div>
           <div class="actions-section">
-            <button class="btn-refresh" @click=${this.handleRefresh} title="Refresh">
+            <button class="btn btn-secondary" @click=${this.handleRefresh} title="Refresh">
               🔄
+            </button>
+            <button
+              class="btn btn-primary"
+              @click=${this.handleCreateVolume}
+              title="Create Volume"
+            >
+              + Volume
             </button>
           </div>
         </div>
@@ -885,7 +1169,8 @@ export class VirtualizationVolumes extends LitElement {
             <resource-table
               .columns=${this.getColumns()}
               .data=${this.transformVolumeData(displayVolumes)}
-              .actions=${(item: any) => this.getActions(item)}
+              .getActions=${(item: any) => this.getActions(item)}
+              .customRenderers=${this.getCustomRenderers()}
               @action=${this.handleAction}
             ></resource-table>
           `}
@@ -893,6 +1178,61 @@ export class VirtualizationVolumes extends LitElement {
 
         <!-- Notification Container -->
         <notification-container></notification-container>
+
+        ${this.showDetails && this.selectedVolume ? html`
+          <detail-drawer
+            .title=${`Volume: ${this.selectedVolume.name}`}
+            .show=${this.showDetails}
+            .loading=${this.detailsLoading}
+            @close=${() => {
+              this.showDetails = false;
+              this.selectedVolume = null;
+            }}
+          >
+            <div style="padding: 20px;">
+              <h3>Volume Information</h3>
+              <div style="display: grid; grid-template-columns: 150px 1fr; gap: 12px; margin-bottom: 20px;">
+                <strong>Name:</strong> <span>${this.selectedVolume.name}</span>
+                <strong>Pool:</strong> <span>${this.selectedVolume.pool_name}</span>
+                <strong>Type:</strong> <span>${this.selectedVolume.type}</span>
+                <strong>Format:</strong> <span>${this.selectedVolume.format}</span>
+                <strong>Capacity:</strong> <span>${formatBytes(this.selectedVolume.capacity)}</span>
+                <strong>Allocation:</strong> <span>${formatBytes(this.selectedVolume.allocation || 0)}</span>
+                <strong>Usage:</strong> <span>${this.selectedVolume.used_percent || 0}%</span>
+                <strong>Path:</strong> <span>${this.selectedVolume.path}</span>
+                <strong>Created:</strong> <span>${formatDate(this.selectedVolume.created_at)}</span>
+              </div>
+            </div>
+          </detail-drawer>
+        ` : ''}
+
+        ${this.showDeleteModal && this.deleteItem ? html`
+          <delete-modal
+            .show=${this.showDeleteModal}
+            .item=${this.deleteItem}
+            .loading=${this.isDeleting}
+            @confirm-delete=${this.handleConfirmDelete}
+            @cancel-delete=${this.handleCancelDelete}
+          ></delete-modal>
+        ` : ''}
+
+        <volume-dialog
+          .show=${this.showVolumeDialog}
+          .mode=${this.volumeDialogMode}
+          .pool=${this.dialogPool}
+          .volume=${this.dialogVolume}
+          @close=${this.handleVolumeDialogClose}
+          @volume-created=${this.handleVolumeCreated}
+          @volume-resized=${this.handleVolumeResized}
+        ></volume-dialog>
+
+        <volume-clone-dialog
+          .show=${this.showCloneDialog}
+          .pool=${this.clonePool}
+          .volume=${this.cloneVolume}
+          @close=${this.handleCloneDialogClose}
+          @volume-cloned=${this.handleVolumeCloned}
+        ></volume-clone-dialog>
       </div>
     `;
   }

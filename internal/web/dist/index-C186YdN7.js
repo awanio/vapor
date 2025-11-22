@@ -337,7 +337,7 @@ theme.getTheme();
 auth.isAuthenticated();
 i18n.init().then(() => {
   console.log("i18n initialized, loading app...");
-  import("./app-root-CmpF0kZC.js").then((n) => n.x);
+  import("./app-root-BcqpZlrS.js").then((n) => n.x);
   console.log("Vapor Web UI initialized");
 }).catch((error) => {
   console.error("Failed to initialize i18n:", error);

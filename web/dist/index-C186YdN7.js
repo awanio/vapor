@@ -156,8 +156,8 @@ function t(key, params) {
   return i18n.t(key, params);
 }
 const getEnvConfig = () => {
-  const apiBaseUrl = "https://103.179.254.77:7770";
-  const wsBaseUrl = "wss://103.179.254.77:7770";
+  const apiBaseUrl = "https://103.179.254.248:7770";
+  const wsBaseUrl = "wss://103.179.254.248:7770";
   return {
     API_BASE_URL: apiBaseUrl,
     WS_BASE_URL: wsBaseUrl,
@@ -337,7 +337,7 @@ theme.getTheme();
 auth.isAuthenticated();
 i18n.init().then(() => {
   console.log("i18n initialized, loading app...");
-  import("./app-root-_kLR3Nfm.js").then((n) => n.x);
+  import("./app-root-BcqpZlrS.js").then((n) => n.x);
   console.log("Vapor Web UI initialized");
 }).catch((error) => {
   console.error("Failed to initialize i18n:", error);

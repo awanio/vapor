@@ -610,7 +610,7 @@ export class VirtualizationStoragePools extends LitElement {
                   </div>
                 `
           }))}
-              .actions=${(item: StoragePoolDisplay) => this.getActions(item)}
+              .getActions=${(item: StoragePoolDisplay) => this.getActions(item)}
               @cell-click=${this.handleCellClick}
               @action=${this.handleAction}
             ></resource-table>

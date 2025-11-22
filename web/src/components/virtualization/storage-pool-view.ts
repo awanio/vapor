@@ -898,6 +898,8 @@ export class StoragePoolView extends LitElement {
 
         ${this.showVolumeDialog && this.selectedPoolForVolume ? html`
           <volume-dialog
+            .show=${this.showVolumeDialog}
+            .mode=${'create'}
             .pool=${this.selectedPoolForVolume}
             @close=${() => {
               this.showVolumeDialog = false;
