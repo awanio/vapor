@@ -128,7 +128,7 @@ func (h *ISOResumableUploadHandler) CreateUpload(c *gin.Context) {
 
 	// Set TUS headers
 	c.Header("Upload-Offset", "0")
-	c.Header("Location", fmt.Sprintf("/virtualization/storages/isos/upload/%s", uploadID))
+	c.Header("Location", fmt.Sprintf("/virtualization/isos/upload/%s", uploadID))
 	c.Header("Tus-Resumable", "1.0.0")
 
 	// Set expiration header
@@ -138,7 +138,7 @@ func (h *ISOResumableUploadHandler) CreateUpload(c *gin.Context) {
 	// Return response with upload details
 	response := gin.H{
 		"upload_id":  uploadID,
-		"upload_url": fmt.Sprintf("/virtualization/storages/isos/upload/%s", uploadID),
+		"upload_url": fmt.Sprintf("/virtualization/isos/upload/%s", uploadID),
 		"expires_at": expiresAt,
 		"metadata": gin.H{
 			"filename":     filename,
@@ -147,13 +147,14 @@ func (h *ISOResumableUploadHandler) CreateUpload(c *gin.Context) {
 			"os_variant":   osVariant,
 			"architecture": architecture,
 			"description":  description,
+			"pool_name":    metadata["pool_name"],
 		},
 	}
 
 	c.JSON(http.StatusCreated, response)
 }
 
-// GetUploadInfo handles HEAD /virtualization/storages/isos/upload/:id - returns upload progress
+// GetUploadInfo handles HEAD /virtualization/isos/upload/:id - returns upload progress
 func (h *ISOResumableUploadHandler) GetUploadInfo(c *gin.Context) {
 	uploadID := c.Param("id")
 	if uploadID == "" {
@@ -364,6 +365,7 @@ func (h *ISOResumableUploadHandler) CompleteUpload(c *gin.Context) {
 		Architecture: architecture,
 		Description:  description,
 		Tags:         h.parseTags(tags),
+		PoolName:     upload.Metadata["pool_name"],
 	}
 
 	// Register the ISO using the service

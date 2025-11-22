@@ -13,44 +13,50 @@ func GetAllMigrations() []database.Migration {
 		{
 			Version:     2,
 			Description: "Create Ansible execution tables",
-			SQL: ansibleExecutionSchema,
+			SQL:         ansibleExecutionSchema,
 		},
 
 		// Version 3: VM snapshots
 		{
 			Version:     3,
 			Description: "Create VM snapshot tables",
-			SQL: vmSnapshotSchema,
+			SQL:         vmSnapshotSchema,
 		},
 
 		// Version 4: VM backups
 		{
 			Version:     4,
 			Description: "Create VM backup tables",
-			SQL: vmBackupSchema,
+			SQL:         vmBackupSchema,
 		},
 
 		// Version 5: PCI passthrough devices
 		{
 			Version:     5,
 			Description: "Create PCI device tracking tables",
-			SQL: pciPassthroughSchema,
+			SQL:         pciPassthroughSchema,
 		},
 
 		// Version 6: VM templates
 		{
 			Version:     6,
 			Description: "Create VM template tables",
-			SQL: vmTemplateSchema,
+			SQL:         vmTemplateSchema,
 		},
 
 		// Version 7: ISO images
 		{
 			Version:     7,
 			Description: "Create ISO image management tables",
-			SQL: isoImageSchema,
+			SQL:         isoImageSchema,
 		},
-	}
+
+		// Version 8: ISO pool_name association
+		{
+			Version:     8,
+			Description: "Add pool_name to ISO images",
+			SQL:         isoImagePoolNameSchema,
+		}}
 }
 
 // Ansible execution schema
@@ -271,4 +277,10 @@ const isoImageSchema = `
 	CREATE INDEX IF NOT EXISTS idx_iso_name ON iso_images(name);
 	CREATE INDEX IF NOT EXISTS idx_iso_os_type ON iso_images(os_type);
 	CREATE INDEX IF NOT EXISTS idx_iso_uploaded ON iso_images(uploaded_at DESC);
+`
+
+// ISO image pool_name extension
+const isoImagePoolNameSchema = `
+	ALTER TABLE iso_images ADD COLUMN pool_name TEXT;
+	CREATE INDEX IF NOT EXISTS idx_iso_pool_name ON iso_images(pool_name);
 `

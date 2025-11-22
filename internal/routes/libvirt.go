@@ -1540,17 +1540,37 @@ func createNetwork(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req libvirt.NetworkCreateRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "INVALID_NETWORK_REQUEST",
+					"message": "Invalid network create request",
+					"details": err.Error(),
+				},
+			})
 			return
 		}
 
 		network, err := service.CreateNetwork(c.Request.Context(), &req)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "CREATE_NETWORK_FAILED",
+					"message": "Failed to create virtual network",
+					"details": err.Error(),
+				},
+			})
 			return
 		}
 
-		c.JSON(http.StatusCreated, network)
+		c.JSON(http.StatusCreated, gin.H{
+			"status": "success",
+			"data": gin.H{
+				"network": network,
+				"message": "Virtual network created successfully",
+			},
+		})
 	}
 }
 
@@ -1712,11 +1732,30 @@ func deleteNetwork(service *libvirt.Service) gin.HandlerFunc {
 		name := c.Param("name")
 		err := service.DeleteNetwork(c.Request.Context(), name)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			if strings.Contains(err.Error(), "not found") {
+				c.JSON(http.StatusNotFound, gin.H{
+					"status": "error",
+					"error": gin.H{
+						"code":    "NETWORK_NOT_FOUND",
+						"message": "Virtual network not found",
+						"details": err.Error(),
+					},
+				})
+				return
+			}
+
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "DELETE_NETWORK_FAILED",
+					"message": "Failed to delete virtual network",
+					"details": err.Error(),
+				},
+			})
 			return
 		}
 
-		c.JSON(http.StatusNoContent, nil)
+		c.Status(http.StatusNoContent)
 	}
 }
 

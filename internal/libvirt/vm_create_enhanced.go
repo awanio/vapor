@@ -554,6 +554,7 @@ type ISOUploadRequest struct {
 	Architecture string   `json:"architecture,omitempty"`
 	Description  string   `json:"description,omitempty"`
 	Tags         []string `json:"tags,omitempty"`
+	PoolName     string   `json:"pool_name,omitempty"` // Associated storage pool name (defaults to "default")
 }
 
 // UploadISO registers or downloads an ISO image
@@ -575,6 +576,12 @@ func (s *Service) UploadISO(ctx context.Context, req *ISOUploadRequest) (*ISOIma
 	if err != nil {
 		log.Printf("UploadISO: error checking file status: %v\n", err)
 		return nil, fmt.Errorf("ISO file not found: %w", err)
+	}
+
+	// Determine pool name (default to "default" if not specified)
+	poolName := req.PoolName
+	if poolName == "" {
+		poolName = "default"
 	}
 
 	// Generate a unique ID
@@ -599,17 +606,23 @@ func (s *Service) UploadISO(ctx context.Context, req *ISOUploadRequest) (*ISOIma
 		UploadedBy:   "system",
 	}
 
+	// Attach pool_name to metadata so it is visible in API responses
+	if iso.Metadata == nil {
+		iso.Metadata = make(map[string]string)
+	}
+	iso.Metadata["pool_name"] = poolName
+
 	// Store in database if available
 	if s.db != nil {
 		_, err = s.db.ExecContext(ctx, `
-			INSERT INTO iso_images (
-				name, path, size_bytes,
-				os_type, os_variant, architecture,
-				description, uploaded_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+INSERT INTO iso_images (
+name, path, size_bytes,
+os_type, os_variant, architecture,
+description, uploaded_at, pool_name
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			iso.Filename, iso.Path, iso.SizeBytes,
 			iso.OSType, iso.OSVersion, iso.Architecture,
-			iso.Description, iso.CreatedAt,
+			iso.Description, iso.CreatedAt, poolName,
 		)
 		if err != nil {
 			log.Printf("UploadISO: error in operation: %v\n", err)
@@ -632,7 +645,8 @@ func (s *Service) ListISOs(ctx context.Context) ([]ISOImage, error) {
 		SELECT id, name, path, size_bytes, 
 		       COALESCE(os_type, ''), COALESCE(os_variant, ''), COALESCE(architecture, ''), 
 		       COALESCE(description, ''), uploaded_at, 
-		       COALESCE(md5_hash, ''), COALESCE(sha256_hash, '')
+		       COALESCE(md5_hash, ''), COALESCE(sha256_hash, ''),
+		       COALESCE(pool_name, 'default')
 		FROM iso_images 
 		ORDER BY uploaded_at DESC
 	`)
@@ -646,10 +660,11 @@ func (s *Service) ListISOs(ctx context.Context) ([]ISOImage, error) {
 	for rows.Next() {
 		var id int
 		var iso ISOImage
+		var poolName string
 		err := rows.Scan(
 			&id, &iso.Filename, &iso.Path, &iso.SizeBytes,
 			&iso.OSType, &iso.OSVersion, &iso.Architecture,
-			&iso.Description, &iso.CreatedAt, &iso.MD5Hash, &iso.SHA256Hash,
+			&iso.Description, &iso.CreatedAt, &iso.MD5Hash, &iso.SHA256Hash, &poolName,
 		)
 		if err != nil {
 			log.Printf("ListISOs: error in operation: %v\n", err)
@@ -657,6 +672,10 @@ func (s *Service) ListISOs(ctx context.Context) ([]ISOImage, error) {
 		}
 		// Convert numeric ID to string image_id
 		iso.ImageID = fmt.Sprintf("iso-%d", id)
+		if iso.Metadata == nil {
+			iso.Metadata = make(map[string]string)
+		}
+		iso.Metadata["pool_name"] = poolName
 		isos = append(isos, iso)
 	}
 
@@ -727,16 +746,22 @@ func (s *Service) GetISO(ctx context.Context, isoID string) (ISOImage, error) {
 
 	// Get ISO info
 	var iso ISOImage
+	var poolName string
 	err := s.db.QueryRowContext(ctx, `SELECT id, name, path, size_bytes, 
 		       COALESCE(os_type, ''), COALESCE(os_variant, ''), COALESCE(architecture, ''), 
 		       COALESCE(description, ''), uploaded_at, 
-		       COALESCE(md5_hash, ''), COALESCE(sha256_hash, '') FROM iso_images WHERE id = ?`, numericID).Scan(&iso.ImageID, &iso.Filename, &iso.Path, &iso.SizeBytes,
+		       COALESCE(md5_hash, ''), COALESCE(sha256_hash, ''), COALESCE(pool_name, 'default') FROM iso_images WHERE id = ?`, numericID).Scan(&iso.ImageID, &iso.Filename, &iso.Path, &iso.SizeBytes,
 		&iso.OSType, &iso.OSVersion, &iso.Architecture,
-		&iso.Description, &iso.CreatedAt, &iso.MD5Hash, &iso.SHA256Hash)
+		&iso.Description, &iso.CreatedAt, &iso.MD5Hash, &iso.SHA256Hash, &poolName)
 	if err != nil {
 		log.Printf("GetISO: error in operation: %v\n", err)
 		return ISOImage{}, fmt.Errorf("ISO not found: %w", err)
 	}
+
+	if iso.Metadata == nil {
+		iso.Metadata = make(map[string]string)
+	}
+	iso.Metadata["pool_name"] = poolName
 
 	return iso, nil
 }
