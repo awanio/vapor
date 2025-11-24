@@ -943,16 +943,27 @@ export class VirtualizationVolumes extends LitElement {
     this.showVolumeDialog = true;
   }
 
-  private handleVolumeDialogClose() {
+  private closeVolumeDialog() {
+    // Trigger slide-out animation by keeping the dialog mounted while hiding it,
+    // then clear pool/volume after the CSS transition completes.
     this.showVolumeDialog = false;
-    this.dialogPool = null;
-    this.dialogVolume = null;
+    const poolRef = this.dialogPool;
+    const volumeRef = this.dialogVolume;
+    setTimeout(() => {
+      // Only clear if the dialog is still closed and references haven't changed
+      if (!this.showVolumeDialog && this.dialogPool === poolRef && this.dialogVolume === volumeRef) {
+        this.dialogPool = null;
+        this.dialogVolume = null;
+      }
+    }, 300);
+  }
+
+  private handleVolumeDialogClose() {
+    this.closeVolumeDialog();
   }
 
   private async handleVolumeCreated(_e: CustomEvent) {
-    this.showVolumeDialog = false;
-    this.dialogPool = null;
-    this.dialogVolume = null;
+    this.closeVolumeDialog();
     try {
       await volumeActions.fetchAll();
       this.showNotification('Volume created successfully', 'success');
@@ -964,9 +975,7 @@ export class VirtualizationVolumes extends LitElement {
   }
 
   private async handleVolumeResized(_e: CustomEvent) {
-    this.showVolumeDialog = false;
-    this.dialogPool = null;
-    this.dialogVolume = null;
+    this.closeVolumeDialog();
     try {
       await volumeActions.fetchAll();
       this.showNotification('Volume resized successfully', 'success');
@@ -977,16 +986,24 @@ export class VirtualizationVolumes extends LitElement {
     }
   }
 
-  private handleCloneDialogClose() {
+  private closeCloneDialog() {
     this.showCloneDialog = false;
-    this.clonePool = null;
-    this.cloneVolume = null;
+    const poolRef = this.clonePool;
+    const volumeRef = this.cloneVolume;
+    setTimeout(() => {
+      if (!this.showCloneDialog && this.clonePool === poolRef && this.cloneVolume === volumeRef) {
+        this.clonePool = null;
+        this.cloneVolume = null;
+      }
+    }, 300);
+  }
+
+  private handleCloneDialogClose() {
+    this.closeCloneDialog();
   }
 
   private async handleVolumeCloned(_e: CustomEvent) {
-    this.showCloneDialog = false;
-    this.clonePool = null;
-    this.cloneVolume = null;
+    this.closeCloneDialog();
     try {
       await volumeActions.fetchAll();
       this.showNotification('Volume cloned successfully', 'success');
@@ -1230,6 +1247,7 @@ export class VirtualizationVolumes extends LitElement {
           .show=${this.showCloneDialog}
           .pool=${this.clonePool}
           .volume=${this.cloneVolume}
+          .poolNames=${stats.pools}
           @close=${this.handleCloneDialogClose}
           @volume-cloned=${this.handleVolumeCloned}
         ></volume-clone-dialog>

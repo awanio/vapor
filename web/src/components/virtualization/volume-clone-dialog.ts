@@ -16,6 +16,8 @@ export class VolumeCloneDialog extends LitElement {
   @property({ type: Object }) pool!: StoragePool;
   @property({ type: Object }) volume!: Volume;
 
+  @property({ type: Array }) poolNames: string[] = [];
+
   @state() private newName = '';
   @state() private targetPool = '';
   @state() private isCloning = false;
@@ -110,67 +112,82 @@ export class VolumeCloneDialog extends LitElement {
       display: flex;
       flex-direction: column;
       gap: 20px;
+      min-width: 0;
     }
 
     .form-group {
       display: flex;
       flex-direction: column;
       gap: 8px;
+      margin-bottom: 20px;
     }
 
     .form-label {
+      display: block;
+      margin-bottom: 6px;
       font-size: 13px;
       font-weight: 500;
-      color: var(--vscode-foreground);
+      color: var(--vscode-foreground, #cccccc);
     }
 
     .form-label.required::after {
       content: ' *';
-      color: var(--vscode-inputValidation-errorForeground);
+      color: var(--vscode-inputValidation-errorForeground, #f48771);
     }
 
-    .form-input {
+    .form-input,
+    .form-select {
+      width: 100%;
       padding: 8px 12px;
-      background: var(--vscode-input-background);
-      color: var(--vscode-input-foreground);
-      border: 1px solid var(--vscode-input-border);
+      background: var(--vscode-input-background, #3c3c3c);
+      border: 1px solid var(--vscode-input-border, #5a5a5a);
       border-radius: 4px;
+      color: var(--vscode-input-foreground, #cccccc);
       font-size: 13px;
-    }
-
-    .form-input:focus {
+      font-family: inherit;
       outline: none;
-      border-color: var(--vscode-focusBorder);
+      box-sizing: border-box;
+      transition: all 0.2s;
     }
 
-    .form-input.error {
-      border-color: var(--vscode-inputValidation-errorBorder);
+    .form-input:focus,
+    .form-select:focus {
+      border-color: var(--vscode-focusBorder, #007acc);
+      box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc);
     }
 
-    .form-input:disabled {
-      opacity: 0.7;
+    .form-input.error,
+    .form-select.error {
+      border-color: var(--vscode-inputValidation-errorBorder, #f48771);
+    }
+
+    .form-input:disabled,
+    .form-select:disabled {
+      opacity: 0.6;
       cursor: not-allowed;
     }
 
     .form-hint {
+      display: block;
+      margin-top: 4px;
       font-size: 12px;
-      color: var(--vscode-descriptionForeground);
-      margin-top: -4px;
+      color: var(--vscode-descriptionForeground, #999999);
     }
 
     .error-message {
+      display: block;
+      margin-top: 4px;
       font-size: 12px;
-      color: var(--vscode-inputValidation-errorForeground);
-      margin-top: -4px;
+      color: var(--vscode-inputValidation-errorForeground, #f48771);
     }
 
     .info-box {
       padding: 12px;
-      background: var(--vscode-editor-background);
-      border: 1px solid var(--vscode-editorWidget-border);
+      background: var(--vscode-editor-background, #1e1e1e);
+      border: 1px solid var(--vscode-editorWidget-border, #454545);
       border-radius: 4px;
       font-size: 13px;
-      color: var(--vscode-foreground);
+      color: var(--vscode-foreground, #cccccc);
     }
 
     .info-row {
@@ -180,7 +197,7 @@ export class VolumeCloneDialog extends LitElement {
     }
 
     .info-label {
-      color: var(--vscode-descriptionForeground);
+      color: var(--vscode-descriptionForeground, #999999);
     }
 
     .btn {
@@ -194,22 +211,25 @@ export class VolumeCloneDialog extends LitElement {
     }
 
     .btn-primary {
-      background: var(--vscode-button-background);
-      color: var(--vscode-button-foreground);
+      background: var(--vscode-button-background, #0e639c);
+      color: var(--vscode-button-foreground, #ffffff);
+      border: 1px solid var(--vscode-button-background, #0e639c);
     }
 
     .btn-primary:hover:not(:disabled) {
-      background: var(--vscode-button-hoverBackground);
+      background: var(--vscode-button-hoverBackground, #1177bb);
+      border-color: var(--vscode-button-hoverBackground, #1177bb);
     }
 
     .btn-secondary {
-      background: var(--vscode-button-secondaryBackground);
-      color: var(--vscode-button-secondaryForeground);
-      border: 1px solid var(--vscode-button-border);
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      color: var(--vscode-button-secondaryForeground, #cccccc);
+      border: 1px solid var(--vscode-button-border, #5a5a5a);
     }
 
     .btn-secondary:hover:not(:disabled) {
-      background: var(--vscode-button-secondaryHoverBackground);
+      background: var(--vscode-button-secondaryHoverBackground, #45494e);
+      border-color: var(--vscode-button-border, #5a5a5a);
     }
 
     .btn:disabled {
@@ -318,15 +338,20 @@ export class VolumeCloneDialog extends LitElement {
   }
 
   override render() {
-    if (!this.pool || !this.volume) {
-      return html``;
-    }
+    const sourceVolumeName = this.volume?.name ?? '';
+    const sourcePoolName = this.pool?.name ?? '';
+    const disableInputs = this.isCloning || !this.pool || !this.volume;
+
+    const poolOptions = (this.poolNames && this.poolNames.length)
+      ? this.poolNames
+      : (sourcePoolName ? [sourcePoolName] : []);
+    const selectedTargetPool = this.targetPool || sourcePoolName || (poolOptions[0] ?? '');
 
     return html`
       <div class="drawer">
         <div class="drawer-header">
           <h2 class="header-title">Clone Volume</h2>
-          <button class="close-button" @click=${this.handleClose} ?disabled=${this.isCloning}>×</button>
+          <button class="close-button" @click=${this.handleClose} ?disabled=${disableInputs}>×</button>
         </div>
 
         <div class="drawer-content">
@@ -334,11 +359,11 @@ export class VolumeCloneDialog extends LitElement {
             <div class="info-box">
               <div class="info-row">
                 <span class="info-label">Source volume</span>
-                <span>${this.volume.name}</span>
+                <span>${sourceVolumeName}</span>
               </div>
               <div class="info-row">
                 <span class="info-label">Source pool</span>
-                <span>${this.pool.name}</span>
+                <span>${sourcePoolName}</span>
               </div>
             </div>
 
@@ -352,7 +377,7 @@ export class VolumeCloneDialog extends LitElement {
                 @input=${(e: Event) => {
                   this.newName = (e.target as HTMLInputElement).value;
                 }}
-                ?disabled=${this.isCloning}
+                ?disabled=${disableInputs}
               />
               ${this.errors.has('name') ? html`
                 <div class="error-message">${this.errors.get('name')}</div>
@@ -362,22 +387,22 @@ export class VolumeCloneDialog extends LitElement {
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="target-pool">Target pool (optional)</label>
-              <input
+              <label class="form-label" for="target-pool">Target pool</label>
+              <select
                 id="target-pool"
-                type="text"
-                class="form-input ${this.errors.has('targetPool') ? 'error' : ''}"
-                placeholder=${`Leave empty to clone into "${this.pool.name}"`}
-                .value=${this.targetPool}
-                @input=${(e: Event) => {
-                  this.targetPool = (e.target as HTMLInputElement).value;
+                class="form-select ${this.errors.has('targetPool') ? 'error' : ''}"
+                .value=${selectedTargetPool}
+                @change=${(e: Event) => {
+                  this.targetPool = (e.target as HTMLSelectElement).value;
                 }}
-                ?disabled=${this.isCloning}
-              />
+                ?disabled=${disableInputs}
+              >
+                ${poolOptions.map(name => html`<option value=${name}>${name}</option>`)}
+              </select>
               ${this.errors.has('targetPool') ? html`
                 <div class="error-message">${this.errors.get('targetPool')}</div>
               ` : html`
-                <div class="form-hint">Specify another pool name to clone into a different pool.</div>
+                <div class="form-hint">Choose the pool where the cloned volume will be created. The source pool is selected by default.</div>
               `}
             </div>
           </div>
@@ -387,14 +412,14 @@ export class VolumeCloneDialog extends LitElement {
           <button
             class="btn btn-secondary"
             @click=${this.handleClose}
-            ?disabled=${this.isCloning}
+            ?disabled=${disableInputs}
           >
             Cancel
           </button>
           <button
             class="btn btn-primary"
             @click=${this.handleClone}
-            ?disabled=${this.isCloning}
+            ?disabled=${disableInputs}
           >
             ${this.isCloning ? 'Cloning...' : 'Clone Volume'}
           </button>

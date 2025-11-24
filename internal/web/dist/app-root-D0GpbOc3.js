@@ -1,4 +1,4 @@
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-C186YdN7.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-DDga33qM.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -17407,7 +17407,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-C186YdN7.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-DDga33qM.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17452,7 +17452,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-C186YdN7.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-DDga33qM.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17516,7 +17516,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-C186YdN7.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-DDga33qM.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17629,7 +17629,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-C186YdN7.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-DDga33qM.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -36358,7 +36358,7 @@ class KubernetesApi {
       if (contentType === "json") {
         parsedResource = JSON.parse(content);
       } else {
-        const yaml = await import("./index-BQ7W1jnj.js");
+        const yaml = await import("./index-Dwq5nugI.js");
         parsedResource = yaml.parse(content);
       }
     } catch (error) {
@@ -52380,7 +52380,7 @@ let KubernetesCRDs = class extends i$2 {
         unwrapped = JSON.parse(JSON.stringify(unwrapped));
         delete unwrapped.metadata.managedFields;
       }
-      const yaml = await import("./index-BQ7W1jnj.js");
+      const yaml = await import("./index-Dwq5nugI.js");
       this.createResourceValue = yaml.stringify(unwrapped);
       this.isCreating = false;
     } catch (error) {
@@ -68992,6 +68992,11 @@ let VolumeDialog = class extends i$2 {
         description: "VMware disk format"
       },
       {
+        value: "qed",
+        name: "QED",
+        description: "QEMU enhanced disk format"
+      },
+      {
         value: "vdi",
         name: "VDI",
         description: "VirtualBox disk format"
@@ -69024,11 +69029,16 @@ let VolumeDialog = class extends i$2 {
     `;
   }
   render() {
-    if (!this.pool) {
-      return x``;
-    }
     const isResize = this.mode === "resize";
     const title = isResize ? "Resize Volume" : "Create Volume";
+    const poolName = this.pool?.name ?? "";
+    const poolType = this.pool?.type ?? "";
+    const availableText = this.pool ? this.formatSize(this.pool.available) : "";
+    const disableName = isResize || this.isSubmitting || !this.pool;
+    const disableCapacity = this.isSubmitting || !this.pool;
+    const disableAllocation = isResize || this.isSubmitting || !this.pool;
+    const currentCapacityText = isResize && this.volume ? this.formatSize(this.volume.capacity) : "";
+    const maxCapacityText = isResize && this.volume && this.pool ? this.formatSize(this.volume.capacity + (this.pool.available || 0)) : "";
     return x`
       <div class="drawer">
         <div class="drawer-header">
@@ -69041,15 +69051,15 @@ let VolumeDialog = class extends i$2 {
             <div class="pool-info">
               <div class="info-item">
                 <div class="info-label">Pool</div>
-                <div class="info-value">${this.pool.name}</div>
+                <div class="info-value">${poolName}</div>
               </div>
               <div class="info-item">
                 <div class="info-label">Type</div>
-                <div class="info-value">${this.pool.type}</div>
+                <div class="info-value">${poolType}</div>
               </div>
               <div class="info-item">
                 <div class="info-label">Available</div>
-                <div class="info-value">${this.formatSize(this.pool.available)}</div>
+                <div class="info-value">${availableText}</div>
               </div>
             </div>
 
@@ -69064,7 +69074,7 @@ let VolumeDialog = class extends i$2 {
                 @input=${(e3) => {
       this.handleInputChange("name", e3.target.value);
     }}
-                ?disabled=${isResize || this.isSubmitting}
+                ?disabled=${disableName}
               />
               ${this.errors.has("name") ? x`
                 <div class="form-error">${this.errors.get("name")}</div>
@@ -69087,7 +69097,7 @@ let VolumeDialog = class extends i$2 {
                   @input=${(e3) => {
       this.handleInputChange("capacity", Number(e3.target.value));
     }}
-                  ?disabled=${this.isSubmitting}
+                  ?disabled=${disableCapacity}
                 />
                 <select
                   class="form-select unit-select"
@@ -69095,7 +69105,7 @@ let VolumeDialog = class extends i$2 {
                   @change=${(e3) => {
       this.handleInputChange("capacityUnit", e3.target.value);
     }}
-                  ?disabled=${this.isSubmitting}
+                  ?disabled=${disableCapacity}
                 >
                   <option value="GB">GB</option>
                   <option value="TB">TB</option>
@@ -69103,6 +69113,10 @@ let VolumeDialog = class extends i$2 {
               </div>
               ${this.errors.has("capacity") ? x`
                 <div class="form-error">${this.errors.get("capacity")}</div>
+              ` : isResize && currentCapacityText ? x`
+                <div class="form-hint">
+                  Current capacity: ${currentCapacityText}. New capacity must be greater than current and within available space${maxCapacityText ? ` (max ${maxCapacityText})` : ""}.
+                </div>
               ` : x`
                 <div class="form-hint">
                   Maximum size of the volume
@@ -69122,7 +69136,7 @@ let VolumeDialog = class extends i$2 {
                   @input=${(e3) => {
       this.handleInputChange("allocation", Number(e3.target.value));
     }}
-                  ?disabled=${isResize || this.isSubmitting}
+                  ?disabled=${disableAllocation}
                 />
                 <select
                   class="form-select unit-select"
@@ -69130,7 +69144,7 @@ let VolumeDialog = class extends i$2 {
                   @change=${(e3) => {
       this.handleInputChange("allocationUnit", e3.target.value);
     }}
-                  ?disabled=${isResize || this.isSubmitting}
+                  ?disabled=${disableAllocation}
                 >
                   <option value="GB">GB</option>
                   <option value="TB">TB</option>
@@ -69391,20 +69405,21 @@ VolumeDialog.styles = i$5`
 
     .format-option {
       padding: 12px;
-      background: var(--vscode-editor-background);
-      border: 2px solid var(--vscode-editorWidget-border);
+      background: var(--vscode-editor-background, #1e1e1e);
+      border: 2px solid var(--vscode-editorWidget-border, #454545);
       border-radius: 4px;
       cursor: pointer;
       transition: all 0.2s;
     }
 
     .format-option:hover {
-      border-color: var(--vscode-focusBorder);
+      border-color: var(--vscode-focusBorder, #007acc);
     }
 
     .format-option.selected {
-      border-color: var(--vscode-textLink-foreground);
-      background: var(--vscode-list-activeSelectionBackground);
+      border-color: var(--vscode-textLink-foreground, #3794ff);
+      background: var(--vscode-list-activeSelectionBackground, #094771);
+      box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc);
     }
 
     .format-option.disabled {
@@ -69512,6 +69527,7 @@ let VolumeCloneDialog = class extends i$2 {
   constructor() {
     super(...arguments);
     this.show = false;
+    this.poolNames = [];
     this.newName = "";
     this.targetPool = "";
     this.isCloning = false;
@@ -69605,14 +69621,16 @@ let VolumeCloneDialog = class extends i$2 {
     }));
   }
   render() {
-    if (!this.pool || !this.volume) {
-      return x``;
-    }
+    const sourceVolumeName = this.volume?.name ?? "";
+    const sourcePoolName = this.pool?.name ?? "";
+    const disableInputs = this.isCloning || !this.pool || !this.volume;
+    const poolOptions = this.poolNames && this.poolNames.length ? this.poolNames : sourcePoolName ? [sourcePoolName] : [];
+    const selectedTargetPool = this.targetPool || sourcePoolName || (poolOptions[0] ?? "");
     return x`
       <div class="drawer">
         <div class="drawer-header">
           <h2 class="header-title">Clone Volume</h2>
-          <button class="close-button" @click=${this.handleClose} ?disabled=${this.isCloning}>×</button>
+          <button class="close-button" @click=${this.handleClose} ?disabled=${disableInputs}>×</button>
         </div>
 
         <div class="drawer-content">
@@ -69620,11 +69638,11 @@ let VolumeCloneDialog = class extends i$2 {
             <div class="info-box">
               <div class="info-row">
                 <span class="info-label">Source volume</span>
-                <span>${this.volume.name}</span>
+                <span>${sourceVolumeName}</span>
               </div>
               <div class="info-row">
                 <span class="info-label">Source pool</span>
-                <span>${this.pool.name}</span>
+                <span>${sourcePoolName}</span>
               </div>
             </div>
 
@@ -69638,7 +69656,7 @@ let VolumeCloneDialog = class extends i$2 {
                 @input=${(e3) => {
       this.newName = e3.target.value;
     }}
-                ?disabled=${this.isCloning}
+                ?disabled=${disableInputs}
               />
               ${this.errors.has("name") ? x`
                 <div class="error-message">${this.errors.get("name")}</div>
@@ -69648,22 +69666,22 @@ let VolumeCloneDialog = class extends i$2 {
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="target-pool">Target pool (optional)</label>
-              <input
+              <label class="form-label" for="target-pool">Target pool</label>
+              <select
                 id="target-pool"
-                type="text"
-                class="form-input ${this.errors.has("targetPool") ? "error" : ""}"
-                placeholder=${`Leave empty to clone into "${this.pool.name}"`}
-                .value=${this.targetPool}
-                @input=${(e3) => {
+                class="form-select ${this.errors.has("targetPool") ? "error" : ""}"
+                .value=${selectedTargetPool}
+                @change=${(e3) => {
       this.targetPool = e3.target.value;
     }}
-                ?disabled=${this.isCloning}
-              />
+                ?disabled=${disableInputs}
+              >
+                ${poolOptions.map((name) => x`<option value=${name}>${name}</option>`)}
+              </select>
               ${this.errors.has("targetPool") ? x`
                 <div class="error-message">${this.errors.get("targetPool")}</div>
               ` : x`
-                <div class="form-hint">Specify another pool name to clone into a different pool.</div>
+                <div class="form-hint">Choose the pool where the cloned volume will be created. The source pool is selected by default.</div>
               `}
             </div>
           </div>
@@ -69673,14 +69691,14 @@ let VolumeCloneDialog = class extends i$2 {
           <button
             class="btn btn-secondary"
             @click=${this.handleClose}
-            ?disabled=${this.isCloning}
+            ?disabled=${disableInputs}
           >
             Cancel
           </button>
           <button
             class="btn btn-primary"
             @click=${this.handleClone}
-            ?disabled=${this.isCloning}
+            ?disabled=${disableInputs}
           >
             ${this.isCloning ? "Cloning..." : "Clone Volume"}
           </button>
@@ -69772,67 +69790,82 @@ VolumeCloneDialog.styles = i$5`
       display: flex;
       flex-direction: column;
       gap: 20px;
+      min-width: 0;
     }
 
     .form-group {
       display: flex;
       flex-direction: column;
       gap: 8px;
+      margin-bottom: 20px;
     }
 
     .form-label {
+      display: block;
+      margin-bottom: 6px;
       font-size: 13px;
       font-weight: 500;
-      color: var(--vscode-foreground);
+      color: var(--vscode-foreground, #cccccc);
     }
 
     .form-label.required::after {
       content: ' *';
-      color: var(--vscode-inputValidation-errorForeground);
+      color: var(--vscode-inputValidation-errorForeground, #f48771);
     }
 
-    .form-input {
+    .form-input,
+    .form-select {
+      width: 100%;
       padding: 8px 12px;
-      background: var(--vscode-input-background);
-      color: var(--vscode-input-foreground);
-      border: 1px solid var(--vscode-input-border);
+      background: var(--vscode-input-background, #3c3c3c);
+      border: 1px solid var(--vscode-input-border, #5a5a5a);
       border-radius: 4px;
+      color: var(--vscode-input-foreground, #cccccc);
       font-size: 13px;
-    }
-
-    .form-input:focus {
+      font-family: inherit;
       outline: none;
-      border-color: var(--vscode-focusBorder);
+      box-sizing: border-box;
+      transition: all 0.2s;
     }
 
-    .form-input.error {
-      border-color: var(--vscode-inputValidation-errorBorder);
+    .form-input:focus,
+    .form-select:focus {
+      border-color: var(--vscode-focusBorder, #007acc);
+      box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc);
     }
 
-    .form-input:disabled {
-      opacity: 0.7;
+    .form-input.error,
+    .form-select.error {
+      border-color: var(--vscode-inputValidation-errorBorder, #f48771);
+    }
+
+    .form-input:disabled,
+    .form-select:disabled {
+      opacity: 0.6;
       cursor: not-allowed;
     }
 
     .form-hint {
+      display: block;
+      margin-top: 4px;
       font-size: 12px;
-      color: var(--vscode-descriptionForeground);
-      margin-top: -4px;
+      color: var(--vscode-descriptionForeground, #999999);
     }
 
     .error-message {
+      display: block;
+      margin-top: 4px;
       font-size: 12px;
-      color: var(--vscode-inputValidation-errorForeground);
-      margin-top: -4px;
+      color: var(--vscode-inputValidation-errorForeground, #f48771);
     }
 
     .info-box {
       padding: 12px;
-      background: var(--vscode-editor-background);
-      border: 1px solid var(--vscode-editorWidget-border);
+      background: var(--vscode-editor-background, #1e1e1e);
+      border: 1px solid var(--vscode-editorWidget-border, #454545);
       border-radius: 4px;
       font-size: 13px;
-      color: var(--vscode-foreground);
+      color: var(--vscode-foreground, #cccccc);
     }
 
     .info-row {
@@ -69842,7 +69875,7 @@ VolumeCloneDialog.styles = i$5`
     }
 
     .info-label {
-      color: var(--vscode-descriptionForeground);
+      color: var(--vscode-descriptionForeground, #999999);
     }
 
     .btn {
@@ -69856,22 +69889,25 @@ VolumeCloneDialog.styles = i$5`
     }
 
     .btn-primary {
-      background: var(--vscode-button-background);
-      color: var(--vscode-button-foreground);
+      background: var(--vscode-button-background, #0e639c);
+      color: var(--vscode-button-foreground, #ffffff);
+      border: 1px solid var(--vscode-button-background, #0e639c);
     }
 
     .btn-primary:hover:not(:disabled) {
-      background: var(--vscode-button-hoverBackground);
+      background: var(--vscode-button-hoverBackground, #1177bb);
+      border-color: var(--vscode-button-hoverBackground, #1177bb);
     }
 
     .btn-secondary {
-      background: var(--vscode-button-secondaryBackground);
-      color: var(--vscode-button-secondaryForeground);
-      border: 1px solid var(--vscode-button-border);
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      color: var(--vscode-button-secondaryForeground, #cccccc);
+      border: 1px solid var(--vscode-button-border, #5a5a5a);
     }
 
     .btn-secondary:hover:not(:disabled) {
-      background: var(--vscode-button-secondaryHoverBackground);
+      background: var(--vscode-button-secondaryHoverBackground, #45494e);
+      border-color: var(--vscode-button-border, #5a5a5a);
     }
 
     .btn:disabled {
@@ -69888,6 +69924,9 @@ __decorateClass$c([
 __decorateClass$c([
   n2({ type: Object })
 ], VolumeCloneDialog.prototype, "volume", 2);
+__decorateClass$c([
+  n2({ type: Array })
+], VolumeCloneDialog.prototype, "poolNames", 2);
 __decorateClass$c([
   r$1()
 ], VolumeCloneDialog.prototype, "newName", 2);
@@ -70269,15 +70308,22 @@ let VirtualizationVolumes = class extends i$2 {
     this.volumeDialogMode = "create";
     this.showVolumeDialog = true;
   }
-  handleVolumeDialogClose() {
+  closeVolumeDialog() {
     this.showVolumeDialog = false;
-    this.dialogPool = null;
-    this.dialogVolume = null;
+    const poolRef = this.dialogPool;
+    const volumeRef = this.dialogVolume;
+    setTimeout(() => {
+      if (!this.showVolumeDialog && this.dialogPool === poolRef && this.dialogVolume === volumeRef) {
+        this.dialogPool = null;
+        this.dialogVolume = null;
+      }
+    }, 300);
+  }
+  handleVolumeDialogClose() {
+    this.closeVolumeDialog();
   }
   async handleVolumeCreated(_e) {
-    this.showVolumeDialog = false;
-    this.dialogPool = null;
-    this.dialogVolume = null;
+    this.closeVolumeDialog();
     try {
       await volumeActions.fetchAll();
       this.showNotification("Volume created successfully", "success");
@@ -70288,9 +70334,7 @@ let VirtualizationVolumes = class extends i$2 {
     }
   }
   async handleVolumeResized(_e) {
-    this.showVolumeDialog = false;
-    this.dialogPool = null;
-    this.dialogVolume = null;
+    this.closeVolumeDialog();
     try {
       await volumeActions.fetchAll();
       this.showNotification("Volume resized successfully", "success");
@@ -70300,15 +70344,22 @@ let VirtualizationVolumes = class extends i$2 {
       }
     }
   }
-  handleCloneDialogClose() {
+  closeCloneDialog() {
     this.showCloneDialog = false;
-    this.clonePool = null;
-    this.cloneVolume = null;
+    const poolRef = this.clonePool;
+    const volumeRef = this.cloneVolume;
+    setTimeout(() => {
+      if (!this.showCloneDialog && this.clonePool === poolRef && this.cloneVolume === volumeRef) {
+        this.clonePool = null;
+        this.cloneVolume = null;
+      }
+    }, 300);
+  }
+  handleCloneDialogClose() {
+    this.closeCloneDialog();
   }
   async handleVolumeCloned(_e) {
-    this.showCloneDialog = false;
-    this.clonePool = null;
-    this.cloneVolume = null;
+    this.closeCloneDialog();
     try {
       await volumeActions.fetchAll();
       this.showNotification("Volume cloned successfully", "success");
@@ -70541,6 +70592,7 @@ let VirtualizationVolumes = class extends i$2 {
           .show=${this.showCloneDialog}
           .pool=${this.clonePool}
           .volume=${this.cloneVolume}
+          .poolNames=${stats.pools}
           @close=${this.handleCloneDialogClose}
           @volume-cloned=${this.handleVolumeCloned}
         ></volume-clone-dialog>

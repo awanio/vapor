@@ -16,7 +16,7 @@ interface VolumeFormData {
   capacityUnit: 'GB' | 'TB';
   allocation: number;
   allocationUnit: 'GB' | 'TB';
-  format: 'raw' | 'qcow2' | 'vmdk' | 'vdi';
+  format: 'raw' | 'qcow2' | 'vmdk' | 'qed' | 'vdi';
 }
 
 @customElement('volume-dialog')
@@ -266,20 +266,21 @@ export class VolumeDialog extends LitElement {
 
     .format-option {
       padding: 12px;
-      background: var(--vscode-editor-background);
-      border: 2px solid var(--vscode-editorWidget-border);
+      background: var(--vscode-editor-background, #1e1e1e);
+      border: 2px solid var(--vscode-editorWidget-border, #454545);
       border-radius: 4px;
       cursor: pointer;
       transition: all 0.2s;
     }
 
     .format-option:hover {
-      border-color: var(--vscode-focusBorder);
+      border-color: var(--vscode-focusBorder, #007acc);
     }
 
     .format-option.selected {
-      border-color: var(--vscode-textLink-foreground);
-      background: var(--vscode-list-activeSelectionBackground);
+      border-color: var(--vscode-textLink-foreground, #3794ff);
+      background: var(--vscode-list-activeSelectionBackground, #094771);
+      box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc);
     }
 
     .format-option.disabled {
@@ -573,6 +574,11 @@ export class VolumeDialog extends LitElement {
         description: 'VMware disk format',
       },
       {
+        value: 'qed',
+        name: 'QED',
+        description: 'QEMU enhanced disk format',
+      },
+      {
         value: 'vdi',
         name: 'VDI',
         description: 'VirtualBox disk format',
@@ -608,12 +614,23 @@ export class VolumeDialog extends LitElement {
   }
 
   override render() {
-    if (!this.pool) {
-      return html``;
-    }
-
     const isResize = this.mode === 'resize';
     const title = isResize ? 'Resize Volume' : 'Create Volume';
+
+    const poolName = this.pool?.name ?? '';
+    const poolType = this.pool?.type ?? '';
+    const availableText = this.pool ? this.formatSize(this.pool.available) : '';
+
+    const disableName = isResize || this.isSubmitting || !this.pool;
+    const disableCapacity = this.isSubmitting || !this.pool;
+    const disableAllocation = isResize || this.isSubmitting || !this.pool;
+
+    const currentCapacityText = isResize && this.volume
+      ? this.formatSize(this.volume.capacity)
+      : '';
+    const maxCapacityText = isResize && this.volume && this.pool
+      ? this.formatSize(this.volume.capacity + (this.pool.available || 0))
+      : '';
 
     return html`
       <div class="drawer">
@@ -627,15 +644,15 @@ export class VolumeDialog extends LitElement {
             <div class="pool-info">
               <div class="info-item">
                 <div class="info-label">Pool</div>
-                <div class="info-value">${this.pool.name}</div>
+                <div class="info-value">${poolName}</div>
               </div>
               <div class="info-item">
                 <div class="info-label">Type</div>
-                <div class="info-value">${this.pool.type}</div>
+                <div class="info-value">${poolType}</div>
               </div>
               <div class="info-item">
                 <div class="info-label">Available</div>
-                <div class="info-value">${this.formatSize(this.pool.available)}</div>
+                <div class="info-value">${availableText}</div>
               </div>
             </div>
 
@@ -650,7 +667,7 @@ export class VolumeDialog extends LitElement {
                 @input=${(e: Event) => {
                   this.handleInputChange('name', (e.target as HTMLInputElement).value);
                 }}
-                ?disabled=${isResize || this.isSubmitting}
+                ?disabled=${disableName}
               />
               ${this.errors.has('name') ? html`
                 <div class="form-error">${this.errors.get('name')}</div>
@@ -673,7 +690,7 @@ export class VolumeDialog extends LitElement {
                   @input=${(e: Event) => {
                     this.handleInputChange('capacity', Number((e.target as HTMLInputElement).value));
                   }}
-                  ?disabled=${this.isSubmitting}
+                  ?disabled=${disableCapacity}
                 />
                 <select
                   class="form-select unit-select"
@@ -681,7 +698,7 @@ export class VolumeDialog extends LitElement {
                   @change=${(e: Event) => {
                     this.handleInputChange('capacityUnit', (e.target as HTMLSelectElement).value);
                   }}
-                  ?disabled=${this.isSubmitting}
+                  ?disabled=${disableCapacity}
                 >
                   <option value="GB">GB</option>
                   <option value="TB">TB</option>
@@ -689,6 +706,10 @@ export class VolumeDialog extends LitElement {
               </div>
               ${this.errors.has('capacity') ? html`
                 <div class="form-error">${this.errors.get('capacity')}</div>
+              ` : isResize && currentCapacityText ? html`
+                <div class="form-hint">
+                  Current capacity: ${currentCapacityText}. New capacity must be greater than current and within available space${maxCapacityText ? ` (max ${maxCapacityText})` : ''}.
+                </div>
               ` : html`
                 <div class="form-hint">
                   Maximum size of the volume
@@ -708,7 +729,7 @@ export class VolumeDialog extends LitElement {
                   @input=${(e: Event) => {
                     this.handleInputChange('allocation', Number((e.target as HTMLInputElement).value));
                   }}
-                  ?disabled=${isResize || this.isSubmitting}
+                  ?disabled=${disableAllocation}
                 />
                 <select
                   class="form-select unit-select"
@@ -716,7 +737,7 @@ export class VolumeDialog extends LitElement {
                   @change=${(e: Event) => {
                     this.handleInputChange('allocationUnit', (e.target as HTMLSelectElement).value);
                   }}
-                  ?disabled=${isResize || this.isSubmitting}
+                  ?disabled=${disableAllocation}
                 >
                   <option value="GB">GB</option>
                   <option value="TB">TB</option>
