@@ -512,16 +512,31 @@ export class VirtualizationAPI {
   
   /**
    * List volumes in a storage pool
+   * Returns { volumes, count } from the envelope
    */
-  async listVolumes(poolName: string): Promise<Volume[]> {
-    return apiRequest<Volume[]>(`/storages/pools/${poolName}/volumes`);
+  async listVolumes(poolName: string): Promise<{ volumes: Volume[]; count: number }> {
+    const response = await apiRequest<{ status: string; data: { volumes: Volume[]; count: number } }>(
+      `/storages/pools/${poolName}/volumes`
+    );
+    // Unwrap the envelope
+    if (response.status === 'success' && response.data) {
+      return { volumes: response.data.volumes || [], count: response.data.count || 0 };
+    }
+    return { volumes: [], count: 0 };
   }
   
   /**
    * Get volume details
    */
   async getVolume(poolName: string, volumeName: string): Promise<Volume> {
-    return apiRequest<Volume>(`/storages/pools/${poolName}/volumes/${volumeName}`);
+    const response = await apiRequest<{ status: string; data: { volume: Volume } }>(
+      `/storages/pools/${poolName}/volumes/${volumeName}`
+    );
+    // Unwrap the envelope
+    if (response.status === 'success' && response.data?.volume) {
+      return response.data.volume;
+    }
+    throw new VirtualizationAPIError('INVALID_RESPONSE', 'Invalid response format from getVolume');
   }
   
   /**
@@ -531,20 +546,36 @@ export class VirtualizationAPI {
     poolName: string,
     config: { name: string; capacity: number; allocation?: number; format?: string }
   ): Promise<Volume> {
-    return apiRequest<Volume>(`/storages/pools/${poolName}/volumes`, {
-      method: 'POST',
-      body: JSON.stringify(config),
-    });
+    const response = await apiRequest<{ status: string; data: Volume }>(
+      `/storages/pools/${poolName}/volumes`,
+      {
+        method: 'POST',
+        body: JSON.stringify(config),
+      }
+    );
+    // Unwrap the envelope
+    if (response.status === 'success' && response.data) {
+      return response.data;
+    }
+    throw new VirtualizationAPIError('INVALID_RESPONSE', 'Invalid response format from createVolume');
   }
   
   /**
    * Resize a volume
    */
   async resizeVolume(poolName: string, volumeName: string, capacity: number): Promise<Volume> {
-    return apiRequest<Volume>(`/storages/pools/${poolName}/volumes/${volumeName}/resize`, {
-      method: 'POST',
-      body: JSON.stringify({ capacity }),
-    });
+    const response = await apiRequest<{ status: string; data: Volume }>(
+      `/storages/pools/${poolName}/volumes/${volumeName}/resize`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ capacity }),
+      }
+    );
+    // Unwrap the envelope
+    if (response.status === 'success' && response.data) {
+      return response.data;
+    }
+    throw new VirtualizationAPIError('INVALID_RESPONSE', 'Invalid response format from resizeVolume');
   }
   
   /**
@@ -555,13 +586,18 @@ export class VirtualizationAPI {
     volumeName: string,
     payload: { new_name: string; target_pool?: string }
   ): Promise<Volume & { pool_name: string }> {
-    return apiRequest<Volume & { pool_name: string }>(
+    const response = await apiRequest<{ status: string; data: Volume & { pool_name: string } }>(
       `/storages/pools/${poolName}/volumes/${volumeName}/clone`,
       {
         method: 'POST',
         body: JSON.stringify(payload),
       },
     );
+    // Unwrap the envelope
+    if (response.status === 'success' && response.data) {
+      return response.data;
+    }
+    throw new VirtualizationAPIError('INVALID_RESPONSE', 'Invalid response format from cloneVolume');
   }
   
   /**
@@ -601,6 +637,7 @@ export class VirtualizationAPI {
     os_variant?: string;
     description?: string;
     architecture?: string;
+    pool_name?: string;
   }): Promise<{ uploadUrl: string; uploadId: string }> {
     // Prepare TUS metadata in base64 format as per TUS protocol
     const tusMetadata: Record<string, string> = {};
@@ -620,6 +657,9 @@ export class VirtualizationAPI {
     }
     if (metadata.architecture) {
       tusMetadata.architecture = btoa(metadata.architecture);
+    }
+    if (metadata.pool_name) {
+      tusMetadata.pool_name = btoa(metadata.pool_name);
     }
     
     // Build Upload-Metadata header value

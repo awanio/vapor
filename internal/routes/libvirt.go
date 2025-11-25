@@ -1173,17 +1173,20 @@ func createStoragePool(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req libvirt.StoragePoolCreateRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			sendStorageError(c, "INVALID_REQUEST", "Invalid storage pool create request", err, http.StatusBadRequest)
 			return
 		}
 
 		pool, err := service.CreateStoragePool(c.Request.Context(), &req)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			sendStorageError(c, "CREATE_POOL_FAILED", "Failed to create storage pool", err, http.StatusInternalServerError)
 			return
 		}
 
-		c.JSON(http.StatusCreated, pool)
+		c.JSON(http.StatusCreated, gin.H{
+			"status": "success",
+			"data":   pool,
+		})
 	}
 }
 
@@ -1192,10 +1195,23 @@ func getStoragePool(service *libvirt.Service) gin.HandlerFunc {
 		name := c.Param("name")
 		pool, err := service.GetStoragePool(c.Request.Context(), name)
 		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			msg := err.Error()
+
+			// Pool not found
+			if strings.Contains(msg, "not found") {
+				sendStorageError(c, "POOL_NOT_FOUND", "Storage pool not found", err, http.StatusNotFound)
+				return
+			}
+
+			// Generic failure
+			sendStorageError(c, "GET_POOL_FAILED", "Failed to get storage pool", err, http.StatusInternalServerError)
 			return
 		}
-		c.JSON(http.StatusOK, pool)
+
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data":   pool,
+		})
 	}
 }
 
@@ -1206,14 +1222,22 @@ func deleteStoragePool(service *libvirt.Service) gin.HandlerFunc {
 
 		err := service.DeleteStoragePool(c.Request.Context(), name, deleteVolumes)
 		if err != nil {
+			msg := err.Error()
+
+			// Pool contains volumes that are in use by VMs
+			if strings.Contains(msg, "in use by VM(s)") {
+				sendStorageError(c, "POOL_NOT_EMPTY", "Cannot delete storage pool because one or more volumes are attached to virtual machines", err, http.StatusConflict)
+				return
+			}
+
 			// Pool contains volumes and force flag not provided
-			if !deleteVolumes && (strings.Contains(err.Error(), "volume(s)") || strings.Contains(err.Error(), "contains")) {
+			if !deleteVolumes && (strings.Contains(msg, "volume(s)") || strings.Contains(msg, "contains")) {
 				sendStorageError(c, "POOL_NOT_EMPTY", "Cannot delete storage pool with existing volumes", err, http.StatusConflict)
 				return
 			}
 
 			// Pool not found
-			if strings.Contains(err.Error(), "not found") {
+			if strings.Contains(msg, "not found") {
 				sendStorageError(c, "POOL_NOT_FOUND", "Storage pool not found", err, http.StatusNotFound)
 				return
 			}
@@ -1319,10 +1343,7 @@ func listAllVolumes(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		volumes, err := service.ListAllVolumes(c.Request.Context())
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"status": "error",
-				"error":  err.Error(),
-			})
+			sendStorageError(c, "LIST_ALL_VOLUMES_FAILED", "Failed to list storage volumes", err, http.StatusInternalServerError)
 			return
 		}
 
@@ -1337,10 +1358,26 @@ func listVolumesInPool(service *libvirt.Service) gin.HandlerFunc {
 		poolName := c.Param("name")
 		volumes, err := service.ListVolumes(c.Request.Context(), poolName)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			msg := err.Error()
+
+			// Pool not found -> 404
+			if strings.Contains(msg, "storage pool not found") {
+				sendStorageError(c, "POOL_NOT_FOUND", "Storage pool not found", err, http.StatusNotFound)
+				return
+			}
+
+			// Generic failure -> 500
+			sendStorageError(c, "LIST_VOLUMES_FAILED", "Failed to list storage volumes", err, http.StatusInternalServerError)
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"volumes": volumes})
+
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data": gin.H{
+				"volumes": volumes,
+				"count":   len(volumes),
+			},
+		})
 	}
 }
 
@@ -1383,7 +1420,10 @@ func createVolumeInPool(service *libvirt.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusCreated, volume)
+		c.JSON(http.StatusCreated, gin.H{
+			"status": "success",
+			"data":   volume,
+		})
 	}
 }
 
@@ -1393,10 +1433,25 @@ func getVolume(service *libvirt.Service) gin.HandlerFunc {
 		volName := c.Param("vol_name")
 		volume, err := service.GetVolume(c.Request.Context(), poolName, volName)
 		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			msg := err.Error()
+
+			// Not found errors
+			if strings.Contains(msg, "storage pool not found") || strings.Contains(msg, "volume not found") {
+				sendStorageError(c, "VOLUME_NOT_FOUND", "Storage volume not found", err, http.StatusNotFound)
+				return
+			}
+
+			// Generic failure
+			sendStorageError(c, "GET_VOLUME_FAILED", "Failed to get storage volume", err, http.StatusInternalServerError)
 			return
 		}
-		c.JSON(http.StatusOK, volume)
+
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data": gin.H{
+				"volume": volume,
+			},
+		})
 	}
 }
 
@@ -1463,7 +1518,10 @@ func resizeVolumeInPool(service *libvirt.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, volume)
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data":   volume,
+		})
 	}
 }
 
@@ -1507,7 +1565,10 @@ func cloneVolumeInPool(service *libvirt.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusCreated, cloned)
+		c.JSON(http.StatusCreated, gin.H{
+			"status": "success",
+			"data":   cloned,
+		})
 	}
 }
 

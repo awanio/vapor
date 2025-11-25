@@ -669,19 +669,23 @@ export const volumeStore = {
       // Make the actual API request to /volumes endpoint
       const response = await apiRequest<any>('/volumes');
       
-      // Handle the response structure
+      // Handle the response structure - API now returns { status: "success", data: StorageVolumeWithPool[] }
       let volumes: StorageVolumeWithId[] = [];
       
       if (response && typeof response === 'object') {
-        // Check for data array (based on the example JSON)
-        if (response.data && Array.isArray(response.data)) {
+        // New envelope format: { status: "success", data: [...] }
+        if (response.status === 'success' && response.data && Array.isArray(response.data)) {
           volumes = response.data.map(transformVolumeResponse);
         }
-        // Check if response is directly an array
+        // Legacy: Check for data array without status field
+        else if (response.data && Array.isArray(response.data)) {
+          volumes = response.data.map(transformVolumeResponse);
+        }
+        // Legacy: Check if response is directly an array
         else if (Array.isArray(response)) {
           volumes = response.map(transformVolumeResponse);
         }
-        // Check for volumes property
+        // Legacy: Check for volumes property
         else if (response.volumes && Array.isArray(response.volumes)) {
           volumes = response.volumes.map(transformVolumeResponse);
         } else {

@@ -26,7 +26,7 @@ import {
   $virtualizationEnabled,
   $virtualizationDisabledMessage,
 } from '../../stores/virtualization';
-import type { ISOImage } from '../../types/virtualization';
+import type { ISOImage, StoragePool } from '../../types/virtualization';
 import { virtualizationAPI } from '../../services/virtualization-api';
 import { VirtualizationDisabledError } from '../../utils/api-errors';
 
@@ -43,27 +43,39 @@ export class ISOManagement extends LitElement {
   private _uploadStateController = new StoreController(this, $isoUploadState);
   private virtualizationEnabledController = new StoreController(this, $virtualizationEnabled);
   private virtualizationDisabledMessageController = new StoreController(this, $virtualizationDisabledMessage);
+  private storagePoolStoreController = new StoreController(this, storagePoolStore.$items);
 
   // Component state
   @state() private searchQuery = '';
   @state() private showUploadDrawer = false;
+  @state() private isClosingUploadDrawer = false;
   @state() private showDeleteModal = false;
   @state() private showDetailDrawer = false;
+  @state() private isClosingDetailDrawer = false;
   @state() private isoToDelete: ISOImage | null = null;
   @state() private selectedISO: ISOImage | null = null;
   @state() private isLoadingDetail = false;
   @state() private isDeleting = false;
   @state() private selectedFile: File | null = null;
-  @state() private uploadMetadata = {
+  @state() private uploadMetadata: {
+    os_type: string;
+    os_variant: string;
+    description: string;
+    pool_name: string;
+  } = {
     os_type: 'linux',
     os_variant: '',
     description: '',
+    pool_name: '',
   };
   @state() private currentUpload: tus.Upload | null = null;
   @state() private dragOver = false;
   @state() private isPaused = false;
   @state() private uploadUrl: string | null = null;
   @state() private uploadId: string | null = null;
+  @state() private selectedPoolName: string | null = null;
+  @state() private poolsLoading = false;
+  @state() private poolsError: string | null = null;
 
   static override styles = css`
     :host {
@@ -142,6 +154,19 @@ export class ISOManagement extends LitElement {
       to {
         transform: translateX(0);
       }
+    }
+
+    @keyframes slideOut {
+      from {
+        transform: translateX(0);
+      }
+      to {
+        transform: translateX(100%);
+      }
+    }
+
+    .drawer.closing {
+      animation: slideOut 0.3s ease-in forwards;
     }
 
     .drawer-header {
@@ -701,9 +726,18 @@ export class ISOManagement extends LitElement {
   }
 
   private closeDetailDrawer() {
-    this.showDetailDrawer = false;
-    this.selectedISO = null;
-    this.isLoadingDetail = false;
+    if (this.isClosingDetailDrawer) return; // Prevent double-close
+    
+    // Start close animation
+    this.isClosingDetailDrawer = true;
+    
+    // Wait for animation to complete before fully closing
+    setTimeout(() => {
+      this.showDetailDrawer = false;
+      this.isClosingDetailDrawer = false;
+      this.selectedISO = null;
+      this.isLoadingDetail = false;
+    }, 300); // Match animation duration
   }
 
   private confirmDeleteISO(iso: ISOImage) {
@@ -734,38 +768,98 @@ export class ISOManagement extends LitElement {
     }
   }
 
-  private openUploadDrawer() {
+  private async openUploadDrawer() {
     this.showUploadDrawer = true;
     this.selectedFile = null;
+    this.selectedPoolName = null;
+    this.poolsError = null;
     this.uploadMetadata = {
       os_type: 'linux',
       os_variant: '',
       description: '',
+      pool_name: '',
     };
+    
+    // Load storage pools for the dropdown
+    await this.loadPoolsForUpload();
+  }
+  
+  private async loadPoolsForUpload() {
+    this.poolsLoading = true;
+    this.poolsError = null;
+    try {
+      await storagePoolStore.fetch();
+      // Pre-select 'default' pool if it exists
+      const pools = this.getAvailablePools();
+      const defaultPool = pools.find(p => p.name === 'default');
+      if (defaultPool) {
+        this.selectedPoolName = 'default';
+        this.uploadMetadata = { ...this.uploadMetadata, pool_name: 'default' };
+      }
+    } catch (error) {
+      console.error('Failed to load storage pools:', error);
+      this.poolsError = error instanceof Error ? error.message : 'Failed to load storage pools';
+    } finally {
+      this.poolsLoading = false;
+    }
+  }
+  
+  private getAvailablePools(): (StoragePool & { id: string })[] {
+    const poolsMap = this.storagePoolStoreController.value;
+    if (!poolsMap) return [];
+    
+    let poolsArray: (StoragePool & { id: string })[];
+    if (poolsMap instanceof Map) {
+      poolsArray = Array.from(poolsMap.values());
+    } else if (typeof poolsMap === 'object') {
+      poolsArray = Object.values(poolsMap);
+    } else {
+      return [];
+    }
+    
+    // Filter to only active pools
+    return poolsArray.filter(pool => pool.state === 'running' || pool.state === 'active');
+  }
+  
+  private handlePoolChange(poolName: string) {
+    this.selectedPoolName = poolName || null;
+    this.uploadMetadata = { ...this.uploadMetadata, pool_name: poolName };
   }
 
   private closeUploadDrawer() {
-    if (this.currentUpload) {
-      this.currentUpload.abort();
-      this.currentUpload = null;
+    if (this.isClosingUploadDrawer) return; // Prevent double-close
+    
+    // Start close animation
+    this.isClosingUploadDrawer = true;
+    
+    // Wait for animation to complete before fully closing
+    setTimeout(() => {
+      if (this.currentUpload) {
+        this.currentUpload.abort();
+        this.currentUpload = null;
 
-      // Reset upload state when closing drawer with active upload
-      $isoUploadState.set({
-        isUploading: false,
-        uploadProgress: 0,
-        uploadId: null,
-        error: null,
-      });
-    }
-    this.showUploadDrawer = false;
-    this.selectedFile = null;
+        // Reset upload state when closing drawer with active upload
+        $isoUploadState.set({
+          isUploading: false,
+          uploadProgress: 0,
+          uploadId: null,
+          error: null,
+        });
+      }
+      this.showUploadDrawer = false;
+      this.isClosingUploadDrawer = false;
+      this.selectedFile = null;
 
-    // Reset metadata to defaults
-    this.uploadMetadata = {
-      os_type: 'linux',
-      os_variant: '',
-      description: '',
-    };
+      // Reset metadata to defaults
+      this.uploadMetadata = {
+        os_type: 'linux',
+        os_variant: '',
+        description: '',
+        pool_name: '',
+      };
+      this.selectedPoolName = null;
+      this.poolsError = null;
+    }, 300); // Match animation duration
   }
 
   private handleDragOver(event: DragEvent) {
@@ -840,6 +934,7 @@ export class ISOManagement extends LitElement {
           os_type: this.uploadMetadata.os_type,
           os_variant: this.uploadMetadata.os_variant,
           description: this.uploadMetadata.description,
+          pool_name: this.uploadMetadata.pool_name || undefined,
         });
         this.uploadUrl = uploadUrl;
         this.uploadId = uploadId;
@@ -868,6 +963,7 @@ export class ISOManagement extends LitElement {
           os_type: this.uploadMetadata.os_type || '',
           os_variant: this.uploadMetadata.os_variant || '',
           description: this.uploadMetadata.description || '',
+          pool_name: this.uploadMetadata.pool_name || '',
         },
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('jwt_token') || localStorage.getItem('auth_token')}`,
@@ -1007,7 +1103,7 @@ export class ISOManagement extends LitElement {
     if (!this.selectedISO) return '';
 
     return html`
-      <div class="drawer">
+      <div class="drawer ${this.isClosingDetailDrawer ? 'closing' : ''}">
         <div class="drawer-header">
           <h2 class="drawer-title">ISO Image Details</h2>
           <button class="close-btn" @click=${this.closeDetailDrawer}>✕</button>
@@ -1089,7 +1185,7 @@ export class ISOManagement extends LitElement {
     const isUploading = uploadState.isUploading || this.isPaused;
 
     return html`
-      <div class="drawer">
+      <div class="drawer ${this.isClosingUploadDrawer ? 'closing' : ''}">
         <div class="drawer-header">
           <h2 class="drawer-title">Upload ISO Image</h2>
           <button class="close-btn" @click=${this.closeUploadDrawer}>✕</button>
@@ -1133,6 +1229,48 @@ export class ISOManagement extends LitElement {
                 ` : ''}
               </div>
             `}
+            
+            <div class="form-group">
+              <label>Storage Pool (Optional)</label>
+              ${this.poolsLoading ? html`
+                <select disabled>
+                  <option>Loading pools...</option>
+                </select>
+              ` : this.poolsError ? html`
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                  <select disabled>
+                    <option>Failed to load pools</option>
+                  </select>
+                  <div class="help-text" style="color: var(--vscode-inputValidation-warningForeground);">
+                    ${this.poolsError}. Upload will use the default pool.
+                  </div>
+                  <button 
+                    type="button" 
+                    class="btn btn-secondary" 
+                    style="align-self: flex-start; padding: 4px 8px; font-size: 12px;"
+                    @click=${() => this.loadPoolsForUpload()}
+                  >
+                    Retry
+                  </button>
+                </div>
+              ` : html`
+                <select
+                  .value=${this.selectedPoolName || ''}
+                  @change=${(e: Event) => this.handlePoolChange((e.target as HTMLSelectElement).value)}
+                  ?disabled=${isUploading}
+                >
+                  <option value="">-- Use default pool --</option>
+                  ${this.getAvailablePools().map(pool => html`
+                    <option value="${pool.name}" ?selected=${this.selectedPoolName === pool.name}>
+                      ${pool.name} (${pool.type})
+                    </option>
+                  `)}
+                </select>
+                <div class="help-text">
+                  Select a storage pool to store this ISO. If not selected, the default pool will be used.
+                </div>
+              `}
+            </div>
             
             <div class="form-group">
               <label>OS Type</label>
@@ -1264,6 +1402,7 @@ export class ISOManagement extends LitElement {
       ...iso,
       size_formatted: this.formatFileSize(iso.size),
       uploaded_at_formatted: this.formatDate(iso.uploaded_at),
+      storage_pool: iso.storage_pool || 'default',
     }));
 
     return html`
@@ -1325,10 +1464,10 @@ export class ISOManagement extends LitElement {
         </div>
         
         <!-- Upload Drawer -->
-        ${this.showUploadDrawer ? this.renderUploadDrawer() : ''}
+        ${(this.showUploadDrawer || this.isClosingUploadDrawer) ? this.renderUploadDrawer() : ''}
         
         <!-- Detail Drawer -->
-        ${this.showDetailDrawer ? this.renderDetailDrawer() : ''}
+        ${(this.showDetailDrawer || this.isClosingDetailDrawer) ? this.renderDetailDrawer() : ''}
         
         <!-- Delete Confirmation Modal -->
         ${this.showDeleteModal && this.isoToDelete ? html`

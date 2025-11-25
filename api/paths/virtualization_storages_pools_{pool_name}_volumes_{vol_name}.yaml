@@ -135,7 +135,7 @@ post:
         content:
           application/json:
             schema:
-              $ref: ../components/schemas/StorageVolume.yaml
+              $ref: ../components/schemas/StorageVolumeResponse.yaml
       '400':
         description: Invalid resize request (e.g., new capacity not greater than current)
         $ref: ../components/responses/BadRequest.yaml
@@ -186,7 +186,7 @@ post:
         content:
           application/json:
             schema:
-              $ref: ../components/schemas/StorageVolumeWithPool.yaml
+              $ref: ../components/schemas/StorageVolumeWithPoolResponse.yaml
       '400':
         description: Invalid clone request (e.g., invalid name)
         $ref: ../components/responses/BadRequest.yaml

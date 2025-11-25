@@ -1,5 +1,5 @@
 import { LitElement, html, css } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 
 @customElement('detail-drawer')
 export class DetailDrawer extends LitElement {
@@ -7,6 +7,8 @@ export class DetailDrawer extends LitElement {
   @property({ type: Boolean }) show = false;
   @property({ type: Boolean }) loading = false;
   @property({ type: Number }) width = 600;
+  
+  @state() private isClosing = false;
 
   private handleKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'Escape' && this.show) {
@@ -38,6 +40,19 @@ export class DetailDrawer extends LitElement {
       to {
         transform: translateX(0);
       }
+    }
+
+    @keyframes slideOut {
+      from {
+        transform: translateX(0);
+      }
+      to {
+        transform: translateX(100%);
+      }
+    }
+
+    .drawer.closing {
+      animation: slideOut 0.3s ease-in forwards;
     }
 
     .close-button {
@@ -87,10 +102,19 @@ export class DetailDrawer extends LitElement {
       event.stopPropagation();
     }
     
-    this.dispatchEvent(new CustomEvent('close', {
-      bubbles: false,  // Don't bubble to prevent parent drawer from closing
-      composed: true
-    }));
+    if (this.isClosing) return; // Prevent double-close
+    
+    // Start close animation
+    this.isClosing = true;
+    
+    // Wait for animation to complete before dispatching close event
+    setTimeout(() => {
+      this.isClosing = false;
+      this.dispatchEvent(new CustomEvent('close', {
+        bubbles: false,  // Don't bubble to prevent parent drawer from closing
+        composed: true
+      }));
+    }, 300); // Match animation duration
   }
 
   override connectedCallback() {
@@ -104,12 +128,12 @@ export class DetailDrawer extends LitElement {
   }
 
   override render() {
-    if (!this.show) {
+    if (!this.show && !this.isClosing) {
       return null;
     }
 
     return html`
-      <div class="drawer" style="width: ${this.width}px">
+      <div class="drawer ${this.isClosing ? 'closing' : ''}" style="width: ${this.width}px">
         <div class="drawer-header">
           <button class="close-button" @click=${(e: Event) => this.handleClose(e)}>×</button>
           <h2>${this.title}</h2>

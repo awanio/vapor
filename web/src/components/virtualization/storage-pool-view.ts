@@ -506,7 +506,7 @@ export class StoragePoolView extends LitElement {
 
   private async loadVolumes(pool: StoragePool) {
     try {
-      const volumes = await virtualizationAPI.listVolumes(pool.name);
+      const { volumes } = await virtualizationAPI.listVolumes(pool.name);
       this.volumes.set(pool.name, volumes);
       this.requestUpdate();
     } catch (error) {

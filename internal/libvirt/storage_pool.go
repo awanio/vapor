@@ -284,12 +284,43 @@ func (s *Service) DeleteStoragePool(ctx context.Context, name string, deleteVolu
 	}
 
 	volumeCount := len(volumes)
-	// Free volume handles
-	for _, vol := range volumes {
-		vol.Free()
+
+	// When deleteVolumes is requested, ensure no volume in the pool is in use by any VM.
+	// This prevents destructive deletion of backing storage for running guests.
+	var inUse []string
+	if deleteVolumes && volumeCount > 0 {
+		for _, vol := range volumes {
+			path, err := vol.GetPath()
+			if err != nil {
+				vol.Free()
+				return fmt.Errorf("failed to get volume path: %w", err)
+			}
+
+			usingVMs, err := s.getVMsUsingVolume(ctx, path)
+			if err != nil {
+				vol.Free()
+				return fmt.Errorf("failed to check volume usage: %w", err)
+			}
+
+			if len(usingVMs) > 0 {
+				name, _ := vol.GetName()
+				inUse = append(inUse, fmt.Sprintf("%s: %v", name, usingVMs))
+			}
+
+			vol.Free()
+		}
+	} else {
+		// Free volume handles when we're not inspecting usage.
+		for _, vol := range volumes {
+			vol.Free()
+		}
 	}
 
-	// Validate deletion request
+	if len(inUse) > 0 {
+		return fmt.Errorf("storage pool contains volume(s) in use by VM(s): %v. Detach volumes or shut down VMs before deleting the pool", inUse)
+	}
+
+	// Validate deletion request when volumes exist but cascading delete was not requested.
 	if volumeCount > 0 && !deleteVolumes {
 		return fmt.Errorf("storage pool contains %d volume(s). Set delete_volumes=true to force deletion, or delete volumes first", volumeCount)
 	}
