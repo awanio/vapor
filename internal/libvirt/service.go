@@ -245,13 +245,13 @@ func (s *Service) ListPCIDevices(ctx context.Context) ([]PCIDevice, error) {
 }
 
 // AttachPCIDevice attaches a PCI device to a VM
-func (s *Service) AttachPCIDevice(ctx context.Context, vmName string, req *PCIPassthroughRequest) error {
+func (s *Service) AttachPCIDevice(ctx context.Context, vmName string, req *PCIPassthroughRequest) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	domain, err := s.lookupDomain(vmName)
 	if err != nil {
-		return fmt.Errorf("VM not found: %w", err)
+		return "", fmt.Errorf("VM not found: %w", err)
 	}
 	defer domain.Free()
 
@@ -260,10 +260,10 @@ func (s *Service) AttachPCIDevice(ctx context.Context, vmName string, req *PCIPa
 		var isAvailable bool
 		err := s.db.QueryRowContext(ctx, "SELECT is_available FROM pci_devices WHERE device_id = ?", req.DeviceID).Scan(&isAvailable)
 		if err != nil {
-			return fmt.Errorf("device not found: %w", err)
+			return "", fmt.Errorf("device not found: %w", err)
 		}
 		if !isAvailable {
-			return fmt.Errorf("device is already assigned to another VM")
+			return "", fmt.Errorf("device is already assigned to another VM")
 		}
 	}
 
@@ -274,7 +274,7 @@ func (s *Service) AttachPCIDevice(ctx context.Context, vmName string, req *PCIPa
 		if s.db != nil {
 			err := s.db.QueryRowContext(ctx, "SELECT pci_address FROM pci_devices WHERE device_id = ?", req.DeviceID).Scan(&pciAddr)
 			if err != nil {
-				return fmt.Errorf("failed to get PCI address: %w", err)
+				return "", fmt.Errorf("failed to get PCI address: %w", err)
 			}
 		}
 	}
@@ -282,11 +282,11 @@ func (s *Service) AttachPCIDevice(ctx context.Context, vmName string, req *PCIPa
 	// Parse PCI address (format: 0000:01:00.0)
 	parts := strings.Split(pciAddr, ":")
 	if len(parts) != 3 {
-		return fmt.Errorf("invalid PCI address format: %s", pciAddr)
+		return "", fmt.Errorf("invalid PCI address format: %s", pciAddr)
 	}
 	funcParts := strings.Split(parts[2], ".")
 	if len(funcParts) != 2 {
-		return fmt.Errorf("invalid PCI address format: %s", pciAddr)
+		return "", fmt.Errorf("invalid PCI address format: %s", pciAddr)
 	}
 
 	// Generate PCI passthrough XML
@@ -300,7 +300,7 @@ func (s *Service) AttachPCIDevice(ctx context.Context, vmName string, req *PCIPa
 
 	// Attach the device
 	if err := domain.AttachDevice(pciXML); err != nil {
-		return fmt.Errorf("failed to attach PCI device: %w", err)
+		return "", fmt.Errorf("failed to attach PCI device: %w", err)
 	}
 
 	// Update database
@@ -314,7 +314,7 @@ func (s *Service) AttachPCIDevice(ctx context.Context, vmName string, req *PCIPa
 		}
 	}
 
-	return nil
+	return pciAddr, nil
 }
 
 // DetachPCIDevice detaches a PCI device from a VM

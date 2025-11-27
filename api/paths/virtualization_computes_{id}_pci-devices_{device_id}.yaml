@@ -29,25 +29,10 @@ delete:
       content:
         application/json:
           schema:
-            type: object
-            properties:
-              message:
-                type: string
-                example: PCI device detached successfully
-              vm_id:
-                type: string
-                description: VM identifier
-                example: web-server-01
-              device_id:
-                type: string
-                description: Detached PCI device ID
-                example: pci_0000_01_00_0
+            $ref: ../components/schemas/PCIDetachResponse.yaml
+    '400':
+      $ref: ../components/responses/BadRequest.yaml
+    '404':
+      $ref: ../components/responses/NotFound.yaml
     '500':
-      description: Failed to detach PCI device
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              error:
-                type: string
+      $ref: ../components/responses/InternalError.yaml

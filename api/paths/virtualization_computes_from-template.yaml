@@ -146,36 +146,10 @@ post:
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/VM.yaml
+            $ref: ../components/schemas/VMCreateResponse.yaml
     '400':
-      description: |
-        Bad request - validation error.
-        This can occur when:
-        - Required fields are missing
-        - User values don't meet template minimum requirements
-        - Invalid configuration provided
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              error:
-                type: string
+      $ref: ../components/responses/BadRequest.yaml
     '404':
-      description: Template not found
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              error:
-                type: string
+      $ref: ../components/responses/NotFound.yaml
     '500':
-      description: Internal server error
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              error:
-                type: string
+      $ref: ../components/responses/InternalError.yaml

@@ -24,13 +24,21 @@ get:
             status: "success"
             data:
               type: vnc
-              host: "0.0.0.0"
+              host: localhost
               port: 5900
-              websocket_url: "/virtualization/computes/test-vm/console/vnc/ws"
-              autoport: true
-              listen: "0.0.0.0"
+              token: a1b2c3d4e5f6789...
+              ws_path: "/api/v1/virtualization/computes/vm-123/console/vnc/ws?token=a1b2c3d4e5f6789..."
+              expires_at: "2024-01-15T10:30:00Z"
+              tls_enabled: false
+              password: "********"
     '404':
-      description: VM not found or VNC console not available
+      description: Virtual machine not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      description: No VNC console available for this VM
       content:
         application/json:
           schema:

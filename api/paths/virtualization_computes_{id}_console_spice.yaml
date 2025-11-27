@@ -24,14 +24,21 @@ get:
             status: "success"
             data:
               type: spice
-              host: "0.0.0.0"
+              host: localhost
               port: 5901
-              websocket_url: "/virtualization/computes/test-vm/console/spice/ws"
-              autoport: true
-              listen: "0.0.0.0"
-              channels: ["main", "display", "inputs", "cursor", "usbredir"]
+              token: z9y8x7w6v5u4t3s2...
+              ws_path: "/api/v1/virtualization/computes/vm-123/console/spice/ws?token=z9y8x7w6v5u4t3s2..."
+              expires_at: "2024-01-15T10:30:00Z"
+              tls_enabled: false
+              password: "********"
     '404':
-      description: VM not found or SPICE console not available
+      description: Virtual machine not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '503':
+      description: No SPICE console available for this VM
       content:
         application/json:
           schema:

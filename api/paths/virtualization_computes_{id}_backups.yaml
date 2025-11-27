@@ -18,12 +18,7 @@ get:
       content:
         application/json:
           schema:
-            type: object
-            properties:
-              backups:
-                type: array
-                items:
-                  $ref: ../components/schemas/VMBackup.yaml
+            $ref: ../components/schemas/VMBackupsListResponse.yaml
     '404':
       $ref: ../components/responses/NotFound.yaml
     '500':
@@ -66,7 +61,7 @@ post:
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/VMBackup.yaml
+            $ref: ../components/schemas/VMBackupResponse.yaml
     '400':
       $ref: ../components/responses/BadRequest.yaml
     '404':

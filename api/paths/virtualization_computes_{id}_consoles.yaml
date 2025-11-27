@@ -1,8 +1,8 @@
 get:
   summary: Get available console types
   description: |
-    Returns a list of all available console types for the specified virtual machine.
-    This includes VNC, SPICE, and serial console availability based on VM configuration.
+    Returns information about all available console types for the specified virtual machine.
+    This includes VNC and SPICE console availability based on VM configuration.
   tags:
     - Virtualization Compute
   operationId: getAvailableConsoles
@@ -20,8 +20,41 @@ get:
         application/json:
           schema:
             $ref: ../components/schemas/ConsolesResponse.yaml
+          example:
+            status: "success"
+            data:
+              vm_name: vm-123
+              vm_uuid: "11111111-2222-3333-4444-555555555555"
+              available:
+                - vnc
+                - spice
+              consoles:
+                vnc:
+                  type: vnc
+                  host: localhost
+                  port: 5900
+                  token: a1b2c3d4e5f6789...
+                  ws_path: "/api/v1/virtualization/computes/vm-123/console/vnc/ws?token=a1b2c3d4e5f6789..."
+                  expires_at: "2024-01-15T10:30:00Z"
+                  tls_enabled: false
+                  password: "********"
+                spice:
+                  type: spice
+                  host: localhost
+                  port: 5901
+                  token: z9y8x7w6v5u4t3s2...
+                  ws_path: "/api/v1/virtualization/computes/vm-123/console/spice/ws?token=z9y8x7w6v5u4t3s2..."
+                  expires_at: "2024-01-15T10:30:00Z"
+                  tls_enabled: false
+              preferred: spice
     '404':
       $ref: ../components/responses/NotFound.yaml
+    '503':
+      description: No console available for this VM
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
     '500':
       $ref: ../components/responses/InternalError.yaml
   security:

@@ -305,7 +305,7 @@ post:
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/VM.yaml
+            $ref: ../components/schemas/VMDirectResponse.yaml
     '400':
       $ref: ../components/responses/BadRequest.yaml
     '500':

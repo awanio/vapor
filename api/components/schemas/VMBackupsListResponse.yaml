@@ -5,13 +5,14 @@ allOf:
       data:
         type: object
         properties:
-          snapshots:
+          backups:
             type: array
             items:
-              $ref: ./VMSnapshot.yaml
+              $ref: ./VMBackup.yaml
           count:
             type: integer
-            example: 3
+            description: Number of backups returned
+            example: 2
           vm_id:
             type: string
             description: VM identifier used in the request path

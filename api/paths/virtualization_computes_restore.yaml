@@ -23,7 +23,7 @@ post:
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/VMResponse.yaml
+            $ref: ../components/schemas/VMRestoreResponse.yaml
     '400':
       $ref: ../components/responses/BadRequest.yaml
     '404':

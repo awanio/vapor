@@ -27,11 +27,11 @@ get:
                   bridge:
                     $ref: ../components/schemas/Interface.yaml
     '400':
-      $ref: ../components/responses/BadRequestError.yaml
+      $ref: ../components/responses/BadRequest.yaml
     '401':
       $ref: ../components/responses/UnauthorizedError.yaml
     '404':
-      $ref: ../components/responses/NotFoundError.yaml
+      $ref: ../components/responses/NotFound.yaml
 put:
   summary: Update network bridge
   description: Updates bridge configuration by removing old members and adding new ones

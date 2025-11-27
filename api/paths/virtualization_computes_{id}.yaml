@@ -13,15 +13,132 @@ get:
       description: VM name or UUID
   responses:
     '200':
-      description: Virtual machine details
+      description: Enhanced virtual machine details
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/VMDirectResponse.yaml
+            $ref: ../components/schemas/VMEnhancedResponse.yaml
+          examples:
+            example:
+              summary: Enhanced VM details with storage, networks, graphics and metadata
+              value:
+                status: success
+                data:
+                  uuid: 123e4567-e89b-12d3-a456-426614174000
+                  name: web-server-01
+                  state: running
+                  memory: 4096
+                  max_memory: 8192
+                  vcpus: 2
+                  max_vcpus: 4
+                  os_type: hvm
+                  os_variant: ubuntu22.04
+                  architecture: x86_64
+                  uefi: true
+                  secure_boot: true
+                  tpm: true
+                  storage:
+                    default_pool: default
+                    boot_iso: ubuntu-22.04.iso
+                    disks:
+                      - path: /var/lib/libvirt/images/web-server-01.qcow2
+                        device: disk
+                        target: vda
+                        bus: virtio
+                        size: 40
+                        capacity: 42949672960
+                        allocation: 21474836480
+                        format: qcow2
+                        storage_pool: default
+                        boot_order: 1
+                        cache: writeback
+                        io_mode: native
+                        readonly: false
+                        source_type: file
+                        source_path: /var/lib/libvirt/images/web-server-01.qcow2
+                  networks:
+                    - type: network
+                      source: default
+                      model: virtio
+                      mac: 52:54:00:12:34:56
+                      target: vnet0
+                      bridge: virbr0
+                      ip_address: 192.168.122.10
+                      gateway: 192.168.122.1
+                      dns:
+                        - 1.1.1.1
+                        - 8.8.8.8
+                      rx_bytes: 123456
+                      tx_bytes: 654321
+                      rx_packets: 1000
+                      tx_packets: 900
+                  graphics:
+                    - type: vnc
+                      port: 5901
+                      autoport: true
+                      listen: 0.0.0.0
+                  pci_devices:
+                    - host_address: 0000:01:00.0
+                      guest_address: 0000:05:00.0
+                      vendor: NVIDIA Corporation
+                      product: RTX 3080
+                      description: NVIDIA GeForce RTX 3080
+                      rom_file: /usr/share/vgabios/rtx3080.rom
+                      multifunction: false
+                      primary_gpu: true
+                      iommu_group: 1
+                  cloud_init:
+                    user_data: |
+                      #cloud-config
+                      package_update: true
+                    meta_data: |
+                      instance-id: i-1234567890abcdef0
+                      local-hostname: web-server-01
+                    ssh_keys:
+                      - ssh-rsa AAAAB3Nza...
+                    packages:
+                      - docker.io
+                      - git
+                  template: ubuntu-server-template
+                  autostart: true
+                  custom_xml: "<!-- custom libvirt XML snippet -->"
+                  metadata:
+                    environment: production
+                    owner: team-a
+                  created_at: 2024-06-01T12:00:00Z
+                  updated_at: 2024-06-01T12:30:00Z
+                  persistent: true
+                  running: true
     '404':
-      $ref: ../components/responses/NotFound.yaml
+      description: Virtual machine not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+          examples:
+            vmNotFound:
+              summary: VM not found
+              value:
+                status: error
+                error:
+                  code: VM_NOT_FOUND
+                  message: Virtual machine not found
+                  details: "domain not found: no domain with matching name or ID 'web-server-01'"
     '500':
-      $ref: ../components/responses/InternalError.yaml
+      description: Failed to get virtual machine
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+          examples:
+            getVMFailed:
+              summary: Failed to fetch VM details
+              value:
+                status: error
+                error:
+                  code: GET_VM_FAILED
+                  message: Failed to get virtual machine
+                  details: "libvirt connection error"
 put:
   summary: Update a virtual machine
   tags:
@@ -108,5 +225,13 @@ delete:
                   code: "VM_DISK_IN_USE"
                   message: "One or more disks are still in use by other virtual machines"
                   details: "shared volume in use by other VMs: /var/lib/libvirt/images/shared.qcow2 (used by [db-vm backup-vm])"
+            vmRunning:
+              summary: VM must be stopped before deletion
+              value:
+                status: "error"
+                error:
+                  code: "VM_RUNNING"
+                  message: "Operation requires VM to be stopped"
+                  details: "deletion requires VM to be stopped; stop the VM first then retry"
     '500':
       $ref: ../components/responses/InternalError.yaml

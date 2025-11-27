@@ -1,5 +1,6 @@
 get:
   summary: List network interfaces
+  description: List network interfaces with optional filtering by type.
   tags:
     - Network
   security:
@@ -8,9 +9,11 @@ get:
     - name: type
       in: query
       required: false
+      description: >-
+        Filter interfaces by type (comma-separated for multiple types).
+        Examples: bridge, device, vlan, bond, veth, tun, tap, dummy.
       schema:
         type: string
-      description: Filter interfaces by type (comma-separated for multiple types). Examples: bridge, device, vlan, bond, veth, tun, tap, dummy
       example: bridge,device
   responses:
     '200':

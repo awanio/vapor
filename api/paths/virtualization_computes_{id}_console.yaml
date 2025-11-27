@@ -40,7 +40,7 @@ get:
               host: localhost
               port: 5901
               token: a1b2c3d4e5f6789...
-              ws_path: /api/v1/virtualization/computes/vm-123/console/ws
+              ws_path: "/api/v1/virtualization/computes/vm-123/console/vnc/ws?token=a1b2c3d4e5f6789..."
               expires_at: "2024-01-15T10:30:00Z"
               tls_enabled: false
               password: "********"

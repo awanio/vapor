@@ -57,22 +57,20 @@ post:
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/VM.yaml
+            $ref: ../components/schemas/VMDirectResponse.yaml
     '400':
-      description: Invalid clone request
+      $ref: ../components/responses/BadRequest.yaml
+    '404':
+      description: Source VM not found
       content:
         application/json:
           schema:
-            type: object
-            properties:
-              error:
-                type: string
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '409':
+      description: Conflict - VM with target name already exists
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
     '500':
-      description: Failed to clone virtual machine
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              error:
-                type: string
+      $ref: ../components/responses/InternalError.yaml

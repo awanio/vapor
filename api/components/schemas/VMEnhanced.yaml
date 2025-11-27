@@ -1,0 +1,366 @@
+type: object
+description: |
+  Detailed virtual machine information returned by the enhanced compute detail endpoint.
+  
+  This schema mirrors the libvirt.VMEnhanced structure and exposes nested information about
+  storage, networks, graphics, PCI devices, cloud-init configuration and metadata.
+required:
+  - uuid
+  - name
+  - state
+  - memory
+  - max_memory
+  - vcpus
+  - max_vcpus
+  - autostart
+  - persistent
+  - running
+  - created_at
+  - updated_at
+properties:
+  uuid:
+    type: string
+    description: Unique identifier of the virtual machine
+    example: 123e4567-e89b-12d3-a456-426614174000
+  name:
+    type: string
+    description: Name of the virtual machine
+    example: web-server-01
+  state:
+    type: string
+    description: Current power state of the virtual machine
+    example: running
+  memory:
+    type: integer
+    description: Current memory allocation in MiB
+    example: 4096
+  max_memory:
+    type: integer
+    description: Maximum memory allocation in MiB
+    example: 8192
+  vcpus:
+    type: integer
+    description: Number of virtual CPUs currently assigned to the VM
+    example: 2
+  max_vcpus:
+    type: integer
+    description: Maximum number of vCPUs supported by this VM
+    example: 4
+  os_info:
+    $ref: ./OSInfoEnhanced.yaml
+  os_type:
+    type: string
+    description: Low level domain/OS type (for example hvm)
+    example: hvm
+  os_variant:
+    type: string
+    description: OS variant identifier (matches libosinfo variants when available)
+    example: ubuntu22.04
+  architecture:
+    type: string
+    description: Guest architecture
+    example: x86_64
+  uefi:
+    type: boolean
+    description: Indicates whether UEFI boot is enabled
+  secure_boot:
+    type: boolean
+    description: Indicates whether secure boot is enabled
+  tpm:
+    type: boolean
+    description: Indicates whether a TPM device is attached
+  storage:
+    type: object
+    description: Detailed storage configuration for the VM
+    properties:
+      default_pool:
+        type: string
+        description: Default storage pool for VM disks
+        example: default
+      boot_iso:
+        type: string
+        description: Optional boot ISO path or name
+        example: ubuntu-22.04.iso
+      disks:
+        type: array
+        description: Disks attached to the VM with detailed information
+        items:
+          type: object
+          properties:
+            path:
+              type: string
+              description: Filesystem path to the disk image or block device
+              example: /var/lib/libvirt/images/web-server-01.qcow2
+            device:
+              type: string
+              description: Device type (disk, cdrom, etc.)
+              example: disk
+            target:
+              type: string
+              description: Target device name inside the guest
+              example: vda
+            bus:
+              type: string
+              description: Disk bus type (virtio, sata, scsi, ide)
+              example: virtio
+            size:
+              type: integer
+              format: int64
+              description: Logical disk size in GiB (when available)
+              example: 40
+            capacity:
+              type: integer
+              format: int64
+              description: Provisioned disk capacity in bytes
+              example: 42949672960
+            allocation:
+              type: integer
+              format: int64
+              description: Allocated size on disk in bytes
+              example: 21474836480
+            format:
+              type: string
+              description: Disk image format
+              example: qcow2
+            storage_pool:
+              type: string
+              description: Storage pool backing this disk, when detectable
+              example: default
+            boot_order:
+              type: integer
+              description: Boot order index for this disk
+              example: 1
+            cache:
+              type: string
+              description: Disk cache mode
+              example: writeback
+            io_mode:
+              type: string
+              description: Disk I/O mode
+              example: native
+            readonly:
+              type: boolean
+              description: Whether the disk is attached read-only
+            source_type:
+              type: string
+              description: Disk source type (file, block, network)
+              example: file
+            source_path:
+              type: string
+              description: Underlying source path for the disk
+              example: /var/lib/libvirt/images/web-server-01.qcow2
+  networks:
+    type: array
+    description: Network interfaces attached to the VM with extended details
+    items:
+      type: object
+      properties:
+        type:
+          type: string
+          description: Network attachment type (network, bridge, direct, user)
+          example: network
+        source:
+          type: string
+          description: Network source (network or bridge name, interface, etc.)
+          example: default
+        model:
+          type: string
+          description: Network device model
+          example: virtio
+        mac:
+          type: string
+          description: MAC address of the interface
+          example: 52:54:00:12:34:56
+        target:
+          type: string
+          description: Interface name inside the guest (for example vnet0)
+          example: vnet0
+        bridge:
+          type: string
+          description: Bridge interface name when using bridge networking
+          example: virbr0
+        ip_address:
+          type: string
+          description: Last known IP address of the interface (when detectable)
+          example: 192.168.122.10
+        gateway:
+          type: string
+          description: Default gateway associated with this interface
+          example: 192.168.122.1
+        dns:
+          type: array
+          description: DNS servers associated with this interface
+          items:
+            type: string
+          example:
+            - 1.1.1.1
+            - 8.8.8.8
+        rx_bytes:
+          type: integer
+          format: int64
+          description: Total number of bytes received on this interface
+          example: 123456
+        tx_bytes:
+          type: integer
+          format: int64
+          description: Total number of bytes transmitted on this interface
+          example: 654321
+        rx_packets:
+          type: integer
+          format: int64
+          description: Total number of packets received on this interface
+          example: 1000
+        tx_packets:
+          type: integer
+          format: int64
+          description: Total number of packets transmitted on this interface
+          example: 900
+  graphics:
+    type: array
+    description: Graphics devices attached to the VM
+    items:
+      type: object
+      properties:
+        type:
+          type: string
+          description: Graphics type (vnc, spice, egl-headless, none)
+          example: vnc
+        port:
+          type: integer
+          description: TCP port for the graphics console (-1 for auto)
+          example: 5901
+        autoport:
+          type: boolean
+          description: Whether the port is automatically assigned
+        listen:
+          type: string
+          description: Listen address for the graphics server
+          example: 0.0.0.0
+        password:
+          type: string
+          description: Optional console password
+        websocket:
+          type: integer
+          description: WebSocket port when available
+          example: 5701
+        tls_port:
+          type: integer
+          description: TLS port when available
+        connected:
+          type: boolean
+          description: Whether a client is currently connected
+        clients:
+          type: integer
+          description: Number of connected clients
+  pci_devices:
+    type: array
+    description: PCI devices attached to the VM via passthrough
+    items:
+      type: object
+      properties:
+        host_address:
+          type: string
+          description: PCI address of the device on the host
+          example: 0000:01:00.0
+        guest_address:
+          type: string
+          description: PCI address of the device inside the guest
+          example: 0000:05:00.0
+        vendor:
+          type: string
+          description: Vendor name (when available)
+          example: NVIDIA Corporation
+        product:
+          type: string
+          description: Product name (when available)
+          example: RTX 3080
+        description:
+          type: string
+          description: Human readable device description
+        rom_file:
+          type: string
+          description: ROM file path used for this device
+        multifunction:
+          type: boolean
+          description: Whether multifunction mode is enabled
+        primary_gpu:
+          type: boolean
+          description: Whether this is the primary GPU for the VM
+        iommu_group:
+          type: integer
+          description: IOMMU group id for the device
+  cloud_init:
+    allOf:
+      - $ref: ./CloudInit.yaml
+      - type: object
+        description: Detected cloud-init configuration and parsed details
+        properties:
+          hostname:
+            type: string
+            description: Hostname detected from cloud-init configuration
+          ssh_keys:
+            type: array
+            description: SSH keys detected from cloud-init configuration
+            items:
+              type: string
+          users:
+            type: array
+            description: Parsed cloud-init users
+            items:
+              type: object
+              properties:
+                name:
+                  type: string
+                ssh_authorized_keys:
+                  type: array
+                  items:
+                    type: string
+                sudo:
+                  type: string
+                groups:
+                  type: string
+                shell:
+                  type: string
+          packages:
+            type: array
+            description: Packages detected from cloud-init configuration
+            items:
+              type: string
+          source:
+            type: string
+            description: Underlying cloud-init source (image or config drive)
+          source_type:
+            type: string
+            description: Source type (disk, cdrom, network)
+  template:
+    type: string
+    description: Template name associated with this virtual machine, if any
+    example: ubuntu-server-template
+  autostart:
+    type: boolean
+    description: Whether the VM is configured to start automatically on host boot
+  custom_xml:
+    type: string
+    description: Custom libvirt XML fragment applied to the VM definition
+  metadata:
+    type: object
+    description: Custom metadata key-value pairs attached to the VM
+    additionalProperties:
+      type: string
+    example:
+      environment: production
+      owner: team-a
+  created_at:
+    type: string
+    format: date-time
+    description: Timestamp when the VM was first discovered or created
+  updated_at:
+    type: string
+    format: date-time
+    description: Timestamp when the VM details were last refreshed
+  persistent:
+    type: boolean
+    description: Whether the VM definition is persistent
+  running:
+    type: boolean
+    description: Convenience flag indicating if the VM is currently running
