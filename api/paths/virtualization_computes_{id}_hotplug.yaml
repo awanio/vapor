@@ -37,16 +37,38 @@ post:
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/HotplugResponse.yaml
+            type: object
+            properties:
+              message:
+                type: string
+                example: Resource hotplug operation completed successfully
+              vm_id:
+                type: string
+                description: VM identifier
+                example: web-server-01
+              resource_type:
+                type: string
+                description: Type of resource that was hotplugged
+                example: cpu
+              action:
+                type: string
+                description: Action that was performed
+                example: add
     '400':
-      $ref: ../components/responses/BadRequest.yaml
-    '404':
-      $ref: ../components/responses/NotFound.yaml
-    '409':
-      description: VM not running or resource conflict
+      description: Invalid hotplug request
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/ErrorResponse.yaml
+            type: object
+            properties:
+              error:
+                type: string
     '500':
-      $ref: ../components/responses/InternalError.yaml
+      description: Failed to hotplug resource
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string

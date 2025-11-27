@@ -1,0 +1,16 @@
+type: object
+properties:
+  vm_name:
+    type: string
+  vm_uuid:
+    type: string
+  available:
+    type: array
+    items:
+      type: string
+      enum: [vnc, spice]
+  consoles:
+    $ref: ./ConsoleAvailability.yaml
+  preferred:
+    type: string
+    enum: [vnc, spice]

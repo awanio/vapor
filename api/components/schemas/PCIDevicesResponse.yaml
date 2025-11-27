@@ -13,3 +13,7 @@ allOf:
             type: integer
             description: Total number of PCI devices
             example: 5
+          device_type:
+            type: string
+            description: Filter applied to devices list (if any)
+            example: gpu

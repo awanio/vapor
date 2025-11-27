@@ -558,19 +558,27 @@ export const networkStore = {
       // Make the actual API request to /networks endpoint
       const response = await apiRequest<any>('/networks');
       
-      // Handle the response structure
+      // Handle the response structure - API now returns { status: "success", data: { networks: VirtualNetwork[], count: number } }
       let networks: (VirtualNetwork & { id: string })[] = [];
       
       if (response && typeof response === 'object') {
-        // Check if response is directly an array
-        if (Array.isArray(response)) {
+        // New envelope format: { status: 'success', data: { networks: [...] } }
+        if (
+          response.status === 'success' &&
+          response.data &&
+          Array.isArray(response.data.networks)
+        ) {
+          networks = response.data.networks.map(transformNetworkResponse);
+        }
+        // Legacy: response is directly an array
+        else if (Array.isArray(response)) {
           networks = response.map(transformNetworkResponse);
         }
-        // Check for wrapped response
+        // Legacy: data is already an array
         else if (response.data && Array.isArray(response.data)) {
           networks = response.data.map(transformNetworkResponse);
         }
-        // Check for networks property
+        // Legacy: networks property at top level
         else if (response.networks && Array.isArray(response.networks)) {
           networks = response.networks.map(transformNetworkResponse);
         } else {
@@ -1875,23 +1883,42 @@ export const networkActions = {
   },
   
   async create(networkData: any) {
-    const response = await apiRequest<VirtualNetwork & { id: string }>(
-      '/networks',
-      {
+    try {
+      const response = await apiRequest<{
+        status: string;
+        data?: { network?: VirtualNetwork & { id?: string } };
+      }>('/networks', {
         method: 'POST',
         body: JSON.stringify(networkData),
+      });
+
+      if (response.status === 'success' && response.data?.network) {
+        const created = {
+          ...transformNetworkResponse(response.data.network),
+        };
+
+        // Add to store
+        const items = new Map(networkStore.$items.get());
+        items.set(created.name, created);
+        networkStore.$items.set(items);
+
+        // Select the new network
+        $selectedNetworkId.set(created.name);
+
+        return { success: true, data: created };
       }
-    );
-    
-    // Add to store
-    const items = new Map(networkStore.$items.get());
-    items.set(response.name, response);
-    networkStore.$items.set(items);
-    
-    // Select the new network
-    $selectedNetworkId.set(response.name);
-    
-    return { success: true, data: response };
+
+      throw new Error('Invalid createNetwork response');
+    } catch (error: any) {
+      const code = error?.code || 'CREATE_NETWORK_FAILED';
+      return {
+        success: false,
+        error: {
+          code,
+          message: error instanceof Error ? error.message : 'Failed to create network',
+        },
+      };
+    }
   },
   
   async start(networkName: string) {

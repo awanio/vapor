@@ -1,20 +1,12 @@
 post:
   summary: Clone a virtual machine
   description: |
-    Creates a clone (copy) of an existing virtual machine with customizable options.
-    
-    **Clone Types:**
-    - Full clone: Complete independent copy including storage
-    - Linked clone: Uses backing store for efficient storage (if supported)
-    
-    **Customization Options:**
-    - New VM name (required)
-    - Memory and CPU adjustments
-    - Network MAC address regeneration
-    - Storage pool selection
+    Clone an existing virtual machine to a new VM.
+    The clone operation is synchronous and returns the cloned VM when complete.
   tags:
     - Virtualization Compute
-  operationId: cloneVM
+  security:
+    - bearerAuth: []
   requestBody:
     required: true
     content:
@@ -23,110 +15,64 @@ post:
           type: object
           required:
             - source_vm
-            - new_name
+            - name
           properties:
             source_vm:
               type: string
-              description: Source VM name or UUID to clone from
-            new_name:
+              description: Source VM name or UUID
+              example: web-server-01
+            name:
               type: string
-              description: Name for the cloned VM
-              pattern: '^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$'
-            clone_type:
-              type: string
-              enum: [full, linked]
-              default: full
-              description: Type of clone to create
-            auto_start:
+              description: Name of the new cloned VM
+              example: web-server-01-clone
+            full_clone:
               type: boolean
-              default: false
-              description: Start the cloned VM after creation
-            regenerate_mac:
-              type: boolean
+              description: Whether to create a full clone instead of a linked clone
               default: true
-              description: Generate new MAC addresses for network interfaces
+            snapshots:
+              type: boolean
+              description: Whether to clone snapshots as well
+              default: false
             storage_pool:
               type: string
-              description: Target storage pool for cloned disks (defaults to source pool)
-            memory_mb:
-              type: integer
-              minimum: 256
-              description: Override memory size in MB
-            vcpus:
-              type: integer
-              minimum: 1
-              maximum: 256
-              description: Override number of virtual CPUs
-            metadata:
-              type: object
-              description: Additional metadata for the cloned VM
-              additionalProperties:
-                type: string
+              description: Optional target storage pool for the cloned disks
+              example: fast-ssd
         examples:
-          simple_clone:
+          simple:
             summary: Simple full clone
             value:
-              source_vm: "production-web"
-              new_name: "staging-web"
-              clone_type: "full"
-              regenerate_mac: true
-          customized_clone:
-            summary: Clone with customizations
+              source_vm: web-server-01
+              name: web-server-01-clone
+          with_snapshots:
+            summary: Full clone including snapshots to a different pool
             value:
-              source_vm: "template-ubuntu"
-              new_name: "dev-server-01"
-              clone_type: "full"
-              auto_start: true
-              regenerate_mac: true
-              storage_pool: "fast-ssd"
-              memory_mb: 4096
-              vcpus: 4
-              metadata:
-                environment: "development"
-                owner: "dev-team"
+              source_vm: web-server-01
+              name: web-server-01-backup
+              full_clone: true
+              snapshots: true
+              storage_pool: backup-pool
   responses:
-    '202':
-      description: Clone operation started successfully
+    '201':
+      description: Virtual machine cloned successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/VM.yaml
+    '400':
+      description: Invalid clone request
       content:
         application/json:
           schema:
             type: object
             properties:
-              status:
+              error:
                 type: string
-                example: "cloning"
-              message:
-                type: string
-                example: "VM clone operation started"
-              clone_id:
-                type: string
-                description: ID to track clone operation
-              source_vm:
-                type: string
-              new_vm:
-                type: string
-              estimated_time_seconds:
-                type: integer
-                description: Estimated time to complete
-    '400':
-      description: Invalid clone parameters
-      content:
-        application/json:
-          schema:
-            $ref: ../components/schemas/ErrorResponse.yaml
-    '404':
-      description: Source VM not found
-      content:
-        application/json:
-          schema:
-            $ref: ../components/schemas/ErrorResponse.yaml
-    '409':
-      description: VM with new name already exists
-      content:
-        application/json:
-          schema:
-            $ref: ../components/schemas/ErrorResponse.yaml
     '500':
-      $ref: ../components/responses/InternalError.yaml
-  security:
-    - bearerAuth: []
+      description: Failed to clone virtual machine
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string

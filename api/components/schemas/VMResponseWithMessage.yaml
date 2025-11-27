@@ -1,0 +1,8 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      message:
+        type: string
+      data:
+        $ref: ./VM.yaml

@@ -8,12 +8,14 @@ import '../../components/ui/status-badge.js';
 import '../../components/tabs/tab-group.js';
 import '../../components/tables/resource-table.js';
 import '../../components/modals/delete-modal.js';
-import '../../components/drawers/create-resource-drawer.js';
+import '../../components/virtualization/network-form-drawer';
 import type { Tab } from '../../components/tabs/tab-group.js';
 import type { Column } from '../../components/tables/resource-table.js';
 import type { ActionItem } from '../../components/ui/action-dropdown.js';
 import type { DeleteItem } from '../../components/modals/delete-modal.js';
+import type { NetworkFormData } from '../../components/virtualization/network-form-drawer';
 import { virtualizationAPI } from '../../services/virtualization-api';
+import { notificationActions } from '../../stores/notifications';
 import type { VirtualNetwork as BaseVirtualNetwork } from '../../types/virtualization';
 import { $virtualizationEnabled, $virtualizationDisabledMessage } from '../../stores/virtualization';
 import { VirtualizationDisabledError } from '../../utils/api-errors';
@@ -42,15 +44,34 @@ export class VirtualizationNetworks extends LitElement {
   @state() private loading = false;
   @state() private error: string | null = null;
   @state() private activeTab = 'all';
+
+  // Detail drawer state
   @state() private showDetailDrawer = false;
   @state() private selectedNetwork: VirtualNetwork | null = null;
   @state() private isLoadingDetail = false;
+  @state() private isClosingDetailDrawer = false;
+  @state() private detailActiveTab: 'overview' | 'dhcp' | 'ports' = 'overview';
+  @state() private dhcpLeases: any[] = [];
+  @state() private dhcpLeasesCount = 0;
+  @state() private dhcpLeasesLoading = false;
+  @state() private dhcpLeasesError: string | null = null;
+  @state() private networkPorts: any[] = [];
+  @state() private networkPortsCount = 0;
+  @state() private networkPortsLoading = false;
+  @state() private networkPortsError: string | null = null;
+
+  // Delete modal state
   @state() private showDeleteModal = false;
   @state() private itemToDelete: DeleteItem | null = null;
   @state() private isDeleting = false;
+
+  // Create / edit drawer state
   @state() private showCreateDrawer = false;
-  @state() private createResourceValue = '';
+  @state() private showEditDrawer = false;
   @state() private isCreating = false;
+  @state() private isUpdating = false;
+  @state() private editingNetworkForm: NetworkFormData | null = null;
+  @state() private editingNetworkName: string | null = null;
 
   static override styles = css`
     :host {
@@ -142,12 +163,16 @@ export class VirtualizationNetworks extends LitElement {
       right: 0;
       width: 50%;
       height: 100%;
-      background: var(--vscode-editor-background, #1e1e1e);
+      background: var(--vscode-editor-background, var(--vscode-bg-light));
       border-left: 1px solid var(--vscode-widget-border, #454545);
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
       z-index: 1001;
       overflow-y: auto;
       animation: slideIn 0.3s ease-out;
+    }
+
+    .drawer.closing {
+      animation: slideOut 0.3s ease-in;
     }
 
     @media (max-width: 1024px) {
@@ -171,13 +196,22 @@ export class VirtualizationNetworks extends LitElement {
       }
     }
 
+    @keyframes slideOut {
+      from {
+        transform: translateX(0);
+      }
+      to {
+        transform: translateX(100%);
+      }
+    }
+
     .drawer-header {
       padding: 20px 24px;
       border-bottom: 1px solid var(--vscode-editorWidget-border, #464647);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      background: var(--vscode-editor-background, var(--vscode-bg-light));
       position: sticky;
       top: 0;
       z-index: 10;
@@ -201,7 +235,7 @@ export class VirtualizationNetworks extends LitElement {
       display: flex;
       justify-content: flex-end;
       gap: 12px;
-      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      background: var(--vscode-editor-background, var(--vscode-bg-light));
       position: sticky;
       bottom: 0;
       z-index: 10;
@@ -255,7 +289,7 @@ export class VirtualizationNetworks extends LitElement {
     }
 
     .detail-item:not(:last-child) {
-      border-bottom: 1px solid var(--vscode-widget-border, rgba(255, 255, 255, 0.1));
+      border-bottom: 1px solid var(--vscode-widget-border, rgba(0, 0, 0, 0.1));
     }
 
     .detail-key {
@@ -297,27 +331,27 @@ export class VirtualizationNetworks extends LitElement {
     }
 
     .badge-active {
-      background: rgba(115, 201, 145, 0.2);
-      color: #73c991;
-      border: 1px solid rgba(115, 201, 145, 0.3);
+      background: var(--vscode-testing-runAction, rgba(115, 201, 145, 0.2));
+      color: var(--vscode-button-foreground, #ffffff);
+      border: 1px solid var(--vscode-testing-runAction, rgba(115, 201, 145, 0.3));
     }
 
     .badge-inactive {
-      background: rgba(161, 38, 13, 0.2);
-      color: #ff8c66;
-      border: 1px solid rgba(161, 38, 13, 0.3);
+      background: var(--vscode-inputValidation-errorBackground, rgba(161, 38, 13, 0.2));
+      color: var(--vscode-inputValidation-errorForeground, #ff8c66);
+      border: 1px solid var(--vscode-inputValidation-errorBorder, rgba(161, 38, 13, 0.3));
     }
 
     .badge-enabled {
-      background: rgba(56, 138, 52, 0.2);
-      color: #73c991;
-      border: 1px solid rgba(56, 138, 52, 0.3);
+      background: var(--vscode-testing-runAction, rgba(56, 138, 52, 0.2));
+      color: var(--vscode-button-foreground, #ffffff);
+      border: 1px solid var(--vscode-testing-runAction, rgba(56, 138, 52, 0.3));
     }
 
     .badge-disabled {
-      background: rgba(161, 38, 13, 0.2);
-      color: #ff8c66;
-      border: 1px solid rgba(161, 38, 13, 0.3);
+      background: var(--vscode-inputValidation-warningBackground, rgba(161, 38, 13, 0.2));
+      color: var(--vscode-inputValidation-warningForeground, #ff8c66);
+      border: 1px solid var(--vscode-inputValidation-warningBorder, rgba(161, 38, 13, 0.3));
     }
 
     .dhcp-hosts-list {
@@ -332,11 +366,53 @@ export class VirtualizationNetworks extends LitElement {
       display: flex;
       gap: 20px;
       font-size: 12px;
-      border-bottom: 1px solid var(--vscode-widget-border, rgba(255, 255, 255, 0.05));
+      border-bottom: 1px solid var(--vscode-widget-border, rgba(0, 0, 0, 0.05));
     }
 
     .dhcp-host-item:last-child {
       border-bottom: none;
+    }
+
+    .detail-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+    }
+
+    .detail-tab {
+      padding: 6px 12px;
+      border: none;
+      background: transparent;
+      color: var(--vscode-foreground, #cccccc);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      border-bottom: 2px solid transparent;
+    }
+
+    .detail-tab.active {
+      border-bottom-color: var(--vscode-button-background, #0e639c);
+      color: var(--vscode-button-foreground, #ffffff);
+    }
+
+    .detail-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+
+    .detail-table th,
+    .detail-table td {
+      border: 1px solid var(--vscode-widget-border, #454545);
+      padding: 4px 6px;
+      text-align: left;
+    }
+
+    .detail-table th {
+      background: var(--vscode-editor-background, var(--vscode-bg-light));
+      font-weight: 500;
     }
 
     .dhcp-host-item span {
@@ -351,7 +427,7 @@ export class VirtualizationNetworks extends LitElement {
     }
 
     .raw-data {
-      background: var(--vscode-editor-background, #1e1e1e);
+      background: var(--vscode-editor-background, var(--vscode-bg-light));
       border: 1px solid var(--vscode-editorWidget-border, #464647);
       border-radius: 4px;
       padding: 12px;
@@ -468,23 +544,23 @@ export class VirtualizationNetworks extends LitElement {
 
     try {
       // Use the virtualizationAPI service which handles authentication and response structure
-      const response = await virtualizationAPI.listNetworks();
+      const { networks } = await virtualizationAPI.listNetworks();
 
-      console.log('Networks API response:', response); // Debug log
+      console.log('Networks API response:', networks); // Debug log
 
       // Map the response to match our local interface structure
-      this.networks = (response || []).map(net => ({
+      this.networks = (networks || []).map(net => ({
         name: net.name || 'Unnamed Network',
         uuid: net.uuid || '',
         state: net.state,
-        bridge: net.bridge || '',
+        bridge: (net as any).bridge || '',
         mode: (net as any).mode || '',
         ip_range: {
-          address: (net as any).ip_range?.address || net.ip || '',
-          netmask: (net as any).ip_range?.netmask || net.netmask || ''
+          address: (net as any).ip_range?.address || (net as any).ip || '',
+          netmask: (net as any).ip_range?.netmask || (net as any).netmask || ''
         },
-        autostart: net.autostart || false,
-        persistent: (net as any).persistent !== undefined ? (net as any).persistent : true
+        autostart: (net as any).autostart || false,
+        persistent: (net as any).persistent !== undefined ? (net as any).persistent : true,
       }));
     } catch (error) {
       console.error('Failed to load networks:', error);
@@ -514,24 +590,15 @@ export class VirtualizationNetworks extends LitElement {
   private getActions(network: VirtualNetwork): ActionItem[] {
     const actions: ActionItem[] = [
       { label: 'View Details', action: 'view' },
-      { label: 'View DHCP Leases', action: 'dhcp-leases' }
     ];
 
-    if (network.state === 'active') {
-      actions.push(
-        { label: 'Stop', action: 'stop' },
-        { label: 'Restart', action: 'restart' }
-      );
-    } else {
-      actions.push(
-        { label: 'Start', action: 'start' }
-      );
+    if (network.state !== 'active') {
+      actions.push({ label: 'Start', action: 'start' });
     }
 
     actions.push(
       { label: 'Edit', action: 'edit' },
-      { label: 'Clone', action: 'clone' },
-      { label: 'Delete', action: 'delete', danger: true }
+      { label: 'Delete', action: 'delete', danger: true },
     );
 
     return actions;
@@ -616,6 +683,13 @@ export class VirtualizationNetworks extends LitElement {
     this.showDetailDrawer = true;
     this.isLoadingDetail = true;
     this.selectedNetwork = network;
+    this.detailActiveTab = 'overview';
+    this.dhcpLeases = [];
+    this.dhcpLeasesCount = 0;
+    this.dhcpLeasesError = null;
+    this.networkPorts = [];
+    this.networkPortsCount = 0;
+    this.networkPortsError = null;
 
     console.log('Opening detail drawer for network:', network); // Debug log
 
@@ -642,26 +716,139 @@ export class VirtualizationNetworks extends LitElement {
         dhcp: detailedNetwork.dhcp,
         forward: detailedNetwork.forward
       } as VirtualNetwork & { dhcp?: any; forward?: any };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch network details:', error);
-      if (!(error instanceof VirtualizationDisabledError)) {
-        this.error = error instanceof Error ? error.message : 'Failed to load network details';
+      if (error instanceof VirtualizationDisabledError) {
+        this.error = error.message;
+        this.closeDetailDrawer();
+        return;
       }
-      // Keep the basic network info even if detailed fetch fails
+      const message = this.mapNetworkErrorToMessage(error, 'Failed to load network details');
+      notificationActions.addNotification({
+        type: 'error',
+        title: 'Failed to load network details',
+        message,
+      });
+      if (error?.code === 'NETWORK_NOT_FOUND') {
+        this.networks = this.networks.filter(n => n.name !== network.name);
+        this.closeDetailDrawer();
+      }
+      // Keep the basic network info even if detailed fetch fails (for non-fatal errors)
     } finally {
       this.isLoadingDetail = false;
     }
   }
 
   private closeDetailDrawer() {
-    this.showDetailDrawer = false;
-    this.selectedNetwork = null;
-    this.isLoadingDetail = false;
+    if (!this.showDetailDrawer && !this.selectedNetwork) {
+      return;
+    }
+    this.isClosingDetailDrawer = true;
+    setTimeout(() => {
+      this.showDetailDrawer = false;
+      this.selectedNetwork = null;
+      this.isLoadingDetail = false;
+      this.detailActiveTab = 'overview';
+      this.dhcpLeases = [];
+      this.dhcpLeasesCount = 0;
+      this.dhcpLeasesError = null;
+      this.networkPorts = [];
+      this.networkPortsCount = 0;
+      this.networkPortsError = null;
+      this.isClosingDetailDrawer = false;
+    }, 300);
   }
 
-  private viewDHCPLeases(network: VirtualNetwork) {
-    console.log('Viewing DHCP leases for:', network.name);
-    // Would open DHCP leases dialog
+  private async setDetailTab(tab: 'overview' | 'dhcp' | 'ports') {
+    this.detailActiveTab = tab;
+    const name = this.selectedNetwork?.name;
+    if (!name) return;
+
+    try {
+      if (tab === 'dhcp') {
+        if (this.dhcpLeasesLoading || this.dhcpLeases.length > 0 || this.dhcpLeasesError) return;
+        await this.loadDhcpLeases(name);
+      } else if (tab === 'ports') {
+        if (this.networkPortsLoading || this.networkPorts.length > 0 || this.networkPortsError) return;
+        await this.loadNetworkPorts(name);
+      }
+    } catch (error) {
+      console.error('Failed to change detail tab:', error);
+    }
+  }
+
+  private async loadDhcpLeases(name: string) {
+    this.dhcpLeasesLoading = true;
+    this.dhcpLeasesError = null;
+
+    try {
+      const result = await virtualizationAPI.getNetworkDHCPLeases(name);
+      this.dhcpLeases = result.leases || [];
+      this.dhcpLeasesCount = result.count ?? this.dhcpLeases.length;
+    } catch (error: any) {
+      console.error('Failed to load DHCP leases:', error);
+      if (error instanceof VirtualizationDisabledError) {
+        this.error = error.message;
+        this.closeDetailDrawer();
+        return;
+      }
+      const message = this.mapNetworkErrorToMessage(error, 'Failed to load DHCP leases');
+      const code = error?.code;
+      if (code === 'NETWORK_NOT_FOUND') {
+        this.dhcpLeasesError = message;
+        this.networks = this.networks.filter(n => n.name !== name);
+        this.closeDetailDrawer();
+      } else {
+        this.dhcpLeasesError = message;
+      }
+      notificationActions.addNotification({
+        type: 'error',
+        title: 'Failed to load DHCP leases',
+        message,
+      });
+    } finally {
+      this.dhcpLeasesLoading = false;
+    }
+  }
+
+  private async loadNetworkPorts(name: string) {
+    this.networkPortsLoading = true;
+    this.networkPortsError = null;
+
+    try {
+      const result = await virtualizationAPI.getNetworkPorts(name);
+      this.networkPorts = result.ports || [];
+      this.networkPortsCount = result.count ?? this.networkPorts.length;
+    } catch (error: any) {
+      console.error('Failed to load network ports:', error);
+      if (error instanceof VirtualizationDisabledError) {
+        this.error = error.message;
+        this.closeDetailDrawer();
+        return;
+      }
+      const message = this.mapNetworkErrorToMessage(error, 'Failed to load network ports');
+      const code = error?.code;
+      if (code === 'NETWORK_NOT_FOUND') {
+        this.networkPortsError = message;
+        this.networks = this.networks.filter(n => n.name !== name);
+        this.closeDetailDrawer();
+      } else {
+        this.networkPortsError = message;
+      }
+      notificationActions.addNotification({
+        type: 'error',
+        title: 'Failed to load network ports',
+        message,
+      });
+    } finally {
+      this.networkPortsLoading = false;
+    }
+  }
+
+  private async viewDHCPLeases(network: VirtualNetwork) {
+    // Open details on the DHCP tab and load leases
+    await this.viewNetworkDetail(network);
+    await this.setDetailTab('dhcp');
   }
 
   private async changeNetworkState(network: VirtualNetwork, action: string) {
@@ -681,20 +868,87 @@ export class VirtualizationNetworks extends LitElement {
       }
       // Reload data after state change
       await this.loadData();
-    } catch (error) {
+      const verb =
+        action === 'start' ? 'started' : action === 'stop' ? 'stopped' : 'restarted';
+      notificationActions.addNotification({
+        type: 'success',
+        title: `Network ${verb}`,
+        message: `Virtual network ${network.name} was ${verb} successfully`,
+      });
+    } catch (error: any) {
       console.error(`Failed to ${action} network:`, error);
-      this.error = error instanceof Error ? error.message : `Failed to ${action} network`;
+      if (error instanceof VirtualizationDisabledError) {
+        this.error = error.message;
+        return;
+      }
+      const message = this.mapNetworkErrorToMessage(error, `Failed to ${action} network`);
+      this.error = message;
+      notificationActions.addNotification({
+        type: 'error',
+        title: `Failed to ${action} network`,
+        message,
+      });
     }
   }
 
   private cloneNetwork(network: VirtualNetwork) {
     console.log('Cloning network:', network.name);
-    // Would open clone dialog
+    // TODO: Implement clone dialog if backend supports it
   }
 
-  private editNetwork(network: VirtualNetwork) {
-    console.log('Editing network:', network.name);
-    // Would open edit dialog
+  private async editNetwork(network: VirtualNetwork) {
+    this.isUpdating = false;
+    this.editingNetworkName = network.name;
+
+    try {
+      // Fetch latest details to populate the form (including DHCP/IP range)
+      const detailedNetwork = await virtualizationAPI.getNetwork(network.name);
+
+      const ipRange = (detailedNetwork as any).ip_range || {
+        address: (detailedNetwork as any).ip || '',
+        netmask: (detailedNetwork as any).netmask || '',
+      };
+      const dhcp = (detailedNetwork as any).dhcp || {};
+
+      const formData: NetworkFormData = {
+        name: detailedNetwork.name || network.name,
+        mode: ((detailedNetwork as any).mode || 'nat') as any,
+        bridge: (detailedNetwork as any).bridge || '',
+        ipAddress: ipRange.address || '',
+        netmask: ipRange.netmask || '',
+        dhcpStart: dhcp.start || '',
+        dhcpEnd: dhcp.end || '',
+        autostart: detailedNetwork.autostart ?? network.autostart,
+        hosts: Array.isArray(dhcp.hosts)
+          ? dhcp.hosts.map((host: any) => ({
+              mac: host.mac || '',
+              ip: host.ip || '',
+              name: host.name || '',
+            }))
+          : [],
+      };
+
+      this.editingNetworkForm = formData;
+      this.showEditDrawer = true;
+    } catch (error: any) {
+      console.error('Failed to load network for editing:', error);
+      if (error instanceof VirtualizationDisabledError) {
+        this.error = error.message;
+      } else {
+        const message = this.mapNetworkErrorToMessage(error, 'Failed to load network for editing');
+        this.error = message;
+        notificationActions.addNotification({
+          type: 'error',
+          title: 'Failed to load network for editing',
+          message,
+        });
+        if (error?.code === 'NETWORK_NOT_FOUND') {
+          this.networks = this.networks.filter(n => n.name !== network.name);
+        }
+      }
+      this.editingNetworkForm = null;
+      this.editingNetworkName = null;
+    }
   }
 
   private deleteNetwork(network: VirtualNetwork) {
@@ -725,12 +979,25 @@ export class VirtualizationNetworks extends LitElement {
 
         // Reload the data after successful deletion
         await this.loadData();
+        notificationActions.addNotification({
+          type: 'success',
+          title: 'Network deleted',
+          message: `Virtual network ${networkToDelete.name} was deleted successfully`,
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to delete network:', error);
-      if (!(error instanceof VirtualizationDisabledError)) {
-        this.error = error instanceof Error ? error.message : 'Failed to delete network';
+      if (error instanceof VirtualizationDisabledError) {
+        this.error = error.message;
+        return;
       }
+      const message = this.mapNetworkErrorToMessage(error, 'Failed to delete network');
+      this.error = message;
+      notificationActions.addNotification({
+        type: 'error',
+        title: 'Failed to delete network',
+        message,
+      });
     } finally {
       this.isDeleting = false;
       this.showDeleteModal = false;
@@ -739,17 +1006,8 @@ export class VirtualizationNetworks extends LitElement {
   }
 
   private handleCreateNew() {
-    this.createResourceValue = JSON.stringify({
-      name: 'new-network',
-      bridge: 'virbr99',
-      mode: 'nat',
-      ip_range: {
-        address: '192.168.99.0',
-        netmask: '255.255.255.0'
-      },
-      autostart: false,
-      persistent: true
-    }, null, 2);
+    this.editingNetworkForm = null;
+    this.editingNetworkName = null;
     this.showCreateDrawer = true;
   }
 
@@ -757,40 +1015,164 @@ export class VirtualizationNetworks extends LitElement {
     this.searchQuery = e.detail.value;
   }
 
-  private async handleCreateResource(event: CustomEvent) {
+  private mapNetworkErrorToMessage(error: any, fallback: string): string {
+    const code = error?.code;
+    const message = error instanceof Error ? error.message : fallback;
+
+    switch (code) {
+      case 'INVALID_NETWORK_REQUEST':
+      case 'INVALID_REQUEST':
+        return 'The network configuration is invalid. Please review the form fields.';
+      case 'NETWORK_NOT_FOUND':
+        return 'The network was not found. It may have been deleted or renamed.';
+      case 'CREATE_NETWORK_FAILED':
+        return message || 'Failed to create virtual network.';
+      case 'UPDATE_NETWORK_FAILED':
+        return message || 'Failed to update virtual network.';
+      case 'DELETE_NETWORK_FAILED':
+        return message || 'Failed to delete virtual network.';
+      default:
+        return message || fallback;
+    }
+  }
+
+  private buildCreatePayload(formData: NetworkFormData) {
+    const payload: any = {
+      name: formData.name.trim(),
+      mode: formData.mode,
+      autostart: formData.autostart,
+    };
+
+    if (formData.mode === 'bridge' && formData.bridge.trim()) {
+      payload.bridge = formData.bridge.trim();
+    }
+
+    if (formData.ipAddress && formData.netmask) {
+      payload.ip_range = {
+        address: formData.ipAddress,
+        netmask: formData.netmask,
+      };
+    }
+
+    if (formData.dhcpStart && formData.dhcpEnd) {
+      payload.dhcp = {
+        start: formData.dhcpStart,
+        end: formData.dhcpEnd,
+      } as any;
+
+      if (formData.hosts.length > 0) {
+        (payload.dhcp as any).hosts = formData.hosts.map(host => ({
+          mac: host.mac,
+          ip: host.ip,
+          name: host.name || undefined,
+        }));
+      }
+    }
+
+    return payload;
+  }
+
+  private buildUpdatePayload(formData: NetworkFormData) {
+    const payload: any = {
+      autostart: formData.autostart,
+      mode: formData.mode,
+    };
+
+    if (formData.mode === 'bridge' && formData.bridge.trim()) {
+      payload.bridge = formData.bridge.trim();
+    }
+
+    if (formData.ipAddress && formData.netmask) {
+      payload.ip_range = {
+        address: formData.ipAddress,
+        netmask: formData.netmask,
+      };
+    }
+
+    if (formData.dhcpStart && formData.dhcpEnd) {
+      payload.dhcp = {
+        start: formData.dhcpStart,
+        end: formData.dhcpEnd,
+      } as any;
+
+      if (formData.hosts.length > 0) {
+        (payload.dhcp as any).hosts = formData.hosts.map(host => ({
+          mac: host.mac,
+          ip: host.ip,
+          name: host.name || undefined,
+        }));
+      }
+    }
+
+    return payload;
+  }
+
+  private async handleCreateSave(event: CustomEvent<{ formData: NetworkFormData }>) {
     this.isCreating = true;
 
     try {
-      const networkConfig = JSON.parse(event.detail.value);
-
-      // Transform the config to match the API expected format
-      const apiConfig = {
-        name: networkConfig.name,
-        type: 'bridge' as const,  // Default type
-        state: 'inactive' as const,
-        bridge: networkConfig.bridge,
-        ip: networkConfig.ip_range?.address,
-        netmask: networkConfig.ip_range?.netmask,
-        autostart: networkConfig.autostart
-      };
-
-      await virtualizationAPI.createNetwork(apiConfig);
-
-      // Reload the data after successful creation
+      const payload = this.buildCreatePayload(event.detail.formData);
+      await virtualizationAPI.createNetwork(payload);
       await this.loadData();
-
       this.showCreateDrawer = false;
-      this.createResourceValue = '';
-    } catch (error) {
+      notificationActions.addNotification({
+        type: 'success',
+        title: 'Network created',
+        message: `Virtual network ${payload.name} was created successfully`,
+      });
+    } catch (error: any) {
       console.error('Failed to create network:', error);
-      if (!(error instanceof VirtualizationDisabledError)) {
-        this.error = error instanceof Error ? error.message : 'Failed to create network';
+      if (error instanceof VirtualizationDisabledError) {
+        this.error = error.message;
+        return;
       }
+      const message = this.mapNetworkErrorToMessage(error, 'Failed to create network');
+      this.error = message;
+      notificationActions.addNotification({
+        type: 'error',
+        title: 'Failed to create network',
+        message,
+      });
     } finally {
       this.isCreating = false;
     }
   }
 
+  private async handleEditSave(event: CustomEvent<{ formData: NetworkFormData }>) {
+    if (!this.editingNetworkName) return;
+
+    this.isUpdating = true;
+
+    try {
+      const payload = this.buildUpdatePayload(event.detail.formData);
+      await virtualizationAPI.updateNetwork(this.editingNetworkName, payload);
+      await this.loadData();
+      this.showEditDrawer = false;
+      this.editingNetworkForm = null;
+      const updatedName = this.editingNetworkName;
+      this.editingNetworkName = null;
+      notificationActions.addNotification({
+        type: 'success',
+        title: 'Network updated',
+        message: `Virtual network ${updatedName} was updated successfully`,
+      });
+    } catch (error: any) {
+      console.error('Failed to update network:', error);
+      if (error instanceof VirtualizationDisabledError) {
+        this.error = error.message;
+        return;
+      }
+      const message = this.mapNetworkErrorToMessage(error, 'Failed to update network');
+      this.error = message;
+      notificationActions.addNotification({
+        type: 'error',
+        title: 'Failed to update network',
+        message,
+      });
+    } finally {
+      this.isUpdating = false;
+    }
+  }
 
   private renderNetworkMode(mode: string) {
     if (!mode) return html`<span>-</span>`;
@@ -807,7 +1189,7 @@ export class VirtualizationNetworks extends LitElement {
     const extendedNetwork = network as any;
 
     return html`
-      <div class="drawer">
+      <div class="drawer ${this.isClosingDetailDrawer ? 'closing' : ''}">
         <div class="drawer-header">
           <h2 class="drawer-title">${network.name}</h2>
           <button class="close-btn" @click=${this.closeDetailDrawer}>✕</button>
@@ -818,231 +1200,247 @@ export class VirtualizationNetworks extends LitElement {
             <loading-state message="Loading network details..."></loading-state>
           ` : html`
             <div class="network-details-content">
-              <div class="detail-sections">
-                <!-- Basic Information -->
-                <div class="detail-section">
-                  <h3>Basic Information</h3>
-                  
-                  <div class="detail-item">
-                    <strong class="detail-key">Name:</strong>
-                    <span class="detail-value">${network.name}</span>
-                  </div>
-                  
-                  <div class="detail-item">
-                    <strong class="detail-key">UUID:</strong>
-                    <span class="detail-value monospace">${network.uuid || 'Not available'}</span>
-                  </div>
-                  
-                  <div class="detail-item">
-                    <strong class="detail-key">State:</strong>
-                    <span class="detail-value">
-                      <span class="badge-inline ${network.state === 'active' ? 'badge-active' : 'badge-inactive'}">
-                        ${network.state === 'active' ? '●' : '○'} ${network.state}
-                      </span>
-                    </span>
-                  </div>
-                  
-                  <div class="detail-item">
-                    <strong class="detail-key">Network Mode:</strong>
-                    <span class="detail-value">${this.renderNetworkMode(network.mode)}</span>
-                  </div>
-                  
-                  <div class="detail-item">
-                    <strong class="detail-key">Bridge Interface:</strong>
-                    <span class="detail-value monospace">${network.bridge || 'Not configured'}</span>
-                  </div>
-                  
-                  <div class="detail-item">
-                    <strong class="detail-key">Autostart:</strong>
-                    <span class="detail-value">
-                      <span class="badge-inline ${network.autostart ? 'badge-enabled' : 'badge-disabled'}">
-                        ${network.autostart ? 'Enabled' : 'Disabled'}
-                      </span>
-                    </span>
-                  </div>
-                  
-                  <div class="detail-item">
-                    <strong class="detail-key">Persistent:</strong>
-                    <span class="detail-value">
-                      <span class="badge-inline ${network.persistent ? 'badge-enabled' : 'badge-disabled'}">
-                        ${network.persistent ? 'Yes' : 'No'}
-                      </span>
-                    </span>
-                  </div>
-                </div>
+              <div class="detail-tabs">
+                <button
+                  class="detail-tab ${this.detailActiveTab === 'overview' ? 'active' : ''}"
+                  @click=${() => this.setDetailTab('overview')}
+                >
+                  Overview
+                </button>
+                <button
+                  class="detail-tab ${this.detailActiveTab === 'dhcp' ? 'active' : ''}"
+                  @click=${() => this.setDetailTab('dhcp')}
+                >
+                  DHCP Leases
+                </button>
+                <button
+                  class="detail-tab ${this.detailActiveTab === 'ports' ? 'active' : ''}"
+                  @click=${() => this.setDetailTab('ports')}
+                >
+                  Ports
+                </button>
+              </div>
 
-                <!-- IP Configuration -->
-                <div class="detail-section">
-                  <h3>IP Configuration</h3>
-                  
-                  <div class="detail-item">
-                    <strong class="detail-key">Network Address:</strong>
-                    <span class="detail-value monospace">${network.ip_range.address || 'Not configured'}</span>
-                  </div>
-                  
-                  <div class="detail-item">
-                    <strong class="detail-key">Netmask:</strong>
-                    <span class="detail-value monospace">${network.ip_range.netmask || 'Not configured'}</span>
-                  </div>
-                  
-                  <div class="detail-item">
-                    <strong class="detail-key">CIDR Notation:</strong>
-                    <span class="detail-value monospace">${this.formatIPRange(network)}</span>
-                  </div>
-                  
-                  ${network.ip_range.address && network.ip_range.netmask ? html`
-                    <div class="detail-item">
-                      <strong class="detail-key">Broadcast Address:</strong>
-                      <span class="detail-value monospace">${this.calculateBroadcast(network.ip_range.address, network.ip_range.netmask)}</span>
-                    </div>
-                  ` : ''}
-                </div>
-                
-                <!-- DHCP Configuration -->
-                ${extendedNetwork.dhcp ? html`
-                  <div class="detail-section">
-                    <h3>DHCP Configuration</h3>
-                    
-                    <div class="detail-item">
-                      <strong class="detail-key">DHCP Status:</strong>
-                      <span class="detail-value">
-                        <span class="badge-inline ${extendedNetwork.dhcp?.enabled ? 'badge-enabled' : 'badge-disabled'}">
-                          ${extendedNetwork.dhcp?.enabled ? 'Enabled' : 'Disabled'}
-                        </span>
-                      </span>
-                    </div>
-                    
-                    ${extendedNetwork.dhcp?.start && extendedNetwork.dhcp?.end ? html`
+              ${this.detailActiveTab === 'overview'
+                ? html`<div class="detail-sections">
+                    <!-- Basic Information -->
+                    <div class="detail-section">
+                      <h3>Basic Information</h3>
+                      
                       <div class="detail-item">
-                        <strong class="detail-key">DHCP Range:</strong>
-                        <span class="detail-value monospace">
-                          ${extendedNetwork.dhcp.start} - ${extendedNetwork.dhcp.end}
+                        <strong class="detail-key">Name:</strong>
+                        <span class="detail-value">${network.name}</span>
+                      </div>
+                      
+                      <div class="detail-item">
+                        <strong class="detail-key">UUID:</strong>
+                        <span class="detail-value monospace">${network.uuid || 'Not available'}</span>
+                      </div>
+                      
+                      <div class="detail-item">
+                        <strong class="detail-key">State:</strong>
+                        <span class="detail-value">
+                          <span class="badge-inline ${network.state === 'active' ? 'badge-active' : 'badge-inactive'}">
+                            ${network.state === 'active' ? '●' : '○'} ${network.state}
+                          </span>
                         </span>
                       </div>
                       
                       <div class="detail-item">
-                        <strong class="detail-key">Pool Size:</strong>
+                        <strong class="detail-key">Network Mode:</strong>
+                        <span class="detail-value">${this.renderNetworkMode(network.mode)}</span>
+                      </div>
+                      
+                      <div class="detail-item">
+                        <strong class="detail-key">Bridge Interface:</strong>
+                        <span class="detail-value monospace">${network.bridge || 'Not configured'}</span>
+                      </div>
+                      
+                      <div class="detail-item">
+                        <strong class="detail-key">Autostart:</strong>
                         <span class="detail-value">
-                          ${this.calculatePoolSize(extendedNetwork.dhcp.start, extendedNetwork.dhcp.end)} addresses
+                          <span class="badge-inline ${network.autostart ? 'badge-enabled' : 'badge-disabled'}">
+                            ${network.autostart ? 'Enabled' : 'Disabled'}
+                          </span>
                         </span>
                       </div>
-                    ` : ''}
-                    
-                    ${extendedNetwork.dhcp?.hosts && extendedNetwork.dhcp.hosts.length > 0 ? html`
-                      <div class="detail-item nested">
-                        <strong class="detail-key">Static Leases:</strong>
-                        <div class="dhcp-hosts-list">
-                          ${extendedNetwork.dhcp.hosts.map((host: any) => html`
-                            <div class="dhcp-host-item">
-                              <span><strong>MAC:</strong> ${host.mac}</span>
-                              <span><strong>IP:</strong> ${host.ip}</span>
-                              <span><strong>Name:</strong> ${host.name || 'N/A'}</span>
-                            </div>
-                          `)}
-                        </div>
-                      </div>
-                    ` : ''}
-                  </div>
-                ` : ''}
-                
-                <!-- Forward Configuration -->
-                ${extendedNetwork.forward ? html`
-                  <div class="detail-section">
-                    <h3>Network Forwarding</h3>
-                    
-                    <div class="detail-item">
-                      <strong class="detail-key">Forward Mode:</strong>
-                      <span class="detail-value">
-                        <span class="badge-inline badge-enabled">
-                          ${extendedNetwork.forward.mode || 'Not configured'}
+                      
+                      <div class="detail-item">
+                        <strong class="detail-key">Persistent:</strong>
+                        <span class="detail-value">
+                          <span class="badge-inline ${network.persistent ? 'badge-enabled' : 'badge-disabled'}">
+                            ${network.persistent ? 'Yes' : 'No'}
+                          </span>
                         </span>
-                      </span>
+                      </div>
                     </div>
                     
-                    ${extendedNetwork.forward?.dev ? html`
+                    <!-- IP Configuration -->
+                    <div class="detail-section">
+                      <h3>IP Configuration</h3>
+                      
                       <div class="detail-item">
-                        <strong class="detail-key">Physical Device:</strong>
-                        <span class="detail-value monospace">${extendedNetwork.forward.dev}</span>
+                        <strong class="detail-key">Network Address:</strong>
+                        <span class="detail-value monospace">${network.ip_range.address || 'Not configured'}</span>
                       </div>
-                    ` : ''}
-                    
-                    ${extendedNetwork.forward?.nat ? html`
-                      <div class="detail-item nested">
-                        <strong class="detail-key">NAT Configuration:</strong>
-                        <div class="nested-content">
-                          ${extendedNetwork.forward.nat.start ? html`
-                            <div class="detail-item">
-                              <strong class="detail-key">Port Range Start:</strong>
-                              <span class="detail-value">${extendedNetwork.forward.nat.start}</span>
-                            </div>
-                          ` : ''}
-                          ${extendedNetwork.forward.nat.end ? html`
-                            <div class="detail-item">
-                              <strong class="detail-key">Port Range End:</strong>
-                              <span class="detail-value">${extendedNetwork.forward.nat.end}</span>
-                            </div>
-                          ` : ''}
+                      
+                      <div class="detail-item">
+                        <strong class="detail-key">Netmask:</strong>
+                        <span class="detail-value monospace">${network.ip_range.netmask || 'Not configured'}</span>
+                      </div>
+                      
+                      <div class="detail-item">
+                        <strong class="detail-key">CIDR Notation:</strong>
+                        <span class="detail-value monospace">${this.formatIPRange(network)}</span>
+                      </div>
+                      
+                      ${network.ip_range.address && network.ip_range.netmask ? html`
+                        <div class="detail-item">
+                          <strong class="detail-key">Broadcast Address:</strong>
+                          <span class="detail-value monospace">${this.calculateBroadcast(network.ip_range.address, network.ip_range.netmask)}</span>
                         </div>
-                      </div>
-                    ` : ''}
-                  </div>
-                ` : ''}
-                
-                <!-- DNS Configuration if available -->
-                ${extendedNetwork.dns ? html`
-                  <div class="detail-section">
-                    <h3>DNS Configuration</h3>
+                      ` : ''}
+                    </div>
                     
-                    ${extendedNetwork.dns.forwarders && extendedNetwork.dns.forwarders.length > 0 ? html`
-                      <div class="detail-item">
-                        <strong class="detail-key">DNS Forwarders:</strong>
-                        <span class="detail-value">
-                          ${extendedNetwork.dns.forwarders.map((dns: string) => html`
-                            <span class="monospace">${dns}</span>${extendedNetwork.dns.forwarders.indexOf(dns) < extendedNetwork.dns.forwarders.length - 1 ? ', ' : ''}
-                          `)}
-                        </span>
+                    <!-- DHCP Configuration if available -->
+                    ${extendedNetwork.dhcp ? html`
+                      <div class="detail-section">
+                        <h3>DHCP Configuration</h3>
+                        
+                        <div class="detail-item">
+                          <strong class="detail-key">DHCP Status:</strong>
+                          <span class="detail-value">
+                            <span class="badge-inline ${extendedNetwork.dhcp?.enabled ? 'badge-enabled' : 'badge-disabled'}">
+                              ${extendedNetwork.dhcp?.enabled ? 'Enabled' : 'Disabled'}
+                            </span>
+                          </span>
+                        </div>
+                        
+                        ${extendedNetwork.dhcp?.start && extendedNetwork.dhcp?.end ? html`
+                          <div class="detail-item">
+                            <strong class="detail-key">DHCP Range:</strong>
+                            <span class="detail-value monospace">
+                              ${extendedNetwork.dhcp.start} - ${extendedNetwork.dhcp.end}
+                            </span>
+                          </div>
+                          
+                          <div class="detail-item">
+                            <strong class="detail-key">Pool Size:</strong>
+                            <span class="detail-value">
+                              ${this.calculatePoolSize(extendedNetwork.dhcp.start, extendedNetwork.dhcp.end)} addresses
+                            </span>
+                          </div>
+                        ` : ''}
+                        
+                        ${extendedNetwork.dhcp?.hosts && extendedNetwork.dhcp.hosts.length > 0 ? html`
+                          <div class="detail-item nested">
+                            <strong class="detail-key">Static Leases:</strong>
+                            <div class="nested-content">
+                              <div class="dhcp-hosts-list">
+                                ${extendedNetwork.dhcp.hosts.map((host: any) => html`
+                                  <div class="dhcp-host-item">
+                                    <span><strong>MAC:</strong> <span class="monospace">${host.mac}</span></span>
+                                    <span><strong>IP:</strong> <span class="monospace">${host.ip}</span></span>
+                                    ${host.name ? html`<span><strong>Name:</strong> ${host.name}</span>` : ''}
+                                  </div>
+                                `)}
+                              </div>
+                            </div>
+                          </div>
+                        ` : ''}
                       </div>
                     ` : ''}
                     
-                    ${extendedNetwork.dns.domain ? html`
-                      <div class="detail-item">
-                        <strong class="detail-key">Domain:</strong>
-                        <span class="detail-value monospace">${extendedNetwork.dns.domain}</span>
+                    <!-- Network Forwarding if available -->
+                    ${extendedNetwork.forward ? html`
+                      <div class="detail-section">
+                        <h3>Network Forwarding</h3>
+                        
+                        <div class="detail-item">
+                          <strong class="detail-key">Forward Mode:</strong>
+                          <span class="detail-value">
+                            <span class="badge-inline">${extendedNetwork.forward.mode || 'Not configured'}</span>
+                          </span>
+                        </div>
+                        
+                        ${extendedNetwork.forward.dev ? html`
+                          <div class="detail-item">
+                            <strong class="detail-key">Physical Device:</strong>
+                            <span class="detail-value monospace">${extendedNetwork.forward.dev}</span>
+                          </div>
+                        ` : ''}
+                        
+                        ${extendedNetwork.forward.nat ? html`
+                          <div class="detail-item nested">
+                            <strong class="detail-key">NAT Configuration:</strong>
+                            <div class="nested-content">
+                              ${extendedNetwork.forward.nat.start ? html`
+                                <div class="detail-item">
+                                  <strong class="detail-key">Port Range Start:</strong>
+                                  <span class="detail-value">${extendedNetwork.forward.nat.start}</span>
+                                </div>
+                              ` : ''}
+                              ${extendedNetwork.forward.nat.end ? html`
+                                <div class="detail-item">
+                                  <strong class="detail-key">Port Range End:</strong>
+                                  <span class="detail-value">${extendedNetwork.forward.nat.end}</span>
+                                </div>
+                              ` : ''}
+                            </div>
+                          </div>
+                        ` : ''}
                       </div>
                     ` : ''}
-                  </div>
-                ` : ''}
-                
-                <!-- Additional Metadata -->
-                ${extendedNetwork.metadata ? html`
-                  <div class="detail-section">
-                    <h3>Metadata</h3>
                     
-                    ${extendedNetwork.metadata.created ? html`
-                      <div class="detail-item">
-                        <strong class="detail-key">Created:</strong>
-                        <span class="detail-value">${new Date(extendedNetwork.metadata.created).toLocaleString()}</span>
+                    <!-- DNS Configuration if available -->
+                    ${extendedNetwork.dns ? html`
+                      <div class="detail-section">
+                        <h3>DNS Configuration</h3>
+                        
+                        ${extendedNetwork.dns.forwarders && extendedNetwork.dns.forwarders.length > 0 ? html`
+                          <div class="detail-item">
+                            <strong class="detail-key">DNS Forwarders:</strong>
+                            <span class="detail-value">
+                              ${extendedNetwork.dns.forwarders.map((dns: string) => html`
+                                <span class="monospace">${dns}</span>${extendedNetwork.dns.forwarders.indexOf(dns) < extendedNetwork.dns.forwarders.length - 1 ? ', ' : ''}
+                              `)}
+                            </span>
+                          </div>
+                        ` : ''}
+                        
+                        ${extendedNetwork.dns.domain ? html`
+                          <div class="detail-item">
+                            <strong class="detail-key">Domain:</strong>
+                            <span class="detail-value monospace">${extendedNetwork.dns.domain}</span>
+                          </div>
+                        ` : ''}
                       </div>
                     ` : ''}
                     
-                    ${extendedNetwork.metadata.modified ? html`
-                      <div class="detail-item">
-                        <strong class="detail-key">Last Modified:</strong>
-                        <span class="detail-value">${new Date(extendedNetwork.metadata.modified).toLocaleString()}</span>
+                    <!-- Additional Metadata -->
+                    ${extendedNetwork.metadata ? html`
+                      <div class="detail-section">
+                        <h3>Metadata</h3>
+                        
+                        ${extendedNetwork.metadata.created ? html`
+                          <div class="detail-item">
+                            <strong class="detail-key">Created:</strong>
+                            <span class="detail-value">${new Date(extendedNetwork.metadata.created).toLocaleString()}</span>
+                          </div>
+                        ` : ''}
+                        
+                        ${extendedNetwork.metadata.modified ? html`
+                          <div class="detail-item">
+                            <strong class="detail-key">Last Modified:</strong>
+                            <span class="detail-value">${new Date(extendedNetwork.metadata.modified).toLocaleString()}</span>
+                          </div>
+                        ` : ''}
                       </div>
                     ` : ''}
-                  </div>
-                ` : ''}
-                
-                <!-- Raw Data -->
-                <div class="detail-section">
-                  <h3>Raw Data</h3>
-                  <details>
-                    <summary>View raw network configuration</summary>
-                    <pre class="raw-data">${JSON.stringify(network, null, 2)}</pre>
-                  </details>
-                </div>
-              </div>
+                  </div>`
+                : this.detailActiveTab === 'dhcp'
+                  ? this.renderDhcpLeasesTab()
+                  : this.renderPortsTab()}
             </div>
           `}
         </div>
@@ -1078,6 +1476,118 @@ export class VirtualizationNetworks extends LitElement {
         </div>
       </div>
     `;
+  }
+
+  private renderDhcpLeasesTab() {
+    if (this.dhcpLeasesLoading) {
+      return html`<loading-state message="Loading DHCP leases..."></loading-state>`;
+    }
+
+    if (this.dhcpLeasesError) {
+      return html`<div class="detail-sections">
+        <div class="detail-section">
+          <h3>DHCP Leases</h3>
+          <div class="error-text">${this.dhcpLeasesError}</div>
+        </div>
+      </div>`;
+    }
+
+    if (this.dhcpLeases.length === 0) {
+      return html`<div class="detail-sections">
+        <div class="detail-section">
+          <h3>DHCP Leases</h3>
+          <p class="hint">No active DHCP leases for this network.</p>
+        </div>
+      </div>`;
+    }
+
+    return html`<div class="detail-sections">
+      <div class="detail-section">
+        <h3>DHCP Leases (${this.dhcpLeasesCount})</h3>
+        <table class="detail-table">
+          <thead>
+            <tr>
+              <th>Interface</th>
+              <th>MAC</th>
+              <th>IP Address</th>
+              <th>Prefix</th>
+              <th>Type</th>
+              <th>Hostname</th>
+              <th>Expiry</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${this.dhcpLeases.map((lease: any) => html`<tr>
+              <td>${lease.iface || lease.interface || '-'}</td>
+              <td class="monospace">${lease.mac || '-'}</td>
+              <td class="monospace">${lease.ip_address || lease.ip || '-'}</td>
+              <td>${lease.prefix ?? '-'}</td>
+              <td>${lease.type || '-'}</td>
+              <td>${lease.hostname || '-'}</td>
+              <td>${lease.expiry_time ? new Date(lease.expiry_time).toLocaleString() : '-'}</td>
+            </tr>`)}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }
+
+  private renderPortsTab() {
+    if (this.networkPortsLoading) {
+      return html`<loading-state message="Loading attached ports..."></loading-state>`;
+    }
+
+    if (this.networkPortsError) {
+      return html`<div class="detail-sections">
+        <div class="detail-section">
+          <h3>Attached Ports</h3>
+          <div class="error-text">${this.networkPortsError}</div>
+        </div>
+      </div>`;
+    }
+
+    if (this.networkPorts.length === 0) {
+      return html`<div class="detail-sections">
+        <div class="detail-section">
+          <h3>Attached Ports</h3>
+          <p class="hint">No virtual machines are currently attached to this network.</p>
+        </div>
+      </div>`;
+    }
+
+    return html`<div class="detail-sections">
+      <div class="detail-section">
+        <h3>Attached Ports (${this.networkPortsCount})</h3>
+        <table class="detail-table">
+          <thead>
+            <tr>
+              <th>VM Name</th>
+              <th>VM UUID</th>
+              <th>State</th>
+              <th>Interface</th>
+              <th>MAC</th>
+              <th>Model</th>
+              <th>Type</th>
+              <th>Target</th>
+              <th>IP Address</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${this.networkPorts.map((port: any) => html`<tr>
+              <td>${port.vm_name || '-'}</td>
+              <td class="monospace">${port.vm_uuid || '-'}</td>
+              <td>${port.vm_state || port.state || '-'}</td>
+              <td>${port.interface || port.iface || '-'}</td>
+              <td class="monospace">${port.mac || '-'}</td>
+              <td>${port.model || '-'}</td>
+              <td>${port.type || '-'}</td>
+              <td>${port.target || '-'}</td>
+              <td class="monospace">${port.ip_address || port.ip || '-'}</td>
+            </tr>`)}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
   }
 
   // Helper method to calculate broadcast address
@@ -1198,7 +1708,7 @@ export class VirtualizationNetworks extends LitElement {
         </div>
 
         <!-- Detail Drawer -->
-        ${this.showDetailDrawer ? this.renderDetailDrawer() : ''}
+        ${(this.showDetailDrawer || this.isClosingDetailDrawer) ? this.renderDetailDrawer() : ''}
 
         ${this.showDeleteModal && this.itemToDelete ? html`
           <delete-modal
@@ -1213,16 +1723,29 @@ export class VirtualizationNetworks extends LitElement {
           ></delete-modal>
         ` : ''}
 
-        ${this.showCreateDrawer ? html`
-          <create-resource-drawer
-            .open=${this.showCreateDrawer}
-            .title=${'Create Virtual Network'}
-            .value=${this.createResourceValue}
-            .loading=${this.isCreating}
-            @save=${this.handleCreateResource}
-            @close=${() => { this.showCreateDrawer = false; this.createResourceValue = ''; }}
-          ></create-resource-drawer>
-        ` : ''}
+        <network-form-drawer
+          .show=${this.showCreateDrawer}
+          .loading=${this.isCreating}
+          .editMode=${false}
+          .networkData=${null}
+          @save=${this.handleCreateSave}
+          @close=${() => {
+            this.showCreateDrawer = false;
+          }}
+        ></network-form-drawer>
+
+        <network-form-drawer
+          .show=${this.showEditDrawer}
+          .loading=${this.isUpdating}
+          .editMode=${true}
+          .networkData=${this.editingNetworkForm}
+          @save=${this.handleEditSave}
+          @close=${() => {
+            this.showEditDrawer = false;
+            this.editingNetworkForm = null;
+            this.editingNetworkName = null;
+          }}
+        ></network-form-drawer>
       </div>
     `;
   }

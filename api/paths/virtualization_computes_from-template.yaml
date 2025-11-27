@@ -146,7 +146,7 @@ post:
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/VMCreateResponse.yaml
+            $ref: ../components/schemas/VM.yaml
     '400':
       description: |
         Bad request - validation error.
@@ -157,12 +157,25 @@ post:
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/ErrorResponse.yaml
+            type: object
+            properties:
+              error:
+                type: string
     '404':
       description: Template not found
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/ErrorResponse.yaml
+            type: object
+            properties:
+              error:
+                type: string
     '500':
-      $ref: ../components/responses/InternalError.yaml
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string

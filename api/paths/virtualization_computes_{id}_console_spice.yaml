@@ -19,41 +19,11 @@ get:
       content:
         application/json:
           schema:
-            type: object
-            properties:
-              type:
-                type: string
-                enum: [spice]
-                description: Console type (always 'spice')
-              host:
-                type: string
-                description: SPICE server host address
-              port:
-                type: integer
-                description: SPICE server port
-              tls_port:
-                type: integer
-                description: SPICE TLS port (if configured)
-              password:
-                type: string
-                description: SPICE password (if configured)
-              websocket_url:
-                type: string
-                description: WebSocket URL for SPICE console
-              autoport:
-                type: boolean
-                description: Whether port is automatically assigned
-              listen:
-                type: string
-                description: Listen address configuration
-              channels:
-                type: array
-                description: Available SPICE channels
-                items:
-                  type: string
-                  enum: [main, display, inputs, cursor, playback, record, smartcard, usbredir]
-            example:
-              type: "spice"
+            $ref: ../components/schemas/ConsoleInfoResponse.yaml
+          example:
+            status: "success"
+            data:
+              type: spice
               host: "0.0.0.0"
               port: 5901
               websocket_url: "/virtualization/computes/test-vm/console/spice/ws"

@@ -24,129 +24,15 @@ post:
     content:
       application/json:
         schema:
-          $ref: ../components/schemas/VMCreateRequest.yaml
+          $ref: ../components/schemas/VMCreateRequestEnhancedV2.yaml
   responses:
     '201':
       description: Virtual machine created successfully
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/VMCreateResponse.yaml
+            $ref: ../components/schemas/VM.yaml
     '400':
       $ref: ../components/responses/BadRequest.yaml
     '500':
       $ref: ../components/responses/InternalError.yaml
-put:
-      summary: Update VM with enhanced configuration
-      description: |
-        Updates an existing virtual machine with enhanced configuration options.
-        This endpoint accepts the same payload structure as the create enhanced endpoint,
-        allowing comprehensive VM updates including hardware, storage, network, and device configurations.
-        
-        Some updates can be applied while the VM is running (hot-plug), while others require the VM to be stopped.
-        
-        Hot-pluggable (may work while running):
-        - Memory (if supported by hypervisor and guest)
-        - vCPUs (if supported by hypervisor and guest)
-        - Autostart settings
-        
-        Requires VM to be stopped:
-        - PCI device passthrough changes
-        - Firmware changes (UEFI/SecureBoot/TPM)
-        - Most storage configuration changes
-        
-        May require restart to take effect:
-        - Network interface changes
-        - Graphics configuration
-        - Cloud-init settings
-      tags:
-        - "Virtualization Compute"
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: VM name or UUID
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: ../components/schemas/VMCreateRequestEnhancedV2.yaml
-            examples:
-              updateMemoryAndCPU:
-                summary: Update memory and CPU
-                value:
-                  memory: 8192
-                  vcpus: 4
-                  autostart: true
-              updateStorage:
-                summary: Update storage configuration
-                value:
-                  storage:
-                    default_pool: "default"
-                    disks:
-                      - action: "attach"
-                        size: 20
-                        format: "qcow2"
-                        target: "vdb"
-              updateNetwork:
-                summary: Update network configuration  
-                value:
-                  networks:
-                    - type: "network"
-                      source: "default"
-                      model: "virtio"
-      responses:
-        '200':
-          description: VM updated successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: "success"
-                  message:
-                    type: string
-                    example: "VM 'test-vm' updated successfully"
-                  data:
-                    $ref: ../components/schemas/VMCreateResponse.yaml
-        '400':
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: ../components/responses/BadRequest.yaml
-        '404':
-          description: VM not found
-          content:
-            application/json:
-              schema:
-                $ref: ../components/responses/NotFound.yaml
-        '409':
-          description: Conflict - Operation requires VM to be stopped
-          content:
-            application/json:
-              schema:
-                $ref: ../components/responses/BadRequest.yaml
-              examples:
-                vmRunning:
-                  summary: VM must be stopped
-                  value:
-                    status: "error"
-                    error:
-                      code: "VM_RUNNING"
-                      message: "Operation requires VM to be stopped"
-                      details: "PCI device changes require VM to be stopped"
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: ../components/responses/InternalError.yaml
-

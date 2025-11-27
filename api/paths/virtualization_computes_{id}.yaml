@@ -17,7 +17,7 @@ get:
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/VMDetailResponse.yaml
+            $ref: ../components/schemas/VMDirectResponse.yaml
     '404':
       $ref: ../components/responses/NotFound.yaml
     '500':
@@ -40,18 +40,33 @@ put:
     content:
       application/json:
         schema:
-          $ref: ../components/schemas/VMUpdateRequest.yaml
+          $ref: ../components/schemas/VMCreateRequestEnhancedV2.yaml
   responses:
     '200':
       description: Virtual machine updated successfully
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/VMUpdateResponse.yaml
+            $ref: ../components/schemas/VMResponseWithMessage.yaml
     '400':
       $ref: ../components/responses/BadRequest.yaml
     '404':
       $ref: ../components/responses/NotFound.yaml
+    '409':
+      description: Conflict - Operation requires VM to be stopped
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+          examples:
+            vmRunning:
+              summary: VM must be stopped
+              value:
+                status: "error"
+                error:
+                  code: "VM_RUNNING"
+                  message: "Operation requires VM to be stopped"
+                  details: "firmware changes (UEFI/SecureBoot/TPM) require VM to be stopped"
     '500':
       $ref: ../components/responses/InternalError.yaml
 delete:
@@ -78,5 +93,20 @@ delete:
       description: Virtual machine deleted successfully
     '404':
       $ref: ../components/responses/NotFound.yaml
+    '409':
+      description: Conflict - One or more disks are still in use by other VMs
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+          examples:
+            diskInUse:
+              summary: Disk in use by other VMs
+              value:
+                status: "error"
+                error:
+                  code: "VM_DISK_IN_USE"
+                  message: "One or more disks are still in use by other virtual machines"
+                  details: "shared volume in use by other VMs: /var/lib/libvirt/images/shared.qcow2 (used by [db-vm backup-vm])"
     '500':
       $ref: ../components/responses/InternalError.yaml

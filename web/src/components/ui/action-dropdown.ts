@@ -87,10 +87,10 @@ export class ActionDropdown extends LitElement {
       position: fixed;
       top: ${this.dropdownPosition.top}px;
       left: ${this.dropdownPosition.left}px;
-      background: #252526;
-      border: 1px solid #464647;
+      background: var(--vscode-menu-background, var(--vscode-editorWidget-background, var(--vscode-bg-light)));
+      border: 1px solid var(--vscode-menu-border, #464647);
       border-radius: 4px;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
       min-width: 160px;
       z-index: 99999;
       display: block;
@@ -109,7 +109,7 @@ export class ActionDropdown extends LitElement {
           padding: 8px 16px;
           border: none;
           background: none;
-          color: ${action.danger ? '#f14c4c' : '#cccccc'};
+          color: ${action.danger ? 'var(--vscode-inputValidation-errorForeground, #f14c4c)' : 'var(--vscode-foreground, #cccccc)'};
           cursor: ${action.disabled ? 'not-allowed' : 'pointer'};
           font-size: 13px;
           opacity: ${action.disabled ? '0.5' : '1'};
@@ -131,7 +131,7 @@ export class ActionDropdown extends LitElement {
       });
       button.addEventListener('mouseenter', () => {
         if (!button.hasAttribute('disabled')) {
-          button.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+          button.style.backgroundColor = 'var(--vscode-list-hoverBackground, rgba(0, 0, 0, 0.08))';
         }
       });
       button.addEventListener('mouseleave', () => {

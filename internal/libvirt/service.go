@@ -682,12 +682,48 @@ func (s *Service) DeleteVM(ctx context.Context, nameOrUUID string, removeDisks b
 
 	// Remove disks if requested
 	if removeDisks {
-		// Get domain XML to find disk paths
-		_, err := domain.GetXMLDesc(0)
-		if err == nil {
-			// Parse and remove disk files
-			// This would require XML parsing to extract disk paths
-			// For now, we'll skip automatic disk removal
+		xmlDesc, err := domain.GetXMLDesc(0)
+		if err != nil {
+			return fmt.Errorf("failed to get domain XML for disk removal: %w", err)
+		}
+
+		paths, err := parseDomainDiskPaths(xmlDesc)
+		if err != nil {
+			return fmt.Errorf("failed to parse domain disks: %w", err)
+		}
+
+		seen := make(map[string]struct{})
+		for _, path := range paths {
+			if path == "" {
+				continue
+			}
+			if _, ok := seen[path]; ok {
+				continue
+			}
+			seen[path] = struct{}{}
+
+			usingVMs, err := s.getVMsUsingVolume(ctx, path)
+			if err != nil {
+				fmt.Printf("Warning: failed to check volume usage for %s: %v\n", path, err)
+				continue
+			}
+
+			// If more than one VM references this volume, consider it shared and report conflict
+			if len(usingVMs) > 1 {
+				return fmt.Errorf("shared volume in use by other VMs: %s (used by %v)", path, usingVMs)
+			}
+
+			vol, err := s.conn.LookupStorageVolByPath(path)
+			if err != nil {
+				fmt.Printf("Warning: storage volume for path %s not found in libvirt: %v\n", path, err)
+				continue
+			}
+
+			if err := vol.Delete(0); err != nil {
+				vol.Free()
+				return fmt.Errorf("failed to delete storage volume %s: %w", path, err)
+			}
+			vol.Free()
 		}
 	}
 
@@ -1001,57 +1037,56 @@ func (s *Service) GetVMMetrics(ctx context.Context, nameOrUUID string) (*VMMetri
 // GetConsole returns console connection information for a VM
 // parseOSMetadata parses the OS metadata from domain XML
 func (s *Service) parseOSMetadata(xmlDesc string) *OSInfoEnhanced {
-// Define structs for XML parsing
-type VaporOS struct {
-XMLName  xml.Name `xml:"os"`
-Family   string   `xml:"family"`
-Distro   string   `xml:"distro"`
-Version  string   `xml:"version"`
-Codename string   `xml:"codename"`
-Variant  string   `xml:"variant"`
-}
+	// Define structs for XML parsing
+	type VaporOS struct {
+		XMLName  xml.Name `xml:"os"`
+		Family   string   `xml:"family"`
+		Distro   string   `xml:"distro"`
+		Version  string   `xml:"version"`
+		Codename string   `xml:"codename"`
+		Variant  string   `xml:"variant"`
+	}
 
-type LibOSInfo struct {
-XMLName xml.Name `xml:"libosinfo"`
-OS      struct {
-ID string `xml:"id,attr"`
-} `xml:"os"`
-}
+	type LibOSInfo struct {
+		XMLName xml.Name `xml:"libosinfo"`
+		OS      struct {
+			ID string `xml:"id,attr"`
+		} `xml:"os"`
+	}
 
-type Metadata struct {
-XMLName   xml.Name  `xml:"metadata"`
-VaporOS   VaporOS   `xml:"http://vapor.io/xmlns/libvirt/domain/1.0 os"`
-LibOSInfo LibOSInfo `xml:"http://libosinfo.org/xmlns/libvirt/domain/1.0 libosinfo"`
-}
+	type Metadata struct {
+		XMLName   xml.Name  `xml:"metadata"`
+		VaporOS   VaporOS   `xml:"http://vapor.io/xmlns/libvirt/domain/1.0 os"`
+		LibOSInfo LibOSInfo `xml:"http://libosinfo.org/xmlns/libvirt/domain/1.0 libosinfo"`
+	}
 
-type Domain struct {
-XMLName  xml.Name `xml:"domain"`
-Metadata Metadata `xml:"metadata"`
-}
+	type Domain struct {
+		XMLName  xml.Name `xml:"domain"`
+		Metadata Metadata `xml:"metadata"`
+	}
 
-var domain Domain
-if err := xml.Unmarshal([]byte(xmlDesc), &domain); err != nil {
-// If parsing fails, return nil
-return nil
-}
+	var domain Domain
+	if err := xml.Unmarshal([]byte(xmlDesc), &domain); err != nil {
+		// If parsing fails, return nil
+		return nil
+	}
 
-// If no vapor metadata found, return nil
-if domain.Metadata.VaporOS.Family == "" && 
-   domain.Metadata.VaporOS.Distro == "" && 
-   domain.Metadata.VaporOS.Version == "" {
-return nil
-}
+	// If no vapor metadata found, return nil
+	if domain.Metadata.VaporOS.Family == "" &&
+		domain.Metadata.VaporOS.Distro == "" &&
+		domain.Metadata.VaporOS.Version == "" {
+		return nil
+	}
 
-// Return the parsed OS info
-return &OSInfoEnhanced{
-Family:   domain.Metadata.VaporOS.Family,
-Distro:   domain.Metadata.VaporOS.Distro,
-Version:  domain.Metadata.VaporOS.Version,
-Codename: domain.Metadata.VaporOS.Codename,
-Variant:  domain.Metadata.VaporOS.Variant,
+	// Return the parsed OS info
+	return &OSInfoEnhanced{
+		Family:   domain.Metadata.VaporOS.Family,
+		Distro:   domain.Metadata.VaporOS.Distro,
+		Version:  domain.Metadata.VaporOS.Version,
+		Codename: domain.Metadata.VaporOS.Codename,
+		Variant:  domain.Metadata.VaporOS.Variant,
+	}
 }
-}
-
 
 func (s *Service) domainToVM(domain *libvirt.Domain) (*VM, error) {
 	name, err := domain.GetName()
@@ -1097,18 +1132,18 @@ func (s *Service) domainToVM(domain *libvirt.Domain) (*VM, error) {
 		UpdatedAt:  time.Now(),
 	}
 
-// Parse XML for additional details including OS metadata
-xmlDesc, err := domain.GetXMLDesc(0)
-if err == nil {
-// Parse OS metadata
-vm.OSInfoDetail = s.parseOSMetadata(xmlDesc)
+	// Parse XML for additional details including OS metadata
+	xmlDesc, err := domain.GetXMLDesc(0)
+	if err == nil {
+		// Parse OS metadata
+		vm.OSInfoDetail = s.parseOSMetadata(xmlDesc)
 
-// Parse basic OS info from XML
-vm.OS = OSInfo{
-Type:         "hvm",
-Architecture: "x86_64",
-}
-}
+		// Parse basic OS info from XML
+		vm.OS = OSInfo{
+			Type:         "hvm",
+			Architecture: "x86_64",
+		}
+	}
 
 	return vm, nil
 }

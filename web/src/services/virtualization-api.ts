@@ -758,45 +758,147 @@ export class VirtualizationAPI {
   
   /**
    * List virtual networks
+   * Returns networks and total count using the standard API envelope.
    */
-  async listNetworks(): Promise<VirtualNetwork[]> {
-    const response = await apiRequest<any>('/networks');
-    
-    // Handle the wrapped response structure
+  async listNetworks(): Promise<{ networks: VirtualNetwork[]; count: number }> {
+    const response = await apiRequest<{
+      status: string;
+      data?: { networks?: VirtualNetwork[]; count?: number };
+    }>('/networks');
+
     if (response.status === 'success' && response.data) {
-      return response.data.networks || [];
+      return {
+        networks: response.data.networks || [],
+        count: response.data.count ?? (response.data.networks?.length || 0),
+      };
     }
-    
-    // Fallback for direct array response
-    if (Array.isArray(response)) {
-      return response;
+
+    // Fallbacks for legacy formats
+    const anyResponse: any = response as any;
+    if (Array.isArray(anyResponse)) {
+      return { networks: anyResponse, count: anyResponse.length };
     }
-    
-    return [];
+    if (anyResponse.networks && Array.isArray(anyResponse.networks)) {
+      return { networks: anyResponse.networks, count: anyResponse.count || anyResponse.networks.length };
+    }
+
+    return { networks: [], count: 0 };
   }
   
   /**
    * Get a specific network
+   * Be tolerant of both enveloped and plain responses.
    */
   async getNetwork(name: string): Promise<VirtualNetwork> {
-    return apiRequest<VirtualNetwork>(`/networks/${name}`);
+    const response = await apiRequest<any>(`/networks/${name}`);
+
+    if (response && typeof response === 'object') {
+      // New envelope format: { status: 'success', data: { network } }
+      if (response.status === 'success') {
+        if (response.data?.network) {
+          return response.data.network as VirtualNetwork;
+        }
+        if (response.data && !Array.isArray(response.data)) {
+          return response.data as VirtualNetwork;
+        }
+      }
+
+      // Legacy: direct VirtualNetwork object
+      if (!('status' in response)) {
+        return response as VirtualNetwork;
+      }
+    }
+
+    throw new VirtualizationAPIError('INVALID_RESPONSE', 'Invalid response format from getNetwork');
   }
   
   /**
    * Create a virtual network
    */
-  async createNetwork(config: Partial<VirtualNetwork>): Promise<VirtualNetwork> {
-    return apiRequest<VirtualNetwork>('/networks', {
+  async createNetwork(config: any): Promise<VirtualNetwork> {
+    const response = await apiRequest<{
+      status: string;
+      data?: { network?: VirtualNetwork };
+    }>('/networks', {
       method: 'POST',
       body: JSON.stringify(config),
     });
+
+    if (response.status === 'success' && response.data?.network) {
+      return response.data.network;
+    }
+
+    throw new VirtualizationAPIError('INVALID_RESPONSE', 'Invalid response format from createNetwork');
+  }
+  
+  /**
+   * Update a virtual network
+   */
+  async updateNetwork(name: string, config: any): Promise<VirtualNetwork> {
+    const response = await apiRequest<{
+      status: string;
+      data?: { network?: VirtualNetwork; message?: string };
+    }>(`/networks/${name}`, {
+      method: 'PUT',
+      body: JSON.stringify(config),
+    });
+
+    if (response.status === 'success' && response.data?.network) {
+      return response.data.network;
+    }
+
+    throw new VirtualizationAPIError('INVALID_RESPONSE', 'Invalid response format from updateNetwork');
+  }
+  
+  /**
+   * Get DHCP leases for a virtual network
+   */
+  async getNetworkDHCPLeases(
+    name: string,
+  ): Promise<{ network_name: string; leases: any[]; count: number }> {
+    const response = await apiRequest<{
+      status: string;
+      data?: { network_name?: string; leases?: any[]; count?: number };
+    }>(`/networks/${name}/dhcp-leases`);
+
+    if (response.status === 'success' && response.data) {
+      return {
+        network_name: response.data.network_name || name,
+        leases: response.data.leases || [],
+        count: response.data.count ?? (response.data.leases?.length || 0),
+      };
+    }
+
+    throw new VirtualizationAPIError('INVALID_RESPONSE', 'Invalid response format from getNetworkDHCPLeases');
+  }
+  
+  /**
+   * Get ports for a virtual network
+   */
+  async getNetworkPorts(
+    name: string,
+  ): Promise<{ network_name: string; ports: any[]; count: number }> {
+    const response = await apiRequest<{
+      status: string;
+      data?: { network_name?: string; ports?: any[]; count?: number };
+    }>(`/networks/${name}/ports`);
+
+    if (response.status === 'success' && response.data) {
+      return {
+        network_name: response.data.network_name || name,
+        ports: response.data.ports || [],
+        count: response.data.count ?? (response.data.ports?.length || 0),
+      };
+    }
+
+    throw new VirtualizationAPIError('INVALID_RESPONSE', 'Invalid response format from getNetworkPorts');
   }
   
   /**
    * Delete a virtual network
    */
-  async deleteNetwork(name: string): Promise<OperationResult> {
-    return apiRequest<OperationResult>(`/networks/${name}`, {
+  async deleteNetwork(name: string): Promise<void> {
+    await apiRequest<void>(`/networks/${name}`, {
       method: 'DELETE',
     });
   }

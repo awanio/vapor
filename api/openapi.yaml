@@ -362,8 +362,7 @@ paths:
   
   # VM endpoints
   /virtualization/computes:
-    # $ref: paths/virtualization_computes.yaml
-    $ref: paths/virtualization_computes_create-enhanced.yaml
+    $ref: paths/virtualization_computes.yaml
   /virtualization/computes/{id}:
     $ref: paths/virtualization_computes_{id}.yaml
   /virtualization/computes/{id}/action:

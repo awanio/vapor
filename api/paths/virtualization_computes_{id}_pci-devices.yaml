@@ -31,16 +31,34 @@ post:
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/PCIAttachResponse.yaml
+            type: object
+            properties:
+              message:
+                type: string
+                example: PCI device attached successfully
+              vm_id:
+                type: string
+                description: VM identifier
+                example: web-server-01
+              device_id:
+                type: string
+                description: Attached PCI device ID
+                example: pci_0000_01_00_0
     '400':
-      $ref: ../components/responses/BadRequest.yaml
-    '404':
-      $ref: ../components/responses/NotFound.yaml
-    '409':
-      description: Device already in use or IOMMU group conflict
+      description: Invalid PCI attach request
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/ErrorResponse.yaml
+            type: object
+            properties:
+              error:
+                type: string
     '500':
-      $ref: ../components/responses/InternalError.yaml
+      description: Failed to attach PCI device
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string

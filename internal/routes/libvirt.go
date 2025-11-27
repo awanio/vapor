@@ -369,6 +369,19 @@ func deleteVM(service *libvirt.Service) gin.HandlerFunc {
 				})
 				return
 			}
+
+			if strings.Contains(err.Error(), "shared volume in use") {
+				c.JSON(http.StatusConflict, gin.H{
+					"status": "error",
+					"error": gin.H{
+						"code":    "VM_DISK_IN_USE",
+						"message": "One or more disks are still in use by other virtual machines",
+						"details": err.Error(),
+					},
+				})
+				return
+			}
+
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"status": "error",
 				"error": gin.H{

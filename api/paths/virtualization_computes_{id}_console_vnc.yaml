@@ -19,32 +19,11 @@ get:
       content:
         application/json:
           schema:
-            type: object
-            properties:
-              type:
-                type: string
-                enum: [vnc]
-                description: Console type (always 'vnc')
-              host:
-                type: string
-                description: VNC server host address
-              port:
-                type: integer
-                description: VNC server port
-              password:
-                type: string
-                description: VNC password (if configured)
-              websocket_url:
-                type: string
-                description: WebSocket URL for VNC console
-              autoport:
-                type: boolean
-                description: Whether port is automatically assigned
-              listen:
-                type: string
-                description: Listen address configuration
-            example:
-              type: "vnc"
+            $ref: ../components/schemas/ConsoleInfoResponse.yaml
+          example:
+            status: "success"
+            data:
+              type: vnc
               host: "0.0.0.0"
               port: 5900
               websocket_url: "/virtualization/computes/test-vm/console/vnc/ws"

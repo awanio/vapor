@@ -1,0 +1,6 @@
+type: object
+properties:
+  vnc:
+    $ref: ./ConsoleInfo.yaml
+  spice:
+    $ref: ./ConsoleInfo.yaml
