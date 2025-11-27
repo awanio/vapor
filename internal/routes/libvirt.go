@@ -38,6 +38,7 @@ func LibvirtRoutes(r *gin.RouterGroup, authService *auth.EnhancedService, servic
 		vmGroup.GET("/:id/consoles", getAvailableConsoles(service)) // Get all available console types
 		vmGroup.GET("/:id/console/vnc", getVNCConsole(service))     // Get VNC console info
 		vmGroup.GET("/:id/console/spice", getSPICEConsole(service)) // Get SPICE console info
+		vmGroup.GET("/:id/console/stats", getConsoleStats(service)) // Get console connection stats
 		// VM Management
 		// vmGroup.GET("/:id", getVM(service))                                          // Get VM details
 		// vmGroup.POST("", createVM(service))                                          // Create new VM
@@ -62,6 +63,7 @@ func LibvirtRoutes(r *gin.RouterGroup, authService *auth.EnhancedService, servic
 		vmGroup.POST("/:id/snapshots", createSnapshot(service))                      // Create snapshot
 		vmGroup.POST("/:id/snapshots/:snapshot/revert", revertSnapshot(service))     // Revert to snapshot
 		vmGroup.DELETE("/:id/snapshots/:snapshot", deleteSnapshot(service))          // Delete snapshot
+		vmGroup.GET("/:id/snapshots/:snapshot", getSnapshotDetail(service))          // Get snapshot details
 
 		// Backups
 		vmGroup.GET("/:id/backups", listBackups(service))            // List VM backups
@@ -2455,4 +2457,48 @@ func LibvirtUnavailableRoutes(api *gin.RouterGroup) {
 
 	// Match any virtualization-related path and method under this API group
 	virtualization.Any("/*any", handler)
+}
+
+func getConsoleStats(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+
+		// Get console stats from service
+		stats := service.GetConsoleStats()
+
+		// Add VM-specific context
+		stats["vm_id"] = id
+
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data":   stats,
+		})
+	}
+}
+
+func getSnapshotDetail(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		snapshotName := c.Param("snapshot")
+
+		snapshot, err := service.GetSnapshotDetail(c.Request.Context(), id, snapshotName)
+		if err != nil {
+			msg := err.Error()
+
+			if strings.Contains(msg, "not found") {
+				sendComputeError(c, "SNAPSHOT_NOT_FOUND", "Snapshot not found", err, http.StatusNotFound)
+				return
+			}
+
+			sendComputeError(c, "GET_SNAPSHOT_FAILED", "Failed to get snapshot details", err, http.StatusInternalServerError)
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data": gin.H{
+				"snapshot": snapshot,
+			},
+		})
+	}
 }

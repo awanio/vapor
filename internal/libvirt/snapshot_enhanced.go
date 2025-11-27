@@ -523,3 +523,25 @@ func (s *Service) ValidateSnapshotRequest(ctx context.Context, nameOrUUID string
 
 	return nil
 }
+
+// GetSnapshotDetail retrieves detailed information about a specific snapshot
+func (s *Service) GetSnapshotDetail(ctx context.Context, nameOrUUID string, snapshotName string) (*VMSnapshot, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	domain, err := s.lookupDomain(nameOrUUID)
+	if err != nil {
+		return nil, err
+	}
+	defer domain.Free()
+
+	// Lookup the specific snapshot
+	snapshot, err := domain.SnapshotLookupByName(snapshotName, 0)
+	if err != nil {
+		return nil, fmt.Errorf("snapshot not found: %w", err)
+	}
+	defer snapshot.Free()
+
+	// Convert to VMSnapshot
+	return s.snapshotToVMSnapshot(snapshot)
+}
