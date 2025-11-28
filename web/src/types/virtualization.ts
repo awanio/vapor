@@ -356,3 +356,219 @@ export interface OperationResult {
   message?: string;
   error?: VirtualizationError;
 }
+
+// ============ Hotplug Types ============
+
+export type HotplugResourceType = 'cpu' | 'memory' | 'disk' | 'network' | 'usb';
+export type HotplugOperation = 'add' | 'remove';
+
+export interface HotplugRequest {
+  operation: HotplugOperation;
+  resource_type: HotplugResourceType;
+  config: HotplugCPUConfig | HotplugMemoryConfig | HotplugDiskConfig | HotplugNetworkConfig | HotplugUSBConfig;
+}
+
+export interface HotplugCPUConfig {
+  count: number;
+}
+
+export interface HotplugMemoryConfig {
+  size_mb: number;
+}
+
+export interface HotplugDiskConfig {
+  path?: string;
+  pool?: string;
+  size_gb?: number;
+  format?: 'qcow2' | 'raw';
+  bus?: 'virtio' | 'scsi' | 'sata';
+  target?: string; // For remove operation
+}
+
+export interface HotplugNetworkConfig {
+  network?: string;
+  bridge?: string;
+  model?: 'virtio' | 'e1000' | 'rtl8139';
+  mac?: string; // For remove operation
+}
+
+export interface HotplugUSBConfig {
+  vendor_id?: string;
+  product_id?: string;
+  bus?: string;
+  device?: string;
+}
+
+export interface HotplugResponse {
+  success: boolean;
+  message: string;
+  resource_type: HotplugResourceType;
+  operation: HotplugOperation;
+  details?: Record<string, any>;
+}
+
+// ============ Clone Types ============
+
+export interface VMCloneRequest {
+  source_vm: string;
+  name: string;
+  full_clone?: boolean;
+  snapshots?: boolean;
+  storage_pool?: string;
+}
+
+export interface VMCloneResponse {
+  status: string;
+  data: VirtualMachine;
+}
+
+// ============ Migration Types ============
+
+export interface MigrationRequest {
+  destination_uri: string;
+  live?: boolean;
+  persistent?: boolean;
+  undefine_source?: boolean;
+  suspend?: boolean;
+  copy_storage?: 'all' | 'none' | 'incremental';
+  bandwidth_limit?: number; // MB/s
+  timeout?: number; // seconds
+}
+
+export interface MigrationResponse {
+  status: string;
+  message: string;
+  migration_id?: string;
+  vm_id: string;
+  destination: string;
+}
+
+export interface MigrationStatus {
+  status: 'idle' | 'preparing' | 'migrating' | 'post-copy' | 'completed' | 'failed' | 'cancelled';
+  progress?: number;
+  data_total?: number;
+  data_processed?: number;
+  data_remaining?: number;
+  memory_total?: number;
+  memory_processed?: number;
+  memory_remaining?: number;
+  disk_total?: number;
+  disk_processed?: number;
+  disk_remaining?: number;
+  downtime?: number;
+  setup_time?: number;
+  error?: string;
+}
+
+// ============ Enhanced Console Types ============
+
+export interface ConsoleConnection {
+  type: 'vnc' | 'spice';
+  host?: string;
+  port?: number;
+  token: string;
+  ws_path?: string;
+  expires_at?: string;
+  tls_enabled?: boolean;
+  password?: string;
+}
+
+export interface ConsolesResponse {
+  vm_name: string;
+  vm_uuid: string;
+  available: ('vnc' | 'spice')[];
+  consoles: {
+    vnc?: ConsoleConnection;
+    spice?: ConsoleConnection;
+  };
+  preferred?: 'vnc' | 'spice';
+}
+
+// ============ Snapshot Request Types ============
+
+export type SnapshotType = 'internal' | 'external' | 'internal-memory';
+
+export interface VMSnapshotRequest {
+  name: string;
+  description?: string;
+  type?: SnapshotType;
+  include_memory?: boolean;
+  quiesce?: boolean;
+  force_external?: boolean;
+}
+
+export interface VMSnapshotResponse {
+  status: string;
+  data: {
+    snapshot: VMSnapshot;
+    warnings?: string[];
+  };
+}
+
+export interface SnapshotCapabilities {
+  internal_supported: boolean;
+  external_supported: boolean;
+  memory_supported: boolean;
+  quiesce_supported: boolean;
+  disk_formats: { device: string; format: string }[];
+  warnings?: string[];
+}
+
+// ============ Backup Request Types ============
+
+export type BackupType = 'full' | 'incremental' | 'differential';
+export type CompressionType = 'none' | 'gzip' | 'bzip2' | 'xz' | 'zstd';
+export type EncryptionType = 'none' | 'aes-256' | 'aes-128';
+
+export interface VMBackupRequest {
+  name: string;
+  description?: string;
+  type?: BackupType;
+  compression?: CompressionType;
+  encryption?: EncryptionType;
+  include_memory?: boolean;
+  destination?: string;
+  retention_days?: number;
+}
+
+export interface VMBackupResponse {
+  status: string;
+  data: {
+    backup: VMBackup;
+    estimated_size?: number;
+    estimated_time?: number;
+  };
+}
+
+// ============ Enhanced VM Metrics Types ============
+
+export interface VMMetricsEnhanced {
+  uuid: string;
+  timestamp: string;
+  cpu_time: number;
+  cpu_usage: number;
+  memory_used: number;
+  memory_usage: number;
+  disk_read: number;
+  disk_write: number;
+  network_rx: number;
+  network_tx: number;
+  // Per-disk metrics
+  disks?: {
+    device: string;
+    read_bytes: number;
+    write_bytes: number;
+    read_requests: number;
+    write_requests: number;
+  }[];
+  // Per-interface metrics
+  interfaces?: {
+    name: string;
+    rx_bytes: number;
+    tx_bytes: number;
+    rx_packets: number;
+    tx_packets: number;
+    rx_errors: number;
+    tx_errors: number;
+  }[];
+}

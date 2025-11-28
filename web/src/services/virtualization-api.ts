@@ -4,6 +4,7 @@
  */
 
 import { getApiUrl } from '../config';
+import { mapVMError } from '../utils/error-mapper';
 import type {
   VirtualMachine,
   StoragePool,
@@ -23,6 +24,21 @@ import type {
   Volume,
   DiskConfig,
   ISOUploadProgress,
+  HotplugRequest,
+  HotplugResponse,
+  VMCloneRequest,
+  VMCloneResponse,
+  MigrationRequest,
+  MigrationResponse,
+  MigrationStatus,
+  ConsolesResponse,
+  ConsoleConnection,
+  VMSnapshotRequest,
+  VMSnapshotResponse,
+  SnapshotCapabilities,
+  VMBackupRequest,
+  VMBackupResponse,
+  VMMetricsEnhanced,
 } from '../types/virtualization';
 import { isVirtualizationDisabled, VirtualizationDisabledError, type ApiErrorBody } from '../utils/api-errors';
 import { $virtualizationEnabled, $virtualizationDisabledMessage } from '../stores/virtualization';
@@ -36,6 +52,8 @@ const API_BASE = '/virtualization';
  * API Error class
  */
 export class VirtualizationAPIError extends Error {
+  public userMessage: string;
+  
   constructor(
     public code: string,
     message: string,
@@ -43,6 +61,8 @@ export class VirtualizationAPIError extends Error {
   ) {
     super(message);
     this.name = 'VirtualizationAPIError';
+    // Map error code to user-friendly message
+    this.userMessage = mapVMError({ code, message });
   }
 }
 
@@ -169,7 +189,7 @@ export class VirtualizationAPI {
     
     const query = queryParams.toString();
     return apiRequest<ListResponse<VirtualMachine>>(
-      `/virtualmachines${query ? `?${query}` : ''}`
+      `/computes${query ? `?${query}` : ''}`
     );
   }
   
@@ -177,14 +197,14 @@ export class VirtualizationAPI {
    * Get a specific virtual machine
    */
   async getVM(id: string): Promise<VirtualMachine> {
-    return apiRequest<VirtualMachine>(`/virtualmachines/${id}`);
+    return apiRequest<VirtualMachine>(`/computes/${id}`);
   }
   
   /**
    * Create a new virtual machine (basic)
    */
   async createVM(config: Partial<VirtualMachine>): Promise<VirtualMachine> {
-    return apiRequest<VirtualMachine>('/virtualmachines', {
+    return apiRequest<VirtualMachine>('/computes', {
       method: 'POST',
       body: JSON.stringify(config),
     });
@@ -194,7 +214,7 @@ export class VirtualizationAPI {
    * Create a new virtual machine (enhanced with wizard data)
    */
   async createVMEnhanced(config: VMCreateRequest): Promise<VMCreateResponse> {
-    return apiRequest<VMCreateResponse>('/virtualmachines', {
+    return apiRequest<VMCreateResponse>('/computes', {
       method: 'POST',
       body: JSON.stringify(config),
     });
@@ -204,7 +224,7 @@ export class VirtualizationAPI {
    * Update a virtual machine
    */
   async updateVM(id: string, updates: Partial<VirtualMachine>): Promise<VirtualMachine> {
-    return apiRequest<VirtualMachine>(`/virtualmachines/${id}`, {
+    return apiRequest<VirtualMachine>(`/computes/${id}`, {
       method: 'PUT',
       body: JSON.stringify(updates),
     });
@@ -215,7 +235,7 @@ export class VirtualizationAPI {
    */
   async deleteVM(id: string, force = false): Promise<OperationResult> {
     return apiRequest<OperationResult>(
-      `/virtualmachines/${id}${force ? '?force=true' : ''}`,
+      `/computes/${id}${force ? '?force=true' : ''}`,
       { method: 'DELETE' }
     );
   }
@@ -224,7 +244,7 @@ export class VirtualizationAPI {
    * Clone a virtual machine
    */
   async cloneVM(id: string, name: string): Promise<VirtualMachine> {
-    return apiRequest<VirtualMachine>(`/virtualmachines/${id}/clone`, {
+    return apiRequest<VirtualMachine>(`/computes/${id}/clone`, {
       method: 'POST',
       body: JSON.stringify({ name }),
     });
@@ -236,7 +256,7 @@ export class VirtualizationAPI {
    * Start a virtual machine
    */
   async startVM(id: string): Promise<OperationResult> {
-    return apiRequest<OperationResult>(`/virtualmachines/${id}/start`, {
+    return apiRequest<OperationResult>(`/computes/${id}/start`, {
       method: 'POST',
     });
   }
@@ -245,7 +265,7 @@ export class VirtualizationAPI {
    * Stop a virtual machine
    */
   async stopVM(id: string, force = false): Promise<OperationResult> {
-    return apiRequest<OperationResult>(`/virtualmachines/${id}/stop`, {
+    return apiRequest<OperationResult>(`/computes/${id}/stop`, {
       method: 'POST',
       body: JSON.stringify({ force }),
     });
@@ -255,7 +275,7 @@ export class VirtualizationAPI {
    * Restart a virtual machine
    */
   async restartVM(id: string, force = false): Promise<OperationResult> {
-    return apiRequest<OperationResult>(`/virtualmachines/${id}/restart`, {
+    return apiRequest<OperationResult>(`/computes/${id}/restart`, {
       method: 'POST',
       body: JSON.stringify({ force }),
     });
@@ -265,7 +285,7 @@ export class VirtualizationAPI {
    * Pause a virtual machine
    */
   async pauseVM(id: string): Promise<OperationResult> {
-    return apiRequest<OperationResult>(`/virtualmachines/${id}/pause`, {
+    return apiRequest<OperationResult>(`/computes/${id}/pause`, {
       method: 'POST',
     });
   }
@@ -274,7 +294,7 @@ export class VirtualizationAPI {
    * Resume a paused virtual machine
    */
   async resumeVM(id: string): Promise<OperationResult> {
-    return apiRequest<OperationResult>(`/virtualmachines/${id}/resume`, {
+    return apiRequest<OperationResult>(`/computes/${id}/resume`, {
       method: 'POST',
     });
   }
@@ -283,7 +303,7 @@ export class VirtualizationAPI {
    * Reset a virtual machine
    */
   async resetVM(id: string): Promise<OperationResult> {
-    return apiRequest<OperationResult>(`/virtualmachines/${id}/reset`, {
+    return apiRequest<OperationResult>(`/computes/${id}/reset`, {
       method: 'POST',
     });
   }
@@ -292,7 +312,7 @@ export class VirtualizationAPI {
    * Execute a VM action
    */
   async executeVMAction(id: string, action: VMAction): Promise<OperationResult> {
-    return apiRequest<OperationResult>(`/virtualmachines/${id}/action`, {
+    return apiRequest<OperationResult>(`/computes/${id}/action`, {
       method: 'POST',
       body: JSON.stringify(action),
     });
@@ -304,14 +324,14 @@ export class VirtualizationAPI {
    * Get console connection information
    */
   async getConsoleInfo(id: string): Promise<ConsoleInfo> {
-    return apiRequest<ConsoleInfo>(`/virtualmachines/${id}/console`);
+    return apiRequest<ConsoleInfo>(`/computes/${id}/console`);
   }
   
   /**
    * Create a console session
    */
   async createConsoleSession(id: string): Promise<ConsoleInfo> {
-    return apiRequest<ConsoleInfo>(`/virtualmachines/${id}/console/session`, {
+    return apiRequest<ConsoleInfo>(`/computes/${id}/console/session`, {
       method: 'POST',
     });
   }
@@ -322,14 +342,14 @@ export class VirtualizationAPI {
    * List VM templates
    */
   async listTemplates(): Promise<VMTemplate[]> {
-    return apiRequest<VMTemplate[]>('/virtualmachines/templates');
+    return apiRequest<VMTemplate[]>('/computes/templates');
   }
   
   /**
    * Get a specific template
    */
   async getTemplate(id: string): Promise<VMTemplate> {
-    return apiRequest<VMTemplate>(`/virtualmachines/templates/${id}`);
+    return apiRequest<VMTemplate>(`/computes/templates/${id}`);
   }
   
   /**
@@ -339,7 +359,7 @@ export class VirtualizationAPI {
     templateId: string,
     config: Partial<VMCreateRequest>
   ): Promise<VirtualMachine> {
-    return apiRequest<VirtualMachine>('/virtualmachines/from-template', {
+    return apiRequest<VirtualMachine>('/computes/from-template', {
       method: 'POST',
       body: JSON.stringify({ templateId, ...config }),
     });
@@ -349,7 +369,7 @@ export class VirtualizationAPI {
    * Create a template from existing VM
    */
   async createTemplate(vmId: string, name: string, description?: string): Promise<VMTemplate> {
-    return apiRequest<VMTemplate>(`/virtualmachines/${vmId}/template`, {
+    return apiRequest<VMTemplate>(`/computes/${vmId}/template`, {
       method: 'POST',
       body: JSON.stringify({ name, description }),
     });
@@ -361,7 +381,7 @@ export class VirtualizationAPI {
    * List VM snapshots
    */
   async listSnapshots(vmId: string): Promise<VMSnapshot[]> {
-    return apiRequest<VMSnapshot[]>(`/virtualmachines/${vmId}/snapshots`);
+    return apiRequest<VMSnapshot[]>(`/computes/${vmId}/snapshots`);
   }
   
   /**
@@ -372,7 +392,7 @@ export class VirtualizationAPI {
     name: string,
     description?: string
   ): Promise<VMSnapshot> {
-    return apiRequest<VMSnapshot>(`/virtualmachines/${vmId}/snapshots`, {
+    return apiRequest<VMSnapshot>(`/computes/${vmId}/snapshots`, {
       method: 'POST',
       body: JSON.stringify({ name, description }),
     });
@@ -383,7 +403,7 @@ export class VirtualizationAPI {
    */
   async revertToSnapshot(vmId: string, snapshotId: string): Promise<OperationResult> {
     return apiRequest<OperationResult>(
-      `/virtualmachines/${vmId}/snapshots/${snapshotId}/revert`,
+      `/computes/${vmId}/snapshots/${snapshotId}/revert`,
       { method: 'POST' }
     );
   }
@@ -393,7 +413,7 @@ export class VirtualizationAPI {
    */
   async deleteSnapshot(vmId: string, snapshotId: string): Promise<OperationResult> {
     return apiRequest<OperationResult>(
-      `/virtualmachines/${vmId}/snapshots/${snapshotId}`,
+      `/computes/${vmId}/snapshots/${snapshotId}`,
       { method: 'DELETE' }
     );
   }
@@ -404,14 +424,14 @@ export class VirtualizationAPI {
    * List VM backups
    */
   async listBackups(vmId: string): Promise<VMBackup[]> {
-    return apiRequest<VMBackup[]>(`/virtualmachines/${vmId}/backups`);
+    return apiRequest<VMBackup[]>(`/computes/${vmId}/backups`);
   }
   
   /**
    * Create a backup
    */
   async createBackup(vmId: string, name: string, type: 'full' | 'incremental'): Promise<VMBackup> {
-    return apiRequest<VMBackup>(`/virtualmachines/${vmId}/backups`, {
+    return apiRequest<VMBackup>(`/computes/${vmId}/backups`, {
       method: 'POST',
       body: JSON.stringify({ name, type }),
     });
@@ -422,7 +442,7 @@ export class VirtualizationAPI {
    */
   async restoreFromBackup(vmId: string, backupId: string): Promise<OperationResult> {
     return apiRequest<OperationResult>(
-      `/virtualmachines/${vmId}/backups/${backupId}/restore`,
+      `/computes/${vmId}/backups/${backupId}/restore`,
       { method: 'POST' }
     );
   }
@@ -927,7 +947,7 @@ export class VirtualizationAPI {
    * Get VM metrics
    */
   async getVMMetrics(vmId: string, duration = '1h'): Promise<VMMetrics[]> {
-    return apiRequest<VMMetrics[]>(`/virtualmachines/${vmId}/metrics?duration=${duration}`);
+    return apiRequest<VMMetrics[]>(`/computes/${vmId}/metrics?duration=${duration}`);
   }
   
   /**
@@ -943,7 +963,7 @@ export class VirtualizationAPI {
   getMetricsWebSocketUrl(vmId: string): string {
     const token = getAuthToken();
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${protocol}//${window.location.host}${API_BASE}/virtualmachines/${vmId}/metrics/ws?token=${token}`;
+    return `${protocol}//${window.location.host}${API_BASE}/computes/${vmId}/metrics/ws?token=${token}`;
   }
   
   // ============ Disk Management ============
@@ -952,7 +972,7 @@ export class VirtualizationAPI {
    * Attach a disk to VM
    */
   async attachDisk(vmId: string, disk: DiskConfig): Promise<OperationResult> {
-    return apiRequest<OperationResult>(`/virtualmachines/${vmId}/disks/attach`, {
+    return apiRequest<OperationResult>(`/computes/${vmId}/disks/attach`, {
       method: 'POST',
       body: JSON.stringify(disk),
     });
@@ -962,7 +982,7 @@ export class VirtualizationAPI {
    * Detach a disk from VM
    */
   async detachDisk(vmId: string, device: string): Promise<OperationResult> {
-    return apiRequest<OperationResult>(`/virtualmachines/${vmId}/disks/${device}/detach`, {
+    return apiRequest<OperationResult>(`/computes/${vmId}/disks/${device}/detach`, {
       method: 'POST',
     });
   }
@@ -971,7 +991,7 @@ export class VirtualizationAPI {
    * Resize a VM disk
    */
   async resizeDisk(vmId: string, device: string, newSize: number): Promise<OperationResult> {
-    return apiRequest<OperationResult>(`/virtualmachines/${vmId}/disks/${device}/resize`, {
+    return apiRequest<OperationResult>(`/computes/${vmId}/disks/${device}/resize`, {
       method: 'POST',
       body: JSON.stringify({ size: newSize }),
     });
@@ -987,7 +1007,7 @@ export class VirtualizationAPI {
     targetHost: string,
     live = true
   ): Promise<OperationResult> {
-    return apiRequest<OperationResult>(`/virtualmachines/${vmId}/migrate`, {
+    return apiRequest<OperationResult>(`/computes/${vmId}/migrate`, {
       method: 'POST',
       body: JSON.stringify({ targetHost, live }),
     });
@@ -1001,9 +1021,151 @@ export class VirtualizationAPI {
     progress?: number;
     error?: string;
   }> {
-    return apiRequest(`/virtualmachines/${vmId}/migrate/status`);
+    return apiRequest(`/computes/${vmId}/migrate/status`);
+  }
+  
+  // ============ Enhanced API Methods with Full Types ============
+  
+  /**
+   * Get VM snapshots with full type support
+   */
+  async getSnapshots(vmId: string): Promise<VMSnapshotResponse> {
+    return apiRequest<VMSnapshotResponse>(`/computes/${vmId}/snapshots`);
+  }
+  
+  /**
+   * Create a VM snapshot
+   */
+  async createSnapshotTyped(vmId: string, request: VMSnapshotRequest): Promise<VMSnapshotResponse> {
+    return apiRequest<VMSnapshotResponse>(`/computes/${vmId}/snapshots`, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+  
+  /**
+   * Revert VM to a snapshot
+   */
+  async revertSnapshot(vmId: string, snapshotName: string): Promise<OperationResult> {
+    return apiRequest<OperationResult>(`/computes/${vmId}/snapshots/${snapshotName}/revert`, {
+      method: 'POST',
+    });
+  }
+  
+  /**
+   * Delete a VM snapshot
+   */
+  async deleteSnapshotTyped(vmId: string, snapshotName: string): Promise<OperationResult> {
+    return apiRequest<OperationResult>(`/computes/${vmId}/snapshots/${snapshotName}`, {
+      method: 'DELETE',
+    });
+  }
+  
+  /**
+   * Get snapshot capabilities for a VM
+   */
+  async getSnapshotCapabilities(vmId: string): Promise<SnapshotCapabilities> {
+    return apiRequest<SnapshotCapabilities>(`/computes/${vmId}/snapshots/capabilities`);
+  }
+  
+  /**
+   * Get VM backups with full type support
+   */
+  async getBackups(vmId: string): Promise<VMBackupResponse> {
+    return apiRequest<VMBackupResponse>(`/computes/${vmId}/backups`);
+  }
+  
+  /**
+   * Create a VM backup
+   */
+  async createBackupTyped(vmId: string, request: VMBackupRequest): Promise<VMBackupResponse> {
+    return apiRequest<VMBackupResponse>(`/computes/${vmId}/backups`, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+  
+  /**
+   * Clone a VM
+   */
+  async cloneVMTyped(vmId: string, request: VMCloneRequest): Promise<VMCloneResponse> {
+    return apiRequest<VMCloneResponse>(`/computes/${vmId}/clone`, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+  
+  /**
+   * Hot-plug device to a running VM
+   */
+  async hotplug(vmId: string, request: HotplugRequest): Promise<HotplugResponse> {
+    return apiRequest<HotplugResponse>(`/computes/${vmId}/hotplug`, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+  
+  /**
+   * Hot-unplug device from a running VM
+   */
+  async hotunplug(vmId: string, request: HotplugRequest): Promise<HotplugResponse> {
+    return apiRequest<HotplugResponse>(`/computes/${vmId}/hotunplug`, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+  
+  /**
+   * Migrate VM to another host with full type support
+   */
+  async migrateVMTyped(vmId: string, request: MigrationRequest): Promise<MigrationResponse> {
+    return apiRequest<MigrationResponse>(`/computes/${vmId}/migrate`, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+  
+  /**
+   * Get migration status with full type
+   */
+  async getMigrationStatusTyped(vmId: string): Promise<MigrationStatus> {
+    return apiRequest<MigrationStatus>(`/computes/${vmId}/migrate/status`);
+  }
+  
+  /**
+   * Cancel ongoing migration
+   */
+  async cancelMigration(vmId: string): Promise<OperationResult> {
+    return apiRequest<OperationResult>(`/computes/${vmId}/migrate/cancel`, {
+      method: 'POST',
+    });
+  }
+  
+  /**
+   * Get available consoles for a VM
+   */
+  async getConsoles(vmId: string): Promise<ConsolesResponse> {
+    return apiRequest<ConsolesResponse>(`/computes/${vmId}/consoles`);
+  }
+  
+  /**
+   * Connect to a specific console type
+   */
+  async connectConsole(vmId: string, consoleType: string): Promise<ConsoleConnection> {
+    return apiRequest<ConsoleConnection>(`/computes/${vmId}/consoles/${consoleType}/connect`, {
+      method: 'POST',
+    });
+  }
+  
+  /**
+   * Get enhanced VM metrics
+   */
+  async getVMMetricsEnhanced(vmId: string, duration = '1h'): Promise<VMMetricsEnhanced> {
+    return apiRequest<VMMetricsEnhanced>(`/computes/${vmId}/metrics?duration=${duration}&enhanced=true`);
   }
 }
+
+
 
 // Export singleton instance
 export const virtualizationAPI = new VirtualizationAPI();

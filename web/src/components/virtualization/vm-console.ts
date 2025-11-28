@@ -7,6 +7,7 @@ import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { auth } from '../../auth';
 import { getApiUrl } from '../../config';
+import { consoleActions } from '../../stores/virtualization';
 
 // Console configuration interface (kept for potential future use)
 // interface ConsoleConfig {
@@ -36,6 +37,8 @@ export class VMConsole extends LitElement {
   @state() private connectionStatus = 'Connecting...';
   @state() private scaleViewport = true;
   @state() private showVirtualKeyboard = false;
+  @state() private availableConsoles: ("vnc" | "spice")[] = [];
+  @state() private selectedConsoleType: "vnc" | "spice" = "vnc";
   
   private vncIframe: HTMLIFrameElement | null = null;
   private reconnectAttempts = 0;
@@ -376,9 +379,29 @@ export class VMConsole extends LitElement {
     }
   }
 
+  private async fetchAvailableConsoles(): Promise<void> {
+    try {
+      const info = await consoleActions.getAvailable(this.vmId);
+      // Console info stored for future use
+      this.availableConsoles = info.available || ['vnc'];
+      if (info.preferred && this.availableConsoles.includes(info.preferred)) {
+        this.selectedConsoleType = info.preferred;
+      } else if (this.availableConsoles.length > 0) {
+        this.selectedConsoleType = this.availableConsoles[0] || "vnc";
+      }
+    } catch (error) {
+      console.warn('Could not fetch available consoles, defaulting to VNC:', error);
+      this.availableConsoles = ['vnc'];
+      this.selectedConsoleType = 'vnc';
+    }
+  }
+
+
   private async initConsole() {
     if (this.vncIframe) return; // Already initialized
 
+      // Fetch available console types first
+      await this.fetchAvailableConsoles();
     try {
       // Connect to VNC via iframe
       await this.connectVNC();
@@ -592,7 +615,7 @@ export class VMConsole extends LitElement {
           <div class="console-header">
             <div class="console-title">
               <span class="console-icon">💻</span>
-              <span>Console - <span class="vm-name">${this.vmName || this.vmId}</span></span>
+              <span>Console (${this.selectedConsoleType.toUpperCase()}) - <span class="vm-name">${this.vmName || this.vmId}</span></span>
             </div>
             
             <div class="connection-status">

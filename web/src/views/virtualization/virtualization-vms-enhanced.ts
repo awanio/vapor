@@ -446,7 +446,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
 
   private getActions(vm: VirtualMachine): ActionItem[] {
     const actions: ActionItem[] = [
-      { label: 'View Details', action: 'view', icon: 'info' }
+      { label: 'View Details', action: 'view', icon: 'ℹ️' }
     ];
 
     // Normalize state to lowercase for comparison
@@ -455,34 +455,34 @@ export class VirtualizationVMsEnhanced extends LitElement {
     switch (vmState) {
       case 'running':
         actions.push(
-          { label: 'Console', action: 'console', icon: 'terminal' },
-          { label: 'Stop', action: 'stop', icon: 'stop' },
-          { label: 'Pause', action: 'pause', icon: 'pause' },
-          { label: 'Restart', action: 'restart', icon: 'refresh' }
+          { label: 'Console', action: 'console', icon: '💻' },
+          { label: 'Stop', action: 'stop', icon: '⏹️' },
+          { label: 'Pause', action: 'pause', icon: '⏸️' },
+          { label: 'Restart', action: 'restart', icon: '🔄' }
         );
         break;
       case 'stopped':
       case 'shutoff': // Handle both stopped and shutoff states
       case 'stop':    // Some systems might use 'stop' instead of 'stopped'
         actions.push(
-          { label: 'Start', action: 'start', icon: 'play' },
-          { label: 'Edit', action: 'edit', icon: 'edit' },
-          { label: 'Clone', action: 'clone', icon: 'copy' }
+          { label: 'Start', action: 'start', icon: '▶️' },
+          { label: 'Edit', action: 'edit', icon: '✏️' },
+          { label: 'Clone', action: 'clone', icon: '📋' }
         );
         // Add delete action for stopped VMs
         actions.push(
-          { label: 'Delete', action: 'delete', icon: 'trash', danger: true }
+          { label: 'Delete', action: 'delete', icon: '🗑️', danger: true }
         );
         break;
       case 'paused':
         actions.push(
-          { label: 'Resume', action: 'resume', icon: 'play' },
-          { label: 'Stop', action: 'stop', icon: 'stop' }
+          { label: 'Resume', action: 'resume', icon: '▶️' },
+          { label: 'Stop', action: 'stop', icon: '⏹️' }
         );
         break;
       case 'suspended':
         actions.push(
-          { label: 'Resume', action: 'resume', icon: 'play' }
+          { label: 'Resume', action: 'resume', icon: '▶️' }
         );
         break;
       default:
@@ -492,7 +492,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
 
     // Add snapshot action for all states
     actions.push(
-      { label: 'Snapshot', action: 'snapshot', icon: 'save' }
+      { label: 'Snapshot', action: 'snapshot', icon: '📸' }
     );
 
     return actions;

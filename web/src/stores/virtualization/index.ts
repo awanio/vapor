@@ -7,6 +7,7 @@ import { createStore } from '../utils/factory';
 import { getApiUrl } from '../../config';
 import { StoreEventType } from '../types';
 import { isVirtualizationDisabled, VirtualizationDisabledError, ApiErrorBody } from '../../utils/api-errors';
+import { mapVMError } from '../../utils/error-mapper';
 import type { 
   VirtualMachine, 
   StoragePool,
@@ -232,7 +233,7 @@ export const vmStore = {
     } catch (error) {
       const storeError = {
         code: 'FETCH_ERROR',
-        message: error instanceof Error ? error.message : 'Failed to fetch VMs',
+        message: mapVMError(error),
         timestamp: Date.now(),
       };
       baseVmStore.$error.set(storeError);
@@ -306,7 +307,7 @@ export const storagePoolStore = {
     } catch (error) {
       const storeError = {
         code: 'FETCH_ERROR',
-        message: error instanceof Error ? error.message : 'Failed to fetch storage pools',
+        message: mapVMError(error),
         timestamp: Date.now(),
       };
       baseStoragePoolStore.$error.set(storeError);
@@ -397,7 +398,7 @@ export const isoStore = {
     } catch (error) {
       const storeError = {
         code: 'FETCH_ERROR',
-        message: error instanceof Error ? error.message : 'Failed to fetch ISOs',
+        message: mapVMError(error),
         timestamp: Date.now(),
       };
       baseIsoStore.$error.set(storeError);
@@ -489,7 +490,7 @@ export const templateStore = {
     } catch (error) {
       const storeError = {
         code: 'FETCH_ERROR',
-        message: error instanceof Error ? error.message : 'Failed to fetch templates',
+        message: mapVMError(error),
         timestamp: Date.now(),
       };
       baseTemplateStore.$error.set(storeError);
@@ -603,7 +604,7 @@ export const networkStore = {
     } catch (error) {
       const storeError = {
         code: 'FETCH_ERROR',
-        message: error instanceof Error ? error.message : 'Failed to fetch networks',
+        message: mapVMError(error),
         timestamp: Date.now(),
       };
       baseNetworkStore.$error.set(storeError);
@@ -718,7 +719,7 @@ export const volumeStore = {
     } catch (error) {
       const storeError = {
         code: 'FETCH_ERROR',
-        message: error instanceof Error ? error.message : 'Failed to fetch volumes',
+        message: mapVMError(error),
         timestamp: Date.now(),
       };
       baseVolumeStore.$error.set(storeError);
@@ -1552,7 +1553,7 @@ export const vmActions = {
   
   async create(vmData: VMCreateRequest) {
     const response = await apiRequest<VirtualMachine>(
-      '/virtualmachines',
+      '/computes',
       {
         method: 'POST',
         body: JSON.stringify(vmData),
@@ -1570,8 +1571,18 @@ export const vmActions = {
     return { success: true, data: response };
   },
   
+  /**
+   * Execute a VM action using the unified action endpoint
+   */
+  async executeAction(vmId: string, action: 'start' | 'stop' | 'restart' | 'pause' | 'resume' | 'reset', force = false) {
+    await apiRequest(`/computes/${vmId}/action`, {
+      method: 'POST',
+      body: JSON.stringify({ action, force }),
+    });
+  },
+  
   async start(vmId: string) {
-    await apiRequest(`/virtualmachines/${vmId}/start`, { method: 'POST' });
+    await this.executeAction(vmId, 'start');
     
     // Update local state
     const vm = vmStore.getById(vmId);
@@ -1581,10 +1592,7 @@ export const vmActions = {
   },
   
   async stop(vmId: string, force = false) {
-    await apiRequest(`/virtualmachines/${vmId}/stop`, {
-      method: 'POST',
-      body: JSON.stringify({ force }),
-    });
+    await this.executeAction(vmId, 'stop', force);
     
     const vm = vmStore.getById(vmId);
     if (vm) {
@@ -1592,12 +1600,12 @@ export const vmActions = {
     }
   },
   
-  async restart(vmId: string) {
-    await apiRequest(`/virtualmachines/${vmId}/restart`, { method: 'POST' });
+  async restart(vmId: string, force = false) {
+    await this.executeAction(vmId, 'restart', force);
   },
   
   async pause(vmId: string) {
-    await apiRequest(`/virtualmachines/${vmId}/pause`, { method: 'POST' });
+    await this.executeAction(vmId, 'pause');
     
     const vm = vmStore.getById(vmId);
     if (vm) {
@@ -1606,7 +1614,7 @@ export const vmActions = {
   },
   
   async resume(vmId: string) {
-    await apiRequest(`/virtualmachines/${vmId}/resume`, { method: 'POST' });
+    await this.executeAction(vmId, 'resume');
     
     const vm = vmStore.getById(vmId);
     if (vm) {
@@ -1615,7 +1623,7 @@ export const vmActions = {
   },
   
   async delete(vmId: string) {
-    await apiRequest(`/virtualization/computes/${vmId}`, { method: 'DELETE' });
+    await apiRequest(`/computes/${vmId}`, { method: 'DELETE' });
     await vmStore.delete(vmId);
     
     // Clear selection if deleted VM was selected
@@ -1625,12 +1633,12 @@ export const vmActions = {
   },
   
   async getConsoleInfo(vmId: string): Promise<ConsoleInfo> {
-    return apiRequest<ConsoleInfo>(`/virtualmachines/${vmId}/console`);
+    return apiRequest<ConsoleInfo>(`/computes/${vmId}/console`);
   },
   
   async update(vmId: string, vmData: Partial<VMCreateRequest>) {
     const response = await apiRequest<VirtualMachine>(
-      `/virtualization/computes/${vmId}`,
+      `/computes/${vmId}`,
       {
         method: 'PUT',
         body: JSON.stringify(vmData),
@@ -1915,7 +1923,7 @@ export const networkActions = {
         success: false,
         error: {
           code,
-          message: error instanceof Error ? error.message : 'Failed to create network',
+          message: mapVMError(error),
         },
       };
     }
@@ -2119,6 +2127,370 @@ export async function initializeVirtualizationStores() {
     console.error('Failed to initialize virtualization stores:', error);
   }
 }
+
+
+// ============ Snapshot Actions ============
+export const snapshotActions = {
+  /**
+   * List snapshots for a VM
+   */
+  async list(vmId: string) {
+    const response = await apiRequest<{ status: string; data: { snapshots: any[] } }>(
+      `/computes/${vmId}/snapshots`
+    );
+    if (response.status === 'success' && response.data?.snapshots) {
+      return response.data.snapshots;
+    }
+    return [];
+  },
+
+  /**
+   * Create a snapshot with full options
+   */
+  async create(vmId: string, options: {
+    name: string;
+    description?: string;
+    type?: 'internal' | 'external' | 'internal-memory';
+    include_memory?: boolean;
+    quiesce?: boolean;
+  }) {
+    return apiRequest<any>(`/computes/${vmId}/snapshots`, {
+      method: 'POST',
+      body: JSON.stringify(options),
+    });
+  },
+
+  /**
+   * Get snapshot capabilities for a VM
+   */
+  async getCapabilities(vmId: string) {
+    const response = await apiRequest<{ status: string; data: any }>(
+      `/computes/${vmId}/snapshots/capabilities`
+    );
+    if (response.status === 'success' && response.data) {
+      return response.data;
+    }
+    return null;
+  },
+
+  /**
+   * Revert VM to a snapshot
+   */
+  async revert(vmId: string, snapshotName: string) {
+    return apiRequest<any>(`/computes/${vmId}/snapshots/${snapshotName}/revert`, {
+      method: 'POST',
+    });
+  },
+
+  /**
+   * Delete a snapshot
+   */
+  async delete(vmId: string, snapshotName: string) {
+    return apiRequest<void>(`/computes/${vmId}/snapshots/${snapshotName}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+// ============ Backup Actions ============
+export const backupActions = {
+  /**
+   * List backups for a VM
+   */
+  async list(vmId: string) {
+    const response = await apiRequest<{ status: string; data: { backups: any[] } }>(
+      `/computes/${vmId}/backups`
+    );
+    if (response.status === 'success' && response.data?.backups) {
+      return response.data.backups;
+    }
+    return [];
+  },
+
+  /**
+   * Create a backup with full options
+   */
+  async create(vmId: string, options: {
+    name: string;
+    description?: string;
+    type?: 'full' | 'incremental' | 'differential';
+    compression?: 'none' | 'gzip' | 'bzip2' | 'xz' | 'zstd';
+    include_memory?: boolean;
+  }) {
+    return apiRequest<any>(`/computes/${vmId}/backups`, {
+      method: 'POST',
+      body: JSON.stringify(options),
+    });
+  },
+
+  /**
+   * Delete a backup
+   */
+  async delete(backupId: string) {
+    return apiRequest<void>(`/computes/backups/${backupId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  /**
+   * Restore from a backup
+   */
+  async restore(vmId: string, backupId: string) {
+    return apiRequest<any>(`/computes/${vmId}/backups/${backupId}/restore`, {
+      method: 'POST',
+    });
+  },
+};
+
+// ============ Migration Actions ============
+export const migrationActions = {
+  /**
+   * Migrate a VM to another host
+   */
+  async migrate(vmId: string, options: {
+    destination_uri: string;
+    live?: boolean;
+    copy_storage?: 'all' | 'none' | 'incremental';
+    bandwidth_limit?: number;
+  }) {
+    return apiRequest<any>(`/computes/${vmId}/migrate`, {
+      method: 'POST',
+      body: JSON.stringify(options),
+    });
+  },
+
+  /**
+   * Get migration status
+   */
+  async getStatus(vmId: string) {
+    const response = await apiRequest<{ status: string; data: any }>(
+      `/computes/${vmId}/migration/status`
+    );
+    if (response.status === 'success' && response.data) {
+      return response.data;
+    }
+    return { status: 'idle' };
+  },
+
+  /**
+   * Cancel an ongoing migration
+   */
+  async cancel(vmId: string) {
+    return apiRequest<any>(`/computes/${vmId}/migration/cancel`, {
+      method: 'POST',
+    });
+  },
+};
+
+// ============ Hotplug Actions ============
+export const hotplugActions = {
+  /**
+   * Add CPU to running VM
+   */
+  async addCPU(vmId: string, count: number) {
+    return apiRequest<any>(`/computes/${vmId}/hotplug`, {
+      method: 'POST',
+      body: JSON.stringify({
+        operation: 'add',
+        resource_type: 'cpu',
+        config: { count },
+      }),
+    });
+  },
+
+  /**
+   * Add memory to running VM
+   */
+  async addMemory(vmId: string, sizeMB: number) {
+    return apiRequest<any>(`/computes/${vmId}/hotplug`, {
+      method: 'POST',
+      body: JSON.stringify({
+        operation: 'add',
+        resource_type: 'memory',
+        config: { size_mb: sizeMB },
+      }),
+    });
+  },
+
+  /**
+   * Add disk to running VM
+   */
+  async addDisk(vmId: string, config: {
+    path?: string;
+    pool?: string;
+    size_gb?: number;
+    format?: 'qcow2' | 'raw';
+    bus?: 'virtio' | 'scsi' | 'sata';
+  }) {
+    return apiRequest<any>(`/computes/${vmId}/hotplug`, {
+      method: 'POST',
+      body: JSON.stringify({
+        operation: 'add',
+        resource_type: 'disk',
+        config,
+      }),
+    });
+  },
+
+  /**
+   * Remove disk from running VM
+   */
+  async removeDisk(vmId: string, target: string) {
+    return apiRequest<any>(`/computes/${vmId}/hotplug`, {
+      method: 'POST',
+      body: JSON.stringify({
+        operation: 'remove',
+        resource_type: 'disk',
+        config: { target },
+      }),
+    });
+  },
+
+  /**
+   * Add network interface to running VM
+   */
+  async addNetwork(vmId: string, config: {
+    network?: string;
+    bridge?: string;
+    model?: 'virtio' | 'e1000' | 'rtl8139';
+  }) {
+    return apiRequest<any>(`/computes/${vmId}/hotplug`, {
+      method: 'POST',
+      body: JSON.stringify({
+        operation: 'add',
+        resource_type: 'network',
+        config,
+      }),
+    });
+  },
+
+  /**
+   * Remove network interface from running VM
+   */
+  async removeNetwork(vmId: string, mac: string) {
+    return apiRequest<any>(`/computes/${vmId}/hotplug`, {
+      method: 'POST',
+      body: JSON.stringify({
+        operation: 'remove',
+        resource_type: 'network',
+        config: { mac },
+      }),
+    });
+  },
+};
+
+// ============ Clone Actions ============
+export const cloneActions = {
+  /**
+   * Clone a VM
+   */
+  async clone(options: {
+    source_vm: string;
+    name: string;
+    full_clone?: boolean;
+    snapshots?: boolean;
+    storage_pool?: string;
+  }) {
+    const response = await apiRequest<{ status: string; data: any }>('/computes/clone', {
+      method: 'POST',
+      body: JSON.stringify(options),
+    });
+    
+    if (response.status === 'success' && response.data) {
+      // Add cloned VM to store
+      const vm = transformVMResponse(response.data);
+      const items = new Map(vmStore.$items.get());
+      items.set(vm.id, vm);
+      vmStore.$items.set(items);
+      return { success: true, data: vm };
+    }
+    
+    throw new Error('Failed to clone VM');
+  },
+};
+
+// ============ Console Actions ============
+export const consoleActions = {
+  /**
+   * Get available console types for a VM
+   */
+  async getAvailable(vmId: string) {
+    const response = await apiRequest<{ status: string; data: any }>(
+      `/computes/${vmId}/consoles`
+    );
+    if (response.status === 'success' && response.data) {
+      return response.data;
+    }
+    return { available: [], consoles: {} };
+  },
+
+  /**
+   * Get VNC console connection info
+   */
+  async getVNC(vmId: string) {
+    const response = await apiRequest<{ status: string; data: any }>(
+      `/computes/${vmId}/console/vnc`
+    );
+    if (response.status === 'success' && response.data) {
+      return response.data;
+    }
+    throw new Error('Failed to get VNC console info');
+  },
+
+  /**
+   * Get SPICE console connection info
+   */
+  async getSPICE(vmId: string) {
+    const response = await apiRequest<{ status: string; data: any }>(
+      `/computes/${vmId}/console/spice`
+    );
+    if (response.status === 'success' && response.data) {
+      return response.data;
+    }
+    throw new Error('Failed to get SPICE console info');
+  },
+
+  /**
+   * Build WebSocket URL for VNC
+   */
+  getVNCWebSocketUrl(vmId: string, token: string): string {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${window.location.host}/api/v1/virtualization/computes/${vmId}/console/vnc/ws?token=${encodeURIComponent(token)}`;
+  },
+
+  /**
+   * Build WebSocket URL for SPICE
+   */
+  getSPICEWebSocketUrl(vmId: string, token: string): string {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${window.location.host}/api/v1/virtualization/computes/${vmId}/console/spice/ws?token=${encodeURIComponent(token)}`;
+  },
+};
+
+// ============ Metrics Actions ============
+export const metricsActions = {
+  /**
+   * Get VM metrics
+   */
+  async get(vmId: string) {
+    const response = await apiRequest<{ status: string; data: any }>(
+      `/computes/${vmId}/metrics`
+    );
+    if (response.status === 'success' && response.data) {
+      return response.data;
+    }
+    return null;
+  },
+
+  /**
+   * Get metrics WebSocket URL for streaming
+   */
+  getStreamUrl(vmId: string): string {
+    const token = localStorage.getItem('jwt_token') || localStorage.getItem('auth_token') || '';
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${window.location.host}/api/v1/virtualization/computes/${vmId}/metrics/stream?token=${encodeURIComponent(token)}`;
+  },
+};
 
 // ============ Store Cleanup ============
 export function cleanupVirtualizationStores() {
