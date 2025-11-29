@@ -749,6 +749,8 @@ func (s *Service) VMAction(ctx context.Context, nameOrUUID string, action string
 	switch action {
 	case "start":
 		return domain.Create()
+	case "force-stop", "destroy":
+		return domain.Destroy()
 	case "stop":
 		if force {
 			return domain.Destroy()
@@ -775,8 +777,6 @@ func (s *Service) VMAction(ctx context.Context, nameOrUUID string, action string
 		return fmt.Errorf("unknown action: %s", action)
 	}
 }
-
-// CreateSnapshot creates a VM snapshot
 func (s *Service) CreateSnapshot(ctx context.Context, nameOrUUID string, req *VMSnapshotRequest) (*VMSnapshot, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

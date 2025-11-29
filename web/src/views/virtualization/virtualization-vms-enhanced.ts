@@ -38,6 +38,7 @@ import {
   // $selectedVM, // Unused - using local state instead
   // $vmWizardState, // Reserved for future use
   vmActions,
+  consoleActions,
   wizardActions,
   initializeVirtualizationStores,
   $virtualizationEnabled,
@@ -405,7 +406,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
     }
     return [
       { key: 'name', label: 'Name', type: 'link' },
-      { key: 'state', label: 'State', type: 'custom' },
+      { key: 'state', label: 'State', type: 'status' },
       { key: 'vcpus', label: 'vCPUs' },
       { key: 'memory', label: 'Memory (MB)' },
       { key: 'disk_size', label: 'Disk (GB)' },
@@ -593,9 +594,18 @@ export class VirtualizationVMsEnhanced extends LitElement {
 
   private async openConsole(vm: VirtualMachine) {
     try {
-      const consoleInfo = await vmActions.getConsoleInfo(vm.id);
-      const consoleUrl = `/console?vm=${vm.id}&token=${consoleInfo.token}&type=${consoleInfo.type}`;
-      window.open(consoleUrl, `vm-console-${vm.id}`, 'width=1024,height=768');
+      // Get VNC console token from API
+      const vncInfo = await consoleActions.getVNC(vm.id);
+      if (!vncInfo || !vncInfo.token) {
+        throw new Error('Failed to obtain console access token');
+      }
+
+      // Build WebSocket URL for VNC console
+      const wsUrl = consoleActions.getVNCWebSocketUrl(vm.id, vncInfo.token);
+      
+      // Open in new tab with the VNC console page
+      const vncUrl = `/vnc-console.html?url=${encodeURIComponent(wsUrl)}&fullscreen=true&vmName=${encodeURIComponent(vm.name || vm.id)}`;
+      window.open(vncUrl, '_blank');
     } catch (error) {
       console.error('Failed to open console:', error);
       this.showNotification('Failed to open console', 'error');
@@ -685,7 +695,21 @@ export class VirtualizationVMsEnhanced extends LitElement {
   }
 
   private async handleVMPowerAction(event: CustomEvent) {
-    const { action, vm } = event.detail;
+    const { action, vm, success } = event.detail;
+
+    // If the action was already executed successfully by the drawer
+    if (success) {
+      // Update selectedVMForDetails with the new state from the event
+      if (this.selectedVMForDetails && vm) {
+        this.selectedVMForDetails = { ...vm };
+      }
+      
+      // Update the store's local state immediately so the table reflects the change
+      if (vm?.id && vm?.state) {
+        vmActions.updateLocalState(vm.id, vm.state);
+      }
+      return;
+    }
 
     try {
       switch (action) {

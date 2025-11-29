@@ -2,7 +2,8 @@ import { LitElement, html, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 
 export type StatusType = 'running' | 'active' | 'deployed' | 'bound' | 'available' | 'ready' | 
-                        'pending' | 'failed' | 'error' | 'enforced' | 'suspended' | 'unknown';
+                        'pending' | 'failed' | 'error' | 'enforced' | 'suspended' | 'unknown' |
+                        'stopped' | 'shutoff' | 'paused' | 'crashed' | 'starting' | 'stopping';
 
 @customElement('status-badge')
 export class StatusBadge extends LitElement {
@@ -48,6 +49,28 @@ export class StatusBadge extends LitElement {
     .status.suspended {
       background-color: rgba(156, 163, 175, 0.1);
       color: rgb(156, 163, 175);
+    }
+
+    .status.stopped,
+    .status.shutoff {
+      background-color: rgba(239, 68, 68, 0.1);
+      color: rgb(239, 68, 68);
+    }
+
+    .status.paused {
+      background-color: rgba(251, 191, 36, 0.1);
+      color: rgb(251, 191, 36);
+    }
+
+    .status.crashed {
+      background-color: rgba(220, 38, 38, 0.1);
+      color: rgb(220, 38, 38);
+    }
+
+    .status.starting,
+    .status.stopping {
+      background-color: rgba(59, 130, 246, 0.1);
+      color: rgb(59, 130, 246);
     }
 
     .status.unknown {

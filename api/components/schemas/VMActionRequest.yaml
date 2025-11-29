@@ -8,6 +8,8 @@ properties:
     enum:
       - start
       - stop
+      - force-stop
+      - destroy
       - restart
       - pause
       - resume
@@ -15,6 +17,6 @@ properties:
     example: start
   force:
     type: boolean
-    description: Force the action (applicable for stop and restart)
+    description: Force the action (applicable for stop and restart). Note - use force-stop or destroy action for immediate forceful shutdown.
     default: false
     example: false

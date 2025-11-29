@@ -5,7 +5,7 @@
 
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import type { VirtualMachine } from '../../types/virtualization';
+import type { VirtualMachine, VMState } from '../../types/virtualization';
 import { getApiUrl } from '../../config';
 import { auth } from '../../auth';
 import './vm-console';
@@ -131,6 +131,7 @@ export class VMDetailDrawer extends LitElement {
   @state() private snapshotDescription = "";
   @state() private isCreatingSnapshot = false;
   @state() private snapshotCapabilities: any = null;
+  @state() private showStopDropdown = false;
   
   private metricsRefreshInterval: NodeJS.Timeout | null = null;
 
@@ -414,6 +415,104 @@ export class VMDetailDrawer extends LitElement {
     .action-btn.danger:hover:not(:disabled) {
       background: var(--vscode-inputValidation-errorBorder, #be1100);
     }
+
+    /* Split Button for Stop action */
+    .split-button-container {
+      position: relative;
+      display: inline-flex;
+    }
+
+    .split-button-main {
+      padding: 8px 12px;
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      color: var(--vscode-button-secondaryForeground, #cccccc);
+      border: 1px solid var(--vscode-button-border, #5a5a5a);
+      border-radius: 4px 0 0 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-right: none;
+    }
+
+    .split-button-main:hover:not(:disabled) {
+      background: var(--vscode-button-secondaryHoverBackground, #45494e);
+    }
+
+    .split-button-main:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .split-button-toggle {
+      padding: 8px 6px;
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      color: var(--vscode-button-secondaryForeground, #cccccc);
+      border: 1px solid var(--vscode-button-border, #5a5a5a);
+      border-radius: 0 4px 4px 0;
+      cursor: pointer;
+      font-size: 10px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+    }
+
+    .split-button-toggle:hover:not(:disabled) {
+      background: var(--vscode-button-secondaryHoverBackground, #45494e);
+    }
+
+    .split-button-toggle:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .split-button-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      margin-top: 4px;
+      background: var(--vscode-menu-background, var(--vscode-editorWidget-background, #252526));
+      border: 1px solid var(--vscode-menu-border, #464647);
+      border-radius: 4px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+      min-width: 140px;
+      z-index: 1000;
+      overflow: hidden;
+    }
+
+    .split-button-dropdown button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 8px 12px;
+      border: none;
+      background: none;
+      color: var(--vscode-foreground, #cccccc);
+      cursor: pointer;
+      font-size: 13px;
+      transition: background 0.15s;
+    }
+
+    .split-button-dropdown button:hover:not(:disabled) {
+      background: var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.31));
+    }
+
+    .split-button-dropdown button.danger {
+      color: var(--vscode-inputValidation-errorForeground, #f48771);
+    }
+
+    .split-button-dropdown button.danger:hover:not(:disabled) {
+      background: var(--vscode-inputValidation-errorBackground, rgba(255, 0, 0, 0.1));
+    }
+
+    .split-button-dropdown button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
 
     /* Sections */
     .section {
@@ -975,8 +1074,12 @@ export class VMDetailDrawer extends LitElement {
   }
 
   override updated(changedProperties: Map<string, any>) {
-    if (changedProperties.has('vm') && this.vm) {
-      this.loadVMDetails();
+    if (changedProperties.has('vm')) {
+      const previousVm = changedProperties.get('vm') as VirtualMachine | null | undefined;
+      // Only reload details when the selected VM changes, not for in-place state updates
+      if (this.vm && (!previousVm || previousVm.id !== this.vm.id)) {
+        this.loadVMDetails();
+      }
     }
     
     // Handle tab changes
@@ -1002,7 +1105,7 @@ export class VMDetailDrawer extends LitElement {
   
   private startMetricsRefresh() {
     // Only start refresh if VM is running and we're not already refreshing
-    const currentState = this.vmDetails?.state || this.vm?.state;
+    const currentState = this.vm?.state || this.vmDetails?.state;
     if (currentState !== 'running' || this.metricsRefreshInterval) {
       return;
     }
@@ -1077,7 +1180,7 @@ export class VMDetailDrawer extends LitElement {
         }
         
         // Fetch real metrics if VM is running
-        if (this.vmDetails?.state === 'running' || this.vm.state === 'running') {
+        if (this.vm.state === 'running' || this.vmDetails?.state === 'running') {
           await this.fetchVMMetrics(this.vm.id);
         } else {
           this.metrics = null;
@@ -1209,6 +1312,76 @@ export class VMDetailDrawer extends LitElement {
     }
   }
 
+
+  private toggleStopDropdown(e: Event) {
+    e.stopPropagation();
+    this.showStopDropdown = !this.showStopDropdown;
+    
+    if (this.showStopDropdown) {
+      setTimeout(() => {
+        document.addEventListener('click', this.closeStopDropdown);
+      }, 0);
+    }
+  }
+
+  private closeStopDropdown = () => {
+    this.showStopDropdown = false;
+    document.removeEventListener('click', this.closeStopDropdown);
+  };
+
+  private async handleStopAction(force: boolean) {
+    this.closeStopDropdown();
+    await this.handlePowerAction('stop', force);
+  }
+
+  private renderStopButton() {
+    return html`
+      <div class="split-button-container">
+        <button 
+          class="split-button-main" 
+          @click=${() => this.handleStopAction(false)}
+          ?disabled=${this.isPowerActionLoading}
+        >
+          ${this.isPowerActionLoading ? html`<span class="spinner-small"></span>` : '⏹️'} Stop
+        </button>
+        <button 
+          class="split-button-toggle"
+          @click=${(e: Event) => this.toggleStopDropdown(e)}
+          ?disabled=${this.isPowerActionLoading}
+        >
+          ▼
+        </button>
+        ${this.showStopDropdown ? html`
+          <div class="split-button-dropdown">
+            <button @click=${() => this.handleStopAction(false)} ?disabled=${this.isPowerActionLoading}>
+              ⏹️ Stop (Graceful)
+            </button>
+            <button class="danger" @click=${() => this.handleStopAction(true)} ?disabled=${this.isPowerActionLoading}>
+              ⚡ Force Stop
+            </button>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  private getExpectedStateAfterAction(action: string): VMState {
+    switch (action) {
+      case 'start':
+        return 'running';
+      case 'stop':
+        return 'stopped';
+      case 'pause':
+        return 'paused';
+      case 'resume':
+        return 'running';
+      case 'restart':
+        return 'running';
+      default:
+        return (this.vm?.state as VMState) || (this.vmDetails?.state as VMState) || 'unknown';
+    }
+  }
+
   private async handlePowerAction(action: string, force: boolean = false) {
     if (!this.vm || this.isPowerActionLoading) return;
     
@@ -1219,18 +1392,25 @@ export class VMDetailDrawer extends LitElement {
       const success = await this.executePowerAction(this.vm.id, action, force);
       
       if (success) {
+        // Immediately update local state to reflect expected new state
+        const newState = this.getExpectedStateAfterAction(action);
+        if (this.vmDetails) {
+          this.vmDetails = { ...this.vmDetails, state: newState };
+        }
+        if (this.vm) {
+          this.vm = { ...this.vm, state: newState };
+        }
+        
+        // Force re-render to update buttons
+        this.requestUpdate();
+        
         // Dispatch event for parent component to handle
         this.dispatchEvent(new CustomEvent('power-action', {
           detail: { action, vm: this.vm, success: true }
         }));
         
         // Show success notification
-        this.showNotification(`${action.charAt(0).toUpperCase() + action.slice(1)} action initiated for ${this.vm.name}`, 'success');
-        
-        // Reload VM details after a short delay to get updated state
-        setTimeout(() => {
-          this.loadVMDetails();
-        }, 2000);
+        this.showNotification(`${action.charAt(0).toUpperCase() + action.slice(1)} action initiated for ${this.vm?.name || 'VM'}`, 'success');
       }
     } catch (error) {
       console.error(`Failed to execute power action ${action}:`, error);
@@ -1292,7 +1472,7 @@ export class VMDetailDrawer extends LitElement {
 
   private handleConsoleConnect() {
     // Check if VM is running
-    const currentState = this.vmDetails?.state || this.vm?.state;
+    const currentState = this.vm?.state || this.vmDetails?.state;
     if (currentState !== 'running') {
       this.showNotification('Console is only available when VM is running', 'warning');
       return;
@@ -1324,7 +1504,7 @@ export class VMDetailDrawer extends LitElement {
   
   private handleDeleteVM() {
     // Check if VM is running
-    const currentState = this.vmDetails?.state || this.vm?.state;
+    const currentState = this.vm?.state || this.vmDetails?.state;
     if (currentState === 'running') {
       this.showNotification('Cannot delete a running VM. Please stop it first.', 'error');
       return;
@@ -1475,7 +1655,7 @@ export class VMDetailDrawer extends LitElement {
           </div>
           <div class="info-item">
             <span class="info-label">State</span>
-            <span class="info-value">${this.vmDetails?.state || this.vm.state}</span>
+            <span class="info-value">${this.vm.state || this.vmDetails?.state}</span>
           </div>
           <div class="info-item">
             <span class="info-label">OS Type</span>
@@ -1575,7 +1755,7 @@ export class VMDetailDrawer extends LitElement {
           <div class="empty-state-message">
             Metrics are only available when the VM is running.
             <br>
-            Current state: ${currentState === 'shutoff' ? 'Stopped' : currentState}
+            Current state: ${displayState}
           </div>
         </div>
       `;
@@ -2146,11 +2326,15 @@ export class VMDetailDrawer extends LitElement {
   override render() {
     if (!this.vm) return html``;
 
-    // Use enhanced details state if available, fallback to basic VM state
-    const currentState = this.vmDetails?.state || this.vm.state;
-    const powerStateClass = currentState.toLowerCase().replace('shutoff', 'stopped');
-    const powerStateText = currentState === 'shutoff' ? 'Stopped' : 
-                           currentState.charAt(0).toUpperCase() + currentState.slice(1);
+    // Prefer the primary VM object's state as the source of truth for power state,
+    // and fall back to enhanced details only when necessary.
+    const rawState = this.vm.state || this.vmDetails?.state || 'unknown';
+    const normalizedState = rawState.toLowerCase().replace('shutoff', 'stopped');
+    const powerStateClass = normalizedState;
+    const powerStateText =
+      normalizedState.charAt(0).toUpperCase() + normalizedState.slice(1);
+    const isRunning = normalizedState === 'running';
+    const isPaused = normalizedState === 'paused';
 
     return html`
       <div class="drawer">
@@ -2178,14 +2362,8 @@ export class VMDetailDrawer extends LitElement {
         </div>
 
         <div class="quick-actions">
-          ${this.vm.state === 'running' || this.vmDetails?.state === 'running' ? html`
-            <button 
-              class="action-btn" 
-              @click=${() => this.handlePowerAction('stop')}
-              ?disabled=${this.isPowerActionLoading}
-            >
-              ${this.isPowerActionLoading ? html`<span class="spinner-small"></span>` : '⏹️'} Stop
-            </button>
+          ${isRunning ? html`
+            ${this.renderStopButton()}
             <button 
               class="action-btn" 
               @click=${() => this.handlePowerAction('restart')}
@@ -2200,7 +2378,7 @@ export class VMDetailDrawer extends LitElement {
             >
               ${this.isPowerActionLoading ? html`<span class="spinner-small"></span>` : '⏸️'} Pause
             </button>
-          ` : this.vm.state === 'paused' || this.vmDetails?.state === 'paused' ? html`
+          ` : isPaused ? html`
             <button 
               class="action-btn primary" 
               @click=${() => this.handlePowerAction('resume')}
@@ -2227,7 +2405,7 @@ export class VMDetailDrawer extends LitElement {
           <button 
             class="action-btn" 
             @click=${this.handleConsoleConnect}
-            ?disabled=${this.vm.state !== 'running' && this.vmDetails?.state !== 'running'}
+            ?disabled=${!isRunning}
           >
             💻 Console
           </button>

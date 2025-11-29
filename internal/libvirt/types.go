@@ -252,7 +252,7 @@ type VMUpdateRequest struct {
 
 // VMActionRequest for VM state operations
 type VMActionRequest struct {
-	Action string `json:"action" binding:"required"` // start, stop, restart, pause, resume, reset
+	Action string `json:"action" binding:"required"` // start, stop, force-stop, destroy, restart, pause, resume, reset
 	Force  bool   `json:"force"`                     // force stop/restart
 }
 

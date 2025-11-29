@@ -1551,6 +1551,32 @@ export const vmActions = {
     await vmStore.fetch();
   },
   
+  /**
+   * Update a VM's state locally in the store without fetching from API
+   * This is used for optimistic UI updates from components like the detail drawer.
+   */
+  updateLocalState(vmId: string, newState: VMState) {
+    const currentItems = vmStore.$items.get();
+
+    let items: Map<string, VirtualMachine>;
+    if (currentItems instanceof Map) {
+      items = new Map(currentItems);
+    } else if (currentItems && typeof currentItems === 'object') {
+      // Handle persisted plain-object shape by normalizing back into a Map
+      items = new Map<string, VirtualMachine>(
+        Object.entries(currentItems as Record<string, VirtualMachine>),
+      );
+    } else {
+      return;
+    }
+
+    const vm = items.get(vmId);
+    if (vm) {
+      items.set(vmId, { ...vm, state: newState });
+      vmStore.$items.set(items);
+    }
+  },
+  
   async create(vmData: VMCreateRequest) {
     const response = await apiRequest<VirtualMachine>(
       '/computes',
@@ -2428,11 +2454,12 @@ export const consoleActions = {
    * Get VNC console connection info
    */
   async getVNC(vmId: string) {
-    const response = await apiRequest<{ status: string; data: any }>(
+    // apiRequest already unwraps the data from the response envelope
+    const data = await apiRequest<any>(
       `/computes/${vmId}/console/vnc`
     );
-    if (response.status === 'success' && response.data) {
-      return response.data;
+    if (data && data.token) {
+      return data;
     }
     throw new Error('Failed to get VNC console info');
   },
@@ -2441,11 +2468,12 @@ export const consoleActions = {
    * Get SPICE console connection info
    */
   async getSPICE(vmId: string) {
-    const response = await apiRequest<{ status: string; data: any }>(
+    // apiRequest already unwraps the data from the response envelope
+    const data = await apiRequest<any>(
       `/computes/${vmId}/console/spice`
     );
-    if (response.status === 'success' && response.data) {
-      return response.data;
+    if (data && data.token) {
+      return data;
     }
     throw new Error('Failed to get SPICE console info');
   },

@@ -15,13 +15,16 @@ import {
   $vmWizardState,
   $availableStoragePools,
   $availableISOs,
+  $filteredVolumes,
   wizardActions,
   vmActions,
   storagePoolStore,
   isoStore,
   templateStore,
   networkStore,
+  volumeActions,
 } from '../../stores/virtualization';
+import type { StorageVolume } from '../../types/virtualization';
 import type { VMTemplate, VirtualNetwork } from '../../types/virtualization';
 
 // Import network store for bridge interfaces
@@ -30,6 +33,7 @@ import { $bridges, initializeNetworkStore } from '../../stores/network';
 // Import UI components
 import '../ui/loading-state.js';
 import '../ui/empty-state.js';
+import '../modals/delete-modal.js';
 
 interface EnhancedDiskConfig {
   action: 'create' | 'clone' | 'attach';
@@ -122,6 +126,7 @@ export class CreateVMWizardEnhanced extends LitElement {
   private templatesController = new StoreController(this, templateStore.$items);
   private networksController = new StoreController(this, networkStore.$items);
   private bridgesController = new StoreController(this, $bridges);
+  private volumesController = new StoreController(this, $filteredVolumes);
 
   // Component state
   @state() private isCreating = false;
@@ -132,6 +137,7 @@ export class CreateVMWizardEnhanced extends LitElement {
   @state() private isLoadingPCIDevices = false;
   @state() private editMode = false;
   @state() private editingVmId: string | null = null;
+  @state() private showCloseConfirmation = false;
   @state() private formData: Partial<EnhancedVMCreateRequest> = {
     memory: 2048,
     vcpus: 2,
@@ -661,6 +667,7 @@ export class CreateVMWizardEnhanced extends LitElement {
         isoStore.fetch(),
         templateStore.fetch(), // Fetch templates from /virtualization/computes/templates
         networkStore.fetch(), // Fetch networks from /virtualization/networks
+        volumeActions.fetchAll(), // Fetch volumes for clone disk source selection
         initializeNetworkStore(), // Initialize network store to load bridges and interfaces
         this.loadPCIDevices(), // Load available PCI devices
       ]);
@@ -716,12 +723,49 @@ export class CreateVMWizardEnhanced extends LitElement {
     this.requestUpdate();
   }
 
+
   private handleClose() {
     if (!this.isCreating) {
-      wizardActions.closeWizard();
+      this.showCloseConfirmation = true;
     }
   }
 
+  private handleConfirmClose() {
+    this.showCloseConfirmation = false;
+    this.resetFormData();
+    wizardActions.closeWizard();
+  }
+
+  private handleCancelClose() {
+    this.showCloseConfirmation = false;
+  }
+
+  private resetFormData() {
+    this.formData = {
+      memory: 2048,
+      vcpus: 2,
+      os_type: 'linux',
+      architecture: 'x86_64',
+      storage: {
+        default_pool: '',
+        disks: []
+      },
+      networks: [{
+        type: 'network',
+        source: 'default',
+        model: 'virtio'
+      }],
+      graphics: [{
+        type: 'vnc',
+        autoport: true,
+        listen: '0.0.0.0'
+      }]
+    };
+    this.currentStep = 1;
+    this.validationErrors = {};
+    this.editMode = false;
+    this.editingVmId = null;
+  }
   private goToStep(step: number) {
     this.currentStep = step;
   }
@@ -939,6 +983,26 @@ export class CreateVMWizardEnhanced extends LitElement {
       bubbles: true,
       composed: true,
     }));
+  }
+
+  /**
+   * Get volumes filtered by storage pool name
+   */
+  private getVolumesForPool(poolName: string): StorageVolume[] {
+    const volumes = this.volumesController.value || [];
+    if (!poolName) return volumes;
+    return volumes.filter((vol: StorageVolume) => vol.pool_name === poolName);
+  }
+
+  /**
+   * Format volume size from bytes to human readable
+   */
+  private formatVolumeSize(bytes: number): string {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   }
 
   private renderBasicConfig() {
@@ -1247,25 +1311,67 @@ export class CreateVMWizardEnhanced extends LitElement {
                           <option value="vdi">VDI</option>
                         </select>
                       ` : disk.action === 'clone' ? html`
-                        <input
-                          type="text"
-                          placeholder="Source path"
+                        <select
+                          .value=${disk.storage_pool || ''}
+                          @change=${(e: Event) => {
+                            disk.storage_pool = (e.target as HTMLSelectElement).value;
+                            disk.clone_from = ''; // Reset volume selection when pool changes
+                            this.requestUpdate();
+                          }}
+                        >
+                          <option value="">Select source pool...</option>
+                          ${(this.storagePoolsController.value || []).map((pool: any) => html`
+                            <option value="${pool.name}" ?selected=${disk.storage_pool === pool.name}>
+                              ${pool.name}
+                            </option>
+                          `)}
+                        </select>
+                        <select
                           .value=${disk.clone_from || ''}
-                          @input=${(e: InputEvent) => {
-                            disk.clone_from = (e.target as HTMLInputElement).value;
+                          @change=${(e: Event) => {
+                            disk.clone_from = (e.target as HTMLSelectElement).value;
                             this.requestUpdate();
                           }}
-                        />
+                          ?disabled=${!disk.storage_pool}
+                        >
+                          <option value="">${disk.storage_pool ? 'Select volume to clone...' : 'Select pool first...'}</option>
+                          ${this.getVolumesForPool(disk.storage_pool || '').map((vol: StorageVolume) => html`
+                            <option value="${vol.path}" ?selected=${disk.clone_from === vol.path}>
+                              ${vol.name} (${this.formatVolumeSize(vol.capacity)}, ${vol.format})
+                            </option>
+                          `)}
+                        </select>
                       ` : html`
-                        <input
-                          type="text"
-                          placeholder="Disk path"
-                          .value=${disk.path || ''}
-                          @input=${(e: InputEvent) => {
-                            disk.path = (e.target as HTMLInputElement).value;
+                        <select
+                          .value=${disk.storage_pool || ''}
+                          @change=${(e: Event) => {
+                            disk.storage_pool = (e.target as HTMLSelectElement).value;
+                            disk.path = ''; // Reset volume selection when pool changes
                             this.requestUpdate();
                           }}
-                        />
+                        >
+                          <option value="">Select source pool...</option>
+                          ${(this.storagePoolsController.value || []).map((pool: any) => html`
+                            <option value="${pool.name}" ?selected=${disk.storage_pool === pool.name}>
+                              ${pool.name}
+                            </option>
+                          `)}
+                        </select>
+                        <select
+                          .value=${disk.path || ''}
+                          @change=${(e: Event) => {
+                            disk.path = (e.target as HTMLSelectElement).value;
+                            this.requestUpdate();
+                          }}
+                          ?disabled=${!disk.storage_pool}
+                        >
+                          <option value="">${disk.storage_pool ? 'Select volume to attach...' : 'Select pool first...'}</option>
+                          ${this.getVolumesForPool(disk.storage_pool || '').map((vol: StorageVolume) => html`
+                            <option value="${vol.path}" ?selected=${disk.path === vol.path}>
+                              ${vol.name} (${this.formatVolumeSize(vol.capacity)}, ${vol.format})
+                            </option>
+                          `)}
+                        </select>
                       `}
                     </div>
 
@@ -2116,6 +2222,19 @@ export class CreateVMWizardEnhanced extends LitElement {
           </div>
         </div>
       </div>
+
+      ${this.showCloseConfirmation ? html`
+        <delete-modal
+          .show=${this.showCloseConfirmation}
+          .item=${{ type: 'Form', name: this.formData.name || 'Unsaved VM' }}
+          modal-title="Discard Changes?"
+          message="Are you sure you want to close? All unsaved changes will be lost."
+          confirm-label="Discard"
+          confirm-button-class="delete"
+          @confirm-delete=${this.handleConfirmClose}
+          @cancel-delete=${this.handleCancelClose}
+        ></delete-modal>
+      ` : ''}
     `;
   }
 }
