@@ -50,6 +50,31 @@ import { VirtualizationDisabledError } from '../../utils/api-errors';
 
 @customElement('virtualization-vms-enhanced')
 export class VirtualizationVMsEnhanced extends LitElement {
+  private notificationContainer: HTMLElement | null = null;
+
+  private handleShowNotification = (event: Event) => {
+    const customEvent = event as CustomEvent<{ message?: string; type?: 'success' | 'error' | 'info' | 'warning'; duration?: number }>;
+    const detail = customEvent.detail || {};
+    const message = detail.message ?? '';
+    const type = detail.type ?? 'info';
+    const duration = detail.duration;
+
+    if (!this.notificationContainer || typeof (this.notificationContainer as any).addNotification !== 'function') {
+      return;
+    }
+
+    if (!message) return;
+
+    (this.notificationContainer as any).addNotification({
+      message,
+      type,
+      duration,
+    });
+
+    // Prevent further propagation once we've handled it
+    event.stopPropagation();
+  };
+
   // Store controllers for reactive updates
   private vmStoreController = new StoreController(this, vmStore.$items);
   private virtualizationEnabledController = new StoreController(this, $virtualizationEnabled);
@@ -356,6 +381,12 @@ export class VirtualizationVMsEnhanced extends LitElement {
     super.connectedCallback();
     // Initialize stores
     await this.initializeData();
+  }
+
+  override firstUpdated(_changedProperties: any) {
+    this.notificationContainer = this.renderRoot.querySelector('notification-container');
+    // Listen for bubbled show-notification events from child components (e.g. drawers)
+    this.addEventListener('show-notification', this.handleShowNotification as EventListener);
   }
 
   private async initializeData() {

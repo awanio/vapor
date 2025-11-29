@@ -1414,13 +1414,43 @@ export class VMDetailDrawer extends LitElement {
       }
     } catch (error) {
       console.error(`Failed to execute power action ${action}:`, error);
-      this.showNotification(
-        `Failed to ${action} VM: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        'error'
-      );
+      const message =
+        error instanceof Error
+          ? error.message
+          : `Failed to ${action} VM due to an unknown error`;
+      this.showNotification(message, 'error');
     } finally {
       this.isPowerActionLoading = false;
     }
+  }
+  
+  private buildPowerActionErrorMessage(action: string, responseData: any, statusText: string): string {
+    const actionVerb = action.charAt(0).toUpperCase() + action.slice(1);
+    const base = `Failed to ${action} VM`;
+
+    const apiError = responseData?.error;
+    const code = apiError?.code || responseData?.code;
+    const rawMessage = apiError?.message || responseData?.message;
+    const rawDetails = apiError?.details || responseData?.details;
+
+    let detailMessage: string | undefined;
+    if (typeof rawDetails === 'string') {
+      const match = rawDetails.match(/Message='(.+)'/);
+      detailMessage = match?.[1] || rawDetails;
+    }
+
+    const parts: string[] = [];
+    if (rawMessage) parts.push(rawMessage);
+    if (detailMessage && detailMessage !== rawMessage) parts.push(detailMessage);
+    if (!parts.length && statusText) parts.push(statusText);
+
+    let full = parts.join(': ');
+    if (!full) full = 'Unknown error';
+
+    if (code) {
+      return `${base}: [${code}] ${full}`;
+    }
+    return `${base}: ${full}`;
   }
   
   private async executePowerAction(vmId: string, action: string, force: boolean = false): Promise<boolean> {
@@ -1440,23 +1470,33 @@ export class VMDetailDrawer extends LitElement {
         },
         body: JSON.stringify({
           action: action,
-          force: force
-        })
+          force: force,
+        }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(
-          errorData?.message || 
-          errorData?.error || 
-          `Failed to execute ${action} action: ${response.statusText}`
-        );
+      let data: any = null;
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
       }
 
-      const data = await response.json();
-      return data.status === 'success';
+      const isErrorEnvelope =
+        data && typeof data === 'object' && 'status' in data && data.status !== 'success';
+
+      if (!response.ok || isErrorEnvelope) {
+        const message = this.buildPowerActionErrorMessage(action, data, response.statusText);
+        throw new Error(message);
+      }
+
+      // If the API uses an envelope, ensure success status; otherwise treat 2xx as success
+      if (data && typeof data === 'object' && 'status' in data) {
+        return data.status === 'success';
+      }
+
+      return true;
     } catch (error) {
-      console.error('Error executing power action:', error);
+      // Re-throw so the caller can handle user-facing notifications.
       throw error;
     }
   }
