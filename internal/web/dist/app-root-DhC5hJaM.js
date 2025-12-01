@@ -1,4 +1,4 @@
-import { g as getApiUrl, i as i18n, r as registerPerfGauge, a as getWsUrl, b as auth, p as perfIncrement, t as t$5, c as theme } from "./index-BtHa4tQ0.js";
+import { g as getApiUrl, i as i18n, r as registerPerfGauge, a as getWsUrl, b as auth, p as perfIncrement, t as t$5, c as theme } from "./index-C30ynJre.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -17450,7 +17450,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-BtHa4tQ0.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-C30ynJre.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17495,7 +17495,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-BtHa4tQ0.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-C30ynJre.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17563,7 +17563,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-BtHa4tQ0.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-C30ynJre.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17689,7 +17689,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-BtHa4tQ0.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-C30ynJre.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -36418,7 +36418,7 @@ class KubernetesApi {
       if (contentType === "json") {
         parsedResource = JSON.parse(content);
       } else {
-        const yaml = await import("./index-BwYYoiUR.js");
+        const yaml = await import("./index-DNzoPsW4.js");
         parsedResource = yaml.parse(content);
       }
     } catch (error) {
@@ -52484,7 +52484,7 @@ let KubernetesCRDs = class extends i$2 {
         unwrapped = JSON.parse(JSON.stringify(unwrapped));
         delete unwrapped.metadata.managedFields;
       }
-      const yaml = await import("./index-BwYYoiUR.js");
+      const yaml = await import("./index-DNzoPsW4.js");
       this.createResourceValue = yaml.stringify(unwrapped);
       this.isCreating = false;
     } catch (error) {
@@ -59738,7 +59738,6 @@ let CreateVMWizardEnhanced = class extends i$2 {
     this.wizardController = new lib.StoreController(this, $vmWizardState);
     this.storagePoolsController = new lib.StoreController(this, $availableStoragePools);
     this.isosController = new lib.StoreController(this, $availableISOs);
-    this.templatesController = new lib.StoreController(this, templateStore.$items);
     this.networksController = new lib.StoreController(this, networkStore.$items);
     this.bridgesController = new lib.StoreController(this, $bridges);
     this.volumesController = new lib.StoreController(this, $filteredVolumes);
@@ -59748,7 +59747,7 @@ let CreateVMWizardEnhanced = class extends i$2 {
     this.deviceModalMode = "disk";
     this.deviceDraft = null;
     this.validationErrors = {};
-    this.expandedSections = /* @__PURE__ */ new Set(["basic"]);
+    this.expandedSections = /* @__PURE__ */ new Set(["basic", "storage"]);
     this.currentStep = 1;
     this.availablePCIDevices = [];
     this.isLoadingPCIDevices = false;
@@ -60386,23 +60385,6 @@ let CreateVMWizardEnhanced = class extends i$2 {
     }
     this.requestUpdate();
   }
-  addDisk() {
-    if (!this.formData.storage) {
-      this.formData.storage = { disks: [] };
-    }
-    if (!this.formData.storage.disks) {
-      this.formData.storage.disks = [];
-    }
-    this.formData.storage.disks.push({
-      action: "create",
-      size: 20,
-      format: "qcow2",
-      bus: "virtio",
-      storage_pool: "default",
-      device: "disk"
-    });
-    this.requestUpdate();
-  }
   removeDisk(index2) {
     if (this.formData.storage?.disks) {
       this.formData.storage.disks.splice(index2, 1);
@@ -60624,46 +60606,7 @@ let CreateVMWizardEnhanced = class extends i$2 {
             <label for="autostart">Autostart VM with host</label>
           </div>
 
-          <div class="form-group">
-            <label>Template (Optional)</label>
-            <select
-              .value=${this.formData.template || ""}
-              @change=${(e3) => {
-      const selectedValue = e3.target.value;
-      this.updateFormData("template", selectedValue);
-      if (selectedValue) {
-        const templates = this.templatesController.value;
-        const templatesArray = templates instanceof Map ? Array.from(templates.values()) : Array.isArray(templates) ? templates : [];
-        const selectedTemplate = templatesArray.find((t2) => t2.id === selectedValue);
-        if (selectedTemplate) {
-          this.updateFormData("memory", selectedTemplate.memory || 2048);
-          this.updateFormData("vcpus", selectedTemplate.vcpus || 2);
-          this.updateFormData("os_type", selectedTemplate.os_type || "linux");
-          this.updateFormData("os_variant", selectedTemplate.os_variant || "");
-          if (selectedTemplate.disk_size && this.formData.storage?.disks?.length === 0) {
-            this.addDisk();
-            if (this.formData.storage?.disks?.[0]) {
-              this.formData.storage.disks[0].size = selectedTemplate.disk_size;
-            }
-          }
-          this.showNotification(`Template "${selectedTemplate.name}" applied`, "info");
-        }
-      }
-    }}
-            >
-              <option value="">No template</option>
-              ${(() => {
-      const templates = this.templatesController.value;
-      const templatesArray = templates instanceof Map ? Array.from(templates.values()) : Array.isArray(templates) ? templates : [];
-      return templatesArray.map((template) => x`
-                  <option value=${template.id}>
-                    ${template.name} - ${template.description || `${template.os_type}/${template.os_variant || "default"}`}
-                  </option>
-                `);
-    })()}
-            </select>
-            <div class="help-text">Select a VM template to pre-populate configuration</div>
-          </div>
+          
         </div>
       </div>
     `;
@@ -60753,7 +60696,7 @@ let CreateVMWizardEnhanced = class extends i$2 {
                 </div>
               ` : null}
             </div>
-            ${this.renderDeviceModal()}
+            
           </div>
         </div>
       </div>
@@ -61503,6 +61446,8 @@ let CreateVMWizardEnhanced = class extends i$2 {
           </div>
         </div>
       </div>
+
+      ${this.renderDeviceModal()}
 
       ${this.showCloseConfirmation ? x`
         <delete-modal

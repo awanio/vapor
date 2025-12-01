@@ -25,7 +25,7 @@ import {
   volumeActions,
 } from '../../stores/virtualization';
 import type { StorageVolume } from '../../types/virtualization';
-import type { VMTemplate, VirtualNetwork } from '../../types/virtualization';
+import type { VirtualNetwork } from '../../types/virtualization';
 
 // Import network store for bridge interfaces
 import { $bridges, initializeNetworkStore } from '../../stores/network';
@@ -122,7 +122,6 @@ export class CreateVMWizardEnhanced extends LitElement {
   private wizardController = new StoreController(this, $vmWizardState);
   private storagePoolsController = new StoreController(this, $availableStoragePools);
   private isosController = new StoreController(this, $availableISOs);
-  private templatesController = new StoreController(this, templateStore.$items);
   private networksController = new StoreController(this, networkStore.$items);
   private bridgesController = new StoreController(this, $bridges);
   private volumesController = new StoreController(this, $filteredVolumes);
@@ -134,7 +133,7 @@ export class CreateVMWizardEnhanced extends LitElement {
   @state() private deviceModalMode: 'disk' | 'iso' = 'disk';
   @state() private deviceDraft: EnhancedDiskConfig | null = null;
   @state() private validationErrors: Record<string, string> = {};
-  @state() private expandedSections: Set<string> = new Set(['basic']);
+  @state() private expandedSections: Set<string> = new Set(['basic', 'storage']);
   @state() private currentStep = 1;
   @state() private availablePCIDevices: any[] = [];
   @state() private isLoadingPCIDevices = false;
@@ -1434,24 +1433,7 @@ export class CreateVMWizardEnhanced extends LitElement {
     this.requestUpdate();
   }
 
-  private addDisk() {
-    if (!this.formData.storage) {
-      this.formData.storage = { disks: [] };
-    }
-    if (!this.formData.storage.disks) {
-      this.formData.storage.disks = [];
-    }
-    
-    this.formData.storage.disks.push({
-      action: 'create',
-      size: 20,
-      format: 'qcow2',
-      bus: 'virtio',
-      storage_pool: 'default',
-      device: 'disk',
-    });
-    this.requestUpdate();
-  }
+  
 
   private removeDisk(index: number) {
     if (this.formData.storage?.disks) {
@@ -1708,56 +1690,7 @@ export class CreateVMWizardEnhanced extends LitElement {
             <label for="autostart">Autostart VM with host</label>
           </div>
 
-          <div class="form-group">
-            <label>Template (Optional)</label>
-            <select
-              .value=${this.formData.template || ''}
-              @change=${(e: Event) => {
-                const selectedValue = (e.target as HTMLSelectElement).value;
-                this.updateFormData('template', selectedValue);
-                
-                // If a template is selected, auto-populate form fields
-                if (selectedValue) {
-                  const templates = this.templatesController.value;
-                  const templatesArray = templates instanceof Map ? Array.from(templates.values()) : 
-                                         Array.isArray(templates) ? templates : [];
-                  const selectedTemplate = templatesArray.find((t: VMTemplate) => t.id === selectedValue);
-                  
-                  if (selectedTemplate) {
-                    // Auto-populate fields from template
-                    this.updateFormData('memory', selectedTemplate.memory || 2048);
-                    this.updateFormData('vcpus', selectedTemplate.vcpus || 2);
-                    this.updateFormData('os_type', selectedTemplate.os_type || 'linux');
-                    this.updateFormData('os_variant', selectedTemplate.os_variant || '');
-                    
-                    // Update disk size if template has it
-                    if (selectedTemplate.disk_size && this.formData.storage?.disks?.length === 0) {
-                      this.addDisk();
-                      if (this.formData.storage?.disks?.[0]) {
-                        this.formData.storage.disks[0].size = selectedTemplate.disk_size;
-                      }
-                    }
-                    
-                    this.showNotification(`Template "${selectedTemplate.name}" applied`, 'info');
-                  }
-                }
-              }}
-            >
-              <option value="">No template</option>
-              ${(() => {
-                const templates = this.templatesController.value;
-                const templatesArray = templates instanceof Map ? Array.from(templates.values()) : 
-                                       Array.isArray(templates) ? templates : [];
-                
-                return templatesArray.map((template: VMTemplate) => html`
-                  <option value=${template.id}>
-                    ${template.name} - ${template.description || `${template.os_type}/${template.os_variant || 'default'}`}
-                  </option>
-                `);
-              })()}
-            </select>
-            <div class="help-text">Select a VM template to pre-populate configuration</div>
-          </div>
+          
         </div>
       </div>
     `;
@@ -1853,7 +1786,7 @@ export class CreateVMWizardEnhanced extends LitElement {
                 </div>
               ` : null}
             </div>
-            ${this.renderDeviceModal()}
+            
           </div>
         </div>
       </div>
@@ -2641,6 +2574,8 @@ export class CreateVMWizardEnhanced extends LitElement {
           </div>
         </div>
       </div>
+
+      ${this.renderDeviceModal()}
 
       ${this.showCloseConfirmation ? html`
         <delete-modal
