@@ -34,12 +34,13 @@ import { $bridges, initializeNetworkStore } from '../../stores/network';
 import '../ui/loading-state.js';
 import '../ui/empty-state.js';
 import '../modals/delete-modal.js';
+import '../modal-dialog';
 
 interface EnhancedDiskConfig {
   action: 'create' | 'clone' | 'attach';
   size?: number;
   format?: 'qcow2' | 'raw' | 'vmdk' | 'vdi';
-  storage_pool?: string;
+  storage_pool: string;
   clone_from?: string;
   path?: string;
   device?: 'disk' | 'cdrom';
@@ -97,8 +98,6 @@ interface EnhancedVMCreateRequest {
   memory: number;
   vcpus: number;
   storage: {
-    default_pool: string;
-    boot_iso?: string;
     disks: EnhancedDiskConfig[];
   };
   os_type?: string;
@@ -130,6 +129,10 @@ export class CreateVMWizardEnhanced extends LitElement {
 
   // Component state
   @state() private isCreating = false;
+  @state() private showAddDeviceMenu = false;
+  @state() private showDeviceModal = false;
+  @state() private deviceModalMode: 'disk' | 'iso' = 'disk';
+  @state() private deviceDraft: EnhancedDiskConfig | null = null;
   @state() private validationErrors: Record<string, string> = {};
   @state() private expandedSections: Set<string> = new Set(['basic']);
   @state() private currentStep = 1;
@@ -144,7 +147,6 @@ export class CreateVMWizardEnhanced extends LitElement {
     os_type: 'linux',
     architecture: 'x86_64',
     storage: {
-      default_pool: '',
       disks: []
     },
     networks: [{
@@ -341,7 +343,7 @@ export class CreateVMWizardEnhanced extends LitElement {
       margin-bottom: 24px;
       border: 1px solid var(--vscode-widget-border, #454545);
       border-radius: 6px;
-      overflow: hidden;
+      overflow: visible;
     }
 
     .section-header {
@@ -385,6 +387,7 @@ export class CreateVMWizardEnhanced extends LitElement {
     .section.expanded .section-content {
       max-height: none;
       padding: 16px;
+      overflow: visible;
     }
 
     /* Form elements */
@@ -483,6 +486,76 @@ export class CreateVMWizardEnhanced extends LitElement {
       gap: 8px;
     }
 
+    .storage-table-wrapper {
+      border: 1px solid var(--vscode-widget-border, #454545);
+      border-radius: 4px;
+      margin-bottom: 16px;
+      background: var(--vscode-editor-inactiveSelectionBackground);
+      overflow-x: auto;
+    }
+
+    .storage-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .storage-table th {
+      text-align: left;
+      padding: 8px 12px;
+      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      color: var(--vscode-foreground, #cccccc);
+      font-weight: 600;
+      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+    }
+
+    .storage-table td {
+      padding: 8px 12px;
+      color: var(--vscode-foreground, #cccccc);
+      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    .storage-table tr:hover {
+      background: var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.1));
+    }
+
+    .storage-path {
+      font-size: 11px;
+      word-break: break-all;
+      white-space: normal;
+    }
+
+    .storage-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 500;
+      background: var(--vscode-badge-background, #4d4d4d);
+      color: var(--vscode-badge-foreground, #ffffff);
+    }
+
+    .storage-badge.success {
+      background: var(--vscode-charts-green, #89d185);
+      color: var(--vscode-editor-background, #1e1e1e);
+    }
+
+    .storage-badge.warning {
+      background: var(--vscode-charts-yellow, #cca700);
+      color: var(--vscode-editor-background, #1e1e1e);
+    }
+
+    .btn-icon {
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+
+    .monospace {
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+    }
+
     /* Buttons */
     button {
       padding: 8px 16px;
@@ -535,6 +608,38 @@ export class CreateVMWizardEnhanced extends LitElement {
       background: var(--vscode-textLink-foreground, #3794ff);
       color: white;
       border-style: solid;
+    }
+
+    .btn-add-dropdown {
+      position: relative;
+      display: inline-block;
+    }
+
+    .btn-add-menu {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      margin-top: 4px;
+      background: var(--vscode-editor-background, #1e1e1e);
+      border: 1px solid var(--vscode-dropdown-border, #3c3c3c);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+      z-index: 10;
+      min-width: 160px;
+    }
+
+    .btn-add-menu-item {
+      width: 100%;
+      padding: 6px 10px;
+      background: transparent;
+      border: none;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .btn-add-menu-item:hover {
+      background: var(--vscode-list-hoverBackground, #2a2d2e);
     }
 
     .btn-remove {
@@ -747,7 +852,6 @@ export class CreateVMWizardEnhanced extends LitElement {
       os_type: 'linux',
       architecture: 'x86_64',
       storage: {
-        default_pool: '',
         disks: []
       },
       networks: [{
@@ -799,11 +903,35 @@ export class CreateVMWizardEnhanced extends LitElement {
           errors.vcpus = 'At least 1 vCPU is required';
         }
         break;
-      case 2: // Storage
-        if (!this.formData.storage?.default_pool) {
-          errors.storage_pool = 'Storage pool is required';
+      case 2: { // Storage
+        const disks = this.formData.storage?.disks || [];
+        if (disks.length === 0) {
+          errors.storage_pool = 'At least one disk is required';
+          break;
+        }
+
+        // Require storage_pool on every disk
+        if (disks.some(d => !d.storage_pool)) {
+          errors.storage_pool = 'Storage pool is required for all disks';
+        }
+
+        // Basic per-action validation
+        for (const d of disks) {
+          if (d.action === 'create' && (!d.size || d.size <= 0)) {
+            errors.storage_pool = 'Disk size is required for created disks';
+            break;
+          }
+          if (d.action === 'attach' && !d.path) {
+            errors.storage_pool = 'Source volume is required for attached disks';
+            break;
+          }
+          if (d.action === 'clone' && (!d.storage_pool || !d.clone_from)) {
+            errors.storage_pool = 'Source volume is required for cloned disks';
+            break;
+          }
         }
         break;
+      }
       case 3: // Network
         // Optional
         break;
@@ -819,6 +947,410 @@ export class CreateVMWizardEnhanced extends LitElement {
     return Object.keys(errors).length === 0;
   }
 
+  private buildRequestPayload(): any {
+    const disks = (this.formData.storage?.disks || []).map(d => ({
+      action: d.action,
+      size: d.size,
+      format: d.format === 'vmdk' ? 'qcow2' : d.format,
+      storage_pool: d.storage_pool,
+      path: d.path,
+      source: d.clone_from,
+      bus: d.bus,
+      cache: d.cache,
+      target: d.target,
+      readonly: d.readonly,
+      boot_order: d.boot_order,
+      device: d.device || 'disk',
+    }));
+
+    const payload: any = {
+      name: this.formData.name,
+      memory: this.formData.memory,
+      vcpus: this.formData.vcpus,
+      storage: { disks },
+      os_type: this.formData.os_type,
+      os_variant: this.formData.os_variant,
+      architecture: this.formData.architecture,
+      uefi: this.formData.uefi,
+      secure_boot: this.formData.secure_boot,
+      tpm: this.formData.tpm,
+      autostart: this.formData.autostart,
+      metadata: this.formData.metadata,
+    };
+
+    if (this.formData.networks && this.formData.networks.length > 0) {
+      payload.networks = this.formData.networks;
+    }
+
+    if (this.formData.graphics && this.formData.graphics.length > 0) {
+      payload.graphics = this.formData.graphics;
+    }
+
+    if (this.formData.pci_devices && this.formData.pci_devices.length > 0) {
+      payload.pci_devices = this.formData.pci_devices;
+    }
+
+    if (this.formData.cloud_init) {
+      payload.cloud_init = this.formData.cloud_init;
+    }
+
+    return payload;
+  }
+
+  private toggleAddDeviceMenu() {
+    this.showAddDeviceMenu = !this.showAddDeviceMenu;
+  }
+
+  private openAddDiskModal() {
+    this.showAddDeviceMenu = false;
+    this.deviceModalMode = 'disk';
+    const defaultPool = this.formData.storage?.disks?.[0]?.storage_pool || 'default';
+    this.deviceDraft = {
+      action: 'create',
+      size: 20,
+      format: 'qcow2',
+      storage_pool: defaultPool,
+      bus: 'virtio',
+      device: 'disk',
+      readonly: false,
+    } as EnhancedDiskConfig;
+    this.showDeviceModal = true;
+  }
+
+  private openAddIsoModal() {
+    this.showAddDeviceMenu = false;
+    this.deviceModalMode = 'iso';
+    const defaultPool = this.formData.storage?.disks?.[0]?.storage_pool || 'default';
+    this.deviceDraft = {
+      action: 'attach',
+      storage_pool: defaultPool,
+      bus: 'ide',
+      device: 'cdrom',
+      readonly: true,
+      boot_order: 1,
+    } as EnhancedDiskConfig;
+    this.showDeviceModal = true;
+  }
+
+  private handleDeviceModalClose() {
+    this.showDeviceModal = false;
+    this.deviceDraft = null;
+  }
+
+  private handleDeviceModalSave() {
+    if (!this.deviceDraft) return;
+    const d = this.deviceDraft;
+
+    if (!d.storage_pool) {
+      this.showNotification('Storage pool is required', 'error');
+      return;
+    }
+
+    if (this.deviceModalMode === 'disk') {
+      const action = d.action || 'create';
+
+      if (action === 'create') {
+        if (!d.size || d.size <= 0) {
+          this.showNotification('Disk size must be greater than 0', 'error');
+          return;
+        }
+      } else if (action === 'clone') {
+        if (!d.clone_from) {
+          this.showNotification('Source volume is required for clone', 'error');
+          return;
+        }
+      } else if (action === 'attach') {
+        if (!d.path) {
+          this.showNotification('Source volume is required for attach', 'error');
+          return;
+        }
+      }
+
+      d.action = action as any;
+      d.device = 'disk';
+    } else {
+      if (!d.path) {
+        this.showNotification('ISO image is required', 'error');
+        return;
+      }
+      d.action = 'attach';
+      d.device = 'cdrom';
+      d.readonly = true;
+      if (!d.boot_order || d.boot_order <= 0) {
+        d.boot_order = 1;
+      }
+    }
+
+    if (!this.formData.storage) {
+      this.formData.storage = { disks: [] };
+    }
+    if (!this.formData.storage.disks) {
+      this.formData.storage.disks = [];
+    }
+
+    this.formData.storage.disks.push({ ...d });
+    this.showDeviceModal = false;
+    this.deviceDraft = null;
+    this.requestUpdate();
+  }
+
+  private renderDeviceModal() {
+    if (!this.showDeviceModal || !this.deviceDraft) {
+      return null;
+    }
+
+    const storagePools = this.storagePoolsController.value || [];
+    const isos = this.isosController.value || [];
+    const disk = this.deviceDraft as EnhancedDiskConfig;
+
+    return html`
+      <modal-dialog
+        .open=${this.showDeviceModal}
+        .title=${this.deviceModalMode === 'iso' ? 'Add ISO/CD-ROM' : 'Add Disk'}
+        size="medium"
+        @modal-close=${this.handleDeviceModalClose}
+      >
+        ${this.deviceModalMode === 'disk' ? html`
+          <div class="form-group">
+            <label>Action</label>
+            <select
+              .value=${disk.action || 'create'}
+              @change=${(e: Event) => {
+                disk.action = (e.target as HTMLSelectElement).value as any;
+                if (disk.action === 'create') {
+                  disk.clone_from = '';
+                  disk.path = '';
+                } else if (disk.action === 'clone') {
+                  disk.path = '';
+                } else if (disk.action === 'attach') {
+                  disk.clone_from = '';
+                }
+                this.requestUpdate();
+              }}
+            >
+              <option value="create">Create New</option>
+              <option value="clone">Clone From</option>
+              <option value="attach">Attach Existing</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Storage Pool <span class="required">*</span></label>
+            <select
+              .value=${disk.storage_pool || ''}
+              @change=${(e: Event) => {
+                disk.storage_pool = (e.target as HTMLSelectElement).value;
+                disk.clone_from = '';
+                disk.path = '';
+                this.requestUpdate();
+              }}
+            >
+              <option value="">Select a storage pool</option>
+              ${storagePools.map((pool: any) => html`
+                <option value=${pool.name}>${pool.name}</option>
+              `)}
+            </select>
+          </div>
+
+          ${disk.action === 'create' ? html`
+            <div class="grid-3">
+              <div class="form-group">
+                <label>Size (GB)</label>
+                <input
+                  type="number"
+                  min="1"
+                  .value=${String(disk.size || 20)}
+                  @input=${(e: InputEvent) => {
+                    disk.size = Number((e.target as HTMLInputElement).value);
+                    this.requestUpdate();
+                  }}
+                />
+              </div>
+
+              <div class="form-group">
+                <label>Format</label>
+                <select
+                  .value=${disk.format || 'qcow2'}
+                  @change=${(e: Event) => {
+                    disk.format = (e.target as HTMLSelectElement).value as any;
+                    this.requestUpdate();
+                  }}
+                >
+                  <option value="qcow2">QCOW2</option>
+                  <option value="raw">RAW</option>
+                  <option value="vmdk">VMDK</option>
+                  <option value="vdi">VDI</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Bus</label>
+                <select
+                  .value=${disk.bus || 'virtio'}
+                  @change=${(e: Event) => {
+                    disk.bus = (e.target as HTMLSelectElement).value as any;
+                    this.requestUpdate();
+                  }}
+                >
+                  <option value="virtio">VirtIO</option>
+                  <option value="scsi">SCSI</option>
+                  <option value="ide">IDE</option>
+                  <option value="sata">SATA</option>
+                </select>
+              </div>
+            </div>
+          ` : disk.action === 'clone' ? html`
+            <div class="form-group">
+              <label>Source volume</label>
+              <select
+                .value=${disk.clone_from || ''}
+                @change=${(e: Event) => {
+                  disk.clone_from = (e.target as HTMLSelectElement).value;
+                  this.requestUpdate();
+                }}
+                ?disabled=${!disk.storage_pool}
+              >
+                <option value="">${disk.storage_pool ? 'Select volume to clone...' : 'Select pool first...'}</option>
+                ${this.getVolumesForPool(disk.storage_pool || '').map((vol: StorageVolume) => html`
+                  <option value="${vol.path}" ?selected=${disk.clone_from === vol.path}>
+                    ${vol.name} (${this.formatVolumeSize(vol.capacity)}, ${vol.format})
+                  </option>
+                `)}
+              </select>
+            </div>
+          ` : html`
+            <div class="form-group">
+              <label>Source volume</label>
+              <select
+                .value=${disk.path || ''}
+                @change=${(e: Event) => {
+                  disk.path = (e.target as HTMLSelectElement).value;
+                  this.requestUpdate();
+                }}
+                ?disabled=${!disk.storage_pool}
+              >
+                <option value="">${disk.storage_pool ? 'Select volume to attach...' : 'Select pool first...'}</option>
+                ${this.getVolumesForPool(disk.storage_pool || '').map((vol: StorageVolume) => html`
+                  <option value="${vol.path}" ?selected=${disk.path === vol.path}>
+                    ${vol.name} (${this.formatVolumeSize(vol.capacity)}, ${vol.format})
+                  </option>
+                `)}
+              </select>
+            </div>
+          `}
+
+          <div class="grid-3">
+            <div class="form-group">
+              <label>Target (optional)</label>
+              <input
+                type="text"
+                placeholder="e.g. vda"
+                .value=${disk.target || ''}
+                @input=${(e: InputEvent) => {
+                  disk.target = (e.target as HTMLInputElement).value;
+                  this.requestUpdate();
+                }}
+              />
+            </div>
+
+            <div class="form-group">
+              <label>Boot order (optional)</label>
+              <input
+                type="number"
+                min="1"
+                .value=${String(disk.boot_order || '')}
+                @input=${(e: InputEvent) => {
+                  const v = (e.target as HTMLInputElement).value;
+                  disk.boot_order = v ? Number(v) : undefined;
+                  this.requestUpdate();
+                }}
+              />
+            </div>
+
+            <div class="form-group">
+              <label>&nbsp;</label>
+              <div class="checkbox-group">
+                <input
+                  type="checkbox"
+                  id="disk-readonly"
+                  ?checked=${disk.readonly}
+                  @change=${(e: Event) => {
+                    disk.readonly = (e.target as HTMLInputElement).checked;
+                    this.requestUpdate();
+                  }}
+                />
+                <label for="disk-readonly">Read-only</label>
+              </div>
+            </div>
+          </div>
+        ` : html`
+          <div class="form-group">
+            <label>ISO image <span class="required">*</span></label>
+            <select
+              .value=${disk.path || ''}
+              @change=${(e: Event) => {
+                const isoPath = (e.target as HTMLSelectElement).value;
+                const list: any[] = isos || [];
+                const iso = list.find(item => item.path === isoPath);
+                if (iso) {
+                  disk.path = iso.path;
+                  disk.storage_pool = iso.storage_pool || disk.storage_pool || 'default';
+                } else {
+                  disk.path = '';
+                }
+                this.requestUpdate();
+              }}
+            >
+              <option value="">Select ISO image...</option>
+              ${isos.map((iso: any) => html`
+                <option value=${iso.path}>
+                  ${iso.name} (${this.formatVolumeSize(iso.size)})
+                </option>
+              `)}
+            </select>
+          </div>
+
+          <div class="grid-3">
+            <div class="form-group">
+              <label>Bus</label>
+              <select
+                .value=${disk.bus || 'ide'}
+                @change=${(e: Event) => {
+                  disk.bus = (e.target as HTMLSelectElement).value as any;
+                  this.requestUpdate();
+                }}
+              >
+                <option value="ide">IDE</option>
+                <option value="virtio">VirtIO</option>
+                <option value="scsi">SCSI</option>
+                <option value="sata">SATA</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Boot order</label>
+              <input
+                type="number"
+                min="1"
+                .value=${String(disk.boot_order || 1)}
+                @input=${(e: InputEvent) => {
+                  const v = (e.target as HTMLInputElement).value;
+                  disk.boot_order = v ? Number(v) : 1;
+                  this.requestUpdate();
+                }}
+              />
+            </div>
+          </div>
+        `}
+
+        <div slot="footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button class="btn-secondary" @click=${this.handleDeviceModalClose}>Cancel</button>
+          <button class="btn-primary" @click=${this.handleDeviceModalSave}>Add</button>
+        </div>
+      </modal-dialog>
+    `;
+  }
+
   private async handleCreate() {
     // Validate all steps
     for (let step = 1; step <= 5; step++) {
@@ -831,35 +1363,42 @@ export class CreateVMWizardEnhanced extends LitElement {
     this.isCreating = true;
 
     try {
-      if (this.editMode && this.editingVmId) {
-        // Update existing VM
-        await vmActions.update(this.editingVmId, this.formData as any);
-        this.showNotification('Virtual machine updated successfully', 'success');
-      } else {
-        // Create new VM
-        const token = localStorage.getItem('jwt_token') || localStorage.getItem('auth_token') || localStorage.getItem('token');
-        const response = await fetch(getApiUrl('/virtualization/computes'), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': token ? `Bearer ${token}` : '',
-          },
-          body: JSON.stringify(this.formData),
-        });
+      const token =
+        localStorage.getItem('jwt_token') ||
+        localStorage.getItem('auth_token') ||
+        localStorage.getItem('token');
+      const payload = this.buildRequestPayload();
 
-        if (response.ok) {
-          this.showNotification('Virtual machine created successfully', 'success');
+      const url = this.editMode && this.editingVmId
+        ? getApiUrl(`/virtualization/computes/${this.editingVmId}`)
+        : getApiUrl('/virtualization/computes');
+      const method = this.editMode && this.editingVmId ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        this.showNotification(
+          `Virtual machine ${this.editMode ? 'updated' : 'created'} successfully`,
+          'success',
+        );
+      } else {
+        const error = await response.json().catch(() => null);
+        if (error && error.status === 'error' && error.error) {
+          throw new Error(error.error.message || error.error.details || 'VM operation failed');
+        } else if (error && error.message) {
+          throw new Error(error.message);
         } else {
-          const error = await response.json();
-          // Handle new error format with status and error fields
-          if (error.status === 'error' && error.error) {
-            throw new Error(error.error.message || error.error.details || 'Failed to create virtual machine');
-          } else {
-            throw new Error(error.message || 'Failed to create virtual machine');
-          }
+          throw new Error(`Failed to ${this.editMode ? 'update' : 'create'} virtual machine`);
         }
       }
-      
+
       wizardActions.closeWizard();
       // Refresh VM list
       await vmActions.fetchAll();
@@ -897,7 +1436,7 @@ export class CreateVMWizardEnhanced extends LitElement {
 
   private addDisk() {
     if (!this.formData.storage) {
-      this.formData.storage = { default_pool: '', disks: [] };
+      this.formData.storage = { disks: [] };
     }
     if (!this.formData.storage.disks) {
       this.formData.storage.disks = [];
@@ -908,6 +1447,8 @@ export class CreateVMWizardEnhanced extends LitElement {
       size: 20,
       format: 'qcow2',
       bus: 'virtio',
+      storage_pool: 'default',
+      device: 'disk',
     });
     this.requestUpdate();
   }
@@ -1237,204 +1778,85 @@ export class CreateVMWizardEnhanced extends LitElement {
         </div>
         <div class="section-content">
           <div class="form-group">
-            <label>Default Storage Pool <span class="required">*</span></label>
-            <select
-              .value=${this.formData.storage?.default_pool || ''}
-              @change=${(e: Event) => 
-                this.updateFormData('storage.default_pool', (e.target as HTMLSelectElement).value)
-              }
-            >
-              <option value="">Select a storage pool</option>
-              ${storagePools.map(pool => html`
-                <option value=${pool.name}>${pool.name}</option>
-              `)}
-            </select>
+            <label>Disks</label>
             ${this.validationErrors.storage_pool ? html`
               <div class="error-message">${this.validationErrors.storage_pool}</div>
             ` : ''}
-          </div>
 
-          <div class="form-group">
-            <label>Boot ISO (Optional)</label>
-            <select
-              .value=${this.formData.storage?.boot_iso || ''}
-              @change=${(e: Event) => 
-                this.updateFormData('storage.boot_iso', (e.target as HTMLSelectElement).value)
-              }
-            >
-              <option value="">No ISO</option>
-              ${isos.map(iso => html`
-                <option value=${iso.path}>${iso.name}</option>
-              `)}
-            </select>
-          </div>
+            ${this.formData.storage?.disks?.length ? html`
+              <div class="storage-table-wrapper">
+                <table class="storage-table">
+                  <thead>
+                    <tr>
+                      <th>Target</th>
+                      <th>Type</th>
+                      <th>Source</th>
+                      <th>Format</th>
+                      <th>Bus</th>
+                      <th>Size</th>
+                      <th>Status</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${this.formData.storage.disks.map((disk, index) => html`
+                      <tr>
+                        <td><span class="monospace">${disk.target || 'Auto'}</span></td>
+                        <td>
+                          <span class="storage-badge ${disk.device === 'cdrom' ? 'warning' : ''}">
+                            ${(disk.device || 'disk').toUpperCase()}
+                          </span>
+                        </td>
+                        <td>
+                          <span class="monospace storage-path">
+                            ${disk.path
+                              || (disk.action === 'create'
+                                ? 'New disk'
+                                : disk.action === 'clone'
+                                  ? (disk.clone_from || '-')
+                                  : '-')}
+                          </span>
+                        </td>
+                        <td>${(disk.format || 'qcow2').toUpperCase()}</td>
+                        <td>${(disk.bus || 'virtio').toUpperCase()}</td>
+                        <td>${disk.action === 'create' && disk.size ? `${disk.size} GB` : 'N/A'}</td>
+                        <td>
+                          <span class="storage-badge ${disk.readonly ? 'warning' : 'success'}">
+                            ${disk.readonly ? 'Read-Only' : 'Read/Write'}
+                          </span>
+                        </td>
+                        <td>
+                          <button
+                            class="btn-remove btn-icon"
+                            title="Remove device"
+                            @click=${() => this.removeDisk(index)}
+                          >
+                            ✕
+                          </button>
+                        </td>
+                      </tr>
+                    `)}
+                  </tbody>
+                </table>
+              </div>
+            ` : html`<div class="help-text">No devices configured</div>`}
 
-          <div class="form-group">
-            <label>Disks</label>
-            <div class="list-container">
-              ${this.formData.storage?.disks?.map((disk, index) => html`
-                <div class="list-item">
-                  <div class="list-item-content">
-                    <div class="grid-3">
-                      <select
-                        .value=${disk.action}
-                        @change=${(e: Event) => {
-                          disk.action = (e.target as HTMLSelectElement).value as any;
-                          this.requestUpdate();
-                        }}
-                      >
-                        <option value="create">Create New</option>
-                        <option value="clone">Clone From</option>
-                        <option value="attach">Attach Existing</option>
-                      </select>
-
-                      ${disk.action === 'create' ? html`
-                        <input
-                          type="number"
-                          placeholder="Size (GB)"
-                          .value=${String(disk.size || 20)}
-                          @input=${(e: InputEvent) => {
-                            disk.size = Number((e.target as HTMLInputElement).value);
-                            this.requestUpdate();
-                          }}
-                        />
-                        <select
-                          .value=${disk.format || 'qcow2'}
-                          @change=${(e: Event) => {
-                            disk.format = (e.target as HTMLSelectElement).value as any;
-                            this.requestUpdate();
-                          }}
-                        >
-                          <option value="qcow2">QCOW2</option>
-                          <option value="raw">RAW</option>
-                          <option value="vmdk">VMDK</option>
-                          <option value="vdi">VDI</option>
-                        </select>
-                      ` : disk.action === 'clone' ? html`
-                        <select
-                          .value=${disk.storage_pool || ''}
-                          @change=${(e: Event) => {
-                            disk.storage_pool = (e.target as HTMLSelectElement).value;
-                            disk.clone_from = ''; // Reset volume selection when pool changes
-                            this.requestUpdate();
-                          }}
-                        >
-                          <option value="">Select source pool...</option>
-                          ${(this.storagePoolsController.value || []).map((pool: any) => html`
-                            <option value="${pool.name}" ?selected=${disk.storage_pool === pool.name}>
-                              ${pool.name}
-                            </option>
-                          `)}
-                        </select>
-                        <select
-                          .value=${disk.clone_from || ''}
-                          @change=${(e: Event) => {
-                            disk.clone_from = (e.target as HTMLSelectElement).value;
-                            this.requestUpdate();
-                          }}
-                          ?disabled=${!disk.storage_pool}
-                        >
-                          <option value="">${disk.storage_pool ? 'Select volume to clone...' : 'Select pool first...'}</option>
-                          ${this.getVolumesForPool(disk.storage_pool || '').map((vol: StorageVolume) => html`
-                            <option value="${vol.path}" ?selected=${disk.clone_from === vol.path}>
-                              ${vol.name} (${this.formatVolumeSize(vol.capacity)}, ${vol.format})
-                            </option>
-                          `)}
-                        </select>
-                      ` : html`
-                        <select
-                          .value=${disk.storage_pool || ''}
-                          @change=${(e: Event) => {
-                            disk.storage_pool = (e.target as HTMLSelectElement).value;
-                            disk.path = ''; // Reset volume selection when pool changes
-                            this.requestUpdate();
-                          }}
-                        >
-                          <option value="">Select source pool...</option>
-                          ${(this.storagePoolsController.value || []).map((pool: any) => html`
-                            <option value="${pool.name}" ?selected=${disk.storage_pool === pool.name}>
-                              ${pool.name}
-                            </option>
-                          `)}
-                        </select>
-                        <select
-                          .value=${disk.path || ''}
-                          @change=${(e: Event) => {
-                            disk.path = (e.target as HTMLSelectElement).value;
-                            this.requestUpdate();
-                          }}
-                          ?disabled=${!disk.storage_pool}
-                        >
-                          <option value="">${disk.storage_pool ? 'Select volume to attach...' : 'Select pool first...'}</option>
-                          ${this.getVolumesForPool(disk.storage_pool || '').map((vol: StorageVolume) => html`
-                            <option value="${vol.path}" ?selected=${disk.path === vol.path}>
-                              ${vol.name} (${this.formatVolumeSize(vol.capacity)}, ${vol.format})
-                            </option>
-                          `)}
-                        </select>
-                      `}
-                    </div>
-
-                    <div class="grid-3" style="margin-top: 8px;">
-                      <select
-                        .value=${disk.bus || 'virtio'}
-                        @change=${(e: Event) => {
-                          disk.bus = (e.target as HTMLSelectElement).value as any;
-                          this.requestUpdate();
-                        }}
-                      >
-                        <option value="virtio">VirtIO</option>
-                        <option value="scsi">SCSI</option>
-                        <option value="ide">IDE</option>
-                        <option value="sata">SATA</option>
-                      </select>
-
-                      <input
-                        type="text"
-                        placeholder="Target (e.g., vda)"
-                        .value=${disk.target || ''}
-                        @input=${(e: InputEvent) => {
-                          disk.target = (e.target as HTMLInputElement).value;
-                          this.requestUpdate();
-                        }}
-                      />
-
-                      <input
-                        type="number"
-                        placeholder="Boot order"
-                        min="1"
-                        .value=${String(disk.boot_order || '')}
-                        @input=${(e: InputEvent) => {
-                          disk.boot_order = Number((e.target as HTMLInputElement).value);
-                          this.requestUpdate();
-                        }}
-                      />
-                    </div>
-
-                    <div class="checkbox-group" style="margin-top: 8px;">
-                      <input
-                        type="checkbox"
-                        id="readonly-${index}"
-                        ?checked=${disk.readonly}
-                        @change=${(e: Event) => {
-                          disk.readonly = (e.target as HTMLInputElement).checked;
-                          this.requestUpdate();
-                        }}
-                      />
-                      <label for="readonly-${index}">Read-only</label>
-                    </div>
-                  </div>
-                  <div class="list-item-actions">
-                    <button class="btn-remove" @click=${() => this.removeDisk(index)}>
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              `) || html`<div class="help-text">No disks configured</div>`}
-              <button class="btn-add" @click=${this.addDisk}>
-                + Add Disk
+            <div class="btn-add-dropdown">
+              <button class="btn-add" @click=${this.toggleAddDeviceMenu}>
+                + Add Device
               </button>
+              ${this.showAddDeviceMenu ? html`
+                <div class="btn-add-menu">
+                  <button class="btn-add-menu-item" @click=${this.openAddDiskModal}>
+                    Add Disk
+                  </button>
+                  <button class="btn-add-menu-item" @click=${this.openAddIsoModal}>
+                    Add ISO/CD-ROM
+                  </button>
+                </div>
+              ` : null}
             </div>
+            ${this.renderDeviceModal()}
           </div>
         </div>
       </div>

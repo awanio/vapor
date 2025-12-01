@@ -530,32 +530,20 @@ func (s *Service) generateEnhancedDomainXML(req *VMCreateRequestEnhanced, diskCo
 <os>
 <type arch='%s'>%s</type>`, req.Architecture, osType)
 
-	// Add boot order based on disks
+	// Check if any disk has boot order specified
+	hasBootOrder := false
 	for _, disk := range diskConfigs {
 		if disk.Config.BootOrder > 0 {
-			if disk.Config.Device == "cdrom" {
-				xml += `
-<boot dev='cdrom'/>`
-			} else {
-				xml += `
-<boot dev='hd'/>`
-			}
+			hasBootOrder = true
+			break
 		}
 	}
 
-	// Default boot device if no specific boot order
-	if len(diskConfigs) > 0 {
-		hasBootOrder := false
-		for _, disk := range diskConfigs {
-			if disk.Config.BootOrder > 0 {
-				hasBootOrder = true
-				break
-			}
-		}
-		if !hasBootOrder {
-			xml += `
+	// Only add OS-level boot device if NO per-device boot order is specified
+	// (per-device boot order and OS boot cannot be mixed)
+	if !hasBootOrder && len(diskConfigs) > 0 {
+		xml += `
 <boot dev='hd'/>`
-		}
 	}
 
 	xml += `

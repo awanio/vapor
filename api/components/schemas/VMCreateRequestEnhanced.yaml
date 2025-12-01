@@ -1,8 +1,8 @@
 type: object
 required:
-  - name
-  - memory
-  - vcpus
+- name
+- memory
+- vcpus
 properties:
   name:
     type: string

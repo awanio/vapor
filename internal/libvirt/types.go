@@ -749,9 +749,7 @@ type VMEnhanced struct {
 
 // StorageConfigDetail represents detailed storage configuration for enhanced VM response
 type StorageConfigDetail struct {
-	DefaultPool string       `json:"default_pool"`
-	BootISO     string       `json:"boot_iso,omitempty"`
-	Disks       []DiskDetail `json:"disks"`
+	Disks []DiskDetail `json:"disks"`
 }
 
 // DiskDetail represents detailed disk information

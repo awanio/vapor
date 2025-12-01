@@ -5,29 +5,6 @@ import (
 	"testing"
 )
 
-func TestBootISOToDiskConversion(t *testing.T) {
-	service := &Service{}
-	ctx := context.Background()
-
-	prepDisk, err := service.prepareBootISO(ctx, "/var/lib/libvirt/images/ubuntu.iso", "default")
-
-	// We expect an error because the file doesn't exist in tests
-	if err == nil {
-		t.Error("Expected error for non-existent ISO file")
-	}
-
-	// Test with relative path
-	prepDisk, err = service.prepareBootISO(ctx, "ubuntu.iso", "default")
-	if err == nil {
-		t.Error("Expected error for non-existent ISO file")
-	}
-
-	// Check that the disk config is properly set up
-	if prepDisk.Config.Device != "" && prepDisk.Config.Device != "cdrom" {
-		t.Errorf("Expected device to be 'cdrom', got %s", prepDisk.Config.Device)
-	}
-}
-
 func TestDiskTargetGeneration(t *testing.T) {
 	service := &Service{}
 
@@ -143,13 +120,12 @@ func TestPrepareEnhancedStorageConfig(t *testing.T) {
 		Memory: 2048,
 		VCPUs:  2,
 		Storage: &StorageConfig{
-			DefaultPool: "default",
-			BootISO:     "ubuntu.iso",
 			Disks: []DiskCreateConfig{
 				{
-					Action: "create",
-					Size:   20,
-					Format: "qcow2",
+					Action:      "create",
+					Size:        20,
+					Format:      "qcow2",
+					StoragePool: "default",
 				},
 				{
 					Action:      "attach",
@@ -182,12 +158,12 @@ func TestStorageConfigValidation(t *testing.T) {
 		{
 			name: "Valid create action",
 			storage: &StorageConfig{
-				DefaultPool: "default",
 				Disks: []DiskCreateConfig{
 					{
-						Action: "create",
-						Size:   20,
-						Format: "qcow2",
+						Action:      "create",
+						Size:        20,
+						Format:      "qcow2",
+						StoragePool: "default",
 					},
 				},
 			},
@@ -196,11 +172,11 @@ func TestStorageConfigValidation(t *testing.T) {
 		{
 			name: "Create without size",
 			storage: &StorageConfig{
-				DefaultPool: "default",
 				Disks: []DiskCreateConfig{
 					{
-						Action: "create",
-						Format: "qcow2",
+						Action:      "create",
+						Format:      "qcow2",
+						StoragePool: "default",
 					},
 				},
 			},
@@ -210,10 +186,10 @@ func TestStorageConfigValidation(t *testing.T) {
 		{
 			name: "Attach without path",
 			storage: &StorageConfig{
-				DefaultPool: "default",
 				Disks: []DiskCreateConfig{
 					{
-						Action: "attach",
+						Action:      "attach",
+						StoragePool: "default",
 					},
 				},
 			},
@@ -223,10 +199,10 @@ func TestStorageConfigValidation(t *testing.T) {
 		{
 			name: "Clone without source",
 			storage: &StorageConfig{
-				DefaultPool: "default",
 				Disks: []DiskCreateConfig{
 					{
-						Action: "clone",
+						Action:      "clone",
+						StoragePool: "default",
 					},
 				},
 			},
@@ -236,11 +212,11 @@ func TestStorageConfigValidation(t *testing.T) {
 		{
 			name: "Multiple disks with different pools",
 			storage: &StorageConfig{
-				DefaultPool: "default",
 				Disks: []DiskCreateConfig{
 					{
-						Action: "create",
-						Size:   20,
+						Action:      "create",
+						Size:        20,
+						StoragePool: "default",
 					},
 					{
 						Action:      "create",

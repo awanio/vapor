@@ -1,16 +1,7 @@
 type: object
 required:
-  - default_pool
-  - disks
+- disks
 properties:
-  default_pool:
-    type: string
-    description: Default storage pool for relative paths
-    example: default
-  boot_iso:
-    type: string
-    description: Optional boot ISO path or name
-    example: ubuntu-22.04.iso
   disks:
     type: array
     description: Array of disk configurations

@@ -381,6 +381,7 @@ paths:
   /virtualization/computes/{id}/console/ws:
     $ref: paths/virtualization_computes_{id}_console_ws.yaml
   /virtualization/computes/{id}/console/stats:
+    $ref: paths/virtualization_computes_{id}_console_stats.yaml
   /virtualization/computes/{id}/consoles:
     $ref: paths/virtualization_computes_{id}_consoles.yaml
   /virtualization/computes/{id}/console/vnc:
@@ -391,7 +392,6 @@ paths:
     $ref: paths/virtualization_computes_{id}_console_spice.yaml
   /virtualization/computes/{id}/console/spice/ws:
     $ref: paths/virtualization_computes_{id}_console_spice_ws.yaml
-    $ref: paths/virtualization_computes_{id}_console_stats.yaml
   /virtualization/computes/{id}/metrics:
     $ref: paths/virtualization_computes_{id}_metrics.yaml
   /virtualization/computes/{id}/metrics/stream:

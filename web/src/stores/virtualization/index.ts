@@ -1704,19 +1704,49 @@ export const wizardActions = {
   
   openWizardForEdit(vm: VirtualMachine) {
     // Prepare the form data from existing VM
+    // Derive storage pool information for each disk using the volume store when possible
+    const volumeItems = volumeStore.$items.get();
+
+    const resolvePoolForPath = (path: string | undefined): string | undefined => {
+      if (!path || !volumeItems) return undefined;
+
+      if (volumeItems instanceof Map) {
+        for (const vol of volumeItems.values() as any) {
+          if (vol && typeof vol === 'object' && vol.path === path) {
+            return (vol as any).pool_name;
+          }
+        }
+      } else if (typeof volumeItems === 'object') {
+        for (const vol of Object.values(volumeItems as Record<string, any>)) {
+          if (vol && typeof vol === 'object' && vol.path === path) {
+            return vol.pool_name as string | undefined;
+          }
+        }
+      }
+
+      return undefined;
+    };
+
     // Convert VM's disk info to DiskConfig format
-    const disks = vm.disks?.map(disk => ({
-      action: 'attach' as const,
-      path: disk.path,
-      // Convert vmdk to qcow2 since DiskConfig doesn't support vmdk
-      format: (disk.format === 'vmdk' ? 'qcow2' : disk.format) as 'qcow2' | 'raw',
-      size: disk.size,
-      bus: disk.bus,
-    })) || [{
+    const disks = vm.disks?.map(disk => {
+      const storage_pool = resolvePoolForPath(disk.path);
+      return {
+        action: 'attach' as const,
+        path: disk.path,
+        // Convert vmdk to qcow2 since DiskConfig doesn't support vmdk
+        format: (disk.format === 'vmdk' ? 'qcow2' : disk.format) as 'qcow2' | 'raw',
+        size: disk.size,
+        bus: disk.bus,
+        storage_pool,
+      };
+    }) || [{
       action: 'create' as const,
       size: 20,
       format: 'qcow2' as const,
     }];
+    
+    const inferredDefaultPool =
+      (disks[0] as any)?.storage_pool || 'default';
     
     // Convert network interfaces if present
     const network = vm.network_interfaces?.[0] ? {
@@ -1731,7 +1761,7 @@ export const wizardActions = {
       memory: vm.memory,
       vcpus: vm.vcpus,
       storage: {
-        default_pool: 'default', // Will be populated from VM disks if available
+        default_pool: inferredDefaultPool,
         disks: disks,
       },
       network: network,
@@ -1746,6 +1776,21 @@ export const wizardActions = {
       errors: {},
       editMode: true,
       editingVmId: vm.id,
+    } as any);
+  },
+
+  /**
+   * Open the enhanced wizard in edit mode using a fully-populated formData
+   * object (typically built from the /computes/{id} details endpoint).
+   */
+  openEnhancedWizardForEdit(vmId: string, formData: Partial<VMCreateRequest>) {
+    $vmWizardState.set({
+      isOpen: true,
+      currentStep: 1,
+      formData,
+      errors: {},
+      editMode: true,
+      editingVmId: vmId,
     } as any);
   },
   

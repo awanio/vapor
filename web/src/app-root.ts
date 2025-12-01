@@ -279,25 +279,7 @@ export class AppRoot extends LitElement {
     }
 
     // Listen for popstate events to handle navigation
-    window.addEventListener('popstate', (event) => {
-      if (event.state && event.state.route) {
-        const [mainRoute, ...subParts] = event.state.route.split('/');
-        this.activeView = mainRoute;
-        this.subRoute = subParts.length > 0 ? subParts.join('/') : null;
-      } else {
-        // Handle direct URL navigation
-        const path = window.location.pathname.slice(1);
-        if (!path || path === '') {
-          this.activeView = 'dashboard';
-          this.subRoute = null;
-        } else {
-          // Parse main route and sub-route
-          const [mainRoute, ...subParts] = path.split('/');
-          this.subRoute = subParts.length > 0 ? subParts.join('/') : null;
-          this.activeView = mainRoute && this.isValidRoute(mainRoute) ? mainRoute : path;
-        }
-      }
-    });
+    window.addEventListener('popstate', this.handlePopstate);
     
     // Listen for auth events
     window.addEventListener('auth:login', this.handleAuthLogin);
@@ -320,11 +302,32 @@ export class AppRoot extends LitElement {
     }
     
     // Remove event listeners
+    window.removeEventListener('popstate', this.handlePopstate);
     document.removeEventListener('click', this.handleDocumentClick);
     window.removeEventListener('theme-changed', this.handleThemeChange as EventListener);
     window.removeEventListener('auth:login', this.handleAuthLogin);
     window.removeEventListener('auth:logout', this.handleAuthLogout);
   }
+  
+  private handlePopstate = (event: PopStateEvent) => {
+    if (event.state && event.state.route) {
+      const [mainRoute, ...subParts] = event.state.route.split('/');
+      this.activeView = mainRoute;
+      this.subRoute = subParts.length > 0 ? subParts.join('/') : null;
+    } else {
+      // Handle direct URL navigation
+      const path = window.location.pathname.slice(1);
+      if (!path || path === '') {
+        this.activeView = 'dashboard';
+        this.subRoute = null;
+      } else {
+        // Parse main route and sub-route
+        const [mainRoute, ...subParts] = path.split('/');
+        this.subRoute = subParts.length > 0 ? subParts.join('/') : null;
+        this.activeView = mainRoute && this.isValidRoute(mainRoute) ? mainRoute : path;
+      }
+    }
+  };
   
   private handleAuthLogin = async () => {
     this.isAuthenticated = true;
@@ -388,17 +391,6 @@ export class AppRoot extends LitElement {
 
   override async updated(changedProperties: Map<string, any>) {
     super.updated(changedProperties);
-    
-    // If authentication status changed to true, initialize metrics
-    if (changedProperties.has('isAuthenticated') && this.isAuthenticated) {
-      // Skip metrics initialization in test environment to keep tests isolated
-      if (import.meta.env.MODE === 'test') {
-        return;
-      }
-
-      const { initializeMetrics } = await import('./stores/shared/metrics');
-      await initializeMetrics();
-    }
   }
   
   override render() {

@@ -46,11 +46,84 @@ import {
 } from '../../stores/virtualization';
 import type { VirtualMachine, VMState, VMTemplate } from '../../types/virtualization';
 import { VirtualizationDisabledError } from '../../utils/api-errors';
+import virtualizationAPI from '../../services/virtualization-api';
 
 
 @customElement('virtualization-vms-enhanced')
 export class VirtualizationVMsEnhanced extends LitElement {
   private notificationContainer: HTMLElement | null = null;
+
+  private mapEnhancedVmToFormData(enhanced: any): any {
+    const storageDisks = Array.isArray(enhanced.storage?.disks)
+      ? enhanced.storage.disks.map((d: any) => ({
+          action: 'attach' as const,
+          size: d.size,
+          format: (d.format === 'vmdk' ? 'qcow2' : d.format) as 'qcow2' | 'raw',
+          storage_pool: d.storage_pool,
+          path: d.source_path || d.path,
+          bus: d.bus,
+          device: d.device,
+          target: d.target,
+          readonly: !!d.readonly,
+        }))
+      : [];
+
+    const primaryNetwork = Array.isArray(enhanced.networks) && enhanced.networks.length > 0
+      ? enhanced.networks[0]
+      : undefined;
+
+    const network = primaryNetwork
+      ? {
+          type: primaryNetwork.type,
+          source:
+            (primaryNetwork.source &&
+              (primaryNetwork.source.network ||
+               primaryNetwork.source.bridge ||
+               primaryNetwork.source.dev)) ||
+            primaryNetwork.source ||
+            '',
+          model:
+            (primaryNetwork.model && primaryNetwork.model.type) ||
+            primaryNetwork.model ||
+            'virtio',
+          mac: primaryNetwork.mac,
+        }
+      : undefined;
+
+    const primaryGraphics = Array.isArray(enhanced.graphics) && enhanced.graphics.length > 0
+      ? enhanced.graphics[0]
+      : undefined;
+
+    const graphics = primaryGraphics
+      ? {
+          type: primaryGraphics.type,
+          port: primaryGraphics.port,
+          password: primaryGraphics.password,
+          autoport: primaryGraphics.autoport ?? true,
+          listen: primaryGraphics.listen || '0.0.0.0',
+        }
+      : undefined;
+
+    return {
+      name: enhanced.name,
+      memory: enhanced.memory,
+      vcpus: enhanced.vcpus,
+      storage: {
+        default_pool: enhanced.storage?.default_pool || '',
+        boot_iso: enhanced.storage?.boot_iso,
+        disks: storageDisks,
+      },
+      os_type: enhanced.os_type,
+      architecture: enhanced.architecture,
+      uefi: enhanced.uefi,
+      secure_boot: enhanced.secure_boot,
+      tpm: enhanced.tpm,
+      autostart: enhanced.autostart,
+      network,
+      graphics,
+      metadata: enhanced.metadata,
+    };
+  }
 
   private handleShowNotification = (event: Event) => {
     const customEvent = event as CustomEvent<{ message?: string; type?: 'success' | 'error' | 'info' | 'warning'; duration?: number }>;
@@ -644,7 +717,19 @@ export class VirtualizationVMsEnhanced extends LitElement {
   }
 
   private async editVM(vm: VirtualMachine) {
-    // Open the wizard in edit mode with the VM data
+    try {
+      const envelope: any = await virtualizationAPI.getVM(vm.id);
+      const enhanced = envelope?.data || envelope;
+      if (enhanced && typeof enhanced === 'object') {
+        const formData = this.mapEnhancedVmToFormData(enhanced);
+        wizardActions.openEnhancedWizardForEdit(vm.id, formData as any);
+        return;
+      }
+    } catch (error) {
+      console.error('Failed to load VM details for edit, falling back to basic data:', error);
+    }
+
+    // Fallback: use basic VM data from the store
     wizardActions.openWizardForEdit(vm);
   }
 

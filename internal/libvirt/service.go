@@ -1719,8 +1719,7 @@ func (s *Service) parseOSConfiguration(vm *VMEnhanced, xmlDesc string) {
 // Helper method to parse storage configuration from XML
 func (s *Service) parseStorageConfiguration(xmlDesc string) (*StorageConfigDetail, error) {
 	storage := &StorageConfigDetail{
-		DefaultPool: "default",
-		Disks:       []DiskDetail{},
+		Disks: []DiskDetail{},
 	}
 
 	// This is a simplified parser - in production, use proper XML unmarshaling
@@ -1738,14 +1737,6 @@ func (s *Service) parseStorageConfiguration(xmlDesc string) (*StorageConfigDetai
 			disk.Device = "disk"
 		} else if strings.Contains(diskXML, "device='cdrom'") || strings.Contains(diskXML, "device=\"cdrom\"") {
 			disk.Device = "cdrom"
-			// Check if this is the boot ISO
-			if sourceRe := regexp.MustCompile(`source file=['"]([^'"]+\.iso)['"]`); sourceRe.MatchString(diskXML) {
-				if matches := sourceRe.FindStringSubmatch(diskXML); len(matches) > 1 {
-					isoPath := matches[1]
-					storage.BootISO = filepath.Base(isoPath)
-				}
-			}
-		} else if strings.Contains(diskXML, "device='floppy'") {
 			disk.Device = "floppy"
 		}
 

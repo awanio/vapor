@@ -95,6 +95,8 @@ export class StatusBar extends I18nLitElement {
     }
   `;
 
+  private _unsubscribeI18n?: () => void;
+
   override connectedCallback() {
     super.connectedCallback();
     this.currentUser = auth.isAuthenticated() ? localStorage.getItem('username') || 'user' : '';
@@ -104,13 +106,17 @@ export class StatusBar extends I18nLitElement {
     window.addEventListener('auth:logout', this.handleAuthChange);
     
     // Listen for locale changes
-    i18n.onChange(() => this.requestUpdate());
+    this._unsubscribeI18n = i18n.onChange(() => this.requestUpdate());
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback();
     window.removeEventListener('auth:login', this.handleAuthChange);
     window.removeEventListener('auth:logout', this.handleAuthChange);
+    if (this._unsubscribeI18n) {
+      this._unsubscribeI18n();
+      this._unsubscribeI18n = undefined;
+    }
   }
 
   private handleAuthChange = () => {

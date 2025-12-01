@@ -60,9 +60,7 @@ type VMCreateRequestEnhanced struct {
 
 // StorageConfig represents the nested storage configuration
 type StorageConfig struct {
-	DefaultPool string             `json:"default_pool" binding:"required"` // Default pool for relative paths
-	BootISO     string             `json:"boot_iso,omitempty"`              // Optional convenience field for boot ISO
-	Disks       []DiskCreateConfig `json:"disks" binding:"required,min=1"`  // Array of disk configurations
+	Disks []DiskCreateConfig `json:"disks" binding:"required,min=1"` // Array of disk configurations
 }
 
 // EnhancedGraphicsConfig extends graphics configuration
@@ -87,7 +85,7 @@ type DiskCreateConfig struct {
 	Path string `json:"path,omitempty"` // Path to existing disk or relative path
 
 	// Storage pool override (if different from default_pool)
-	StoragePool string `json:"storage_pool,omitempty"`
+	StoragePool string `json:"storage_pool" binding:"required"`
 
 	// For clone action
 	CloneFrom string `json:"clone_from,omitempty"` // Path to source disk to clone (required for clone)
@@ -198,28 +196,8 @@ func (s *Service) CreateVMEnhanced(ctx context.Context, req *VMCreateRequestEnha
 // prepareEnhancedStorageConfig validates and prepares the storage configuration
 func (s *Service) prepareEnhancedStorageConfig(ctx context.Context, req *VMCreateRequestEnhanced) ([]PreparedDisk, error) {
 	var disks []PreparedDisk
-
-	// Basic validation that a default pool name is provided
-	if req.Storage.DefaultPool == "" {
-		return nil, fmt.Errorf("default storage pool is required")
-	}
-
-	// Handle boot ISO if specified
-	if req.Storage.BootISO != "" {
-		bootDisk, err := s.prepareBootISO(ctx, req.Storage.BootISO, req.Storage.DefaultPool)
-		if err != nil {
-			log.Printf("prepareEnhancedStorageConfig: error in operation for bootDisk, err :: %v\n", err)
-			return nil, fmt.Errorf("failed to prepare boot ISO: %w", err)
-		}
-		disks = append(disks, bootDisk)
-	}
-
 	// Process each disk configuration
 	for i, diskConfig := range req.Storage.Disks {
-		// Skip if it's a cdrom device and we already have a boot ISO
-		if diskConfig.Device == "cdrom" && req.Storage.BootISO != "" {
-			continue
-		}
 
 		// Validate action-specific requirements
 		switch diskConfig.Action {
@@ -237,21 +215,12 @@ func (s *Service) prepareEnhancedStorageConfig(ctx context.Context, req *VMCreat
 			}
 		}
 
-		// Determine which storage pool to use
-		poolName := req.Storage.DefaultPool
-		if diskConfig.StoragePool != "" {
-			poolName = diskConfig.StoragePool
-			// Validate the override pool exists
-			if err := s.validateStoragePool(ctx, poolName); err != nil {
-				log.Printf("prepareEnhancedStorageConfig: error validating storage pool: %v\n", err)
-				return nil, fmt.Errorf("storage pool %s not found for disk %d: %w", poolName, i, err)
-			}
-		} else {
-			// Validate the default pool exists only after disk-level validation
-			if err := s.validateStoragePool(ctx, poolName); err != nil {
-				log.Printf("prepareEnhancedStorageConfig: error validating storage pool: %v\n", err)
-				return nil, fmt.Errorf("storage pool %s not found: %w", poolName, err)
-			}
+		// storage_pool is now required at disk level
+		poolName := diskConfig.StoragePool
+		// Validate the storage pool exists
+		if err := s.validateStoragePool(ctx, poolName); err != nil {
+			log.Printf("prepareEnhancedStorageConfig: error validating storage pool: %v\n", err)
+			return nil, fmt.Errorf("storage pool %s not found for disk %d: %w", poolName, i, err)
 		}
 
 		// Prepare the disk based on action
@@ -314,38 +283,6 @@ func (s *Service) prepareEnhancedStorageConfig(ctx context.Context, req *VMCreat
 	}
 
 	return disks, nil
-}
-
-// prepareBootISO converts boot_iso field to a disk configuration
-func (s *Service) prepareBootISO(ctx context.Context, bootISO string, defaultPool string) (PreparedDisk, error) {
-	// Resolve the ISO path
-	isoPath, err := s.resolveEnhancedDiskPath(ctx, bootISO, defaultPool)
-	if err != nil {
-		log.Printf("prepareBootISO: error in operation for isoPath, err :: %v\n", err)
-		return PreparedDisk{}, fmt.Errorf("failed to resolve boot ISO path: %w", err)
-	}
-
-	// Verify the file exists and is readable
-	if _, err := os.Stat(isoPath); err != nil {
-		return PreparedDisk{}, fmt.Errorf("boot ISO not found at %s: %w", isoPath, err)
-	}
-
-	// Create a disk configuration for the ISO
-	return PreparedDisk{
-		Path:      isoPath,
-		IsBootISO: true,
-		Config: DiskCreateConfig{
-			Action:    "attach",
-			Path:      isoPath,
-			Format:    "raw",
-			Bus:       DiskBusIDE, // Use IDE for better compatibility with boot media
-			Device:    "cdrom",
-			ReadOnly:  true,
-			BootOrder: 1,     // Boot from CD first
-			Target:    "hdc", // Standard CD-ROM target
-		},
-		StoragePool: defaultPool,
-	}, nil
 }
 
 // resolveEnhancedDiskPath resolves a disk path considering storage pools
@@ -490,13 +427,13 @@ func (s *Service) applyVMTemplate(ctx context.Context, req *VMCreateRequestEnhan
 	// Storage - merge strategy (only if storage not fully specified)
 	if req.Storage == nil {
 		req.Storage = &StorageConfig{
-			DefaultPool: "default",
 			Disks: []DiskCreateConfig{
 				{
-					Action: "create",
-					Size:   template.RecommendedDisk,
-					Format: template.DiskFormat,
-					Bus:    DiskBusVirtio,
+					Action:      "create",
+					Size:        template.RecommendedDisk,
+					Format:      template.DiskFormat,
+					Bus:         DiskBusVirtio,
+					StoragePool: "default",
 				},
 			},
 		}
