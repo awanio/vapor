@@ -27,6 +27,7 @@ export interface ConnectionState {
   lastError?: Error;
   lastConnected?: number;
   lastDisconnected?: number;
+  lastActivityAt?: number;
   messageCount?: number;
 }
 

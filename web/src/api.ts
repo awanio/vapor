@@ -1,5 +1,6 @@
 import { getAuthHeaders, $token, $isAuthenticated } from './stores/auth';
 import { getApiUrl, getWsUrl } from './config';
+import { perfIncrement } from './perf-debug';
 import type { APIResponse, WSMessage } from './types/api';
 
 // HTTP Methods
@@ -34,6 +35,14 @@ export class Api {
     options: RequestOptions = {}
   ): Promise<T> {
     const { method = 'GET', body, headers = {}, params } = options;
+
+    // Perf: categorize API requests when perf-debug is enabled
+    try {
+      perfIncrement('http_total');
+      if (endpoint.startsWith('/virtualization')) perfIncrement('http_virtualization');
+      else if (endpoint.startsWith('/system')) perfIncrement('http_system');
+      else if (endpoint.startsWith('/kubernetes')) perfIncrement('http_kubernetes');
+    } catch {}
 
     // Build URL with query params
     let url = getApiUrl(endpoint);

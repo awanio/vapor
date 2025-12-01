@@ -6,6 +6,7 @@
 import { atom, computed } from 'nanostores';
 import { persistentAtom } from '@nanostores/persistent';
 import { wsManager } from './websocket';
+import { perfIncrement, registerPerfGauge } from '../perf-debug';
 import type { 
   SystemSummary, 
   CPUInfo, 
@@ -502,6 +503,7 @@ export async function connectMetrics(): Promise<void> {
       // Handle metric data
       if (message.type === 'data' && message.payload) {
         const data = message.payload;
+        try { perfIncrement('metrics_data'); } catch {}
         
         // Update CPU metrics
         if (data.cpu) {
@@ -661,3 +663,17 @@ export function exportMetrics(): MetricsState {
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', cleanupMetrics);
 }
+
+
+// Perf debug gauges for metrics store (optional)
+registerPerfGauge(() => {
+  const gauges: Record<string, number> = {};
+  try {
+    const state = $metricsState.get();
+    gauges['metrics_cpuHistory'] = state.cpuHistory.length;
+    gauges['metrics_memoryHistory'] = state.memoryHistory.length;
+    gauges['metrics_diskHistory'] = state.diskHistory.length;
+    gauges['metrics_networkHistory'] = state.networkHistory.length;
+  } catch {}
+  return gauges;
+});

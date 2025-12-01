@@ -5,6 +5,7 @@
 
 import { atom, computed } from 'nanostores';
 import { auth } from '../../auth';
+import { perfIncrement, registerPerfGauge } from '../perf-debug';
 import { getWsUrl } from '../../config';
 import type {
   IWebSocketManager,
@@ -17,10 +18,13 @@ import type {
   WebSocketEvent,
   ConnectionHealth,
 } from '../types/websocket';
-import { 
+import {
   WebSocketEventType,
-  DEFAULT_RECONNECT_STRATEGIES 
+  DEFAULT_RECONNECT_STRATEGIES,
 } from '../types/websocket';
+
+const HEALTH_CHECK_INTERVAL_MS = 30000;
+const STALE_CONNECTION_THRESHOLD_MS = 180000; // 3 minutes of inactivity before reconnecting
 
 /**
  * WebSocket Manager Implementation
@@ -329,7 +333,9 @@ class WebSocketManager implements IWebSocketManager {
         ...this.getConnectionStatus(connectionId)!,
         status: 'connected',
         lastConnected: Date.now(),
+        lastActivityAt: Date.now(),
         reconnectAttempts: 0,
+        messageCount: 0,
       });
       
       // Send authentication if required
@@ -364,11 +370,16 @@ class WebSocketManager implements IWebSocketManager {
             ? JSON.parse(event.data)
             : event.data;
         
-        // Update message count
+        // Update activity tracking
         const status = this.getConnectionStatus(connectionId);
         if (status) {
           status.messageCount = (status.messageCount || 0) + 1;
+          status.lastActivityAt = Date.now();
         }
+        try {
+          perfIncrement('ws_message_total');
+          perfIncrement(`ws_message_${connectionId}`);
+        } catch {}
         
         // Route message to subscribers
         this.routeMessage(connectionId, message);
@@ -443,6 +454,10 @@ class WebSocketManager implements IWebSocketManager {
     type: string,
     isolatedId?: string
   ): void {
+    try {
+      perfIncrement('ws_reconnect_total');
+      perfIncrement(`ws_reconnect_${connectionId}`);
+    } catch {}
     const status = this.getConnectionStatus(connectionId);
     if (!status) return;
     
@@ -742,30 +757,49 @@ class WebSocketManager implements IWebSocketManager {
    * Start health monitoring for connection
    */
   private startHealthMonitoring(connectionId: string): void {
-    // Check every 30 seconds
+    // Clear any existing interval for this connection
+    this.stopHealthMonitoring(connectionId);
+
+    // Periodic health check
     const interval = setInterval(() => {
       const ws = this.getWebSocket(connectionId);
       const status = this.getConnectionStatus(connectionId);
-      
-      if (ws && status) {
-        // Send ping if connection is open
-        if (ws.readyState === WebSocket.OPEN) {
+
+      if (!ws || !status) {
+        return;
+      }
+
+      // Only monitor active connections
+      if (status.status !== 'connected') {
+        return;
+      }
+
+      // Send ping if connection is open
+      if (ws.readyState === WebSocket.OPEN) {
+        try {
           ws.send(JSON.stringify({ type: 'ping' }));
-        }
-        
-        // Check for stale connection (no messages in 60 seconds)
-        const lastActivity = Math.max(
-          status.lastConnected || 0,
-          status.messageCount || 0
-        );
-        
-        if (Date.now() - lastActivity > 60000) {
-          console.warn(`[WebSocketManager] Stale connection detected: ${connectionId}`);
-          this.reconnect(connectionId);
+        } catch (error) {
+          // Swallow ping errors; connection error/close handlers will drive reconnection
+          if (this.debug) {
+            console.error(`[WebSocketManager] Failed to send ping: ${connectionId}`, error);
+          }
         }
       }
-    }, 30000);
-    
+
+      // Check for stale connection (no activity within threshold)
+      const lastActivity =
+        status.lastActivityAt ??
+        status.lastConnected ??
+        0;
+
+      if (lastActivity && Date.now() - lastActivity > STALE_CONNECTION_THRESHOLD_MS) {
+        if (this.debug) {
+          console.warn(`[WebSocketManager] Stale connection detected: ${connectionId}`);
+        }
+        this.reconnect(connectionId);
+      }
+    }, HEALTH_CHECK_INTERVAL_MS);
+
     this.healthCheckIntervals.set(connectionId, interval);
   }
   
@@ -817,3 +851,15 @@ export const $activeConnections = computed($connectionHealth, health =>
   health.filter(h => h.status === 'connected').length
 );
 export const $totalConnections = computed($connectionHealth, health => health.length);
+
+// Perf debug gauges for WebSocket connections (optional)
+registerPerfGauge(() => {
+  const gauges: Record<string, number> = {};
+  try {
+    const health = $connectionHealth.get();
+    gauges['ws_connections'] = health.length;
+    gauges['ws_reconnecting'] = health.filter((h) => h.status === 'reconnecting').length;
+    gauges['ws_errors'] = health.filter((h) => h.lastError).length;
+  } catch {}
+  return gauges;
+});

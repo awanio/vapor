@@ -3,6 +3,7 @@
  */
 
 import { atom, computed, map } from 'nanostores';
+import { perfIncrement, registerPerfGauge } from '../perf-debug';
 import { createStore } from '../utils/factory';
 import { getApiUrl } from '../../config';
 import { StoreEventType } from '../types';
@@ -1545,9 +1546,41 @@ export const $volumeStats = computed(
 
 // ============ Action Creators ============
 
+// Perf debug gauges for virtualization stores (optional)
+registerPerfGauge(() => {
+  const gauges: Record<string, number> = {};
+  try {
+    const items = vmStore.$items.get() as any;
+    gauges['virt_vms'] = items instanceof Map ? items.size : (items ? Object.keys(items).length : 0);
+  } catch {}
+  try {
+    const items = storagePoolStore.$items.get() as any;
+    gauges['virt_storage_pools'] = items instanceof Map ? items.size : (items ? Object.keys(items).length : 0);
+  } catch {}
+  try {
+    const items = isoStore.$items.get() as any;
+    gauges['virt_isos'] = items instanceof Map ? items.size : (items ? Object.keys(items).length : 0);
+  } catch {}
+  try {
+    const items = templateStore.$items.get() as any;
+    gauges['virt_templates'] = items instanceof Map ? items.size : (items ? Object.keys(items).length : 0);
+  } catch {}
+  try {
+    const items = networkStore.$items.get() as any;
+    gauges['virt_networks'] = items instanceof Map ? items.size : (items ? Object.keys(items).length : 0);
+  } catch {}
+  try {
+    const items = volumeStore.$items.get() as any;
+    gauges['virt_volumes'] = items instanceof Map ? items.size : (items ? Object.keys(items).length : 0);
+  } catch {}
+  return gauges;
+});
+
+
 // VM Actions
 export const vmActions = {
   async fetchAll() {
+    perfIncrement('virt_vm_fetchAll');
     await vmStore.fetch();
   },
   
@@ -1859,6 +1892,7 @@ export const wizardActions = {
 // Storage Pool Actions
 export const storagePoolActions = {
   async fetchAll() {
+    perfIncrement('virt_storagePool_fetchAll');
     await storagePoolStore.fetch();
   },
   
@@ -2049,6 +2083,7 @@ export const networkActions = {
 // Volume Actions
 export const volumeActions = {
   async fetchAll() {
+    perfIncrement('virt_volume_fetchAll');
     await volumeStore.fetch();
   },
   

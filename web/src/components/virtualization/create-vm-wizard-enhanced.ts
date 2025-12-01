@@ -1764,9 +1764,6 @@ export class CreateVMWizardEnhanced extends LitElement {
   }
 
   private renderStorageConfig() {
-    const storagePools = this.storagePoolsController.value;
-    const isos = this.isosController.value;
-
     return html`
       <div class="section ${this.expandedSections.has('storage') ? 'expanded' : ''}">
         <div class="section-header" @click=${() => this.toggleSection('storage')}>

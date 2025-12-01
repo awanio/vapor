@@ -2,6 +2,7 @@ import './styles/tailwind.css';
 import { i18n } from './i18n';
 import { auth } from './auth';
 import { theme } from './theme';
+import './perf-debug';
 
 // Initialize theme first to apply saved preference
 theme.getTheme();

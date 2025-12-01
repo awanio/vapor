@@ -1,4 +1,4 @@
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-DDga33qM.js";
+import { g as getApiUrl, i as i18n, r as registerPerfGauge, a as getWsUrl, b as auth, p as perfIncrement, t as t$5, c as theme } from "./index-BtHa4tQ0.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -1215,14 +1215,14 @@ class I18nLitElement extends i$2 {
     }
   }
 }
-var __defProp$V = Object.defineProperty;
-var __getOwnPropDesc$N = Object.getOwnPropertyDescriptor;
-var __decorateClass$W = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$N(target, key) : target;
+var __defProp$W = Object.defineProperty;
+var __getOwnPropDesc$O = Object.getOwnPropertyDescriptor;
+var __decorateClass$X = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$O(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$V(target, key, result);
+  if (kind && result) __defProp$W(target, key, result);
   return result;
 };
 let LoginPage = class extends I18nLitElement {
@@ -1496,22 +1496,22 @@ LoginPage.styles = i$5`
       fill: var(--primary);
     }
   `;
-__decorateClass$W([
+__decorateClass$X([
   r$1()
 ], LoginPage.prototype, "username", 2);
-__decorateClass$W([
+__decorateClass$X([
   r$1()
 ], LoginPage.prototype, "password", 2);
-__decorateClass$W([
+__decorateClass$X([
   r$1()
 ], LoginPage.prototype, "loading", 2);
-__decorateClass$W([
+__decorateClass$X([
   r$1()
 ], LoginPage.prototype, "error", 2);
-__decorateClass$W([
+__decorateClass$X([
   r$1()
 ], LoginPage.prototype, "showPassword", 2);
-LoginPage = __decorateClass$W([
+LoginPage = __decorateClass$X([
   t$2("login-page")
 ], LoginPage);
 /*!
@@ -16385,6 +16385,8 @@ const DEFAULT_RECONNECT_STRATEGIES = {
     timeout: 1e4
   }
 };
+const HEALTH_CHECK_INTERVAL_MS = 3e4;
+const STALE_CONNECTION_THRESHOLD_MS = 18e4;
 let WebSocketManager$1 = class WebSocketManager {
   constructor() {
     this.sharedConnections = {
@@ -16571,7 +16573,9 @@ let WebSocketManager$1 = class WebSocketManager {
         ...this.getConnectionStatus(connectionId),
         status: "connected",
         lastConnected: Date.now(),
-        reconnectAttempts: 0
+        lastActivityAt: Date.now(),
+        reconnectAttempts: 0,
+        messageCount: 0
       });
       if (auth.isAuthenticated()) {
         const token = auth.getToken();
@@ -16597,6 +16601,12 @@ let WebSocketManager$1 = class WebSocketManager {
         const status = this.getConnectionStatus(connectionId);
         if (status) {
           status.messageCount = (status.messageCount || 0) + 1;
+          status.lastActivityAt = Date.now();
+        }
+        try {
+          perfIncrement("ws_message_total");
+          perfIncrement(`ws_message_${connectionId}`);
+        } catch {
         }
         this.routeMessage(connectionId, message);
         this.emitEvent({
@@ -16649,6 +16659,11 @@ let WebSocketManager$1 = class WebSocketManager {
    * Schedule reconnection with backoff
    */
   scheduleReconnection(connectionId, type, isolatedId) {
+    try {
+      perfIncrement("ws_reconnect_total");
+      perfIncrement(`ws_reconnect_${connectionId}`);
+    } catch {
+    }
     const status = this.getConnectionStatus(connectionId);
     if (!status) return;
     const strategy = this.getReconnectStrategy(type);
@@ -16876,23 +16891,33 @@ let WebSocketManager$1 = class WebSocketManager {
    * Start health monitoring for connection
    */
   startHealthMonitoring(connectionId) {
+    this.stopHealthMonitoring(connectionId);
     const interval = setInterval(() => {
       const ws = this.getWebSocket(connectionId);
       const status = this.getConnectionStatus(connectionId);
-      if (ws && status) {
-        if (ws.readyState === WebSocket.OPEN) {
+      if (!ws || !status) {
+        return;
+      }
+      if (status.status !== "connected") {
+        return;
+      }
+      if (ws.readyState === WebSocket.OPEN) {
+        try {
           ws.send(JSON.stringify({ type: "ping" }));
-        }
-        const lastActivity = Math.max(
-          status.lastConnected || 0,
-          status.messageCount || 0
-        );
-        if (Date.now() - lastActivity > 6e4) {
-          console.warn(`[WebSocketManager] Stale connection detected: ${connectionId}`);
-          this.reconnect(connectionId);
+        } catch (error) {
+          if (this.debug) {
+            console.error(`[WebSocketManager] Failed to send ping: ${connectionId}`, error);
+          }
         }
       }
-    }, 3e4);
+      const lastActivity = status.lastActivityAt ?? status.lastConnected ?? 0;
+      if (lastActivity && Date.now() - lastActivity > STALE_CONNECTION_THRESHOLD_MS) {
+        if (this.debug) {
+          console.warn(`[WebSocketManager] Stale connection detected: ${connectionId}`);
+        }
+        this.reconnect(connectionId);
+      }
+    }, HEALTH_CHECK_INTERVAL_MS);
     this.healthCheckIntervals.set(connectionId, interval);
   }
   /**
@@ -16934,6 +16959,17 @@ computed(
   (health) => health.filter((h3) => h3.status === "connected").length
 );
 computed($connectionHealth, (health) => health.length);
+registerPerfGauge(() => {
+  const gauges = {};
+  try {
+    const health = $connectionHealth.get();
+    gauges["ws_connections"] = health.length;
+    gauges["ws_reconnecting"] = health.filter((h3) => h3.status === "reconnecting").length;
+    gauges["ws_errors"] = health.filter((h3) => h3.lastError).length;
+  } catch {
+  }
+  return gauges;
+});
 class ApiError extends Error {
   constructor(message, code, details, status) {
     super(message);
@@ -16947,6 +16983,13 @@ class Api {
   // Generic request method
   static async request(endpoint, options = {}) {
     const { method = "GET", body, headers = {}, params } = options;
+    try {
+      perfIncrement("http_total");
+      if (endpoint.startsWith("/virtualization")) perfIncrement("http_virtualization");
+      else if (endpoint.startsWith("/system")) perfIncrement("http_system");
+      else if (endpoint.startsWith("/kubernetes")) perfIncrement("http_kubernetes");
+    } catch {
+    }
     let url = getApiUrl(endpoint);
     if (params) {
       const queryString = new URLSearchParams(
@@ -17332,7 +17375,7 @@ const $metricsAlerts = computed(
     return alerts;
   }
 );
-computed(
+const $metricsState = computed(
   [
     $systemSummary,
     $cpuInfo,
@@ -17407,7 +17450,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-DDga33qM.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-BtHa4tQ0.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17452,7 +17495,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-DDga33qM.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-BtHa4tQ0.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17471,6 +17514,10 @@ async function connectMetrics() {
       }
       if (message.type === "data" && message.payload) {
         const data = message.payload;
+        try {
+          perfIncrement("metrics_data");
+        } catch {
+        }
         if (data.cpu) {
           const cpuData = {
             usage_percent: data.cpu.usage,
@@ -17516,7 +17563,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-DDga33qM.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-BtHa4tQ0.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17560,6 +17607,18 @@ function formatUptime(seconds) {
 if (typeof window !== "undefined") {
   window.addEventListener("beforeunload", cleanupMetrics);
 }
+registerPerfGauge(() => {
+  const gauges = {};
+  try {
+    const state = $metricsState.get();
+    gauges["metrics_cpuHistory"] = state.cpuHistory.length;
+    gauges["metrics_memoryHistory"] = state.memoryHistory.length;
+    gauges["metrics_diskHistory"] = state.diskHistory.length;
+    gauges["metrics_networkHistory"] = state.networkHistory.length;
+  } catch {
+  }
+  return gauges;
+});
 const metrics = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   $cpuHistory,
@@ -17579,6 +17638,7 @@ const metrics = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePrope
   $metricsAlerts,
   $metricsConnected,
   $metricsError,
+  $metricsState,
   $networkHistory,
   $systemSummary,
   calculateAverage,
@@ -17596,9 +17656,9 @@ const metrics = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePrope
   updateMemoryMetrics,
   updateNetworkMetrics
 }, Symbol.toStringTag, { value: "Module" }));
-var __getOwnPropDesc$M = Object.getOwnPropertyDescriptor;
-var __decorateClass$V = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$M(target, key) : target;
+var __getOwnPropDesc$N = Object.getOwnPropertyDescriptor;
+var __decorateClass$W = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$N(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(result) || result;
@@ -17629,7 +17689,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-DDga33qM.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-BtHa4tQ0.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -18249,7 +18309,7 @@ DashboardTabV2.styles = i$5`
       margin-bottom: 16px;
     }
   `;
-DashboardTabV2 = __decorateClass$V([
+DashboardTabV2 = __decorateClass$W([
   t$2("dashboard-tab-v2")
 ], DashboardTabV2);
 const $interfaces = atom([]);
@@ -18676,13 +18736,13 @@ async function initializeNetworkStore() {
   // Actions
   ...networkActions
 });
-var __defProp$U = Object.defineProperty;
-var __decorateClass$U = (decorators, target, key, kind) => {
+var __defProp$V = Object.defineProperty;
+var __decorateClass$V = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$U(target, key, result);
+  if (result) __defProp$V(target, key, result);
   return result;
 };
 class ModalDialog extends I18nLitElement {
@@ -18885,27 +18945,27 @@ class ModalDialog extends I18nLitElement {
     `;
   }
 }
-__decorateClass$U([
+__decorateClass$V([
   n2({ type: Boolean, reflect: true })
 ], ModalDialog.prototype, "open");
-__decorateClass$U([
+__decorateClass$V([
   n2({ type: String })
 ], ModalDialog.prototype, "title");
-__decorateClass$U([
+__decorateClass$V([
   n2({ type: String })
 ], ModalDialog.prototype, "size");
-__decorateClass$U([
+__decorateClass$V([
   n2({ type: Boolean })
 ], ModalDialog.prototype, "showFooter");
 customElements.define("modal-dialog", ModalDialog);
-var __defProp$T = Object.defineProperty;
-var __getOwnPropDesc$L = Object.getOwnPropertyDescriptor;
-var __decorateClass$T = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$L(target, key) : target;
+var __defProp$U = Object.defineProperty;
+var __getOwnPropDesc$M = Object.getOwnPropertyDescriptor;
+var __decorateClass$U = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$M(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$T(target, key, result);
+  if (kind && result) __defProp$U(target, key, result);
   return result;
 };
 let OperationWarning = class extends i$2 {
@@ -19091,31 +19151,31 @@ OperationWarning.styles = i$5`
       color: var(--text-primary, var(--vscode-foreground, #cccccc));
     }
   `;
-__decorateClass$T([
+__decorateClass$U([
   n2({ type: String })
 ], OperationWarning.prototype, "type", 2);
-__decorateClass$T([
+__decorateClass$U([
   n2({ type: String })
 ], OperationWarning.prototype, "message", 2);
-__decorateClass$T([
+__decorateClass$U([
   n2({ type: Array })
 ], OperationWarning.prototype, "failures", 2);
-__decorateClass$T([
+__decorateClass$U([
   n2({ type: Array })
 ], OperationWarning.prototype, "successfulItems", 2);
-__decorateClass$T([
+__decorateClass$U([
   n2({ type: Boolean })
 ], OperationWarning.prototype, "dismissible", 2);
-OperationWarning = __decorateClass$T([
+OperationWarning = __decorateClass$U([
   t$2("operation-warning")
 ], OperationWarning);
-var __defProp$S = Object.defineProperty;
-var __decorateClass$S = (decorators, target, key, kind) => {
+var __defProp$T = Object.defineProperty;
+var __decorateClass$T = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$S(target, key, result);
+  if (result) __defProp$T(target, key, result);
   return result;
 };
 class NetworkTab extends I18nLitElement {
@@ -21711,147 +21771,147 @@ ${this.interfaces.length > 0 ? x`
     `;
   }
 }
-__decorateClass$S([
+__decorateClass$T([
   n2({ type: String })
 ], NetworkTab.prototype, "subRoute");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "activeTab");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "showConfigureDrawer");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "showDetailsDrawer");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "editingIpIndex");
-__decorateClass$S([
+__decorateClass$T([
   r$1(),
   r$1()
 ], NetworkTab.prototype, "showAddIpModal");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "showEditIpModal");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "editIpAddress");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "editIpNetmask");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "editIpGateway");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "originalIpAddress");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "newIpAddress");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "newIpNetmask");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "newIpGateway");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "showBridgeDrawer");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "isEditingBridge");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "editingBridgeName");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "bridgeFormData");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "showBondDrawer");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "isEditingBond");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "editingBondName");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "bondFormData");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "vlanFormData");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "showVLANDrawer");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "interfaceTypes");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "isEditingVlan");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "editingVlanName");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "operationWarning");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "configureNetworkInterface");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "configureFormData");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "showConfirmModal");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "confirmAction");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "confirmTitle");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "confirmMessage");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "availableInterfacesForBridge");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "showBridgeInterfacesSuggestions");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "bridgeInterfaceInputValue");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "selectedSuggestionIndex");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "bondInterfaceInputValue");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "showBondInterfacesSuggestions");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "selectedBondSuggestionIndex");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "vlanInterfaceInputValue");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "showVlanInterfacesSuggestions");
-__decorateClass$S([
+__decorateClass$T([
   r$1()
 ], NetworkTab.prototype, "selectedVlanSuggestionIndex");
 customElements.define("network-tab", NetworkTab);
-var __defProp$R = Object.defineProperty;
-var __decorateClass$R = (decorators, target, key, kind) => {
+var __defProp$S = Object.defineProperty;
+var __decorateClass$S = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$R(target, key, result);
+  if (result) __defProp$S(target, key, result);
   return result;
 };
 class StorageTab extends I18nLitElement {
@@ -22872,46 +22932,46 @@ class StorageTab extends I18nLitElement {
     console.log("Show create subvolume dialog");
   }
 }
-__decorateClass$R([
+__decorateClass$S([
   n2({ type: Array })
 ], StorageTab.prototype, "disks");
-__decorateClass$R([
+__decorateClass$S([
   n2({ type: Array })
 ], StorageTab.prototype, "volumeGroups");
-__decorateClass$R([
+__decorateClass$S([
   n2({ type: Array })
 ], StorageTab.prototype, "logicalVolumes");
-__decorateClass$R([
+__decorateClass$S([
   n2({ type: Array })
 ], StorageTab.prototype, "physicalVolumes");
-__decorateClass$R([
+__decorateClass$S([
   n2({ type: Array })
 ], StorageTab.prototype, "raidDevices");
-__decorateClass$R([
+__decorateClass$S([
   n2({ type: Array })
 ], StorageTab.prototype, "availableRaidDisks");
-__decorateClass$R([
+__decorateClass$S([
   n2({ type: Array })
 ], StorageTab.prototype, "iscsiTargets");
-__decorateClass$R([
+__decorateClass$S([
   n2({ type: Array })
 ], StorageTab.prototype, "iscsiSessions");
-__decorateClass$R([
+__decorateClass$S([
   n2({ type: Array })
 ], StorageTab.prototype, "multipathDevices");
-__decorateClass$R([
+__decorateClass$S([
   n2({ type: Array })
 ], StorageTab.prototype, "btrfsSubvolumes");
-__decorateClass$R([
+__decorateClass$S([
   n2({ type: String })
 ], StorageTab.prototype, "activeSection");
-__decorateClass$R([
+__decorateClass$S([
   n2({ type: String })
 ], StorageTab.prototype, "subRoute");
-__decorateClass$R([
+__decorateClass$S([
   n2({ type: Boolean })
 ], StorageTab.prototype, "loading");
-__decorateClass$R([
+__decorateClass$S([
   n2({ type: String })
 ], StorageTab.prototype, "error");
 customElements.define("storage-tab", StorageTab);
@@ -22958,13 +23018,13 @@ let e$1 = class e extends i$1 {
 };
 e$1.directiveName = "unsafeHTML", e$1.resultType = 1;
 const o = e$2(e$1);
-var __defProp$Q = Object.defineProperty;
-var __decorateClass$Q = (decorators, target, key, kind) => {
+var __defProp$R = Object.defineProperty;
+var __decorateClass$R = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$Q(target, key, result);
+  if (result) __defProp$R(target, key, result);
   return result;
 };
 class ContainersTab extends i$2 {
@@ -24848,89 +24908,89 @@ class ContainersTab extends i$2 {
     `;
   }
 }
-__decorateClass$Q([
+__decorateClass$R([
   r$1()
 ], ContainersTab.prototype, "activeTab");
-__decorateClass$Q([
+__decorateClass$R([
   r$1()
 ], ContainersTab.prototype, "containers");
-__decorateClass$Q([
+__decorateClass$R([
   r$1()
 ], ContainersTab.prototype, "images");
-__decorateClass$Q([
+__decorateClass$R([
   r$1()
 ], ContainersTab.prototype, "searchTerm");
-__decorateClass$Q([
+__decorateClass$R([
   r$1()
 ], ContainersTab.prototype, "error");
-__decorateClass$Q([
+__decorateClass$R([
   r$1()
 ], ContainersTab.prototype, "runtime");
-__decorateClass$Q([
+__decorateClass$R([
   r$1()
 ], ContainersTab.prototype, "showConfirmModal");
-__decorateClass$Q([
+__decorateClass$R([
   r$1()
 ], ContainersTab.prototype, "confirmAction");
-__decorateClass$Q([
+__decorateClass$R([
   r$1()
 ], ContainersTab.prototype, "selectedContainer");
-__decorateClass$Q([
+__decorateClass$R([
   r$1()
 ], ContainersTab.prototype, "selectedImage");
-__decorateClass$Q([
+__decorateClass$R([
   r$1()
 ], ContainersTab.prototype, "showDrawer");
-__decorateClass$Q([
+__decorateClass$R([
   r$1()
 ], ContainersTab.prototype, "detailError");
-__decorateClass$Q([
+__decorateClass$R([
   r$1()
 ], ContainersTab.prototype, "confirmTitle");
-__decorateClass$Q([
+__decorateClass$R([
   r$1()
 ], ContainersTab.prototype, "confirmMessage");
-__decorateClass$Q([
+__decorateClass$R([
   r$1()
 ], ContainersTab.prototype, "showLogsDrawer");
-__decorateClass$Q([
+__decorateClass$R([
   r$1()
 ], ContainersTab.prototype, "containerLogs");
-__decorateClass$Q([
+__decorateClass$R([
   r$1()
 ], ContainersTab.prototype, "logsError");
-__decorateClass$Q([
+__decorateClass$R([
   r$1()
 ], ContainersTab.prototype, "logsSearchTerm");
-__decorateClass$Q([
+__decorateClass$R([
   r$1()
 ], ContainersTab.prototype, "showImageActionsDropdown");
-__decorateClass$Q([
+__decorateClass$R([
   r$1()
 ], ContainersTab.prototype, "showPullImageModal");
-__decorateClass$Q([
+__decorateClass$R([
   r$1()
 ], ContainersTab.prototype, "imageName");
-__decorateClass$Q([
+__decorateClass$R([
   r$1()
 ], ContainersTab.prototype, "selectedFile");
-__decorateClass$Q([
+__decorateClass$R([
   r$1()
 ], ContainersTab.prototype, "showUploadDrawer");
-__decorateClass$Q([
+__decorateClass$R([
   r$1()
 ], ContainersTab.prototype, "uploadQueue");
-__decorateClass$Q([
+__decorateClass$R([
   r$1()
 ], ContainersTab.prototype, "isUploading");
 customElements.define("containers-tab", ContainersTab);
-var __defProp$P = Object.defineProperty;
-var __decorateClass$P = (decorators, target, key, kind) => {
+var __defProp$Q = Object.defineProperty;
+var __decorateClass$Q = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$P(target, key, result);
+  if (result) __defProp$Q(target, key, result);
   return result;
 };
 class LogsTab extends I18nLitElement {
@@ -25408,25 +25468,25 @@ class LogsTab extends I18nLitElement {
     `;
   }
 }
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], LogsTab.prototype, "logs");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], LogsTab.prototype, "serviceFilter");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], LogsTab.prototype, "priorityFilter");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], LogsTab.prototype, "sinceFilter");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], LogsTab.prototype, "follow");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], LogsTab.prototype, "connected");
-__decorateClass$P([
+__decorateClass$Q([
   r$1()
 ], LogsTab.prototype, "autoScroll");
 customElements.define("logs-tab", LogsTab);
@@ -32347,14 +32407,14 @@ class TerminalStore {
   }
 }
 const terminalStore = new TerminalStore();
-var __defProp$O = Object.defineProperty;
-var __getOwnPropDesc$K = Object.getOwnPropertyDescriptor;
-var __decorateClass$O = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$K(target, key) : target;
+var __defProp$P = Object.defineProperty;
+var __getOwnPropDesc$L = Object.getOwnPropertyDescriptor;
+var __decorateClass$P = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$L(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$O(target, key, result);
+  if (kind && result) __defProp$P(target, key, result);
   return result;
 };
 let TerminalTabV2 = class extends i$2 {
@@ -33044,28 +33104,28 @@ TerminalTabV2.styles = [
     }
   `
 ];
-__decorateClass$O([
+__decorateClass$P([
   r$1()
 ], TerminalTabV2.prototype, "isFullscreen", 2);
-__decorateClass$O([
+__decorateClass$P([
   r$1()
 ], TerminalTabV2.prototype, "localSessions", 2);
-__decorateClass$O([
+__decorateClass$P([
   r$1()
 ], TerminalTabV2.prototype, "localActiveSessionId", 2);
-__decorateClass$O([
+__decorateClass$P([
   r$1()
 ], TerminalTabV2.prototype, "localActiveSession", 2);
-TerminalTabV2 = __decorateClass$O([
+TerminalTabV2 = __decorateClass$P([
   t$2("terminal-tab-v2")
 ], TerminalTabV2);
-var __defProp$N = Object.defineProperty;
-var __decorateClass$N = (decorators, target, key, kind) => {
+var __defProp$O = Object.defineProperty;
+var __decorateClass$O = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$N(target, key, result);
+  if (result) __defProp$O(target, key, result);
   return result;
 };
 class UsersTab extends i$2 {
@@ -33823,47 +33883,47 @@ class UsersTab extends i$2 {
     `;
   }
 }
-__decorateClass$N([
+__decorateClass$O([
   n2({ type: Array })
 ], UsersTab.prototype, "users");
-__decorateClass$N([
+__decorateClass$O([
   n2({ type: Boolean })
 ], UsersTab.prototype, "showCreateForm");
-__decorateClass$N([
+__decorateClass$O([
   n2({ type: Boolean })
 ], UsersTab.prototype, "showEditForm");
-__decorateClass$N([
+__decorateClass$O([
   n2({ type: Boolean })
 ], UsersTab.prototype, "showResetPasswordForm");
-__decorateClass$N([
+__decorateClass$O([
   n2({ type: Object })
 ], UsersTab.prototype, "newUser");
-__decorateClass$N([
+__decorateClass$O([
   n2({ type: Object })
 ], UsersTab.prototype, "editingUser");
-__decorateClass$N([
+__decorateClass$O([
   n2({ type: String })
 ], UsersTab.prototype, "userToDelete");
-__decorateClass$N([
+__decorateClass$O([
   n2({ type: String })
 ], UsersTab.prototype, "resetPasswordUsername");
-__decorateClass$N([
+__decorateClass$O([
   n2({ type: String })
 ], UsersTab.prototype, "newPassword");
-__decorateClass$N([
+__decorateClass$O([
   n2({ type: String })
 ], UsersTab.prototype, "confirmPassword");
-__decorateClass$N([
+__decorateClass$O([
   n2({ type: String })
 ], UsersTab.prototype, "searchQuery");
 customElements.define("users-tab", UsersTab);
-var __defProp$M = Object.defineProperty;
-var __decorateClass$M = (decorators, target, key, kind) => {
+var __defProp$N = Object.defineProperty;
+var __decorateClass$N = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$M(target, key, result);
+  if (result) __defProp$N(target, key, result);
   return result;
 };
 class DockerTab extends i$2 {
@@ -35847,79 +35907,79 @@ class DockerTab extends i$2 {
     }
   }
 }
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], DockerTab.prototype, "activeTab");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], DockerTab.prototype, "containers");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], DockerTab.prototype, "images");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], DockerTab.prototype, "volumes");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], DockerTab.prototype, "networks");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], DockerTab.prototype, "searchTerm");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], DockerTab.prototype, "error");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], DockerTab.prototype, "showConfirmModal");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], DockerTab.prototype, "confirmAction");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], DockerTab.prototype, "selectedContainer");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], DockerTab.prototype, "selectedImage");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], DockerTab.prototype, "showDrawer");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], DockerTab.prototype, "detailError");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], DockerTab.prototype, "confirmTitle");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], DockerTab.prototype, "confirmMessage");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], DockerTab.prototype, "showLogsDrawer");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], DockerTab.prototype, "containerLogs");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], DockerTab.prototype, "logsError");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], DockerTab.prototype, "logsSearchTerm");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], DockerTab.prototype, "showImageActionsDropdown");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], DockerTab.prototype, "showPullImageModal");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], DockerTab.prototype, "imageName");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], DockerTab.prototype, "showUploadDrawer");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], DockerTab.prototype, "uploadQueue");
-__decorateClass$M([
+__decorateClass$N([
   r$1()
 ], DockerTab.prototype, "isUploading");
 customElements.define("docker-tab", DockerTab);
@@ -36358,7 +36418,7 @@ class KubernetesApi {
       if (contentType === "json") {
         parsedResource = JSON.parse(content);
       } else {
-        const yaml = await import("./index-Dwq5nugI.js");
+        const yaml = await import("./index-BwYYoiUR.js");
         parsedResource = yaml.parse(content);
       }
     } catch (error) {
@@ -36464,14 +36524,14 @@ class KubernetesApi {
     await Api.delete(endpoint);
   }
 }
-var __defProp$L = Object.defineProperty;
-var __getOwnPropDesc$J = Object.getOwnPropertyDescriptor;
-var __decorateClass$L = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$J(target, key) : target;
+var __defProp$M = Object.defineProperty;
+var __getOwnPropDesc$K = Object.getOwnPropertyDescriptor;
+var __decorateClass$M = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$K(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$L(target, key, result);
+  if (kind && result) __defProp$M(target, key, result);
   return result;
 };
 let SearchInput = class extends i$2 {
@@ -36559,29 +36619,29 @@ SearchInput.styles = i$5`
       cursor: not-allowed;
     }
   `;
-__decorateClass$L([
+__decorateClass$M([
   n2({ type: String })
 ], SearchInput.prototype, "value", 2);
-__decorateClass$L([
+__decorateClass$M([
   n2({ type: String })
 ], SearchInput.prototype, "placeholder", 2);
-__decorateClass$L([
+__decorateClass$M([
   n2({ type: Number })
 ], SearchInput.prototype, "width", 2);
-__decorateClass$L([
+__decorateClass$M([
   n2({ type: Boolean })
 ], SearchInput.prototype, "disabled", 2);
-SearchInput = __decorateClass$L([
+SearchInput = __decorateClass$M([
   t$2("search-input")
 ], SearchInput);
-var __defProp$K = Object.defineProperty;
-var __getOwnPropDesc$I = Object.getOwnPropertyDescriptor;
-var __decorateClass$K = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$I(target, key) : target;
+var __defProp$L = Object.defineProperty;
+var __getOwnPropDesc$J = Object.getOwnPropertyDescriptor;
+var __decorateClass$L = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$J(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$K(target, key, result);
+  if (kind && result) __defProp$L(target, key, result);
   return result;
 };
 let EmptyState = class extends i$2 {
@@ -36653,26 +36713,26 @@ EmptyState.styles = i$5`
       background: var(--vscode-button-hoverBackground, #005a9e);
     }
   `;
-__decorateClass$K([
+__decorateClass$L([
   n2({ type: String })
 ], EmptyState.prototype, "message", 2);
-__decorateClass$K([
+__decorateClass$L([
   n2({ type: String })
 ], EmptyState.prototype, "icon", 2);
-__decorateClass$K([
+__decorateClass$L([
   n2({ type: String })
 ], EmptyState.prototype, "actionLabel", 2);
-EmptyState = __decorateClass$K([
+EmptyState = __decorateClass$L([
   t$2("empty-state")
 ], EmptyState);
-var __defProp$J = Object.defineProperty;
-var __getOwnPropDesc$H = Object.getOwnPropertyDescriptor;
-var __decorateClass$J = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$H(target, key) : target;
+var __defProp$K = Object.defineProperty;
+var __getOwnPropDesc$I = Object.getOwnPropertyDescriptor;
+var __decorateClass$K = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$I(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$J(target, key, result);
+  if (kind && result) __defProp$K(target, key, result);
   return result;
 };
 let LoadingState = class extends i$2 {
@@ -36725,20 +36785,20 @@ LoadingState.styles = i$5`
       }
     }
   `;
-__decorateClass$J([
+__decorateClass$K([
   n2({ type: String })
 ], LoadingState.prototype, "message", 2);
-LoadingState = __decorateClass$J([
+LoadingState = __decorateClass$K([
   t$2("loading-state")
 ], LoadingState);
-var __defProp$I = Object.defineProperty;
-var __getOwnPropDesc$G = Object.getOwnPropertyDescriptor;
-var __decorateClass$I = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$G(target, key) : target;
+var __defProp$J = Object.defineProperty;
+var __getOwnPropDesc$H = Object.getOwnPropertyDescriptor;
+var __decorateClass$J = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$H(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$I(target, key, result);
+  if (kind && result) __defProp$J(target, key, result);
   return result;
 };
 let NamespaceDropdown = class extends i$2 {
@@ -37043,41 +37103,41 @@ NamespaceDropdown.styles = i$5`
       background: var(--scrollbar-thumb-hover, #5a5d6a);
     }
   `;
-__decorateClass$I([
+__decorateClass$J([
   n2({ type: Array })
 ], NamespaceDropdown.prototype, "namespaces", 2);
-__decorateClass$I([
+__decorateClass$J([
   n2({ type: String })
 ], NamespaceDropdown.prototype, "selectedNamespace", 2);
-__decorateClass$I([
+__decorateClass$J([
   n2({ type: Boolean })
 ], NamespaceDropdown.prototype, "loading", 2);
-__decorateClass$I([
+__decorateClass$J([
   n2({ type: String })
 ], NamespaceDropdown.prototype, "placeholder", 2);
-__decorateClass$I([
+__decorateClass$J([
   n2({ type: Boolean })
 ], NamespaceDropdown.prototype, "showCounts", 2);
-__decorateClass$I([
+__decorateClass$J([
   n2({ type: Boolean })
 ], NamespaceDropdown.prototype, "includeAllOption", 2);
-__decorateClass$I([
+__decorateClass$J([
   r$1()
 ], NamespaceDropdown.prototype, "isOpen", 2);
-__decorateClass$I([
+__decorateClass$J([
   r$1()
 ], NamespaceDropdown.prototype, "searchQuery", 2);
-NamespaceDropdown = __decorateClass$I([
+NamespaceDropdown = __decorateClass$J([
   t$2("namespace-dropdown")
 ], NamespaceDropdown);
-var __defProp$H = Object.defineProperty;
-var __getOwnPropDesc$F = Object.getOwnPropertyDescriptor;
-var __decorateClass$H = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$F(target, key) : target;
+var __defProp$I = Object.defineProperty;
+var __getOwnPropDesc$G = Object.getOwnPropertyDescriptor;
+var __decorateClass$I = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$G(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$H(target, key, result);
+  if (kind && result) __defProp$I(target, key, result);
   return result;
 };
 let TabGroup = class extends i$2 {
@@ -37145,23 +37205,23 @@ TabGroup.styles = i$5`
       font-size: 1rem;
     }
   `;
-__decorateClass$H([
+__decorateClass$I([
   n2({ type: Array })
 ], TabGroup.prototype, "tabs", 2);
-__decorateClass$H([
+__decorateClass$I([
   n2({ type: String })
 ], TabGroup.prototype, "activeTab", 2);
-TabGroup = __decorateClass$H([
+TabGroup = __decorateClass$I([
   t$2("tab-group")
 ], TabGroup);
-var __defProp$G = Object.defineProperty;
-var __getOwnPropDesc$E = Object.getOwnPropertyDescriptor;
-var __decorateClass$G = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$E(target, key) : target;
+var __defProp$H = Object.defineProperty;
+var __getOwnPropDesc$F = Object.getOwnPropertyDescriptor;
+var __decorateClass$H = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$F(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$G(target, key, result);
+  if (kind && result) __defProp$H(target, key, result);
   return result;
 };
 let ActionDropdown = class extends i$2 {
@@ -37224,10 +37284,10 @@ let ActionDropdown = class extends i$2 {
       position: fixed;
       top: ${this.dropdownPosition.top}px;
       left: ${this.dropdownPosition.left}px;
-      background: #252526;
-      border: 1px solid #464647;
+      background: var(--vscode-menu-background, var(--vscode-editorWidget-background, var(--vscode-bg-light)));
+      border: 1px solid var(--vscode-menu-border, #464647);
       border-radius: 4px;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
       min-width: 160px;
       z-index: 99999;
       display: block;
@@ -37245,7 +37305,7 @@ let ActionDropdown = class extends i$2 {
           padding: 8px 16px;
           border: none;
           background: none;
-          color: ${action.danger ? "#f14c4c" : "#cccccc"};
+          color: ${action.danger ? "var(--vscode-inputValidation-errorForeground, #f14c4c)" : "var(--vscode-foreground, #cccccc)"};
           cursor: ${action.disabled ? "not-allowed" : "pointer"};
           font-size: 13px;
           opacity: ${action.disabled ? "0.5" : "1"};
@@ -37265,7 +37325,7 @@ let ActionDropdown = class extends i$2 {
       });
       button.addEventListener("mouseenter", () => {
         if (!button.hasAttribute("disabled")) {
-          button.style.backgroundColor = "rgba(255, 255, 255, 0.08)";
+          button.style.backgroundColor = "var(--vscode-list-hoverBackground, rgba(0, 0, 0, 0.08))";
         }
       });
       button.addEventListener("mouseleave", () => {
@@ -37323,29 +37383,29 @@ ActionDropdown.styles = i$5`
       background-color: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.1)));
     }
   `;
-__decorateClass$G([
+__decorateClass$H([
   n2({ type: Array })
 ], ActionDropdown.prototype, "actions", 2);
-__decorateClass$G([
+__decorateClass$H([
   n2({ type: String })
 ], ActionDropdown.prototype, "menuId", 2);
-__decorateClass$G([
+__decorateClass$H([
   r$1()
 ], ActionDropdown.prototype, "isOpen", 2);
-__decorateClass$G([
+__decorateClass$H([
   r$1()
 ], ActionDropdown.prototype, "dropdownPosition", 2);
-ActionDropdown = __decorateClass$G([
+ActionDropdown = __decorateClass$H([
   t$2("action-dropdown")
 ], ActionDropdown);
-var __defProp$F = Object.defineProperty;
-var __getOwnPropDesc$D = Object.getOwnPropertyDescriptor;
-var __decorateClass$F = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$D(target, key) : target;
+var __defProp$G = Object.defineProperty;
+var __getOwnPropDesc$E = Object.getOwnPropertyDescriptor;
+var __decorateClass$G = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$E(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$F(target, key, result);
+  if (kind && result) __defProp$G(target, key, result);
   return result;
 };
 let StatusBadge = class extends i$2 {
@@ -37402,28 +37462,50 @@ StatusBadge.styles = i$5`
       color: rgb(156, 163, 175);
     }
 
+    .status.stopped,
+    .status.shutoff {
+      background-color: rgba(239, 68, 68, 0.1);
+      color: rgb(239, 68, 68);
+    }
+
+    .status.paused {
+      background-color: rgba(251, 191, 36, 0.1);
+      color: rgb(251, 191, 36);
+    }
+
+    .status.crashed {
+      background-color: rgba(220, 38, 38, 0.1);
+      color: rgb(220, 38, 38);
+    }
+
+    .status.starting,
+    .status.stopping {
+      background-color: rgba(59, 130, 246, 0.1);
+      color: rgb(59, 130, 246);
+    }
+
     .status.unknown {
       background-color: rgba(107, 114, 128, 0.1);
       color: rgb(107, 114, 128);
     }
   `;
-__decorateClass$F([
+__decorateClass$G([
   n2({ type: String })
 ], StatusBadge.prototype, "status", 2);
-__decorateClass$F([
+__decorateClass$G([
   n2({ type: String })
 ], StatusBadge.prototype, "text", 2);
-StatusBadge = __decorateClass$F([
+StatusBadge = __decorateClass$G([
   t$2("status-badge")
 ], StatusBadge);
-var __defProp$E = Object.defineProperty;
-var __getOwnPropDesc$C = Object.getOwnPropertyDescriptor;
-var __decorateClass$E = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$C(target, key) : target;
+var __defProp$F = Object.defineProperty;
+var __getOwnPropDesc$D = Object.getOwnPropertyDescriptor;
+var __decorateClass$F = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$D(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$E(target, key, result);
+  if (kind && result) __defProp$F(target, key, result);
   return result;
 };
 let ResourceTable = class extends i$2 {
@@ -37578,35 +37660,35 @@ ResourceTable.styles = i$5`
       text-align: center;
     }
   `;
-__decorateClass$E([
+__decorateClass$F([
   n2({ type: Array })
 ], ResourceTable.prototype, "columns", 2);
-__decorateClass$E([
+__decorateClass$F([
   n2({ type: Array })
 ], ResourceTable.prototype, "data", 2);
-__decorateClass$E([
+__decorateClass$F([
   n2({ type: String })
 ], ResourceTable.prototype, "emptyMessage", 2);
-__decorateClass$E([
+__decorateClass$F([
   n2({ type: Boolean })
 ], ResourceTable.prototype, "showActions", 2);
-__decorateClass$E([
+__decorateClass$F([
   n2({ type: Function })
 ], ResourceTable.prototype, "getActions", 2);
-__decorateClass$E([
+__decorateClass$F([
   n2({ type: Object })
 ], ResourceTable.prototype, "customRenderers", 2);
-ResourceTable = __decorateClass$E([
+ResourceTable = __decorateClass$F([
   t$2("resource-table")
 ], ResourceTable);
-var __defProp$D = Object.defineProperty;
-var __getOwnPropDesc$B = Object.getOwnPropertyDescriptor;
-var __decorateClass$D = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$B(target, key) : target;
+var __defProp$E = Object.defineProperty;
+var __getOwnPropDesc$C = Object.getOwnPropertyDescriptor;
+var __decorateClass$E = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$C(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$D(target, key, result);
+  if (kind && result) __defProp$E(target, key, result);
   return result;
 };
 let DetailDrawer = class extends i$2 {
@@ -37616,6 +37698,7 @@ let DetailDrawer = class extends i$2 {
     this.show = false;
     this.loading = false;
     this.width = 600;
+    this.isClosing = false;
     this.handleKeyDown = (event) => {
       if (event.key === "Escape" && this.show) {
         event.stopPropagation();
@@ -37627,11 +37710,16 @@ let DetailDrawer = class extends i$2 {
     if (event) {
       event.stopPropagation();
     }
-    this.dispatchEvent(new CustomEvent("close", {
-      bubbles: false,
-      // Don't bubble to prevent parent drawer from closing
-      composed: true
-    }));
+    if (this.isClosing) return;
+    this.isClosing = true;
+    setTimeout(() => {
+      this.isClosing = false;
+      this.dispatchEvent(new CustomEvent("close", {
+        bubbles: false,
+        // Don't bubble to prevent parent drawer from closing
+        composed: true
+      }));
+    }, 300);
   }
   connectedCallback() {
     super.connectedCallback();
@@ -37642,11 +37730,11 @@ let DetailDrawer = class extends i$2 {
     window.removeEventListener("keydown", this.handleKeyDown);
   }
   render() {
-    if (!this.show) {
+    if (!this.show && !this.isClosing) {
       return null;
     }
     return x`
-      <div class="drawer" style="width: ${this.width}px">
+      <div class="drawer ${this.isClosing ? "closing" : ""}" style="width: ${this.width}px">
         <div class="drawer-header">
           <button class="close-button" @click=${(e3) => this.handleClose(e3)}>×</button>
           <h2>${this.title}</h2>
@@ -37684,6 +37772,19 @@ DetailDrawer.styles = i$5`
       to {
         transform: translateX(0);
       }
+    }
+
+    @keyframes slideOut {
+      from {
+        transform: translateX(0);
+      }
+      to {
+        transform: translateX(100%);
+      }
+    }
+
+    .drawer.closing {
+      animation: slideOut 0.3s ease-in forwards;
     }
 
     .close-button {
@@ -37726,29 +37827,32 @@ DetailDrawer.styles = i$5`
       padding-bottom: 40px; /* Extra padding at bottom to ensure last content is visible */
     }
   `;
-__decorateClass$D([
+__decorateClass$E([
   n2({ type: String })
 ], DetailDrawer.prototype, "title", 2);
-__decorateClass$D([
+__decorateClass$E([
   n2({ type: Boolean })
 ], DetailDrawer.prototype, "show", 2);
-__decorateClass$D([
+__decorateClass$E([
   n2({ type: Boolean })
 ], DetailDrawer.prototype, "loading", 2);
-__decorateClass$D([
+__decorateClass$E([
   n2({ type: Number })
 ], DetailDrawer.prototype, "width", 2);
-DetailDrawer = __decorateClass$D([
+__decorateClass$E([
+  r$1()
+], DetailDrawer.prototype, "isClosing", 2);
+DetailDrawer = __decorateClass$E([
   t$2("detail-drawer")
 ], DetailDrawer);
-var __defProp$C = Object.defineProperty;
-var __getOwnPropDesc$A = Object.getOwnPropertyDescriptor;
-var __decorateClass$C = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$A(target, key) : target;
+var __defProp$D = Object.defineProperty;
+var __getOwnPropDesc$B = Object.getOwnPropertyDescriptor;
+var __decorateClass$D = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$B(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$C(target, key, result);
+  if (kind && result) __defProp$D(target, key, result);
   return result;
 };
 let LogsDrawer = class extends i$2 {
@@ -38213,50 +38317,50 @@ LogsDrawer.styles = i$5`
       background: var(--vscode-scrollbarSlider-hoverBackground, rgba(100, 100, 100, 0.7));
     }
   `;
-__decorateClass$C([
+__decorateClass$D([
   n2({ type: Boolean, reflect: true })
 ], LogsDrawer.prototype, "show", 2);
-__decorateClass$C([
+__decorateClass$D([
   n2({ type: String })
 ], LogsDrawer.prototype, "title", 2);
-__decorateClass$C([
+__decorateClass$D([
   n2({ type: String })
 ], LogsDrawer.prototype, "subtitle", 2);
-__decorateClass$C([
+__decorateClass$D([
   n2({ type: String })
 ], LogsDrawer.prototype, "logs", 2);
-__decorateClass$C([
+__decorateClass$D([
   n2({ type: Boolean })
 ], LogsDrawer.prototype, "loading", 2);
-__decorateClass$C([
+__decorateClass$D([
   n2({ type: String })
 ], LogsDrawer.prototype, "error", 2);
-__decorateClass$C([
+__decorateClass$D([
   n2({ type: Boolean })
 ], LogsDrawer.prototype, "autoScroll", 2);
-__decorateClass$C([
+__decorateClass$D([
   n2({ type: Boolean })
 ], LogsDrawer.prototype, "showTimestamps", 2);
-__decorateClass$C([
+__decorateClass$D([
   n2({ type: Boolean })
 ], LogsDrawer.prototype, "colorize", 2);
-__decorateClass$C([
+__decorateClass$D([
   r$1()
 ], LogsDrawer.prototype, "searchQuery", 2);
-__decorateClass$C([
+__decorateClass$D([
   r$1()
 ], LogsDrawer.prototype, "isFollowing", 2);
-LogsDrawer = __decorateClass$C([
+LogsDrawer = __decorateClass$D([
   t$2("logs-drawer")
 ], LogsDrawer);
-var __defProp$B = Object.defineProperty;
-var __getOwnPropDesc$z = Object.getOwnPropertyDescriptor;
-var __decorateClass$B = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$z(target, key) : target;
+var __defProp$C = Object.defineProperty;
+var __getOwnPropDesc$A = Object.getOwnPropertyDescriptor;
+var __decorateClass$C = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$A(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$B(target, key, result);
+  if (kind && result) __defProp$C(target, key, result);
   return result;
 };
 let DeleteModal = class extends i$2 {
@@ -38513,50 +38617,50 @@ DeleteModal.styles = i$5`
       cursor: not-allowed;
     }
   `;
-__decorateClass$B([
+__decorateClass$C([
   n2({ type: Object })
 ], DeleteModal.prototype, "item", 2);
-__decorateClass$B([
+__decorateClass$C([
   n2({ type: Boolean, reflect: true })
 ], DeleteModal.prototype, "show", 2);
-__decorateClass$B([
+__decorateClass$C([
   n2({ type: Boolean })
 ], DeleteModal.prototype, "loading", 2);
-__decorateClass$B([
+__decorateClass$C([
   n2({ type: String, attribute: "modal-title" })
 ], DeleteModal.prototype, "modalTitle", 2);
-__decorateClass$B([
+__decorateClass$C([
   n2({ type: String, attribute: "message" })
 ], DeleteModal.prototype, "message", 2);
-__decorateClass$B([
+__decorateClass$C([
   n2({ type: String, attribute: "confirm-label" })
 ], DeleteModal.prototype, "confirmLabel", 2);
-__decorateClass$B([
+__decorateClass$C([
   n2({ type: String, attribute: "confirm-button-class" })
 ], DeleteModal.prototype, "confirmButtonClass", 2);
-__decorateClass$B([
+__decorateClass$C([
   n2({ type: Boolean, attribute: "has-volumes" })
 ], DeleteModal.prototype, "hasVolumes", 2);
-__decorateClass$B([
+__decorateClass$C([
   n2({ type: Number, attribute: "volume-count" })
 ], DeleteModal.prototype, "volumeCount", 2);
-__decorateClass$B([
+__decorateClass$C([
   n2({ type: Boolean, attribute: "delete-volumes" })
 ], DeleteModal.prototype, "deleteVolumes", 2);
-__decorateClass$B([
+__decorateClass$C([
   n2({ type: Boolean, attribute: "acknowledge" })
 ], DeleteModal.prototype, "acknowledge", 2);
-DeleteModal = __decorateClass$B([
+DeleteModal = __decorateClass$C([
   t$2("delete-modal")
 ], DeleteModal);
-var __defProp$A = Object.defineProperty;
-var __getOwnPropDesc$y = Object.getOwnPropertyDescriptor;
-var __decorateClass$A = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$y(target, key) : target;
+var __defProp$B = Object.defineProperty;
+var __getOwnPropDesc$z = Object.getOwnPropertyDescriptor;
+var __decorateClass$B = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$z(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$A(target, key, result);
+  if (kind && result) __defProp$B(target, key, result);
   return result;
 };
 let SetImageModal = class extends i$2 {
@@ -38897,35 +39001,35 @@ SetImageModal.styles = i$5`
       to { transform: rotate(360deg); }
     }
   `;
-__decorateClass$A([
+__decorateClass$B([
   n2({ type: Boolean, reflect: true })
 ], SetImageModal.prototype, "show", 2);
-__decorateClass$A([
+__decorateClass$B([
   n2({ type: Boolean })
 ], SetImageModal.prototype, "loading", 2);
-__decorateClass$A([
+__decorateClass$B([
   n2({ type: String })
 ], SetImageModal.prototype, "deploymentName", 2);
-__decorateClass$A([
+__decorateClass$B([
   n2({ type: String })
 ], SetImageModal.prototype, "namespace", 2);
-__decorateClass$A([
+__decorateClass$B([
   n2({ type: Array })
 ], SetImageModal.prototype, "containers", 2);
-__decorateClass$A([
+__decorateClass$B([
   r$1()
 ], SetImageModal.prototype, "containerImages", 2);
-SetImageModal = __decorateClass$A([
+SetImageModal = __decorateClass$B([
   t$2("set-image-modal")
 ], SetImageModal);
-var __defProp$z = Object.defineProperty;
-var __getOwnPropDesc$x = Object.getOwnPropertyDescriptor;
-var __decorateClass$z = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$x(target, key) : target;
+var __defProp$A = Object.defineProperty;
+var __getOwnPropDesc$y = Object.getOwnPropertyDescriptor;
+var __decorateClass$A = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$y(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$z(target, key, result);
+  if (kind && result) __defProp$A(target, key, result);
   return result;
 };
 let ResourceDetailView = class extends i$2 {
@@ -39763,10 +39867,10 @@ ResourceDetailView.styles = i$5`
       opacity: 0.7;
     }
   `;
-__decorateClass$z([
+__decorateClass$A([
   n2({ type: Object })
 ], ResourceDetailView.prototype, "resource", 2);
-ResourceDetailView = __decorateClass$z([
+ResourceDetailView = __decorateClass$A([
   t$2("resource-detail-view")
 ], ResourceDetailView);
 const ALIAS = Symbol.for("yaml.alias");
@@ -46170,14 +46274,14 @@ const YAML = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty
   visit: visit$1,
   visitAsync
 }, Symbol.toStringTag, { value: "Module" }));
-var __defProp$y = Object.defineProperty;
-var __getOwnPropDesc$w = Object.getOwnPropertyDescriptor;
-var __decorateClass$y = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$w(target, key) : target;
+var __defProp$z = Object.defineProperty;
+var __getOwnPropDesc$x = Object.getOwnPropertyDescriptor;
+var __decorateClass$z = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$x(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$y(target, key, result);
+  if (kind && result) __defProp$z(target, key, result);
   return result;
 };
 let CreateResourceDrawer = class extends i$2 {
@@ -46777,44 +46881,44 @@ CreateResourceDrawer.styles = i$5`
       background: var(--scrollbar-thumb-hover, #5a5d6a);
     }
   `;
-__decorateClass$y([
+__decorateClass$z([
   n2({ type: Boolean, reflect: true })
 ], CreateResourceDrawer.prototype, "show", 2);
-__decorateClass$y([
+__decorateClass$z([
   n2({ type: String })
 ], CreateResourceDrawer.prototype, "title", 2);
-__decorateClass$y([
+__decorateClass$z([
   n2({ type: String })
 ], CreateResourceDrawer.prototype, "value", 2);
-__decorateClass$y([
+__decorateClass$z([
   n2({ type: Boolean })
 ], CreateResourceDrawer.prototype, "loading", 2);
-__decorateClass$y([
+__decorateClass$z([
   n2({ type: String })
 ], CreateResourceDrawer.prototype, "error", 2);
-__decorateClass$y([
+__decorateClass$z([
   n2({ type: String })
 ], CreateResourceDrawer.prototype, "format", 2);
-__decorateClass$y([
+__decorateClass$z([
   n2({ type: String })
 ], CreateResourceDrawer.prototype, "submitLabel", 2);
-__decorateClass$y([
+__decorateClass$z([
   r$1()
 ], CreateResourceDrawer.prototype, "validationMessage", 2);
-__decorateClass$y([
+__decorateClass$z([
   r$1()
 ], CreateResourceDrawer.prototype, "validationStatus", 2);
-CreateResourceDrawer = __decorateClass$y([
+CreateResourceDrawer = __decorateClass$z([
   t$2("create-resource-drawer")
 ], CreateResourceDrawer);
-var __defProp$x = Object.defineProperty;
-var __getOwnPropDesc$v = Object.getOwnPropertyDescriptor;
-var __decorateClass$x = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$v(target, key) : target;
+var __defProp$y = Object.defineProperty;
+var __getOwnPropDesc$w = Object.getOwnPropertyDescriptor;
+var __decorateClass$y = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$w(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$x(target, key, result);
+  if (kind && result) __defProp$y(target, key, result);
   return result;
 };
 let NotificationContainer = class extends i$2 {
@@ -47115,29 +47219,29 @@ NotificationContainer.styles = i$5`
       opacity: 0.3;
     }
   `;
-__decorateClass$x([
+__decorateClass$y([
   n2({ type: Array })
 ], NotificationContainer.prototype, "notifications", 2);
-__decorateClass$x([
+__decorateClass$y([
   n2({ type: Number })
 ], NotificationContainer.prototype, "defaultDuration", 2);
-__decorateClass$x([
+__decorateClass$y([
   n2({ type: Number })
 ], NotificationContainer.prototype, "maxNotifications", 2);
-__decorateClass$x([
+__decorateClass$y([
   r$1()
 ], NotificationContainer.prototype, "closingIds", 2);
-NotificationContainer = __decorateClass$x([
+NotificationContainer = __decorateClass$y([
   t$2("notification-container")
 ], NotificationContainer);
-var __defProp$w = Object.defineProperty;
-var __getOwnPropDesc$u = Object.getOwnPropertyDescriptor;
-var __decorateClass$w = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$u(target, key) : target;
+var __defProp$x = Object.defineProperty;
+var __getOwnPropDesc$v = Object.getOwnPropertyDescriptor;
+var __decorateClass$x = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$v(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$w(target, key, result);
+  if (kind && result) __defProp$x(target, key, result);
   return result;
 };
 let KubernetesWorkloads = class extends i$2 {
@@ -48079,122 +48183,122 @@ KubernetesWorkloads.styles = i$5`
       --option-selected-bg: var(--vscode-list-activeSelectionBackground, #094771);
     }
   `;
-__decorateClass$w([
+__decorateClass$x([
   n2({ type: Array })
 ], KubernetesWorkloads.prototype, "workloads", 2);
-__decorateClass$w([
+__decorateClass$x([
   n2({ type: Array })
 ], KubernetesWorkloads.prototype, "namespaces", 2);
-__decorateClass$w([
+__decorateClass$x([
   n2({ type: String })
 ], KubernetesWorkloads.prototype, "selectedNamespace", 2);
-__decorateClass$w([
+__decorateClass$x([
   n2({ type: String })
 ], KubernetesWorkloads.prototype, "searchQuery", 2);
-__decorateClass$w([
+__decorateClass$x([
   n2({ type: Boolean })
 ], KubernetesWorkloads.prototype, "loading", 2);
-__decorateClass$w([
+__decorateClass$x([
   n2({ type: String })
 ], KubernetesWorkloads.prototype, "error", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "activeTab", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "showDetails", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "selectedItem", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "loadingDetails", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "detailsData", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "showDeleteModal", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "itemToDelete", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "isDeleting", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "showCreateDrawer", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "createResourceValue", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "createDrawerTitle", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "isCreating", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "showLogsDrawer", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "logsData", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "logsLoading", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "logsError", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "logsPodName", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "logsNamespace", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "resourceFormat", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "isEditMode", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "editingResource", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "showRestartModal", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "showRollbackModal", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "showSetImageModal", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "workloadToRestart", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "workloadToRollback", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "workloadForSetImage", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "containerImages", 2);
-__decorateClass$w([
+__decorateClass$x([
   r$1()
 ], KubernetesWorkloads.prototype, "isPerformingAction", 2);
-KubernetesWorkloads = __decorateClass$w([
+KubernetesWorkloads = __decorateClass$x([
   t$2("kubernetes-workloads")
 ], KubernetesWorkloads);
-var __defProp$v = Object.defineProperty;
-var __getOwnPropDesc$t = Object.getOwnPropertyDescriptor;
-var __decorateClass$v = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$t(target, key) : target;
+var __defProp$w = Object.defineProperty;
+var __getOwnPropDesc$u = Object.getOwnPropertyDescriptor;
+var __decorateClass$w = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$u(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$v(target, key, result);
+  if (kind && result) __defProp$w(target, key, result);
   return result;
 };
 let KubernetesNetworks = class extends i$2 {
@@ -48743,80 +48847,80 @@ KubernetesNetworks.styles = i$5`
       --option-selected-bg: var(--vscode-list-activeSelectionBackground, #094771);
     }
   `;
-__decorateClass$v([
+__decorateClass$w([
   n2({ type: Array })
 ], KubernetesNetworks.prototype, "resources", 2);
-__decorateClass$v([
+__decorateClass$w([
   n2({ type: Array })
 ], KubernetesNetworks.prototype, "namespaces", 2);
-__decorateClass$v([
+__decorateClass$w([
   n2({ type: String })
 ], KubernetesNetworks.prototype, "selectedNamespace", 2);
-__decorateClass$v([
+__decorateClass$w([
   n2({ type: String })
 ], KubernetesNetworks.prototype, "searchQuery", 2);
-__decorateClass$v([
+__decorateClass$w([
   n2({ type: Boolean })
 ], KubernetesNetworks.prototype, "loading", 2);
-__decorateClass$v([
+__decorateClass$w([
   n2({ type: String })
 ], KubernetesNetworks.prototype, "error", 2);
-__decorateClass$v([
+__decorateClass$w([
   r$1()
 ], KubernetesNetworks.prototype, "activeTab", 2);
-__decorateClass$v([
+__decorateClass$w([
   r$1()
 ], KubernetesNetworks.prototype, "showDetails", 2);
-__decorateClass$v([
+__decorateClass$w([
   r$1()
 ], KubernetesNetworks.prototype, "selectedItem", 2);
-__decorateClass$v([
+__decorateClass$w([
   r$1()
 ], KubernetesNetworks.prototype, "loadingDetails", 2);
-__decorateClass$v([
+__decorateClass$w([
   r$1()
 ], KubernetesNetworks.prototype, "detailsData", 2);
-__decorateClass$v([
+__decorateClass$w([
   r$1()
 ], KubernetesNetworks.prototype, "showDeleteModal", 2);
-__decorateClass$v([
+__decorateClass$w([
   r$1()
 ], KubernetesNetworks.prototype, "itemToDelete", 2);
-__decorateClass$v([
+__decorateClass$w([
   r$1()
 ], KubernetesNetworks.prototype, "isDeleting", 2);
-__decorateClass$v([
+__decorateClass$w([
   r$1()
 ], KubernetesNetworks.prototype, "showCreateDrawer", 2);
-__decorateClass$v([
+__decorateClass$w([
   r$1()
 ], KubernetesNetworks.prototype, "createResourceValue", 2);
-__decorateClass$v([
+__decorateClass$w([
   r$1()
 ], KubernetesNetworks.prototype, "createDrawerTitle", 2);
-__decorateClass$v([
+__decorateClass$w([
   r$1()
 ], KubernetesNetworks.prototype, "isCreating", 2);
-__decorateClass$v([
+__decorateClass$w([
   r$1()
 ], KubernetesNetworks.prototype, "resourceFormat", 2);
-__decorateClass$v([
+__decorateClass$w([
   r$1()
 ], KubernetesNetworks.prototype, "isEditMode", 2);
-__decorateClass$v([
+__decorateClass$w([
   r$1()
 ], KubernetesNetworks.prototype, "editingResource", 2);
-KubernetesNetworks = __decorateClass$v([
+KubernetesNetworks = __decorateClass$w([
   t$2("kubernetes-networks")
 ], KubernetesNetworks);
-var __defProp$u = Object.defineProperty;
-var __getOwnPropDesc$s = Object.getOwnPropertyDescriptor;
-var __decorateClass$u = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$s(target, key) : target;
+var __defProp$v = Object.defineProperty;
+var __getOwnPropDesc$t = Object.getOwnPropertyDescriptor;
+var __decorateClass$v = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$t(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$u(target, key, result);
+  if (kind && result) __defProp$v(target, key, result);
   return result;
 };
 let KubernetesStorage = class extends i$2 {
@@ -49329,80 +49433,80 @@ KubernetesStorage.styles = i$5`
       color: var(--vscode-editor-background, #1e1e1e);
     }
   `;
-__decorateClass$u([
+__decorateClass$v([
   n2({ type: Array })
 ], KubernetesStorage.prototype, "resources", 2);
-__decorateClass$u([
+__decorateClass$v([
   n2({ type: Array })
 ], KubernetesStorage.prototype, "namespaces", 2);
-__decorateClass$u([
+__decorateClass$v([
   n2({ type: String })
 ], KubernetesStorage.prototype, "selectedNamespace", 2);
-__decorateClass$u([
+__decorateClass$v([
   n2({ type: String })
 ], KubernetesStorage.prototype, "searchQuery", 2);
-__decorateClass$u([
+__decorateClass$v([
   n2({ type: Boolean })
 ], KubernetesStorage.prototype, "loading", 2);
-__decorateClass$u([
+__decorateClass$v([
   n2({ type: String })
 ], KubernetesStorage.prototype, "error", 2);
-__decorateClass$u([
+__decorateClass$v([
   r$1()
 ], KubernetesStorage.prototype, "activeTab", 2);
-__decorateClass$u([
+__decorateClass$v([
   r$1()
 ], KubernetesStorage.prototype, "showDetails", 2);
-__decorateClass$u([
+__decorateClass$v([
   r$1()
 ], KubernetesStorage.prototype, "selectedItem", 2);
-__decorateClass$u([
+__decorateClass$v([
   r$1()
 ], KubernetesStorage.prototype, "loadingDetails", 2);
-__decorateClass$u([
+__decorateClass$v([
   r$1()
 ], KubernetesStorage.prototype, "detailsData", 2);
-__decorateClass$u([
+__decorateClass$v([
   r$1()
 ], KubernetesStorage.prototype, "showDeleteModal", 2);
-__decorateClass$u([
+__decorateClass$v([
   r$1()
 ], KubernetesStorage.prototype, "itemToDelete", 2);
-__decorateClass$u([
+__decorateClass$v([
   r$1()
 ], KubernetesStorage.prototype, "isDeleting", 2);
-__decorateClass$u([
+__decorateClass$v([
   r$1()
 ], KubernetesStorage.prototype, "showCreateDrawer", 2);
-__decorateClass$u([
+__decorateClass$v([
   r$1()
 ], KubernetesStorage.prototype, "createResourceValue", 2);
-__decorateClass$u([
+__decorateClass$v([
   r$1()
 ], KubernetesStorage.prototype, "createDrawerTitle", 2);
-__decorateClass$u([
+__decorateClass$v([
   r$1()
 ], KubernetesStorage.prototype, "isCreating", 2);
-__decorateClass$u([
+__decorateClass$v([
   r$1()
 ], KubernetesStorage.prototype, "resourceFormat", 2);
-__decorateClass$u([
+__decorateClass$v([
   r$1()
 ], KubernetesStorage.prototype, "isEditMode", 2);
-__decorateClass$u([
+__decorateClass$v([
   r$1()
 ], KubernetesStorage.prototype, "editingResource", 2);
-KubernetesStorage = __decorateClass$u([
+KubernetesStorage = __decorateClass$v([
   t$2("kubernetes-storage")
 ], KubernetesStorage);
-var __defProp$t = Object.defineProperty;
-var __getOwnPropDesc$r = Object.getOwnPropertyDescriptor;
-var __decorateClass$t = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$r(target, key) : target;
+var __defProp$u = Object.defineProperty;
+var __getOwnPropDesc$s = Object.getOwnPropertyDescriptor;
+var __decorateClass$u = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$s(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$t(target, key, result);
+  if (kind && result) __defProp$u(target, key, result);
   return result;
 };
 let KubernetesConfigurations = class extends i$2 {
@@ -49953,80 +50057,80 @@ KubernetesConfigurations.styles = i$5`
       border-radius: 4px;
     }
   `;
-__decorateClass$t([
+__decorateClass$u([
   n2({ type: Array })
 ], KubernetesConfigurations.prototype, "resources", 2);
-__decorateClass$t([
+__decorateClass$u([
   n2({ type: Array })
 ], KubernetesConfigurations.prototype, "namespaces", 2);
-__decorateClass$t([
+__decorateClass$u([
   n2({ type: String })
 ], KubernetesConfigurations.prototype, "selectedNamespace", 2);
-__decorateClass$t([
+__decorateClass$u([
   n2({ type: String })
 ], KubernetesConfigurations.prototype, "searchQuery", 2);
-__decorateClass$t([
+__decorateClass$u([
   n2({ type: Boolean })
 ], KubernetesConfigurations.prototype, "loading", 2);
-__decorateClass$t([
+__decorateClass$u([
   n2({ type: String })
 ], KubernetesConfigurations.prototype, "error", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesConfigurations.prototype, "activeTab", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesConfigurations.prototype, "showDetails", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesConfigurations.prototype, "selectedItem", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesConfigurations.prototype, "loadingDetails", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesConfigurations.prototype, "detailsData", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesConfigurations.prototype, "showDeleteModal", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesConfigurations.prototype, "itemToDelete", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesConfigurations.prototype, "isDeleting", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesConfigurations.prototype, "showCreateDrawer", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesConfigurations.prototype, "createResourceValue", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesConfigurations.prototype, "createDrawerTitle", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesConfigurations.prototype, "isCreating", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesConfigurations.prototype, "resourceFormat", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesConfigurations.prototype, "isEditMode", 2);
-__decorateClass$t([
+__decorateClass$u([
   r$1()
 ], KubernetesConfigurations.prototype, "editingResource", 2);
-KubernetesConfigurations = __decorateClass$t([
+KubernetesConfigurations = __decorateClass$u([
   t$2("kubernetes-configurations")
 ], KubernetesConfigurations);
-var __defProp$s = Object.defineProperty;
-var __getOwnPropDesc$q = Object.getOwnPropertyDescriptor;
-var __decorateClass$s = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$q(target, key) : target;
+var __defProp$t = Object.defineProperty;
+var __getOwnPropDesc$r = Object.getOwnPropertyDescriptor;
+var __decorateClass$t = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$r(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$s(target, key, result);
+  if (kind && result) __defProp$t(target, key, result);
   return result;
 };
 let KubernetesHelm = class extends i$2 {
@@ -50531,59 +50635,59 @@ KubernetesHelm.styles = i$5`
       white-space: pre-wrap;
     }
   `;
-__decorateClass$s([
+__decorateClass$t([
   n2({ type: Array })
 ], KubernetesHelm.prototype, "releases", 2);
-__decorateClass$s([
+__decorateClass$t([
   n2({ type: Array })
 ], KubernetesHelm.prototype, "namespaces", 2);
-__decorateClass$s([
+__decorateClass$t([
   n2({ type: String })
 ], KubernetesHelm.prototype, "selectedNamespace", 2);
-__decorateClass$s([
+__decorateClass$t([
   n2({ type: String })
 ], KubernetesHelm.prototype, "searchQuery", 2);
-__decorateClass$s([
+__decorateClass$t([
   n2({ type: Boolean })
 ], KubernetesHelm.prototype, "loading", 2);
-__decorateClass$s([
+__decorateClass$t([
   n2({ type: String })
 ], KubernetesHelm.prototype, "error", 2);
-__decorateClass$s([
+__decorateClass$t([
   r$1()
 ], KubernetesHelm.prototype, "activeTab", 2);
-__decorateClass$s([
+__decorateClass$t([
   r$1()
 ], KubernetesHelm.prototype, "showDetails", 2);
-__decorateClass$s([
+__decorateClass$t([
   r$1()
 ], KubernetesHelm.prototype, "selectedItem", 2);
-__decorateClass$s([
+__decorateClass$t([
   r$1()
 ], KubernetesHelm.prototype, "loadingDetails", 2);
-__decorateClass$s([
+__decorateClass$t([
   r$1()
 ], KubernetesHelm.prototype, "detailsData", 2);
-__decorateClass$s([
+__decorateClass$t([
   r$1()
 ], KubernetesHelm.prototype, "showDeleteModal", 2);
-__decorateClass$s([
+__decorateClass$t([
   r$1()
 ], KubernetesHelm.prototype, "itemToDelete", 2);
-__decorateClass$s([
+__decorateClass$t([
   r$1()
 ], KubernetesHelm.prototype, "isDeleting", 2);
-KubernetesHelm = __decorateClass$s([
+KubernetesHelm = __decorateClass$t([
   t$2("kubernetes-helm")
 ], KubernetesHelm);
-var __defProp$r = Object.defineProperty;
-var __getOwnPropDesc$p = Object.getOwnPropertyDescriptor;
-var __decorateClass$r = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$p(target, key) : target;
+var __defProp$s = Object.defineProperty;
+var __getOwnPropDesc$q = Object.getOwnPropertyDescriptor;
+var __decorateClass$s = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$q(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$r(target, key, result);
+  if (kind && result) __defProp$s(target, key, result);
   return result;
 };
 let KubernetesNodes = class extends i$2 {
@@ -51209,40 +51313,40 @@ KubernetesNodes.styles = i$5`
     }
 
   `;
-__decorateClass$r([
+__decorateClass$s([
   n2({ type: Array })
 ], KubernetesNodes.prototype, "nodes", 2);
-__decorateClass$r([
+__decorateClass$s([
   n2({ type: String })
 ], KubernetesNodes.prototype, "searchQuery", 2);
-__decorateClass$r([
+__decorateClass$s([
   n2({ type: Boolean })
 ], KubernetesNodes.prototype, "loading", 2);
-__decorateClass$r([
+__decorateClass$s([
   n2({ type: String })
 ], KubernetesNodes.prototype, "error", 2);
-__decorateClass$r([
+__decorateClass$s([
   r$1()
 ], KubernetesNodes.prototype, "showDetails", 2);
-__decorateClass$r([
+__decorateClass$s([
   r$1()
 ], KubernetesNodes.prototype, "selectedNode", 2);
-__decorateClass$r([
+__decorateClass$s([
   r$1()
 ], KubernetesNodes.prototype, "loadingDetails", 2);
-__decorateClass$r([
+__decorateClass$s([
   r$1()
 ], KubernetesNodes.prototype, "nodeDetails", 2);
-__decorateClass$r([
+__decorateClass$s([
   r$1()
 ], KubernetesNodes.prototype, "showConfirmModal", 2);
-__decorateClass$r([
+__decorateClass$s([
   r$1()
 ], KubernetesNodes.prototype, "confirmAction", 2);
-__decorateClass$r([
+__decorateClass$s([
   r$1()
 ], KubernetesNodes.prototype, "nodeForAction", 2);
-KubernetesNodes = __decorateClass$r([
+KubernetesNodes = __decorateClass$s([
   t$2("kubernetes-nodes")
 ], KubernetesNodes);
 function evaluateJSONPath(obj, path) {
@@ -51337,14 +51441,14 @@ function formatColumnValue(value, type) {
       return String(value);
   }
 }
-var __defProp$q = Object.defineProperty;
-var __getOwnPropDesc$o = Object.getOwnPropertyDescriptor;
-var __decorateClass$q = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$o(target, key) : target;
+var __defProp$r = Object.defineProperty;
+var __getOwnPropDesc$p = Object.getOwnPropertyDescriptor;
+var __decorateClass$r = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$p(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$q(target, key, result);
+  if (kind && result) __defProp$r(target, key, result);
   return result;
 };
 let CRDInstancesDrawer = class extends i$2 {
@@ -52178,101 +52282,101 @@ CRDInstancesDrawer.styles = i$5`
       pointer-events: auto;
     }
   `;
-__decorateClass$q([
+__decorateClass$r([
   n2({ type: Boolean, reflect: true })
 ], CRDInstancesDrawer.prototype, "show", 2);
-__decorateClass$q([
+__decorateClass$r([
   n2({ type: String })
 ], CRDInstancesDrawer.prototype, "crdName", 2);
-__decorateClass$q([
+__decorateClass$r([
   n2({ type: String })
 ], CRDInstancesDrawer.prototype, "crdKind", 2);
-__decorateClass$q([
+__decorateClass$r([
   n2({ type: String })
 ], CRDInstancesDrawer.prototype, "crdGroup", 2);
-__decorateClass$q([
+__decorateClass$r([
   n2({ type: String })
 ], CRDInstancesDrawer.prototype, "crdVersion", 2);
-__decorateClass$q([
+__decorateClass$r([
   n2({ type: String })
 ], CRDInstancesDrawer.prototype, "crdScope", 2);
-__decorateClass$q([
+__decorateClass$r([
   n2({ type: Boolean })
 ], CRDInstancesDrawer.prototype, "loading", 2);
-__decorateClass$q([
+__decorateClass$r([
   n2({ type: String })
 ], CRDInstancesDrawer.prototype, "width", 2);
-__decorateClass$q([
+__decorateClass$r([
   n2({ type: Object })
 ], CRDInstancesDrawer.prototype, "crdDefinition", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], CRDInstancesDrawer.prototype, "searchQuery", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], CRDInstancesDrawer.prototype, "selectedNamespace", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], CRDInstancesDrawer.prototype, "instances", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], CRDInstancesDrawer.prototype, "showInstanceDetails", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], CRDInstancesDrawer.prototype, "selectedInstance", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], CRDInstancesDrawer.prototype, "instanceDetailsData", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], CRDInstancesDrawer.prototype, "loadingDetails", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], CRDInstancesDrawer.prototype, "error", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], CRDInstancesDrawer.prototype, "showEditDrawer", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], CRDInstancesDrawer.prototype, "editResourceContent", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], CRDInstancesDrawer.prototype, "editResourceFormat", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], CRDInstancesDrawer.prototype, "loadingEdit", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], CRDInstancesDrawer.prototype, "deleting", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], CRDInstancesDrawer.prototype, "showCreateDrawer", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], CRDInstancesDrawer.prototype, "createResourceValue", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], CRDInstancesDrawer.prototype, "createResourceFormat", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], CRDInstancesDrawer.prototype, "isCreating", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], CRDInstancesDrawer.prototype, "showDeleteModal", 2);
-__decorateClass$q([
+__decorateClass$r([
   r$1()
 ], CRDInstancesDrawer.prototype, "deleteItem", 2);
-CRDInstancesDrawer = __decorateClass$q([
+CRDInstancesDrawer = __decorateClass$r([
   t$2("crd-instances-drawer")
 ], CRDInstancesDrawer);
-var __defProp$p = Object.defineProperty;
-var __getOwnPropDesc$n = Object.getOwnPropertyDescriptor;
-var __decorateClass$p = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$n(target, key) : target;
+var __defProp$q = Object.defineProperty;
+var __getOwnPropDesc$o = Object.getOwnPropertyDescriptor;
+var __decorateClass$q = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$o(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$p(target, key, result);
+  if (kind && result) __defProp$q(target, key, result);
   return result;
 };
 let KubernetesCRDs = class extends i$2 {
@@ -52380,7 +52484,7 @@ let KubernetesCRDs = class extends i$2 {
         unwrapped = JSON.parse(JSON.stringify(unwrapped));
         delete unwrapped.metadata.managedFields;
       }
-      const yaml = await import("./index-Dwq5nugI.js");
+      const yaml = await import("./index-BwYYoiUR.js");
       this.createResourceValue = yaml.stringify(unwrapped);
       this.isCreating = false;
     } catch (error) {
@@ -52711,74 +52815,74 @@ KubernetesCRDs.styles = i$5`
       gap: 1rem;
     }
   `;
-__decorateClass$p([
+__decorateClass$q([
   n2({ type: Array })
 ], KubernetesCRDs.prototype, "resources", 2);
-__decorateClass$p([
+__decorateClass$q([
   n2({ type: String })
 ], KubernetesCRDs.prototype, "searchQuery", 2);
-__decorateClass$p([
+__decorateClass$q([
   n2({ type: Boolean })
 ], KubernetesCRDs.prototype, "loading", 2);
-__decorateClass$p([
+__decorateClass$q([
   n2({ type: String })
 ], KubernetesCRDs.prototype, "error", 2);
-__decorateClass$p([
+__decorateClass$q([
   r$1()
 ], KubernetesCRDs.prototype, "showDetails", 2);
-__decorateClass$p([
+__decorateClass$q([
   r$1()
 ], KubernetesCRDs.prototype, "selectedItem", 2);
-__decorateClass$p([
+__decorateClass$q([
   r$1()
 ], KubernetesCRDs.prototype, "loadingDetails", 2);
-__decorateClass$p([
+__decorateClass$q([
   r$1()
 ], KubernetesCRDs.prototype, "detailsData", 2);
-__decorateClass$p([
+__decorateClass$q([
   r$1()
 ], KubernetesCRDs.prototype, "showDeleteModal", 2);
-__decorateClass$p([
+__decorateClass$q([
   r$1()
 ], KubernetesCRDs.prototype, "itemToDelete", 2);
-__decorateClass$p([
+__decorateClass$q([
   r$1()
 ], KubernetesCRDs.prototype, "isDeleting", 2);
-__decorateClass$p([
+__decorateClass$q([
   r$1()
 ], KubernetesCRDs.prototype, "showCreateDrawer", 2);
-__decorateClass$p([
+__decorateClass$q([
   r$1()
 ], KubernetesCRDs.prototype, "createResourceValue", 2);
-__decorateClass$p([
+__decorateClass$q([
   r$1()
 ], KubernetesCRDs.prototype, "isCreating", 2);
-__decorateClass$p([
+__decorateClass$q([
   r$1()
 ], KubernetesCRDs.prototype, "isEditMode", 2);
-__decorateClass$p([
+__decorateClass$q([
   r$1()
 ], KubernetesCRDs.prototype, "editingResource", 2);
-__decorateClass$p([
+__decorateClass$q([
   r$1()
 ], KubernetesCRDs.prototype, "resourceFormat", 2);
-__decorateClass$p([
+__decorateClass$q([
   r$1()
 ], KubernetesCRDs.prototype, "showInstancesDrawer", 2);
-__decorateClass$p([
+__decorateClass$q([
   r$1()
 ], KubernetesCRDs.prototype, "selectedCRDForInstances", 2);
-KubernetesCRDs = __decorateClass$p([
+KubernetesCRDs = __decorateClass$q([
   t$2("kubernetes-crds")
 ], KubernetesCRDs);
-var __defProp$o = Object.defineProperty;
-var __getOwnPropDesc$m = Object.getOwnPropertyDescriptor;
-var __decorateClass$o = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$m(target, key) : target;
+var __defProp$p = Object.defineProperty;
+var __getOwnPropDesc$n = Object.getOwnPropertyDescriptor;
+var __decorateClass$p = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$n(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$o(target, key, result);
+  if (kind && result) __defProp$p(target, key, result);
   return result;
 };
 let KubernetesTab = class extends i$2 {
@@ -52872,23 +52976,23 @@ KubernetesTab.styles = i$5`
       color: var(--text-secondary);
     }
   `;
-__decorateClass$o([
+__decorateClass$p([
   n2({ type: String })
 ], KubernetesTab.prototype, "subRoute", 2);
-__decorateClass$o([
+__decorateClass$p([
   n2({ type: String })
 ], KubernetesTab.prototype, "activeView", 2);
-KubernetesTab = __decorateClass$o([
+KubernetesTab = __decorateClass$p([
   t$2("kubernetes-tab")
 ], KubernetesTab);
-var __defProp$n = Object.defineProperty;
-var __getOwnPropDesc$l = Object.getOwnPropertyDescriptor;
-var __decorateClass$n = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$l(target, key) : target;
+var __defProp$o = Object.defineProperty;
+var __getOwnPropDesc$m = Object.getOwnPropertyDescriptor;
+var __decorateClass$o = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$m(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$n(target, key, result);
+  if (kind && result) __defProp$o(target, key, result);
   return result;
 };
 let FilterDropdown = class extends i$2 {
@@ -53149,2526 +53253,30 @@ FilterDropdown.styles = i$5`
       background: var(--vscode-scrollbarSlider-hoverBackground, #4e4e4e);
     }
   `;
-__decorateClass$n([
+__decorateClass$o([
   n2({ type: Array })
 ], FilterDropdown.prototype, "options", 2);
-__decorateClass$n([
+__decorateClass$o([
   n2({ type: String })
 ], FilterDropdown.prototype, "selectedValue", 2);
-__decorateClass$n([
+__decorateClass$o([
   n2({ type: String })
 ], FilterDropdown.prototype, "label", 2);
-__decorateClass$n([
+__decorateClass$o([
   n2({ type: Boolean })
 ], FilterDropdown.prototype, "showIcon", 2);
-__decorateClass$n([
+__decorateClass$o([
   n2({ type: Boolean })
 ], FilterDropdown.prototype, "showCounts", 2);
-__decorateClass$n([
+__decorateClass$o([
   n2({ type: Boolean })
 ], FilterDropdown.prototype, "showStatusIndicators", 2);
-__decorateClass$n([
+__decorateClass$o([
   r$1()
 ], FilterDropdown.prototype, "isOpen", 2);
-FilterDropdown = __decorateClass$n([
+FilterDropdown = __decorateClass$o([
   t$2("filter-dropdown")
 ], FilterDropdown);
-var __defProp$m = Object.defineProperty;
-var __getOwnPropDesc$k = Object.getOwnPropertyDescriptor;
-var __decorateClass$m = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$k(target, key) : target;
-  for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
-    if (decorator = decorators[i4])
-      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$m(target, key, result);
-  return result;
-};
-let VMConsole = class extends i$2 {
-  constructor() {
-    super(...arguments);
-    this.vmId = "";
-    this.vmName = "";
-    this.show = false;
-    this.isConnecting = true;
-    this.isWSConnected = false;
-    this.error = null;
-    this.connectionStatus = "Connecting...";
-    this.scaleViewport = true;
-    this.showVirtualKeyboard = false;
-    this.vncIframe = null;
-    this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 5;
-    this.reconnectTimeout = null;
-    this.handleResize = () => {
-    };
-    this.handleSendCAD = () => {
-      if (this.vncIframe?.contentWindow) {
-        this.vncIframe.contentWindow.postMessage({ type: "sendCAD" }, "*");
-      }
-    };
-    this.handleToggleScale = () => {
-      this.scaleViewport = !this.scaleViewport;
-      if (this.vncIframe?.contentWindow) {
-        this.vncIframe.contentWindow.postMessage({ type: "toggleScale" }, "*");
-      }
-    };
-    this.handleFullscreen = async () => {
-      try {
-        const consoleToken = await this.fetchConsoleToken();
-        if (!consoleToken) {
-          throw new Error("Failed to obtain console access token");
-        }
-        const baseUrl = getApiUrl("").replace(/^http/, "ws");
-        const wsUrl = `${baseUrl}virtualization/computes/${this.vmId}/console/vnc/ws?token=${encodeURIComponent(consoleToken.token)}`;
-        const vncUrl = `/vnc-console.html?url=${encodeURIComponent(wsUrl)}&fullscreen=true&vmName=${encodeURIComponent(this.vmName || this.vmId)}`;
-        window.open(vncUrl, "_blank");
-      } catch (error) {
-        console.error("Failed to open fullscreen console:", error);
-        this.error = error instanceof Error ? error.message : "Failed to open fullscreen console";
-      }
-    };
-    this.handleToggleKeyboard = () => {
-      this.showVirtualKeyboard = !this.showVirtualKeyboard;
-      if (this.vncIframe?.contentWindow) {
-        this.vncIframe.contentWindow.postMessage({ type: "toggleKeyboard", show: this.showVirtualKeyboard }, "*");
-      }
-    };
-    this.handleReconnect = () => {
-      this.reconnectAttempts = 0;
-      this.error = null;
-      this.connectVNC();
-    };
-    this.handleClose = () => {
-      this.cleanup();
-      this.show = false;
-      this.dispatchEvent(new CustomEvent("close"));
-    };
-  }
-  connectedCallback() {
-    super.connectedCallback();
-    if (this.show && this.vmId) {
-      setTimeout(() => this.initConsole(), 100);
-    }
-  }
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    this.cleanup();
-  }
-  updated(changedProperties) {
-    if (changedProperties.has("show")) {
-      if (this.show && this.vmId) {
-        setTimeout(() => this.initConsole(), 100);
-      } else if (!this.show) {
-        this.cleanup();
-      }
-    }
-  }
-  async initConsole() {
-    if (this.vncIframe) return;
-    try {
-      await this.connectVNC();
-    } catch (error) {
-      console.error("Failed to initialize console:", error);
-      this.error = error instanceof Error ? error.message : "Failed to initialize console";
-      this.isConnecting = false;
-    }
-  }
-  async connectVNC() {
-    if (!this.vmId) {
-      this.error = "No VM ID provided";
-      this.isConnecting = false;
-      return;
-    }
-    try {
-      this.connectionStatus = "Requesting console access...";
-      this.isConnecting = true;
-      this.error = null;
-      const consoleToken = await this.fetchConsoleToken();
-      if (!consoleToken) {
-        throw new Error("Failed to obtain console access token");
-      }
-      this.connectionStatus = "Loading VNC console...";
-      const baseUrl = getApiUrl("").replace(/^http/, "ws");
-      const wsUrl = `${baseUrl}virtualization/computes/${this.vmId}/console/vnc/ws?token=${encodeURIComponent(consoleToken.token)}`;
-      console.log("Connecting to VM VNC via iframe:", wsUrl.replace(consoleToken.token, "[REDACTED]"));
-      this.vncIframe = document.createElement("iframe");
-      this.vncIframe.className = "vnc-iframe";
-      this.vncIframe.src = `/vnc-console.html?url=${encodeURIComponent(wsUrl)}`;
-      const messageHandler = (event) => {
-        if (event.data.type === "vnc-ready") {
-          console.log("VNC iframe ready");
-          this.isConnecting = false;
-          this.isWSConnected = true;
-          this.connectionStatus = "Connected";
-          this.reconnectAttempts = 0;
-        }
-      };
-      window.addEventListener("message", messageHandler);
-      const container = this.shadowRoot?.querySelector(".vnc-container");
-      if (container) {
-        container.appendChild(this.vncIframe);
-      }
-      setTimeout(() => {
-        if (this.isConnecting) {
-          this.error = "Failed to load VNC console";
-          this.isConnecting = false;
-        }
-      }, 1e4);
-    } catch (error) {
-      console.error("Failed to connect to VNC:", error);
-      this.error = error instanceof Error ? error.message : "Failed to connect to VNC";
-      this.isConnecting = false;
-      this.isWSConnected = false;
-      this.connectionStatus = "Failed to connect";
-    }
-  }
-  async fetchConsoleToken() {
-    try {
-      const authHeaders = auth.getAuthHeaders();
-      if (!authHeaders.Authorization) {
-        throw new Error("No authentication token available");
-      }
-      const apiUrl = getApiUrl(`/virtualization/computes/${this.vmId}/console/vnc`);
-      console.log("Fetching console token from:", apiUrl);
-      const response = await fetch(apiUrl, {
-        method: "GET",
-        headers: {
-          ...authHeaders,
-          "Content-Type": "application/json"
-        }
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Failed to fetch console token:", response.status, errorText);
-        throw new Error(`Failed to get console access: ${response.statusText}`);
-      }
-      const data = await response.json();
-      console.log("Console token response:", { ...data, data: { ...data.data, token: "[REDACTED]" } });
-      if (data.status === "success" && data.data) {
-        return data.data;
-      }
-      throw new Error("Invalid console token response");
-    } catch (error) {
-      console.error("Error fetching console token:", error);
-      throw error;
-    }
-  }
-  cleanup() {
-    if (this.vncIframe?.contentWindow) {
-      this.vncIframe.contentWindow.postMessage({ type: "disconnect" }, "*");
-    }
-    if (this.vncIframe) {
-      this.vncIframe.remove();
-      this.vncIframe = null;
-    }
-    window.removeEventListener("resize", this.handleResize);
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout);
-      this.reconnectTimeout = null;
-    }
-    this.isConnecting = false;
-    this.isWSConnected = false;
-    this.error = null;
-    this.connectionStatus = "Disconnected";
-    this.reconnectAttempts = 0;
-  }
-  render() {
-    return x`
-      <div class="console-overlay">
-        <div class="console-window">
-          <div class="console-header">
-            <div class="console-title">
-              <span class="console-icon">💻</span>
-              <span>Console - <span class="vm-name">${this.vmName || this.vmId}</span></span>
-            </div>
-            
-            <div class="connection-status">
-              <span class="status-indicator ${this.isWSConnected ? "connected" : this.error ? "error" : ""}"></span>
-              <span>${this.connectionStatus}</span>
-            </div>
-
-            <div class="console-actions">
-              <button 
-                class="action-btn" 
-                @click=${this.handleSendCAD}
-                ?disabled=${!this.isWSConnected}
-                title="Send Ctrl+Alt+Del"
-              >
-                ⌨️ Ctrl+Alt+Del
-              </button>
-              <button 
-                class="action-btn" 
-                @click=${this.handleToggleKeyboard}
-                title="${this.showVirtualKeyboard ? "Hide Virtual Keyboard" : "Show Virtual Keyboard"}"
-              >
-                ${this.showVirtualKeyboard ? "⌨️ Hide Keyboard" : "⌨️ Show Keyboard"}
-              </button>
-              <button 
-                class="action-btn" 
-                @click=${this.handleToggleScale}
-                title="${this.scaleViewport ? "Disable Fit" : "Fit to Window"}"
-              >
-                ${this.scaleViewport ? "🧩 Unfit" : "🧩 Fit"}
-              </button>
-              <button 
-                class="action-btn" 
-                @click=${this.handleFullscreen}
-                title="Open in New Tab (Fullscreen)"
-              >
-                🖥️ Fullscreen
-              </button>
-              <button class="close-btn" @click=${this.handleClose} title="Close">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" stroke-width="2"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <div class="console-body">
-            <div class="vnc-container">
-              <!-- iframe will be injected here -->
-            </div>
-            
-            ${this.isConnecting ? x`
-              <div class="loading-overlay">
-                <div class="spinner"></div>
-                <div class="loading-text">${this.connectionStatus}</div>
-              </div>
-            ` : ""}
-
-            ${this.error ? x`
-              <div class="error-overlay">
-                <div class="error-icon">⚠️</div>
-                <div class="error-message">${this.error}</div>
-                ${this.reconnectAttempts < this.maxReconnectAttempts ? x`
-                  <button class="retry-btn" @click=${this.handleReconnect}>
-                    🔄 Retry Connection
-                  </button>
-                ` : ""}
-              </div>
-            ` : ""}
-          </div>
-
-          <div class="console-footer">
-            <div class="keyboard-shortcuts">
-              <div class="shortcut">
-                <span class="key">Click</span>
-                <span>Focus console for keyboard input</span>
-              </div>
-              <div class="shortcut">
-                <span class="key">⌘</span> / <span class="key">Ctrl</span>
-                <span>may be captured by guest</span>
-              </div>
-            </div>
-            <div>
-              noVNC client ready
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-};
-VMConsole.styles = i$5`
-    :host {
-      display: block;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: 2000;
-      pointer-events: none;
-    }
-
-    :host([show]) {
-      pointer-events: auto;
-    }
-
-    .console-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.8);
-      display: none;
-      align-items: center;
-      justify-content: center;
-    }
-
-    :host([show]) .console-overlay {
-      display: flex;
-      animation: fadeIn 0.2s ease-out;
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-      }
-      to {
-        opacity: 1;
-      }
-    }
-
-    .console-window {
-      width: 90%;
-      height: 90%;
-      max-width: 1200px;
-      max-height: 800px;
-      background: var(--vscode-editor-background, #1e1e1e);
-      border: 1px solid var(--vscode-widget-border, #454545);
-      border-radius: 8px;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-      animation: slideUp 0.3s ease-out;
-    }
-
-    @keyframes slideUp {
-      from {
-        transform: translateY(20px);
-        opacity: 0;
-      }
-      to {
-        transform: translateY(0);
-        opacity: 1;
-      }
-    }
-
-    .console-header {
-      padding: 12px 16px;
-      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
-      border-bottom: 1px solid var(--vscode-widget-border, #454545);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-shrink: 0;
-    }
-
-    .console-title {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-size: 14px;
-      font-weight: 500;
-      color: var(--vscode-foreground, #cccccc);
-    }
-
-    .console-icon {
-      font-size: 18px;
-    }
-
-    .vm-name {
-      color: var(--vscode-textLink-foreground, #3794ff);
-    }
-
-    .connection-status {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-      color: var(--vscode-descriptionForeground, #8b8b8b);
-    }
-
-    .status-indicator {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--vscode-charts-yellow, #cca700);
-    }
-
-    .status-indicator.connected {
-      background: var(--vscode-charts-green, #89d185);
-      animation: pulse 2s infinite;
-    }
-
-    .status-indicator.error {
-      background: var(--vscode-charts-red, #f48771);
-    }
-
-    @keyframes pulse {
-      0%, 100% {
-        opacity: 1;
-      }
-      50% {
-        opacity: 0.6;
-      }
-    }
-
-    .console-actions {
-      display: flex;
-      gap: 8px;
-    }
-
-    .action-btn {
-      padding: 4px 8px;
-      background: var(--vscode-button-secondaryBackground, #3c3c3c);
-      color: var(--vscode-button-secondaryForeground, #cccccc);
-      border: 1px solid var(--vscode-button-border, #5a5a5a);
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 12px;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .action-btn:hover {
-      background: var(--vscode-button-secondaryHoverBackground, #45494e);
-    }
-
-    .action-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .close-btn {
-      padding: 4px;
-      background: transparent;
-      border: none;
-      color: var(--vscode-foreground, #cccccc);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 4px;
-      transition: all 0.2s;
-    }
-
-    .close-btn:hover {
-      background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
-    }
-
-    .console-body {
-      flex: 1;
-      background: #000;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .vnc-iframe {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      width: 100%;
-      height: 100%;
-      border: none;
-      background: #000;
-    }
-
-    .loading-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.8);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      gap: 16px;
-      z-index: 10;
-    }
-
-    .spinner {
-      width: 32px;
-      height: 32px;
-      border: 3px solid var(--vscode-widget-border, #454545);
-      border-top-color: var(--vscode-focusBorder, #007acc);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
-
-    .loading-text {
-      color: var(--vscode-foreground, #cccccc);
-      font-size: 14px;
-    }
-
-    .error-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.9);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      gap: 16px;
-      z-index: 10;
-      padding: 20px;
-    }
-
-    .error-icon {
-      font-size: 48px;
-      opacity: 0.8;
-    }
-
-    .error-message {
-      color: var(--vscode-errorForeground, #f48771);
-      font-size: 14px;
-      text-align: center;
-      max-width: 400px;
-    }
-
-    .retry-btn {
-      padding: 8px 16px;
-      background: var(--vscode-button-background, #0e639c);
-      color: var(--vscode-button-foreground, #ffffff);
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 13px;
-      transition: all 0.2s;
-    }
-
-    .retry-btn:hover {
-      background: var(--vscode-button-hoverBackground, #1177bb);
-    }
-
-    .console-footer {
-      padding: 8px 16px;
-      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
-      border-top: 1px solid var(--vscode-widget-border, #454545);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 12px;
-      color: var(--vscode-descriptionForeground, #8b8b8b);
-      flex-shrink: 0;
-    }
-
-    .keyboard-shortcuts {
-      display: flex;
-      gap: 16px;
-    }
-
-    .shortcut {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .key {
-      padding: 2px 6px;
-      background: var(--vscode-button-secondaryBackground, #3c3c3c);
-      border: 1px solid var(--vscode-button-border, #5a5a5a);
-      border-radius: 3px;
-      font-family: monospace;
-      font-size: 11px;
-    }
-
-    /* noVNC canvas will be injected into .vnc-canvas-wrapper */
-    .vnc-canvas-wrapper canvas {
-      width: 100% !important;
-      height: 100% !important;
-      image-rendering: pixelated;
-      outline: none;
-      display: block;
-    }
-  `;
-__decorateClass$m([
-  n2({ type: String })
-], VMConsole.prototype, "vmId", 2);
-__decorateClass$m([
-  n2({ type: String })
-], VMConsole.prototype, "vmName", 2);
-__decorateClass$m([
-  n2({ type: Boolean, reflect: true })
-], VMConsole.prototype, "show", 2);
-__decorateClass$m([
-  r$1()
-], VMConsole.prototype, "isConnecting", 2);
-__decorateClass$m([
-  r$1()
-], VMConsole.prototype, "isWSConnected", 2);
-__decorateClass$m([
-  r$1()
-], VMConsole.prototype, "error", 2);
-__decorateClass$m([
-  r$1()
-], VMConsole.prototype, "connectionStatus", 2);
-__decorateClass$m([
-  r$1()
-], VMConsole.prototype, "scaleViewport", 2);
-__decorateClass$m([
-  r$1()
-], VMConsole.prototype, "showVirtualKeyboard", 2);
-VMConsole = __decorateClass$m([
-  t$2("vm-console")
-], VMConsole);
-var __defProp$l = Object.defineProperty;
-var __getOwnPropDesc$j = Object.getOwnPropertyDescriptor;
-var __decorateClass$l = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$j(target, key) : target;
-  for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
-    if (decorator = decorators[i4])
-      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$l(target, key, result);
-  return result;
-};
-let VMDetailDrawer = class extends i$2 {
-  constructor() {
-    super(...arguments);
-    this.show = false;
-    this.vm = null;
-    this.activeTab = "overview";
-    this.isLoading = false;
-    this.metrics = null;
-    this.disks = [];
-    this.networkInterfaces = [];
-    this.vmDetails = null;
-    this.isPowerActionLoading = false;
-    this.showDeleteModal = false;
-    this.isDeleting = false;
-    this.isLoadingMetrics = false;
-    this.showConsole = false;
-    this.metricsRefreshInterval = null;
-    this.handleKeyDown = (event) => {
-      if (this.show && event.key === "Escape") {
-        if (this.showConsole) {
-          this.showConsole = false;
-          return;
-        }
-        if (this.showDeleteModal) {
-          this.cancelDelete();
-          return;
-        }
-        this.handleClose();
-      }
-    };
-    this.handleConsoleClose = () => {
-      this.showConsole = false;
-    };
-  }
-  connectedCallback() {
-    super.connectedCallback();
-    if (this.vm) {
-      this.loadVMDetails();
-    }
-    document.addEventListener("keydown", this.handleKeyDown);
-  }
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    this.stopMetricsRefresh();
-    document.removeEventListener("keydown", this.handleKeyDown);
-  }
-  updated(changedProperties) {
-    if (changedProperties.has("vm") && this.vm) {
-      this.loadVMDetails();
-    }
-    if (changedProperties.has("activeTab")) {
-      if (this.activeTab === "metrics") {
-        this.startMetricsRefresh();
-      } else {
-        this.stopMetricsRefresh();
-      }
-    }
-    if (changedProperties.has("show")) {
-      if (!this.show) {
-        this.stopMetricsRefresh();
-      } else if (this.activeTab === "metrics") {
-        this.startMetricsRefresh();
-      }
-    }
-  }
-  startMetricsRefresh() {
-    const currentState = this.vmDetails?.state || this.vm?.state;
-    if (currentState !== "running" || this.metricsRefreshInterval) {
-      return;
-    }
-    if (this.vm) {
-      console.log("Starting metrics refresh for VM:", this.vm.id);
-      this.fetchVMMetrics(this.vm.id);
-    }
-    this.metricsRefreshInterval = setInterval(() => {
-      if (this.vm && this.activeTab === "metrics" && this.show) {
-        console.log("Refreshing metrics for VM:", this.vm.id);
-        this.fetchVMMetrics(this.vm.id);
-      }
-    }, 5e3);
-  }
-  stopMetricsRefresh() {
-    if (this.metricsRefreshInterval) {
-      console.log("Stopping metrics refresh");
-      clearInterval(this.metricsRefreshInterval);
-      this.metricsRefreshInterval = null;
-    }
-  }
-  async loadVMDetails() {
-    if (!this.vm) return;
-    this.isLoading = true;
-    try {
-      const response = await this.fetchVMEnhancedDetails(this.vm.id);
-      if (response) {
-        this.vmDetails = response;
-        if (response.storage?.disks && response.storage.disks.length > 0) {
-          this.disks = response.storage.disks.map((disk, index2) => ({
-            name: disk.target || `disk${index2}`,
-            path: disk.path || disk.source_path || "Unknown",
-            size: disk.size || 0,
-            used: 0,
-            // This would need to come from monitoring
-            format: disk.format || "raw",
-            bus: disk.bus || "virtio",
-            readonly: disk.readonly || false,
-            device: disk.device || "disk"
-          }));
-        } else {
-          this.disks = [];
-        }
-        if (response.networks && response.networks.length > 0) {
-          this.networkInterfaces = response.networks.map((net, index2) => ({
-            name: net.target?.dev || net.alias || `eth${index2}`,
-            type: net.type,
-            source: net.source.network || net.source.bridge || net.source.dev || "Unknown",
-            model: net.model.type || "virtio",
-            mac: net.mac,
-            ip: net.ip,
-            state: "up",
-            // Would need actual state from monitoring
-            rx_bytes: 0,
-            // Would need actual metrics
-            tx_bytes: 0
-            // Would need actual metrics
-          }));
-        } else {
-          this.networkInterfaces = [];
-        }
-        if (this.vmDetails?.state === "running" || this.vm.state === "running") {
-          await this.fetchVMMetrics(this.vm.id);
-        } else {
-          this.metrics = null;
-        }
-      }
-    } catch (error) {
-      console.error("Failed to load VM details:", error);
-    } finally {
-      this.isLoading = false;
-    }
-  }
-  async fetchVMMetrics(vmId) {
-    if (this.isLoadingMetrics) {
-      console.log("Already loading metrics, skipping...");
-      return;
-    }
-    this.isLoadingMetrics = true;
-    try {
-      const authHeaders = auth.getAuthHeaders();
-      if (!authHeaders.Authorization) {
-        throw new Error("No authentication token found");
-      }
-      const apiUrl = getApiUrl(`/virtualization/computes/${vmId}/metrics`);
-      console.log("Fetching VM metrics from:", apiUrl);
-      const response = await fetch(apiUrl, {
-        method: "GET",
-        headers: {
-          ...authHeaders,
-          "Content-Type": "application/json"
-        }
-      });
-      if (!response.ok) {
-        console.error(`Failed to fetch VM metrics: ${response.statusText}`);
-        this.metrics = null;
-        return;
-      }
-      const data = await response.json();
-      console.log("VM metrics response:", data);
-      if (data.status === "success" && data.data) {
-        this.metrics = data.data;
-        console.log("Metrics updated:", this.metrics);
-      } else {
-        this.metrics = null;
-        console.warn("No metrics data in response");
-      }
-    } catch (error) {
-      console.error("Error fetching VM metrics:", error);
-      this.metrics = null;
-    } finally {
-      this.isLoadingMetrics = false;
-    }
-  }
-  async fetchVMEnhancedDetails(vmId) {
-    try {
-      const authHeaders = auth.getAuthHeaders();
-      if (!authHeaders.Authorization) {
-        throw new Error("No authentication token found");
-      }
-      const apiUrl = getApiUrl(`/virtualization/computes/${vmId}`);
-      const response = await fetch(apiUrl, {
-        method: "GET",
-        headers: {
-          ...authHeaders,
-          "Content-Type": "application/json"
-        }
-      });
-      if (!response.ok) {
-        throw new Error(`Failed to fetch VM details: ${response.statusText}`);
-      }
-      const data = await response.json();
-      if (data.status === "success" && data.data) {
-        if (data.data.vms && Array.isArray(data.data.vms) && data.data.vms.length > 0) {
-          return data.data.vms[0];
-        }
-        if (data.data.uuid) {
-          return data.data;
-        }
-      }
-      return null;
-    } catch (error) {
-      console.error("Error fetching VM enhanced details:", error);
-      throw error;
-    }
-  }
-  handleClose() {
-    this.show = false;
-    this.dispatchEvent(new CustomEvent("close"));
-  }
-  async handlePowerAction(action, force = false) {
-    if (!this.vm || this.isPowerActionLoading) return;
-    this.isPowerActionLoading = true;
-    try {
-      const success = await this.executePowerAction(this.vm.id, action, force);
-      if (success) {
-        this.dispatchEvent(new CustomEvent("power-action", {
-          detail: { action, vm: this.vm, success: true }
-        }));
-        this.showNotification(`${action.charAt(0).toUpperCase() + action.slice(1)} action initiated for ${this.vm.name}`, "success");
-        setTimeout(() => {
-          this.loadVMDetails();
-        }, 2e3);
-      }
-    } catch (error) {
-      console.error(`Failed to execute power action ${action}:`, error);
-      this.showNotification(
-        `Failed to ${action} VM: ${error instanceof Error ? error.message : "Unknown error"}`,
-        "error"
-      );
-    } finally {
-      this.isPowerActionLoading = false;
-    }
-  }
-  async executePowerAction(vmId, action, force = false) {
-    try {
-      const authHeaders = auth.getAuthHeaders();
-      if (!authHeaders.Authorization) {
-        throw new Error("No authentication token found");
-      }
-      const apiUrl = getApiUrl(`/virtualization/computes/${vmId}/action`);
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-          ...authHeaders,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          action,
-          force
-        })
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(
-          errorData?.message || errorData?.error || `Failed to execute ${action} action: ${response.statusText}`
-        );
-      }
-      const data = await response.json();
-      return data.status === "success";
-    } catch (error) {
-      console.error("Error executing power action:", error);
-      throw error;
-    }
-  }
-  showNotification(message, type = "info") {
-    this.dispatchEvent(new CustomEvent("show-notification", {
-      detail: { message, type },
-      bubbles: true,
-      composed: true
-    }));
-  }
-  handleConsoleConnect() {
-    const currentState = this.vmDetails?.state || this.vm?.state;
-    if (currentState !== "running") {
-      this.showNotification("Console is only available when VM is running", "warning");
-      return;
-    }
-    this.showConsole = true;
-  }
-  handleCloneVM() {
-    this.dispatchEvent(new CustomEvent("clone-vm", {
-      detail: { vm: this.vm }
-    }));
-    this.showNotification("Clone functionality coming soon", "info");
-  }
-  handleSnapshot() {
-    this.dispatchEvent(new CustomEvent("snapshot-vm", {
-      detail: { vm: this.vm }
-    }));
-    this.showNotification("Snapshot functionality coming soon", "info");
-  }
-  handleDeleteVM() {
-    const currentState = this.vmDetails?.state || this.vm?.state;
-    if (currentState === "running") {
-      this.showNotification("Cannot delete a running VM. Please stop it first.", "error");
-      return;
-    }
-    this.showDeleteModal = true;
-  }
-  cancelDelete() {
-    this.showDeleteModal = false;
-    this.isDeleting = false;
-  }
-  async confirmDelete() {
-    if (!this.vm || this.isDeleting) return;
-    this.isDeleting = true;
-    try {
-      const success = await this.executeDeleteVM(this.vm.id);
-      if (success) {
-        this.showNotification(`VM "${this.vm.name}" has been deleted successfully`, "success");
-        this.showDeleteModal = false;
-        this.dispatchEvent(new CustomEvent("vm-deleted", {
-          detail: { vm: this.vm },
-          bubbles: true,
-          composed: true
-        }));
-        setTimeout(() => {
-          this.handleClose();
-        }, 1e3);
-      }
-    } catch (error) {
-      console.error("Failed to delete VM:", error);
-      this.showNotification(
-        `Failed to delete VM: ${error instanceof Error ? error.message : "Unknown error"}`,
-        "error"
-      );
-    } finally {
-      this.isDeleting = false;
-    }
-  }
-  async executeDeleteVM(vmId) {
-    try {
-      const authHeaders = auth.getAuthHeaders();
-      if (!authHeaders.Authorization) {
-        throw new Error("No authentication token found");
-      }
-      const apiUrl = getApiUrl(`/virtualization/computes/${vmId}`);
-      const response = await fetch(apiUrl, {
-        method: "DELETE",
-        headers: {
-          ...authHeaders,
-          "Content-Type": "application/json"
-        }
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(
-          errorData?.message || errorData?.error || `Failed to delete VM: ${response.statusText}`
-        );
-      }
-      const data = await response.json().catch(() => ({ status: "success" }));
-      return data.status === "success" || response.ok;
-    } catch (error) {
-      console.error("Error deleting VM:", error);
-      throw error;
-    }
-  }
-  formatBytes(bytes) {
-    if (bytes === 0) return "0 B";
-    const k2 = 1024;
-    const sizes = ["B", "KB", "MB", "GB", "TB"];
-    const i4 = Math.floor(Math.log(bytes) / Math.log(k2));
-    return `${(bytes / Math.pow(k2, i4)).toFixed(1)} ${sizes[i4]}`;
-  }
-  formatMemory(kb) {
-    if (kb >= 1024 * 1024) {
-      return `${(kb / (1024 * 1024)).toFixed(1)} GB`;
-    } else if (kb >= 1024) {
-      return `${(kb / 1024).toFixed(0)} MB`;
-    }
-    return `${kb} KB`;
-  }
-  // Unused function - commented out for now
-  // private formatUptime(seconds: number): string {
-  //   const days = Math.floor(seconds / 86400);
-  //   const hours = Math.floor((seconds % 86400) / 3600);
-  //   const minutes = Math.floor((seconds % 3600) / 60);
-  //   
-  //   if (days > 0) {
-  //     return `${days}d ${hours}h ${minutes}m`;
-  //   } else if (hours > 0) {
-  //     return `${hours}h ${minutes}m`;
-  //   } else {
-  //     return `${minutes}m`;
-  //   }
-  // }
-  getProgressClass(value) {
-    if (value > 80) return "high";
-    if (value > 50) return "medium";
-    return "low";
-  }
-  renderOverviewTab() {
-    if (!this.vm) return x``;
-    const details = this.vmDetails || this.vm;
-    const osInfo = this.vmDetails?.os || {
-      type: void 0,
-      architecture: void 0,
-      machine: void 0
-    };
-    return x`
-      <div class="section">
-        <h3 class="section-title">System Information</h3>
-        <div class="info-grid">
-          <div class="info-item">
-            <span class="info-label">VM UUID</span>
-            <span class="info-value monospace">${this.vmDetails?.uuid || this.vm.id}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Name</span>
-            <span class="info-value">${details.name}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">State</span>
-            <span class="info-value">${this.vmDetails?.state || this.vm.state}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">OS Type</span>
-            <span class="info-value">${osInfo.type || this.vm.os_type || "hvm"}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Architecture</span>
-            <span class="info-value">${osInfo.architecture || this.vm.metadata?.architecture || "x86_64"}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Machine Type</span>
-            <span class="info-value">${osInfo.machine || "Default"}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Persistent</span>
-            <span class="info-value">${this.vmDetails?.persistent ? "Yes" : "No"}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Autostart</span>
-            <span class="info-value">${this.vmDetails?.autostart ? "Enabled" : "Disabled"}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Created</span>
-            <span class="info-value">${new Date(this.vmDetails?.created_at || this.vm.created_at || Date.now()).toLocaleString()}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Last Updated</span>
-            <span class="info-value">${new Date(this.vmDetails?.updated_at || this.vm.updated_at || Date.now()).toLocaleString()}</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="section">
-        <h3 class="section-title">Resource Allocation</h3>
-        <div class="info-grid">
-          <div class="info-item">
-            <span class="info-label">Current Memory</span>
-            <span class="info-value">${this.formatMemory(this.vmDetails?.memory || this.vm.memory)}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Max Memory</span>
-            <span class="info-value">${this.formatMemory(this.vmDetails?.max_memory || this.vm.memory)}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Current vCPUs</span>
-            <span class="info-value">${this.vmDetails?.vcpus || this.vm.vcpus} cores</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Max vCPUs</span>
-            <span class="info-value">${(this.vmDetails?.max_vcpus || 0) > 0 ? this.vmDetails?.max_vcpus : this.vmDetails?.vcpus || this.vm.vcpus} cores</span>
-          </div>
-          ${this.vm.disk_size ? x`
-            <div class="info-item">
-              <span class="info-label">Total Disk Size</span>
-              <span class="info-value">${this.formatBytes(this.vm.disk_size * 1024 * 1024 * 1024)}</span>
-            </div>
-          ` : ""}
-        </div>
-      </div>
-
-      ${this.vm.graphics && Array.isArray(this.vm.graphics) ? x`
-        <div class="section">
-          <h3 class="section-title">Graphics Configuration</h3>
-          <div class="info-grid">
-            ${this.vm.graphics.map((g2) => x`
-              <div class="info-item">
-                <span class="info-label">Type</span>
-                <span class="info-value">${g2.type?.toUpperCase()}</span>
-              </div>
-              ${g2.port ? x`
-                <div class="info-item">
-                  <span class="info-label">Port</span>
-                  <span class="info-value">${g2.port}</span>
-                </div>
-              ` : ""}
-              ${g2.listen ? x`
-                <div class="info-item">
-                  <span class="info-label">Listen Address</span>
-                  <span class="info-value monospace">${g2.listen}</span>
-                </div>
-              ` : ""}
-            `)}
-          </div>
-        </div>
-      ` : ""}
-    `;
-  }
-  renderMetricsTab() {
-    const currentState = this.vmDetails?.state || this.vm?.state;
-    if (currentState !== "running") {
-      return x`
-        <div class="empty-state">
-          <div class="empty-state-icon">📊</div>
-          <div class="empty-state-message">
-            Metrics are only available when the VM is running.
-            <br>
-            Current state: ${currentState === "shutoff" ? "Stopped" : currentState}
-          </div>
-        </div>
-      `;
-    }
-    if (!this.metrics && this.isLoadingMetrics) {
-      return x`
-        <div class="loading">
-          <div class="spinner"></div>
-          Loading metrics...
-        </div>
-      `;
-    }
-    if (!this.metrics) {
-      return x`
-        <div class="empty-state">
-          <div class="empty-state-icon">⚠️</div>
-          <div class="empty-state-message">
-            Unable to load metrics. Please ensure the VM is running and try refreshing.
-          </div>
-        </div>
-      `;
-    }
-    const vmMemoryMB = this.vmDetails?.memory || this.vm?.memory || 0;
-    const vmMemoryBytes = vmMemoryMB * 1024 * 1024;
-    const memoryUsagePercent = vmMemoryBytes > 0 ? this.metrics.memory_used / vmMemoryBytes * 100 : 0;
-    console.log("Memory calculation:", {
-      memory_used_bytes: this.metrics.memory_used,
-      memory_used_formatted: this.formatBytes(this.metrics.memory_used),
-      vm_memory_mb: vmMemoryMB,
-      vm_memory_bytes: vmMemoryBytes,
-      vm_memory_formatted: this.formatMemory(vmMemoryMB * 1024),
-      // formatMemory expects KB
-      usage_percent: memoryUsagePercent,
-      api_memory_usage_field: this.metrics.memory_usage
-    });
-    return x`
-      <div class="metrics-grid">
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-title">CPU Usage</span>
-            <span class="metric-icon">💻</span>
-          </div>
-          <div>
-            <span class="metric-value">${this.metrics.cpu_usage.toFixed(1)}</span>
-            <span class="metric-unit">%</span>
-          </div>
-          <div class="progress-bar">
-            <div class="progress-fill ${this.getProgressClass(this.metrics.cpu_usage)}" 
-                 style="width: ${Math.min(this.metrics.cpu_usage, 100)}%"></div>
-          </div>
-        </div>
-
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-title">Memory Usage</span>
-            <span class="metric-icon">🧠</span>
-          </div>
-          <div>
-            <span class="metric-value">${memoryUsagePercent.toFixed(1)}</span>
-            <span class="metric-unit">%</span>
-          </div>
-          <div class="progress-bar">
-            <div class="progress-fill ${this.getProgressClass(memoryUsagePercent)}" 
-                 style="width: ${Math.min(memoryUsagePercent, 100)}%"></div>
-          </div>
-          <div style="font-size: 11px; color: var(--vscode-descriptionForeground, #8b8b8b); margin-top: 4px;">
-            ${this.formatBytes(this.metrics.memory_used)} of ${this.formatMemory(vmMemoryMB * 1024)} used
-          </div>
-        </div>
-
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-title">Disk Read</span>
-            <span class="metric-icon">📖</span>
-          </div>
-          <div>
-            <span class="metric-value">${this.formatBytes(this.metrics.disk_read)}</span>
-          </div>
-          <div style="font-size: 11px; color: var(--vscode-descriptionForeground, #8b8b8b); margin-top: 4px;">
-            Total bytes read
-          </div>
-        </div>
-
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-title">Disk Write</span>
-            <span class="metric-icon">✍️</span>
-          </div>
-          <div>
-            <span class="metric-value">${this.formatBytes(this.metrics.disk_write)}</span>
-          </div>
-          <div style="font-size: 11px; color: var(--vscode-descriptionForeground, #8b8b8b); margin-top: 4px;">
-            Total bytes written
-          </div>
-        </div>
-
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-title">Network RX</span>
-            <span class="metric-icon">📥</span>
-          </div>
-          <div>
-            <span class="metric-value">${this.formatBytes(this.metrics.network_rx)}</span>
-          </div>
-          <div style="font-size: 11px; color: var(--vscode-descriptionForeground, #8b8b8b); margin-top: 4px;">
-            Total received
-          </div>
-        </div>
-
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-title">Network TX</span>
-            <span class="metric-icon">📤</span>
-          </div>
-          <div>
-            <span class="metric-value">${this.formatBytes(this.metrics.network_tx)}</span>
-          </div>
-          <div style="font-size: 11px; color: var(--vscode-descriptionForeground, #8b8b8b); margin-top: 4px;">
-            Total transmitted
-          </div>
-        </div>
-
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-title">CPU Time</span>
-            <span class="metric-icon">⏱️</span>
-          </div>
-          <div>
-            <span class="metric-value">${(this.metrics.cpu_time / 1e9).toFixed(1)}</span>
-            <span class="metric-unit">s</span>
-          </div>
-          <div style="font-size: 11px; color: var(--vscode-descriptionForeground, #8b8b8b); margin-top: 4px;">
-            Total CPU time used
-          </div>
-        </div>
-      </div>
-
-      <div class="section">
-        <h3 class="section-title">Performance History</h3>
-        <div class="empty-state">
-          <div class="empty-state-icon">📊</div>
-          <div class="empty-state-message">Performance graphs will be available in a future update</div>
-        </div>
-      </div>
-    `;
-  }
-  renderStorageTab() {
-    const hasDisks = this.disks && this.disks.length > 0;
-    return x`
-      <div class="section">
-        <h3 class="section-title">Storage Devices</h3>
-        ${hasDisks ? x`
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Target</th>
-                <th>Type</th>
-                <th>Path</th>
-                <th>Format</th>
-                <th>Bus</th>
-                <th>Size</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${this.disks.map((disk) => x`
-                <tr>
-                  <td><span class="monospace">${disk.name}</span></td>
-                  <td>
-                    <span class="badge ${disk.device === "cdrom" ? "warning" : ""}">
-                      ${disk.device?.toUpperCase() || "DISK"}
-                    </span>
-                  </td>
-                  <td>
-                    <span class="monospace" style="font-size: 11px; word-break: break-all;">
-                      ${disk.path}
-                    </span>
-                  </td>
-                  <td>${disk.format.toUpperCase()}</td>
-                  <td>${disk.bus.toUpperCase()}</td>
-                  <td>${disk.size > 0 ? this.formatBytes(disk.size) : "N/A"}</td>
-                  <td>
-                    <span class="badge ${disk.readonly ? "warning" : "success"}">
-                      ${disk.readonly ? "Read-Only" : "Read/Write"}
-                    </span>
-                  </td>
-                </tr>
-              `)}
-            </tbody>
-          </table>
-        ` : x`
-          <div class="empty-state">
-            <div class="empty-state-icon">💾</div>
-            <div class="empty-state-message">No storage devices attached</div>
-          </div>
-        `}
-      </div>
-      
-      ${this.vmDetails?.storage ? x`
-        <div class="section">
-          <h3 class="section-title">Storage Configuration</h3>
-          <div class="info-grid">
-            <div class="info-item">
-              <span class="info-label">Default Pool</span>
-              <span class="info-value">${this.vmDetails.storage.default_pool}</span>
-            </div>
-            ${this.vmDetails.storage.boot_iso ? x`
-              <div class="info-item">
-                <span class="info-label">Boot ISO</span>
-                <span class="info-value monospace">${this.vmDetails.storage.boot_iso}</span>
-              </div>
-            ` : ""}
-          </div>
-        </div>
-      ` : ""}
-
-      ${this.vm?.disks ? x`
-        <div class="section">
-          <h3 class="section-title">Disk Configuration</h3>
-          <div class="info-grid">
-            ${this.vm.disks.map((disk) => x`
-              <div class="info-item">
-                <span class="info-label">Target: ${disk.target}</span>
-                <span class="info-value monospace">${disk.source?.file || disk.source?.dev || "N/A"}</span>
-              </div>
-            `)}
-          </div>
-        </div>
-      ` : ""}
-    `;
-  }
-  renderNetworkTab() {
-    return x`
-      <div class="section">
-        <h3 class="section-title">Network Interfaces</h3>
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Interface</th>
-              <th>Type</th>
-              <th>Source</th>
-              <th>Model</th>
-              <th>MAC Address</th>
-              <th>IP Address</th>
-              <th>State</th>
-              <th>Traffic</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${this.networkInterfaces.map((iface) => x`
-              <tr>
-                <td><span class="monospace">${iface.name}</span></td>
-                <td>${iface.type}</td>
-                <td>${iface.source}</td>
-                <td>${iface.model.toUpperCase()}</td>
-                <td><span class="monospace">${iface.mac}</span></td>
-                <td><span class="monospace">${iface.ip || "N/A"}</span></td>
-                <td>
-                  <span class="badge ${iface.state === "up" ? "success" : "error"}">
-                    ${iface.state.toUpperCase()}
-                  </span>
-                </td>
-                <td>
-                  ↓ ${this.formatBytes(iface.rx_bytes)} / ↑ ${this.formatBytes(iface.tx_bytes)}
-                </td>
-              </tr>
-            `)}
-          </tbody>
-        </table>
-      </div>
-
-      ${this.vm?.network_interfaces ? x`
-        <div class="section">
-          <h3 class="section-title">Network Configuration</h3>
-          <div class="info-grid">
-            ${this.vm.network_interfaces.map((net) => x`
-              <div class="info-item">
-                <span class="info-label">Type: ${net.type}</span>
-                <span class="info-value">${net.source?.network || net.source?.bridge || "N/A"}</span>
-              </div>
-            `)}
-          </div>
-        </div>
-      ` : ""}
-    `;
-  }
-  renderConsoleTab() {
-    return x`
-      <div class="section">
-        <h3 class="section-title">Console Preview</h3>
-        <div class="console-preview">
-          <button class="console-connect-btn" @click=${this.handleConsoleConnect}>
-            Open Full Console
-          </button>
-          <div>
-            ${this.vm?.state === "running" ? x`
-              <div>Last login: ${(/* @__PURE__ */ new Date()).toLocaleString()}</div>
-              <div>Welcome to ${this.vm.name}</div>
-              <div>[root@${this.vm.name} ~]# _</div>
-            ` : x`
-              <div style="color: #888;">Console is not available. VM is ${this.vm?.state}.</div>
-            `}
-          </div>
-        </div>
-      </div>
-
-      <div class="section">
-        <h3 class="section-title">Console Settings</h3>
-        <div class="info-grid">
-          <div class="info-item">
-            <span class="info-label">Console Type</span>
-            <span class="info-value">${(Array.isArray(this.vm?.graphics) ? this.vm?.graphics[0]?.type?.toUpperCase() : this.vm?.graphics?.type?.toUpperCase()) || "VNC"}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Port</span>
-            <span class="info-value">${(Array.isArray(this.vm?.graphics) ? this.vm?.graphics[0]?.port : this.vm?.graphics?.port) || "Auto"}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Listen Address</span>
-            <span class="info-value monospace">${(Array.isArray(this.vm?.graphics) ? this.vm?.graphics[0]?.listen : this.vm?.graphics?.listen) || "0.0.0.0"}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Password Protected</span>
-            <span class="info-value">${(Array.isArray(this.vm?.graphics) ? this.vm?.graphics[0]?.password : this.vm?.graphics?.password) ? "Yes" : "No"}</span>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-  renderSnapshotsTab() {
-    return x`
-      <div class="section">
-        <h3 class="section-title">Snapshots</h3>
-        <div class="empty-state">
-          <div class="empty-state-icon">📸</div>
-          <div class="empty-state-message">No snapshots available</div>
-        </div>
-      </div>
-    `;
-  }
-  render() {
-    if (!this.vm) return x``;
-    const currentState = this.vmDetails?.state || this.vm.state;
-    const powerStateClass = currentState.toLowerCase().replace("shutoff", "stopped");
-    const powerStateText = currentState === "shutoff" ? "Stopped" : currentState.charAt(0).toUpperCase() + currentState.slice(1);
-    return x`
-      <div class="drawer">
-        <div class="drawer-header">
-          <div class="header-content">
-            <div class="vm-icon">🖥️</div>
-            <div class="vm-info">
-              <h2 class="vm-name">${this.vm.name}</h2>
-              <div class="vm-meta">
-                <span class="power-state ${powerStateClass}">
-                  <span class="power-state-indicator"></span>
-                  ${powerStateText}
-                </span>
-                <span>${this.vm.memory} MB RAM</span>
-                <span>${this.vm.vcpus} vCPUs</span>
-                <span>${this.vm.os_type}</span>
-              </div>
-            </div>
-          </div>
-          <button class="close-btn" @click=${this.handleClose} aria-label="Close">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" stroke-width="2"/>
-            </svg>
-          </button>
-        </div>
-
-        <div class="quick-actions">
-          ${this.vm.state === "running" || this.vmDetails?.state === "running" ? x`
-            <button 
-              class="action-btn" 
-              @click=${() => this.handlePowerAction("stop")}
-              ?disabled=${this.isPowerActionLoading}
-            >
-              ${this.isPowerActionLoading ? x`<span class="spinner-small"></span>` : "⏹️"} Stop
-            </button>
-            <button 
-              class="action-btn" 
-              @click=${() => this.handlePowerAction("restart")}
-              ?disabled=${this.isPowerActionLoading}
-            >
-              ${this.isPowerActionLoading ? x`<span class="spinner-small"></span>` : "🔄"} Restart
-            </button>
-            <button 
-              class="action-btn" 
-              @click=${() => this.handlePowerAction("pause")}
-              ?disabled=${this.isPowerActionLoading}
-            >
-              ${this.isPowerActionLoading ? x`<span class="spinner-small"></span>` : "⏸️"} Pause
-            </button>
-          ` : this.vm.state === "paused" || this.vmDetails?.state === "paused" ? x`
-            <button 
-              class="action-btn primary" 
-              @click=${() => this.handlePowerAction("resume")}
-              ?disabled=${this.isPowerActionLoading}
-            >
-              ${this.isPowerActionLoading ? x`<span class="spinner-small"></span>` : "▶️"} Resume
-            </button>
-            <button 
-              class="action-btn" 
-              @click=${() => this.handlePowerAction("stop")}
-              ?disabled=${this.isPowerActionLoading}
-            >
-              ${this.isPowerActionLoading ? x`<span class="spinner-small"></span>` : "⏹️"} Stop
-            </button>
-          ` : x`
-            <button 
-              class="action-btn primary" 
-              @click=${() => this.handlePowerAction("start")}
-              ?disabled=${this.isPowerActionLoading}
-            >
-              ${this.isPowerActionLoading ? x`<span class="spinner-small"></span>` : "▶️"} Start
-            </button>
-          `}
-          <button 
-            class="action-btn" 
-            @click=${this.handleConsoleConnect}
-            ?disabled=${this.vm.state !== "running" && this.vmDetails?.state !== "running"}
-          >
-            💻 Console
-          </button>
-          <button 
-            class="action-btn" 
-            @click=${() => this.handleCloneVM()}
-            ?disabled=${this.isPowerActionLoading}
-          >
-            📋 Clone
-          </button>
-          <button 
-            class="action-btn" 
-            @click=${() => this.handleSnapshot()}
-            ?disabled=${this.isPowerActionLoading}
-          >
-            📸 Snapshot
-          </button>
-          <button 
-            class="action-btn danger" 
-            @click=${() => this.handleDeleteVM()}
-            ?disabled=${this.isPowerActionLoading}
-          >
-            🗑️ Delete
-          </button>
-        </div>
-
-        <div class="tabs">
-          <button class="tab ${this.activeTab === "overview" ? "active" : ""}" 
-                  @click=${() => this.activeTab = "overview"}>
-            Overview
-          </button>
-          <button class="tab ${this.activeTab === "metrics" ? "active" : ""}" 
-                  @click=${() => this.activeTab = "metrics"}>
-            Metrics
-          </button>
-          <button class="tab ${this.activeTab === "storage" ? "active" : ""}" 
-                  @click=${() => this.activeTab = "storage"}>
-            Storage
-          </button>
-          <button class="tab ${this.activeTab === "network" ? "active" : ""}" 
-                  @click=${() => this.activeTab = "network"}>
-            Network
-          </button>
-          <button class="tab ${this.activeTab === "console" ? "active" : ""}" 
-                  @click=${() => this.activeTab = "console"}>
-            Console
-          </button>
-          <button class="tab ${this.activeTab === "snapshots" ? "active" : ""}" 
-                  @click=${() => this.activeTab = "snapshots"}>
-            Snapshots
-          </button>
-        </div>
-
-        <div class="drawer-content">
-          ${this.isLoading ? x`
-            <div class="loading">
-              <div class="spinner"></div>
-              Loading VM details...
-            </div>
-          ` : x`
-            ${this.activeTab === "overview" ? this.renderOverviewTab() : this.activeTab === "metrics" ? this.renderMetricsTab() : this.activeTab === "storage" ? this.renderStorageTab() : this.activeTab === "network" ? this.renderNetworkTab() : this.activeTab === "console" ? this.renderConsoleTab() : this.activeTab === "snapshots" ? this.renderSnapshotsTab() : x``}
-          `}
-        </div>
-      </div>
-      
-      <!-- Delete Confirmation Modal -->
-      <div class="modal-overlay ${this.showDeleteModal ? "show" : ""}">
-        <div class="modal">
-          <div class="modal-header">
-            <span class="modal-icon">⚠️</span>
-            <h3 class="modal-title">Delete Virtual Machine</h3>
-          </div>
-          
-          <div class="modal-body">
-            <p class="modal-message">
-              Are you sure you want to permanently delete this virtual machine?
-            </p>
-            
-            <div class="vm-info-box">
-              <div class="vm-info-row">
-                <span class="vm-info-label">Name:</span>
-                <span class="vm-info-value">${this.vm.name}</span>
-              </div>
-              <div class="vm-info-row">
-                <span class="vm-info-label">UUID:</span>
-                <span class="vm-info-value" style="font-family: monospace; font-size: 12px;">
-                  ${this.vmDetails?.uuid || this.vm.id}
-                </span>
-              </div>
-              <div class="vm-info-row">
-                <span class="vm-info-label">State:</span>
-                <span class="vm-info-value">${powerStateText}</span>
-              </div>
-              <div class="vm-info-row">
-                <span class="vm-info-label">Resources:</span>
-                <span class="vm-info-value">
-                  ${this.formatMemory(this.vmDetails?.memory || this.vm.memory)} RAM, 
-                  ${this.vmDetails?.vcpus || this.vm.vcpus} vCPUs
-                </span>
-              </div>
-            </div>
-            
-            <div class="warning-box">
-              <span class="warning-icon">⚠️</span>
-              <div>
-                <strong>Warning:</strong> This action cannot be undone. All data associated with this VM, 
-                including disks and snapshots, will be permanently deleted.
-              </div>
-            </div>
-          </div>
-          
-          <div class="modal-footer">
-            <button 
-              class="modal-btn cancel" 
-              @click=${this.cancelDelete}
-              ?disabled=${this.isDeleting}
-            >
-              Cancel
-            </button>
-            <button 
-              class="modal-btn delete" 
-              @click=${this.confirmDelete}
-              ?disabled=${this.isDeleting}
-            >
-              ${this.isDeleting ? x`
-                <span class="spinner-small"></span>
-                Deleting...
-              ` : x`
-                🗑️ Delete VM
-              `}
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      <!-- VM Console -->
-      ${this.showConsole && this.vm ? x`
-        <vm-console
-          .vmId=${this.vm.id}
-          .vmName=${this.vm.name}
-          .show=${this.showConsole}
-          @close=${this.handleConsoleClose}
-        ></vm-console>
-      ` : ""}
-    `;
-  }
-};
-VMDetailDrawer.styles = i$5`
-    :host {
-      display: block;
-      position: fixed;
-      top: 0;
-      right: 0;
-      width: 60%;
-      height: 100vh;
-      z-index: 1000;
-      pointer-events: none;
-    }
-
-    :host([show]) {
-      pointer-events: auto;
-    }
-
-    .drawer {
-      width: 100%;
-      height: 100%;
-      background: var(--vscode-editor-background, #1e1e1e);
-      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
-      display: flex;
-      flex-direction: column;
-      transform: translateX(100%);
-      transition: transform 0.3s ease-out;
-      border-left: 1px solid var(--vscode-widget-border, #454545);
-    }
-
-    :host([show]) .drawer {
-      transform: translateX(0);
-      animation: slideIn 0.3s ease-out;
-    }
-
-    @keyframes slideIn {
-      from {
-        transform: translateX(100%);
-        opacity: 0.8;
-      }
-      to {
-        transform: translateX(0);
-        opacity: 1;
-      }
-    }
-
-    @keyframes slideOut {
-      from {
-        transform: translateX(0);
-        opacity: 1;
-      }
-      to {
-        transform: translateX(100%);
-        opacity: 0.8;
-      }
-    }
-
-    :host(:not([show])) .drawer {
-      animation: slideOut 0.3s ease-in;
-    }
-
-    @media (max-width: 1200px) {
-      :host {
-        width: 80%;
-      }
-    }
-
-    @media (max-width: 768px) {
-      :host {
-        width: 100%;
-      }
-    }
-
-    .drawer-header {
-      padding: 20px 24px;
-      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
-      border-bottom: 1px solid var(--vscode-widget-border, #454545);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-shrink: 0;
-    }
-
-    .header-content {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      flex: 1;
-    }
-
-    .vm-icon {
-      width: 40px;
-      height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--vscode-button-secondaryBackground, #3c3c3c);
-      border-radius: 8px;
-      font-size: 20px;
-    }
-
-    .vm-info {
-      flex: 1;
-    }
-
-    .vm-name {
-      font-size: 18px;
-      font-weight: 500;
-      color: var(--vscode-foreground, #cccccc);
-      margin: 0 0 4px 0;
-    }
-
-    .vm-meta {
-      display: flex;
-      gap: 16px;
-      font-size: 12px;
-      color: var(--vscode-descriptionForeground, #8b8b8b);
-    }
-
-    .close-btn {
-      background: transparent;
-      border: none;
-      color: var(--vscode-foreground, #cccccc);
-      cursor: pointer;
-      padding: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 4px;
-      transition: all 0.2s;
-    }
-
-    .close-btn:hover {
-      background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
-      color: var(--vscode-icon-foreground, #c5c5c5);
-    }
-
-    /* Power State Badge */
-    .power-state {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 12px;
-      font-weight: 500;
-    }
-
-    .power-state.running {
-      background: var(--vscode-charts-green, #89d185);
-      color: var(--vscode-editor-background, #1e1e1e);
-    }
-
-    .power-state.stopped {
-      background: var(--vscode-charts-red, #f48771);
-      color: var(--vscode-editor-background, #1e1e1e);
-    }
-
-    .power-state.paused {
-      background: var(--vscode-charts-yellow, #cca700);
-      color: var(--vscode-editor-background, #1e1e1e);
-    }
-
-    .power-state.suspended {
-      background: var(--vscode-charts-orange, #ce9178);
-      color: var(--vscode-editor-background, #1e1e1e);
-    }
-
-    .power-state-indicator {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: currentColor;
-      animation: pulse 2s infinite;
-    }
-
-    .power-state.running .power-state-indicator {
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% {
-        opacity: 1;
-      }
-      50% {
-        opacity: 0.5;
-      }
-    }
-
-    /* Tabs */
-    .tabs {
-      display: flex;
-      gap: 0;
-      padding: 0 24px;
-      background: var(--vscode-editor-background, #1e1e1e);
-      border-bottom: 1px solid var(--vscode-widget-border, #454545);
-      flex-shrink: 0;
-    }
-
-    .tab {
-      padding: 12px 20px;
-      background: transparent;
-      border: none;
-      border-bottom: 2px solid transparent;
-      color: var(--vscode-foreground, #cccccc);
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 500;
-      transition: all 0.2s;
-      position: relative;
-    }
-
-    .tab:hover {
-      background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.1));
-    }
-
-    .tab.active {
-      color: var(--vscode-textLink-foreground, #3794ff);
-      border-bottom-color: var(--vscode-focusBorder, #007acc);
-    }
-
-    /* Content Area */
-    .drawer-content {
-      flex: 1;
-      overflow-y: auto;
-      padding: 24px;
-    }
-
-    /* Quick Actions Bar */
-    .quick-actions {
-      padding: 16px 24px;
-      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
-      border-bottom: 1px solid var(--vscode-widget-border, #454545);
-      display: flex;
-      gap: 12px;
-      flex-shrink: 0;
-    }
-
-    .action-btn {
-      padding: 8px 16px;
-      background: var(--vscode-button-secondaryBackground, #3c3c3c);
-      color: var(--vscode-button-secondaryForeground, #cccccc);
-      border: 1px solid var(--vscode-button-border, #5a5a5a);
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 500;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .action-btn:hover:not(:disabled) {
-      background: var(--vscode-button-secondaryHoverBackground, #45494e);
-    }
-
-    .action-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .action-btn.primary {
-      background: var(--vscode-button-background, #0e639c);
-      color: var(--vscode-button-foreground, #ffffff);
-      border-color: var(--vscode-button-background, #0e639c);
-    }
-
-    .action-btn.primary:hover:not(:disabled) {
-      background: var(--vscode-button-hoverBackground, #1177bb);
-      border-color: var(--vscode-button-hoverBackground, #1177bb);
-    }
-
-    .action-btn.danger {
-      background: var(--vscode-inputValidation-errorBackground, #5a1d1d);
-      color: var(--vscode-inputValidation-errorForeground, #f48771);
-      border-color: var(--vscode-inputValidation-errorBorder, #be1100);
-    }
-
-    .action-btn.danger:hover:not(:disabled) {
-      background: var(--vscode-inputValidation-errorBorder, #be1100);
-    }
-
-    /* Sections */
-    .section {
-      margin-bottom: 32px;
-    }
-
-    .section-title {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--vscode-foreground, #cccccc);
-      margin-bottom: 16px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid var(--vscode-widget-border, #454545);
-    }
-
-    /* Info Grid */
-    .info-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 20px;
-    }
-
-    .info-item {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .info-label {
-      font-size: 12px;
-      color: var(--vscode-descriptionForeground, #8b8b8b);
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .info-value {
-      font-size: 14px;
-      color: var(--vscode-foreground, #cccccc);
-      font-weight: 400;
-    }
-
-    .info-value.monospace {
-      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-      font-size: 13px;
-    }
-
-    /* Metrics Cards */
-    .metrics-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-
-    .metric-card {
-      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
-      border: 1px solid var(--vscode-widget-border, #454545);
-      border-radius: 6px;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .metric-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .metric-title {
-      font-size: 12px;
-      color: var(--vscode-descriptionForeground, #8b8b8b);
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .metric-icon {
-      font-size: 16px;
-      opacity: 0.6;
-    }
-
-    .metric-value {
-      font-size: 24px;
-      font-weight: 600;
-      color: var(--vscode-foreground, #cccccc);
-    }
-
-    .metric-unit {
-      font-size: 14px;
-      font-weight: 400;
-      color: var(--vscode-descriptionForeground, #8b8b8b);
-      margin-left: 4px;
-    }
-
-    .metric-change {
-      font-size: 12px;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .metric-change.positive {
-      color: var(--vscode-charts-green, #89d185);
-    }
-
-    .metric-change.negative {
-      color: var(--vscode-charts-red, #f48771);
-    }
-
-    /* Progress Bars */
-    .progress-bar {
-      width: 100%;
-      height: 8px;
-      background: var(--vscode-progressBar-background, #1e1e1e);
-      border-radius: 4px;
-      overflow: hidden;
-      margin-top: 8px;
-    }
-
-    .progress-fill {
-      height: 100%;
-      background: var(--vscode-progressBar-foreground, #0e639c);
-      transition: width 0.3s ease;
-      border-radius: 4px;
-    }
-
-    .progress-fill.high {
-      background: var(--vscode-charts-red, #f48771);
-    }
-
-    .progress-fill.medium {
-      background: var(--vscode-charts-yellow, #cca700);
-    }
-
-    .progress-fill.low {
-      background: var(--vscode-charts-green, #89d185);
-    }
-
-    /* Tables */
-    .data-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-    }
-
-    .data-table th {
-      text-align: left;
-      padding: 8px 12px;
-      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
-      color: var(--vscode-foreground, #cccccc);
-      font-weight: 600;
-      border-bottom: 1px solid var(--vscode-widget-border, #454545);
-    }
-
-    .data-table td {
-      padding: 10px 12px;
-      color: var(--vscode-foreground, #cccccc);
-      border-bottom: 1px solid var(--vscode-widget-border, #454545);
-    }
-
-    .data-table tr:hover {
-      background: var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.1));
-    }
-
-    /* Badges */
-    .badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 3px;
-      font-size: 11px;
-      font-weight: 500;
-      background: var(--vscode-badge-background, #4d4d4d);
-      color: var(--vscode-badge-foreground, #ffffff);
-    }
-
-    .badge.success {
-      background: var(--vscode-charts-green, #89d185);
-      color: var(--vscode-editor-background, #1e1e1e);
-    }
-
-    .badge.warning {
-      background: var(--vscode-charts-yellow, #cca700);
-      color: var(--vscode-editor-background, #1e1e1e);
-    }
-
-    .badge.error {
-      background: var(--vscode-charts-red, #f48771);
-      color: var(--vscode-editor-background, #1e1e1e);
-    }
-
-    /* Loading State */
-    .loading {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 40px;
-      color: var(--vscode-descriptionForeground, #8b8b8b);
-    }
-
-    .spinner {
-      width: 24px;
-      height: 24px;
-      border: 2px solid var(--vscode-widget-border, #454545);
-      border-top-color: var(--vscode-focusBorder, #007acc);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin-right: 12px;
-    }
-
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
-    
-    /* Small spinner for buttons */
-    .spinner-small {
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      border: 2px solid var(--vscode-widget-border, #454545);
-      border-top-color: var(--vscode-foreground, #cccccc);
-      border-radius: 50%;
-      animation: spin 0.6s linear infinite;
-    }
-
-    /* Empty State */
-    .empty-state {
-      padding: 60px 20px;
-      text-align: center;
-      color: var(--vscode-descriptionForeground, #8b8b8b);
-    }
-
-    .empty-state-icon {
-      font-size: 48px;
-      opacity: 0.5;
-      margin-bottom: 16px;
-    }
-
-    .empty-state-message {
-      font-size: 14px;
-    }
-
-    /* Console Preview */
-    .console-preview {
-      background: #000;
-      border: 1px solid var(--vscode-widget-border, #454545);
-      border-radius: 4px;
-      padding: 16px;
-      min-height: 200px;
-      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-      font-size: 12px;
-      color: #00ff00;
-      position: relative;
-    }
-
-    .console-connect-btn {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      padding: 4px 12px;
-      background: var(--vscode-button-background, #0e639c);
-      color: var(--vscode-button-foreground, #ffffff);
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 12px;
-    }
-
-    .console-connect-btn:hover {
-      background: var(--vscode-button-hoverBackground, #1177bb);
-    }
-    
-    /* Delete Confirmation Modal */
-    .modal-overlay {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 2000;
-      align-items: flex-start;
-      justify-content: center;
-      padding-top: 80px;
-    }
-    
-    .modal-overlay.show {
-      display: flex;
-      animation: fadeIn 0.2s ease-out;
-    }
-    
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-      }
-      to {
-        opacity: 1;
-      }
-    }
-    
-    .modal {
-      background: var(--vscode-editor-background, #1e1e1e);
-      border: 1px solid var(--vscode-widget-border, #454545);
-      border-radius: 8px;
-      padding: 24px;
-      width: 90%;
-      max-width: 500px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-      animation: slideUp 0.2s ease-out;
-    }
-    
-    @keyframes slideUp {
-      from {
-        transform: translateY(-20px);
-        opacity: 0;
-      }
-      to {
-        transform: translateY(0);
-        opacity: 1;
-      }
-    }
-    
-    .modal-header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-    
-    .modal-icon {
-      font-size: 24px;
-    }
-    
-    .modal-title {
-      font-size: 18px;
-      font-weight: 600;
-      color: var(--vscode-foreground, #cccccc);
-      margin: 0;
-    }
-    
-    .modal-body {
-      margin-bottom: 24px;
-    }
-    
-    .modal-message {
-      color: var(--vscode-foreground, #cccccc);
-      line-height: 1.5;
-      margin-bottom: 16px;
-    }
-    
-    .warning-box {
-      background: var(--vscode-inputValidation-warningBackground, #5a5012);
-      border: 1px solid var(--vscode-inputValidation-warningBorder, #b89500);
-      border-radius: 4px;
-      padding: 12px;
-      color: var(--vscode-inputValidation-warningForeground, #cca700);
-      font-size: 13px;
-      display: flex;
-      align-items: start;
-      gap: 8px;
-    }
-    
-    .warning-icon {
-      flex-shrink: 0;
-      margin-top: 2px;
-    }
-    
-    .vm-info-box {
-      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
-      border: 1px solid var(--vscode-widget-border, #454545);
-      border-radius: 4px;
-      padding: 12px;
-      margin: 16px 0;
-    }
-    
-    .vm-info-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 4px 0;
-      font-size: 13px;
-    }
-    
-    .vm-info-label {
-      color: var(--vscode-descriptionForeground, #8b8b8b);
-    }
-    
-    .vm-info-value {
-      color: var(--vscode-foreground, #cccccc);
-      font-weight: 500;
-    }
-    
-    .modal-footer {
-      display: flex;
-      justify-content: flex-end;
-      gap: 12px;
-    }
-    
-    .modal-btn {
-      padding: 8px 16px;
-      border-radius: 4px;
-      border: 1px solid;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-    
-    .modal-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    
-    .modal-btn.cancel {
-      background: var(--vscode-button-secondaryBackground, #3c3c3c);
-      color: var(--vscode-button-secondaryForeground, #cccccc);
-      border-color: var(--vscode-button-border, #5a5a5a);
-    }
-    
-    .modal-btn.cancel:hover:not(:disabled) {
-      background: var(--vscode-button-secondaryHoverBackground, #45494e);
-    }
-    
-    .modal-btn.delete {
-      background: var(--vscode-inputValidation-errorBackground, #5a1d1d);
-      color: var(--vscode-inputValidation-errorForeground, #f48771);
-      border-color: var(--vscode-inputValidation-errorBorder, #be1100);
-    }
-    
-    .modal-btn.delete:hover:not(:disabled) {
-      background: var(--vscode-inputValidation-errorBorder, #be1100);
-    }
-  `;
-__decorateClass$l([
-  n2({ type: Boolean, reflect: true })
-], VMDetailDrawer.prototype, "show", 2);
-__decorateClass$l([
-  n2({ type: Object })
-], VMDetailDrawer.prototype, "vm", 2);
-__decorateClass$l([
-  r$1()
-], VMDetailDrawer.prototype, "activeTab", 2);
-__decorateClass$l([
-  r$1()
-], VMDetailDrawer.prototype, "isLoading", 2);
-__decorateClass$l([
-  r$1()
-], VMDetailDrawer.prototype, "metrics", 2);
-__decorateClass$l([
-  r$1()
-], VMDetailDrawer.prototype, "disks", 2);
-__decorateClass$l([
-  r$1()
-], VMDetailDrawer.prototype, "networkInterfaces", 2);
-__decorateClass$l([
-  r$1()
-], VMDetailDrawer.prototype, "vmDetails", 2);
-__decorateClass$l([
-  r$1()
-], VMDetailDrawer.prototype, "isPowerActionLoading", 2);
-__decorateClass$l([
-  r$1()
-], VMDetailDrawer.prototype, "showDeleteModal", 2);
-__decorateClass$l([
-  r$1()
-], VMDetailDrawer.prototype, "isDeleting", 2);
-__decorateClass$l([
-  r$1()
-], VMDetailDrawer.prototype, "isLoadingMetrics", 2);
-__decorateClass$l([
-  r$1()
-], VMDetailDrawer.prototype, "showConsole", 2);
-VMDetailDrawer = __decorateClass$l([
-  t$2("vm-detail-drawer")
-], VMDetailDrawer);
 var StoreEventType = /* @__PURE__ */ ((StoreEventType2) => {
   StoreEventType2["CREATED"] = "created";
   StoreEventType2["UPDATED"] = "updated";
@@ -56112,6 +53720,94 @@ class VirtualizationDisabledError extends Error {
     this.status = status;
   }
 }
+const vmErrorMap = {
+  // VM lifecycle errors
+  VM_NOT_FOUND: "Virtual machine not found. It may have been deleted.",
+  VM_RUNNING: "This operation requires the VM to be stopped.",
+  VM_NOT_RUNNING: "This operation requires the VM to be running.",
+  VM_BUSY: "The virtual machine is currently busy. Please try again later.",
+  VM_LOCKED: "The virtual machine is locked by another operation.",
+  // VM creation/update errors
+  CREATE_VM_FAILED: "Failed to create virtual machine.",
+  UPDATE_VM_FAILED: "Failed to update virtual machine.",
+  DELETE_VM_FAILED: "Failed to delete virtual machine.",
+  INVALID_VM_CONFIG: "Invalid virtual machine configuration.",
+  INVALID_VM_NAME: "Invalid virtual machine name.",
+  VM_NAME_EXISTS: "A virtual machine with this name already exists.",
+  // Disk errors
+  VM_DISK_IN_USE: "Disk is in use by another VM.",
+  DISK_NOT_FOUND: "Disk not found.",
+  DISK_ATTACH_FAILED: "Failed to attach disk to VM.",
+  DISK_DETACH_FAILED: "Failed to detach disk from VM.",
+  DISK_RESIZE_FAILED: "Failed to resize disk.",
+  // Snapshot errors
+  SNAPSHOT_NOT_SUPPORTED: "Snapshots are not supported for this VM configuration.",
+  SNAPSHOT_CREATE_FAILED: "Failed to create snapshot.",
+  SNAPSHOT_DELETE_FAILED: "Failed to delete snapshot.",
+  SNAPSHOT_REVERT_FAILED: "Failed to revert to snapshot.",
+  SNAPSHOT_NOT_FOUND: "Snapshot not found.",
+  INVALID_DISK_FORMAT: "Invalid disk format for this operation.",
+  MIXED_DISK_FORMATS: "Mixed disk formats detected. External snapshot may be required.",
+  // Backup errors
+  BACKUP_CREATE_FAILED: "Failed to create backup.",
+  BACKUP_DELETE_FAILED: "Failed to delete backup.",
+  BACKUP_RESTORE_FAILED: "Failed to restore from backup.",
+  BACKUP_NOT_FOUND: "Backup not found.",
+  // Migration errors
+  MIGRATION_FAILED: "Migration failed.",
+  MIGRATION_CANCELLED: "Migration was cancelled.",
+  MIGRATION_IN_PROGRESS: "A migration is already in progress.",
+  INVALID_DESTINATION: "Invalid migration destination.",
+  DESTINATION_UNREACHABLE: "Migration destination is unreachable.",
+  // Console errors
+  CONSOLE_NOT_AVAILABLE: "Console is not available for this VM.",
+  CONSOLE_CONNECTION_FAILED: "Failed to connect to console.",
+  VNC_NOT_AVAILABLE: "VNC console is not available.",
+  SPICE_NOT_AVAILABLE: "SPICE console is not available.",
+  // Clone errors
+  CLONE_FAILED: "Failed to clone virtual machine.",
+  CLONE_DISK_FAILED: "Failed to clone disk.",
+  // Hotplug errors
+  HOTPLUG_FAILED: "Hotplug operation failed.",
+  HOTPLUG_NOT_SUPPORTED: "Hotplug is not supported for this resource.",
+  CPU_HOTPLUG_FAILED: "Failed to add CPU.",
+  MEMORY_HOTPLUG_FAILED: "Failed to add memory.",
+  // Storage errors
+  STORAGE_POOL_NOT_FOUND: "Storage pool not found.",
+  VOLUME_NOT_FOUND: "Volume not found.",
+  VOLUME_IN_USE: "Volume is currently in use.",
+  INSUFFICIENT_STORAGE: "Insufficient storage space.",
+  // Network errors
+  NETWORK_NOT_FOUND: "Network not found.",
+  NETWORK_ATTACH_FAILED: "Failed to attach network interface.",
+  NETWORK_DETACH_FAILED: "Failed to detach network interface.",
+  // Generic errors
+  INVALID_REQUEST: "Invalid request. Please check your input.",
+  UNAUTHORIZED: "You are not authorized to perform this action.",
+  FORBIDDEN: "Access denied.",
+  INTERNAL_ERROR: "An internal error occurred. Please try again.",
+  TIMEOUT: "Operation timed out. Please try again.",
+  NETWORK_ERROR: "Network error. Please check your connection.",
+  AUTH_ERROR: "Authentication error. Please log in again.",
+  API_ERROR: "API error occurred.",
+  // Virtualization disabled
+  VIRTUALIZATION_DISABLED: "Virtualization is disabled on this host.",
+  LIBVIRT_NOT_AVAILABLE: "Libvirt is not available on this host."
+};
+function mapVMError(error) {
+  if (!error) {
+    return "An unexpected error occurred.";
+  }
+  const code = error.code || error.error?.code || error.data?.code || (typeof error === "string" ? error : null);
+  if (code && vmErrorMap[code]) {
+    return vmErrorMap[code];
+  }
+  const message = error.message || error.error?.message || error.data?.message || error.details || error.error?.details;
+  if (message && typeof message === "string") {
+    return message;
+  }
+  return "An unexpected error occurred.";
+}
 const $virtualizationEnabled = atom(null);
 const $virtualizationDisabledMessage = atom(null);
 const API_BASE$1 = "/virtualization";
@@ -56275,7 +53971,7 @@ const vmStore = {
     } catch (error) {
       const storeError = {
         code: "FETCH_ERROR",
-        message: error instanceof Error ? error.message : "Failed to fetch VMs",
+        message: mapVMError(error),
         timestamp: Date.now()
       };
       baseVmStore.$error.set(storeError);
@@ -56339,7 +54035,7 @@ const storagePoolStore = {
     } catch (error) {
       const storeError = {
         code: "FETCH_ERROR",
-        message: error instanceof Error ? error.message : "Failed to fetch storage pools",
+        message: mapVMError(error),
         timestamp: Date.now()
       };
       baseStoragePoolStore.$error.set(storeError);
@@ -56410,7 +54106,7 @@ const isoStore = {
     } catch (error) {
       const storeError = {
         code: "FETCH_ERROR",
-        message: error instanceof Error ? error.message : "Failed to fetch ISOs",
+        message: mapVMError(error),
         timestamp: Date.now()
       };
       baseIsoStore.$error.set(storeError);
@@ -56483,7 +54179,7 @@ const templateStore = {
     } catch (error) {
       const storeError = {
         code: "FETCH_ERROR",
-        message: error instanceof Error ? error.message : "Failed to fetch templates",
+        message: mapVMError(error),
         timestamp: Date.now()
       };
       baseTemplateStore.$error.set(storeError);
@@ -56545,7 +54241,9 @@ const networkStore = {
       const response = await apiRequest$1("/networks");
       let networks = [];
       if (response && typeof response === "object") {
-        if (Array.isArray(response)) {
+        if (response.status === "success" && response.data && Array.isArray(response.data.networks)) {
+          networks = response.data.networks.map(transformNetworkResponse);
+        } else if (Array.isArray(response)) {
           networks = response.map(transformNetworkResponse);
         } else if (response.data && Array.isArray(response.data)) {
           networks = response.data.map(transformNetworkResponse);
@@ -56569,7 +54267,7 @@ const networkStore = {
     } catch (error) {
       const storeError = {
         code: "FETCH_ERROR",
-        message: error instanceof Error ? error.message : "Failed to fetch networks",
+        message: mapVMError(error),
         timestamp: Date.now()
       };
       baseNetworkStore.$error.set(storeError);
@@ -56632,7 +54330,9 @@ const volumeStore = {
       const response = await apiRequest$1("/volumes");
       let volumes = [];
       if (response && typeof response === "object") {
-        if (response.data && Array.isArray(response.data)) {
+        if (response.status === "success" && response.data && Array.isArray(response.data)) {
+          volumes = response.data.map(transformVolumeResponse);
+        } else if (response.data && Array.isArray(response.data)) {
           volumes = response.data.map(transformVolumeResponse);
         } else if (Array.isArray(response)) {
           volumes = response.map(transformVolumeResponse);
@@ -56656,7 +54356,7 @@ const volumeStore = {
     } catch (error) {
       const storeError = {
         code: "FETCH_ERROR",
-        message: error instanceof Error ? error.message : "Failed to fetch volumes",
+        message: mapVMError(error),
         timestamp: Date.now()
       };
       baseVolumeStore.$error.set(storeError);
@@ -57244,13 +54944,70 @@ const $volumeStats = computed(
     };
   }
 );
+registerPerfGauge(() => {
+  const gauges = {};
+  try {
+    const items = vmStore.$items.get();
+    gauges["virt_vms"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
+  } catch {
+  }
+  try {
+    const items = storagePoolStore.$items.get();
+    gauges["virt_storage_pools"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
+  } catch {
+  }
+  try {
+    const items = isoStore.$items.get();
+    gauges["virt_isos"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
+  } catch {
+  }
+  try {
+    const items = templateStore.$items.get();
+    gauges["virt_templates"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
+  } catch {
+  }
+  try {
+    const items = networkStore.$items.get();
+    gauges["virt_networks"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
+  } catch {
+  }
+  try {
+    const items = volumeStore.$items.get();
+    gauges["virt_volumes"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
+  } catch {
+  }
+  return gauges;
+});
 const vmActions = {
   async fetchAll() {
+    perfIncrement("virt_vm_fetchAll");
     await vmStore.fetch();
+  },
+  /**
+   * Update a VM's state locally in the store without fetching from API
+   * This is used for optimistic UI updates from components like the detail drawer.
+   */
+  updateLocalState(vmId, newState) {
+    const currentItems = vmStore.$items.get();
+    let items;
+    if (currentItems instanceof Map) {
+      items = new Map(currentItems);
+    } else if (currentItems && typeof currentItems === "object") {
+      items = new Map(
+        Object.entries(currentItems)
+      );
+    } else {
+      return;
+    }
+    const vm = items.get(vmId);
+    if (vm) {
+      items.set(vmId, { ...vm, state: newState });
+      vmStore.$items.set(items);
+    }
   },
   async create(vmData) {
     const response = await apiRequest$1(
-      "/virtualmachines",
+      "/computes",
       {
         method: "POST",
         body: JSON.stringify(vmData)
@@ -57262,53 +55019,59 @@ const vmActions = {
     $selectedVMId.set(response.id);
     return { success: true, data: response };
   },
+  /**
+   * Execute a VM action using the unified action endpoint
+   */
+  async executeAction(vmId, action, force = false) {
+    await apiRequest$1(`/computes/${vmId}/action`, {
+      method: "POST",
+      body: JSON.stringify({ action, force })
+    });
+  },
   async start(vmId) {
-    await apiRequest$1(`/virtualmachines/${vmId}/start`, { method: "POST" });
+    await this.executeAction(vmId, "start");
     const vm = vmStore.getById(vmId);
     if (vm) {
       await vmStore.update(vmId, { state: "running" });
     }
   },
   async stop(vmId, force = false) {
-    await apiRequest$1(`/virtualmachines/${vmId}/stop`, {
-      method: "POST",
-      body: JSON.stringify({ force })
-    });
+    await this.executeAction(vmId, "stop", force);
     const vm = vmStore.getById(vmId);
     if (vm) {
       await vmStore.update(vmId, { state: "stopped" });
     }
   },
-  async restart(vmId) {
-    await apiRequest$1(`/virtualmachines/${vmId}/restart`, { method: "POST" });
+  async restart(vmId, force = false) {
+    await this.executeAction(vmId, "restart", force);
   },
   async pause(vmId) {
-    await apiRequest$1(`/virtualmachines/${vmId}/pause`, { method: "POST" });
+    await this.executeAction(vmId, "pause");
     const vm = vmStore.getById(vmId);
     if (vm) {
       await vmStore.update(vmId, { state: "paused" });
     }
   },
   async resume(vmId) {
-    await apiRequest$1(`/virtualmachines/${vmId}/resume`, { method: "POST" });
+    await this.executeAction(vmId, "resume");
     const vm = vmStore.getById(vmId);
     if (vm) {
       await vmStore.update(vmId, { state: "running" });
     }
   },
   async delete(vmId) {
-    await apiRequest$1(`/virtualization/computes/${vmId}`, { method: "DELETE" });
+    await apiRequest$1(`/computes/${vmId}`, { method: "DELETE" });
     await vmStore.delete(vmId);
     if ($selectedVMId.get() === vmId) {
       $selectedVMId.set(null);
     }
   },
   async getConsoleInfo(vmId) {
-    return apiRequest$1(`/virtualmachines/${vmId}/console`);
+    return apiRequest$1(`/computes/${vmId}/console`);
   },
   async update(vmId, vmData) {
     const response = await apiRequest$1(
-      `/virtualization/computes/${vmId}`,
+      `/computes/${vmId}`,
       {
         method: "PUT",
         body: JSON.stringify(vmData)
@@ -57340,18 +55103,41 @@ const wizardActions = {
     });
   },
   openWizardForEdit(vm) {
-    const disks = vm.disks?.map((disk) => ({
-      action: "attach",
-      path: disk.path,
-      // Convert vmdk to qcow2 since DiskConfig doesn't support vmdk
-      format: disk.format === "vmdk" ? "qcow2" : disk.format,
-      size: disk.size,
-      bus: disk.bus
-    })) || [{
+    const volumeItems = volumeStore.$items.get();
+    const resolvePoolForPath = (path) => {
+      if (!path || !volumeItems) return void 0;
+      if (volumeItems instanceof Map) {
+        for (const vol of volumeItems.values()) {
+          if (vol && typeof vol === "object" && vol.path === path) {
+            return vol.pool_name;
+          }
+        }
+      } else if (typeof volumeItems === "object") {
+        for (const vol of Object.values(volumeItems)) {
+          if (vol && typeof vol === "object" && vol.path === path) {
+            return vol.pool_name;
+          }
+        }
+      }
+      return void 0;
+    };
+    const disks = vm.disks?.map((disk) => {
+      const storage_pool = resolvePoolForPath(disk.path);
+      return {
+        action: "attach",
+        path: disk.path,
+        // Convert vmdk to qcow2 since DiskConfig doesn't support vmdk
+        format: disk.format === "vmdk" ? "qcow2" : disk.format,
+        size: disk.size,
+        bus: disk.bus,
+        storage_pool
+      };
+    }) || [{
       action: "create",
       size: 20,
       format: "qcow2"
     }];
+    const inferredDefaultPool = disks[0]?.storage_pool || "default";
     const network = vm.network_interfaces?.[0] ? {
       type: vm.network_interfaces[0].type,
       source: vm.network_interfaces[0].source,
@@ -57363,8 +55149,7 @@ const wizardActions = {
       memory: vm.memory,
       vcpus: vm.vcpus,
       storage: {
-        default_pool: "default",
-        // Will be populated from VM disks if available
+        default_pool: inferredDefaultPool,
         disks
       },
       network,
@@ -57378,6 +55163,20 @@ const wizardActions = {
       errors: {},
       editMode: true,
       editingVmId: vm.id
+    });
+  },
+  /**
+   * Open the enhanced wizard in edit mode using a fully-populated formData
+   * object (typically built from the /computes/{id} details endpoint).
+   */
+  openEnhancedWizardForEdit(vmId, formData) {
+    $vmWizardState.set({
+      isOpen: true,
+      currentStep: 1,
+      formData,
+      errors: {},
+      editMode: true,
+      editingVmId: vmId
     });
   },
   closeWizard() {
@@ -57436,6 +55235,7 @@ const wizardActions = {
 };
 const storagePoolActions = {
   async fetchAll() {
+    perfIncrement("virt_storagePool_fetchAll");
     await storagePoolStore.fetch();
   },
   async refresh(poolName) {
@@ -57508,6 +55308,7 @@ const storagePoolActions = {
 };
 const volumeActions = {
   async fetchAll() {
+    perfIncrement("virt_volume_fetchAll");
     await volumeStore.fetch();
   },
   async delete(volumeId) {
@@ -57592,14 +55393,3171 @@ async function initializeVirtualizationStores() {
     console.error("Failed to initialize virtualization stores:", error);
   }
 }
-var __defProp$k = Object.defineProperty;
-var __getOwnPropDesc$i = Object.getOwnPropertyDescriptor;
-var __decorateClass$k = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$i(target, key) : target;
+const snapshotActions = {
+  /**
+   * List snapshots for a VM
+   */
+  async list(vmId) {
+    const response = await apiRequest$1(
+      `/computes/${vmId}/snapshots`
+    );
+    if (response.status === "success" && response.data?.snapshots) {
+      return response.data.snapshots;
+    }
+    return [];
+  },
+  /**
+   * Create a snapshot with full options
+   */
+  async create(vmId, options) {
+    return apiRequest$1(`/computes/${vmId}/snapshots`, {
+      method: "POST",
+      body: JSON.stringify(options)
+    });
+  },
+  /**
+   * Get snapshot capabilities for a VM
+   */
+  async getCapabilities(vmId) {
+    const response = await apiRequest$1(
+      `/computes/${vmId}/snapshots/capabilities`
+    );
+    if (response.status === "success" && response.data) {
+      return response.data;
+    }
+    return null;
+  },
+  /**
+   * Revert VM to a snapshot
+   */
+  async revert(vmId, snapshotName) {
+    return apiRequest$1(`/computes/${vmId}/snapshots/${snapshotName}/revert`, {
+      method: "POST"
+    });
+  },
+  /**
+   * Delete a snapshot
+   */
+  async delete(vmId, snapshotName) {
+    return apiRequest$1(`/computes/${vmId}/snapshots/${snapshotName}`, {
+      method: "DELETE"
+    });
+  }
+};
+const consoleActions = {
+  /**
+   * Get available console types for a VM
+   */
+  async getAvailable(vmId) {
+    const response = await apiRequest$1(
+      `/computes/${vmId}/consoles`
+    );
+    if (response.status === "success" && response.data) {
+      return response.data;
+    }
+    return { available: [], consoles: {} };
+  },
+  /**
+   * Get VNC console connection info
+   */
+  async getVNC(vmId) {
+    const data = await apiRequest$1(
+      `/computes/${vmId}/console/vnc`
+    );
+    if (data && data.token) {
+      return data;
+    }
+    throw new Error("Failed to get VNC console info");
+  },
+  /**
+   * Get SPICE console connection info
+   */
+  async getSPICE(vmId) {
+    const data = await apiRequest$1(
+      `/computes/${vmId}/console/spice`
+    );
+    if (data && data.token) {
+      return data;
+    }
+    throw new Error("Failed to get SPICE console info");
+  },
+  /**
+   * Build WebSocket URL for VNC
+   */
+  getVNCWebSocketUrl(vmId, token) {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    return `${protocol}//${window.location.host}/api/v1/virtualization/computes/${vmId}/console/vnc/ws?token=${encodeURIComponent(token)}`;
+  },
+  /**
+   * Build WebSocket URL for SPICE
+   */
+  getSPICEWebSocketUrl(vmId, token) {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    return `${protocol}//${window.location.host}/api/v1/virtualization/computes/${vmId}/console/spice/ws?token=${encodeURIComponent(token)}`;
+  }
+};
+var __defProp$n = Object.defineProperty;
+var __getOwnPropDesc$l = Object.getOwnPropertyDescriptor;
+var __decorateClass$n = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$l(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$k(target, key, result);
+  if (kind && result) __defProp$n(target, key, result);
+  return result;
+};
+let VMConsole = class extends i$2 {
+  constructor() {
+    super(...arguments);
+    this.vmId = "";
+    this.vmName = "";
+    this.show = false;
+    this.isConnecting = true;
+    this.isWSConnected = false;
+    this.error = null;
+    this.connectionStatus = "Connecting...";
+    this.scaleViewport = true;
+    this.showVirtualKeyboard = false;
+    this.availableConsoles = [];
+    this.selectedConsoleType = "vnc";
+    this.vncIframe = null;
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 5;
+    this.reconnectTimeout = null;
+    this.handleResize = () => {
+    };
+    this.handleSendCAD = () => {
+      if (this.vncIframe?.contentWindow) {
+        this.vncIframe.contentWindow.postMessage({ type: "sendCAD" }, "*");
+      }
+    };
+    this.handleToggleScale = () => {
+      this.scaleViewport = !this.scaleViewport;
+      if (this.vncIframe?.contentWindow) {
+        this.vncIframe.contentWindow.postMessage({ type: "toggleScale" }, "*");
+      }
+    };
+    this.handleFullscreen = async () => {
+      try {
+        const consoleToken = await this.fetchConsoleToken();
+        if (!consoleToken) {
+          throw new Error("Failed to obtain console access token");
+        }
+        const baseUrl = getApiUrl("").replace(/^http/, "ws");
+        const wsUrl = `${baseUrl}virtualization/computes/${this.vmId}/console/vnc/ws?token=${encodeURIComponent(consoleToken.token)}`;
+        const vncUrl = `/vnc-console.html?url=${encodeURIComponent(wsUrl)}&fullscreen=true&vmName=${encodeURIComponent(this.vmName || this.vmId)}`;
+        window.open(vncUrl, "_blank");
+      } catch (error) {
+        console.error("Failed to open fullscreen console:", error);
+        this.error = error instanceof Error ? error.message : "Failed to open fullscreen console";
+      }
+    };
+    this.handleToggleKeyboard = () => {
+      this.showVirtualKeyboard = !this.showVirtualKeyboard;
+      if (this.vncIframe?.contentWindow) {
+        this.vncIframe.contentWindow.postMessage({ type: "toggleKeyboard", show: this.showVirtualKeyboard }, "*");
+      }
+    };
+    this.handleReconnect = () => {
+      this.reconnectAttempts = 0;
+      this.error = null;
+      this.connectVNC();
+    };
+    this.handleClose = () => {
+      this.cleanup();
+      this.show = false;
+      this.dispatchEvent(new CustomEvent("close"));
+    };
+  }
+  connectedCallback() {
+    super.connectedCallback();
+    if (this.show && this.vmId) {
+      setTimeout(() => this.initConsole(), 100);
+    }
+  }
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.cleanup();
+  }
+  updated(changedProperties) {
+    if (changedProperties.has("show")) {
+      if (this.show && this.vmId) {
+        setTimeout(() => this.initConsole(), 100);
+      } else if (!this.show) {
+        this.cleanup();
+      }
+    }
+  }
+  async fetchAvailableConsoles() {
+    try {
+      const info = await consoleActions.getAvailable(this.vmId);
+      this.availableConsoles = info.available || ["vnc"];
+      if (info.preferred && this.availableConsoles.includes(info.preferred)) {
+        this.selectedConsoleType = info.preferred;
+      } else if (this.availableConsoles.length > 0) {
+        this.selectedConsoleType = this.availableConsoles[0] || "vnc";
+      }
+    } catch (error) {
+      console.warn("Could not fetch available consoles, defaulting to VNC:", error);
+      this.availableConsoles = ["vnc"];
+      this.selectedConsoleType = "vnc";
+    }
+  }
+  async initConsole() {
+    if (this.vncIframe) return;
+    await this.fetchAvailableConsoles();
+    try {
+      await this.connectVNC();
+    } catch (error) {
+      console.error("Failed to initialize console:", error);
+      this.error = error instanceof Error ? error.message : "Failed to initialize console";
+      this.isConnecting = false;
+    }
+  }
+  async connectVNC() {
+    if (!this.vmId) {
+      this.error = "No VM ID provided";
+      this.isConnecting = false;
+      return;
+    }
+    try {
+      this.connectionStatus = "Requesting console access...";
+      this.isConnecting = true;
+      this.error = null;
+      const consoleToken = await this.fetchConsoleToken();
+      if (!consoleToken) {
+        throw new Error("Failed to obtain console access token");
+      }
+      this.connectionStatus = "Loading VNC console...";
+      const baseUrl = getApiUrl("").replace(/^http/, "ws");
+      const wsUrl = `${baseUrl}virtualization/computes/${this.vmId}/console/vnc/ws?token=${encodeURIComponent(consoleToken.token)}`;
+      console.log("Connecting to VM VNC via iframe:", wsUrl.replace(consoleToken.token, "[REDACTED]"));
+      this.vncIframe = document.createElement("iframe");
+      this.vncIframe.className = "vnc-iframe";
+      this.vncIframe.src = `/vnc-console.html?url=${encodeURIComponent(wsUrl)}`;
+      const messageHandler = (event) => {
+        if (event.data.type === "vnc-ready") {
+          console.log("VNC iframe ready");
+          this.isConnecting = false;
+          this.isWSConnected = true;
+          this.connectionStatus = "Connected";
+          this.reconnectAttempts = 0;
+        }
+      };
+      window.addEventListener("message", messageHandler);
+      const container = this.shadowRoot?.querySelector(".vnc-container");
+      if (container) {
+        container.appendChild(this.vncIframe);
+      }
+      setTimeout(() => {
+        if (this.isConnecting) {
+          this.error = "Failed to load VNC console";
+          this.isConnecting = false;
+        }
+      }, 1e4);
+    } catch (error) {
+      console.error("Failed to connect to VNC:", error);
+      this.error = error instanceof Error ? error.message : "Failed to connect to VNC";
+      this.isConnecting = false;
+      this.isWSConnected = false;
+      this.connectionStatus = "Failed to connect";
+    }
+  }
+  async fetchConsoleToken() {
+    try {
+      const authHeaders = auth.getAuthHeaders();
+      if (!authHeaders.Authorization) {
+        throw new Error("No authentication token available");
+      }
+      const apiUrl = getApiUrl(`/virtualization/computes/${this.vmId}/console/vnc`);
+      console.log("Fetching console token from:", apiUrl);
+      const response = await fetch(apiUrl, {
+        method: "GET",
+        headers: {
+          ...authHeaders,
+          "Content-Type": "application/json"
+        }
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Failed to fetch console token:", response.status, errorText);
+        throw new Error(`Failed to get console access: ${response.statusText}`);
+      }
+      const data = await response.json();
+      console.log("Console token response:", { ...data, data: { ...data.data, token: "[REDACTED]" } });
+      if (data.status === "success" && data.data) {
+        return data.data;
+      }
+      throw new Error("Invalid console token response");
+    } catch (error) {
+      console.error("Error fetching console token:", error);
+      throw error;
+    }
+  }
+  cleanup() {
+    if (this.vncIframe?.contentWindow) {
+      this.vncIframe.contentWindow.postMessage({ type: "disconnect" }, "*");
+    }
+    if (this.vncIframe) {
+      this.vncIframe.remove();
+      this.vncIframe = null;
+    }
+    window.removeEventListener("resize", this.handleResize);
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+    this.isConnecting = false;
+    this.isWSConnected = false;
+    this.error = null;
+    this.connectionStatus = "Disconnected";
+    this.reconnectAttempts = 0;
+  }
+  render() {
+    return x`
+      <div class="console-overlay">
+        <div class="console-window">
+          <div class="console-header">
+            <div class="console-title">
+              <span class="console-icon">💻</span>
+              <span>Console (${this.selectedConsoleType.toUpperCase()}) - <span class="vm-name">${this.vmName || this.vmId}</span></span>
+            </div>
+            
+            <div class="connection-status">
+              <span class="status-indicator ${this.isWSConnected ? "connected" : this.error ? "error" : ""}"></span>
+              <span>${this.connectionStatus}</span>
+            </div>
+
+            <div class="console-actions">
+              <button 
+                class="action-btn" 
+                @click=${this.handleSendCAD}
+                ?disabled=${!this.isWSConnected}
+                title="Send Ctrl+Alt+Del"
+              >
+                ⌨️ Ctrl+Alt+Del
+              </button>
+              <button 
+                class="action-btn" 
+                @click=${this.handleToggleKeyboard}
+                title="${this.showVirtualKeyboard ? "Hide Virtual Keyboard" : "Show Virtual Keyboard"}"
+              >
+                ${this.showVirtualKeyboard ? "⌨️ Hide Keyboard" : "⌨️ Show Keyboard"}
+              </button>
+              <button 
+                class="action-btn" 
+                @click=${this.handleToggleScale}
+                title="${this.scaleViewport ? "Disable Fit" : "Fit to Window"}"
+              >
+                ${this.scaleViewport ? "🧩 Unfit" : "🧩 Fit"}
+              </button>
+              <button 
+                class="action-btn" 
+                @click=${this.handleFullscreen}
+                title="Open in New Tab (Fullscreen)"
+              >
+                🖥️ Fullscreen
+              </button>
+              <button class="close-btn" @click=${this.handleClose} title="Close">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" stroke-width="2"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="console-body">
+            <div class="vnc-container">
+              <!-- iframe will be injected here -->
+            </div>
+            
+            ${this.isConnecting ? x`
+              <div class="loading-overlay">
+                <div class="spinner"></div>
+                <div class="loading-text">${this.connectionStatus}</div>
+              </div>
+            ` : ""}
+
+            ${this.error ? x`
+              <div class="error-overlay">
+                <div class="error-icon">⚠️</div>
+                <div class="error-message">${this.error}</div>
+                ${this.reconnectAttempts < this.maxReconnectAttempts ? x`
+                  <button class="retry-btn" @click=${this.handleReconnect}>
+                    🔄 Retry Connection
+                  </button>
+                ` : ""}
+              </div>
+            ` : ""}
+          </div>
+
+          <div class="console-footer">
+            <div class="keyboard-shortcuts">
+              <div class="shortcut">
+                <span class="key">Click</span>
+                <span>Focus console for keyboard input</span>
+              </div>
+              <div class="shortcut">
+                <span class="key">⌘</span> / <span class="key">Ctrl</span>
+                <span>may be captured by guest</span>
+              </div>
+            </div>
+            <div>
+              noVNC client ready
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+};
+VMConsole.styles = i$5`
+    :host {
+      display: block;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 2000;
+      pointer-events: none;
+    }
+
+    :host([show]) {
+      pointer-events: auto;
+    }
+
+    .console-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    :host([show]) .console-overlay {
+      display: flex;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    .console-window {
+      width: 90%;
+      height: 90%;
+      max-width: 1200px;
+      max-height: 800px;
+      background: var(--vscode-editor-background, #1e1e1e);
+      border: 1px solid var(--vscode-widget-border, #454545);
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      animation: slideUp 0.3s ease-out;
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(20px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .console-header {
+      padding: 12px 16px;
+      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .console-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--vscode-foreground, #cccccc);
+    }
+
+    .console-icon {
+      font-size: 18px;
+    }
+
+    .vm-name {
+      color: var(--vscode-textLink-foreground, #3794ff);
+    }
+
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground, #8b8b8b);
+    }
+
+    .status-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--vscode-charts-yellow, #cca700);
+    }
+
+    .status-indicator.connected {
+      background: var(--vscode-charts-green, #89d185);
+      animation: pulse 2s infinite;
+    }
+
+    .status-indicator.error {
+      background: var(--vscode-charts-red, #f48771);
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.6;
+      }
+    }
+
+    .console-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .action-btn {
+      padding: 4px 8px;
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      color: var(--vscode-button-secondaryForeground, #cccccc);
+      border: 1px solid var(--vscode-button-border, #5a5a5a);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .action-btn:hover {
+      background: var(--vscode-button-secondaryHoverBackground, #45494e);
+    }
+
+    .action-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .close-btn {
+      padding: 4px;
+      background: transparent;
+      border: none;
+      color: var(--vscode-foreground, #cccccc);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .close-btn:hover {
+      background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
+    }
+
+    .console-body {
+      flex: 1;
+      background: #000;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .vnc-iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #000;
+    }
+
+    .loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+      z-index: 10;
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--vscode-widget-border, #454545);
+      border-top-color: var(--vscode-focusBorder, #007acc);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .loading-text {
+      color: var(--vscode-foreground, #cccccc);
+      font-size: 14px;
+    }
+
+    .error-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+      z-index: 10;
+      padding: 20px;
+    }
+
+    .error-icon {
+      font-size: 48px;
+      opacity: 0.8;
+    }
+
+    .error-message {
+      color: var(--vscode-errorForeground, #f48771);
+      font-size: 14px;
+      text-align: center;
+      max-width: 400px;
+    }
+
+    .retry-btn {
+      padding: 8px 16px;
+      background: var(--vscode-button-background, #0e639c);
+      color: var(--vscode-button-foreground, #ffffff);
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+
+    .retry-btn:hover {
+      background: var(--vscode-button-hoverBackground, #1177bb);
+    }
+
+    .console-footer {
+      padding: 8px 16px;
+      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      border-top: 1px solid var(--vscode-widget-border, #454545);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground, #8b8b8b);
+      flex-shrink: 0;
+    }
+
+    .keyboard-shortcuts {
+      display: flex;
+      gap: 16px;
+    }
+
+    .shortcut {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .key {
+      padding: 2px 6px;
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      border: 1px solid var(--vscode-button-border, #5a5a5a);
+      border-radius: 3px;
+      font-family: monospace;
+      font-size: 11px;
+    }
+
+    /* noVNC canvas will be injected into .vnc-canvas-wrapper */
+    .vnc-canvas-wrapper canvas {
+      width: 100% !important;
+      height: 100% !important;
+      image-rendering: pixelated;
+      outline: none;
+      display: block;
+    }
+  `;
+__decorateClass$n([
+  n2({ type: String })
+], VMConsole.prototype, "vmId", 2);
+__decorateClass$n([
+  n2({ type: String })
+], VMConsole.prototype, "vmName", 2);
+__decorateClass$n([
+  n2({ type: Boolean, reflect: true })
+], VMConsole.prototype, "show", 2);
+__decorateClass$n([
+  r$1()
+], VMConsole.prototype, "isConnecting", 2);
+__decorateClass$n([
+  r$1()
+], VMConsole.prototype, "isWSConnected", 2);
+__decorateClass$n([
+  r$1()
+], VMConsole.prototype, "error", 2);
+__decorateClass$n([
+  r$1()
+], VMConsole.prototype, "connectionStatus", 2);
+__decorateClass$n([
+  r$1()
+], VMConsole.prototype, "scaleViewport", 2);
+__decorateClass$n([
+  r$1()
+], VMConsole.prototype, "showVirtualKeyboard", 2);
+__decorateClass$n([
+  r$1()
+], VMConsole.prototype, "availableConsoles", 2);
+__decorateClass$n([
+  r$1()
+], VMConsole.prototype, "selectedConsoleType", 2);
+VMConsole = __decorateClass$n([
+  t$2("vm-console")
+], VMConsole);
+var __defProp$m = Object.defineProperty;
+var __getOwnPropDesc$k = Object.getOwnPropertyDescriptor;
+var __decorateClass$m = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$k(target, key) : target;
+  for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
+    if (decorator = decorators[i4])
+      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
+  if (kind && result) __defProp$m(target, key, result);
+  return result;
+};
+let VMDetailDrawer = class extends i$2 {
+  constructor() {
+    super(...arguments);
+    this.show = false;
+    this.vm = null;
+    this.activeTab = "overview";
+    this.isLoading = false;
+    this.metrics = null;
+    this.disks = [];
+    this.networkInterfaces = [];
+    this.vmDetails = null;
+    this.isPowerActionLoading = false;
+    this.showDeleteModal = false;
+    this.isDeleting = false;
+    this.isLoadingMetrics = false;
+    this.showConsole = false;
+    this.snapshots = [];
+    this.isLoadingSnapshots = false;
+    this.showCreateSnapshotModal = false;
+    this.snapshotName = "";
+    this.snapshotDescription = "";
+    this.isCreatingSnapshot = false;
+    this.snapshotCapabilities = null;
+    this.showStopDropdown = false;
+    this.metricsRefreshInterval = null;
+    this.handleKeyDown = (event) => {
+      if (this.show && event.key === "Escape") {
+        if (this.showConsole) {
+          this.showConsole = false;
+          return;
+        }
+        if (this.showDeleteModal) {
+          this.cancelDelete();
+          return;
+        }
+        this.handleClose();
+      }
+    };
+    this.closeStopDropdown = () => {
+      this.showStopDropdown = false;
+      document.removeEventListener("click", this.closeStopDropdown);
+    };
+    this.handleConsoleClose = () => {
+      this.showConsole = false;
+    };
+  }
+  connectedCallback() {
+    super.connectedCallback();
+    if (this.vm) {
+      this.loadVMDetails();
+    }
+    document.addEventListener("keydown", this.handleKeyDown);
+  }
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.stopMetricsRefresh();
+    document.removeEventListener("keydown", this.handleKeyDown);
+  }
+  updated(changedProperties) {
+    if (changedProperties.has("vm")) {
+      const previousVm = changedProperties.get("vm");
+      if (this.vm && (!previousVm || previousVm.id !== this.vm.id)) {
+        this.loadVMDetails();
+      }
+    }
+    if (changedProperties.has("activeTab")) {
+      if (this.activeTab === "metrics") {
+        this.startMetricsRefresh();
+      } else {
+        this.stopMetricsRefresh();
+      }
+    }
+    if (changedProperties.has("show")) {
+      if (!this.show) {
+        this.stopMetricsRefresh();
+      } else if (this.activeTab === "metrics") {
+        this.startMetricsRefresh();
+      }
+    }
+  }
+  startMetricsRefresh() {
+    const currentState = this.vm?.state || this.vmDetails?.state;
+    if (currentState !== "running" || this.metricsRefreshInterval) {
+      return;
+    }
+    if (this.vm) {
+      console.log("Starting metrics refresh for VM:", this.vm.id);
+      this.fetchVMMetrics(this.vm.id);
+    }
+    this.metricsRefreshInterval = setInterval(() => {
+      if (this.vm && this.activeTab === "metrics" && this.show) {
+        console.log("Refreshing metrics for VM:", this.vm.id);
+        this.fetchVMMetrics(this.vm.id);
+      }
+    }, 5e3);
+  }
+  stopMetricsRefresh() {
+    if (this.metricsRefreshInterval) {
+      console.log("Stopping metrics refresh");
+      clearInterval(this.metricsRefreshInterval);
+      this.metricsRefreshInterval = null;
+    }
+  }
+  async loadVMDetails() {
+    if (!this.vm) return;
+    this.isLoading = true;
+    try {
+      const response = await this.fetchVMEnhancedDetails(this.vm.id);
+      if (response) {
+        this.vmDetails = response;
+        if (response.storage?.disks && response.storage.disks.length > 0) {
+          this.disks = response.storage.disks.map((disk, index2) => ({
+            name: disk.target || `disk${index2}`,
+            path: disk.path || disk.source_path || "Unknown",
+            size: disk.size || 0,
+            used: 0,
+            // This would need to come from monitoring
+            format: disk.format || "raw",
+            bus: disk.bus || "virtio",
+            readonly: disk.readonly || false,
+            device: disk.device || "disk"
+          }));
+        } else {
+          this.disks = [];
+        }
+        if (response.networks && response.networks.length > 0) {
+          this.networkInterfaces = response.networks.map((net, index2) => ({
+            name: net.target?.dev || net.alias || `eth${index2}`,
+            type: net.type,
+            source: net.source.network || net.source.bridge || net.source.dev || "Unknown",
+            model: net.model.type || "virtio",
+            mac: net.mac,
+            ip: net.ip,
+            state: "up",
+            // Would need actual state from monitoring
+            rx_bytes: 0,
+            // Would need actual metrics
+            tx_bytes: 0
+            // Would need actual metrics
+          }));
+        } else {
+          this.networkInterfaces = [];
+        }
+        if (this.vm.state === "running" || this.vmDetails?.state === "running") {
+          await this.fetchVMMetrics(this.vm.id);
+        } else {
+          this.metrics = null;
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load VM details:", error);
+    } finally {
+      this.isLoading = false;
+    }
+  }
+  async fetchVMMetrics(vmId) {
+    if (this.isLoadingMetrics) {
+      console.log("Already loading metrics, skipping...");
+      return;
+    }
+    this.isLoadingMetrics = true;
+    try {
+      const authHeaders = auth.getAuthHeaders();
+      if (!authHeaders.Authorization) {
+        throw new Error("No authentication token found");
+      }
+      const apiUrl = getApiUrl(`/virtualization/computes/${vmId}/metrics`);
+      console.log("Fetching VM metrics from:", apiUrl);
+      const response = await fetch(apiUrl, {
+        method: "GET",
+        headers: {
+          ...authHeaders,
+          "Content-Type": "application/json"
+        }
+      });
+      if (!response.ok) {
+        console.error(`Failed to fetch VM metrics: ${response.statusText}`);
+        this.metrics = null;
+        return;
+      }
+      const data = await response.json();
+      console.log("VM metrics response:", data);
+      if (data.status === "success" && data.data) {
+        this.metrics = data.data;
+        console.log("Metrics updated:", this.metrics);
+      } else {
+        this.metrics = null;
+        console.warn("No metrics data in response");
+      }
+    } catch (error) {
+      console.error("Error fetching VM metrics:", error);
+      this.metrics = null;
+    } finally {
+      this.isLoadingMetrics = false;
+    }
+  }
+  async fetchVMEnhancedDetails(vmId) {
+    try {
+      const authHeaders = auth.getAuthHeaders();
+      if (!authHeaders.Authorization) {
+        throw new Error("No authentication token found");
+      }
+      const apiUrl = getApiUrl(`/virtualization/computes/${vmId}`);
+      const response = await fetch(apiUrl, {
+        method: "GET",
+        headers: {
+          ...authHeaders,
+          "Content-Type": "application/json"
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch VM details: ${response.statusText}`);
+      }
+      const data = await response.json();
+      if (data.status === "success" && data.data) {
+        if (data.data.vms && Array.isArray(data.data.vms) && data.data.vms.length > 0) {
+          return data.data.vms[0];
+        }
+        if (data.data.uuid) {
+          return data.data;
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error("Error fetching VM enhanced details:", error);
+      throw error;
+    }
+  }
+  handleClose() {
+    this.show = false;
+    this.dispatchEvent(new CustomEvent("close"));
+  }
+  toggleStopDropdown(e3) {
+    e3.stopPropagation();
+    this.showStopDropdown = !this.showStopDropdown;
+    if (this.showStopDropdown) {
+      setTimeout(() => {
+        document.addEventListener("click", this.closeStopDropdown);
+      }, 0);
+    }
+  }
+  async handleStopAction(force) {
+    this.closeStopDropdown();
+    await this.handlePowerAction("stop", force);
+  }
+  renderStopButton() {
+    return x`
+      <div class="split-button-container">
+        <button 
+          class="split-button-main" 
+          @click=${() => this.handleStopAction(false)}
+          ?disabled=${this.isPowerActionLoading}
+        >
+          ${this.isPowerActionLoading ? x`<span class="spinner-small"></span>` : "⏹️"} Stop
+        </button>
+        <button 
+          class="split-button-toggle"
+          @click=${(e3) => this.toggleStopDropdown(e3)}
+          ?disabled=${this.isPowerActionLoading}
+        >
+          ▼
+        </button>
+        ${this.showStopDropdown ? x`
+          <div class="split-button-dropdown">
+            <button @click=${() => this.handleStopAction(false)} ?disabled=${this.isPowerActionLoading}>
+              ⏹️ Stop (Graceful)
+            </button>
+            <button class="danger" @click=${() => this.handleStopAction(true)} ?disabled=${this.isPowerActionLoading}>
+              ⚡ Force Stop
+            </button>
+          </div>
+        ` : ""}
+      </div>
+    `;
+  }
+  getExpectedStateAfterAction(action) {
+    switch (action) {
+      case "start":
+        return "running";
+      case "stop":
+        return "stopped";
+      case "pause":
+        return "paused";
+      case "resume":
+        return "running";
+      case "restart":
+        return "running";
+      default:
+        return this.vm?.state || this.vmDetails?.state || "unknown";
+    }
+  }
+  async handlePowerAction(action, force = false) {
+    if (!this.vm || this.isPowerActionLoading) return;
+    this.isPowerActionLoading = true;
+    try {
+      const success = await this.executePowerAction(this.vm.id, action, force);
+      if (success) {
+        const newState = this.getExpectedStateAfterAction(action);
+        if (this.vmDetails) {
+          this.vmDetails = { ...this.vmDetails, state: newState };
+        }
+        if (this.vm) {
+          this.vm = { ...this.vm, state: newState };
+        }
+        this.requestUpdate();
+        this.dispatchEvent(new CustomEvent("power-action", {
+          detail: { action, vm: this.vm, success: true }
+        }));
+        this.showNotification(`${action.charAt(0).toUpperCase() + action.slice(1)} action initiated for ${this.vm?.name || "VM"}`, "success");
+      }
+    } catch (error) {
+      console.error(`Failed to execute power action ${action}:`, error);
+      const message = error instanceof Error ? error.message : `Failed to ${action} VM due to an unknown error`;
+      this.showNotification(message, "error");
+    } finally {
+      this.isPowerActionLoading = false;
+    }
+  }
+  buildPowerActionErrorMessage(action, responseData, statusText) {
+    const base = `Failed to ${action} VM`;
+    const apiError = responseData?.error;
+    const code = apiError?.code || responseData?.code;
+    const rawMessage = apiError?.message || responseData?.message;
+    const rawDetails = apiError?.details || responseData?.details;
+    let detailMessage;
+    if (typeof rawDetails === "string") {
+      const match = rawDetails.match(/Message='(.+)'/);
+      detailMessage = match?.[1] || rawDetails;
+    }
+    const parts = [];
+    if (rawMessage) parts.push(rawMessage);
+    if (detailMessage && detailMessage !== rawMessage) parts.push(detailMessage);
+    if (!parts.length && statusText) parts.push(statusText);
+    let full = parts.join(": ");
+    if (!full) full = "Unknown error";
+    if (code) {
+      return `${base}: [${code}] ${full}`;
+    }
+    return `${base}: ${full}`;
+  }
+  async executePowerAction(vmId, action, force = false) {
+    try {
+      const authHeaders = auth.getAuthHeaders();
+      if (!authHeaders.Authorization) {
+        throw new Error("No authentication token found");
+      }
+      const apiUrl = getApiUrl(`/virtualization/computes/${vmId}/action`);
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          ...authHeaders,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          action,
+          force
+        })
+      });
+      let data = null;
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
+      const isErrorEnvelope = data && typeof data === "object" && "status" in data && data.status !== "success";
+      if (!response.ok || isErrorEnvelope) {
+        const message = this.buildPowerActionErrorMessage(action, data, response.statusText);
+        throw new Error(message);
+      }
+      if (data && typeof data === "object" && "status" in data) {
+        return data.status === "success";
+      }
+      return true;
+    } catch (error) {
+      throw error;
+    }
+  }
+  showNotification(message, type = "info") {
+    this.dispatchEvent(new CustomEvent("show-notification", {
+      detail: { message, type },
+      bubbles: true,
+      composed: true
+    }));
+  }
+  handleConsoleConnect() {
+    const currentState = this.vm?.state || this.vmDetails?.state;
+    if (currentState !== "running") {
+      this.showNotification("Console is only available when VM is running", "warning");
+      return;
+    }
+    this.showConsole = true;
+  }
+  handleCloneVM() {
+    this.dispatchEvent(new CustomEvent("clone-vm", {
+      detail: { vm: this.vm }
+    }));
+    this.showNotification("Clone functionality coming soon", "info");
+  }
+  handleSnapshot() {
+    this.dispatchEvent(new CustomEvent("snapshot-vm", {
+      detail: { vm: this.vm }
+    }));
+    this.showNotification("Snapshot functionality coming soon", "info");
+  }
+  handleDeleteVM() {
+    const currentState = this.vm?.state || this.vmDetails?.state;
+    if (currentState === "running") {
+      this.showNotification("Cannot delete a running VM. Please stop it first.", "error");
+      return;
+    }
+    this.showDeleteModal = true;
+  }
+  cancelDelete() {
+    this.showDeleteModal = false;
+    this.isDeleting = false;
+  }
+  async confirmDelete() {
+    if (!this.vm || this.isDeleting) return;
+    this.isDeleting = true;
+    try {
+      const success = await this.executeDeleteVM(this.vm.id);
+      if (success) {
+        this.showNotification(`VM "${this.vm.name}" has been deleted successfully`, "success");
+        this.showDeleteModal = false;
+        this.dispatchEvent(new CustomEvent("vm-deleted", {
+          detail: { vm: this.vm },
+          bubbles: true,
+          composed: true
+        }));
+        setTimeout(() => {
+          this.handleClose();
+        }, 1e3);
+      }
+    } catch (error) {
+      console.error("Failed to delete VM:", error);
+      this.showNotification(
+        `Failed to delete VM: ${error instanceof Error ? error.message : "Unknown error"}`,
+        "error"
+      );
+    } finally {
+      this.isDeleting = false;
+    }
+  }
+  async executeDeleteVM(vmId) {
+    try {
+      const authHeaders = auth.getAuthHeaders();
+      if (!authHeaders.Authorization) {
+        throw new Error("No authentication token found");
+      }
+      const apiUrl = getApiUrl(`/virtualization/computes/${vmId}`);
+      const response = await fetch(apiUrl, {
+        method: "DELETE",
+        headers: {
+          ...authHeaders,
+          "Content-Type": "application/json"
+        }
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(
+          errorData?.message || errorData?.error || `Failed to delete VM: ${response.statusText}`
+        );
+      }
+      const data = await response.json().catch(() => ({ status: "success" }));
+      return data.status === "success" || response.ok;
+    } catch (error) {
+      console.error("Error deleting VM:", error);
+      throw error;
+    }
+  }
+  formatBytes(bytes) {
+    if (bytes === 0) return "0 B";
+    const k2 = 1024;
+    const sizes = ["B", "KB", "MB", "GB", "TB"];
+    const i4 = Math.floor(Math.log(bytes) / Math.log(k2));
+    return `${(bytes / Math.pow(k2, i4)).toFixed(1)} ${sizes[i4]}`;
+  }
+  formatMemory(kb) {
+    if (kb >= 1024 * 1024) {
+      return `${(kb / (1024 * 1024)).toFixed(1)} GB`;
+    } else if (kb >= 1024) {
+      return `${(kb / 1024).toFixed(0)} MB`;
+    }
+    return `${kb} KB`;
+  }
+  // Unused function - commented out for now
+  // private formatUptime(seconds: number): string {
+  //   const days = Math.floor(seconds / 86400);
+  //   const hours = Math.floor((seconds % 86400) / 3600);
+  //   const minutes = Math.floor((seconds % 3600) / 60);
+  //   
+  //   if (days > 0) {
+  //     return `${days}d ${hours}h ${minutes}m`;
+  //   } else if (hours > 0) {
+  //     return `${hours}h ${minutes}m`;
+  //   } else {
+  //     return `${minutes}m`;
+  //   }
+  // }
+  getProgressClass(value) {
+    if (value > 80) return "high";
+    if (value > 50) return "medium";
+    return "low";
+  }
+  renderOverviewTab() {
+    if (!this.vm) return x``;
+    const details = this.vmDetails || this.vm;
+    const osInfo = this.vmDetails?.os || {
+      type: void 0,
+      architecture: void 0,
+      machine: void 0
+    };
+    return x`
+      <div class="section">
+        <h3 class="section-title">System Information</h3>
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">VM UUID</span>
+            <span class="info-value monospace">${this.vmDetails?.uuid || this.vm.id}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Name</span>
+            <span class="info-value">${details.name}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">State</span>
+            <span class="info-value">${this.vm.state || this.vmDetails?.state}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">OS Type</span>
+            <span class="info-value">${osInfo.type || this.vm.os_type || "hvm"}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Architecture</span>
+            <span class="info-value">${osInfo.architecture || this.vm.metadata?.architecture || "x86_64"}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Machine Type</span>
+            <span class="info-value">${osInfo.machine || "Default"}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Persistent</span>
+            <span class="info-value">${this.vmDetails?.persistent ? "Yes" : "No"}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Autostart</span>
+            <span class="info-value">${this.vmDetails?.autostart ? "Enabled" : "Disabled"}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Created</span>
+            <span class="info-value">${new Date(this.vmDetails?.created_at || this.vm.created_at || Date.now()).toLocaleString()}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Last Updated</span>
+            <span class="info-value">${new Date(this.vmDetails?.updated_at || this.vm.updated_at || Date.now()).toLocaleString()}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3 class="section-title">Resource Allocation</h3>
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">Current Memory</span>
+            <span class="info-value">${this.formatMemory(this.vmDetails?.memory || this.vm.memory)}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Max Memory</span>
+            <span class="info-value">${this.formatMemory(this.vmDetails?.max_memory || this.vm.memory)}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Current vCPUs</span>
+            <span class="info-value">${this.vmDetails?.vcpus || this.vm.vcpus} cores</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Max vCPUs</span>
+            <span class="info-value">${(this.vmDetails?.max_vcpus || 0) > 0 ? this.vmDetails?.max_vcpus : this.vmDetails?.vcpus || this.vm.vcpus} cores</span>
+          </div>
+          ${this.vm.disk_size ? x`
+            <div class="info-item">
+              <span class="info-label">Total Disk Size</span>
+              <span class="info-value">${this.formatBytes(this.vm.disk_size * 1024 * 1024 * 1024)}</span>
+            </div>
+          ` : ""}
+        </div>
+      </div>
+
+      ${this.vm.graphics && Array.isArray(this.vm.graphics) ? x`
+        <div class="section">
+          <h3 class="section-title">Graphics Configuration</h3>
+          <div class="info-grid">
+            ${this.vm.graphics.map((g2) => x`
+              <div class="info-item">
+                <span class="info-label">Type</span>
+                <span class="info-value">${g2.type?.toUpperCase()}</span>
+              </div>
+              ${g2.port ? x`
+                <div class="info-item">
+                  <span class="info-label">Port</span>
+                  <span class="info-value">${g2.port}</span>
+                </div>
+              ` : ""}
+              ${g2.listen ? x`
+                <div class="info-item">
+                  <span class="info-label">Listen Address</span>
+                  <span class="info-value monospace">${g2.listen}</span>
+                </div>
+              ` : ""}
+            `)}
+          </div>
+        </div>
+      ` : ""}
+    `;
+  }
+  renderMetricsTab() {
+    const currentState = this.vmDetails?.state || this.vm?.state;
+    const displayState = currentState ? currentState.charAt(0).toUpperCase() + currentState.slice(1) : "Unknown";
+    if (currentState !== "running") {
+      return x`
+        <div class="empty-state">
+          <div class="empty-state-icon">📊</div>
+          <div class="empty-state-message">
+            Metrics are only available when the VM is running.
+            <br>
+            Current state: ${displayState}
+          </div>
+        </div>
+      `;
+    }
+    if (!this.metrics && this.isLoadingMetrics) {
+      return x`
+        <div class="loading">
+          <div class="spinner"></div>
+          Loading metrics...
+        </div>
+      `;
+    }
+    if (!this.metrics) {
+      return x`
+        <div class="empty-state">
+          <div class="empty-state-icon">⚠️</div>
+          <div class="empty-state-message">
+            Unable to load metrics. Please ensure the VM is running and try refreshing.
+          </div>
+        </div>
+      `;
+    }
+    const vmMemoryMB = this.vmDetails?.memory || this.vm?.memory || 0;
+    const vmMemoryBytes = vmMemoryMB * 1024 * 1024;
+    const memoryUsagePercent = vmMemoryBytes > 0 ? this.metrics.memory_used / vmMemoryBytes * 100 : 0;
+    console.log("Memory calculation:", {
+      memory_used_bytes: this.metrics.memory_used,
+      memory_used_formatted: this.formatBytes(this.metrics.memory_used),
+      vm_memory_mb: vmMemoryMB,
+      vm_memory_bytes: vmMemoryBytes,
+      vm_memory_formatted: this.formatMemory(vmMemoryMB * 1024),
+      // formatMemory expects KB
+      usage_percent: memoryUsagePercent,
+      api_memory_usage_field: this.metrics.memory_usage
+    });
+    return x`
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-title">CPU Usage</span>
+            <span class="metric-icon">💻</span>
+          </div>
+          <div>
+            <span class="metric-value">${this.metrics.cpu_usage.toFixed(1)}</span>
+            <span class="metric-unit">%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill ${this.getProgressClass(this.metrics.cpu_usage)}" 
+                 style="width: ${Math.min(this.metrics.cpu_usage, 100)}%"></div>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-title">Memory Usage</span>
+            <span class="metric-icon">🧠</span>
+          </div>
+          <div>
+            <span class="metric-value">${memoryUsagePercent.toFixed(1)}</span>
+            <span class="metric-unit">%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill ${this.getProgressClass(memoryUsagePercent)}" 
+                 style="width: ${Math.min(memoryUsagePercent, 100)}%"></div>
+          </div>
+          <div style="font-size: 11px; color: var(--vscode-descriptionForeground, #8b8b8b); margin-top: 4px;">
+            ${this.formatBytes(this.metrics.memory_used)} of ${this.formatMemory(vmMemoryMB * 1024)} used
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-title">Disk Read</span>
+            <span class="metric-icon">📖</span>
+          </div>
+          <div>
+            <span class="metric-value">${this.formatBytes(this.metrics.disk_read)}</span>
+          </div>
+          <div style="font-size: 11px; color: var(--vscode-descriptionForeground, #8b8b8b); margin-top: 4px;">
+            Total bytes read
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-title">Disk Write</span>
+            <span class="metric-icon">✍️</span>
+          </div>
+          <div>
+            <span class="metric-value">${this.formatBytes(this.metrics.disk_write)}</span>
+          </div>
+          <div style="font-size: 11px; color: var(--vscode-descriptionForeground, #8b8b8b); margin-top: 4px;">
+            Total bytes written
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-title">Network RX</span>
+            <span class="metric-icon">📥</span>
+          </div>
+          <div>
+            <span class="metric-value">${this.formatBytes(this.metrics.network_rx)}</span>
+          </div>
+          <div style="font-size: 11px; color: var(--vscode-descriptionForeground, #8b8b8b); margin-top: 4px;">
+            Total received
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-title">Network TX</span>
+            <span class="metric-icon">📤</span>
+          </div>
+          <div>
+            <span class="metric-value">${this.formatBytes(this.metrics.network_tx)}</span>
+          </div>
+          <div style="font-size: 11px; color: var(--vscode-descriptionForeground, #8b8b8b); margin-top: 4px;">
+            Total transmitted
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-title">CPU Time</span>
+            <span class="metric-icon">⏱️</span>
+          </div>
+          <div>
+            <span class="metric-value">${(this.metrics.cpu_time / 1e9).toFixed(1)}</span>
+            <span class="metric-unit">s</span>
+          </div>
+          <div style="font-size: 11px; color: var(--vscode-descriptionForeground, #8b8b8b); margin-top: 4px;">
+            Total CPU time used
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3 class="section-title">Performance History</h3>
+        <div class="empty-state">
+          <div class="empty-state-icon">📊</div>
+          <div class="empty-state-message">Performance graphs will be available in a future update</div>
+        </div>
+      </div>
+    `;
+  }
+  renderStorageTab() {
+    const hasDisks = this.disks && this.disks.length > 0;
+    return x`
+      <div class="section">
+        <h3 class="section-title">Storage Devices</h3>
+        ${hasDisks ? x`
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Target</th>
+                <th>Type</th>
+                <th>Path</th>
+                <th>Format</th>
+                <th>Bus</th>
+                <th>Size</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${this.disks.map((disk) => x`
+                <tr>
+                  <td><span class="monospace">${disk.name}</span></td>
+                  <td>
+                    <span class="badge ${disk.device === "cdrom" ? "warning" : ""}">
+                      ${disk.device?.toUpperCase() || "DISK"}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="monospace" style="font-size: 11px; word-break: break-all;">
+                      ${disk.path}
+                    </span>
+                  </td>
+                  <td>${disk.format.toUpperCase()}</td>
+                  <td>${disk.bus.toUpperCase()}</td>
+                  <td>${disk.size > 0 ? this.formatBytes(disk.size) : "N/A"}</td>
+                  <td>
+                    <span class="badge ${disk.readonly ? "warning" : "success"}">
+                      ${disk.readonly ? "Read-Only" : "Read/Write"}
+                    </span>
+                  </td>
+                </tr>
+              `)}
+            </tbody>
+          </table>
+        ` : x`
+          <div class="empty-state">
+            <div class="empty-state-icon">💾</div>
+            <div class="empty-state-message">No storage devices attached</div>
+          </div>
+        `}
+      </div>
+      
+      ${this.vmDetails?.storage ? x`
+        <div class="section">
+          <h3 class="section-title">Storage Configuration</h3>
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="info-label">Default Pool</span>
+              <span class="info-value">${this.vmDetails.storage.default_pool}</span>
+            </div>
+            ${this.vmDetails.storage.boot_iso ? x`
+              <div class="info-item">
+                <span class="info-label">Boot ISO</span>
+                <span class="info-value monospace">${this.vmDetails.storage.boot_iso}</span>
+              </div>
+            ` : ""}
+          </div>
+        </div>
+      ` : ""}
+
+      ${this.vm?.disks ? x`
+        <div class="section">
+          <h3 class="section-title">Disk Configuration</h3>
+          <div class="info-grid">
+            ${this.vm.disks.map((disk) => x`
+              <div class="info-item">
+                <span class="info-label">Target: ${disk.target}</span>
+                <span class="info-value monospace">${disk.source?.file || disk.source?.dev || "N/A"}</span>
+              </div>
+            `)}
+          </div>
+        </div>
+      ` : ""}
+    `;
+  }
+  renderNetworkTab() {
+    return x`
+      <div class="section">
+        <h3 class="section-title">Network Interfaces</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Interface</th>
+              <th>Type</th>
+              <th>Source</th>
+              <th>Model</th>
+              <th>MAC Address</th>
+              <th>IP Address</th>
+              <th>State</th>
+              <th>Traffic</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${this.networkInterfaces.map((iface) => x`
+              <tr>
+                <td><span class="monospace">${iface.name}</span></td>
+                <td>${iface.type}</td>
+                <td>${iface.source}</td>
+                <td>${iface.model.toUpperCase()}</td>
+                <td><span class="monospace">${iface.mac}</span></td>
+                <td><span class="monospace">${iface.ip || "N/A"}</span></td>
+                <td>
+                  <span class="badge ${iface.state === "up" ? "success" : "error"}">
+                    ${iface.state.toUpperCase()}
+                  </span>
+                </td>
+                <td>
+                  ↓ ${this.formatBytes(iface.rx_bytes)} / ↑ ${this.formatBytes(iface.tx_bytes)}
+                </td>
+              </tr>
+            `)}
+          </tbody>
+        </table>
+      </div>
+
+      ${this.vm?.network_interfaces ? x`
+        <div class="section">
+          <h3 class="section-title">Network Configuration</h3>
+          <div class="info-grid">
+            ${this.vm.network_interfaces.map((net) => x`
+              <div class="info-item">
+                <span class="info-label">Type: ${net.type}</span>
+                <span class="info-value">${net.source?.network || net.source?.bridge || "N/A"}</span>
+              </div>
+            `)}
+          </div>
+        </div>
+      ` : ""}
+    `;
+  }
+  renderConsoleTab() {
+    return x`
+      <div class="section">
+        <h3 class="section-title">Console Preview</h3>
+        <div class="console-preview">
+          <button class="console-connect-btn" @click=${this.handleConsoleConnect}>
+            Open Full Console
+          </button>
+          <div>
+            ${this.vm?.state === "running" ? x`
+              <div>Last login: ${(/* @__PURE__ */ new Date()).toLocaleString()}</div>
+              <div>Welcome to ${this.vm.name}</div>
+              <div>[root@${this.vm.name} ~]# _</div>
+            ` : x`
+              <div style="color: #888;">Console is not available. VM is ${this.vm?.state}.</div>
+            `}
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3 class="section-title">Console Settings</h3>
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">Console Type</span>
+            <span class="info-value">${(Array.isArray(this.vm?.graphics) ? this.vm?.graphics[0]?.type?.toUpperCase() : this.vm?.graphics?.type?.toUpperCase()) || "VNC"}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Port</span>
+            <span class="info-value">${(Array.isArray(this.vm?.graphics) ? this.vm?.graphics[0]?.port : this.vm?.graphics?.port) || "Auto"}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Listen Address</span>
+            <span class="info-value monospace">${(Array.isArray(this.vm?.graphics) ? this.vm?.graphics[0]?.listen : this.vm?.graphics?.listen) || "0.0.0.0"}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Password Protected</span>
+            <span class="info-value">${(Array.isArray(this.vm?.graphics) ? this.vm?.graphics[0]?.password : this.vm?.graphics?.password) ? "Yes" : "No"}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  async loadSnapshots() {
+    if (!this.vm) return;
+    this.isLoadingSnapshots = true;
+    try {
+      this.snapshots = await snapshotActions.list(this.vm.id);
+      this.snapshotCapabilities = await snapshotActions.getCapabilities(this.vm.id);
+    } catch (error) {
+      console.error("Failed to load snapshots:", error);
+      this.snapshots = [];
+    } finally {
+      this.isLoadingSnapshots = false;
+    }
+  }
+  async handleCreateSnapshot() {
+    if (!this.vm || !this.snapshotName.trim()) return;
+    this.isCreatingSnapshot = true;
+    try {
+      await snapshotActions.create(this.vm.id, {
+        name: this.snapshotName.trim(),
+        description: this.snapshotDescription.trim() || void 0
+      });
+      this.showCreateSnapshotModal = false;
+      this.snapshotName = "";
+      this.snapshotDescription = "";
+      await this.loadSnapshots();
+      this.dispatchEvent(new CustomEvent("notification", {
+        detail: { type: "success", message: "Snapshot created successfully" },
+        bubbles: true,
+        composed: true
+      }));
+    } catch (error) {
+      this.dispatchEvent(new CustomEvent("notification", {
+        detail: { type: "error", message: error.message || "Failed to create snapshot" },
+        bubbles: true,
+        composed: true
+      }));
+    } finally {
+      this.isCreatingSnapshot = false;
+    }
+  }
+  async handleRevertSnapshot(snapshotName) {
+    if (!this.vm) return;
+    if (!confirm(`Are you sure you want to revert to snapshot "${snapshotName}"? This will discard all changes since the snapshot was taken.`)) {
+      return;
+    }
+    try {
+      await snapshotActions.revert(this.vm.id, snapshotName);
+      this.dispatchEvent(new CustomEvent("notification", {
+        detail: { type: "success", message: `Reverted to snapshot "${snapshotName}"` },
+        bubbles: true,
+        composed: true
+      }));
+      this.loadVMDetails();
+    } catch (error) {
+      this.dispatchEvent(new CustomEvent("notification", {
+        detail: { type: "error", message: error.message || "Failed to revert snapshot" },
+        bubbles: true,
+        composed: true
+      }));
+    }
+  }
+  async handleDeleteSnapshot(snapshotName) {
+    if (!this.vm) return;
+    if (!confirm(`Are you sure you want to delete snapshot "${snapshotName}"? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      await snapshotActions.delete(this.vm.id, snapshotName);
+      await this.loadSnapshots();
+      this.dispatchEvent(new CustomEvent("notification", {
+        detail: { type: "success", message: `Snapshot "${snapshotName}" deleted` },
+        bubbles: true,
+        composed: true
+      }));
+    } catch (error) {
+      this.dispatchEvent(new CustomEvent("notification", {
+        detail: { type: "error", message: error.message || "Failed to delete snapshot" },
+        bubbles: true,
+        composed: true
+      }));
+    }
+  }
+  formatSnapshotDate(dateStr) {
+    if (!dateStr) return "Unknown";
+    try {
+      return new Date(dateStr).toLocaleString();
+    } catch {
+      return dateStr;
+    }
+  }
+  renderCreateSnapshotModal() {
+    if (!this.showCreateSnapshotModal) return x``;
+    return x`
+      <div class="modal-overlay" @click=${() => this.showCreateSnapshotModal = false}>
+        <div class="modal" @click=${(e3) => e3.stopPropagation()}>
+          <div class="modal-header">
+            <h3>Create Snapshot</h3>
+            <button class="close-btn" @click=${() => this.showCreateSnapshotModal = false}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="snapshot-name">Snapshot Name *</label>
+              <input 
+                type="text" 
+                id="snapshot-name"
+                .value=${this.snapshotName}
+                @input=${(e3) => this.snapshotName = e3.target.value}
+                placeholder="Enter snapshot name"
+                ?disabled=${this.isCreatingSnapshot}
+              />
+            </div>
+            <div class="form-group">
+              <label for="snapshot-desc">Description (optional)</label>
+              <textarea 
+                id="snapshot-desc"
+                .value=${this.snapshotDescription}
+                @input=${(e3) => this.snapshotDescription = e3.target.value}
+                placeholder="Enter description"
+                rows="3"
+                ?disabled=${this.isCreatingSnapshot}
+              ></textarea>
+            </div>
+            ${this.snapshotCapabilities?.warnings?.length ? x`
+              <div class="warning-box">
+                <strong>⚠️ Warnings:</strong>
+                <ul>
+                  ${this.snapshotCapabilities.warnings.map((w) => x`<li>${w}</li>`)}
+                </ul>
+              </div>
+            ` : ""}
+          </div>
+          <div class="modal-footer">
+            <button 
+              class="btn btn-secondary" 
+              @click=${() => this.showCreateSnapshotModal = false}
+              ?disabled=${this.isCreatingSnapshot}
+            >Cancel</button>
+            <button 
+              class="btn btn-primary" 
+              @click=${this.handleCreateSnapshot}
+              ?disabled=${this.isCreatingSnapshot || !this.snapshotName.trim()}
+            >
+              ${this.isCreatingSnapshot ? x`<span class="spinner-small"></span> Creating...` : "Create Snapshot"}
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  renderSnapshotsTab() {
+    if (this.snapshots.length === 0 && !this.isLoadingSnapshots && this.vm) {
+      this.loadSnapshots();
+    }
+    return x`
+      <div class="section">
+        <div class="section-header">
+          <h3 class="section-title">Snapshots</h3>
+          <button 
+            class="btn btn-primary btn-sm" 
+            @click=${() => this.showCreateSnapshotModal = true}
+            ?disabled=${this.isLoadingSnapshots}
+          >
+            + Create Snapshot
+          </button>
+        </div>
+        
+        ${this.isLoadingSnapshots ? x`
+          <div class="loading-state">
+            <span class="spinner"></span>
+            <span>Loading snapshots...</span>
+          </div>
+        ` : this.snapshots.length === 0 ? x`
+          <div class="empty-state">
+            <div class="empty-state-icon">📸</div>
+            <div class="empty-state-message">No snapshots available</div>
+            <div class="empty-state-hint">Create a snapshot to save the current state of this VM</div>
+          </div>
+        ` : x`
+          <div class="snapshot-list">
+            ${this.snapshots.map((snapshot) => x`
+              <div class="snapshot-item">
+                <div class="snapshot-info">
+                  <div class="snapshot-name">${snapshot.name}</div>
+                  <div class="snapshot-meta">
+                    ${snapshot.description ? x`<span class="snapshot-desc">${snapshot.description}</span>` : ""}
+                    <span class="snapshot-date">Created: ${this.formatSnapshotDate(snapshot.created_at || snapshot.creation_time)}</span>
+                    ${snapshot.state ? x`<span class="snapshot-state">${snapshot.state}</span>` : ""}
+                  </div>
+                </div>
+                <div class="snapshot-actions">
+                  <button 
+                    class="btn btn-sm btn-secondary" 
+                    @click=${() => this.handleRevertSnapshot(snapshot.name)}
+                    title="Revert to this snapshot"
+                  >
+                    ↩️ Revert
+                  </button>
+                  <button 
+                    class="btn btn-sm btn-danger" 
+                    @click=${() => this.handleDeleteSnapshot(snapshot.name)}
+                    title="Delete this snapshot"
+                  >
+                    🗑️ Delete
+                  </button>
+                </div>
+              </div>
+            `)}
+          </div>
+        `}
+      </div>
+      ${this.renderCreateSnapshotModal()}
+    `;
+  }
+  render() {
+    if (!this.vm) return x``;
+    const rawState = this.vm.state || this.vmDetails?.state || "unknown";
+    const normalizedState = rawState.toLowerCase().replace("shutoff", "stopped");
+    const powerStateClass = normalizedState;
+    const powerStateText = normalizedState.charAt(0).toUpperCase() + normalizedState.slice(1);
+    const isRunning = normalizedState === "running";
+    const isPaused = normalizedState === "paused";
+    return x`
+      <div class="drawer">
+        <div class="drawer-header">
+          <div class="header-content">
+            <div class="vm-icon">🖥️</div>
+            <div class="vm-info">
+              <h2 class="vm-name">${this.vm.name}</h2>
+              <div class="vm-meta">
+                <span class="power-state ${powerStateClass}">
+                  <span class="power-state-indicator"></span>
+                  ${powerStateText}
+                </span>
+                <span>${this.vm.memory} MB RAM</span>
+                <span>${this.vm.vcpus} vCPUs</span>
+                <span>${this.vm.os_type}</span>
+              </div>
+            </div>
+          </div>
+          <button class="close-btn" @click=${this.handleClose} aria-label="Close">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="quick-actions">
+          ${isRunning ? x`
+            ${this.renderStopButton()}
+            <button 
+              class="action-btn" 
+              @click=${() => this.handlePowerAction("restart")}
+              ?disabled=${this.isPowerActionLoading}
+            >
+              ${this.isPowerActionLoading ? x`<span class="spinner-small"></span>` : "🔄"} Restart
+            </button>
+            <button 
+              class="action-btn" 
+              @click=${() => this.handlePowerAction("pause")}
+              ?disabled=${this.isPowerActionLoading}
+            >
+              ${this.isPowerActionLoading ? x`<span class="spinner-small"></span>` : "⏸️"} Pause
+            </button>
+          ` : isPaused ? x`
+            <button 
+              class="action-btn primary" 
+              @click=${() => this.handlePowerAction("resume")}
+              ?disabled=${this.isPowerActionLoading}
+            >
+              ${this.isPowerActionLoading ? x`<span class="spinner-small"></span>` : "▶️"} Resume
+            </button>
+            <button 
+              class="action-btn" 
+              @click=${() => this.handlePowerAction("stop")}
+              ?disabled=${this.isPowerActionLoading}
+            >
+              ${this.isPowerActionLoading ? x`<span class="spinner-small"></span>` : "⏹️"} Stop
+            </button>
+          ` : x`
+            <button 
+              class="action-btn primary" 
+              @click=${() => this.handlePowerAction("start")}
+              ?disabled=${this.isPowerActionLoading}
+            >
+              ${this.isPowerActionLoading ? x`<span class="spinner-small"></span>` : "▶️"} Start
+            </button>
+          `}
+          <button 
+            class="action-btn" 
+            @click=${this.handleConsoleConnect}
+            ?disabled=${!isRunning}
+          >
+            💻 Console
+          </button>
+          <button 
+            class="action-btn" 
+            @click=${() => this.handleCloneVM()}
+            ?disabled=${this.isPowerActionLoading}
+          >
+            📋 Clone
+          </button>
+          <button 
+            class="action-btn" 
+            @click=${() => this.handleSnapshot()}
+            ?disabled=${this.isPowerActionLoading}
+          >
+            📸 Snapshot
+          </button>
+          <button 
+            class="action-btn danger" 
+            @click=${() => this.handleDeleteVM()}
+            ?disabled=${this.isPowerActionLoading}
+          >
+            🗑️ Delete
+          </button>
+        </div>
+
+        <div class="tabs">
+          <button class="tab ${this.activeTab === "overview" ? "active" : ""}" 
+                  @click=${() => this.activeTab = "overview"}>
+            Overview
+          </button>
+          <button class="tab ${this.activeTab === "metrics" ? "active" : ""}" 
+                  @click=${() => this.activeTab = "metrics"}>
+            Metrics
+          </button>
+          <button class="tab ${this.activeTab === "storage" ? "active" : ""}" 
+                  @click=${() => this.activeTab = "storage"}>
+            Storage
+          </button>
+          <button class="tab ${this.activeTab === "network" ? "active" : ""}" 
+                  @click=${() => this.activeTab = "network"}>
+            Network
+          </button>
+          <button class="tab ${this.activeTab === "console" ? "active" : ""}" 
+                  @click=${() => this.activeTab = "console"}>
+            Console
+          </button>
+          <button class="tab ${this.activeTab === "snapshots" ? "active" : ""}" 
+                  @click=${() => this.activeTab = "snapshots"}>
+            Snapshots
+          </button>
+        </div>
+
+        <div class="drawer-content">
+          ${this.isLoading ? x`
+            <div class="loading">
+              <div class="spinner"></div>
+              Loading VM details...
+            </div>
+          ` : x`
+            ${this.activeTab === "overview" ? this.renderOverviewTab() : this.activeTab === "metrics" ? this.renderMetricsTab() : this.activeTab === "storage" ? this.renderStorageTab() : this.activeTab === "network" ? this.renderNetworkTab() : this.activeTab === "console" ? this.renderConsoleTab() : this.activeTab === "snapshots" ? this.renderSnapshotsTab() : x``}
+          `}
+        </div>
+      </div>
+      
+      <!-- Delete Confirmation Modal -->
+      <div class="modal-overlay ${this.showDeleteModal ? "show" : ""}">
+        <div class="modal">
+          <div class="modal-header">
+            <span class="modal-icon">⚠️</span>
+            <h3 class="modal-title">Delete Virtual Machine</h3>
+          </div>
+          
+          <div class="modal-body">
+            <p class="modal-message">
+              Are you sure you want to permanently delete this virtual machine?
+            </p>
+            
+            <div class="vm-info-box">
+              <div class="vm-info-row">
+                <span class="vm-info-label">Name:</span>
+                <span class="vm-info-value">${this.vm.name}</span>
+              </div>
+              <div class="vm-info-row">
+                <span class="vm-info-label">UUID:</span>
+                <span class="vm-info-value" style="font-family: monospace; font-size: 12px;">
+                  ${this.vmDetails?.uuid || this.vm.id}
+                </span>
+              </div>
+              <div class="vm-info-row">
+                <span class="vm-info-label">State:</span>
+                <span class="vm-info-value">${powerStateText}</span>
+              </div>
+              <div class="vm-info-row">
+                <span class="vm-info-label">Resources:</span>
+                <span class="vm-info-value">
+                  ${this.formatMemory(this.vmDetails?.memory || this.vm.memory)} RAM, 
+                  ${this.vmDetails?.vcpus || this.vm.vcpus} vCPUs
+                </span>
+              </div>
+            </div>
+            
+            <div class="warning-box">
+              <span class="warning-icon">⚠️</span>
+              <div>
+                <strong>Warning:</strong> This action cannot be undone. All data associated with this VM, 
+                including disks and snapshots, will be permanently deleted.
+              </div>
+            </div>
+          </div>
+          
+          <div class="modal-footer">
+            <button 
+              class="modal-btn cancel" 
+              @click=${this.cancelDelete}
+              ?disabled=${this.isDeleting}
+            >
+              Cancel
+            </button>
+            <button 
+              class="modal-btn delete" 
+              @click=${this.confirmDelete}
+              ?disabled=${this.isDeleting}
+            >
+              ${this.isDeleting ? x`
+                <span class="spinner-small"></span>
+                Deleting...
+              ` : x`
+                🗑️ Delete VM
+              `}
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- VM Console -->
+      ${this.showConsole && this.vm ? x`
+        <vm-console
+          .vmId=${this.vm.id}
+          .vmName=${this.vm.name}
+          .show=${this.showConsole}
+          @close=${this.handleConsoleClose}
+        ></vm-console>
+      ` : ""}
+    `;
+  }
+};
+VMDetailDrawer.styles = i$5`
+    :host {
+      display: block;
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 60%;
+      height: 100vh;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    :host([show]) {
+      pointer-events: auto;
+    }
+
+    .drawer {
+      width: 100%;
+      height: 100%;
+      background: var(--vscode-editor-background, #1e1e1e);
+      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+      display: flex;
+      flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.3s ease-out;
+      border-left: 1px solid var(--vscode-widget-border, #454545);
+    }
+
+    :host([show]) .drawer {
+      transform: translateX(0);
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0.8;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideOut {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(100%);
+        opacity: 0.8;
+      }
+    }
+
+    :host(:not([show])) .drawer {
+      animation: slideOut 0.3s ease-in;
+    }
+
+    @media (max-width: 1200px) {
+      :host {
+        width: 80%;
+      }
+    }
+
+    @media (max-width: 768px) {
+      :host {
+        width: 100%;
+      }
+    }
+
+    .drawer-header {
+      padding: 20px 24px;
+      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .header-content {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex: 1;
+    }
+
+    .vm-icon {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      border-radius: 8px;
+      font-size: 20px;
+    }
+
+    .vm-info {
+      flex: 1;
+    }
+
+    .vm-name {
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--vscode-foreground, #cccccc);
+      margin: 0 0 4px 0;
+    }
+
+    .vm-meta {
+      display: flex;
+      gap: 16px;
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground, #8b8b8b);
+    }
+
+    .close-btn {
+      background: transparent;
+      border: none;
+      color: var(--vscode-foreground, #cccccc);
+      cursor: pointer;
+      padding: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .close-btn:hover {
+      background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
+      color: var(--vscode-icon-foreground, #c5c5c5);
+    }
+
+    /* Power State Badge */
+    .power-state {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .power-state.running {
+      background: var(--vscode-charts-green, #89d185);
+      color: var(--vscode-editor-background, #1e1e1e);
+    }
+
+    .power-state.stopped {
+      background: var(--vscode-charts-red, #f48771);
+      color: var(--vscode-editor-background, #1e1e1e);
+    }
+
+    .power-state.paused {
+      background: var(--vscode-charts-yellow, #cca700);
+      color: var(--vscode-editor-background, #1e1e1e);
+    }
+
+    .power-state.suspended {
+      background: var(--vscode-charts-orange, #ce9178);
+      color: var(--vscode-editor-background, #1e1e1e);
+    }
+
+    .power-state-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulse 2s infinite;
+    }
+
+    .power-state.running .power-state-indicator {
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.5;
+      }
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 0;
+      padding: 0 24px;
+      background: var(--vscode-editor-background, #1e1e1e);
+      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+      flex-shrink: 0;
+    }
+
+    .tab {
+      padding: 12px 20px;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--vscode-foreground, #cccccc);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .tab:hover {
+      background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.1));
+    }
+
+    .tab.active {
+      color: var(--vscode-textLink-foreground, #3794ff);
+      border-bottom-color: var(--vscode-focusBorder, #007acc);
+    }
+
+    /* Content Area */
+    .drawer-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    /* Quick Actions Bar */
+    .quick-actions {
+      padding: 16px 24px;
+      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+      display: flex;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .action-btn {
+      padding: 8px 16px;
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      color: var(--vscode-button-secondaryForeground, #cccccc);
+      border: 1px solid var(--vscode-button-border, #5a5a5a);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .action-btn:hover:not(:disabled) {
+      background: var(--vscode-button-secondaryHoverBackground, #45494e);
+    }
+
+    .action-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .action-btn.primary {
+      background: var(--vscode-button-background, #0e639c);
+      color: var(--vscode-button-foreground, #ffffff);
+      border-color: var(--vscode-button-background, #0e639c);
+    }
+
+    .action-btn.primary:hover:not(:disabled) {
+      background: var(--vscode-button-hoverBackground, #1177bb);
+      border-color: var(--vscode-button-hoverBackground, #1177bb);
+    }
+
+    .action-btn.danger {
+      background: var(--vscode-inputValidation-errorBackground, #5a1d1d);
+      color: var(--vscode-inputValidation-errorForeground, #f48771);
+      border-color: var(--vscode-inputValidation-errorBorder, #be1100);
+    }
+
+    .action-btn.danger:hover:not(:disabled) {
+      background: var(--vscode-inputValidation-errorBorder, #be1100);
+    }
+
+    /* Split Button for Stop action */
+    .split-button-container {
+      position: relative;
+      display: inline-flex;
+    }
+
+    .split-button-main {
+      padding: 8px 12px;
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      color: var(--vscode-button-secondaryForeground, #cccccc);
+      border: 1px solid var(--vscode-button-border, #5a5a5a);
+      border-radius: 4px 0 0 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-right: none;
+    }
+
+    .split-button-main:hover:not(:disabled) {
+      background: var(--vscode-button-secondaryHoverBackground, #45494e);
+    }
+
+    .split-button-main:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .split-button-toggle {
+      padding: 8px 6px;
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      color: var(--vscode-button-secondaryForeground, #cccccc);
+      border: 1px solid var(--vscode-button-border, #5a5a5a);
+      border-radius: 0 4px 4px 0;
+      cursor: pointer;
+      font-size: 10px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+    }
+
+    .split-button-toggle:hover:not(:disabled) {
+      background: var(--vscode-button-secondaryHoverBackground, #45494e);
+    }
+
+    .split-button-toggle:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .split-button-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      margin-top: 4px;
+      background: var(--vscode-menu-background, var(--vscode-editorWidget-background, #252526));
+      border: 1px solid var(--vscode-menu-border, #464647);
+      border-radius: 4px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+      min-width: 140px;
+      z-index: 1000;
+      overflow: hidden;
+    }
+
+    .split-button-dropdown button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 8px 12px;
+      border: none;
+      background: none;
+      color: var(--vscode-foreground, #cccccc);
+      cursor: pointer;
+      font-size: 13px;
+      transition: background 0.15s;
+    }
+
+    .split-button-dropdown button:hover:not(:disabled) {
+      background: var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.31));
+    }
+
+    .split-button-dropdown button.danger {
+      color: var(--vscode-inputValidation-errorForeground, #f48771);
+    }
+
+    .split-button-dropdown button.danger:hover:not(:disabled) {
+      background: var(--vscode-inputValidation-errorBackground, rgba(255, 0, 0, 0.1));
+    }
+
+    .split-button-dropdown button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+
+    /* Sections */
+    .section {
+      margin-bottom: 32px;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--vscode-foreground, #cccccc);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+    }
+
+    /* Info Grid */
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+    }
+
+    .info-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .info-label {
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground, #8b8b8b);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .info-value {
+      font-size: 14px;
+      color: var(--vscode-foreground, #cccccc);
+      font-weight: 400;
+    }
+
+    .info-value.monospace {
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+      font-size: 13px;
+    }
+
+    /* Metrics Cards */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .metric-card {
+      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      border: 1px solid var(--vscode-widget-border, #454545);
+      border-radius: 6px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .metric-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .metric-title {
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground, #8b8b8b);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .metric-icon {
+      font-size: 16px;
+      opacity: 0.6;
+    }
+
+    .metric-value {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--vscode-foreground, #cccccc);
+    }
+
+    .metric-unit {
+      font-size: 14px;
+      font-weight: 400;
+      color: var(--vscode-descriptionForeground, #8b8b8b);
+      margin-left: 4px;
+    }
+
+    .metric-change {
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .metric-change.positive {
+      color: var(--vscode-charts-green, #89d185);
+    }
+
+    .metric-change.negative {
+      color: var(--vscode-charts-red, #f48771);
+    }
+
+    /* Progress Bars */
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: var(--vscode-progressBar-background, #1e1e1e);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--vscode-progressBar-foreground, #0e639c);
+      transition: width 0.3s ease;
+      border-radius: 4px;
+    }
+
+    .progress-fill.high {
+      background: var(--vscode-charts-red, #f48771);
+    }
+
+    .progress-fill.medium {
+      background: var(--vscode-charts-yellow, #cca700);
+    }
+
+    .progress-fill.low {
+      background: var(--vscode-charts-green, #89d185);
+    }
+
+    /* Tables */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .data-table th {
+      text-align: left;
+      padding: 8px 12px;
+      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      color: var(--vscode-foreground, #cccccc);
+      font-weight: 600;
+      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+    }
+
+    .data-table td {
+      padding: 10px 12px;
+      color: var(--vscode-foreground, #cccccc);
+      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+    }
+
+    .data-table tr:hover {
+      background: var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.1));
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 500;
+      background: var(--vscode-badge-background, #4d4d4d);
+      color: var(--vscode-badge-foreground, #ffffff);
+    }
+
+    .badge.success {
+      background: var(--vscode-charts-green, #89d185);
+      color: var(--vscode-editor-background, #1e1e1e);
+    }
+
+    .badge.warning {
+      background: var(--vscode-charts-yellow, #cca700);
+      color: var(--vscode-editor-background, #1e1e1e);
+    }
+
+    .badge.error {
+      background: var(--vscode-charts-red, #f48771);
+      color: var(--vscode-editor-background, #1e1e1e);
+    }
+
+    /* Loading State */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      color: var(--vscode-descriptionForeground, #8b8b8b);
+    }
+
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--vscode-widget-border, #454545);
+      border-top-color: var(--vscode-focusBorder, #007acc);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 12px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+    
+    /* Small spinner for buttons */
+    .spinner-small {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid var(--vscode-widget-border, #454545);
+      border-top-color: var(--vscode-foreground, #cccccc);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    /* Empty State */
+    .empty-state {
+      padding: 60px 20px;
+      text-align: center;
+      color: var(--vscode-descriptionForeground, #8b8b8b);
+    }
+
+    .empty-state-icon {
+      font-size: 48px;
+      opacity: 0.5;
+      margin-bottom: 16px;
+    }
+
+    .empty-state-message {
+      font-size: 14px;
+    }
+
+    /* Console Preview */
+    .console-preview {
+      background: #000;
+      border: 1px solid var(--vscode-widget-border, #454545);
+      border-radius: 4px;
+      padding: 16px;
+      min-height: 200px;
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+      font-size: 12px;
+      color: #00ff00;
+      position: relative;
+    }
+
+    .console-connect-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 4px 12px;
+      background: var(--vscode-button-background, #0e639c);
+      color: var(--vscode-button-foreground, #ffffff);
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .console-connect-btn:hover {
+      background: var(--vscode-button-hoverBackground, #1177bb);
+    }
+    
+    /* Delete Confirmation Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 2000;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 80px;
+    }
+    
+    .modal-overlay.show {
+      display: flex;
+      animation: fadeIn 0.2s ease-out;
+    }
+    
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+    
+    .modal {
+      background: var(--vscode-editor-background, #1e1e1e);
+      border: 1px solid var(--vscode-widget-border, #454545);
+      border-radius: 8px;
+      padding: 24px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.2s ease-out;
+    }
+    
+    @keyframes slideUp {
+      from {
+        transform: translateY(-20px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+    
+    .modal-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    
+    .modal-icon {
+      font-size: 24px;
+    }
+    
+    .modal-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--vscode-foreground, #cccccc);
+      margin: 0;
+    }
+    
+    .modal-body {
+      margin-bottom: 24px;
+    }
+    
+    .modal-message {
+      color: var(--vscode-foreground, #cccccc);
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+    
+    .warning-box {
+      background: var(--vscode-inputValidation-warningBackground, #5a5012);
+      border: 1px solid var(--vscode-inputValidation-warningBorder, #b89500);
+      border-radius: 4px;
+      padding: 12px;
+      color: var(--vscode-inputValidation-warningForeground, #cca700);
+      font-size: 13px;
+      display: flex;
+      align-items: start;
+      gap: 8px;
+    }
+    
+    .warning-icon {
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    
+    .vm-info-box {
+      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      border: 1px solid var(--vscode-widget-border, #454545);
+      border-radius: 4px;
+      padding: 12px;
+      margin: 16px 0;
+    }
+    
+    .vm-info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      font-size: 13px;
+    }
+    
+    .vm-info-label {
+      color: var(--vscode-descriptionForeground, #8b8b8b);
+    }
+    
+    .vm-info-value {
+      color: var(--vscode-foreground, #cccccc);
+      font-weight: 500;
+    }
+    
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+    
+    .modal-btn {
+      padding: 8px 16px;
+      border-radius: 4px;
+      border: 1px solid;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .modal-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .modal-btn.cancel {
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      color: var(--vscode-button-secondaryForeground, #cccccc);
+      border-color: var(--vscode-button-border, #5a5a5a);
+    }
+    
+    .modal-btn.cancel:hover:not(:disabled) {
+      background: var(--vscode-button-secondaryHoverBackground, #45494e);
+    }
+    
+    .modal-btn.delete {
+      background: var(--vscode-inputValidation-errorBackground, #5a1d1d);
+      color: var(--vscode-inputValidation-errorForeground, #f48771);
+      border-color: var(--vscode-inputValidation-errorBorder, #be1100);
+    }
+    
+    .modal-btn.delete:hover:not(:disabled) {
+      background: var(--vscode-inputValidation-errorBorder, #be1100);
+    }
+
+    /* Snapshot styles */
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .btn-sm {
+      padding: 4px 12px;
+      font-size: 12px;
+    }
+
+    .btn-danger {
+      background: var(--vscode-inputValidation-errorBackground, rgba(190, 17, 0, 0.2));
+      border-color: var(--vscode-inputValidation-errorBorder, #be1100);
+      color: var(--vscode-inputValidation-errorForeground, #ff6b6b);
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background: var(--vscode-inputValidation-errorBorder, #be1100);
+      color: white;
+    }
+
+    .snapshot-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .snapshot-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: var(--vscode-editor-background, #1e1e1e);
+      border: 1px solid var(--vscode-widget-border, #454545);
+      border-radius: 6px;
+    }
+
+    .snapshot-item:hover {
+      border-color: var(--vscode-focusBorder, #007fd4);
+    }
+
+    .snapshot-info {
+      flex: 1;
+    }
+
+    .snapshot-name {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .snapshot-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground, #858585);
+    }
+
+    .snapshot-desc {
+      font-style: italic;
+    }
+
+    .snapshot-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .loading-state {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 24px;
+      color: var(--vscode-descriptionForeground, #858585);
+    }
+
+    .empty-state-hint {
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground, #858585);
+      margin-top: 8px;
+    }
+
+    .warning-box {
+      background: var(--vscode-inputValidation-warningBackground, rgba(255, 204, 0, 0.1));
+      border: 1px solid var(--vscode-inputValidation-warningBorder, #cca700);
+      border-radius: 4px;
+      padding: 12px;
+      margin-top: 12px;
+      font-size: 13px;
+    }
+
+    .warning-box ul {
+      margin: 8px 0 0 0;
+      padding-left: 20px;
+    }
+
+    .warning-box li {
+      margin: 4px 0;
+    }
+  `;
+__decorateClass$m([
+  n2({ type: Boolean, reflect: true })
+], VMDetailDrawer.prototype, "show", 2);
+__decorateClass$m([
+  n2({ type: Object })
+], VMDetailDrawer.prototype, "vm", 2);
+__decorateClass$m([
+  r$1()
+], VMDetailDrawer.prototype, "activeTab", 2);
+__decorateClass$m([
+  r$1()
+], VMDetailDrawer.prototype, "isLoading", 2);
+__decorateClass$m([
+  r$1()
+], VMDetailDrawer.prototype, "metrics", 2);
+__decorateClass$m([
+  r$1()
+], VMDetailDrawer.prototype, "disks", 2);
+__decorateClass$m([
+  r$1()
+], VMDetailDrawer.prototype, "networkInterfaces", 2);
+__decorateClass$m([
+  r$1()
+], VMDetailDrawer.prototype, "vmDetails", 2);
+__decorateClass$m([
+  r$1()
+], VMDetailDrawer.prototype, "isPowerActionLoading", 2);
+__decorateClass$m([
+  r$1()
+], VMDetailDrawer.prototype, "showDeleteModal", 2);
+__decorateClass$m([
+  r$1()
+], VMDetailDrawer.prototype, "isDeleting", 2);
+__decorateClass$m([
+  r$1()
+], VMDetailDrawer.prototype, "isLoadingMetrics", 2);
+__decorateClass$m([
+  r$1()
+], VMDetailDrawer.prototype, "showConsole", 2);
+__decorateClass$m([
+  r$1()
+], VMDetailDrawer.prototype, "snapshots", 2);
+__decorateClass$m([
+  r$1()
+], VMDetailDrawer.prototype, "isLoadingSnapshots", 2);
+__decorateClass$m([
+  r$1()
+], VMDetailDrawer.prototype, "showCreateSnapshotModal", 2);
+__decorateClass$m([
+  r$1()
+], VMDetailDrawer.prototype, "snapshotName", 2);
+__decorateClass$m([
+  r$1()
+], VMDetailDrawer.prototype, "snapshotDescription", 2);
+__decorateClass$m([
+  r$1()
+], VMDetailDrawer.prototype, "isCreatingSnapshot", 2);
+__decorateClass$m([
+  r$1()
+], VMDetailDrawer.prototype, "snapshotCapabilities", 2);
+__decorateClass$m([
+  r$1()
+], VMDetailDrawer.prototype, "showStopDropdown", 2);
+VMDetailDrawer = __decorateClass$m([
+  t$2("vm-detail-drawer")
+], VMDetailDrawer);
+var __defProp$l = Object.defineProperty;
+var __getOwnPropDesc$j = Object.getOwnPropertyDescriptor;
+var __decorateClass$l = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$j(target, key) : target;
+  for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
+    if (decorator = decorators[i4])
+      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
+  if (kind && result) __defProp$l(target, key, result);
   return result;
 };
 let CreateVMWizard = class extends i$2 {
@@ -58752,26 +59710,26 @@ CreateVMWizard.styles = i$5`
       color: var(--close-hover-color, #e0e0e0);
     }
   `;
-__decorateClass$k([
+__decorateClass$l([
   r$1()
 ], CreateVMWizard.prototype, "isCreating", 2);
-__decorateClass$k([
+__decorateClass$l([
   r$1()
 ], CreateVMWizard.prototype, "validationErrors", 2);
-__decorateClass$k([
+__decorateClass$l([
   r$1()
 ], CreateVMWizard.prototype, "showAdvancedOptions", 2);
-CreateVMWizard = __decorateClass$k([
+CreateVMWizard = __decorateClass$l([
   t$2("create-vm-wizard")
 ], CreateVMWizard);
-var __defProp$j = Object.defineProperty;
-var __getOwnPropDesc$h = Object.getOwnPropertyDescriptor;
-var __decorateClass$j = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$h(target, key) : target;
+var __defProp$k = Object.defineProperty;
+var __getOwnPropDesc$i = Object.getOwnPropertyDescriptor;
+var __decorateClass$k = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$i(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$j(target, key, result);
+  if (kind && result) __defProp$k(target, key, result);
   return result;
 };
 let CreateVMWizardEnhanced = class extends i$2 {
@@ -58783,7 +59741,12 @@ let CreateVMWizardEnhanced = class extends i$2 {
     this.templatesController = new lib.StoreController(this, templateStore.$items);
     this.networksController = new lib.StoreController(this, networkStore.$items);
     this.bridgesController = new lib.StoreController(this, $bridges);
+    this.volumesController = new lib.StoreController(this, $filteredVolumes);
     this.isCreating = false;
+    this.showAddDeviceMenu = false;
+    this.showDeviceModal = false;
+    this.deviceModalMode = "disk";
+    this.deviceDraft = null;
     this.validationErrors = {};
     this.expandedSections = /* @__PURE__ */ new Set(["basic"]);
     this.currentStep = 1;
@@ -58791,13 +59754,13 @@ let CreateVMWizardEnhanced = class extends i$2 {
     this.isLoadingPCIDevices = false;
     this.editMode = false;
     this.editingVmId = null;
+    this.showCloseConfirmation = false;
     this.formData = {
       memory: 2048,
       vcpus: 2,
       os_type: "linux",
       architecture: "x86_64",
       storage: {
-        default_pool: "",
         disks: []
       },
       networks: [{
@@ -58825,6 +59788,8 @@ let CreateVMWizardEnhanced = class extends i$2 {
         // Fetch templates from /virtualization/computes/templates
         networkStore.fetch(),
         // Fetch networks from /virtualization/networks
+        volumeActions.fetchAll(),
+        // Fetch volumes for clone disk source selection
         initializeNetworkStore(),
         // Initialize network store to load bridges and interfaces
         this.loadPCIDevices()
@@ -58878,8 +59843,41 @@ let CreateVMWizardEnhanced = class extends i$2 {
   }
   handleClose() {
     if (!this.isCreating) {
-      wizardActions.closeWizard();
+      this.showCloseConfirmation = true;
     }
+  }
+  handleConfirmClose() {
+    this.showCloseConfirmation = false;
+    this.resetFormData();
+    wizardActions.closeWizard();
+  }
+  handleCancelClose() {
+    this.showCloseConfirmation = false;
+  }
+  resetFormData() {
+    this.formData = {
+      memory: 2048,
+      vcpus: 2,
+      os_type: "linux",
+      architecture: "x86_64",
+      storage: {
+        disks: []
+      },
+      networks: [{
+        type: "network",
+        source: "default",
+        model: "virtio"
+      }],
+      graphics: [{
+        type: "vnc",
+        autoport: true,
+        listen: "0.0.0.0"
+      }]
+    };
+    this.currentStep = 1;
+    this.validationErrors = {};
+    this.editMode = false;
+    this.editingVmId = null;
   }
   goToStep(step) {
     this.currentStep = step;
@@ -58910,14 +59908,417 @@ let CreateVMWizardEnhanced = class extends i$2 {
           errors.vcpus = "At least 1 vCPU is required";
         }
         break;
-      case 2:
-        if (!this.formData.storage?.default_pool) {
-          errors.storage_pool = "Storage pool is required";
+      case 2: {
+        const disks = this.formData.storage?.disks || [];
+        if (disks.length === 0) {
+          errors.storage_pool = "At least one disk is required";
+          break;
+        }
+        if (disks.some((d2) => !d2.storage_pool)) {
+          errors.storage_pool = "Storage pool is required for all disks";
+        }
+        for (const d2 of disks) {
+          if (d2.action === "create" && (!d2.size || d2.size <= 0)) {
+            errors.storage_pool = "Disk size is required for created disks";
+            break;
+          }
+          if (d2.action === "attach" && !d2.path) {
+            errors.storage_pool = "Source volume is required for attached disks";
+            break;
+          }
+          if (d2.action === "clone" && (!d2.storage_pool || !d2.clone_from)) {
+            errors.storage_pool = "Source volume is required for cloned disks";
+            break;
+          }
         }
         break;
+      }
     }
     this.validationErrors = errors;
     return Object.keys(errors).length === 0;
+  }
+  buildRequestPayload() {
+    const disks = (this.formData.storage?.disks || []).map((d2) => ({
+      action: d2.action,
+      size: d2.size,
+      format: d2.format === "vmdk" ? "qcow2" : d2.format,
+      storage_pool: d2.storage_pool,
+      path: d2.path,
+      source: d2.clone_from,
+      bus: d2.bus,
+      cache: d2.cache,
+      target: d2.target,
+      readonly: d2.readonly,
+      boot_order: d2.boot_order,
+      device: d2.device || "disk"
+    }));
+    const payload = {
+      name: this.formData.name,
+      memory: this.formData.memory,
+      vcpus: this.formData.vcpus,
+      storage: { disks },
+      os_type: this.formData.os_type,
+      os_variant: this.formData.os_variant,
+      architecture: this.formData.architecture,
+      uefi: this.formData.uefi,
+      secure_boot: this.formData.secure_boot,
+      tpm: this.formData.tpm,
+      autostart: this.formData.autostart,
+      metadata: this.formData.metadata
+    };
+    if (this.formData.networks && this.formData.networks.length > 0) {
+      payload.networks = this.formData.networks;
+    }
+    if (this.formData.graphics && this.formData.graphics.length > 0) {
+      payload.graphics = this.formData.graphics;
+    }
+    if (this.formData.pci_devices && this.formData.pci_devices.length > 0) {
+      payload.pci_devices = this.formData.pci_devices;
+    }
+    if (this.formData.cloud_init) {
+      payload.cloud_init = this.formData.cloud_init;
+    }
+    return payload;
+  }
+  toggleAddDeviceMenu() {
+    this.showAddDeviceMenu = !this.showAddDeviceMenu;
+  }
+  openAddDiskModal() {
+    this.showAddDeviceMenu = false;
+    this.deviceModalMode = "disk";
+    const defaultPool = this.formData.storage?.disks?.[0]?.storage_pool || "default";
+    this.deviceDraft = {
+      action: "create",
+      size: 20,
+      format: "qcow2",
+      storage_pool: defaultPool,
+      bus: "virtio",
+      device: "disk",
+      readonly: false
+    };
+    this.showDeviceModal = true;
+  }
+  openAddIsoModal() {
+    this.showAddDeviceMenu = false;
+    this.deviceModalMode = "iso";
+    const defaultPool = this.formData.storage?.disks?.[0]?.storage_pool || "default";
+    this.deviceDraft = {
+      action: "attach",
+      storage_pool: defaultPool,
+      bus: "ide",
+      device: "cdrom",
+      readonly: true,
+      boot_order: 1
+    };
+    this.showDeviceModal = true;
+  }
+  handleDeviceModalClose() {
+    this.showDeviceModal = false;
+    this.deviceDraft = null;
+  }
+  handleDeviceModalSave() {
+    if (!this.deviceDraft) return;
+    const d2 = this.deviceDraft;
+    if (!d2.storage_pool) {
+      this.showNotification("Storage pool is required", "error");
+      return;
+    }
+    if (this.deviceModalMode === "disk") {
+      const action = d2.action || "create";
+      if (action === "create") {
+        if (!d2.size || d2.size <= 0) {
+          this.showNotification("Disk size must be greater than 0", "error");
+          return;
+        }
+      } else if (action === "clone") {
+        if (!d2.clone_from) {
+          this.showNotification("Source volume is required for clone", "error");
+          return;
+        }
+      } else if (action === "attach") {
+        if (!d2.path) {
+          this.showNotification("Source volume is required for attach", "error");
+          return;
+        }
+      }
+      d2.action = action;
+      d2.device = "disk";
+    } else {
+      if (!d2.path) {
+        this.showNotification("ISO image is required", "error");
+        return;
+      }
+      d2.action = "attach";
+      d2.device = "cdrom";
+      d2.readonly = true;
+      if (!d2.boot_order || d2.boot_order <= 0) {
+        d2.boot_order = 1;
+      }
+    }
+    if (!this.formData.storage) {
+      this.formData.storage = { disks: [] };
+    }
+    if (!this.formData.storage.disks) {
+      this.formData.storage.disks = [];
+    }
+    this.formData.storage.disks.push({ ...d2 });
+    this.showDeviceModal = false;
+    this.deviceDraft = null;
+    this.requestUpdate();
+  }
+  renderDeviceModal() {
+    if (!this.showDeviceModal || !this.deviceDraft) {
+      return null;
+    }
+    const storagePools = this.storagePoolsController.value || [];
+    const isos = this.isosController.value || [];
+    const disk = this.deviceDraft;
+    return x`
+      <modal-dialog
+        .open=${this.showDeviceModal}
+        .title=${this.deviceModalMode === "iso" ? "Add ISO/CD-ROM" : "Add Disk"}
+        size="medium"
+        @modal-close=${this.handleDeviceModalClose}
+      >
+        ${this.deviceModalMode === "disk" ? x`
+          <div class="form-group">
+            <label>Action</label>
+            <select
+              .value=${disk.action || "create"}
+              @change=${(e3) => {
+      disk.action = e3.target.value;
+      if (disk.action === "create") {
+        disk.clone_from = "";
+        disk.path = "";
+      } else if (disk.action === "clone") {
+        disk.path = "";
+      } else if (disk.action === "attach") {
+        disk.clone_from = "";
+      }
+      this.requestUpdate();
+    }}
+            >
+              <option value="create">Create New</option>
+              <option value="clone">Clone From</option>
+              <option value="attach">Attach Existing</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Storage Pool <span class="required">*</span></label>
+            <select
+              .value=${disk.storage_pool || ""}
+              @change=${(e3) => {
+      disk.storage_pool = e3.target.value;
+      disk.clone_from = "";
+      disk.path = "";
+      this.requestUpdate();
+    }}
+            >
+              <option value="">Select a storage pool</option>
+              ${storagePools.map((pool) => x`
+                <option value=${pool.name}>${pool.name}</option>
+              `)}
+            </select>
+          </div>
+
+          ${disk.action === "create" ? x`
+            <div class="grid-3">
+              <div class="form-group">
+                <label>Size (GB)</label>
+                <input
+                  type="number"
+                  min="1"
+                  .value=${String(disk.size || 20)}
+                  @input=${(e3) => {
+      disk.size = Number(e3.target.value);
+      this.requestUpdate();
+    }}
+                />
+              </div>
+
+              <div class="form-group">
+                <label>Format</label>
+                <select
+                  .value=${disk.format || "qcow2"}
+                  @change=${(e3) => {
+      disk.format = e3.target.value;
+      this.requestUpdate();
+    }}
+                >
+                  <option value="qcow2">QCOW2</option>
+                  <option value="raw">RAW</option>
+                  <option value="vmdk">VMDK</option>
+                  <option value="vdi">VDI</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Bus</label>
+                <select
+                  .value=${disk.bus || "virtio"}
+                  @change=${(e3) => {
+      disk.bus = e3.target.value;
+      this.requestUpdate();
+    }}
+                >
+                  <option value="virtio">VirtIO</option>
+                  <option value="scsi">SCSI</option>
+                  <option value="ide">IDE</option>
+                  <option value="sata">SATA</option>
+                </select>
+              </div>
+            </div>
+          ` : disk.action === "clone" ? x`
+            <div class="form-group">
+              <label>Source volume</label>
+              <select
+                .value=${disk.clone_from || ""}
+                @change=${(e3) => {
+      disk.clone_from = e3.target.value;
+      this.requestUpdate();
+    }}
+                ?disabled=${!disk.storage_pool}
+              >
+                <option value="">${disk.storage_pool ? "Select volume to clone..." : "Select pool first..."}</option>
+                ${this.getVolumesForPool(disk.storage_pool || "").map((vol) => x`
+                  <option value="${vol.path}" ?selected=${disk.clone_from === vol.path}>
+                    ${vol.name} (${this.formatVolumeSize(vol.capacity)}, ${vol.format})
+                  </option>
+                `)}
+              </select>
+            </div>
+          ` : x`
+            <div class="form-group">
+              <label>Source volume</label>
+              <select
+                .value=${disk.path || ""}
+                @change=${(e3) => {
+      disk.path = e3.target.value;
+      this.requestUpdate();
+    }}
+                ?disabled=${!disk.storage_pool}
+              >
+                <option value="">${disk.storage_pool ? "Select volume to attach..." : "Select pool first..."}</option>
+                ${this.getVolumesForPool(disk.storage_pool || "").map((vol) => x`
+                  <option value="${vol.path}" ?selected=${disk.path === vol.path}>
+                    ${vol.name} (${this.formatVolumeSize(vol.capacity)}, ${vol.format})
+                  </option>
+                `)}
+              </select>
+            </div>
+          `}
+
+          <div class="grid-3">
+            <div class="form-group">
+              <label>Target (optional)</label>
+              <input
+                type="text"
+                placeholder="e.g. vda"
+                .value=${disk.target || ""}
+                @input=${(e3) => {
+      disk.target = e3.target.value;
+      this.requestUpdate();
+    }}
+              />
+            </div>
+
+            <div class="form-group">
+              <label>Boot order (optional)</label>
+              <input
+                type="number"
+                min="1"
+                .value=${String(disk.boot_order || "")}
+                @input=${(e3) => {
+      const v2 = e3.target.value;
+      disk.boot_order = v2 ? Number(v2) : void 0;
+      this.requestUpdate();
+    }}
+              />
+            </div>
+
+            <div class="form-group">
+              <label>&nbsp;</label>
+              <div class="checkbox-group">
+                <input
+                  type="checkbox"
+                  id="disk-readonly"
+                  ?checked=${disk.readonly}
+                  @change=${(e3) => {
+      disk.readonly = e3.target.checked;
+      this.requestUpdate();
+    }}
+                />
+                <label for="disk-readonly">Read-only</label>
+              </div>
+            </div>
+          </div>
+        ` : x`
+          <div class="form-group">
+            <label>ISO image <span class="required">*</span></label>
+            <select
+              .value=${disk.path || ""}
+              @change=${(e3) => {
+      const isoPath = e3.target.value;
+      const list = isos || [];
+      const iso = list.find((item) => item.path === isoPath);
+      if (iso) {
+        disk.path = iso.path;
+        disk.storage_pool = iso.storage_pool || disk.storage_pool || "default";
+      } else {
+        disk.path = "";
+      }
+      this.requestUpdate();
+    }}
+            >
+              <option value="">Select ISO image...</option>
+              ${isos.map((iso) => x`
+                <option value=${iso.path}>
+                  ${iso.name} (${this.formatVolumeSize(iso.size)})
+                </option>
+              `)}
+            </select>
+          </div>
+
+          <div class="grid-3">
+            <div class="form-group">
+              <label>Bus</label>
+              <select
+                .value=${disk.bus || "ide"}
+                @change=${(e3) => {
+      disk.bus = e3.target.value;
+      this.requestUpdate();
+    }}
+              >
+                <option value="ide">IDE</option>
+                <option value="virtio">VirtIO</option>
+                <option value="scsi">SCSI</option>
+                <option value="sata">SATA</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Boot order</label>
+              <input
+                type="number"
+                min="1"
+                .value=${String(disk.boot_order || 1)}
+                @input=${(e3) => {
+      const v2 = e3.target.value;
+      disk.boot_order = v2 ? Number(v2) : 1;
+      this.requestUpdate();
+    }}
+              />
+            </div>
+          </div>
+        `}
+
+        <div slot="footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button class="btn-secondary" @click=${this.handleDeviceModalClose}>Cancel</button>
+          <button class="btn-primary" @click=${this.handleDeviceModalSave}>Add</button>
+        </div>
+      </modal-dialog>
+    `;
   }
   async handleCreate() {
     for (let step = 1; step <= 5; step++) {
@@ -58928,28 +60329,31 @@ let CreateVMWizardEnhanced = class extends i$2 {
     }
     this.isCreating = true;
     try {
-      if (this.editMode && this.editingVmId) {
-        await vmActions.update(this.editingVmId, this.formData);
-        this.showNotification("Virtual machine updated successfully", "success");
+      const token = localStorage.getItem("jwt_token") || localStorage.getItem("auth_token") || localStorage.getItem("token");
+      const payload = this.buildRequestPayload();
+      const url = this.editMode && this.editingVmId ? getApiUrl(`/virtualization/computes/${this.editingVmId}`) : getApiUrl("/virtualization/computes");
+      const method = this.editMode && this.editingVmId ? "PUT" : "POST";
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": token ? `Bearer ${token}` : ""
+        },
+        body: JSON.stringify(payload)
+      });
+      if (response.ok) {
+        this.showNotification(
+          `Virtual machine ${this.editMode ? "updated" : "created"} successfully`,
+          "success"
+        );
       } else {
-        const token = localStorage.getItem("jwt_token") || localStorage.getItem("auth_token") || localStorage.getItem("token");
-        const response = await fetch(getApiUrl("/virtualization/computes"), {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": token ? `Bearer ${token}` : ""
-          },
-          body: JSON.stringify(this.formData)
-        });
-        if (response.ok) {
-          this.showNotification("Virtual machine created successfully", "success");
+        const error = await response.json().catch(() => null);
+        if (error && error.status === "error" && error.error) {
+          throw new Error(error.error.message || error.error.details || "VM operation failed");
+        } else if (error && error.message) {
+          throw new Error(error.message);
         } else {
-          const error = await response.json();
-          if (error.status === "error" && error.error) {
-            throw new Error(error.error.message || error.error.details || "Failed to create virtual machine");
-          } else {
-            throw new Error(error.message || "Failed to create virtual machine");
-          }
+          throw new Error(`Failed to ${this.editMode ? "update" : "create"} virtual machine`);
         }
       }
       wizardActions.closeWizard();
@@ -58984,7 +60388,7 @@ let CreateVMWizardEnhanced = class extends i$2 {
   }
   addDisk() {
     if (!this.formData.storage) {
-      this.formData.storage = { default_pool: "", disks: [] };
+      this.formData.storage = { disks: [] };
     }
     if (!this.formData.storage.disks) {
       this.formData.storage.disks = [];
@@ -58993,7 +60397,9 @@ let CreateVMWizardEnhanced = class extends i$2 {
       action: "create",
       size: 20,
       format: "qcow2",
-      bus: "virtio"
+      bus: "virtio",
+      storage_pool: "default",
+      device: "disk"
     });
     this.requestUpdate();
   }
@@ -59058,6 +60464,24 @@ let CreateVMWizardEnhanced = class extends i$2 {
       bubbles: true,
       composed: true
     }));
+  }
+  /**
+   * Get volumes filtered by storage pool name
+   */
+  getVolumesForPool(poolName) {
+    const volumes = this.volumesController.value || [];
+    if (!poolName) return volumes;
+    return volumes.filter((vol) => vol.pool_name === poolName);
+  }
+  /**
+   * Format volume size from bytes to human readable
+   */
+  formatVolumeSize(bytes) {
+    if (bytes === 0) return "0 B";
+    const k2 = 1024;
+    const sizes = ["B", "KB", "MB", "GB", "TB"];
+    const i4 = Math.floor(Math.log(bytes) / Math.log(k2));
+    return parseFloat((bytes / Math.pow(k2, i4)).toFixed(1)) + " " + sizes[i4];
   }
   renderBasicConfig() {
     return x`
@@ -59245,8 +60669,6 @@ let CreateVMWizardEnhanced = class extends i$2 {
     `;
   }
   renderStorageConfig() {
-    const storagePools = this.storagePoolsController.value;
-    const isos = this.isosController.value;
     return x`
       <div class="section ${this.expandedSections.has("storage") ? "expanded" : ""}">
         <div class="section-header" @click=${() => this.toggleSection("storage")}>
@@ -59258,158 +60680,80 @@ let CreateVMWizardEnhanced = class extends i$2 {
         </div>
         <div class="section-content">
           <div class="form-group">
-            <label>Default Storage Pool <span class="required">*</span></label>
-            <select
-              .value=${this.formData.storage?.default_pool || ""}
-              @change=${(e3) => this.updateFormData("storage.default_pool", e3.target.value)}
-            >
-              <option value="">Select a storage pool</option>
-              ${storagePools.map((pool) => x`
-                <option value=${pool.name}>${pool.name}</option>
-              `)}
-            </select>
+            <label>Disks</label>
             ${this.validationErrors.storage_pool ? x`
               <div class="error-message">${this.validationErrors.storage_pool}</div>
             ` : ""}
-          </div>
 
-          <div class="form-group">
-            <label>Boot ISO (Optional)</label>
-            <select
-              .value=${this.formData.storage?.boot_iso || ""}
-              @change=${(e3) => this.updateFormData("storage.boot_iso", e3.target.value)}
-            >
-              <option value="">No ISO</option>
-              ${isos.map((iso) => x`
-                <option value=${iso.path}>${iso.name}</option>
-              `)}
-            </select>
-          </div>
+            ${this.formData.storage?.disks?.length ? x`
+              <div class="storage-table-wrapper">
+                <table class="storage-table">
+                  <thead>
+                    <tr>
+                      <th>Target</th>
+                      <th>Type</th>
+                      <th>Source</th>
+                      <th>Format</th>
+                      <th>Bus</th>
+                      <th>Size</th>
+                      <th>Status</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${this.formData.storage.disks.map((disk, index2) => x`
+                      <tr>
+                        <td><span class="monospace">${disk.target || "Auto"}</span></td>
+                        <td>
+                          <span class="storage-badge ${disk.device === "cdrom" ? "warning" : ""}">
+                            ${(disk.device || "disk").toUpperCase()}
+                          </span>
+                        </td>
+                        <td>
+                          <span class="monospace storage-path">
+                            ${disk.path || (disk.action === "create" ? "New disk" : disk.action === "clone" ? disk.clone_from || "-" : "-")}
+                          </span>
+                        </td>
+                        <td>${(disk.format || "qcow2").toUpperCase()}</td>
+                        <td>${(disk.bus || "virtio").toUpperCase()}</td>
+                        <td>${disk.action === "create" && disk.size ? `${disk.size} GB` : "N/A"}</td>
+                        <td>
+                          <span class="storage-badge ${disk.readonly ? "warning" : "success"}">
+                            ${disk.readonly ? "Read-Only" : "Read/Write"}
+                          </span>
+                        </td>
+                        <td>
+                          <button
+                            class="btn-remove btn-icon"
+                            title="Remove device"
+                            @click=${() => this.removeDisk(index2)}
+                          >
+                            ✕
+                          </button>
+                        </td>
+                      </tr>
+                    `)}
+                  </tbody>
+                </table>
+              </div>
+            ` : x`<div class="help-text">No devices configured</div>`}
 
-          <div class="form-group">
-            <label>Disks</label>
-            <div class="list-container">
-              ${this.formData.storage?.disks?.map((disk, index2) => x`
-                <div class="list-item">
-                  <div class="list-item-content">
-                    <div class="grid-3">
-                      <select
-                        .value=${disk.action}
-                        @change=${(e3) => {
-      disk.action = e3.target.value;
-      this.requestUpdate();
-    }}
-                      >
-                        <option value="create">Create New</option>
-                        <option value="clone">Clone From</option>
-                        <option value="attach">Attach Existing</option>
-                      </select>
-
-                      ${disk.action === "create" ? x`
-                        <input
-                          type="number"
-                          placeholder="Size (GB)"
-                          .value=${String(disk.size || 20)}
-                          @input=${(e3) => {
-      disk.size = Number(e3.target.value);
-      this.requestUpdate();
-    }}
-                        />
-                        <select
-                          .value=${disk.format || "qcow2"}
-                          @change=${(e3) => {
-      disk.format = e3.target.value;
-      this.requestUpdate();
-    }}
-                        >
-                          <option value="qcow2">QCOW2</option>
-                          <option value="raw">RAW</option>
-                          <option value="vmdk">VMDK</option>
-                          <option value="vdi">VDI</option>
-                        </select>
-                      ` : disk.action === "clone" ? x`
-                        <input
-                          type="text"
-                          placeholder="Source path"
-                          .value=${disk.clone_from || ""}
-                          @input=${(e3) => {
-      disk.clone_from = e3.target.value;
-      this.requestUpdate();
-    }}
-                        />
-                      ` : x`
-                        <input
-                          type="text"
-                          placeholder="Disk path"
-                          .value=${disk.path || ""}
-                          @input=${(e3) => {
-      disk.path = e3.target.value;
-      this.requestUpdate();
-    }}
-                        />
-                      `}
-                    </div>
-
-                    <div class="grid-3" style="margin-top: 8px;">
-                      <select
-                        .value=${disk.bus || "virtio"}
-                        @change=${(e3) => {
-      disk.bus = e3.target.value;
-      this.requestUpdate();
-    }}
-                      >
-                        <option value="virtio">VirtIO</option>
-                        <option value="scsi">SCSI</option>
-                        <option value="ide">IDE</option>
-                        <option value="sata">SATA</option>
-                      </select>
-
-                      <input
-                        type="text"
-                        placeholder="Target (e.g., vda)"
-                        .value=${disk.target || ""}
-                        @input=${(e3) => {
-      disk.target = e3.target.value;
-      this.requestUpdate();
-    }}
-                      />
-
-                      <input
-                        type="number"
-                        placeholder="Boot order"
-                        min="1"
-                        .value=${String(disk.boot_order || "")}
-                        @input=${(e3) => {
-      disk.boot_order = Number(e3.target.value);
-      this.requestUpdate();
-    }}
-                      />
-                    </div>
-
-                    <div class="checkbox-group" style="margin-top: 8px;">
-                      <input
-                        type="checkbox"
-                        id="readonly-${index2}"
-                        ?checked=${disk.readonly}
-                        @change=${(e3) => {
-      disk.readonly = e3.target.checked;
-      this.requestUpdate();
-    }}
-                      />
-                      <label for="readonly-${index2}">Read-only</label>
-                    </div>
-                  </div>
-                  <div class="list-item-actions">
-                    <button class="btn-remove" @click=${() => this.removeDisk(index2)}>
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              `) || x`<div class="help-text">No disks configured</div>`}
-              <button class="btn-add" @click=${this.addDisk}>
-                + Add Disk
+            <div class="btn-add-dropdown">
+              <button class="btn-add" @click=${this.toggleAddDeviceMenu}>
+                + Add Device
               </button>
+              ${this.showAddDeviceMenu ? x`
+                <div class="btn-add-menu">
+                  <button class="btn-add-menu-item" @click=${this.openAddDiskModal}>
+                    Add Disk
+                  </button>
+                  <button class="btn-add-menu-item" @click=${this.openAddIsoModal}>
+                    Add ISO/CD-ROM
+                  </button>
+                </div>
+              ` : null}
             </div>
+            ${this.renderDeviceModal()}
           </div>
         </div>
       </div>
@@ -60159,6 +61503,19 @@ let CreateVMWizardEnhanced = class extends i$2 {
           </div>
         </div>
       </div>
+
+      ${this.showCloseConfirmation ? x`
+        <delete-modal
+          .show=${this.showCloseConfirmation}
+          .item=${{ type: "Form", name: this.formData.name || "Unsaved VM" }}
+          modal-title="Discard Changes?"
+          message="Are you sure you want to close? All unsaved changes will be lost."
+          confirm-label="Discard"
+          confirm-button-class="delete"
+          @confirm-delete=${this.handleConfirmClose}
+          @cancel-delete=${this.handleCancelClose}
+        ></delete-modal>
+      ` : ""}
     `;
   }
 };
@@ -60344,7 +61701,7 @@ CreateVMWizardEnhanced.styles = i$5`
       margin-bottom: 24px;
       border: 1px solid var(--vscode-widget-border, #454545);
       border-radius: 6px;
-      overflow: hidden;
+      overflow: visible;
     }
 
     .section-header {
@@ -60388,6 +61745,7 @@ CreateVMWizardEnhanced.styles = i$5`
     .section.expanded .section-content {
       max-height: none;
       padding: 16px;
+      overflow: visible;
     }
 
     /* Form elements */
@@ -60486,6 +61844,76 @@ CreateVMWizardEnhanced.styles = i$5`
       gap: 8px;
     }
 
+    .storage-table-wrapper {
+      border: 1px solid var(--vscode-widget-border, #454545);
+      border-radius: 4px;
+      margin-bottom: 16px;
+      background: var(--vscode-editor-inactiveSelectionBackground);
+      overflow-x: auto;
+    }
+
+    .storage-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .storage-table th {
+      text-align: left;
+      padding: 8px 12px;
+      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      color: var(--vscode-foreground, #cccccc);
+      font-weight: 600;
+      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+    }
+
+    .storage-table td {
+      padding: 8px 12px;
+      color: var(--vscode-foreground, #cccccc);
+      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    .storage-table tr:hover {
+      background: var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.1));
+    }
+
+    .storage-path {
+      font-size: 11px;
+      word-break: break-all;
+      white-space: normal;
+    }
+
+    .storage-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 500;
+      background: var(--vscode-badge-background, #4d4d4d);
+      color: var(--vscode-badge-foreground, #ffffff);
+    }
+
+    .storage-badge.success {
+      background: var(--vscode-charts-green, #89d185);
+      color: var(--vscode-editor-background, #1e1e1e);
+    }
+
+    .storage-badge.warning {
+      background: var(--vscode-charts-yellow, #cca700);
+      color: var(--vscode-editor-background, #1e1e1e);
+    }
+
+    .btn-icon {
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+
+    .monospace {
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+    }
+
     /* Buttons */
     button {
       padding: 8px 16px;
@@ -60538,6 +61966,38 @@ CreateVMWizardEnhanced.styles = i$5`
       background: var(--vscode-textLink-foreground, #3794ff);
       color: white;
       border-style: solid;
+    }
+
+    .btn-add-dropdown {
+      position: relative;
+      display: inline-block;
+    }
+
+    .btn-add-menu {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      margin-top: 4px;
+      background: var(--vscode-editor-background, #1e1e1e);
+      border: 1px solid var(--vscode-dropdown-border, #3c3c3c);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+      z-index: 10;
+      min-width: 160px;
+    }
+
+    .btn-add-menu-item {
+      width: 100%;
+      padding: 6px 10px;
+      background: transparent;
+      border: none;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .btn-add-menu-item:hover {
+      background: var(--vscode-list-hoverBackground, #2a2d2e);
     }
 
     .btn-remove {
@@ -60657,49 +62117,963 @@ CreateVMWizardEnhanced.styles = i$5`
       white-space: nowrap;
     }
   `;
-__decorateClass$j([
+__decorateClass$k([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "isCreating", 2);
-__decorateClass$j([
+__decorateClass$k([
+  r$1()
+], CreateVMWizardEnhanced.prototype, "showAddDeviceMenu", 2);
+__decorateClass$k([
+  r$1()
+], CreateVMWizardEnhanced.prototype, "showDeviceModal", 2);
+__decorateClass$k([
+  r$1()
+], CreateVMWizardEnhanced.prototype, "deviceModalMode", 2);
+__decorateClass$k([
+  r$1()
+], CreateVMWizardEnhanced.prototype, "deviceDraft", 2);
+__decorateClass$k([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "validationErrors", 2);
-__decorateClass$j([
+__decorateClass$k([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "expandedSections", 2);
-__decorateClass$j([
+__decorateClass$k([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "currentStep", 2);
-__decorateClass$j([
+__decorateClass$k([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "availablePCIDevices", 2);
-__decorateClass$j([
+__decorateClass$k([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "isLoadingPCIDevices", 2);
-__decorateClass$j([
+__decorateClass$k([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "editMode", 2);
-__decorateClass$j([
+__decorateClass$k([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "editingVmId", 2);
-__decorateClass$j([
+__decorateClass$k([
+  r$1()
+], CreateVMWizardEnhanced.prototype, "showCloseConfirmation", 2);
+__decorateClass$k([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "formData", 2);
-CreateVMWizardEnhanced = __decorateClass$j([
+CreateVMWizardEnhanced = __decorateClass$k([
   t$2("create-vm-wizard-enhanced")
 ], CreateVMWizardEnhanced);
-var __defProp$i = Object.defineProperty;
-var __getOwnPropDesc$g = Object.getOwnPropertyDescriptor;
-var __decorateClass$i = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$g(target, key) : target;
+const API_BASE = "/virtualization";
+class VirtualizationAPIError extends Error {
+  constructor(code, message, details) {
+    super(message);
+    this.code = code;
+    this.details = details;
+    this.name = "VirtualizationAPIError";
+    this.userMessage = mapVMError({ code, message });
+  }
+}
+function getAuthToken() {
+  const token = localStorage.getItem("jwt_token") || localStorage.getItem("auth_token");
+  if (!token) {
+    throw new VirtualizationAPIError("AUTH_ERROR", "No authentication token found");
+  }
+  return token;
+}
+async function apiRequest(endpoint, options = {}) {
+  const token = getAuthToken();
+  const config = {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+      ...options.headers
+    }
+  };
+  try {
+    const url = getApiUrl(`${API_BASE}${endpoint}`);
+    const response = await fetch(url, config);
+    const status = response.status;
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => ({
+        status: "error",
+        error: { code: "API_ERROR", message: response.statusText }
+      }));
+      if (isVirtualizationDisabled(status, errorBody)) {
+        $virtualizationEnabled.set(false);
+        $virtualizationDisabledMessage.set(
+          errorBody.error?.details || errorBody.error?.message || "Virtualization is disabled on this host."
+        );
+        throw new VirtualizationDisabledError(
+          errorBody.error?.message || "Virtualization is disabled on this host.",
+          errorBody.error?.details,
+          status
+        );
+      }
+      const apiBody = errorBody;
+      if (apiBody.status === "error" && apiBody.error) {
+        throw new VirtualizationAPIError(
+          apiBody.error.code || "API_ERROR",
+          apiBody.error.message || `Request failed: ${status}`,
+          apiBody.error.details
+        );
+      }
+      throw new VirtualizationAPIError(
+        apiBody.code || "API_ERROR",
+        apiBody.message || `Request failed: ${status}`,
+        apiBody.details
+      );
+    }
+    if (response.status === 204) {
+      if ($virtualizationEnabled.get() !== true) {
+        $virtualizationEnabled.set(true);
+        $virtualizationDisabledMessage.set(null);
+      }
+      return {};
+    }
+    if ($virtualizationEnabled.get() !== true) {
+      $virtualizationEnabled.set(true);
+      $virtualizationDisabledMessage.set(null);
+    }
+    return await response.json();
+  } catch (error) {
+    if (error instanceof VirtualizationAPIError || error instanceof VirtualizationDisabledError) {
+      throw error;
+    }
+    throw new VirtualizationAPIError(
+      "NETWORK_ERROR",
+      error instanceof Error ? error.message : "Network request failed"
+    );
+  }
+}
+class VirtualizationAPI {
+  // ============ Virtual Machines ============
+  /**
+   * List all virtual machines
+   */
+  async listVMs(params) {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.pageSize) queryParams.append("pageSize", params.pageSize.toString());
+    if (params?.filter) queryParams.append("filter", params.filter);
+    if (params?.sort) queryParams.append("sort", params.sort);
+    const query = queryParams.toString();
+    return apiRequest(
+      `/computes${query ? `?${query}` : ""}`
+    );
+  }
+  /**
+   * Get a specific virtual machine
+   */
+  async getVM(id) {
+    return apiRequest(`/computes/${id}`);
+  }
+  /**
+   * Create a new virtual machine (basic)
+   */
+  async createVM(config) {
+    return apiRequest("/computes", {
+      method: "POST",
+      body: JSON.stringify(config)
+    });
+  }
+  /**
+   * Create a new virtual machine (enhanced with wizard data)
+   */
+  async createVMEnhanced(config) {
+    return apiRequest("/computes", {
+      method: "POST",
+      body: JSON.stringify(config)
+    });
+  }
+  /**
+   * Update a virtual machine
+   */
+  async updateVM(id, updates) {
+    return apiRequest(`/computes/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(updates)
+    });
+  }
+  /**
+   * Delete a virtual machine
+   */
+  async deleteVM(id, force = false) {
+    return apiRequest(
+      `/computes/${id}${force ? "?force=true" : ""}`,
+      { method: "DELETE" }
+    );
+  }
+  /**
+   * Clone a virtual machine
+   */
+  async cloneVM(id, name) {
+    return apiRequest(`/computes/${id}/clone`, {
+      method: "POST",
+      body: JSON.stringify({ name })
+    });
+  }
+  // ============ VM Power Management ============
+  /**
+   * Start a virtual machine
+   */
+  async startVM(id) {
+    return apiRequest(`/computes/${id}/start`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Stop a virtual machine
+   */
+  async stopVM(id, force = false) {
+    return apiRequest(`/computes/${id}/stop`, {
+      method: "POST",
+      body: JSON.stringify({ force })
+    });
+  }
+  /**
+   * Restart a virtual machine
+   */
+  async restartVM(id, force = false) {
+    return apiRequest(`/computes/${id}/restart`, {
+      method: "POST",
+      body: JSON.stringify({ force })
+    });
+  }
+  /**
+   * Pause a virtual machine
+   */
+  async pauseVM(id) {
+    return apiRequest(`/computes/${id}/pause`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Resume a paused virtual machine
+   */
+  async resumeVM(id) {
+    return apiRequest(`/computes/${id}/resume`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Reset a virtual machine
+   */
+  async resetVM(id) {
+    return apiRequest(`/computes/${id}/reset`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Execute a VM action
+   */
+  async executeVMAction(id, action) {
+    return apiRequest(`/computes/${id}/action`, {
+      method: "POST",
+      body: JSON.stringify(action)
+    });
+  }
+  // ============ Console Access ============
+  /**
+   * Get console connection information
+   */
+  async getConsoleInfo(id) {
+    return apiRequest(`/computes/${id}/console`);
+  }
+  /**
+   * Create a console session
+   */
+  async createConsoleSession(id) {
+    return apiRequest(`/computes/${id}/console/session`, {
+      method: "POST"
+    });
+  }
+  // ============ Templates ============
+  /**
+   * List VM templates
+   */
+  async listTemplates() {
+    return apiRequest("/computes/templates");
+  }
+  /**
+   * Get a specific template
+   */
+  async getTemplate(id) {
+    return apiRequest(`/computes/templates/${id}`);
+  }
+  /**
+   * Create a VM from template
+   */
+  async createFromTemplate(templateId, config) {
+    return apiRequest("/computes/from-template", {
+      method: "POST",
+      body: JSON.stringify({ templateId, ...config })
+    });
+  }
+  /**
+   * Create a template from existing VM
+   */
+  async createTemplate(vmId, name, description) {
+    return apiRequest(`/computes/${vmId}/template`, {
+      method: "POST",
+      body: JSON.stringify({ name, description })
+    });
+  }
+  // ============ Snapshots ============
+  /**
+   * List VM snapshots
+   */
+  async listSnapshots(vmId) {
+    return apiRequest(`/computes/${vmId}/snapshots`);
+  }
+  /**
+   * Create a snapshot
+   */
+  async createSnapshot(vmId, name, description) {
+    return apiRequest(`/computes/${vmId}/snapshots`, {
+      method: "POST",
+      body: JSON.stringify({ name, description })
+    });
+  }
+  /**
+   * Revert to snapshot
+   */
+  async revertToSnapshot(vmId, snapshotId) {
+    return apiRequest(
+      `/computes/${vmId}/snapshots/${snapshotId}/revert`,
+      { method: "POST" }
+    );
+  }
+  /**
+   * Delete a snapshot
+   */
+  async deleteSnapshot(vmId, snapshotId) {
+    return apiRequest(
+      `/computes/${vmId}/snapshots/${snapshotId}`,
+      { method: "DELETE" }
+    );
+  }
+  // ============ Backups ============
+  /**
+   * List VM backups
+   */
+  async listBackups(vmId) {
+    return apiRequest(`/computes/${vmId}/backups`);
+  }
+  /**
+   * Create a backup
+   */
+  async createBackup(vmId, name, type) {
+    return apiRequest(`/computes/${vmId}/backups`, {
+      method: "POST",
+      body: JSON.stringify({ name, type })
+    });
+  }
+  /**
+   * Restore from backup
+   */
+  async restoreFromBackup(vmId, backupId) {
+    return apiRequest(
+      `/computes/${vmId}/backups/${backupId}/restore`,
+      { method: "POST" }
+    );
+  }
+  // ============ Storage Pools ============
+  /**
+   * List storage pools
+   */
+  async listStoragePools() {
+    return apiRequest("/storages/pools");
+  }
+  /**
+   * Get a specific storage pool
+   */
+  async getStoragePool(name) {
+    return apiRequest(`/storages/pools/${name}`);
+  }
+  /**
+   * Create a storage pool
+   */
+  async createStoragePool(config) {
+    return apiRequest("/storages/pools", {
+      method: "POST",
+      body: JSON.stringify(config)
+    });
+  }
+  /**
+   * Delete a storage pool
+   */
+  async deleteStoragePool(name, deleteVolumes = false) {
+    const params = deleteVolumes ? "?delete_volumes=true" : "";
+    return apiRequest(`/storages/pools/${name}${params}`, {
+      method: "DELETE"
+    });
+  }
+  /**
+   * Update a storage pool (currently supports autostart only)
+   */
+  async updateStoragePool(name, config) {
+    return apiRequest(`/storages/pools/${name}`, {
+      method: "PUT",
+      body: JSON.stringify(config)
+    });
+  }
+  /**
+   * Start a storage pool
+   */
+  async startStoragePool(name) {
+    return apiRequest(`/storages/pools/${name}/start`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Stop a storage pool
+   */
+  async stopStoragePool(name) {
+    return apiRequest(`/storages/pools/${name}/stop`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Set storage pool autostart
+   */
+  async setStoragePoolAutostart(name, autostart) {
+    return apiRequest(`/storages/pools/${name}/autostart`, {
+      method: "PUT",
+      body: JSON.stringify({ autostart })
+    });
+  }
+  /**
+   * Refresh storage pool
+   */
+  async refreshStoragePool(name) {
+    return apiRequest(`/storages/pools/${name}/refresh`, {
+      method: "POST"
+    });
+  }
+  /**
+   * List volumes in a storage pool
+   * Returns { volumes, count } from the envelope
+   */
+  async listVolumes(poolName) {
+    const response = await apiRequest(
+      `/storages/pools/${poolName}/volumes`
+    );
+    if (response.status === "success" && response.data) {
+      return { volumes: response.data.volumes || [], count: response.data.count || 0 };
+    }
+    return { volumes: [], count: 0 };
+  }
+  /**
+   * Get volume details
+   */
+  async getVolume(poolName, volumeName) {
+    const response = await apiRequest(
+      `/storages/pools/${poolName}/volumes/${volumeName}`
+    );
+    if (response.status === "success" && response.data?.volume) {
+      return response.data.volume;
+    }
+    throw new VirtualizationAPIError("INVALID_RESPONSE", "Invalid response format from getVolume");
+  }
+  /**
+   * Create a volume in a storage pool
+   */
+  async createVolume(poolName, config) {
+    const response = await apiRequest(
+      `/storages/pools/${poolName}/volumes`,
+      {
+        method: "POST",
+        body: JSON.stringify(config)
+      }
+    );
+    if (response.status === "success" && response.data) {
+      return response.data;
+    }
+    throw new VirtualizationAPIError("INVALID_RESPONSE", "Invalid response format from createVolume");
+  }
+  /**
+   * Resize a volume
+   */
+  async resizeVolume(poolName, volumeName, capacity) {
+    const response = await apiRequest(
+      `/storages/pools/${poolName}/volumes/${volumeName}/resize`,
+      {
+        method: "POST",
+        body: JSON.stringify({ capacity })
+      }
+    );
+    if (response.status === "success" && response.data) {
+      return response.data;
+    }
+    throw new VirtualizationAPIError("INVALID_RESPONSE", "Invalid response format from resizeVolume");
+  }
+  /**
+   * Clone a volume
+   */
+  async cloneVolume(poolName, volumeName, payload) {
+    const response = await apiRequest(
+      `/storages/pools/${poolName}/volumes/${volumeName}/clone`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload)
+      }
+    );
+    if (response.status === "success" && response.data) {
+      return response.data;
+    }
+    throw new VirtualizationAPIError("INVALID_RESPONSE", "Invalid response format from cloneVolume");
+  }
+  /**
+   * Delete a volume
+   */
+  async deleteVolume(poolName, volumeName, force = false) {
+    const suffix = force ? "?force=true" : "";
+    await apiRequest(`/storages/pools/${poolName}/volumes/${volumeName}${suffix}`, {
+      method: "DELETE"
+    });
+  }
+  // ============ ISO Management ============
+  /**
+   * List ISO images
+   */
+  async listISOs() {
+    return apiRequest("/isos");
+  }
+  /**
+   * Get ISO details
+   */
+  async getISO(id) {
+    return apiRequest(`/isos/${id}`);
+  }
+  /**
+   * Upload an ISO (returns upload URL for TUS)
+   * This creates a TUS upload session following the TUS protocol v1.0.0
+   */
+  async initiateISOUpload(metadata) {
+    const tusMetadata = {};
+    if (metadata.filename) {
+      tusMetadata.filename = btoa(metadata.filename);
+    }
+    if (metadata.os_type) {
+      tusMetadata.os_type = btoa(metadata.os_type);
+    }
+    if (metadata.os_variant) {
+      tusMetadata.os_variant = btoa(metadata.os_variant);
+    }
+    if (metadata.description) {
+      tusMetadata.description = btoa(metadata.description);
+    }
+    if (metadata.architecture) {
+      tusMetadata.architecture = btoa(metadata.architecture);
+    }
+    if (metadata.pool_name) {
+      tusMetadata.pool_name = btoa(metadata.pool_name);
+    }
+    const uploadMetadata = Object.entries(tusMetadata).map(([key, value]) => `${key} ${value}`).join(",");
+    const token = getAuthToken();
+    const url = getApiUrl("/virtualization/isos/upload");
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Upload-Length": metadata.size.toString(),
+        "Upload-Metadata": uploadMetadata,
+        "Tus-Resumable": "1.0.0"
+      }
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({
+        code: "API_ERROR",
+        message: response.statusText
+      }));
+      throw new VirtualizationAPIError(
+        error.code || "API_ERROR",
+        error.message || `Request failed: ${response.status}`,
+        error.details
+      );
+    }
+    const location = response.headers.get("Location");
+    const responseData = await response.json();
+    console.log("[TUS] Session created:", {
+      location,
+      responseData,
+      originalUrl: url
+    });
+    let tusUploadUrl = location || responseData.upload_url;
+    if (tusUploadUrl && !tusUploadUrl.startsWith("http")) {
+      const fullUploadPath = tusUploadUrl.startsWith("/api/") ? tusUploadUrl : `/api/v1/virtualization/isos/upload/${responseData.upload_id}`;
+      const baseUrl = url.substring(0, url.indexOf("/api/"));
+      tusUploadUrl = baseUrl + fullUploadPath;
+    }
+    console.log("[TUS] Final upload URL:", tusUploadUrl);
+    return {
+      uploadUrl: tusUploadUrl,
+      uploadId: responseData.upload_id
+    };
+  }
+  /**
+   * Complete ISO upload
+   */
+  async completeISOUpload(uploadId) {
+    return apiRequest(`/isos/upload/${uploadId}/complete`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Get ISO upload progress
+   */
+  async getISOUploadProgress(uploadId) {
+    return apiRequest(`/isos/upload/${uploadId}/progress`);
+  }
+  /**
+   * Delete an ISO
+   */
+  async deleteISO(id) {
+    return apiRequest(`/isos/${id}`, {
+      method: "DELETE"
+    });
+  }
+  // ============ Virtual Networks ============
+  /**
+   * List virtual networks
+   * Returns networks and total count using the standard API envelope.
+   */
+  async listNetworks() {
+    const response = await apiRequest("/networks");
+    if (response.status === "success" && response.data) {
+      return {
+        networks: response.data.networks || [],
+        count: response.data.count ?? (response.data.networks?.length || 0)
+      };
+    }
+    const anyResponse = response;
+    if (Array.isArray(anyResponse)) {
+      return { networks: anyResponse, count: anyResponse.length };
+    }
+    if (anyResponse.networks && Array.isArray(anyResponse.networks)) {
+      return { networks: anyResponse.networks, count: anyResponse.count || anyResponse.networks.length };
+    }
+    return { networks: [], count: 0 };
+  }
+  /**
+   * Get a specific network
+   * Be tolerant of both enveloped and plain responses.
+   */
+  async getNetwork(name) {
+    const response = await apiRequest(`/networks/${name}`);
+    if (response && typeof response === "object") {
+      if (response.status === "success") {
+        if (response.data?.network) {
+          return response.data.network;
+        }
+        if (response.data && !Array.isArray(response.data)) {
+          return response.data;
+        }
+      }
+      if (!("status" in response)) {
+        return response;
+      }
+    }
+    throw new VirtualizationAPIError("INVALID_RESPONSE", "Invalid response format from getNetwork");
+  }
+  /**
+   * Create a virtual network
+   */
+  async createNetwork(config) {
+    const response = await apiRequest("/networks", {
+      method: "POST",
+      body: JSON.stringify(config)
+    });
+    if (response.status === "success" && response.data?.network) {
+      return response.data.network;
+    }
+    throw new VirtualizationAPIError("INVALID_RESPONSE", "Invalid response format from createNetwork");
+  }
+  /**
+   * Update a virtual network
+   */
+  async updateNetwork(name, config) {
+    const response = await apiRequest(`/networks/${name}`, {
+      method: "PUT",
+      body: JSON.stringify(config)
+    });
+    if (response.status === "success" && response.data?.network) {
+      return response.data.network;
+    }
+    throw new VirtualizationAPIError("INVALID_RESPONSE", "Invalid response format from updateNetwork");
+  }
+  /**
+   * Get DHCP leases for a virtual network
+   */
+  async getNetworkDHCPLeases(name) {
+    const response = await apiRequest(`/networks/${name}/dhcp-leases`);
+    if (response.status === "success" && response.data) {
+      return {
+        network_name: response.data.network_name || name,
+        leases: response.data.leases || [],
+        count: response.data.count ?? (response.data.leases?.length || 0)
+      };
+    }
+    throw new VirtualizationAPIError("INVALID_RESPONSE", "Invalid response format from getNetworkDHCPLeases");
+  }
+  /**
+   * Get ports for a virtual network
+   */
+  async getNetworkPorts(name) {
+    const response = await apiRequest(`/networks/${name}/ports`);
+    if (response.status === "success" && response.data) {
+      return {
+        network_name: response.data.network_name || name,
+        ports: response.data.ports || [],
+        count: response.data.count ?? (response.data.ports?.length || 0)
+      };
+    }
+    throw new VirtualizationAPIError("INVALID_RESPONSE", "Invalid response format from getNetworkPorts");
+  }
+  /**
+   * Delete a virtual network
+   */
+  async deleteNetwork(name) {
+    await apiRequest(`/networks/${name}`, {
+      method: "DELETE"
+    });
+  }
+  /**
+   * Start a network
+   */
+  async startNetwork(name) {
+    return apiRequest(`/networks/${name}/start`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Stop a network
+   */
+  async stopNetwork(name) {
+    return apiRequest(`/networks/${name}/stop`, {
+      method: "POST"
+    });
+  }
+  // ============ Metrics \u0026 Monitoring ============
+  /**
+   * Get VM metrics
+   */
+  async getVMMetrics(vmId, duration = "1h") {
+    return apiRequest(`/computes/${vmId}/metrics?duration=${duration}`);
+  }
+  /**
+   * Get host resource usage
+   */
+  async getHostResources() {
+    return apiRequest("/host/resources");
+  }
+  /**
+   * Get real-time VM metrics (WebSocket endpoint info)
+   */
+  getMetricsWebSocketUrl(vmId) {
+    const token = getAuthToken();
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    return `${protocol}//${window.location.host}${API_BASE}/computes/${vmId}/metrics/ws?token=${token}`;
+  }
+  // ============ Disk Management ============
+  /**
+   * Attach a disk to VM
+   */
+  async attachDisk(vmId, disk) {
+    return apiRequest(`/computes/${vmId}/disks/attach`, {
+      method: "POST",
+      body: JSON.stringify(disk)
+    });
+  }
+  /**
+   * Detach a disk from VM
+   */
+  async detachDisk(vmId, device) {
+    return apiRequest(`/computes/${vmId}/disks/${device}/detach`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Resize a VM disk
+   */
+  async resizeDisk(vmId, device, newSize) {
+    return apiRequest(`/computes/${vmId}/disks/${device}/resize`, {
+      method: "POST",
+      body: JSON.stringify({ size: newSize })
+    });
+  }
+  // ============ Migration ============
+  /**
+   * Migrate a VM to another host
+   */
+  async migrateVM(vmId, targetHost, live = true) {
+    return apiRequest(`/computes/${vmId}/migrate`, {
+      method: "POST",
+      body: JSON.stringify({ targetHost, live })
+    });
+  }
+  /**
+   * Get migration status
+   */
+  async getMigrationStatus(vmId) {
+    return apiRequest(`/computes/${vmId}/migrate/status`);
+  }
+  // ============ Enhanced API Methods with Full Types ============
+  /**
+   * Get VM snapshots with full type support
+   */
+  async getSnapshots(vmId) {
+    return apiRequest(`/computes/${vmId}/snapshots`);
+  }
+  /**
+   * Create a VM snapshot
+   */
+  async createSnapshotTyped(vmId, request) {
+    return apiRequest(`/computes/${vmId}/snapshots`, {
+      method: "POST",
+      body: JSON.stringify(request)
+    });
+  }
+  /**
+   * Revert VM to a snapshot
+   */
+  async revertSnapshot(vmId, snapshotName) {
+    return apiRequest(`/computes/${vmId}/snapshots/${snapshotName}/revert`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Delete a VM snapshot
+   */
+  async deleteSnapshotTyped(vmId, snapshotName) {
+    return apiRequest(`/computes/${vmId}/snapshots/${snapshotName}`, {
+      method: "DELETE"
+    });
+  }
+  /**
+   * Get snapshot capabilities for a VM
+   */
+  async getSnapshotCapabilities(vmId) {
+    return apiRequest(`/computes/${vmId}/snapshots/capabilities`);
+  }
+  /**
+   * Get VM backups with full type support
+   */
+  async getBackups(vmId) {
+    return apiRequest(`/computes/${vmId}/backups`);
+  }
+  /**
+   * Create a VM backup
+   */
+  async createBackupTyped(vmId, request) {
+    return apiRequest(`/computes/${vmId}/backups`, {
+      method: "POST",
+      body: JSON.stringify(request)
+    });
+  }
+  /**
+   * Clone a VM
+   */
+  async cloneVMTyped(vmId, request) {
+    return apiRequest(`/computes/${vmId}/clone`, {
+      method: "POST",
+      body: JSON.stringify(request)
+    });
+  }
+  /**
+   * Hot-plug device to a running VM
+   */
+  async hotplug(vmId, request) {
+    return apiRequest(`/computes/${vmId}/hotplug`, {
+      method: "POST",
+      body: JSON.stringify(request)
+    });
+  }
+  /**
+   * Hot-unplug device from a running VM
+   */
+  async hotunplug(vmId, request) {
+    return apiRequest(`/computes/${vmId}/hotunplug`, {
+      method: "POST",
+      body: JSON.stringify(request)
+    });
+  }
+  /**
+   * Migrate VM to another host with full type support
+   */
+  async migrateVMTyped(vmId, request) {
+    return apiRequest(`/computes/${vmId}/migrate`, {
+      method: "POST",
+      body: JSON.stringify(request)
+    });
+  }
+  /**
+   * Get migration status with full type
+   */
+  async getMigrationStatusTyped(vmId) {
+    return apiRequest(`/computes/${vmId}/migrate/status`);
+  }
+  /**
+   * Cancel ongoing migration
+   */
+  async cancelMigration(vmId) {
+    return apiRequest(`/computes/${vmId}/migrate/cancel`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Get available consoles for a VM
+   */
+  async getConsoles(vmId) {
+    return apiRequest(`/computes/${vmId}/consoles`);
+  }
+  /**
+   * Connect to a specific console type
+   */
+  async connectConsole(vmId, consoleType) {
+    return apiRequest(`/computes/${vmId}/consoles/${consoleType}/connect`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Get enhanced VM metrics
+   */
+  async getVMMetricsEnhanced(vmId, duration = "1h") {
+    return apiRequest(`/computes/${vmId}/metrics?duration=${duration}&enhanced=true`);
+  }
+}
+const virtualizationAPI = new VirtualizationAPI();
+var __defProp$j = Object.defineProperty;
+var __getOwnPropDesc$h = Object.getOwnPropertyDescriptor;
+var __decorateClass$j = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$h(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$i(target, key, result);
+  if (kind && result) __defProp$j(target, key, result);
   return result;
 };
 let VirtualizationVMsEnhanced = class extends i$2 {
   constructor() {
     super(...arguments);
+    this.notificationContainer = null;
+    this.handleShowNotification = (event) => {
+      const customEvent = event;
+      const detail = customEvent.detail || {};
+      const message = detail.message ?? "";
+      const type = detail.type ?? "info";
+      const duration = detail.duration;
+      if (!this.notificationContainer || typeof this.notificationContainer.addNotification !== "function") {
+        return;
+      }
+      if (!message) return;
+      this.notificationContainer.addNotification({
+        message,
+        type,
+        duration
+      });
+      event.stopPropagation();
+    };
     this.vmStoreController = new lib.StoreController(this, vmStore.$items);
     this.virtualizationEnabledController = new lib.StoreController(this, $virtualizationEnabled);
     this.virtualizationDisabledMessageController = new lib.StoreController(this, $virtualizationDisabledMessage);
@@ -60719,9 +63093,60 @@ let VirtualizationVMsEnhanced = class extends i$2 {
       { id: "templates", label: "Templates" }
     ];
   }
+  mapEnhancedVmToFormData(enhanced) {
+    const storageDisks = Array.isArray(enhanced.storage?.disks) ? enhanced.storage.disks.map((d2) => ({
+      action: "attach",
+      size: d2.size,
+      format: d2.format === "vmdk" ? "qcow2" : d2.format,
+      storage_pool: d2.storage_pool,
+      path: d2.source_path || d2.path,
+      bus: d2.bus,
+      device: d2.device,
+      target: d2.target,
+      readonly: !!d2.readonly
+    })) : [];
+    const primaryNetwork = Array.isArray(enhanced.networks) && enhanced.networks.length > 0 ? enhanced.networks[0] : void 0;
+    const network = primaryNetwork ? {
+      type: primaryNetwork.type,
+      source: primaryNetwork.source && (primaryNetwork.source.network || primaryNetwork.source.bridge || primaryNetwork.source.dev) || primaryNetwork.source || "",
+      model: primaryNetwork.model && primaryNetwork.model.type || primaryNetwork.model || "virtio",
+      mac: primaryNetwork.mac
+    } : void 0;
+    const primaryGraphics = Array.isArray(enhanced.graphics) && enhanced.graphics.length > 0 ? enhanced.graphics[0] : void 0;
+    const graphics = primaryGraphics ? {
+      type: primaryGraphics.type,
+      port: primaryGraphics.port,
+      password: primaryGraphics.password,
+      autoport: primaryGraphics.autoport ?? true,
+      listen: primaryGraphics.listen || "0.0.0.0"
+    } : void 0;
+    return {
+      name: enhanced.name,
+      memory: enhanced.memory,
+      vcpus: enhanced.vcpus,
+      storage: {
+        default_pool: enhanced.storage?.default_pool || "",
+        boot_iso: enhanced.storage?.boot_iso,
+        disks: storageDisks
+      },
+      os_type: enhanced.os_type,
+      architecture: enhanced.architecture,
+      uefi: enhanced.uefi,
+      secure_boot: enhanced.secure_boot,
+      tpm: enhanced.tpm,
+      autostart: enhanced.autostart,
+      network,
+      graphics,
+      metadata: enhanced.metadata
+    };
+  }
   async connectedCallback() {
     super.connectedCallback();
     await this.initializeData();
+  }
+  firstUpdated(_changedProperties) {
+    this.notificationContainer = this.renderRoot.querySelector("notification-container");
+    this.addEventListener("show-notification", this.handleShowNotification);
   }
   async initializeData() {
     try {
@@ -60767,7 +63192,7 @@ let VirtualizationVMsEnhanced = class extends i$2 {
     }
     return [
       { key: "name", label: "Name", type: "link" },
-      { key: "state", label: "State", type: "custom" },
+      { key: "state", label: "State", type: "status" },
       { key: "vcpus", label: "vCPUs" },
       { key: "memory", label: "Memory (MB)" },
       { key: "disk_size", label: "Disk (GB)" },
@@ -60796,44 +63221,44 @@ let VirtualizationVMsEnhanced = class extends i$2 {
   }
   getActions(vm) {
     const actions = [
-      { label: "View Details", action: "view", icon: "info" }
+      { label: "View Details", action: "view", icon: "ℹ️" }
     ];
     const vmState = vm.state?.toLowerCase();
     switch (vmState) {
       case "running":
         actions.push(
-          { label: "Console", action: "console", icon: "terminal" },
-          { label: "Stop", action: "stop", icon: "stop" },
-          { label: "Pause", action: "pause", icon: "pause" },
-          { label: "Restart", action: "restart", icon: "refresh" }
+          { label: "Console", action: "console", icon: "💻" },
+          { label: "Stop", action: "stop", icon: "⏹️" },
+          { label: "Pause", action: "pause", icon: "⏸️" },
+          { label: "Restart", action: "restart", icon: "🔄" }
         );
         break;
       case "stopped":
       case "shutoff":
       case "stop":
         actions.push(
-          { label: "Start", action: "start", icon: "play" },
-          { label: "Edit", action: "edit", icon: "edit" },
-          { label: "Clone", action: "clone", icon: "copy" }
+          { label: "Start", action: "start", icon: "▶️" },
+          { label: "Edit", action: "edit", icon: "✏️" },
+          { label: "Clone", action: "clone", icon: "📋" }
         );
         actions.push(
-          { label: "Delete", action: "delete", icon: "trash", danger: true }
+          { label: "Delete", action: "delete", icon: "🗑️", danger: true }
         );
         break;
       case "paused":
         actions.push(
-          { label: "Resume", action: "resume", icon: "play" },
-          { label: "Stop", action: "stop", icon: "stop" }
+          { label: "Resume", action: "resume", icon: "▶️" },
+          { label: "Stop", action: "stop", icon: "⏹️" }
         );
         break;
       case "suspended":
         actions.push(
-          { label: "Resume", action: "resume", icon: "play" }
+          { label: "Resume", action: "resume", icon: "▶️" }
         );
         break;
     }
     actions.push(
-      { label: "Snapshot", action: "snapshot", icon: "save" }
+      { label: "Snapshot", action: "snapshot", icon: "📸" }
     );
     return actions;
   }
@@ -60921,15 +63346,30 @@ let VirtualizationVMsEnhanced = class extends i$2 {
   }
   async openConsole(vm) {
     try {
-      const consoleInfo = await vmActions.getConsoleInfo(vm.id);
-      const consoleUrl = `/console?vm=${vm.id}&token=${consoleInfo.token}&type=${consoleInfo.type}`;
-      window.open(consoleUrl, `vm-console-${vm.id}`, "width=1024,height=768");
+      const vncInfo = await consoleActions.getVNC(vm.id);
+      if (!vncInfo || !vncInfo.token) {
+        throw new Error("Failed to obtain console access token");
+      }
+      const wsUrl = consoleActions.getVNCWebSocketUrl(vm.id, vncInfo.token);
+      const vncUrl = `/vnc-console.html?url=${encodeURIComponent(wsUrl)}&fullscreen=true&vmName=${encodeURIComponent(vm.name || vm.id)}`;
+      window.open(vncUrl, "_blank");
     } catch (error) {
       console.error("Failed to open console:", error);
       this.showNotification("Failed to open console", "error");
     }
   }
   async editVM(vm) {
+    try {
+      const envelope = await virtualizationAPI.getVM(vm.id);
+      const enhanced = envelope?.data || envelope;
+      if (enhanced && typeof enhanced === "object") {
+        const formData = this.mapEnhancedVmToFormData(enhanced);
+        wizardActions.openEnhancedWizardForEdit(vm.id, formData);
+        return;
+      }
+    } catch (error) {
+      console.error("Failed to load VM details for edit, falling back to basic data:", error);
+    }
     wizardActions.openWizardForEdit(vm);
   }
   async cloneVM(vm) {
@@ -60994,7 +63434,16 @@ let VirtualizationVMsEnhanced = class extends i$2 {
     }));
   }
   async handleVMPowerAction(event) {
-    const { action, vm } = event.detail;
+    const { action, vm, success } = event.detail;
+    if (success) {
+      if (this.selectedVMForDetails && vm) {
+        this.selectedVMForDetails = { ...vm };
+      }
+      if (vm?.id && vm?.state) {
+        vmActions.updateLocalState(vm.id, vm.state);
+      }
+      return;
+    }
     try {
       switch (action) {
         case "start":
@@ -61535,44 +63984,44 @@ VirtualizationVMsEnhanced.styles = i$5`
     }
 
   `;
-__decorateClass$i([
+__decorateClass$j([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "showDeleteModal", 2);
-__decorateClass$i([
+__decorateClass$j([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "vmToDelete", 2);
-__decorateClass$i([
+__decorateClass$j([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "isDeleting", 2);
-__decorateClass$i([
+__decorateClass$j([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "showDetailsDrawer", 2);
-__decorateClass$i([
+__decorateClass$j([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "useEnhancedWizard", 2);
-__decorateClass$i([
+__decorateClass$j([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "activeMainTab", 2);
-__decorateClass$i([
+__decorateClass$j([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "stateFilter", 2);
-__decorateClass$i([
+__decorateClass$j([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "templates", 2);
-__decorateClass$i([
+__decorateClass$j([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "selectedVMForDetails", 2);
-VirtualizationVMsEnhanced = __decorateClass$i([
+VirtualizationVMsEnhanced = __decorateClass$j([
   t$2("virtualization-vms-enhanced")
 ], VirtualizationVMsEnhanced);
-var __defProp$h = Object.defineProperty;
-var __getOwnPropDesc$f = Object.getOwnPropertyDescriptor;
-var __decorateClass$h = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$f(target, key) : target;
+var __defProp$i = Object.defineProperty;
+var __getOwnPropDesc$g = Object.getOwnPropertyDescriptor;
+var __decorateClass$i = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$g(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$h(target, key, result);
+  if (kind && result) __defProp$i(target, key, result);
   return result;
 };
 let StoragePoolFormDrawer = class extends i$2 {
@@ -62086,690 +64535,35 @@ StoragePoolFormDrawer.styles = i$5`
       cursor: not-allowed;
     }
   `;
-__decorateClass$h([
+__decorateClass$i([
   n2({ type: Boolean, reflect: true })
 ], StoragePoolFormDrawer.prototype, "show", 2);
-__decorateClass$h([
+__decorateClass$i([
   n2({ type: Boolean })
 ], StoragePoolFormDrawer.prototype, "loading", 2);
-__decorateClass$h([
+__decorateClass$i([
   n2({ type: Boolean })
 ], StoragePoolFormDrawer.prototype, "editMode", 2);
-__decorateClass$h([
+__decorateClass$i([
   n2({ type: Object })
 ], StoragePoolFormDrawer.prototype, "poolData", 2);
-__decorateClass$h([
+__decorateClass$i([
   r$1()
 ], StoragePoolFormDrawer.prototype, "formData", 2);
-__decorateClass$h([
+__decorateClass$i([
   r$1()
 ], StoragePoolFormDrawer.prototype, "errors", 2);
-StoragePoolFormDrawer = __decorateClass$h([
+StoragePoolFormDrawer = __decorateClass$i([
   t$2("storage-pool-form-drawer")
 ], StoragePoolFormDrawer);
-const API_BASE = "/virtualization";
-class VirtualizationAPIError extends Error {
-  constructor(code, message, details) {
-    super(message);
-    this.code = code;
-    this.details = details;
-    this.name = "VirtualizationAPIError";
-  }
-}
-function getAuthToken() {
-  const token = localStorage.getItem("jwt_token") || localStorage.getItem("auth_token");
-  if (!token) {
-    throw new VirtualizationAPIError("AUTH_ERROR", "No authentication token found");
-  }
-  return token;
-}
-async function apiRequest(endpoint, options = {}) {
-  const token = getAuthToken();
-  const config = {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`,
-      ...options.headers
-    }
-  };
-  try {
-    const url = getApiUrl(`${API_BASE}${endpoint}`);
-    const response = await fetch(url, config);
-    const status = response.status;
-    if (!response.ok) {
-      const errorBody = await response.json().catch(() => ({
-        status: "error",
-        error: { code: "API_ERROR", message: response.statusText }
-      }));
-      if (isVirtualizationDisabled(status, errorBody)) {
-        $virtualizationEnabled.set(false);
-        $virtualizationDisabledMessage.set(
-          errorBody.error?.details || errorBody.error?.message || "Virtualization is disabled on this host."
-        );
-        throw new VirtualizationDisabledError(
-          errorBody.error?.message || "Virtualization is disabled on this host.",
-          errorBody.error?.details,
-          status
-        );
-      }
-      const apiBody = errorBody;
-      if (apiBody.status === "error" && apiBody.error) {
-        throw new VirtualizationAPIError(
-          apiBody.error.code || "API_ERROR",
-          apiBody.error.message || `Request failed: ${status}`,
-          apiBody.error.details
-        );
-      }
-      throw new VirtualizationAPIError(
-        apiBody.code || "API_ERROR",
-        apiBody.message || `Request failed: ${status}`,
-        apiBody.details
-      );
-    }
-    if (response.status === 204) {
-      if ($virtualizationEnabled.get() !== true) {
-        $virtualizationEnabled.set(true);
-        $virtualizationDisabledMessage.set(null);
-      }
-      return {};
-    }
-    if ($virtualizationEnabled.get() !== true) {
-      $virtualizationEnabled.set(true);
-      $virtualizationDisabledMessage.set(null);
-    }
-    return await response.json();
-  } catch (error) {
-    if (error instanceof VirtualizationAPIError || error instanceof VirtualizationDisabledError) {
-      throw error;
-    }
-    throw new VirtualizationAPIError(
-      "NETWORK_ERROR",
-      error instanceof Error ? error.message : "Network request failed"
-    );
-  }
-}
-class VirtualizationAPI {
-  // ============ Virtual Machines ============
-  /**
-   * List all virtual machines
-   */
-  async listVMs(params) {
-    const queryParams = new URLSearchParams();
-    if (params?.page) queryParams.append("page", params.page.toString());
-    if (params?.pageSize) queryParams.append("pageSize", params.pageSize.toString());
-    if (params?.filter) queryParams.append("filter", params.filter);
-    if (params?.sort) queryParams.append("sort", params.sort);
-    const query = queryParams.toString();
-    return apiRequest(
-      `/virtualmachines${query ? `?${query}` : ""}`
-    );
-  }
-  /**
-   * Get a specific virtual machine
-   */
-  async getVM(id) {
-    return apiRequest(`/virtualmachines/${id}`);
-  }
-  /**
-   * Create a new virtual machine (basic)
-   */
-  async createVM(config) {
-    return apiRequest("/virtualmachines", {
-      method: "POST",
-      body: JSON.stringify(config)
-    });
-  }
-  /**
-   * Create a new virtual machine (enhanced with wizard data)
-   */
-  async createVMEnhanced(config) {
-    return apiRequest("/virtualmachines", {
-      method: "POST",
-      body: JSON.stringify(config)
-    });
-  }
-  /**
-   * Update a virtual machine
-   */
-  async updateVM(id, updates) {
-    return apiRequest(`/virtualmachines/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(updates)
-    });
-  }
-  /**
-   * Delete a virtual machine
-   */
-  async deleteVM(id, force = false) {
-    return apiRequest(
-      `/virtualmachines/${id}${force ? "?force=true" : ""}`,
-      { method: "DELETE" }
-    );
-  }
-  /**
-   * Clone a virtual machine
-   */
-  async cloneVM(id, name) {
-    return apiRequest(`/virtualmachines/${id}/clone`, {
-      method: "POST",
-      body: JSON.stringify({ name })
-    });
-  }
-  // ============ VM Power Management ============
-  /**
-   * Start a virtual machine
-   */
-  async startVM(id) {
-    return apiRequest(`/virtualmachines/${id}/start`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Stop a virtual machine
-   */
-  async stopVM(id, force = false) {
-    return apiRequest(`/virtualmachines/${id}/stop`, {
-      method: "POST",
-      body: JSON.stringify({ force })
-    });
-  }
-  /**
-   * Restart a virtual machine
-   */
-  async restartVM(id, force = false) {
-    return apiRequest(`/virtualmachines/${id}/restart`, {
-      method: "POST",
-      body: JSON.stringify({ force })
-    });
-  }
-  /**
-   * Pause a virtual machine
-   */
-  async pauseVM(id) {
-    return apiRequest(`/virtualmachines/${id}/pause`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Resume a paused virtual machine
-   */
-  async resumeVM(id) {
-    return apiRequest(`/virtualmachines/${id}/resume`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Reset a virtual machine
-   */
-  async resetVM(id) {
-    return apiRequest(`/virtualmachines/${id}/reset`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Execute a VM action
-   */
-  async executeVMAction(id, action) {
-    return apiRequest(`/virtualmachines/${id}/action`, {
-      method: "POST",
-      body: JSON.stringify(action)
-    });
-  }
-  // ============ Console Access ============
-  /**
-   * Get console connection information
-   */
-  async getConsoleInfo(id) {
-    return apiRequest(`/virtualmachines/${id}/console`);
-  }
-  /**
-   * Create a console session
-   */
-  async createConsoleSession(id) {
-    return apiRequest(`/virtualmachines/${id}/console/session`, {
-      method: "POST"
-    });
-  }
-  // ============ Templates ============
-  /**
-   * List VM templates
-   */
-  async listTemplates() {
-    return apiRequest("/virtualmachines/templates");
-  }
-  /**
-   * Get a specific template
-   */
-  async getTemplate(id) {
-    return apiRequest(`/virtualmachines/templates/${id}`);
-  }
-  /**
-   * Create a VM from template
-   */
-  async createFromTemplate(templateId, config) {
-    return apiRequest("/virtualmachines/from-template", {
-      method: "POST",
-      body: JSON.stringify({ templateId, ...config })
-    });
-  }
-  /**
-   * Create a template from existing VM
-   */
-  async createTemplate(vmId, name, description) {
-    return apiRequest(`/virtualmachines/${vmId}/template`, {
-      method: "POST",
-      body: JSON.stringify({ name, description })
-    });
-  }
-  // ============ Snapshots ============
-  /**
-   * List VM snapshots
-   */
-  async listSnapshots(vmId) {
-    return apiRequest(`/virtualmachines/${vmId}/snapshots`);
-  }
-  /**
-   * Create a snapshot
-   */
-  async createSnapshot(vmId, name, description) {
-    return apiRequest(`/virtualmachines/${vmId}/snapshots`, {
-      method: "POST",
-      body: JSON.stringify({ name, description })
-    });
-  }
-  /**
-   * Revert to snapshot
-   */
-  async revertToSnapshot(vmId, snapshotId) {
-    return apiRequest(
-      `/virtualmachines/${vmId}/snapshots/${snapshotId}/revert`,
-      { method: "POST" }
-    );
-  }
-  /**
-   * Delete a snapshot
-   */
-  async deleteSnapshot(vmId, snapshotId) {
-    return apiRequest(
-      `/virtualmachines/${vmId}/snapshots/${snapshotId}`,
-      { method: "DELETE" }
-    );
-  }
-  // ============ Backups ============
-  /**
-   * List VM backups
-   */
-  async listBackups(vmId) {
-    return apiRequest(`/virtualmachines/${vmId}/backups`);
-  }
-  /**
-   * Create a backup
-   */
-  async createBackup(vmId, name, type) {
-    return apiRequest(`/virtualmachines/${vmId}/backups`, {
-      method: "POST",
-      body: JSON.stringify({ name, type })
-    });
-  }
-  /**
-   * Restore from backup
-   */
-  async restoreFromBackup(vmId, backupId) {
-    return apiRequest(
-      `/virtualmachines/${vmId}/backups/${backupId}/restore`,
-      { method: "POST" }
-    );
-  }
-  // ============ Storage Pools ============
-  /**
-   * List storage pools
-   */
-  async listStoragePools() {
-    return apiRequest("/storages/pools");
-  }
-  /**
-   * Get a specific storage pool
-   */
-  async getStoragePool(name) {
-    return apiRequest(`/storages/pools/${name}`);
-  }
-  /**
-   * Create a storage pool
-   */
-  async createStoragePool(config) {
-    return apiRequest("/storages/pools", {
-      method: "POST",
-      body: JSON.stringify(config)
-    });
-  }
-  /**
-   * Delete a storage pool
-   */
-  async deleteStoragePool(name, deleteVolumes = false) {
-    const params = deleteVolumes ? "?delete_volumes=true" : "";
-    return apiRequest(`/storages/pools/${name}${params}`, {
-      method: "DELETE"
-    });
-  }
-  /**
-   * Update a storage pool (currently supports autostart only)
-   */
-  async updateStoragePool(name, config) {
-    return apiRequest(`/storages/pools/${name}`, {
-      method: "PUT",
-      body: JSON.stringify(config)
-    });
-  }
-  /**
-   * Start a storage pool
-   */
-  async startStoragePool(name) {
-    return apiRequest(`/storages/pools/${name}/start`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Stop a storage pool
-   */
-  async stopStoragePool(name) {
-    return apiRequest(`/storages/pools/${name}/stop`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Set storage pool autostart
-   */
-  async setStoragePoolAutostart(name, autostart) {
-    return apiRequest(`/storages/pools/${name}/autostart`, {
-      method: "PUT",
-      body: JSON.stringify({ autostart })
-    });
-  }
-  /**
-   * Refresh storage pool
-   */
-  async refreshStoragePool(name) {
-    return apiRequest(`/storages/pools/${name}/refresh`, {
-      method: "POST"
-    });
-  }
-  /**
-   * List volumes in a storage pool
-   */
-  async listVolumes(poolName) {
-    return apiRequest(`/storages/pools/${poolName}/volumes`);
-  }
-  /**
-   * Get volume details
-   */
-  async getVolume(poolName, volumeName) {
-    return apiRequest(`/storages/pools/${poolName}/volumes/${volumeName}`);
-  }
-  /**
-   * Create a volume in a storage pool
-   */
-  async createVolume(poolName, config) {
-    return apiRequest(`/storages/pools/${poolName}/volumes`, {
-      method: "POST",
-      body: JSON.stringify(config)
-    });
-  }
-  /**
-   * Resize a volume
-   */
-  async resizeVolume(poolName, volumeName, capacity) {
-    return apiRequest(`/storages/pools/${poolName}/volumes/${volumeName}/resize`, {
-      method: "POST",
-      body: JSON.stringify({ capacity })
-    });
-  }
-  /**
-   * Clone a volume
-   */
-  async cloneVolume(poolName, volumeName, payload) {
-    return apiRequest(
-      `/storages/pools/${poolName}/volumes/${volumeName}/clone`,
-      {
-        method: "POST",
-        body: JSON.stringify(payload)
-      }
-    );
-  }
-  /**
-   * Delete a volume
-   */
-  async deleteVolume(poolName, volumeName, force = false) {
-    const suffix = force ? "?force=true" : "";
-    await apiRequest(`/storages/pools/${poolName}/volumes/${volumeName}${suffix}`, {
-      method: "DELETE"
-    });
-  }
-  // ============ ISO Management ============
-  /**
-   * List ISO images
-   */
-  async listISOs() {
-    return apiRequest("/isos");
-  }
-  /**
-   * Get ISO details
-   */
-  async getISO(id) {
-    return apiRequest(`/isos/${id}`);
-  }
-  /**
-   * Upload an ISO (returns upload URL for TUS)
-   * This creates a TUS upload session following the TUS protocol v1.0.0
-   */
-  async initiateISOUpload(metadata) {
-    const tusMetadata = {};
-    if (metadata.filename) {
-      tusMetadata.filename = btoa(metadata.filename);
-    }
-    if (metadata.os_type) {
-      tusMetadata.os_type = btoa(metadata.os_type);
-    }
-    if (metadata.os_variant) {
-      tusMetadata.os_variant = btoa(metadata.os_variant);
-    }
-    if (metadata.description) {
-      tusMetadata.description = btoa(metadata.description);
-    }
-    if (metadata.architecture) {
-      tusMetadata.architecture = btoa(metadata.architecture);
-    }
-    const uploadMetadata = Object.entries(tusMetadata).map(([key, value]) => `${key} ${value}`).join(",");
-    const token = getAuthToken();
-    const url = getApiUrl("/virtualization/isos/upload");
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "Upload-Length": metadata.size.toString(),
-        "Upload-Metadata": uploadMetadata,
-        "Tus-Resumable": "1.0.0"
-      }
-    });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        code: "API_ERROR",
-        message: response.statusText
-      }));
-      throw new VirtualizationAPIError(
-        error.code || "API_ERROR",
-        error.message || `Request failed: ${response.status}`,
-        error.details
-      );
-    }
-    const location = response.headers.get("Location");
-    const responseData = await response.json();
-    console.log("[TUS] Session created:", {
-      location,
-      responseData,
-      originalUrl: url
-    });
-    let tusUploadUrl = location || responseData.upload_url;
-    if (tusUploadUrl && !tusUploadUrl.startsWith("http")) {
-      const fullUploadPath = tusUploadUrl.startsWith("/api/") ? tusUploadUrl : `/api/v1/virtualization/isos/upload/${responseData.upload_id}`;
-      const baseUrl = url.substring(0, url.indexOf("/api/"));
-      tusUploadUrl = baseUrl + fullUploadPath;
-    }
-    console.log("[TUS] Final upload URL:", tusUploadUrl);
-    return {
-      uploadUrl: tusUploadUrl,
-      uploadId: responseData.upload_id
-    };
-  }
-  /**
-   * Complete ISO upload
-   */
-  async completeISOUpload(uploadId) {
-    return apiRequest(`/isos/upload/${uploadId}/complete`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Get ISO upload progress
-   */
-  async getISOUploadProgress(uploadId) {
-    return apiRequest(`/isos/upload/${uploadId}/progress`);
-  }
-  /**
-   * Delete an ISO
-   */
-  async deleteISO(id) {
-    return apiRequest(`/isos/${id}`, {
-      method: "DELETE"
-    });
-  }
-  // ============ Virtual Networks ============
-  /**
-   * List virtual networks
-   */
-  async listNetworks() {
-    const response = await apiRequest("/networks");
-    if (response.status === "success" && response.data) {
-      return response.data.networks || [];
-    }
-    if (Array.isArray(response)) {
-      return response;
-    }
-    return [];
-  }
-  /**
-   * Get a specific network
-   */
-  async getNetwork(name) {
-    return apiRequest(`/networks/${name}`);
-  }
-  /**
-   * Create a virtual network
-   */
-  async createNetwork(config) {
-    return apiRequest("/networks", {
-      method: "POST",
-      body: JSON.stringify(config)
-    });
-  }
-  /**
-   * Delete a virtual network
-   */
-  async deleteNetwork(name) {
-    return apiRequest(`/networks/${name}`, {
-      method: "DELETE"
-    });
-  }
-  /**
-   * Start a network
-   */
-  async startNetwork(name) {
-    return apiRequest(`/networks/${name}/start`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Stop a network
-   */
-  async stopNetwork(name) {
-    return apiRequest(`/networks/${name}/stop`, {
-      method: "POST"
-    });
-  }
-  // ============ Metrics \u0026 Monitoring ============
-  /**
-   * Get VM metrics
-   */
-  async getVMMetrics(vmId, duration = "1h") {
-    return apiRequest(`/virtualmachines/${vmId}/metrics?duration=${duration}`);
-  }
-  /**
-   * Get host resource usage
-   */
-  async getHostResources() {
-    return apiRequest("/host/resources");
-  }
-  /**
-   * Get real-time VM metrics (WebSocket endpoint info)
-   */
-  getMetricsWebSocketUrl(vmId) {
-    const token = getAuthToken();
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    return `${protocol}//${window.location.host}${API_BASE}/virtualmachines/${vmId}/metrics/ws?token=${token}`;
-  }
-  // ============ Disk Management ============
-  /**
-   * Attach a disk to VM
-   */
-  async attachDisk(vmId, disk) {
-    return apiRequest(`/virtualmachines/${vmId}/disks/attach`, {
-      method: "POST",
-      body: JSON.stringify(disk)
-    });
-  }
-  /**
-   * Detach a disk from VM
-   */
-  async detachDisk(vmId, device) {
-    return apiRequest(`/virtualmachines/${vmId}/disks/${device}/detach`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Resize a VM disk
-   */
-  async resizeDisk(vmId, device, newSize) {
-    return apiRequest(`/virtualmachines/${vmId}/disks/${device}/resize`, {
-      method: "POST",
-      body: JSON.stringify({ size: newSize })
-    });
-  }
-  // ============ Migration ============
-  /**
-   * Migrate a VM to another host
-   */
-  async migrateVM(vmId, targetHost, live = true) {
-    return apiRequest(`/virtualmachines/${vmId}/migrate`, {
-      method: "POST",
-      body: JSON.stringify({ targetHost, live })
-    });
-  }
-  /**
-   * Get migration status
-   */
-  async getMigrationStatus(vmId) {
-    return apiRequest(`/virtualmachines/${vmId}/migrate/status`);
-  }
-}
-const virtualizationAPI = new VirtualizationAPI();
-var __defProp$g = Object.defineProperty;
-var __getOwnPropDesc$e = Object.getOwnPropertyDescriptor;
-var __decorateClass$g = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$e(target, key) : target;
+var __defProp$h = Object.defineProperty;
+var __getOwnPropDesc$f = Object.getOwnPropertyDescriptor;
+var __decorateClass$h = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$f(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$g(target, key, result);
+  if (kind && result) __defProp$h(target, key, result);
   return result;
 };
 let VirtualizationStoragePools = class extends i$2 {
@@ -63347,42 +65141,820 @@ VirtualizationStoragePools.styles = i$5`
       color: var(--vscode-descriptionForeground);
     }
   `;
-__decorateClass$g([
+__decorateClass$h([
   r$1()
 ], VirtualizationStoragePools.prototype, "showDetails", 2);
-__decorateClass$g([
+__decorateClass$h([
   r$1()
 ], VirtualizationStoragePools.prototype, "showDeleteModal", 2);
-__decorateClass$g([
+__decorateClass$h([
   r$1()
 ], VirtualizationStoragePools.prototype, "itemToDelete", 2);
-__decorateClass$g([
+__decorateClass$h([
   r$1()
 ], VirtualizationStoragePools.prototype, "isDeleting", 2);
-__decorateClass$g([
+__decorateClass$h([
   r$1()
 ], VirtualizationStoragePools.prototype, "showFormDrawer", 2);
-__decorateClass$g([
+__decorateClass$h([
   r$1()
 ], VirtualizationStoragePools.prototype, "showEditDrawer", 2);
-__decorateClass$g([
+__decorateClass$h([
   r$1()
 ], VirtualizationStoragePools.prototype, "editingPool", 2);
-__decorateClass$g([
+__decorateClass$h([
   r$1()
 ], VirtualizationStoragePools.prototype, "isCreating", 2);
-__decorateClass$g([
+__decorateClass$h([
   r$1()
 ], VirtualizationStoragePools.prototype, "isUpdating", 2);
-__decorateClass$g([
+__decorateClass$h([
   r$1()
 ], VirtualizationStoragePools.prototype, "hasVolumes", 2);
-__decorateClass$g([
+__decorateClass$h([
   r$1()
 ], VirtualizationStoragePools.prototype, "volumeCount", 2);
-VirtualizationStoragePools = __decorateClass$g([
+VirtualizationStoragePools = __decorateClass$h([
   t$2("virtualization-storage-pools")
 ], VirtualizationStoragePools);
+var __defProp$g = Object.defineProperty;
+var __getOwnPropDesc$e = Object.getOwnPropertyDescriptor;
+var __decorateClass$g = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$e(target, key) : target;
+  for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
+    if (decorator = decorators[i4])
+      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
+  if (kind && result) __defProp$g(target, key, result);
+  return result;
+};
+let NetworkFormDrawer = class extends i$2 {
+  constructor() {
+    super(...arguments);
+    this.show = false;
+    this.loading = false;
+    this.editMode = false;
+    this.networkData = null;
+    this.formData = {
+      name: "",
+      mode: "nat",
+      bridge: "",
+      ipAddress: "",
+      netmask: "",
+      dhcpStart: "",
+      dhcpEnd: "",
+      autostart: true,
+      hosts: []
+    };
+    this.errors = {};
+    this.isClosing = false;
+    this.handleEscape = (event) => {
+      if (event.key === "Escape" && this.show && !this.loading) {
+        event.stopPropagation();
+        this.handleClose();
+      }
+    };
+    this.handleClose = () => {
+      if (this.loading || this.isClosing) return;
+      this.isClosing = true;
+      setTimeout(() => {
+        this.isClosing = false;
+        this.dispatchEvent(
+          new CustomEvent("close", {
+            bubbles: true,
+            composed: true
+          })
+        );
+      }, 250);
+    };
+  }
+  connectedCallback() {
+    super.connectedCallback();
+    window.addEventListener("keydown", this.handleEscape);
+  }
+  disconnectedCallback() {
+    window.removeEventListener("keydown", this.handleEscape);
+    super.disconnectedCallback();
+  }
+  willUpdate(changed) {
+    if (changed.has("networkData") && this.networkData) {
+      const data = this.networkData;
+      this.formData = {
+        name: data.name ?? "",
+        mode: data.mode ?? "nat",
+        bridge: data.bridge ?? "",
+        ipAddress: data.ipAddress ?? "",
+        netmask: data.netmask ?? "",
+        dhcpStart: data.dhcpStart ?? "",
+        dhcpEnd: data.dhcpEnd ?? "",
+        autostart: data.autostart ?? true,
+        hosts: data.hosts ?? []
+      };
+      this.errors = {};
+    }
+    if (changed.has("show")) {
+      if (this.show) {
+        requestAnimationFrame(() => {
+          const input = this.renderRoot.querySelector("#network-name");
+          input?.focus();
+        });
+      } else {
+        setTimeout(() => {
+          this.formData = {
+            name: "",
+            mode: "nat",
+            bridge: "",
+            ipAddress: "",
+            netmask: "",
+            dhcpStart: "",
+            dhcpEnd: "",
+            autostart: true,
+            hosts: []
+          };
+          this.errors = {};
+        }, 300);
+      }
+    }
+  }
+  validateField(field) {
+    const value = this.formData[field];
+    let error = "";
+    switch (field) {
+      case "name": {
+        const name = String(value || "").trim();
+        if (!name) {
+          error = "Name is required";
+        } else if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+          error = "Use only letters, numbers, dashes, and underscores";
+        }
+        break;
+      }
+      case "bridge": {
+        if (this.formData.mode === "bridge") {
+          const bridge = String(value || "").trim();
+          if (!bridge) {
+            error = "Bridge name is required for bridge mode";
+          }
+        }
+        break;
+      }
+    }
+    const newErrors = { ...this.errors };
+    if (error) {
+      newErrors[field] = error;
+    } else {
+      delete newErrors[field];
+    }
+    this.errors = newErrors;
+    return !error;
+  }
+  validateForm() {
+    const fieldsToValidate = ["name"];
+    if (this.formData.mode === "bridge") {
+      fieldsToValidate.push("bridge");
+    }
+    let isValid2 = true;
+    for (const field of fieldsToValidate) {
+      if (!this.validateField(field)) {
+        isValid2 = false;
+      }
+    }
+    const hasIpAddress = !!this.formData.ipAddress.trim();
+    const hasNetmask = !!this.formData.netmask.trim();
+    if (hasIpAddress || hasNetmask) {
+      if (!hasIpAddress || !hasNetmask) {
+        this.errors = {
+          ...this.errors,
+          ipAddress: !hasIpAddress ? "IP address is required when netmask is set" : this.errors.ipAddress || "",
+          netmask: !hasNetmask ? "Netmask is required when IP address is set" : this.errors.netmask || ""
+        };
+        isValid2 = false;
+      }
+    }
+    const hasDhcpStart = !!this.formData.dhcpStart.trim();
+    const hasDhcpEnd = !!this.formData.dhcpEnd.trim();
+    if (hasDhcpStart || hasDhcpEnd) {
+      if (!hasDhcpStart || !hasDhcpEnd) {
+        this.errors = {
+          ...this.errors,
+          dhcpStart: !hasDhcpStart ? "DHCP start is required when end is set" : this.errors.dhcpStart || "",
+          dhcpEnd: !hasDhcpEnd ? "DHCP end is required when start is set" : this.errors.dhcpEnd || ""
+        };
+        isValid2 = false;
+      }
+    }
+    return isValid2;
+  }
+  handleInputChange(field, value) {
+    this.formData = {
+      ...this.formData,
+      [field]: typeof value === "string" ? value : value
+    };
+    if (field === "name" || field === "bridge") {
+      this.validateField(field);
+    }
+  }
+  handleModeChange(value) {
+    this.formData = {
+      ...this.formData,
+      mode: value
+    };
+    if (value !== "bridge" && this.errors.bridge) {
+      const { bridge, ...rest } = this.errors;
+      this.errors = rest;
+    }
+  }
+  addHostRow() {
+    this.formData = {
+      ...this.formData,
+      hosts: [...this.formData.hosts, { mac: "", ip: "", name: "" }]
+    };
+  }
+  updateHostRow(index2, field, value) {
+    const hosts = this.formData.hosts.map(
+      (host, i4) => i4 === index2 ? {
+        ...host,
+        [field]: value
+      } : host
+    );
+    this.formData = {
+      ...this.formData,
+      hosts
+    };
+  }
+  removeHostRow(index2) {
+    const hosts = this.formData.hosts.filter((_2, i4) => i4 !== index2);
+    this.formData = {
+      ...this.formData,
+      hosts
+    };
+  }
+  handleSubmit(event) {
+    event.preventDefault();
+    if (this.loading) return;
+    if (!this.validateForm()) {
+      return;
+    }
+    const trimmedName = this.formData.name.trim();
+    const sanitized = {
+      ...this.formData,
+      name: trimmedName,
+      bridge: this.formData.bridge.trim(),
+      ipAddress: this.formData.ipAddress.trim(),
+      netmask: this.formData.netmask.trim(),
+      dhcpStart: this.formData.dhcpStart.trim(),
+      dhcpEnd: this.formData.dhcpEnd.trim(),
+      hosts: this.formData.hosts.map((h3) => ({
+        mac: h3.mac.trim(),
+        ip: h3.ip.trim(),
+        name: h3.name.trim()
+      })).filter((h3) => h3.mac || h3.ip || h3.name)
+    };
+    this.dispatchEvent(
+      new CustomEvent("save", {
+        detail: { formData: sanitized },
+        bubbles: true,
+        composed: true
+      })
+    );
+  }
+  get showDhcpSection() {
+    return !!this.formData.ipAddress.trim() && !!this.formData.netmask.trim();
+  }
+  render() {
+    if (!this.show && !this.isClosing) return null;
+    return x`
+      <div class="drawer ${this.isClosing ? "closing" : ""}" role="dialog" aria-modal="true">
+        <div class="drawer-header">
+          <h2 class="drawer-title">
+            ${this.editMode ? "Edit Virtual Network" : "Create Virtual Network"}
+          </h2>
+          <button class="close-btn" @click=${this.handleClose} aria-label="Close">
+            ×
+          </button>
+        </div>
+        <div class="drawer-body">
+          <form @submit=${this.handleSubmit}>
+            <div class="section">
+              <h3 class="section-title">General</h3>
+              <div class="field">
+                <label for="network-name" class="required">Name</label>
+                <input
+                  id="network-name"
+                  class=${this.errors.name ? "error" : ""}
+                  type="text"
+                  .value=${this.formData.name}
+                  ?disabled=${this.loading || this.editMode}
+                  @input=${(e3) => this.handleInputChange("name", e3.target.value)}
+                />
+                ${this.errors.name ? x`<div class="error-text">${this.errors.name}</div>` : x`<div class="hint">Use lowercase letters, numbers, dashes, and underscores.</div>`}
+              </div>
+
+              <div class="field">
+                <label for="network-mode" class="required">Mode</label>
+                <select
+                  id="network-mode"
+                  .value=${this.formData.mode}
+                  ?disabled=${this.loading}
+                  @change=${(e3) => this.handleModeChange(e3.target.value)}
+                >
+                  <option value="nat">NAT</option>
+                  <option value="route">Route</option>
+                  <option value="bridge">Bridge</option>
+                  <option value="private">Private</option>
+                </select>
+              </div>
+
+              ${this.formData.mode === "bridge" ? x`<div class="field">
+                    <label for="network-bridge" class="required">Host bridge name</label>
+                    <input
+                      id="network-bridge"
+                      class=${this.errors.bridge ? "error" : ""}
+                      type="text"
+                      .value=${this.formData.bridge}
+                      ?disabled=${this.loading}
+                      @input=${(e3) => this.handleInputChange("bridge", e3.target.value)}
+                    />
+                    ${this.errors.bridge ? x`<div class="error-text">${this.errors.bridge}</div>` : x`<div class="hint">Existing host bridge to attach this virtual network to (e.g. br0).</div>`}
+                  </div>` : null}
+
+              <div class="checkbox-row">
+                <input
+                  id="network-autostart"
+                  type="checkbox"
+                  .checked=${this.formData.autostart}
+                  ?disabled=${this.loading}
+                  @change=${(e3) => this.handleInputChange("autostart", e3.target.checked)}
+                />
+                <label for="network-autostart">Start network automatically on host boot</label>
+              </div>
+            </div>
+
+            <div class="section">
+              <h3 class="section-title">IP Range (optional)</h3>
+              <div class="field-row">
+                <div class="field">
+                  <label for="ip-address">Address</label>
+                  <input
+                    id="ip-address"
+                    class=${this.errors.ipAddress ? "error" : ""}
+                    type="text"
+                    .value=${this.formData.ipAddress}
+                    ?disabled=${this.loading}
+                    @input=${(e3) => this.handleInputChange("ipAddress", e3.target.value)}
+                  />
+                  ${this.errors.ipAddress ? x`<div class="error-text">${this.errors.ipAddress}</div>` : x`<div class="hint">Gateway IP, e.g. 192.168.250.1</div>`}
+                </div>
+                <div class="field">
+                  <label for="netmask">Netmask</label>
+                  <input
+                    id="netmask"
+                    class=${this.errors.netmask ? "error" : ""}
+                    type="text"
+                    .value=${this.formData.netmask}
+                    ?disabled=${this.loading}
+                    @input=${(e3) => this.handleInputChange("netmask", e3.target.value)}
+                  />
+                  ${this.errors.netmask ? x`<div class="error-text">${this.errors.netmask}</div>` : x`<div class="hint">Netmask, e.g. 255.255.255.0</div>`}
+                </div>
+              </div>
+              <div class="hint">Leave empty to let libvirt manage addressing implicitly.</div>
+            </div>
+
+            ${this.showDhcpSection ? x`<div class="section">
+                  <h3 class="section-title">DHCP (optional)</h3>
+                  <div class="field-row">
+                    <div class="field">
+                      <label for="dhcp-start">Start IP</label>
+                      <input
+                        id="dhcp-start"
+                        class=${this.errors.dhcpStart ? "error" : ""}
+                        type="text"
+                        .value=${this.formData.dhcpStart}
+                        ?disabled=${this.loading}
+                        @input=${(e3) => this.handleInputChange("dhcpStart", e3.target.value)}
+                      />
+                      ${this.errors.dhcpStart ? x`<div class="error-text">${this.errors.dhcpStart}</div>` : x`<div class="hint">First IP in DHCP pool.</div>`}
+                    </div>
+                    <div class="field">
+                      <label for="dhcp-end">End IP</label>
+                      <input
+                        id="dhcp-end"
+                        class=${this.errors.dhcpEnd ? "error" : ""}
+                        type="text"
+                        .value=${this.formData.dhcpEnd}
+                        ?disabled=${this.loading}
+                        @input=${(e3) => this.handleInputChange("dhcpEnd", e3.target.value)}
+                      />
+                      ${this.errors.dhcpEnd ? x`<div class="error-text">${this.errors.dhcpEnd}</div>` : x`<div class="hint">Last IP in DHCP pool.</div>`}
+                    </div>
+                  </div>
+
+                  <div class="field">
+                    <label>Static DHCP hosts (optional)</label>
+                    <table class="hosts-table">
+                      <thead>
+                        <tr>
+                          <th>MAC address</th>
+                          <th>IP address</th>
+                          <th>Hostname</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${this.formData.hosts.map(
+      (host, index2) => x`<tr>
+                            <td>
+                              <input
+                                type="text"
+                                .value=${host.mac}
+                                ?disabled=${this.loading}
+                                @input=${(e3) => this.updateHostRow(
+        index2,
+        "mac",
+        e3.target.value
+      )}
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                .value=${host.ip}
+                                ?disabled=${this.loading}
+                                @input=${(e3) => this.updateHostRow(
+        index2,
+        "ip",
+        e3.target.value
+      )}
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                .value=${host.name}
+                                ?disabled=${this.loading}
+                                @input=${(e3) => this.updateHostRow(
+        index2,
+        "name",
+        e3.target.value
+      )}
+                              />
+                            </td>
+                            <td style="text-align: center;">
+                              <button
+                                type="button"
+                                class="btn btn-ghost btn-danger"
+                                ?disabled=${this.loading}
+                                @click=${() => this.removeHostRow(index2)}
+                              >
+                                Remove
+                              </button>
+                            </td>
+                          </tr>`
+    )}
+                      </tbody>
+                    </table>
+                    <button
+                      type="button"
+                      class="btn btn-ghost"
+                      ?disabled=${this.loading}
+                      @click=${this.addHostRow}
+                    >
+                      Add static host
+                    </button>
+                  </div>
+                </div>` : null}
+          </form>
+        </div>
+        <div class="drawer-footer">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            @click=${this.handleClose}
+            ?disabled=${this.loading}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            class="btn btn-primary"
+            @click=${this.handleSubmit}
+            ?disabled=${this.loading}
+          >
+            ${this.loading ? this.editMode ? "Updating..." : "Creating..." : this.editMode ? "Update" : "Create"}
+          </button>
+        </div>
+      </div>
+    `;
+  }
+};
+NetworkFormDrawer.styles = i$5`
+    :host {
+      display: block;
+    }
+
+    .drawer {
+      position: fixed;
+      inset-block: 0;
+      inset-inline-end: 0;
+      width: 480px;
+      max-width: 100%;
+      background: var(--vscode-editor-background, var(--vscode-bg-light));
+      border-left: 1px solid var(--vscode-widget-border, #454545);
+      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+      animation: slideIn 0.25s ease-out;
+      z-index: 1001;
+    }
+
+    .drawer.closing {
+      animation: slideOut 0.25s ease-in;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+      }
+      to {
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes slideOut {
+      from {
+        transform: translateX(0);
+      }
+      to {
+        transform: translateX(100%);
+      }
+    }
+
+    .drawer-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--vscode-editorWidget-border, #464647);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--vscode-editor-background, var(--vscode-bg-light));
+    }
+
+    .drawer-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--vscode-foreground, #cccccc);
+    }
+
+    .close-btn {
+      background: transparent;
+      border: none;
+      color: var(--vscode-foreground, #cccccc);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .close-btn:hover {
+      background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
+    }
+
+    .drawer-body {
+      padding: 16px 20px 80px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .drawer-footer {
+      padding: 12px 20px;
+      border-top: 1px solid var(--vscode-editorWidget-border, #464647);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      background: var(--vscode-editor-background, var(--vscode-bg-light));
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .section {
+      border-radius: 4px;
+      border: 1px solid var(--vscode-widget-border, #454545);
+      padding: 12px 12px 8px;
+      background: var(--vscode-editorWidget-background, rgba(0, 0, 0, 0.03));
+    }
+
+    .section + .section {
+      margin-top: 4px;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      margin: 0 0 8px 0;
+      color: var(--vscode-foreground, #cccccc);
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--vscode-descriptionForeground, #9d9d9d);
+    }
+
+    .required::after {
+      content: ' *';
+      color: var(--vscode-inputValidation-errorForeground, #f48771);
+    }
+
+    input,
+    select {
+      padding: 6px 8px;
+      border-radius: 3px;
+      border: 1px solid var(--vscode-input-border, #5a5a5a);
+      background: var(--vscode-input-background, #3c3c3c);
+      color: var(--vscode-input-foreground, #cccccc);
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      box-sizing: border-box;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--vscode-focusBorder, #007acc);
+    }
+
+    input:disabled,
+    select:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    input.error,
+    select.error {
+      border-color: var(--vscode-inputValidation-errorBorder, #be1100);
+    }
+
+    .error-text {
+      color: var(--vscode-inputValidation-errorForeground, #f48771);
+      font-size: 11px;
+    }
+
+    .hint {
+      font-size: 11px;
+      color: var(--vscode-descriptionForeground, #9d9d9d);
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .hosts-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 6px;
+      font-size: 12px;
+    }
+
+    .hosts-table th,
+    .hosts-table td {
+      border: 1px solid var(--vscode-widget-border, #454545);
+      padding: 4px 6px;
+    }
+
+    .hosts-table th {
+      background: var(--vscode-editor-background, var(--vscode-bg-light));
+      font-weight: 500;
+      text-align: left;
+    }
+
+    .btn {
+      padding: 6px 12px;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .btn-primary {
+      background: var(--vscode-button-background, #0e639c);
+      color: var(--vscode-button-foreground, #ffffff);
+      border-color: var(--vscode-button-background, #0e639c);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--vscode-button-hoverBackground, #1177bb);
+      border-color: var(--vscode-button-hoverBackground, #1177bb);
+    }
+
+    .btn-secondary {
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      color: var(--vscode-button-secondaryForeground, #cccccc);
+      border-color: var(--vscode-button-border, #5a5a5a);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--vscode-button-secondaryHoverBackground, #45494e);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--vscode-button-foreground, #ffffff);
+      border-color: var(--vscode-button-border, #5a5a5a);
+      font-size: 11px;
+      padding: 4px 8px;
+    }
+
+    .btn-ghost:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .btn-danger {
+      color: var(--vscode-errorForeground, #f48771);
+      border-color: rgba(244, 135, 113, 0.4);
+      background: rgba(244, 135, 113, 0.08);
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background: rgba(244, 135, 113, 0.16);
+    }
+  `;
+__decorateClass$g([
+  n2({ type: Boolean, reflect: true })
+], NetworkFormDrawer.prototype, "show", 2);
+__decorateClass$g([
+  n2({ type: Boolean })
+], NetworkFormDrawer.prototype, "loading", 2);
+__decorateClass$g([
+  n2({ type: Boolean })
+], NetworkFormDrawer.prototype, "editMode", 2);
+__decorateClass$g([
+  n2({ type: Object })
+], NetworkFormDrawer.prototype, "networkData", 2);
+__decorateClass$g([
+  r$1()
+], NetworkFormDrawer.prototype, "formData", 2);
+__decorateClass$g([
+  r$1()
+], NetworkFormDrawer.prototype, "errors", 2);
+__decorateClass$g([
+  r$1()
+], NetworkFormDrawer.prototype, "isClosing", 2);
+NetworkFormDrawer = __decorateClass$g([
+  t$2("network-form-drawer")
+], NetworkFormDrawer);
+const $notifications = map$3({});
+const notificationActions = {
+  addNotification(notification) {
+    const id = crypto.randomUUID();
+    const newNotification = {
+      ...notification,
+      id,
+      timestamp: Date.now(),
+      duration: notification.duration ?? 5e3
+    };
+    $notifications.setKey(id, newNotification);
+    if (newNotification.duration && newNotification.duration > 0) {
+      setTimeout(() => {
+        this.removeNotification(id);
+      }, newNotification.duration);
+    }
+    return id;
+  },
+  removeNotification(id) {
+    const notifications = $notifications.get();
+    if (notifications[id]) {
+      const newNotifications = { ...notifications };
+      delete newNotifications[id];
+      $notifications.set(newNotifications);
+    }
+  },
+  clearAll() {
+    $notifications.set({});
+  }
+};
 var __defProp$f = Object.defineProperty;
 var __getOwnPropDesc$d = Object.getOwnPropertyDescriptor;
 var __decorateClass$f = (decorators, target, key, kind) => {
@@ -63406,12 +65978,25 @@ let VirtualizationNetworks = class extends i$2 {
     this.showDetailDrawer = false;
     this.selectedNetwork = null;
     this.isLoadingDetail = false;
+    this.isClosingDetailDrawer = false;
+    this.detailActiveTab = "overview";
+    this.dhcpLeases = [];
+    this.dhcpLeasesCount = 0;
+    this.dhcpLeasesLoading = false;
+    this.dhcpLeasesError = null;
+    this.networkPorts = [];
+    this.networkPortsCount = 0;
+    this.networkPortsLoading = false;
+    this.networkPortsError = null;
     this.showDeleteModal = false;
     this.itemToDelete = null;
     this.isDeleting = false;
     this.showCreateDrawer = false;
-    this.createResourceValue = "";
+    this.showEditDrawer = false;
     this.isCreating = false;
+    this.isUpdating = false;
+    this.editingNetworkForm = null;
+    this.editingNetworkName = null;
     this.tabs = [
       { id: "all", label: "All Networks" },
       { id: "active", label: "Active" },
@@ -63428,9 +66013,9 @@ let VirtualizationNetworks = class extends i$2 {
     this.loading = true;
     this.error = null;
     try {
-      const response = await virtualizationAPI.listNetworks();
-      console.log("Networks API response:", response);
-      this.networks = (response || []).map((net) => ({
+      const { networks } = await virtualizationAPI.listNetworks();
+      console.log("Networks API response:", networks);
+      this.networks = (networks || []).map((net) => ({
         name: net.name || "Unnamed Network",
         uuid: net.uuid || "",
         state: net.state,
@@ -63468,22 +66053,13 @@ let VirtualizationNetworks = class extends i$2 {
   }
   getActions(network) {
     const actions = [
-      { label: "View Details", action: "view" },
-      { label: "View DHCP Leases", action: "dhcp-leases" }
+      { label: "View Details", action: "view" }
     ];
-    if (network.state === "active") {
-      actions.push(
-        { label: "Stop", action: "stop" },
-        { label: "Restart", action: "restart" }
-      );
-    } else {
-      actions.push(
-        { label: "Start", action: "start" }
-      );
+    if (network.state !== "active") {
+      actions.push({ label: "Start", action: "start" });
     }
     actions.push(
       { label: "Edit", action: "edit" },
-      { label: "Clone", action: "clone" },
       { label: "Delete", action: "delete", danger: true }
     );
     return actions;
@@ -63551,6 +66127,13 @@ let VirtualizationNetworks = class extends i$2 {
     this.showDetailDrawer = true;
     this.isLoadingDetail = true;
     this.selectedNetwork = network;
+    this.detailActiveTab = "overview";
+    this.dhcpLeases = [];
+    this.dhcpLeasesCount = 0;
+    this.dhcpLeasesError = null;
+    this.networkPorts = [];
+    this.networkPortsCount = 0;
+    this.networkPortsError = null;
     console.log("Opening detail drawer for network:", network);
     try {
       const detailedNetwork = await virtualizationAPI.getNetwork(network.name);
@@ -63573,20 +66156,127 @@ let VirtualizationNetworks = class extends i$2 {
       };
     } catch (error) {
       console.error("Failed to fetch network details:", error);
-      if (!(error instanceof VirtualizationDisabledError)) {
-        this.error = error instanceof Error ? error.message : "Failed to load network details";
+      if (error instanceof VirtualizationDisabledError) {
+        this.error = error.message;
+        this.closeDetailDrawer();
+        return;
+      }
+      const message = this.mapNetworkErrorToMessage(error, "Failed to load network details");
+      notificationActions.addNotification({
+        type: "error",
+        title: "Failed to load network details",
+        message
+      });
+      if (error?.code === "NETWORK_NOT_FOUND") {
+        this.networks = this.networks.filter((n3) => n3.name !== network.name);
+        this.closeDetailDrawer();
       }
     } finally {
       this.isLoadingDetail = false;
     }
   }
   closeDetailDrawer() {
-    this.showDetailDrawer = false;
-    this.selectedNetwork = null;
-    this.isLoadingDetail = false;
+    if (!this.showDetailDrawer && !this.selectedNetwork) {
+      return;
+    }
+    this.isClosingDetailDrawer = true;
+    setTimeout(() => {
+      this.showDetailDrawer = false;
+      this.selectedNetwork = null;
+      this.isLoadingDetail = false;
+      this.detailActiveTab = "overview";
+      this.dhcpLeases = [];
+      this.dhcpLeasesCount = 0;
+      this.dhcpLeasesError = null;
+      this.networkPorts = [];
+      this.networkPortsCount = 0;
+      this.networkPortsError = null;
+      this.isClosingDetailDrawer = false;
+    }, 300);
   }
-  viewDHCPLeases(network) {
-    console.log("Viewing DHCP leases for:", network.name);
+  async setDetailTab(tab) {
+    this.detailActiveTab = tab;
+    const name = this.selectedNetwork?.name;
+    if (!name) return;
+    try {
+      if (tab === "dhcp") {
+        if (this.dhcpLeasesLoading || this.dhcpLeases.length > 0 || this.dhcpLeasesError) return;
+        await this.loadDhcpLeases(name);
+      } else if (tab === "ports") {
+        if (this.networkPortsLoading || this.networkPorts.length > 0 || this.networkPortsError) return;
+        await this.loadNetworkPorts(name);
+      }
+    } catch (error) {
+      console.error("Failed to change detail tab:", error);
+    }
+  }
+  async loadDhcpLeases(name) {
+    this.dhcpLeasesLoading = true;
+    this.dhcpLeasesError = null;
+    try {
+      const result = await virtualizationAPI.getNetworkDHCPLeases(name);
+      this.dhcpLeases = result.leases || [];
+      this.dhcpLeasesCount = result.count ?? this.dhcpLeases.length;
+    } catch (error) {
+      console.error("Failed to load DHCP leases:", error);
+      if (error instanceof VirtualizationDisabledError) {
+        this.error = error.message;
+        this.closeDetailDrawer();
+        return;
+      }
+      const message = this.mapNetworkErrorToMessage(error, "Failed to load DHCP leases");
+      const code = error?.code;
+      if (code === "NETWORK_NOT_FOUND") {
+        this.dhcpLeasesError = message;
+        this.networks = this.networks.filter((n3) => n3.name !== name);
+        this.closeDetailDrawer();
+      } else {
+        this.dhcpLeasesError = message;
+      }
+      notificationActions.addNotification({
+        type: "error",
+        title: "Failed to load DHCP leases",
+        message
+      });
+    } finally {
+      this.dhcpLeasesLoading = false;
+    }
+  }
+  async loadNetworkPorts(name) {
+    this.networkPortsLoading = true;
+    this.networkPortsError = null;
+    try {
+      const result = await virtualizationAPI.getNetworkPorts(name);
+      this.networkPorts = result.ports || [];
+      this.networkPortsCount = result.count ?? this.networkPorts.length;
+    } catch (error) {
+      console.error("Failed to load network ports:", error);
+      if (error instanceof VirtualizationDisabledError) {
+        this.error = error.message;
+        this.closeDetailDrawer();
+        return;
+      }
+      const message = this.mapNetworkErrorToMessage(error, "Failed to load network ports");
+      const code = error?.code;
+      if (code === "NETWORK_NOT_FOUND") {
+        this.networkPortsError = message;
+        this.networks = this.networks.filter((n3) => n3.name !== name);
+        this.closeDetailDrawer();
+      } else {
+        this.networkPortsError = message;
+      }
+      notificationActions.addNotification({
+        type: "error",
+        title: "Failed to load network ports",
+        message
+      });
+    } finally {
+      this.networkPortsLoading = false;
+    }
+  }
+  async viewDHCPLeases(network) {
+    await this.viewNetworkDetail(network);
+    await this.setDetailTab("dhcp");
   }
   async changeNetworkState(network, action) {
     try {
@@ -63603,16 +66293,76 @@ let VirtualizationNetworks = class extends i$2 {
           break;
       }
       await this.loadData();
+      const verb = action === "start" ? "started" : action === "stop" ? "stopped" : "restarted";
+      notificationActions.addNotification({
+        type: "success",
+        title: `Network ${verb}`,
+        message: `Virtual network ${network.name} was ${verb} successfully`
+      });
     } catch (error) {
       console.error(`Failed to ${action} network:`, error);
-      this.error = error instanceof Error ? error.message : `Failed to ${action} network`;
+      if (error instanceof VirtualizationDisabledError) {
+        this.error = error.message;
+        return;
+      }
+      const message = this.mapNetworkErrorToMessage(error, `Failed to ${action} network`);
+      this.error = message;
+      notificationActions.addNotification({
+        type: "error",
+        title: `Failed to ${action} network`,
+        message
+      });
     }
   }
   cloneNetwork(network) {
     console.log("Cloning network:", network.name);
   }
-  editNetwork(network) {
-    console.log("Editing network:", network.name);
+  async editNetwork(network) {
+    this.isUpdating = false;
+    this.editingNetworkName = network.name;
+    try {
+      const detailedNetwork = await virtualizationAPI.getNetwork(network.name);
+      const ipRange = detailedNetwork.ip_range || {
+        address: detailedNetwork.ip || "",
+        netmask: detailedNetwork.netmask || ""
+      };
+      const dhcp = detailedNetwork.dhcp || {};
+      const formData = {
+        name: detailedNetwork.name || network.name,
+        mode: detailedNetwork.mode || "nat",
+        bridge: detailedNetwork.bridge || "",
+        ipAddress: ipRange.address || "",
+        netmask: ipRange.netmask || "",
+        dhcpStart: dhcp.start || "",
+        dhcpEnd: dhcp.end || "",
+        autostart: detailedNetwork.autostart ?? network.autostart,
+        hosts: Array.isArray(dhcp.hosts) ? dhcp.hosts.map((host) => ({
+          mac: host.mac || "",
+          ip: host.ip || "",
+          name: host.name || ""
+        })) : []
+      };
+      this.editingNetworkForm = formData;
+      this.showEditDrawer = true;
+    } catch (error) {
+      console.error("Failed to load network for editing:", error);
+      if (error instanceof VirtualizationDisabledError) {
+        this.error = error.message;
+      } else {
+        const message = this.mapNetworkErrorToMessage(error, "Failed to load network for editing");
+        this.error = message;
+        notificationActions.addNotification({
+          type: "error",
+          title: "Failed to load network for editing",
+          message
+        });
+        if (error?.code === "NETWORK_NOT_FOUND") {
+          this.networks = this.networks.filter((n3) => n3.name !== network.name);
+        }
+      }
+      this.editingNetworkForm = null;
+      this.editingNetworkName = null;
+    }
   }
   deleteNetwork(network) {
     this.itemToDelete = {
@@ -63635,12 +66385,25 @@ let VirtualizationNetworks = class extends i$2 {
       if (networkToDelete) {
         await virtualizationAPI.deleteNetwork(networkToDelete.name);
         await this.loadData();
+        notificationActions.addNotification({
+          type: "success",
+          title: "Network deleted",
+          message: `Virtual network ${networkToDelete.name} was deleted successfully`
+        });
       }
     } catch (error) {
       console.error("Failed to delete network:", error);
-      if (!(error instanceof VirtualizationDisabledError)) {
-        this.error = error instanceof Error ? error.message : "Failed to delete network";
+      if (error instanceof VirtualizationDisabledError) {
+        this.error = error.message;
+        return;
       }
+      const message = this.mapNetworkErrorToMessage(error, "Failed to delete network");
+      this.error = message;
+      notificationActions.addNotification({
+        type: "error",
+        title: "Failed to delete network",
+        message
+      });
     } finally {
       this.isDeleting = false;
       this.showDeleteModal = false;
@@ -63648,47 +66411,151 @@ let VirtualizationNetworks = class extends i$2 {
     }
   }
   handleCreateNew() {
-    this.createResourceValue = JSON.stringify({
-      name: "new-network",
-      bridge: "virbr99",
-      mode: "nat",
-      ip_range: {
-        address: "192.168.99.0",
-        netmask: "255.255.255.0"
-      },
-      autostart: false,
-      persistent: true
-    }, null, 2);
+    this.editingNetworkForm = null;
+    this.editingNetworkName = null;
     this.showCreateDrawer = true;
   }
   handleSearchChange(e3) {
     this.searchQuery = e3.detail.value;
   }
-  async handleCreateResource(event) {
+  mapNetworkErrorToMessage(error, fallback) {
+    const code = error?.code;
+    const message = error instanceof Error ? error.message : fallback;
+    switch (code) {
+      case "INVALID_NETWORK_REQUEST":
+      case "INVALID_REQUEST":
+        return "The network configuration is invalid. Please review the form fields.";
+      case "NETWORK_NOT_FOUND":
+        return "The network was not found. It may have been deleted or renamed.";
+      case "CREATE_NETWORK_FAILED":
+        return message || "Failed to create virtual network.";
+      case "UPDATE_NETWORK_FAILED":
+        return message || "Failed to update virtual network.";
+      case "DELETE_NETWORK_FAILED":
+        return message || "Failed to delete virtual network.";
+      default:
+        return message || fallback;
+    }
+  }
+  buildCreatePayload(formData) {
+    const payload = {
+      name: formData.name.trim(),
+      mode: formData.mode,
+      autostart: formData.autostart
+    };
+    if (formData.mode === "bridge" && formData.bridge.trim()) {
+      payload.bridge = formData.bridge.trim();
+    }
+    if (formData.ipAddress && formData.netmask) {
+      payload.ip_range = {
+        address: formData.ipAddress,
+        netmask: formData.netmask
+      };
+    }
+    if (formData.dhcpStart && formData.dhcpEnd) {
+      payload.dhcp = {
+        start: formData.dhcpStart,
+        end: formData.dhcpEnd
+      };
+      if (formData.hosts.length > 0) {
+        payload.dhcp.hosts = formData.hosts.map((host) => ({
+          mac: host.mac,
+          ip: host.ip,
+          name: host.name || void 0
+        }));
+      }
+    }
+    return payload;
+  }
+  buildUpdatePayload(formData) {
+    const payload = {
+      autostart: formData.autostart,
+      mode: formData.mode
+    };
+    if (formData.mode === "bridge" && formData.bridge.trim()) {
+      payload.bridge = formData.bridge.trim();
+    }
+    if (formData.ipAddress && formData.netmask) {
+      payload.ip_range = {
+        address: formData.ipAddress,
+        netmask: formData.netmask
+      };
+    }
+    if (formData.dhcpStart && formData.dhcpEnd) {
+      payload.dhcp = {
+        start: formData.dhcpStart,
+        end: formData.dhcpEnd
+      };
+      if (formData.hosts.length > 0) {
+        payload.dhcp.hosts = formData.hosts.map((host) => ({
+          mac: host.mac,
+          ip: host.ip,
+          name: host.name || void 0
+        }));
+      }
+    }
+    return payload;
+  }
+  async handleCreateSave(event) {
     this.isCreating = true;
     try {
-      const networkConfig = JSON.parse(event.detail.value);
-      const apiConfig = {
-        name: networkConfig.name,
-        type: "bridge",
-        // Default type
-        state: "inactive",
-        bridge: networkConfig.bridge,
-        ip: networkConfig.ip_range?.address,
-        netmask: networkConfig.ip_range?.netmask,
-        autostart: networkConfig.autostart
-      };
-      await virtualizationAPI.createNetwork(apiConfig);
+      const payload = this.buildCreatePayload(event.detail.formData);
+      await virtualizationAPI.createNetwork(payload);
       await this.loadData();
       this.showCreateDrawer = false;
-      this.createResourceValue = "";
+      notificationActions.addNotification({
+        type: "success",
+        title: "Network created",
+        message: `Virtual network ${payload.name} was created successfully`
+      });
     } catch (error) {
       console.error("Failed to create network:", error);
-      if (!(error instanceof VirtualizationDisabledError)) {
-        this.error = error instanceof Error ? error.message : "Failed to create network";
+      if (error instanceof VirtualizationDisabledError) {
+        this.error = error.message;
+        return;
       }
+      const message = this.mapNetworkErrorToMessage(error, "Failed to create network");
+      this.error = message;
+      notificationActions.addNotification({
+        type: "error",
+        title: "Failed to create network",
+        message
+      });
     } finally {
       this.isCreating = false;
+    }
+  }
+  async handleEditSave(event) {
+    if (!this.editingNetworkName) return;
+    this.isUpdating = true;
+    try {
+      const payload = this.buildUpdatePayload(event.detail.formData);
+      await virtualizationAPI.updateNetwork(this.editingNetworkName, payload);
+      await this.loadData();
+      this.showEditDrawer = false;
+      this.editingNetworkForm = null;
+      const updatedName = this.editingNetworkName;
+      this.editingNetworkName = null;
+      notificationActions.addNotification({
+        type: "success",
+        title: "Network updated",
+        message: `Virtual network ${updatedName} was updated successfully`
+      });
+    } catch (error) {
+      console.error("Failed to update network:", error);
+      if (error instanceof VirtualizationDisabledError) {
+        this.error = error.message;
+        return;
+      }
+      const message = this.mapNetworkErrorToMessage(error, "Failed to update network");
+      this.error = message;
+      notificationActions.addNotification({
+        type: "error",
+        title: "Failed to update network",
+        message
+      });
+    } finally {
+      this.isUpdating = false;
     }
   }
   renderNetworkMode(mode) {
@@ -63701,7 +66568,7 @@ let VirtualizationNetworks = class extends i$2 {
     const network = this.selectedNetwork;
     const extendedNetwork = network;
     return x`
-      <div class="drawer">
+      <div class="drawer ${this.isClosingDetailDrawer ? "closing" : ""}">
         <div class="drawer-header">
           <h2 class="drawer-title">${network.name}</h2>
           <button class="close-btn" @click=${this.closeDetailDrawer}>✕</button>
@@ -63712,231 +66579,243 @@ let VirtualizationNetworks = class extends i$2 {
             <loading-state message="Loading network details..."></loading-state>
           ` : x`
             <div class="network-details-content">
-              <div class="detail-sections">
-                <!-- Basic Information -->
-                <div class="detail-section">
-                  <h3>Basic Information</h3>
-                  
-                  <div class="detail-item">
-                    <strong class="detail-key">Name:</strong>
-                    <span class="detail-value">${network.name}</span>
-                  </div>
-                  
-                  <div class="detail-item">
-                    <strong class="detail-key">UUID:</strong>
-                    <span class="detail-value monospace">${network.uuid || "Not available"}</span>
-                  </div>
-                  
-                  <div class="detail-item">
-                    <strong class="detail-key">State:</strong>
-                    <span class="detail-value">
-                      <span class="badge-inline ${network.state === "active" ? "badge-active" : "badge-inactive"}">
-                        ${network.state === "active" ? "●" : "○"} ${network.state}
-                      </span>
-                    </span>
-                  </div>
-                  
-                  <div class="detail-item">
-                    <strong class="detail-key">Network Mode:</strong>
-                    <span class="detail-value">${this.renderNetworkMode(network.mode)}</span>
-                  </div>
-                  
-                  <div class="detail-item">
-                    <strong class="detail-key">Bridge Interface:</strong>
-                    <span class="detail-value monospace">${network.bridge || "Not configured"}</span>
-                  </div>
-                  
-                  <div class="detail-item">
-                    <strong class="detail-key">Autostart:</strong>
-                    <span class="detail-value">
-                      <span class="badge-inline ${network.autostart ? "badge-enabled" : "badge-disabled"}">
-                        ${network.autostart ? "Enabled" : "Disabled"}
-                      </span>
-                    </span>
-                  </div>
-                  
-                  <div class="detail-item">
-                    <strong class="detail-key">Persistent:</strong>
-                    <span class="detail-value">
-                      <span class="badge-inline ${network.persistent ? "badge-enabled" : "badge-disabled"}">
-                        ${network.persistent ? "Yes" : "No"}
-                      </span>
-                    </span>
-                  </div>
-                </div>
+              <div class="detail-tabs">
+                <button
+                  class="detail-tab ${this.detailActiveTab === "overview" ? "active" : ""}"
+                  @click=${() => this.setDetailTab("overview")}
+                >
+                  Overview
+                </button>
+                <button
+                  class="detail-tab ${this.detailActiveTab === "dhcp" ? "active" : ""}"
+                  @click=${() => this.setDetailTab("dhcp")}
+                >
+                  DHCP Leases
+                </button>
+                <button
+                  class="detail-tab ${this.detailActiveTab === "ports" ? "active" : ""}"
+                  @click=${() => this.setDetailTab("ports")}
+                >
+                  Ports
+                </button>
+              </div>
 
-                <!-- IP Configuration -->
-                <div class="detail-section">
-                  <h3>IP Configuration</h3>
-                  
-                  <div class="detail-item">
-                    <strong class="detail-key">Network Address:</strong>
-                    <span class="detail-value monospace">${network.ip_range.address || "Not configured"}</span>
-                  </div>
-                  
-                  <div class="detail-item">
-                    <strong class="detail-key">Netmask:</strong>
-                    <span class="detail-value monospace">${network.ip_range.netmask || "Not configured"}</span>
-                  </div>
-                  
-                  <div class="detail-item">
-                    <strong class="detail-key">CIDR Notation:</strong>
-                    <span class="detail-value monospace">${this.formatIPRange(network)}</span>
-                  </div>
-                  
-                  ${network.ip_range.address && network.ip_range.netmask ? x`
-                    <div class="detail-item">
-                      <strong class="detail-key">Broadcast Address:</strong>
-                      <span class="detail-value monospace">${this.calculateBroadcast(network.ip_range.address, network.ip_range.netmask)}</span>
-                    </div>
-                  ` : ""}
-                </div>
-                
-                <!-- DHCP Configuration -->
-                ${extendedNetwork.dhcp ? x`
-                  <div class="detail-section">
-                    <h3>DHCP Configuration</h3>
-                    
-                    <div class="detail-item">
-                      <strong class="detail-key">DHCP Status:</strong>
-                      <span class="detail-value">
-                        <span class="badge-inline ${extendedNetwork.dhcp?.enabled ? "badge-enabled" : "badge-disabled"}">
-                          ${extendedNetwork.dhcp?.enabled ? "Enabled" : "Disabled"}
-                        </span>
-                      </span>
-                    </div>
-                    
-                    ${extendedNetwork.dhcp?.start && extendedNetwork.dhcp?.end ? x`
+              ${this.detailActiveTab === "overview" ? x`<div class="detail-sections">
+                    <!-- Basic Information -->
+                    <div class="detail-section">
+                      <h3>Basic Information</h3>
+                      
                       <div class="detail-item">
-                        <strong class="detail-key">DHCP Range:</strong>
-                        <span class="detail-value monospace">
-                          ${extendedNetwork.dhcp.start} - ${extendedNetwork.dhcp.end}
+                        <strong class="detail-key">Name:</strong>
+                        <span class="detail-value">${network.name}</span>
+                      </div>
+                      
+                      <div class="detail-item">
+                        <strong class="detail-key">UUID:</strong>
+                        <span class="detail-value monospace">${network.uuid || "Not available"}</span>
+                      </div>
+                      
+                      <div class="detail-item">
+                        <strong class="detail-key">State:</strong>
+                        <span class="detail-value">
+                          <span class="badge-inline ${network.state === "active" ? "badge-active" : "badge-inactive"}">
+                            ${network.state === "active" ? "●" : "○"} ${network.state}
+                          </span>
                         </span>
                       </div>
                       
                       <div class="detail-item">
-                        <strong class="detail-key">Pool Size:</strong>
+                        <strong class="detail-key">Network Mode:</strong>
+                        <span class="detail-value">${this.renderNetworkMode(network.mode)}</span>
+                      </div>
+                      
+                      <div class="detail-item">
+                        <strong class="detail-key">Bridge Interface:</strong>
+                        <span class="detail-value monospace">${network.bridge || "Not configured"}</span>
+                      </div>
+                      
+                      <div class="detail-item">
+                        <strong class="detail-key">Autostart:</strong>
                         <span class="detail-value">
-                          ${this.calculatePoolSize(extendedNetwork.dhcp.start, extendedNetwork.dhcp.end)} addresses
+                          <span class="badge-inline ${network.autostart ? "badge-enabled" : "badge-disabled"}">
+                            ${network.autostart ? "Enabled" : "Disabled"}
+                          </span>
                         </span>
                       </div>
-                    ` : ""}
-                    
-                    ${extendedNetwork.dhcp?.hosts && extendedNetwork.dhcp.hosts.length > 0 ? x`
-                      <div class="detail-item nested">
-                        <strong class="detail-key">Static Leases:</strong>
-                        <div class="dhcp-hosts-list">
-                          ${extendedNetwork.dhcp.hosts.map((host) => x`
-                            <div class="dhcp-host-item">
-                              <span><strong>MAC:</strong> ${host.mac}</span>
-                              <span><strong>IP:</strong> ${host.ip}</span>
-                              <span><strong>Name:</strong> ${host.name || "N/A"}</span>
-                            </div>
-                          `)}
-                        </div>
-                      </div>
-                    ` : ""}
-                  </div>
-                ` : ""}
-                
-                <!-- Forward Configuration -->
-                ${extendedNetwork.forward ? x`
-                  <div class="detail-section">
-                    <h3>Network Forwarding</h3>
-                    
-                    <div class="detail-item">
-                      <strong class="detail-key">Forward Mode:</strong>
-                      <span class="detail-value">
-                        <span class="badge-inline badge-enabled">
-                          ${extendedNetwork.forward.mode || "Not configured"}
+                      
+                      <div class="detail-item">
+                        <strong class="detail-key">Persistent:</strong>
+                        <span class="detail-value">
+                          <span class="badge-inline ${network.persistent ? "badge-enabled" : "badge-disabled"}">
+                            ${network.persistent ? "Yes" : "No"}
+                          </span>
                         </span>
-                      </span>
+                      </div>
                     </div>
                     
-                    ${extendedNetwork.forward?.dev ? x`
+                    <!-- IP Configuration -->
+                    <div class="detail-section">
+                      <h3>IP Configuration</h3>
+                      
                       <div class="detail-item">
-                        <strong class="detail-key">Physical Device:</strong>
-                        <span class="detail-value monospace">${extendedNetwork.forward.dev}</span>
+                        <strong class="detail-key">Network Address:</strong>
+                        <span class="detail-value monospace">${network.ip_range.address || "Not configured"}</span>
                       </div>
-                    ` : ""}
-                    
-                    ${extendedNetwork.forward?.nat ? x`
-                      <div class="detail-item nested">
-                        <strong class="detail-key">NAT Configuration:</strong>
-                        <div class="nested-content">
-                          ${extendedNetwork.forward.nat.start ? x`
-                            <div class="detail-item">
-                              <strong class="detail-key">Port Range Start:</strong>
-                              <span class="detail-value">${extendedNetwork.forward.nat.start}</span>
-                            </div>
-                          ` : ""}
-                          ${extendedNetwork.forward.nat.end ? x`
-                            <div class="detail-item">
-                              <strong class="detail-key">Port Range End:</strong>
-                              <span class="detail-value">${extendedNetwork.forward.nat.end}</span>
-                            </div>
-                          ` : ""}
+                      
+                      <div class="detail-item">
+                        <strong class="detail-key">Netmask:</strong>
+                        <span class="detail-value monospace">${network.ip_range.netmask || "Not configured"}</span>
+                      </div>
+                      
+                      <div class="detail-item">
+                        <strong class="detail-key">CIDR Notation:</strong>
+                        <span class="detail-value monospace">${this.formatIPRange(network)}</span>
+                      </div>
+                      
+                      ${network.ip_range.address && network.ip_range.netmask ? x`
+                        <div class="detail-item">
+                          <strong class="detail-key">Broadcast Address:</strong>
+                          <span class="detail-value monospace">${this.calculateBroadcast(network.ip_range.address, network.ip_range.netmask)}</span>
                         </div>
-                      </div>
-                    ` : ""}
-                  </div>
-                ` : ""}
-                
-                <!-- DNS Configuration if available -->
-                ${extendedNetwork.dns ? x`
-                  <div class="detail-section">
-                    <h3>DNS Configuration</h3>
+                      ` : ""}
+                    </div>
                     
-                    ${extendedNetwork.dns.forwarders && extendedNetwork.dns.forwarders.length > 0 ? x`
-                      <div class="detail-item">
-                        <strong class="detail-key">DNS Forwarders:</strong>
-                        <span class="detail-value">
-                          ${extendedNetwork.dns.forwarders.map((dns) => x`
-                            <span class="monospace">${dns}</span>${extendedNetwork.dns.forwarders.indexOf(dns) < extendedNetwork.dns.forwarders.length - 1 ? ", " : ""}
-                          `)}
-                        </span>
+                    <!-- DHCP Configuration if available -->
+                    ${extendedNetwork.dhcp ? x`
+                      <div class="detail-section">
+                        <h3>DHCP Configuration</h3>
+                        
+                        <div class="detail-item">
+                          <strong class="detail-key">DHCP Status:</strong>
+                          <span class="detail-value">
+                            <span class="badge-inline ${extendedNetwork.dhcp?.enabled ? "badge-enabled" : "badge-disabled"}">
+                              ${extendedNetwork.dhcp?.enabled ? "Enabled" : "Disabled"}
+                            </span>
+                          </span>
+                        </div>
+                        
+                        ${extendedNetwork.dhcp?.start && extendedNetwork.dhcp?.end ? x`
+                          <div class="detail-item">
+                            <strong class="detail-key">DHCP Range:</strong>
+                            <span class="detail-value monospace">
+                              ${extendedNetwork.dhcp.start} - ${extendedNetwork.dhcp.end}
+                            </span>
+                          </div>
+                          
+                          <div class="detail-item">
+                            <strong class="detail-key">Pool Size:</strong>
+                            <span class="detail-value">
+                              ${this.calculatePoolSize(extendedNetwork.dhcp.start, extendedNetwork.dhcp.end)} addresses
+                            </span>
+                          </div>
+                        ` : ""}
+                        
+                        ${extendedNetwork.dhcp?.hosts && extendedNetwork.dhcp.hosts.length > 0 ? x`
+                          <div class="detail-item nested">
+                            <strong class="detail-key">Static Leases:</strong>
+                            <div class="nested-content">
+                              <div class="dhcp-hosts-list">
+                                ${extendedNetwork.dhcp.hosts.map((host) => x`
+                                  <div class="dhcp-host-item">
+                                    <span><strong>MAC:</strong> <span class="monospace">${host.mac}</span></span>
+                                    <span><strong>IP:</strong> <span class="monospace">${host.ip}</span></span>
+                                    ${host.name ? x`<span><strong>Name:</strong> ${host.name}</span>` : ""}
+                                  </div>
+                                `)}
+                              </div>
+                            </div>
+                          </div>
+                        ` : ""}
                       </div>
                     ` : ""}
                     
-                    ${extendedNetwork.dns.domain ? x`
-                      <div class="detail-item">
-                        <strong class="detail-key">Domain:</strong>
-                        <span class="detail-value monospace">${extendedNetwork.dns.domain}</span>
+                    <!-- Network Forwarding if available -->
+                    ${extendedNetwork.forward ? x`
+                      <div class="detail-section">
+                        <h3>Network Forwarding</h3>
+                        
+                        <div class="detail-item">
+                          <strong class="detail-key">Forward Mode:</strong>
+                          <span class="detail-value">
+                            <span class="badge-inline">${extendedNetwork.forward.mode || "Not configured"}</span>
+                          </span>
+                        </div>
+                        
+                        ${extendedNetwork.forward.dev ? x`
+                          <div class="detail-item">
+                            <strong class="detail-key">Physical Device:</strong>
+                            <span class="detail-value monospace">${extendedNetwork.forward.dev}</span>
+                          </div>
+                        ` : ""}
+                        
+                        ${extendedNetwork.forward.nat ? x`
+                          <div class="detail-item nested">
+                            <strong class="detail-key">NAT Configuration:</strong>
+                            <div class="nested-content">
+                              ${extendedNetwork.forward.nat.start ? x`
+                                <div class="detail-item">
+                                  <strong class="detail-key">Port Range Start:</strong>
+                                  <span class="detail-value">${extendedNetwork.forward.nat.start}</span>
+                                </div>
+                              ` : ""}
+                              ${extendedNetwork.forward.nat.end ? x`
+                                <div class="detail-item">
+                                  <strong class="detail-key">Port Range End:</strong>
+                                  <span class="detail-value">${extendedNetwork.forward.nat.end}</span>
+                                </div>
+                              ` : ""}
+                            </div>
+                          </div>
+                        ` : ""}
                       </div>
                     ` : ""}
-                  </div>
-                ` : ""}
-                
-                <!-- Additional Metadata -->
-                ${extendedNetwork.metadata ? x`
-                  <div class="detail-section">
-                    <h3>Metadata</h3>
                     
-                    ${extendedNetwork.metadata.created ? x`
-                      <div class="detail-item">
-                        <strong class="detail-key">Created:</strong>
-                        <span class="detail-value">${new Date(extendedNetwork.metadata.created).toLocaleString()}</span>
+                    <!-- DNS Configuration if available -->
+                    ${extendedNetwork.dns ? x`
+                      <div class="detail-section">
+                        <h3>DNS Configuration</h3>
+                        
+                        ${extendedNetwork.dns.forwarders && extendedNetwork.dns.forwarders.length > 0 ? x`
+                          <div class="detail-item">
+                            <strong class="detail-key">DNS Forwarders:</strong>
+                            <span class="detail-value">
+                              ${extendedNetwork.dns.forwarders.map((dns) => x`
+                                <span class="monospace">${dns}</span>${extendedNetwork.dns.forwarders.indexOf(dns) < extendedNetwork.dns.forwarders.length - 1 ? ", " : ""}
+                              `)}
+                            </span>
+                          </div>
+                        ` : ""}
+                        
+                        ${extendedNetwork.dns.domain ? x`
+                          <div class="detail-item">
+                            <strong class="detail-key">Domain:</strong>
+                            <span class="detail-value monospace">${extendedNetwork.dns.domain}</span>
+                          </div>
+                        ` : ""}
                       </div>
                     ` : ""}
                     
-                    ${extendedNetwork.metadata.modified ? x`
-                      <div class="detail-item">
-                        <strong class="detail-key">Last Modified:</strong>
-                        <span class="detail-value">${new Date(extendedNetwork.metadata.modified).toLocaleString()}</span>
+                    <!-- Additional Metadata -->
+                    ${extendedNetwork.metadata ? x`
+                      <div class="detail-section">
+                        <h3>Metadata</h3>
+                        
+                        ${extendedNetwork.metadata.created ? x`
+                          <div class="detail-item">
+                            <strong class="detail-key">Created:</strong>
+                            <span class="detail-value">${new Date(extendedNetwork.metadata.created).toLocaleString()}</span>
+                          </div>
+                        ` : ""}
+                        
+                        ${extendedNetwork.metadata.modified ? x`
+                          <div class="detail-item">
+                            <strong class="detail-key">Last Modified:</strong>
+                            <span class="detail-value">${new Date(extendedNetwork.metadata.modified).toLocaleString()}</span>
+                          </div>
+                        ` : ""}
                       </div>
                     ` : ""}
-                  </div>
-                ` : ""}
-                
-                <!-- Raw Data -->
-                <div class="detail-section">
-                  <h3>Raw Data</h3>
-                  <details>
-                    <summary>View raw network configuration</summary>
-                    <pre class="raw-data">${JSON.stringify(network, null, 2)}</pre>
-                  </details>
-                </div>
-              </div>
+                  </div>` : this.detailActiveTab === "dhcp" ? this.renderDhcpLeasesTab() : this.renderPortsTab()}
             </div>
           `}
         </div>
@@ -63972,6 +66851,110 @@ let VirtualizationNetworks = class extends i$2 {
         </div>
       </div>
     `;
+  }
+  renderDhcpLeasesTab() {
+    if (this.dhcpLeasesLoading) {
+      return x`<loading-state message="Loading DHCP leases..."></loading-state>`;
+    }
+    if (this.dhcpLeasesError) {
+      return x`<div class="detail-sections">
+        <div class="detail-section">
+          <h3>DHCP Leases</h3>
+          <div class="error-text">${this.dhcpLeasesError}</div>
+        </div>
+      </div>`;
+    }
+    if (this.dhcpLeases.length === 0) {
+      return x`<div class="detail-sections">
+        <div class="detail-section">
+          <h3>DHCP Leases</h3>
+          <p class="hint">No active DHCP leases for this network.</p>
+        </div>
+      </div>`;
+    }
+    return x`<div class="detail-sections">
+      <div class="detail-section">
+        <h3>DHCP Leases (${this.dhcpLeasesCount})</h3>
+        <table class="detail-table">
+          <thead>
+            <tr>
+              <th>Interface</th>
+              <th>MAC</th>
+              <th>IP Address</th>
+              <th>Prefix</th>
+              <th>Type</th>
+              <th>Hostname</th>
+              <th>Expiry</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${this.dhcpLeases.map((lease) => x`<tr>
+              <td>${lease.iface || lease.interface || "-"}</td>
+              <td class="monospace">${lease.mac || "-"}</td>
+              <td class="monospace">${lease.ip_address || lease.ip || "-"}</td>
+              <td>${lease.prefix ?? "-"}</td>
+              <td>${lease.type || "-"}</td>
+              <td>${lease.hostname || "-"}</td>
+              <td>${lease.expiry_time ? new Date(lease.expiry_time).toLocaleString() : "-"}</td>
+            </tr>`)}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }
+  renderPortsTab() {
+    if (this.networkPortsLoading) {
+      return x`<loading-state message="Loading attached ports..."></loading-state>`;
+    }
+    if (this.networkPortsError) {
+      return x`<div class="detail-sections">
+        <div class="detail-section">
+          <h3>Attached Ports</h3>
+          <div class="error-text">${this.networkPortsError}</div>
+        </div>
+      </div>`;
+    }
+    if (this.networkPorts.length === 0) {
+      return x`<div class="detail-sections">
+        <div class="detail-section">
+          <h3>Attached Ports</h3>
+          <p class="hint">No virtual machines are currently attached to this network.</p>
+        </div>
+      </div>`;
+    }
+    return x`<div class="detail-sections">
+      <div class="detail-section">
+        <h3>Attached Ports (${this.networkPortsCount})</h3>
+        <table class="detail-table">
+          <thead>
+            <tr>
+              <th>VM Name</th>
+              <th>VM UUID</th>
+              <th>State</th>
+              <th>Interface</th>
+              <th>MAC</th>
+              <th>Model</th>
+              <th>Type</th>
+              <th>Target</th>
+              <th>IP Address</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${this.networkPorts.map((port2) => x`<tr>
+              <td>${port2.vm_name || "-"}</td>
+              <td class="monospace">${port2.vm_uuid || "-"}</td>
+              <td>${port2.vm_state || port2.state || "-"}</td>
+              <td>${port2.interface || port2.iface || "-"}</td>
+              <td class="monospace">${port2.mac || "-"}</td>
+              <td>${port2.model || "-"}</td>
+              <td>${port2.type || "-"}</td>
+              <td>${port2.target || "-"}</td>
+              <td class="monospace">${port2.ip_address || port2.ip || "-"}</td>
+            </tr>`)}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
   }
   // Helper method to calculate broadcast address
   calculateBroadcast(ipAddress, netmask) {
@@ -64078,7 +67061,7 @@ let VirtualizationNetworks = class extends i$2 {
         </div>
 
         <!-- Detail Drawer -->
-        ${this.showDetailDrawer ? this.renderDetailDrawer() : ""}
+        ${this.showDetailDrawer || this.isClosingDetailDrawer ? this.renderDetailDrawer() : ""}
 
         ${this.showDeleteModal && this.itemToDelete ? x`
           <delete-modal
@@ -64093,19 +67076,29 @@ let VirtualizationNetworks = class extends i$2 {
           ></delete-modal>
         ` : ""}
 
-        ${this.showCreateDrawer ? x`
-          <create-resource-drawer
-            .open=${this.showCreateDrawer}
-            .title=${"Create Virtual Network"}
-            .value=${this.createResourceValue}
-            .loading=${this.isCreating}
-            @save=${this.handleCreateResource}
-            @close=${() => {
+        <network-form-drawer
+          .show=${this.showCreateDrawer}
+          .loading=${this.isCreating}
+          .editMode=${false}
+          .networkData=${null}
+          @save=${this.handleCreateSave}
+          @close=${() => {
       this.showCreateDrawer = false;
-      this.createResourceValue = "";
     }}
-          ></create-resource-drawer>
-        ` : ""}
+        ></network-form-drawer>
+
+        <network-form-drawer
+          .show=${this.showEditDrawer}
+          .loading=${this.isUpdating}
+          .editMode=${true}
+          .networkData=${this.editingNetworkForm}
+          @save=${this.handleEditSave}
+          @close=${() => {
+      this.showEditDrawer = false;
+      this.editingNetworkForm = null;
+      this.editingNetworkName = null;
+    }}
+        ></network-form-drawer>
       </div>
     `;
   }
@@ -64200,12 +67193,16 @@ VirtualizationNetworks.styles = i$5`
       right: 0;
       width: 50%;
       height: 100%;
-      background: var(--vscode-editor-background, #1e1e1e);
+      background: var(--vscode-editor-background, var(--vscode-bg-light));
       border-left: 1px solid var(--vscode-widget-border, #454545);
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
       z-index: 1001;
       overflow-y: auto;
       animation: slideIn 0.3s ease-out;
+    }
+
+    .drawer.closing {
+      animation: slideOut 0.3s ease-in;
     }
 
     @media (max-width: 1024px) {
@@ -64229,13 +67226,22 @@ VirtualizationNetworks.styles = i$5`
       }
     }
 
+    @keyframes slideOut {
+      from {
+        transform: translateX(0);
+      }
+      to {
+        transform: translateX(100%);
+      }
+    }
+
     .drawer-header {
       padding: 20px 24px;
       border-bottom: 1px solid var(--vscode-editorWidget-border, #464647);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      background: var(--vscode-editor-background, var(--vscode-bg-light));
       position: sticky;
       top: 0;
       z-index: 10;
@@ -64259,7 +67265,7 @@ VirtualizationNetworks.styles = i$5`
       display: flex;
       justify-content: flex-end;
       gap: 12px;
-      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      background: var(--vscode-editor-background, var(--vscode-bg-light));
       position: sticky;
       bottom: 0;
       z-index: 10;
@@ -64313,7 +67319,7 @@ VirtualizationNetworks.styles = i$5`
     }
 
     .detail-item:not(:last-child) {
-      border-bottom: 1px solid var(--vscode-widget-border, rgba(255, 255, 255, 0.1));
+      border-bottom: 1px solid var(--vscode-widget-border, rgba(0, 0, 0, 0.1));
     }
 
     .detail-key {
@@ -64355,27 +67361,27 @@ VirtualizationNetworks.styles = i$5`
     }
 
     .badge-active {
-      background: rgba(115, 201, 145, 0.2);
-      color: #73c991;
-      border: 1px solid rgba(115, 201, 145, 0.3);
+      background: var(--vscode-testing-runAction, rgba(115, 201, 145, 0.2));
+      color: var(--vscode-button-foreground, #ffffff);
+      border: 1px solid var(--vscode-testing-runAction, rgba(115, 201, 145, 0.3));
     }
 
     .badge-inactive {
-      background: rgba(161, 38, 13, 0.2);
-      color: #ff8c66;
-      border: 1px solid rgba(161, 38, 13, 0.3);
+      background: var(--vscode-inputValidation-errorBackground, rgba(161, 38, 13, 0.2));
+      color: var(--vscode-inputValidation-errorForeground, #ff8c66);
+      border: 1px solid var(--vscode-inputValidation-errorBorder, rgba(161, 38, 13, 0.3));
     }
 
     .badge-enabled {
-      background: rgba(56, 138, 52, 0.2);
-      color: #73c991;
-      border: 1px solid rgba(56, 138, 52, 0.3);
+      background: var(--vscode-testing-runAction, rgba(56, 138, 52, 0.2));
+      color: var(--vscode-button-foreground, #ffffff);
+      border: 1px solid var(--vscode-testing-runAction, rgba(56, 138, 52, 0.3));
     }
 
     .badge-disabled {
-      background: rgba(161, 38, 13, 0.2);
-      color: #ff8c66;
-      border: 1px solid rgba(161, 38, 13, 0.3);
+      background: var(--vscode-inputValidation-warningBackground, rgba(161, 38, 13, 0.2));
+      color: var(--vscode-inputValidation-warningForeground, #ff8c66);
+      border: 1px solid var(--vscode-inputValidation-warningBorder, rgba(161, 38, 13, 0.3));
     }
 
     .dhcp-hosts-list {
@@ -64390,11 +67396,53 @@ VirtualizationNetworks.styles = i$5`
       display: flex;
       gap: 20px;
       font-size: 12px;
-      border-bottom: 1px solid var(--vscode-widget-border, rgba(255, 255, 255, 0.05));
+      border-bottom: 1px solid var(--vscode-widget-border, rgba(0, 0, 0, 0.05));
     }
 
     .dhcp-host-item:last-child {
       border-bottom: none;
+    }
+
+    .detail-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+    }
+
+    .detail-tab {
+      padding: 6px 12px;
+      border: none;
+      background: transparent;
+      color: var(--vscode-foreground, #cccccc);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      border-bottom: 2px solid transparent;
+    }
+
+    .detail-tab.active {
+      border-bottom-color: var(--vscode-button-background, #0e639c);
+      color: var(--vscode-button-foreground, #ffffff);
+    }
+
+    .detail-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+
+    .detail-table th,
+    .detail-table td {
+      border: 1px solid var(--vscode-widget-border, #454545);
+      padding: 4px 6px;
+      text-align: left;
+    }
+
+    .detail-table th {
+      background: var(--vscode-editor-background, var(--vscode-bg-light));
+      font-weight: 500;
     }
 
     .dhcp-host-item span {
@@ -64409,7 +67457,7 @@ VirtualizationNetworks.styles = i$5`
     }
 
     .raw-data {
-      background: var(--vscode-editor-background, #1e1e1e);
+      background: var(--vscode-editor-background, var(--vscode-bg-light));
       border: 1px solid var(--vscode-editorWidget-border, #464647);
       border-radius: 4px;
       padding: 12px;
@@ -64531,6 +67579,36 @@ __decorateClass$f([
 ], VirtualizationNetworks.prototype, "isLoadingDetail", 2);
 __decorateClass$f([
   r$1()
+], VirtualizationNetworks.prototype, "isClosingDetailDrawer", 2);
+__decorateClass$f([
+  r$1()
+], VirtualizationNetworks.prototype, "detailActiveTab", 2);
+__decorateClass$f([
+  r$1()
+], VirtualizationNetworks.prototype, "dhcpLeases", 2);
+__decorateClass$f([
+  r$1()
+], VirtualizationNetworks.prototype, "dhcpLeasesCount", 2);
+__decorateClass$f([
+  r$1()
+], VirtualizationNetworks.prototype, "dhcpLeasesLoading", 2);
+__decorateClass$f([
+  r$1()
+], VirtualizationNetworks.prototype, "dhcpLeasesError", 2);
+__decorateClass$f([
+  r$1()
+], VirtualizationNetworks.prototype, "networkPorts", 2);
+__decorateClass$f([
+  r$1()
+], VirtualizationNetworks.prototype, "networkPortsCount", 2);
+__decorateClass$f([
+  r$1()
+], VirtualizationNetworks.prototype, "networkPortsLoading", 2);
+__decorateClass$f([
+  r$1()
+], VirtualizationNetworks.prototype, "networkPortsError", 2);
+__decorateClass$f([
+  r$1()
 ], VirtualizationNetworks.prototype, "showDeleteModal", 2);
 __decorateClass$f([
   r$1()
@@ -64543,10 +67621,19 @@ __decorateClass$f([
 ], VirtualizationNetworks.prototype, "showCreateDrawer", 2);
 __decorateClass$f([
   r$1()
-], VirtualizationNetworks.prototype, "createResourceValue", 2);
+], VirtualizationNetworks.prototype, "showEditDrawer", 2);
 __decorateClass$f([
   r$1()
 ], VirtualizationNetworks.prototype, "isCreating", 2);
+__decorateClass$f([
+  r$1()
+], VirtualizationNetworks.prototype, "isUpdating", 2);
+__decorateClass$f([
+  r$1()
+], VirtualizationNetworks.prototype, "editingNetworkForm", 2);
+__decorateClass$f([
+  r$1()
+], VirtualizationNetworks.prototype, "editingNetworkName", 2);
 VirtualizationNetworks = __decorateClass$f([
   t$2("virtualization-networks")
 ], VirtualizationNetworks);
@@ -67510,10 +70597,13 @@ let ISOManagement = class extends i$2 {
     this._uploadStateController = new lib.StoreController(this, $isoUploadState);
     this.virtualizationEnabledController = new lib.StoreController(this, $virtualizationEnabled);
     this.virtualizationDisabledMessageController = new lib.StoreController(this, $virtualizationDisabledMessage);
+    this.storagePoolStoreController = new lib.StoreController(this, storagePoolStore.$items);
     this.searchQuery = "";
     this.showUploadDrawer = false;
+    this.isClosingUploadDrawer = false;
     this.showDeleteModal = false;
     this.showDetailDrawer = false;
+    this.isClosingDetailDrawer = false;
     this.isoToDelete = null;
     this.selectedISO = null;
     this.isLoadingDetail = false;
@@ -67522,13 +70612,17 @@ let ISOManagement = class extends i$2 {
     this.uploadMetadata = {
       os_type: "linux",
       os_variant: "",
-      description: ""
+      description: "",
+      pool_name: ""
     };
     this.currentUpload = null;
     this.dragOver = false;
     this.isPaused = false;
     this.uploadUrl = null;
     this.uploadId = null;
+    this.selectedPoolName = null;
+    this.poolsLoading = false;
+    this.poolsError = null;
   }
   async connectedCallback() {
     super.connectedCallback();
@@ -67670,9 +70764,14 @@ let ISOManagement = class extends i$2 {
     }
   }
   closeDetailDrawer() {
-    this.showDetailDrawer = false;
-    this.selectedISO = null;
-    this.isLoadingDetail = false;
+    if (this.isClosingDetailDrawer) return;
+    this.isClosingDetailDrawer = true;
+    setTimeout(() => {
+      this.showDetailDrawer = false;
+      this.isClosingDetailDrawer = false;
+      this.selectedISO = null;
+      this.isLoadingDetail = false;
+    }, 300);
   }
   confirmDeleteISO(iso) {
     this.isoToDelete = iso;
@@ -67697,33 +70796,80 @@ let ISOManagement = class extends i$2 {
       this.isDeleting = false;
     }
   }
-  openUploadDrawer() {
+  async openUploadDrawer() {
     this.showUploadDrawer = true;
     this.selectedFile = null;
+    this.selectedPoolName = null;
+    this.poolsError = null;
     this.uploadMetadata = {
       os_type: "linux",
       os_variant: "",
-      description: ""
+      description: "",
+      pool_name: ""
     };
+    await this.loadPoolsForUpload();
+  }
+  async loadPoolsForUpload() {
+    this.poolsLoading = true;
+    this.poolsError = null;
+    try {
+      await storagePoolStore.fetch();
+      const pools = this.getAvailablePools();
+      const defaultPool = pools.find((p2) => p2.name === "default");
+      if (defaultPool) {
+        this.selectedPoolName = "default";
+        this.uploadMetadata = { ...this.uploadMetadata, pool_name: "default" };
+      }
+    } catch (error) {
+      console.error("Failed to load storage pools:", error);
+      this.poolsError = error instanceof Error ? error.message : "Failed to load storage pools";
+    } finally {
+      this.poolsLoading = false;
+    }
+  }
+  getAvailablePools() {
+    const poolsMap = this.storagePoolStoreController.value;
+    if (!poolsMap) return [];
+    let poolsArray;
+    if (poolsMap instanceof Map) {
+      poolsArray = Array.from(poolsMap.values());
+    } else if (typeof poolsMap === "object") {
+      poolsArray = Object.values(poolsMap);
+    } else {
+      return [];
+    }
+    return poolsArray.filter((pool) => pool.state === "running" || pool.state === "active");
+  }
+  handlePoolChange(poolName) {
+    this.selectedPoolName = poolName || null;
+    this.uploadMetadata = { ...this.uploadMetadata, pool_name: poolName };
   }
   closeUploadDrawer() {
-    if (this.currentUpload) {
-      this.currentUpload.abort();
-      this.currentUpload = null;
-      $isoUploadState.set({
-        isUploading: false,
-        uploadProgress: 0,
-        uploadId: null,
-        error: null
-      });
-    }
-    this.showUploadDrawer = false;
-    this.selectedFile = null;
-    this.uploadMetadata = {
-      os_type: "linux",
-      os_variant: "",
-      description: ""
-    };
+    if (this.isClosingUploadDrawer) return;
+    this.isClosingUploadDrawer = true;
+    setTimeout(() => {
+      if (this.currentUpload) {
+        this.currentUpload.abort();
+        this.currentUpload = null;
+        $isoUploadState.set({
+          isUploading: false,
+          uploadProgress: 0,
+          uploadId: null,
+          error: null
+        });
+      }
+      this.showUploadDrawer = false;
+      this.isClosingUploadDrawer = false;
+      this.selectedFile = null;
+      this.uploadMetadata = {
+        os_type: "linux",
+        os_variant: "",
+        description: "",
+        pool_name: ""
+      };
+      this.selectedPoolName = null;
+      this.poolsError = null;
+    }, 300);
   }
   handleDragOver(event) {
     event.preventDefault();
@@ -67781,7 +70927,8 @@ let ISOManagement = class extends i$2 {
           size: this.selectedFile.size,
           os_type: this.uploadMetadata.os_type,
           os_variant: this.uploadMetadata.os_variant,
-          description: this.uploadMetadata.description
+          description: this.uploadMetadata.description,
+          pool_name: this.uploadMetadata.pool_name || void 0
         });
         this.uploadUrl = uploadUrl;
         this.uploadId = uploadId;
@@ -67805,7 +70952,8 @@ let ISOManagement = class extends i$2 {
           filetype: this.selectedFile.type || "application/octet-stream",
           os_type: this.uploadMetadata.os_type || "",
           os_variant: this.uploadMetadata.os_variant || "",
-          description: this.uploadMetadata.description || ""
+          description: this.uploadMetadata.description || "",
+          pool_name: this.uploadMetadata.pool_name || ""
         },
         headers: {
           "Authorization": `Bearer ${localStorage.getItem("jwt_token") || localStorage.getItem("auth_token")}`,
@@ -67913,7 +71061,7 @@ let ISOManagement = class extends i$2 {
   renderDetailDrawer() {
     if (!this.selectedISO) return "";
     return x`
-      <div class="drawer">
+      <div class="drawer ${this.isClosingDetailDrawer ? "closing" : ""}">
         <div class="drawer-header">
           <h2 class="drawer-title">ISO Image Details</h2>
           <button class="close-btn" @click=${this.closeDetailDrawer}>✕</button>
@@ -67993,7 +71141,7 @@ let ISOManagement = class extends i$2 {
     const uploadState = this._uploadStateController.value;
     const isUploading = uploadState.isUploading || this.isPaused;
     return x`
-      <div class="drawer">
+      <div class="drawer ${this.isClosingUploadDrawer ? "closing" : ""}">
         <div class="drawer-header">
           <h2 class="drawer-title">Upload ISO Image</h2>
           <button class="close-btn" @click=${this.closeUploadDrawer}>✕</button>
@@ -68037,6 +71185,48 @@ let ISOManagement = class extends i$2 {
                 ` : ""}
               </div>
             `}
+            
+            <div class="form-group">
+              <label>Storage Pool (Optional)</label>
+              ${this.poolsLoading ? x`
+                <select disabled>
+                  <option>Loading pools...</option>
+                </select>
+              ` : this.poolsError ? x`
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                  <select disabled>
+                    <option>Failed to load pools</option>
+                  </select>
+                  <div class="help-text" style="color: var(--vscode-inputValidation-warningForeground);">
+                    ${this.poolsError}. Upload will use the default pool.
+                  </div>
+                  <button 
+                    type="button" 
+                    class="btn btn-secondary" 
+                    style="align-self: flex-start; padding: 4px 8px; font-size: 12px;"
+                    @click=${() => this.loadPoolsForUpload()}
+                  >
+                    Retry
+                  </button>
+                </div>
+              ` : x`
+                <select
+                  .value=${this.selectedPoolName || ""}
+                  @change=${(e3) => this.handlePoolChange(e3.target.value)}
+                  ?disabled=${isUploading}
+                >
+                  <option value="">-- Use default pool --</option>
+                  ${this.getAvailablePools().map((pool) => x`
+                    <option value="${pool.name}" ?selected=${this.selectedPoolName === pool.name}>
+                      ${pool.name} (${pool.type})
+                    </option>
+                  `)}
+                </select>
+                <div class="help-text">
+                  Select a storage pool to store this ISO. If not selected, the default pool will be used.
+                </div>
+              `}
+            </div>
             
             <div class="form-group">
               <label>OS Type</label>
@@ -68153,7 +71343,8 @@ let ISOManagement = class extends i$2 {
     const tableData = filteredISOs.map((iso) => ({
       ...iso,
       size_formatted: this.formatFileSize(iso.size),
-      uploaded_at_formatted: this.formatDate(iso.uploaded_at)
+      uploaded_at_formatted: this.formatDate(iso.uploaded_at),
+      storage_pool: iso.storage_pool || "default"
     }));
     return x`
       <div class="container">
@@ -68212,10 +71403,10 @@ let ISOManagement = class extends i$2 {
         </div>
         
         <!-- Upload Drawer -->
-        ${this.showUploadDrawer ? this.renderUploadDrawer() : ""}
+        ${this.showUploadDrawer || this.isClosingUploadDrawer ? this.renderUploadDrawer() : ""}
         
         <!-- Detail Drawer -->
-        ${this.showDetailDrawer ? this.renderDetailDrawer() : ""}
+        ${this.showDetailDrawer || this.isClosingDetailDrawer ? this.renderDetailDrawer() : ""}
         
         <!-- Delete Confirmation Modal -->
         ${this.showDeleteModal && this.isoToDelete ? x`
@@ -68315,6 +71506,19 @@ ISOManagement.styles = i$5`
       to {
         transform: translateX(0);
       }
+    }
+
+    @keyframes slideOut {
+      from {
+        transform: translateX(0);
+      }
+      to {
+        transform: translateX(100%);
+      }
+    }
+
+    .drawer.closing {
+      animation: slideOut 0.3s ease-in forwards;
     }
 
     .drawer-header {
@@ -68700,10 +71904,16 @@ __decorateClass$e([
 ], ISOManagement.prototype, "showUploadDrawer", 2);
 __decorateClass$e([
   r$1()
+], ISOManagement.prototype, "isClosingUploadDrawer", 2);
+__decorateClass$e([
+  r$1()
 ], ISOManagement.prototype, "showDeleteModal", 2);
 __decorateClass$e([
   r$1()
 ], ISOManagement.prototype, "showDetailDrawer", 2);
+__decorateClass$e([
+  r$1()
+], ISOManagement.prototype, "isClosingDetailDrawer", 2);
 __decorateClass$e([
   r$1()
 ], ISOManagement.prototype, "isoToDelete", 2);
@@ -68737,39 +71947,18 @@ __decorateClass$e([
 __decorateClass$e([
   r$1()
 ], ISOManagement.prototype, "uploadId", 2);
+__decorateClass$e([
+  r$1()
+], ISOManagement.prototype, "selectedPoolName", 2);
+__decorateClass$e([
+  r$1()
+], ISOManagement.prototype, "poolsLoading", 2);
+__decorateClass$e([
+  r$1()
+], ISOManagement.prototype, "poolsError", 2);
 ISOManagement = __decorateClass$e([
   t$2("iso-management")
 ], ISOManagement);
-const $notifications = map$3({});
-const notificationActions = {
-  addNotification(notification) {
-    const id = crypto.randomUUID();
-    const newNotification = {
-      ...notification,
-      id,
-      timestamp: Date.now(),
-      duration: notification.duration ?? 5e3
-    };
-    $notifications.setKey(id, newNotification);
-    if (newNotification.duration && newNotification.duration > 0) {
-      setTimeout(() => {
-        this.removeNotification(id);
-      }, newNotification.duration);
-    }
-    return id;
-  },
-  removeNotification(id) {
-    const notifications = $notifications.get();
-    if (notifications[id]) {
-      const newNotifications = { ...notifications };
-      delete newNotifications[id];
-      $notifications.set(newNotifications);
-    }
-  },
-  clearAll() {
-    $notifications.set({});
-  }
-};
 var __defProp$d = Object.defineProperty;
 var __getOwnPropDesc$b = Object.getOwnPropertyDescriptor;
 var __decorateClass$d = (decorators, target, key, kind) => {
@@ -76823,6 +80012,23 @@ class AppRoot extends i$2 {
     this.languageMenuOpen = false;
     this.sidebarCollapsed = false;
     this.subRoute = null;
+    this.handlePopstate = (event) => {
+      if (event.state && event.state.route) {
+        const [mainRoute, ...subParts] = event.state.route.split("/");
+        this.activeView = mainRoute;
+        this.subRoute = subParts.length > 0 ? subParts.join("/") : null;
+      } else {
+        const path = window.location.pathname.slice(1);
+        if (!path || path === "") {
+          this.activeView = "dashboard";
+          this.subRoute = null;
+        } else {
+          const [mainRoute, ...subParts] = path.split("/");
+          this.subRoute = subParts.length > 0 ? subParts.join("/") : null;
+          this.activeView = mainRoute && this.isValidRoute(mainRoute) ? mainRoute : path;
+        }
+      }
+    };
     this.handleAuthLogin = async () => {
       this.isAuthenticated = true;
       const { reinitializeMetricsAfterLogin: reinitializeMetricsAfterLogin2 } = await Promise.resolve().then(() => metrics);
@@ -77072,23 +80278,7 @@ class AppRoot extends i$2 {
         this.activeView = path;
       }
     }
-    window.addEventListener("popstate", (event) => {
-      if (event.state && event.state.route) {
-        const [mainRoute, ...subParts] = event.state.route.split("/");
-        this.activeView = mainRoute;
-        this.subRoute = subParts.length > 0 ? subParts.join("/") : null;
-      } else {
-        const path2 = window.location.pathname.slice(1);
-        if (!path2 || path2 === "") {
-          this.activeView = "dashboard";
-          this.subRoute = null;
-        } else {
-          const [mainRoute, ...subParts] = path2.split("/");
-          this.subRoute = subParts.length > 0 ? subParts.join("/") : null;
-          this.activeView = mainRoute && this.isValidRoute(mainRoute) ? mainRoute : path2;
-        }
-      }
-    });
+    window.addEventListener("popstate", this.handlePopstate);
     window.addEventListener("auth:login", this.handleAuthLogin);
     window.addEventListener("auth:logout", this.handleAuthLogout);
     this.addEventListener("login-success", this.handleLoginSuccess);
@@ -77100,6 +80290,7 @@ class AppRoot extends i$2 {
     if (this._unsubscribeI18n) {
       this._unsubscribeI18n();
     }
+    window.removeEventListener("popstate", this.handlePopstate);
     document.removeEventListener("click", this.handleDocumentClick);
     window.removeEventListener("theme-changed", this.handleThemeChange);
     window.removeEventListener("auth:login", this.handleAuthLogin);
@@ -77121,10 +80312,6 @@ class AppRoot extends i$2 {
   }
   async updated(changedProperties) {
     super.updated(changedProperties);
-    if (changedProperties.has("isAuthenticated") && this.isAuthenticated) {
-      const { initializeMetrics: initializeMetrics2 } = await Promise.resolve().then(() => metrics);
-      await initializeMetrics2();
-    }
   }
   render() {
     if (!this.isAuthenticated) {

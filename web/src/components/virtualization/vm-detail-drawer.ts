@@ -1425,7 +1425,6 @@ export class VMDetailDrawer extends LitElement {
   }
   
   private buildPowerActionErrorMessage(action: string, responseData: any, statusText: string): string {
-    const actionVerb = action.charAt(0).toUpperCase() + action.slice(1);
     const base = `Failed to ${action} VM`;
 
     const apiError = responseData?.error;
@@ -1786,6 +1785,7 @@ export class VMDetailDrawer extends LitElement {
 
   private renderMetricsTab() {
     const currentState = this.vmDetails?.state || this.vm?.state;
+    const displayState = currentState ? currentState.charAt(0).toUpperCase() + currentState.slice(1) : 'Unknown';
     
     // Check if VM is not running
     if (currentState !== 'running') {

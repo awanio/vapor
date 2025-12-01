@@ -352,7 +352,9 @@
   "virtualization": {
     "vms": "Virtual Machines",
     "storage-pools": "Storage Pools",
-    "networks": "Networks"
+    "networks": "Networks",
+    "iso-images": "ISO Images",
+    "volumes": "Volumes"
   },
   "users": {
     "title": "User Management",
