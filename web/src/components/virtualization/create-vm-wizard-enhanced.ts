@@ -132,8 +132,19 @@ export class CreateVMWizardEnhanced extends LitElement {
   @state() private showDeviceModal = false;
   @state() private deviceModalMode: 'disk' | 'iso' = 'disk';
   @state() private deviceDraft: EnhancedDiskConfig | null = null;
+  @state() private editingDiskIndex: number | null = null;
+  @state() private showNetworkModal = false;
+  @state() private networkDraft: NetworkInterface | null = null;
+  @state() private editingNetworkIndex: number | null = null;
+  @state() private showGraphicsModal = false;
+  @state() private graphicsDraft: GraphicsConfig | null = null;
+  @state() private editingGraphicsIndex: number | null = null;
+  @state() private showPCIModal = false;
+  @state() private pciDraft: PCIDevice | null = null;
+  @state() private editingPCIDeviceIndex: number | null = null;
+  @state() private pciHostSelection = '';
   @state() private validationErrors: Record<string, string> = {};
-  @state() private expandedSections: Set<string> = new Set(['basic', 'storage']);
+  @state() private expandedSections: Set<string> = new Set(['basic', 'storage', 'network']);
   @state() private currentStep = 1;
   @state() private availablePCIDevices: any[] = [];
   @state() private isLoadingPCIDevices = false;
@@ -141,6 +152,7 @@ export class CreateVMWizardEnhanced extends LitElement {
   @state() private editingVmId: string | null = null;
   @state() private showCloseConfirmation = false;
   @state() private formData: Partial<EnhancedVMCreateRequest> = {
+    name: this.generateDefaultVmName(),
     memory: 2048,
     vcpus: 2,
     os_type: 'linux',
@@ -551,6 +563,19 @@ export class CreateVMWizardEnhanced extends LitElement {
       font-size: 12px;
     }
 
+    .btn-icon-ghost {
+      padding: 4px 8px;
+      font-size: 12px;
+      margin-right: 6px;
+      background: transparent;
+      color: var(--vscode-foreground, #cccccc);
+      border: 1px solid var(--vscode-widget-border, #454545);
+    }
+
+    .btn-icon-ghost:hover:not(:disabled) {
+      background: var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.1));
+    }
+
     .monospace {
       font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
     }
@@ -846,6 +871,7 @@ export class CreateVMWizardEnhanced extends LitElement {
 
   private resetFormData() {
     this.formData = {
+      name: this.generateDefaultVmName(),
       memory: 2048,
       vcpus: 2,
       os_type: 'linux',
@@ -1002,6 +1028,7 @@ export class CreateVMWizardEnhanced extends LitElement {
 
   private openAddDiskModal() {
     this.showAddDeviceMenu = false;
+    this.editingDiskIndex = null;
     this.deviceModalMode = 'disk';
     const defaultPool = this.formData.storage?.disks?.[0]?.storage_pool || 'default';
     this.deviceDraft = {
@@ -1018,6 +1045,7 @@ export class CreateVMWizardEnhanced extends LitElement {
 
   private openAddIsoModal() {
     this.showAddDeviceMenu = false;
+    this.editingDiskIndex = null;
     this.deviceModalMode = 'iso';
     const defaultPool = this.formData.storage?.disks?.[0]?.storage_pool || 'default';
     this.deviceDraft = {
@@ -1030,10 +1058,23 @@ export class CreateVMWizardEnhanced extends LitElement {
     } as EnhancedDiskConfig;
     this.showDeviceModal = true;
   }
+  private openEditDiskModal(index: number) {
+    const existing = this.formData.storage?.disks?.[index];
+    if (!existing) return;
+
+    this.showAddDeviceMenu = false;
+    this.editingDiskIndex = index;
+    this.deviceModalMode = existing.device === 'cdrom' ? 'iso' : 'disk';
+    this.deviceDraft = { ...existing };
+    this.showDeviceModal = true;
+  }
+
+
 
   private handleDeviceModalClose() {
     this.showDeviceModal = false;
     this.deviceDraft = null;
+    this.editingDiskIndex = null;
   }
 
   private handleDeviceModalSave() {
@@ -1087,9 +1128,15 @@ export class CreateVMWizardEnhanced extends LitElement {
       this.formData.storage.disks = [];
     }
 
-    this.formData.storage.disks.push({ ...d });
+    if (this.editingDiskIndex !== null) {
+      this.formData.storage.disks[this.editingDiskIndex] = { ...d };
+    } else {
+      this.formData.storage.disks.push({ ...d });
+    }
+
     this.showDeviceModal = false;
     this.deviceDraft = null;
+    this.editingDiskIndex = null;
     this.requestUpdate();
   }
 
@@ -1105,7 +1152,7 @@ export class CreateVMWizardEnhanced extends LitElement {
     return html`
       <modal-dialog
         .open=${this.showDeviceModal}
-        .title=${this.deviceModalMode === 'iso' ? 'Add ISO/CD-ROM' : 'Add Disk'}
+        .title=${this.deviceModalMode === 'iso' ? (this.editingDiskIndex !== null ? 'Edit ISO/CD-ROM' : 'Add ISO/CD-ROM') : (this.editingDiskIndex !== null ? 'Edit Disk' : 'Add Disk')}
         size="medium"
         @modal-close=${this.handleDeviceModalClose}
       >
@@ -1344,11 +1391,411 @@ export class CreateVMWizardEnhanced extends LitElement {
 
         <div slot="footer" style="display: flex; justify-content: flex-end; gap: 8px;">
           <button class="btn-secondary" @click=${this.handleDeviceModalClose}>Cancel</button>
-          <button class="btn-primary" @click=${this.handleDeviceModalSave}>Add</button>
+          <button class="btn-primary" @click=${this.handleDeviceModalSave}>${this.editingDiskIndex !== null ? 'Save' : 'Add'}</button>
         </div>
       </modal-dialog>
     `;
   }
+
+  private renderNetworkModal() {
+    if (!this.showNetworkModal || !this.networkDraft) {
+      return null;
+    }
+
+    const networksValue = this.networksController.value;
+    const networksArray: VirtualNetwork[] = networksValue instanceof Map
+      ? Array.from(networksValue.values())
+      : Array.isArray(networksValue)
+        ? networksValue
+        : [];
+
+    const bridges = Array.from(this.bridgesController.value || []);
+    const bridgeInterfaces = bridges.filter((iface: any) => iface.type === 'bridge');
+
+    const nic = this.networkDraft;
+
+    return html`
+      <modal-dialog
+        .open=${this.showNetworkModal}
+        .title=${this.editingNetworkIndex !== null ? 'Edit Network Interface' : 'Add Network Interface'}
+        size="medium"
+        @modal-close=${this.handleNetworkModalClose}
+      >
+        <div class="grid-3">
+          <div class="form-group">
+            <label>Type</label>
+            <select
+              .value=${nic.type}
+              @change=${(e: Event) => {
+                nic.type = (e.target as HTMLSelectElement).value as any;
+                if (nic.type === 'network') nic.source = 'default';
+                else nic.source = '';
+                this.requestUpdate();
+              }}
+            >
+              <option value="network">Network</option>
+              <option value="bridge">Bridge</option>
+              <option value="direct">Direct (Macvtap)</option>
+              <option value="user">User Mode</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Source ${nic.type === 'user' ? '' : html`<span class="required">*</span>`}</label>
+            ${nic.type === 'network' ? html`
+              <select
+                .value=${nic.source || 'default'}
+                @change=${(e: Event) => {
+                  nic.source = (e.target as HTMLSelectElement).value;
+                  this.requestUpdate();
+                }}
+              >
+                <option value="default">default</option>
+                ${networksArray
+                  .filter(vn => vn.name !== 'default')
+                  .map(vn => html`
+                    <option value=${vn.name}>
+                      ${vn.name} ${vn.state === 'active' ? '(Active)' : '(Inactive)'}
+                    </option>
+                  `)}
+              </select>
+            ` : nic.type === 'bridge' ? html`
+              <select
+                .value=${nic.source || ''}
+                @change=${(e: Event) => {
+                  nic.source = (e.target as HTMLSelectElement).value;
+                  this.requestUpdate();
+                }}
+              >
+                <option value="">Select a bridge</option>
+                ${bridgeInterfaces.map(br => html`
+                  <option value=${br.name}>
+                    ${br.name} ${br.state === 'up' ? '(Up)' : '(Down)'}
+                  </option>
+                `)}
+              </select>
+            ` : nic.type === 'direct' ? html`
+              <input
+                type="text"
+                placeholder="Interface (e.g. eth0)"
+                .value=${nic.source || ''}
+                @input=${(e: InputEvent) => {
+                  nic.source = (e.target as HTMLInputElement).value;
+                  this.requestUpdate();
+                }}
+              />
+            ` : html`
+              <input
+                type="text"
+                placeholder="(not required)"
+                .value=${nic.source || ''}
+                @input=${(e: InputEvent) => {
+                  nic.source = (e.target as HTMLInputElement).value;
+                  this.requestUpdate();
+                }}
+              />
+            `}
+          </div>
+
+          <div class="form-group">
+            <label>Model</label>
+            <select
+              .value=${nic.model || 'virtio'}
+              @change=${(e: Event) => {
+                nic.model = (e.target as HTMLSelectElement).value as any;
+                this.requestUpdate();
+              }}
+            >
+              <option value="virtio">VirtIO</option>
+              <option value="e1000">Intel E1000</option>
+              <option value="rtl8139">Realtek RTL8139</option>
+              <option value="vmxnet3">VMware vmxnet3</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 12px;">
+          <label>MAC Address (optional)</label>
+          <input
+            type="text"
+            placeholder="52:54:00:xx:xx:xx (auto-generated if empty)"
+            .value=${nic.mac || ''}
+            @input=${(e: InputEvent) => {
+              nic.mac = (e.target as HTMLInputElement).value;
+              this.requestUpdate();
+            }}
+          />
+          <div class="help-text">Leave empty to auto-generate a MAC address</div>
+        </div>
+
+        <div slot="footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button class="btn-secondary" @click=${this.handleNetworkModalClose}>Cancel</button>
+          <button class="btn-primary" @click=${this.handleNetworkModalSave}>${this.editingNetworkIndex !== null ? 'Save' : 'Add'}</button>
+        </div>
+      </modal-dialog>
+    `;
+  }
+
+
+  private renderGraphicsModal() {
+    if (!this.showGraphicsModal || !this.graphicsDraft) {
+      return null;
+    }
+
+    const g = this.graphicsDraft;
+
+    return html`
+      <modal-dialog
+        .open=${this.showGraphicsModal}
+        .title=${this.editingGraphicsIndex !== null ? 'Edit Graphics' : 'Add Graphics'}
+        size="medium"
+        @modal-close=${this.handleGraphicsModalClose}
+      >
+        <div class="grid-3">
+          <div class="form-group">
+            <label>Type</label>
+            <select
+              .value=${g.type}
+              @change=${(e: Event) => {
+                g.type = (e.target as HTMLSelectElement).value as any;
+                // Set reasonable defaults when switching types
+                if (g.type === 'vnc' || g.type === 'spice') {
+                  g.listen = g.listen || '0.0.0.0';
+                  if (g.autoport === undefined) g.autoport = true;
+                }
+                this.requestUpdate();
+              }}
+            >
+              <option value="vnc">VNC</option>
+              <option value="spice">SPICE</option>
+              <option value="egl-headless">EGL Headless</option>
+              <option value="none">None</option>
+            </select>
+          </div>
+
+          ${g.type !== 'none' && g.type !== 'egl-headless' ? html`
+            <div class="form-group">
+              <label>Port (optional)</label>
+              <input
+                type="number"
+                placeholder="(auto if empty)"
+                .value=${String(g.port || '')}
+                @input=${(e: InputEvent) => {
+                  const v = (e.target as HTMLInputElement).value;
+                  g.port = v ? Number(v) : undefined;
+                  this.requestUpdate();
+                }}
+              />
+            </div>
+
+            <div class="form-group">
+              <label>Listen</label>
+              <input
+                type="text"
+                placeholder="0.0.0.0"
+                .value=${g.listen || '0.0.0.0'}
+                @input=${(e: InputEvent) => {
+                  g.listen = (e.target as HTMLInputElement).value;
+                  this.requestUpdate();
+                }}
+              />
+            </div>
+          ` : ''}
+        </div>
+
+        ${g.type !== 'none' && g.type !== 'egl-headless' ? html`
+          <div class="grid-2" style="margin-top: 12px;">
+            <input
+              type="password"
+              placeholder="Password (optional)"
+              .value=${g.password || ''}
+              @input=${(e: InputEvent) => {
+                g.password = (e.target as HTMLInputElement).value;
+                this.requestUpdate();
+              }}
+            />
+
+            <div class="checkbox-group">
+              <input
+                type="checkbox"
+                id="graphics-autoport"
+                ?checked=${!!g.autoport}
+                @change=${(e: Event) => {
+                  g.autoport = (e.target as HTMLInputElement).checked;
+                  this.requestUpdate();
+                }}
+              />
+              <label for="graphics-autoport">Auto-assign port</label>
+            </div>
+          </div>
+        ` : ''}
+
+        <div slot="footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button class="btn-secondary" @click=${this.handleGraphicsModalClose}>Cancel</button>
+          <button class="btn-primary" @click=${this.handleGraphicsModalSave}>${this.editingGraphicsIndex !== null ? 'Save' : 'Add'}</button>
+        </div>
+      </modal-dialog>
+    `;
+  }
+
+
+  private renderPCIDeviceModal() {
+    if (!this.showPCIModal || !this.pciDraft) {
+      return null;
+    }
+
+    const d = this.pciDraft;
+    const selectedDevice = this.availablePCIDevices.find(dev => dev.pci_address === d.host_address);
+
+    return html`
+      <modal-dialog
+        .open=${this.showPCIModal}
+        .title=${this.editingPCIDeviceIndex !== null ? 'Edit PCI Device' : 'Add PCI Device'}
+        size="medium"
+        @modal-close=${this.handlePCIDeviceModalClose}
+      >
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Host PCI Address <span class="required">*</span></label>
+            ${this.availablePCIDevices.length > 0 ? html`
+              <select
+                .value=${this.pciHostSelection}
+                @change=${(e: Event) => {
+                  const value = (e.target as HTMLSelectElement).value;
+                  this.pciHostSelection = value;
+                  if (value === 'custom') {
+                    d.host_address = '';
+                  } else {
+                    d.host_address = value;
+                  }
+                  this.requestUpdate();
+                }}
+              >
+                <option value="">Select a PCI device</option>
+                ${this.availablePCIDevices
+                  .map(x => html`
+                    <option
+                      value=${x.pci_address}
+                      ?disabled=${!x.is_available && x.pci_address !== d.host_address}
+                    >
+                      ${x.pci_address} - ${x.product_name || 'Unknown'}
+                      (${x.vendor_name || 'Unknown'})
+                      ${x.device_type ? `[${String(x.device_type).toUpperCase()}]` : ''}
+                      ${x.is_available ? '' : (x.assigned_to_vm ? `(Assigned to: ${x.assigned_to_vm})` : '(In Use)')}
+                    </option>
+                  `)}
+                <option value="custom">Enter custom address...</option>
+              </select>
+
+              ${this.pciHostSelection === 'custom' ? html`
+                <input
+                  type="text"
+                  placeholder="0000:01:00.0"
+                  style="margin-top: 8px;"
+                  .value=${d.host_address || ''}
+                  @input=${(e: InputEvent) => {
+                    d.host_address = (e.target as HTMLInputElement).value;
+                    this.requestUpdate();
+                  }}
+                />
+              ` : ''}
+            ` : html`
+              <input
+                type="text"
+                placeholder="0000:01:00.0"
+                .value=${d.host_address || ''}
+                @input=${(e: InputEvent) => {
+                  d.host_address = (e.target as HTMLInputElement).value;
+                  this.requestUpdate();
+                }}
+              />
+            `}
+
+            <div class="help-text">
+              PCI address on the host (e.g., 0000:01:00.0)
+              ${selectedDevice ? html`<br><strong>IOMMU Group:</strong> ${selectedDevice.iommu_group || 'Unknown'}` : ''}
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Guest PCI Address (Optional)</label>
+            <input
+              type="text"
+              placeholder="0000:05:00.0 (auto if empty)"
+              .value=${d.guest_address || ''}
+              @input=${(e: InputEvent) => {
+                d.guest_address = (e.target as HTMLInputElement).value;
+                this.requestUpdate();
+              }}
+            />
+            <div class="help-text">PCI address in the guest VM</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>ROM File (Optional)</label>
+          <input
+            type="text"
+            placeholder="/usr/share/vgabios/nvidia.rom"
+            .value=${d.rom_file || ''}
+            @input=${(e: InputEvent) => {
+              d.rom_file = (e.target as HTMLInputElement).value;
+              this.requestUpdate();
+            }}
+          />
+          <div class="help-text">Path to option ROM file (required for some GPUs to work properly)</div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 12px;">
+          <div class="checkbox-group">
+            <input
+              type="checkbox"
+              id="pci-multifunction"
+              ?checked=${!!d.multifunction}
+              @change=${(e: Event) => {
+                d.multifunction = (e.target as HTMLInputElement).checked;
+                this.requestUpdate();
+              }}
+            />
+            <label for="pci-multifunction">Multi-function device</label>
+            <div class="help-text" style="margin-left: 24px;">Enable for devices with multiple functions (e.g., GPU with audio)</div>
+          </div>
+
+          <div class="checkbox-group">
+            <input
+              type="checkbox"
+              id="pci-primary-gpu"
+              ?checked=${!!d.primary_gpu}
+              @change=${(e: Event) => {
+                d.primary_gpu = (e.target as HTMLInputElement).checked;
+                this.requestUpdate();
+              }}
+            />
+            <label for="pci-primary-gpu">Primary GPU</label>
+            <div class="help-text" style="margin-left: 24px;">Set as the primary display adapter</div>
+          </div>
+        </div>
+
+        ${selectedDevice && selectedDevice.device_type === 'gpu' ? html`
+          <div class="help-text" style="margin-top: 12px; padding: 8px; background: var(--vscode-inputValidation-infoBackground); border-radius: 4px;">
+            <strong>GPU Passthrough Tips:</strong>
+            <ul style="margin: 4px 0; padding-left: 20px;">
+              <li>Ensure the GPU is not being used by the host (blacklist driver or use vfio-pci)</li>
+              <li>Consider passing through the audio device (usually at .1 address) as well</li>
+              <li>You may need a ROM file for certain NVIDIA GPUs</li>
+              <li>Enable "Primary GPU" if this will be the main display</li>
+            </ul>
+          </div>
+        ` : ''}
+
+        <div slot="footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button class="btn-secondary" @click=${this.handlePCIDeviceModalClose}>Cancel</button>
+          <button class="btn-primary" @click=${this.handlePCIDeviceModalSave}>${this.editingPCIDeviceIndex !== null ? 'Save' : 'Add'}</button>
+        </div>
+      </modal-dialog>
+    `;
+  }
+
 
   private async handleCreate() {
     // Validate all steps
@@ -1441,17 +1888,63 @@ export class CreateVMWizardEnhanced extends LitElement {
       this.requestUpdate();
     }
   }
-
-  private addNetwork() {
-    if (!this.formData.networks) {
-      this.formData.networks = [];
-    }
-    
-    this.formData.networks.push({
+  private openAddNetworkModal() {
+    this.editingNetworkIndex = null;
+    this.networkDraft = {
       type: 'network',
       source: 'default',
       model: 'virtio',
-    });
+      mac: '',
+    };
+    this.showNetworkModal = true;
+  }
+
+  private openEditNetworkModal(index: number) {
+    const existing = this.formData.networks?.[index];
+    if (!existing) return;
+
+    this.editingNetworkIndex = index;
+    this.networkDraft = {
+      type: existing.type || 'network',
+      source: existing.source || '',
+      model: existing.model || 'virtio',
+      mac: existing.mac || '',
+    };
+    this.showNetworkModal = true;
+  }
+  private handleNetworkModalClose() {
+    this.showNetworkModal = false;
+    this.editingNetworkIndex = null;
+    this.networkDraft = null;
+  }
+
+  private handleNetworkModalSave() {
+    if (!this.networkDraft) return;
+
+    const nic: NetworkInterface = {
+      type: this.networkDraft.type,
+      source: (this.networkDraft.source || '').trim() || undefined,
+      model: this.networkDraft.model || 'virtio',
+      mac: (this.networkDraft.mac || '').trim() || undefined,
+    };
+
+    if ((nic.type === 'network' || nic.type === 'bridge' || nic.type === 'direct') && !nic.source) {
+      this.showNotification('Network source is required', 'error');
+      return;
+    }
+    if (!this.formData.networks) {
+      this.formData.networks = [];
+    }
+
+    if (this.editingNetworkIndex !== null) {
+      this.formData.networks[this.editingNetworkIndex] = nic;
+    } else {
+      this.formData.networks.push(nic);
+    }
+
+    this.showNetworkModal = false;
+    this.networkDraft = null;
+    this.editingNetworkIndex = null;
     this.requestUpdate();
   }
 
@@ -1462,16 +1955,74 @@ export class CreateVMWizardEnhanced extends LitElement {
     }
   }
 
-  private addGraphics() {
-    if (!this.formData.graphics) {
-      this.formData.graphics = [];
-    }
-    
-    this.formData.graphics.push({
+  private openAddGraphicsModal() {
+    this.editingGraphicsIndex = null;
+    this.graphicsDraft = {
       type: 'vnc',
       autoport: true,
       listen: '0.0.0.0',
-    });
+      port: undefined,
+      password: '',
+    };
+    this.showGraphicsModal = true;
+  }
+
+  private openEditGraphicsModal(index: number) {
+    const existing = this.formData.graphics?.[index];
+    if (!existing) return;
+
+    this.editingGraphicsIndex = index;
+    this.graphicsDraft = { ...existing };
+    this.showGraphicsModal = true;
+  }
+
+  private handleGraphicsModalClose() {
+    this.showGraphicsModal = false;
+    this.graphicsDraft = null;
+    this.editingGraphicsIndex = null;
+  }
+
+  private handleGraphicsModalSave() {
+    if (!this.graphicsDraft) return;
+
+    const draft = this.graphicsDraft;
+    const type = draft.type || 'vnc';
+
+    let gfx: GraphicsConfig = { type };
+
+    if (type !== 'none' && type !== 'egl-headless') {
+      const listen = (draft.listen || '').trim() || '0.0.0.0';
+      const autoport = !!draft.autoport;
+      const port = draft.port ? Number(draft.port) : undefined;
+      const password = (draft.password || '').trim() || undefined;
+
+      gfx = {
+        type,
+        listen,
+        autoport,
+        port,
+        password,
+      } as any;
+
+      // If autoport is enabled, we generally don't need a fixed port
+      if (autoport) {
+        gfx.port = undefined;
+      }
+    }
+
+    if (!this.formData.graphics) {
+      this.formData.graphics = [];
+    }
+
+    if (this.editingGraphicsIndex !== null) {
+      this.formData.graphics[this.editingGraphicsIndex] = gfx;
+    } else {
+      this.formData.graphics.push(gfx);
+    }
+
+    this.showGraphicsModal = false;
+    this.graphicsDraft = null;
+    this.editingGraphicsIndex = null;
     this.requestUpdate();
   }
 
@@ -1482,14 +2033,80 @@ export class CreateVMWizardEnhanced extends LitElement {
     }
   }
 
-  private addPCIDevice() {
+  private openAddPCIDeviceModal() {
+    this.editingPCIDeviceIndex = null;
+    this.pciHostSelection = '';
+    this.pciDraft = {
+      host_address: '',
+      guest_address: '',
+      rom_file: '',
+      multifunction: false,
+      primary_gpu: false,
+    };
+    this.showPCIModal = true;
+  }
+
+  private openEditPCIDeviceModal(index: number) {
+    const existing = this.formData.pci_devices?.[index];
+    if (!existing) return;
+
+    this.editingPCIDeviceIndex = index;
+    this.pciDraft = { ...existing };
+
+    const addr = existing.host_address || '';
+    const known = this.availablePCIDevices.find(d => d.pci_address === addr);
+    this.pciHostSelection = known ? addr : (addr ? 'custom' : '');
+
+    this.showPCIModal = true;
+  }
+
+  private handlePCIDeviceModalClose() {
+    this.showPCIModal = false;
+    this.pciDraft = null;
+    this.editingPCIDeviceIndex = null;
+    this.pciHostSelection = '';
+  }
+
+  private handlePCIDeviceModalSave() {
+    if (!this.pciDraft) return;
+
+    const host = (this.pciDraft.host_address || '').trim();
+    if (!host) {
+      this.showNotification('Host PCI address is required', 'error');
+      return;
+    }
+
+    const device: PCIDevice = {
+      host_address: host,
+      guest_address: (this.pciDraft.guest_address || '').trim() || undefined,
+      rom_file: (this.pciDraft.rom_file || '').trim() || undefined,
+      multifunction: !!this.pciDraft.multifunction,
+      primary_gpu: !!this.pciDraft.primary_gpu,
+    };
+
     if (!this.formData.pci_devices) {
       this.formData.pci_devices = [];
     }
-    
-    this.formData.pci_devices.push({
-      host_address: '',
-    });
+
+    // Ensure only one primary GPU
+    if (device.primary_gpu) {
+      this.formData.pci_devices.forEach((d, i) => {
+        if (this.editingPCIDeviceIndex === null || i != this.editingPCIDeviceIndex) {
+          d.primary_gpu = false;
+        }
+      });
+    }
+
+    if (this.editingPCIDeviceIndex !== null) {
+      this.formData.pci_devices[this.editingPCIDeviceIndex] = device;
+    } else {
+      this.formData.pci_devices.push(device);
+    }
+
+    this.showPCIModal = false;
+    this.pciDraft = null;
+    this.editingPCIDeviceIndex = null;
+    this.pciHostSelection = '';
     this.requestUpdate();
   }
 
@@ -1526,6 +2143,13 @@ export class CreateVMWizardEnhanced extends LitElement {
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  }
+
+  private generateDefaultVmName(): string {
+    // Lowercase, alphanumeric + hyphen only
+    const ts = Date.now().toString(36);
+    const rand = Math.random().toString(36).slice(2, 6);
+    return `vm-${ts}-${rand}`.toLowerCase().replace(/[^a-z0-9-]/g, '');
   }
 
   private renderBasicConfig() {
@@ -1757,6 +2381,13 @@ export class CreateVMWizardEnhanced extends LitElement {
                         </td>
                         <td>
                           <button
+                            class="btn-icon-ghost"
+                            title="Edit device"
+                            @click=${() => this.openEditDiskModal(index)}
+                          >
+                            ✎
+                          </button>
+                          <button
                             class="btn-remove btn-icon"
                             title="Remove device"
                             @click=${() => this.removeDisk(index)}
@@ -1794,6 +2425,35 @@ export class CreateVMWizardEnhanced extends LitElement {
   }
 
   private renderNetworkConfig() {
+    const networksValue = this.networksController.value;
+    const networksArray: VirtualNetwork[] = networksValue instanceof Map
+      ? Array.from(networksValue.values())
+      : Array.isArray(networksValue)
+        ? networksValue
+        : [];
+
+    const bridges = Array.from(this.bridgesController.value || []);
+    const bridgeInterfaces = bridges.filter((iface: any) => iface.type === 'bridge');
+
+    const getStatus = (nic: NetworkInterface): { label: string; className: string } => {
+      if (nic.type === 'network') {
+        const vn = networksArray.find(n => n.name === (nic.source || ''));
+        if (!vn) return { label: 'Unknown', className: 'warning' };
+        return vn.state === 'active'
+          ? { label: 'Active', className: 'success' }
+          : { label: 'Inactive', className: 'warning' };
+      }
+      if (nic.type === 'bridge') {
+        const br = bridgeInterfaces.find(b => b.name === (nic.source || ''));
+        if (!br) return { label: 'Unknown', className: 'warning' };
+        return br.state === 'up'
+          ? { label: 'Up', className: 'success' }
+          : { label: 'Down', className: 'warning' };
+      }
+      if (nic.type === 'user') return { label: 'User Mode', className: 'success' };
+      return { label: 'N/A', className: '' };
+    };
+
     return html`
       <div class="section ${this.expandedSections.has('network') ? 'expanded' : ''}">
         <div class="section-header" @click=${() => this.toggleSection('network')}>
@@ -1805,198 +2465,133 @@ export class CreateVMWizardEnhanced extends LitElement {
         <div class="section-content">
           <div class="form-group">
             <label>Network Interfaces</label>
-            <div class="list-container">
-              ${this.formData.networks?.map((network, index) => html`
-                <div class="list-item">
-                  <div class="list-item-content">
-                    <div class="grid-3">
-                      <select
-                        .value=${network.type}
-                        @change=${(e: Event) => {
-                          network.type = (e.target as HTMLSelectElement).value as any;
-                          this.requestUpdate();
-                        }}
-                      >
-                        <option value="network">Network</option>
-                        <option value="bridge">Bridge</option>
-                        <option value="direct">Direct (Macvtap)</option>
-                        <option value="user">User Mode</option>
-                      </select>
 
-                      ${network.type === 'network' ? html`
-                        <select
-                          .value=${network.source || 'default'}
-                          @change=${(e: Event) => {
-                            network.source = (e.target as HTMLSelectElement).value;
-                            this.requestUpdate();
-                          }}
-                        >
-                          <option value="default">default</option>
-                          ${(() => {
-                            const networks = this.networksController.value;
-                            const networksArray = networks instanceof Map ? Array.from(networks.values()) : 
-                                                   Array.isArray(networks) ? networks : [];
-                            
-                            return networksArray.map((virtualNetwork: VirtualNetwork) => html`
-                              <option value=${virtualNetwork.name}>
-                                ${virtualNetwork.name} ${virtualNetwork.state === 'active' ? '(Active)' : '(Inactive)'}
-                              </option>
-                            `);
-                          })()}
-                        </select>
-                      ` : network.type === 'bridge' ? html`
-                        <select
-                          .value=${network.source || ''}
-                          @change=${(e: Event) => {
-                            network.source = (e.target as HTMLSelectElement).value;
-                            this.requestUpdate();
-                          }}
-                        >
-                          <option value="">Select a bridge</option>
-                          ${(() => {
-                            const bridges = this.bridgesController.value || [];
-                            // Filter to only show bridge type interfaces
-                            const bridgeInterfaces = bridges.filter(iface => 
-                              iface.type === 'bridge'
-                            );
-                            
-                            return bridgeInterfaces.map(bridge => html`
-                              <option value=${bridge.name}>
-                                ${bridge.name} ${bridge.state === 'up' ? '(Up)' : '(Down)'}
-                              </option>
-                            `);
-                          })()}
-                        </select>
-                      ` : html`
-                        <input
-                          type="text"
-                          placeholder="Source (e.g., default, br0)"
-                          .value=${network.source || ''}
-                          @input=${(e: InputEvent) => {
-                            network.source = (e.target as HTMLInputElement).value;
-                            this.requestUpdate();
-                          }}
-                        />
-                      `}
+            ${this.formData.networks?.length ? html`
+              <div class="storage-table-wrapper">
+                <table class="storage-table">
+                  <thead>
+                    <tr>
+                      <th>Type</th>
+                      <th>Source</th>
+                      <th>Model</th>
+                      <th>MAC</th>
+                      <th>Status</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${this.formData.networks.map((nic, index) => {
+                      const status = getStatus(nic);
+                      return html`
+                        <tr>
+                          <td>
+                            <span class="storage-badge">${(nic.type || 'network').toUpperCase()}</span>
+                          </td>
+                          <td>
+                            <span class="monospace storage-path">${nic.source || '-'}</span>
+                          </td>
+                          <td>${(nic.model || 'virtio').toUpperCase()}</td>
+                          <td><span class="monospace">${nic.mac || '-'}</span></td>
+                          <td>
+                            <span class="storage-badge ${status.className}">${status.label}</span>
+                          </td>
+                          <td>
+                            <button
+                              class="btn-icon-ghost"
+                              title="Edit device"
+                              @click=${() => this.openEditNetworkModal(index)}
+                            >
+                              ✎
+                            </button>
+                            <button
+                              class="btn-remove btn-icon"
+                              title="Remove device"
+                              @click=${() => this.removeNetwork(index)}
+                            >
+                              ✕
+                            </button>
+                          </td>
+                        </tr>
+                      `;
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ` : html`<div class="help-text">No devices configured</div>`}
 
-                      <select
-                        .value=${network.model || 'virtio'}
-                        @change=${(e: Event) => {
-                          network.model = (e.target as HTMLSelectElement).value as any;
-                          this.requestUpdate();
-                        }}
-                      >
-                        <option value="virtio">VirtIO</option>
-                        <option value="e1000">Intel E1000</option>
-                        <option value="rtl8139">Realtek RTL8139</option>
-                        <option value="vmxnet3">VMware vmxnet3</option>
-                      </select>
-                    </div>
-
-                    <div class="form-group" style="margin-top: 8px;">
-                      <input
-                        type="text"
-                        placeholder="MAC Address (optional, auto-generated if empty)"
-                        .value=${network.mac || ''}
-                        @input=${(e: InputEvent) => {
-                          network.mac = (e.target as HTMLInputElement).value;
-                          this.requestUpdate();
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <div class="list-item-actions">
-                    <button class="btn-remove" @click=${() => this.removeNetwork(index)}>
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              `) || ''}
-              <button class="btn-add" @click=${this.addNetwork}>
-                + Add Network Interface
+            <div class="btn-add-dropdown">
+              <button class="btn-add" @click=${this.openAddNetworkModal}>
+                + Add Device
               </button>
             </div>
           </div>
 
           <div class="form-group">
             <label>Graphics</label>
-            <div class="list-container">
-              ${this.formData.graphics?.map((graphics, index) => html`
-                <div class="list-item">
-                  <div class="list-item-content">
-                    <div class="grid-3">
-                      <select
-                        .value=${graphics.type}
-                        @change=${(e: Event) => {
-                          graphics.type = (e.target as HTMLSelectElement).value as any;
-                          this.requestUpdate();
-                        }}
-                      >
-                        <option value="vnc">VNC</option>
-                        <option value="spice">SPICE</option>
-                        <option value="egl-headless">EGL Headless</option>
-                        <option value="none">None</option>
-                      </select>
 
-                      ${graphics.type !== 'none' && graphics.type !== 'egl-headless' ? html`
-                        <input
-                          type="number"
-                          placeholder="Port (auto if empty)"
-                          .value=${String(graphics.port || '')}
-                          @input=${(e: InputEvent) => {
-                            graphics.port = Number((e.target as HTMLInputElement).value);
-                            this.requestUpdate();
-                          }}
-                        />
+            ${this.formData.graphics?.length ? html`
+              <div class="storage-table-wrapper">
+                <table class="storage-table">
+                  <thead>
+                    <tr>
+                      <th>Type</th>
+                      <th>Listen</th>
+                      <th>Port</th>
+                      <th>Auto Port</th>
+                      <th>Password</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${this.formData.graphics.map((g, index) => {
+                      const portLabel = (g.type === 'none' || g.type === 'egl-headless')
+                        ? '-'
+                        : (g.autoport ? 'Auto' : (g.port ? String(g.port) : '-'));
+                      const autoLabel = (g.type === 'none' || g.type === 'egl-headless')
+                        ? '-'
+                        : (g.autoport ? 'Yes' : 'No');
+                      const pwLabel = (g.type === 'none' || g.type === 'egl-headless')
+                        ? '-'
+                        : (g.password ? 'Set' : 'None');
 
-                        <input
-                          type="text"
-                          placeholder="Listen address"
-                          .value=${graphics.listen || '0.0.0.0'}
-                          @input=${(e: InputEvent) => {
-                            graphics.listen = (e.target as HTMLInputElement).value;
-                            this.requestUpdate();
-                          }}
-                        />
-                      ` : ''}
-                    </div>
+                      return html`
+                        <tr>
+                          <td><span class="storage-badge">${(g.type || 'vnc').toUpperCase()}</span></td>
+                          <td><span class="monospace">${g.listen || '-'}</span></td>
+                          <td><span class="monospace">${portLabel}</span></td>
+                          <td>
+                            <span class="storage-badge ${autoLabel === 'Yes' ? 'success' : ''}">${autoLabel}</span>
+                          </td>
+                          <td>
+                            <span class="storage-badge ${pwLabel === 'Set' ? 'warning' : ''}">${pwLabel}</span>
+                          </td>
+                          <td>
+                            <button
+                              class="btn-icon-ghost"
+                              title="Edit device"
+                              @click=${() => this.openEditGraphicsModal(index)}
+                            >
+                              ✎
+                            </button>
+                            <button
+                              class="btn-remove btn-icon"
+                              title="Remove device"
+                              @click=${() => this.removeGraphics(index)}
+                            >
+                              ✕
+                            </button>
+                          </td>
+                        </tr>
+                      `;
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ` : html`<div class="help-text">No devices configured</div>`}
 
-                    ${graphics.type !== 'none' && graphics.type !== 'egl-headless' ? html`
-                      <div class="grid-2" style="margin-top: 8px;">
-                        <input
-                          type="password"
-                          placeholder="Password (optional)"
-                          .value=${graphics.password || ''}
-                          @input=${(e: InputEvent) => {
-                            graphics.password = (e.target as HTMLInputElement).value;
-                            this.requestUpdate();
-                          }}
-                        />
-
-                        <div class="checkbox-group">
-                          <input
-                            type="checkbox"
-                            id="autoport-${index}"
-                            ?checked=${graphics.autoport}
-                            @change=${(e: Event) => {
-                              graphics.autoport = (e.target as HTMLInputElement).checked;
-                              this.requestUpdate();
-                            }}
-                          />
-                          <label for="autoport-${index}">Auto-assign port</label>
-                        </div>
-                      </div>
-                    ` : ''}
-                  </div>
-                  <div class="list-item-actions">
-                    <button class="btn-remove" @click=${() => this.removeGraphics(index)}>
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              `) || ''}
-              <button class="btn-add" @click=${this.addGraphics}>
-                + Add Graphics
+            <div class="btn-add-dropdown">
+              <button class="btn-add" @click=${this.openAddGraphicsModal}>
+                + Add Device
               </button>
             </div>
           </div>
@@ -2006,6 +2601,8 @@ export class CreateVMWizardEnhanced extends LitElement {
   }
 
   private renderAdvancedConfig() {
+    const getDeviceInfo = (addr: string) => this.availablePCIDevices.find(d => d.pci_address === addr);
+
     return html`
       <div class="section ${this.expandedSections.has('advanced') ? 'expanded' : ''}">
         <div class="section-header" @click=${() => this.toggleSection('advanced')}>
@@ -2018,188 +2615,93 @@ export class CreateVMWizardEnhanced extends LitElement {
           <div class="form-group">
             <label>PCI Device Passthrough</label>
             <div class="help-text">Configure PCI devices (GPUs, network cards, USB controllers) to pass through to the VM</div>
-            
+
             ${this.isLoadingPCIDevices ? html`
               <div class="list-container">
                 <div class="help-text">Loading available PCI devices...</div>
               </div>
             ` : html`
-              <div class="list-container">
-                ${this.formData.pci_devices?.map((device, index) => html`
-                  <div class="list-item">
-                    <div class="list-item-content">
-                      <div class="grid-2">
-                        <div class="form-group">
-                          <label>Host PCI Address <span class="required">*</span></label>
-                          ${this.availablePCIDevices.length > 0 ? html`
-                            <select
-                              .value=${device.host_address || ''}
-                              @change=${(e: Event) => {
-                                const value = (e.target as HTMLSelectElement).value;
-                                device.host_address = value;
-                                
-                                // Auto-populate device info if selected from list
-                                const selectedDevice = this.availablePCIDevices.find(d => d.pci_address === value);
-                                if (selectedDevice) {
-                                  // Show device info
-                                  this.showNotification(
-                                    `Selected: ${selectedDevice.product_name || 'Unknown Device'} (${selectedDevice.vendor_name || 'Unknown Vendor'})`,
-                                    'info'
-                                  );
-                                }
-                                this.requestUpdate();
-                              }}
-                            >
-                              <option value="">Select a PCI device</option>
-                              ${this.availablePCIDevices
-                                .filter(d => d.is_available)
-                                .map(d => html`
-                                  <option value=${d.pci_address} ?disabled=${!d.is_available}>
-                                    ${d.pci_address} - ${d.product_name || 'Unknown'} 
-                                    (${d.vendor_name || 'Unknown'})
-                                    ${d.device_type ? `[${d.device_type.toUpperCase()}]` : ''}
-                                    ${d.assigned_to_vm ? `(Assigned to: ${d.assigned_to_vm})` : ''}
-                                  </option>
-                                `)}
-                              <option value="custom">Enter custom address...</option>
-                            </select>
-                            ${device.host_address === 'custom' ? html`
-                              <input
-                                type="text"
-                                placeholder="0000:01:00.0"
-                                style="margin-top: 8px;"
-                                @input=${(e: InputEvent) => {
-                                  device.host_address = (e.target as HTMLInputElement).value;
-                                  this.requestUpdate();
-                                }}
-                              />
-                            ` : ''}
-                          ` : html`
-                            <input
-                              type="text"
-                              placeholder="0000:01:00.0"
-                              .value=${device.host_address || ''}
-                              @input=${(e: InputEvent) => {
-                                device.host_address = (e.target as HTMLInputElement).value;
-                                this.requestUpdate();
-                              }}
-                            />
-                          `}
-                          <div class="help-text">
-                            PCI address on the host (e.g., 0000:01:00.0)
-                            ${(() => {
-                              const selectedDevice = this.availablePCIDevices.find(d => d.pci_address === device.host_address);
-                              if (selectedDevice) {
-                                return html`<br><strong>IOMMU Group:</strong> ${selectedDevice.iommu_group || 'Unknown'}`;
-                              }
-                              return '';
-                            })()}
-                          </div>
-                        </div>
+              ${this.formData.pci_devices?.length ? html`
+                <div class="storage-table-wrapper">
+                  <table class="storage-table">
+                    <thead>
+                      <tr>
+                        <th>Host</th>
+                        <th>Device</th>
+                        <th>Type</th>
+                        <th>IOMMU</th>
+                        <th>Flags</th>
+                        <th>Guest</th>
+                        <th>ROM</th>
+                        <th>Status</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${this.formData.pci_devices.map((dev, index) => {
+                        const info = getDeviceInfo(dev.host_address);
+                        const typeLabel = info?.device_type ? String(info.device_type).toUpperCase() : '-';
+                        const status = info
+                          ? (info.is_available ? { label: 'Available', cls: 'success' } : { label: 'In Use', cls: 'warning' })
+                          : { label: 'Unknown', cls: 'warning' };
 
-                        <div class="form-group">
-                          <label>Guest PCI Address (Optional)</label>
-                          <input
-                            type="text"
-                            placeholder="0000:05:00.0 (auto if empty)"
-                            .value=${device.guest_address || ''}
-                            @input=${(e: InputEvent) => {
-                              device.guest_address = (e.target as HTMLInputElement).value;
-                              this.requestUpdate();
-                            }}
-                          />
-                          <div class="help-text">PCI address in the guest VM</div>
-                        </div>
-                      </div>
+                        const flags: string[] = [];
+                        if (dev.primary_gpu) flags.push('Primary GPU');
+                        if (dev.multifunction) flags.push('Multi');
 
-                      <div class="form-group">
-                        <label>ROM File (Optional)</label>
-                        <input
-                          type="text"
-                          placeholder="/usr/share/vgabios/nvidia.rom"
-                          .value=${device.rom_file || ''}
-                          @input=${(e: InputEvent) => {
-                            device.rom_file = (e.target as HTMLInputElement).value;
-                            this.requestUpdate();
-                          }}
-                        />
-                        <div class="help-text">Path to option ROM file (required for some GPUs to work properly)</div>
-                      </div>
+                        return html`
+                          <tr>
+                            <td><span class="monospace">${dev.host_address}</span></td>
+                            <td>
+                              <span class="monospace storage-path">
+                                ${info ? `${info.product_name || 'Unknown'} (${info.vendor_name || 'Unknown'})` : '-'}
+                              </span>
+                            </td>
+                            <td><span class="storage-badge">${typeLabel}</span></td>
+                            <td>${info?.iommu_group || '-'}</td>
+                            <td>
+                              ${flags.length ? flags.map(f => html`<span class="storage-badge warning" style="margin-right: 6px;">${f}</span>`) : html`-`}
+                            </td>
+                            <td><span class="monospace">${dev.guest_address || '-'}</span></td>
+                            <td><span class="monospace storage-path">${dev.rom_file || '-'}</span></td>
+                            <td><span class="storage-badge ${status.cls}">${status.label}</span></td>
+                            <td>
+                              <button
+                                class="btn-icon-ghost"
+                                title="Edit device"
+                                @click=${() => this.openEditPCIDeviceModal(index)}
+                              >
+                                ✎
+                              </button>
+                              <button
+                                class="btn-remove btn-icon"
+                                title="Remove device"
+                                @click=${() => this.removePCIDevice(index)}
+                              >
+                                ✕
+                              </button>
+                            </td>
+                          </tr>
+                        `;
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ` : html`<div class="help-text">No devices configured</div>`}
 
-                      <div class="grid-2" style="margin-top: 12px;">
-                        <div class="checkbox-group">
-                          <input
-                            type="checkbox"
-                            id="multifunction-${index}"
-                            ?checked=${device.multifunction}
-                            @change=${(e: Event) => {
-                              device.multifunction = (e.target as HTMLInputElement).checked;
-                              this.requestUpdate();
-                            }}
-                          />
-                          <label for="multifunction-${index}">Multi-function device</label>
-                          <div class="help-text" style="margin-left: 24px;">Enable for devices with multiple functions (e.g., GPU with audio)</div>
-                        </div>
-
-                        <div class="checkbox-group">
-                          <input
-                            type="checkbox"
-                            id="primary-gpu-${index}"
-                            ?checked=${device.primary_gpu}
-                            @change=${(e: Event) => {
-                              device.primary_gpu = (e.target as HTMLInputElement).checked;
-                              // If setting as primary GPU, unset others
-                              if (device.primary_gpu && this.formData.pci_devices) {
-                                this.formData.pci_devices.forEach((d, i) => {
-                                  if (i !== index) d.primary_gpu = false;
-                                });
-                              }
-                              this.requestUpdate();
-                            }}
-                          />
-                          <label for="primary-gpu-${index}">Primary GPU</label>
-                          <div class="help-text" style="margin-left: 24px;">Set as the primary display adapter</div>
-                        </div>
-                      </div>
-
-                      ${(() => {
-                        const selectedDevice = this.availablePCIDevices.find(d => d.pci_address === device.host_address);
-                        if (selectedDevice && selectedDevice.device_type === 'gpu') {
-                          return html`
-                            <div class="help-text" style="margin-top: 12px; padding: 8px; background: var(--vscode-inputValidation-infoBackground); border-radius: 4px;">
-                              <strong>GPU Passthrough Tips:</strong>
-                              <ul style="margin: 4px 0; padding-left: 20px;">
-                                <li>Ensure the GPU is not being used by the host (blacklist driver or use vfio-pci)</li>
-                                <li>Consider passing through the audio device (usually at .1 address) as well</li>
-                                <li>You may need a ROM file for certain NVIDIA GPUs</li>
-                                <li>Enable "Primary GPU" if this will be the main display</li>
-                              </ul>
-                            </div>
-                          `;
-                        }
-                        return '';
-                      })()}
-                    </div>
-                    <div class="list-item-actions">
-                      <button class="btn-remove" @click=${() => this.removePCIDevice(index)}>
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                `) || html`<div class="help-text">No PCI devices configured</div>`}
-                
-                <button class="btn-add" @click=${this.addPCIDevice}>
-                  + Add PCI Device
+              <div class="btn-add-dropdown">
+                <button class="btn-add" @click=${this.openAddPCIDeviceModal}>
+                  + Add Device
                 </button>
-                
-                ${this.availablePCIDevices.length > 0 ? html`
-                  <div class="help-text" style="margin-top: 12px;">
-                    <strong>Available Devices:</strong> ${this.availablePCIDevices.filter(d => d.is_available).length} of ${this.availablePCIDevices.length} devices available for passthrough
-                  </div>
-                ` : ''}
               </div>
+
+              ${this.availablePCIDevices.length > 0 ? html`
+                <div class="help-text" style="margin-top: 12px;">
+                  <strong>Available Devices:</strong> ${this.availablePCIDevices.filter(d => d.is_available).length} of ${this.availablePCIDevices.length} devices available for passthrough
+                </div>
+              ` : ''}
             `}
-            
+
             <div class="help-text" style="margin-top: 12px; padding: 12px; background: var(--vscode-inputValidation-warningBackground); border-radius: 4px;">
               <strong>⚠️ Important:</strong> PCI passthrough requires:
               <ul style="margin: 4px 0; padding-left: 20px;">
@@ -2211,80 +2713,7 @@ export class CreateVMWizardEnhanced extends LitElement {
             </div>
           </div>
 
-          <div class="form-group">
-            <label>Custom XML (Optional)</label>
-            <textarea
-              class="code-editor"
-              rows="10"
-              placeholder="Enter custom libvirt XML configuration..."
-              .value=${this.formData.custom_xml || ''}
-              @input=${(e: InputEvent) => 
-                this.updateFormData('custom_xml', (e.target as HTMLTextAreaElement).value)
-              }
-            ></textarea>
-            <div class="help-text">Advanced libvirt XML configuration to be merged with the generated XML</div>
-          </div>
 
-          <div class="form-group">
-            <label>Metadata Tags</label>
-            <div class="help-text">Add custom metadata key-value pairs for organization and automation</div>
-            <div class="list-container">
-              ${Object.entries(this.formData.metadata || {}).map(([key, value]) => html`
-                <div class="list-item">
-                  <div class="list-item-content">
-                    <div class="grid-2">
-                      <input
-                        type="text"
-                        placeholder="Key"
-                        .value=${key}
-                        disabled
-                      />
-                      <input
-                        type="text"
-                        placeholder="Value"
-                        .value=${value}
-                        @input=${(e: InputEvent) => {
-                          if (this.formData.metadata) {
-                            this.formData.metadata[key] = (e.target as HTMLInputElement).value;
-                            this.requestUpdate();
-                          }
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <div class="list-item-actions">
-                    <button class="btn-remove" @click=${() => {
-                      if (this.formData.metadata) {
-                        delete this.formData.metadata[key];
-                        this.requestUpdate();
-                      }
-                    }}>
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              `)}
-              <div class="grid-2">
-                <input type="text" id="new-metadata-key" placeholder="New key" />
-                <input type="text" id="new-metadata-value" placeholder="New value" />
-              </div>
-              <button class="btn-add" @click=${() => {
-                const keyInput = this.shadowRoot?.querySelector('#new-metadata-key') as HTMLInputElement;
-                const valueInput = this.shadowRoot?.querySelector('#new-metadata-value') as HTMLInputElement;
-                if (keyInput?.value && valueInput?.value) {
-                  if (!this.formData.metadata) {
-                    this.formData.metadata = {};
-                  }
-                  this.formData.metadata[keyInput.value] = valueInput.value;
-                  keyInput.value = '';
-                  valueInput.value = '';
-                  this.requestUpdate();
-                }
-              }}>
-                + Add Metadata
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     `;
@@ -2408,6 +2837,14 @@ export class CreateVMWizardEnhanced extends LitElement {
   }
 
   private renderReview() {
+    const disks = this.formData.storage?.disks || [];
+    const networks = this.formData.networks || [];
+    const graphics = this.formData.graphics || [];
+    const pci = this.formData.pci_devices || [];
+    const cloud = this.formData.cloud_init;
+
+    const cloudEnabled = !!cloud && Object.keys(cloud).some(k => (cloud as any)[k] && (Array.isArray((cloud as any)[k]) ? (cloud as any)[k].length : true));
+
     return html`
       <div class="section expanded">
         <div class="section-header">
@@ -2416,14 +2853,234 @@ export class CreateVMWizardEnhanced extends LitElement {
           </div>
         </div>
         <div class="section-content">
-          <div class="form-group">
-            <label>Configuration JSON</label>
-            <textarea
-              class="code-editor"
-              rows="20"
-              readonly
-              .value=${JSON.stringify(this.formData, null, 2)}
-            ></textarea>
+          <div class="tabs">
+            <button class="tab active" data-tab="gui">Summary</button>
+            <button class="tab" data-tab="json">JSON</button>
+          </div>
+
+          <div class="tab-content active" data-content="gui">
+            <div class="form-group">
+              <label>Basic</label>
+              <div class="list-container">
+                <div class="grid-2">
+                  <div>
+                    <div class="help-text">Name</div>
+                    <div class="monospace">${this.formData.name || '-'}</div>
+                  </div>
+                  <div>
+                    <div class="help-text">Architecture</div>
+                    <div>${this.formData.architecture || '-'}</div>
+                  </div>
+                </div>
+
+                <div class="grid-2" style="margin-top: 12px;">
+                  <div>
+                    <div class="help-text">Memory</div>
+                    <div>${this.formData.memory || 0} MB</div>
+                  </div>
+                  <div>
+                    <div class="help-text">vCPUs</div>
+                    <div>${this.formData.vcpus || 0}</div>
+                  </div>
+                </div>
+
+                <div class="grid-2" style="margin-top: 12px;">
+                  <div>
+                    <div class="help-text">OS Type</div>
+                    <div>${this.formData.os_type || '-'}</div>
+                  </div>
+                  <div>
+                    <div class="help-text">OS Variant</div>
+                    <div>${this.formData.os_variant || '-'}</div>
+                  </div>
+                </div>
+
+                <div style="margin-top: 12px;">
+                  <span class="storage-badge ${this.formData.uefi ? 'success' : ''}" style="margin-right: 6px;">UEFI: ${this.formData.uefi ? 'On' : 'Off'}</span>
+                  <span class="storage-badge ${this.formData.secure_boot ? 'success' : ''}" style="margin-right: 6px;">Secure Boot: ${this.formData.secure_boot ? 'On' : 'Off'}</span>
+                  <span class="storage-badge ${this.formData.tpm ? 'success' : ''}" style="margin-right: 6px;">TPM: ${this.formData.tpm ? 'On' : 'Off'}</span>
+                  <span class="storage-badge ${this.formData.autostart ? 'success' : ''}">Autostart: ${this.formData.autostart ? 'On' : 'Off'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Storage</label>
+              ${disks.length ? html`
+                <div class="storage-table-wrapper">
+                  <table class="storage-table">
+                    <thead>
+                      <tr>
+                        <th>Target</th>
+                        <th>Type</th>
+                        <th>Source</th>
+                        <th>Format</th>
+                        <th>Bus</th>
+                        <th>Size</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${disks.map(d => html`
+                        <tr>
+                          <td><span class="monospace">${d.target || 'Auto'}</span></td>
+                          <td><span class="storage-badge ${d.device === 'cdrom' ? 'warning' : ''}">${(d.device || 'disk').toUpperCase()}</span></td>
+                          <td><span class="monospace storage-path">${d.path || (d.action === 'create' ? 'New disk' : d.action === 'clone' ? (d.clone_from || '-') : '-')}</span></td>
+                          <td>${(d.format || 'qcow2').toUpperCase()}</td>
+                          <td>${(d.bus || 'virtio').toUpperCase()}</td>
+                          <td>${d.action === 'create' && d.size ? `${d.size} GB` : 'N/A'}</td>
+                          <td><span class="storage-badge ${d.readonly ? 'warning' : 'success'}">${d.readonly ? 'Read-Only' : 'Read/Write'}</span></td>
+                        </tr>
+                      `)}
+                    </tbody>
+                  </table>
+                </div>
+              ` : html`<div class="help-text">No disks configured</div>`}
+            </div>
+
+            <div class="form-group">
+              <label>Network Interfaces</label>
+              ${networks.length ? html`
+                <div class="storage-table-wrapper">
+                  <table class="storage-table">
+                    <thead>
+                      <tr>
+                        <th>Type</th>
+                        <th>Source</th>
+                        <th>Model</th>
+                        <th>MAC</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${networks.map(n => html`
+                        <tr>
+                          <td><span class="storage-badge">${(n.type || 'network').toUpperCase()}</span></td>
+                          <td><span class="monospace storage-path">${n.source || '-'}</span></td>
+                          <td>${(n.model || 'virtio').toUpperCase()}</td>
+                          <td><span class="monospace">${n.mac || '-'}</span></td>
+                        </tr>
+                      `)}
+                    </tbody>
+                  </table>
+                </div>
+              ` : html`<div class="help-text">No network interfaces configured</div>`}
+            </div>
+
+            <div class="form-group">
+              <label>Graphics</label>
+              ${graphics.length ? html`
+                <div class="storage-table-wrapper">
+                  <table class="storage-table">
+                    <thead>
+                      <tr>
+                        <th>Type</th>
+                        <th>Listen</th>
+                        <th>Port</th>
+                        <th>Auto Port</th>
+                        <th>Password</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${graphics.map(g => {
+                        const portLabel = (g.type === 'none' || g.type === 'egl-headless')
+                          ? '-'
+                          : (g.autoport ? 'Auto' : (g.port ? String(g.port) : '-'));
+                        const autoLabel = (g.type === 'none' || g.type === 'egl-headless')
+                          ? '-'
+                          : (g.autoport ? 'Yes' : 'No');
+                        const pwLabel = (g.type === 'none' || g.type === 'egl-headless')
+                          ? '-'
+                          : (g.password ? 'Set' : 'None');
+
+                        return html`
+                          <tr>
+                            <td><span class="storage-badge">${(g.type || 'vnc').toUpperCase()}</span></td>
+                            <td><span class="monospace">${g.listen || '-'}</span></td>
+                            <td><span class="monospace">${portLabel}</span></td>
+                            <td>${autoLabel}</td>
+                            <td>${pwLabel}</td>
+                          </tr>
+                        `;
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ` : html`<div class="help-text">No graphics configured</div>`}
+            </div>
+
+            <div class="form-group">
+              <label>PCI Devices</label>
+              ${pci.length ? html`
+                <div class="storage-table-wrapper">
+                  <table class="storage-table">
+                    <thead>
+                      <tr>
+                        <th>Host</th>
+                        <th>Guest</th>
+                        <th>ROM</th>
+                        <th>Flags</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${pci.map(d => {
+                        const flags: string[] = [];
+                        if (d.primary_gpu) flags.push('Primary GPU');
+                        if (d.multifunction) flags.push('Multi');
+                        return html`
+                          <tr>
+                            <td><span class="monospace">${d.host_address}</span></td>
+                            <td><span class="monospace">${d.guest_address || '-'}</span></td>
+                            <td><span class="monospace storage-path">${d.rom_file || '-'}</span></td>
+                            <td>${flags.length ? flags.join(', ') : '-'}</td>
+                          </tr>
+                        `;
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ` : html`<div class="help-text">No PCI devices configured</div>`}
+            </div>
+
+            <div class="form-group">
+              <label>Cloud-Init</label>
+              <div class="list-container">
+                <div style="margin-bottom: 8px;">
+                  <span class="storage-badge ${cloudEnabled ? 'success' : ''}">${cloudEnabled ? 'Enabled' : 'Not configured'}</span>
+                </div>
+                <div class="grid-2">
+                  <div>
+                    <div class="help-text">Users</div>
+                    <div>${cloud?.users?.length || 0}</div>
+                  </div>
+                  <div>
+                    <div class="help-text">Packages</div>
+                    <div>${cloud?.packages?.length || 0}</div>
+                  </div>
+                </div>
+                <div class="grid-2" style="margin-top: 12px;">
+                  <div>
+                    <div class="help-text">SSH Keys</div>
+                    <div>${cloud?.ssh_keys?.length || 0}</div>
+                  </div>
+                  <div>
+                    <div class="help-text">Raw user-data</div>
+                    <div>${cloud?.user_data ? 'Yes' : 'No'}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-content" data-content="json">
+            <div class="form-group">
+              <label>Configuration JSON</label>
+              <textarea
+                class="code-editor"
+                rows="20"
+                readonly
+                .value=${JSON.stringify(this.formData, null, 2)}
+              ></textarea>
+            </div>
           </div>
         </div>
       </div>
@@ -2483,7 +3140,7 @@ export class CreateVMWizardEnhanced extends LitElement {
       
       tabs?.forEach(tab => {
         tab.addEventListener('click', (e) => {
-          const target = e.target as HTMLElement;
+          const target = e.currentTarget as HTMLElement;
           const tabName = target.dataset.tab;
           
           tabs.forEach(t => t.classList.remove('active'));
@@ -2576,6 +3233,12 @@ export class CreateVMWizardEnhanced extends LitElement {
       </div>
 
       ${this.renderDeviceModal()}
+
+      ${this.renderNetworkModal()}
+
+      ${this.renderGraphicsModal()}
+
+      ${this.renderPCIDeviceModal()}
 
       ${this.showCloseConfirmation ? html`
         <delete-modal
