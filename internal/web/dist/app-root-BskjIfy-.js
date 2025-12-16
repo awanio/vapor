@@ -1,4 +1,7 @@
-import { g as getApiUrl, i as i18n, r as registerPerfGauge, a as getWsUrl, b as auth, p as perfIncrement, t as t$5, c as theme } from "./index-C30ynJre.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-BZxTZ46p.js";
+function perfIncrement(name, delta = 1) {
+  return;
+}
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -16959,17 +16962,6 @@ computed(
   (health) => health.filter((h3) => h3.status === "connected").length
 );
 computed($connectionHealth, (health) => health.length);
-registerPerfGauge(() => {
-  const gauges = {};
-  try {
-    const health = $connectionHealth.get();
-    gauges["ws_connections"] = health.length;
-    gauges["ws_reconnecting"] = health.filter((h3) => h3.status === "reconnecting").length;
-    gauges["ws_errors"] = health.filter((h3) => h3.lastError).length;
-  } catch {
-  }
-  return gauges;
-});
 class ApiError extends Error {
   constructor(message, code, details, status) {
     super(message);
@@ -17375,7 +17367,7 @@ const $metricsAlerts = computed(
     return alerts;
   }
 );
-const $metricsState = computed(
+computed(
   [
     $systemSummary,
     $cpuInfo,
@@ -17450,7 +17442,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-C30ynJre.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-BZxTZ46p.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17495,7 +17487,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-C30ynJre.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-BZxTZ46p.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17563,7 +17555,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-C30ynJre.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-BZxTZ46p.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17607,18 +17599,6 @@ function formatUptime(seconds) {
 if (typeof window !== "undefined") {
   window.addEventListener("beforeunload", cleanupMetrics);
 }
-registerPerfGauge(() => {
-  const gauges = {};
-  try {
-    const state = $metricsState.get();
-    gauges["metrics_cpuHistory"] = state.cpuHistory.length;
-    gauges["metrics_memoryHistory"] = state.memoryHistory.length;
-    gauges["metrics_diskHistory"] = state.diskHistory.length;
-    gauges["metrics_networkHistory"] = state.networkHistory.length;
-  } catch {
-  }
-  return gauges;
-});
 const metrics = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   $cpuHistory,
@@ -17638,7 +17618,6 @@ const metrics = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePrope
   $metricsAlerts,
   $metricsConnected,
   $metricsError,
-  $metricsState,
   $networkHistory,
   $systemSummary,
   calculateAverage,
@@ -17689,7 +17668,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-C30ynJre.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-BZxTZ46p.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -36418,7 +36397,7 @@ class KubernetesApi {
       if (contentType === "json") {
         parsedResource = JSON.parse(content);
       } else {
-        const yaml = await import("./index-DNzoPsW4.js");
+        const yaml = await import("./index-DCW6p9NQ.js");
         parsedResource = yaml.parse(content);
       }
     } catch (error) {
@@ -52484,7 +52463,7 @@ let KubernetesCRDs = class extends i$2 {
         unwrapped = JSON.parse(JSON.stringify(unwrapped));
         delete unwrapped.metadata.managedFields;
       }
-      const yaml = await import("./index-DNzoPsW4.js");
+      const yaml = await import("./index-DCW6p9NQ.js");
       this.createResourceValue = yaml.stringify(unwrapped);
       this.isCreating = false;
     } catch (error) {
@@ -54944,43 +54923,8 @@ const $volumeStats = computed(
     };
   }
 );
-registerPerfGauge(() => {
-  const gauges = {};
-  try {
-    const items = vmStore.$items.get();
-    gauges["virt_vms"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
-  } catch {
-  }
-  try {
-    const items = storagePoolStore.$items.get();
-    gauges["virt_storage_pools"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
-  } catch {
-  }
-  try {
-    const items = isoStore.$items.get();
-    gauges["virt_isos"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
-  } catch {
-  }
-  try {
-    const items = templateStore.$items.get();
-    gauges["virt_templates"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
-  } catch {
-  }
-  try {
-    const items = networkStore.$items.get();
-    gauges["virt_networks"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
-  } catch {
-  }
-  try {
-    const items = volumeStore.$items.get();
-    gauges["virt_volumes"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
-  } catch {
-  }
-  return gauges;
-});
 const vmActions = {
   async fetchAll() {
-    perfIncrement("virt_vm_fetchAll");
     await vmStore.fetch();
   },
   /**
@@ -55235,7 +55179,6 @@ const wizardActions = {
 };
 const storagePoolActions = {
   async fetchAll() {
-    perfIncrement("virt_storagePool_fetchAll");
     await storagePoolStore.fetch();
   },
   async refresh(poolName) {
@@ -55308,7 +55251,6 @@ const storagePoolActions = {
 };
 const volumeActions = {
   async fetchAll() {
-    perfIncrement("virt_volume_fetchAll");
     await volumeStore.fetch();
   },
   async delete(volumeId) {
@@ -59746,8 +59688,19 @@ let CreateVMWizardEnhanced = class extends i$2 {
     this.showDeviceModal = false;
     this.deviceModalMode = "disk";
     this.deviceDraft = null;
+    this.editingDiskIndex = null;
+    this.showNetworkModal = false;
+    this.networkDraft = null;
+    this.editingNetworkIndex = null;
+    this.showGraphicsModal = false;
+    this.graphicsDraft = null;
+    this.editingGraphicsIndex = null;
+    this.showPCIModal = false;
+    this.pciDraft = null;
+    this.editingPCIDeviceIndex = null;
+    this.pciHostSelection = "";
     this.validationErrors = {};
-    this.expandedSections = /* @__PURE__ */ new Set(["basic", "storage"]);
+    this.expandedSections = /* @__PURE__ */ new Set(["basic", "storage", "network"]);
     this.currentStep = 1;
     this.availablePCIDevices = [];
     this.isLoadingPCIDevices = false;
@@ -59755,6 +59708,7 @@ let CreateVMWizardEnhanced = class extends i$2 {
     this.editingVmId = null;
     this.showCloseConfirmation = false;
     this.formData = {
+      name: this.generateDefaultVmName(),
       memory: 2048,
       vcpus: 2,
       os_type: "linux",
@@ -59855,6 +59809,7 @@ let CreateVMWizardEnhanced = class extends i$2 {
   }
   resetFormData() {
     this.formData = {
+      name: this.generateDefaultVmName(),
       memory: 2048,
       vcpus: 2,
       os_type: "linux",
@@ -59984,6 +59939,7 @@ let CreateVMWizardEnhanced = class extends i$2 {
   }
   openAddDiskModal() {
     this.showAddDeviceMenu = false;
+    this.editingDiskIndex = null;
     this.deviceModalMode = "disk";
     const defaultPool = this.formData.storage?.disks?.[0]?.storage_pool || "default";
     this.deviceDraft = {
@@ -59999,6 +59955,7 @@ let CreateVMWizardEnhanced = class extends i$2 {
   }
   openAddIsoModal() {
     this.showAddDeviceMenu = false;
+    this.editingDiskIndex = null;
     this.deviceModalMode = "iso";
     const defaultPool = this.formData.storage?.disks?.[0]?.storage_pool || "default";
     this.deviceDraft = {
@@ -60011,9 +59968,19 @@ let CreateVMWizardEnhanced = class extends i$2 {
     };
     this.showDeviceModal = true;
   }
+  openEditDiskModal(index2) {
+    const existing = this.formData.storage?.disks?.[index2];
+    if (!existing) return;
+    this.showAddDeviceMenu = false;
+    this.editingDiskIndex = index2;
+    this.deviceModalMode = existing.device === "cdrom" ? "iso" : "disk";
+    this.deviceDraft = { ...existing };
+    this.showDeviceModal = true;
+  }
   handleDeviceModalClose() {
     this.showDeviceModal = false;
     this.deviceDraft = null;
+    this.editingDiskIndex = null;
   }
   handleDeviceModalSave() {
     if (!this.deviceDraft) return;
@@ -60060,9 +60027,14 @@ let CreateVMWizardEnhanced = class extends i$2 {
     if (!this.formData.storage.disks) {
       this.formData.storage.disks = [];
     }
-    this.formData.storage.disks.push({ ...d2 });
+    if (this.editingDiskIndex !== null) {
+      this.formData.storage.disks[this.editingDiskIndex] = { ...d2 };
+    } else {
+      this.formData.storage.disks.push({ ...d2 });
+    }
     this.showDeviceModal = false;
     this.deviceDraft = null;
+    this.editingDiskIndex = null;
     this.requestUpdate();
   }
   renderDeviceModal() {
@@ -60075,7 +60047,7 @@ let CreateVMWizardEnhanced = class extends i$2 {
     return x`
       <modal-dialog
         .open=${this.showDeviceModal}
-        .title=${this.deviceModalMode === "iso" ? "Add ISO/CD-ROM" : "Add Disk"}
+        .title=${this.deviceModalMode === "iso" ? this.editingDiskIndex !== null ? "Edit ISO/CD-ROM" : "Add ISO/CD-ROM" : this.editingDiskIndex !== null ? "Edit Disk" : "Add Disk"}
         size="medium"
         @modal-close=${this.handleDeviceModalClose}
       >
@@ -60314,7 +60286,385 @@ let CreateVMWizardEnhanced = class extends i$2 {
 
         <div slot="footer" style="display: flex; justify-content: flex-end; gap: 8px;">
           <button class="btn-secondary" @click=${this.handleDeviceModalClose}>Cancel</button>
-          <button class="btn-primary" @click=${this.handleDeviceModalSave}>Add</button>
+          <button class="btn-primary" @click=${this.handleDeviceModalSave}>${this.editingDiskIndex !== null ? "Save" : "Add"}</button>
+        </div>
+      </modal-dialog>
+    `;
+  }
+  renderNetworkModal() {
+    if (!this.showNetworkModal || !this.networkDraft) {
+      return null;
+    }
+    const networksValue = this.networksController.value;
+    const networksArray = networksValue instanceof Map ? Array.from(networksValue.values()) : Array.isArray(networksValue) ? networksValue : [];
+    const bridges = Array.from(this.bridgesController.value || []);
+    const bridgeInterfaces = bridges.filter((iface) => iface.type === "bridge");
+    const nic = this.networkDraft;
+    return x`
+      <modal-dialog
+        .open=${this.showNetworkModal}
+        .title=${this.editingNetworkIndex !== null ? "Edit Network Interface" : "Add Network Interface"}
+        size="medium"
+        @modal-close=${this.handleNetworkModalClose}
+      >
+        <div class="grid-3">
+          <div class="form-group">
+            <label>Type</label>
+            <select
+              .value=${nic.type}
+              @change=${(e3) => {
+      nic.type = e3.target.value;
+      if (nic.type === "network") nic.source = "default";
+      else nic.source = "";
+      this.requestUpdate();
+    }}
+            >
+              <option value="network">Network</option>
+              <option value="bridge">Bridge</option>
+              <option value="direct">Direct (Macvtap)</option>
+              <option value="user">User Mode</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Source ${nic.type === "user" ? "" : x`<span class="required">*</span>`}</label>
+            ${nic.type === "network" ? x`
+              <select
+                .value=${nic.source || "default"}
+                @change=${(e3) => {
+      nic.source = e3.target.value;
+      this.requestUpdate();
+    }}
+              >
+                <option value="default">default</option>
+                ${networksArray.filter((vn) => vn.name !== "default").map((vn) => x`
+                    <option value=${vn.name}>
+                      ${vn.name} ${vn.state === "active" ? "(Active)" : "(Inactive)"}
+                    </option>
+                  `)}
+              </select>
+            ` : nic.type === "bridge" ? x`
+              <select
+                .value=${nic.source || ""}
+                @change=${(e3) => {
+      nic.source = e3.target.value;
+      this.requestUpdate();
+    }}
+              >
+                <option value="">Select a bridge</option>
+                ${bridgeInterfaces.map((br) => x`
+                  <option value=${br.name}>
+                    ${br.name} ${br.state === "up" ? "(Up)" : "(Down)"}
+                  </option>
+                `)}
+              </select>
+            ` : nic.type === "direct" ? x`
+              <input
+                type="text"
+                placeholder="Interface (e.g. eth0)"
+                .value=${nic.source || ""}
+                @input=${(e3) => {
+      nic.source = e3.target.value;
+      this.requestUpdate();
+    }}
+              />
+            ` : x`
+              <input
+                type="text"
+                placeholder="(not required)"
+                .value=${nic.source || ""}
+                @input=${(e3) => {
+      nic.source = e3.target.value;
+      this.requestUpdate();
+    }}
+              />
+            `}
+          </div>
+
+          <div class="form-group">
+            <label>Model</label>
+            <select
+              .value=${nic.model || "virtio"}
+              @change=${(e3) => {
+      nic.model = e3.target.value;
+      this.requestUpdate();
+    }}
+            >
+              <option value="virtio">VirtIO</option>
+              <option value="e1000">Intel E1000</option>
+              <option value="rtl8139">Realtek RTL8139</option>
+              <option value="vmxnet3">VMware vmxnet3</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 12px;">
+          <label>MAC Address (optional)</label>
+          <input
+            type="text"
+            placeholder="52:54:00:xx:xx:xx (auto-generated if empty)"
+            .value=${nic.mac || ""}
+            @input=${(e3) => {
+      nic.mac = e3.target.value;
+      this.requestUpdate();
+    }}
+          />
+          <div class="help-text">Leave empty to auto-generate a MAC address</div>
+        </div>
+
+        <div slot="footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button class="btn-secondary" @click=${this.handleNetworkModalClose}>Cancel</button>
+          <button class="btn-primary" @click=${this.handleNetworkModalSave}>${this.editingNetworkIndex !== null ? "Save" : "Add"}</button>
+        </div>
+      </modal-dialog>
+    `;
+  }
+  renderGraphicsModal() {
+    if (!this.showGraphicsModal || !this.graphicsDraft) {
+      return null;
+    }
+    const g2 = this.graphicsDraft;
+    return x`
+      <modal-dialog
+        .open=${this.showGraphicsModal}
+        .title=${this.editingGraphicsIndex !== null ? "Edit Graphics" : "Add Graphics"}
+        size="medium"
+        @modal-close=${this.handleGraphicsModalClose}
+      >
+        <div class="grid-3">
+          <div class="form-group">
+            <label>Type</label>
+            <select
+              .value=${g2.type}
+              @change=${(e3) => {
+      g2.type = e3.target.value;
+      if (g2.type === "vnc" || g2.type === "spice") {
+        g2.listen = g2.listen || "0.0.0.0";
+        if (g2.autoport === void 0) g2.autoport = true;
+      }
+      this.requestUpdate();
+    }}
+            >
+              <option value="vnc">VNC</option>
+              <option value="spice">SPICE</option>
+              <option value="egl-headless">EGL Headless</option>
+              <option value="none">None</option>
+            </select>
+          </div>
+
+          ${g2.type !== "none" && g2.type !== "egl-headless" ? x`
+            <div class="form-group">
+              <label>Port (optional)</label>
+              <input
+                type="number"
+                placeholder="(auto if empty)"
+                .value=${String(g2.port || "")}
+                @input=${(e3) => {
+      const v2 = e3.target.value;
+      g2.port = v2 ? Number(v2) : void 0;
+      this.requestUpdate();
+    }}
+              />
+            </div>
+
+            <div class="form-group">
+              <label>Listen</label>
+              <input
+                type="text"
+                placeholder="0.0.0.0"
+                .value=${g2.listen || "0.0.0.0"}
+                @input=${(e3) => {
+      g2.listen = e3.target.value;
+      this.requestUpdate();
+    }}
+              />
+            </div>
+          ` : ""}
+        </div>
+
+        ${g2.type !== "none" && g2.type !== "egl-headless" ? x`
+          <div class="grid-2" style="margin-top: 12px;">
+            <input
+              type="password"
+              placeholder="Password (optional)"
+              .value=${g2.password || ""}
+              @input=${(e3) => {
+      g2.password = e3.target.value;
+      this.requestUpdate();
+    }}
+            />
+
+            <div class="checkbox-group">
+              <input
+                type="checkbox"
+                id="graphics-autoport"
+                ?checked=${!!g2.autoport}
+                @change=${(e3) => {
+      g2.autoport = e3.target.checked;
+      this.requestUpdate();
+    }}
+              />
+              <label for="graphics-autoport">Auto-assign port</label>
+            </div>
+          </div>
+        ` : ""}
+
+        <div slot="footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button class="btn-secondary" @click=${this.handleGraphicsModalClose}>Cancel</button>
+          <button class="btn-primary" @click=${this.handleGraphicsModalSave}>${this.editingGraphicsIndex !== null ? "Save" : "Add"}</button>
+        </div>
+      </modal-dialog>
+    `;
+  }
+  renderPCIDeviceModal() {
+    if (!this.showPCIModal || !this.pciDraft) {
+      return null;
+    }
+    const d2 = this.pciDraft;
+    const selectedDevice = this.availablePCIDevices.find((dev) => dev.pci_address === d2.host_address);
+    return x`
+      <modal-dialog
+        .open=${this.showPCIModal}
+        .title=${this.editingPCIDeviceIndex !== null ? "Edit PCI Device" : "Add PCI Device"}
+        size="medium"
+        @modal-close=${this.handlePCIDeviceModalClose}
+      >
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Host PCI Address <span class="required">*</span></label>
+            ${this.availablePCIDevices.length > 0 ? x`
+              <select
+                .value=${this.pciHostSelection}
+                @change=${(e3) => {
+      const value = e3.target.value;
+      this.pciHostSelection = value;
+      if (value === "custom") {
+        d2.host_address = "";
+      } else {
+        d2.host_address = value;
+      }
+      this.requestUpdate();
+    }}
+              >
+                <option value="">Select a PCI device</option>
+                ${this.availablePCIDevices.map((x$1) => x`
+                    <option
+                      value=${x$1.pci_address}
+                      ?disabled=${!x$1.is_available && x$1.pci_address !== d2.host_address}
+                    >
+                      ${x$1.pci_address} - ${x$1.product_name || "Unknown"}
+                      (${x$1.vendor_name || "Unknown"})
+                      ${x$1.device_type ? `[${String(x$1.device_type).toUpperCase()}]` : ""}
+                      ${x$1.is_available ? "" : x$1.assigned_to_vm ? `(Assigned to: ${x$1.assigned_to_vm})` : "(In Use)"}
+                    </option>
+                  `)}
+                <option value="custom">Enter custom address...</option>
+              </select>
+
+              ${this.pciHostSelection === "custom" ? x`
+                <input
+                  type="text"
+                  placeholder="0000:01:00.0"
+                  style="margin-top: 8px;"
+                  .value=${d2.host_address || ""}
+                  @input=${(e3) => {
+      d2.host_address = e3.target.value;
+      this.requestUpdate();
+    }}
+                />
+              ` : ""}
+            ` : x`
+              <input
+                type="text"
+                placeholder="0000:01:00.0"
+                .value=${d2.host_address || ""}
+                @input=${(e3) => {
+      d2.host_address = e3.target.value;
+      this.requestUpdate();
+    }}
+              />
+            `}
+
+            <div class="help-text">
+              PCI address on the host (e.g., 0000:01:00.0)
+              ${selectedDevice ? x`<br><strong>IOMMU Group:</strong> ${selectedDevice.iommu_group || "Unknown"}` : ""}
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Guest PCI Address (Optional)</label>
+            <input
+              type="text"
+              placeholder="0000:05:00.0 (auto if empty)"
+              .value=${d2.guest_address || ""}
+              @input=${(e3) => {
+      d2.guest_address = e3.target.value;
+      this.requestUpdate();
+    }}
+            />
+            <div class="help-text">PCI address in the guest VM</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>ROM File (Optional)</label>
+          <input
+            type="text"
+            placeholder="/usr/share/vgabios/nvidia.rom"
+            .value=${d2.rom_file || ""}
+            @input=${(e3) => {
+      d2.rom_file = e3.target.value;
+      this.requestUpdate();
+    }}
+          />
+          <div class="help-text">Path to option ROM file (required for some GPUs to work properly)</div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 12px;">
+          <div class="checkbox-group">
+            <input
+              type="checkbox"
+              id="pci-multifunction"
+              ?checked=${!!d2.multifunction}
+              @change=${(e3) => {
+      d2.multifunction = e3.target.checked;
+      this.requestUpdate();
+    }}
+            />
+            <label for="pci-multifunction">Multi-function device</label>
+            <div class="help-text" style="margin-left: 24px;">Enable for devices with multiple functions (e.g., GPU with audio)</div>
+          </div>
+
+          <div class="checkbox-group">
+            <input
+              type="checkbox"
+              id="pci-primary-gpu"
+              ?checked=${!!d2.primary_gpu}
+              @change=${(e3) => {
+      d2.primary_gpu = e3.target.checked;
+      this.requestUpdate();
+    }}
+            />
+            <label for="pci-primary-gpu">Primary GPU</label>
+            <div class="help-text" style="margin-left: 24px;">Set as the primary display adapter</div>
+          </div>
+        </div>
+
+        ${selectedDevice && selectedDevice.device_type === "gpu" ? x`
+          <div class="help-text" style="margin-top: 12px; padding: 8px; background: var(--vscode-inputValidation-infoBackground); border-radius: 4px;">
+            <strong>GPU Passthrough Tips:</strong>
+            <ul style="margin: 4px 0; padding-left: 20px;">
+              <li>Ensure the GPU is not being used by the host (blacklist driver or use vfio-pci)</li>
+              <li>Consider passing through the audio device (usually at .1 address) as well</li>
+              <li>You may need a ROM file for certain NVIDIA GPUs</li>
+              <li>Enable "Primary GPU" if this will be the main display</li>
+            </ul>
+          </div>
+        ` : ""}
+
+        <div slot="footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button class="btn-secondary" @click=${this.handlePCIDeviceModalClose}>Cancel</button>
+          <button class="btn-primary" @click=${this.handlePCIDeviceModalSave}>${this.editingPCIDeviceIndex !== null ? "Save" : "Add"}</button>
         </div>
       </modal-dialog>
     `;
@@ -60391,15 +60741,56 @@ let CreateVMWizardEnhanced = class extends i$2 {
       this.requestUpdate();
     }
   }
-  addNetwork() {
+  openAddNetworkModal() {
+    this.editingNetworkIndex = null;
+    this.networkDraft = {
+      type: "network",
+      source: "default",
+      model: "virtio",
+      mac: ""
+    };
+    this.showNetworkModal = true;
+  }
+  openEditNetworkModal(index2) {
+    const existing = this.formData.networks?.[index2];
+    if (!existing) return;
+    this.editingNetworkIndex = index2;
+    this.networkDraft = {
+      type: existing.type || "network",
+      source: existing.source || "",
+      model: existing.model || "virtio",
+      mac: existing.mac || ""
+    };
+    this.showNetworkModal = true;
+  }
+  handleNetworkModalClose() {
+    this.showNetworkModal = false;
+    this.editingNetworkIndex = null;
+    this.networkDraft = null;
+  }
+  handleNetworkModalSave() {
+    if (!this.networkDraft) return;
+    const nic = {
+      type: this.networkDraft.type,
+      source: (this.networkDraft.source || "").trim() || void 0,
+      model: this.networkDraft.model || "virtio",
+      mac: (this.networkDraft.mac || "").trim() || void 0
+    };
+    if ((nic.type === "network" || nic.type === "bridge" || nic.type === "direct") && !nic.source) {
+      this.showNotification("Network source is required", "error");
+      return;
+    }
     if (!this.formData.networks) {
       this.formData.networks = [];
     }
-    this.formData.networks.push({
-      type: "network",
-      source: "default",
-      model: "virtio"
-    });
+    if (this.editingNetworkIndex !== null) {
+      this.formData.networks[this.editingNetworkIndex] = nic;
+    } else {
+      this.formData.networks.push(nic);
+    }
+    this.showNetworkModal = false;
+    this.networkDraft = null;
+    this.editingNetworkIndex = null;
     this.requestUpdate();
   }
   removeNetwork(index2) {
@@ -60408,15 +60799,61 @@ let CreateVMWizardEnhanced = class extends i$2 {
       this.requestUpdate();
     }
   }
-  addGraphics() {
+  openAddGraphicsModal() {
+    this.editingGraphicsIndex = null;
+    this.graphicsDraft = {
+      type: "vnc",
+      autoport: true,
+      listen: "0.0.0.0",
+      port: void 0,
+      password: ""
+    };
+    this.showGraphicsModal = true;
+  }
+  openEditGraphicsModal(index2) {
+    const existing = this.formData.graphics?.[index2];
+    if (!existing) return;
+    this.editingGraphicsIndex = index2;
+    this.graphicsDraft = { ...existing };
+    this.showGraphicsModal = true;
+  }
+  handleGraphicsModalClose() {
+    this.showGraphicsModal = false;
+    this.graphicsDraft = null;
+    this.editingGraphicsIndex = null;
+  }
+  handleGraphicsModalSave() {
+    if (!this.graphicsDraft) return;
+    const draft = this.graphicsDraft;
+    const type = draft.type || "vnc";
+    let gfx = { type };
+    if (type !== "none" && type !== "egl-headless") {
+      const listen = (draft.listen || "").trim() || "0.0.0.0";
+      const autoport = !!draft.autoport;
+      const port2 = draft.port ? Number(draft.port) : void 0;
+      const password = (draft.password || "").trim() || void 0;
+      gfx = {
+        type,
+        listen,
+        autoport,
+        port: port2,
+        password
+      };
+      if (autoport) {
+        gfx.port = void 0;
+      }
+    }
     if (!this.formData.graphics) {
       this.formData.graphics = [];
     }
-    this.formData.graphics.push({
-      type: "vnc",
-      autoport: true,
-      listen: "0.0.0.0"
-    });
+    if (this.editingGraphicsIndex !== null) {
+      this.formData.graphics[this.editingGraphicsIndex] = gfx;
+    } else {
+      this.formData.graphics.push(gfx);
+    }
+    this.showGraphicsModal = false;
+    this.graphicsDraft = null;
+    this.editingGraphicsIndex = null;
     this.requestUpdate();
   }
   removeGraphics(index2) {
@@ -60425,13 +60862,67 @@ let CreateVMWizardEnhanced = class extends i$2 {
       this.requestUpdate();
     }
   }
-  addPCIDevice() {
+  openAddPCIDeviceModal() {
+    this.editingPCIDeviceIndex = null;
+    this.pciHostSelection = "";
+    this.pciDraft = {
+      host_address: "",
+      guest_address: "",
+      rom_file: "",
+      multifunction: false,
+      primary_gpu: false
+    };
+    this.showPCIModal = true;
+  }
+  openEditPCIDeviceModal(index2) {
+    const existing = this.formData.pci_devices?.[index2];
+    if (!existing) return;
+    this.editingPCIDeviceIndex = index2;
+    this.pciDraft = { ...existing };
+    const addr = existing.host_address || "";
+    const known = this.availablePCIDevices.find((d2) => d2.pci_address === addr);
+    this.pciHostSelection = known ? addr : addr ? "custom" : "";
+    this.showPCIModal = true;
+  }
+  handlePCIDeviceModalClose() {
+    this.showPCIModal = false;
+    this.pciDraft = null;
+    this.editingPCIDeviceIndex = null;
+    this.pciHostSelection = "";
+  }
+  handlePCIDeviceModalSave() {
+    if (!this.pciDraft) return;
+    const host = (this.pciDraft.host_address || "").trim();
+    if (!host) {
+      this.showNotification("Host PCI address is required", "error");
+      return;
+    }
+    const device = {
+      host_address: host,
+      guest_address: (this.pciDraft.guest_address || "").trim() || void 0,
+      rom_file: (this.pciDraft.rom_file || "").trim() || void 0,
+      multifunction: !!this.pciDraft.multifunction,
+      primary_gpu: !!this.pciDraft.primary_gpu
+    };
     if (!this.formData.pci_devices) {
       this.formData.pci_devices = [];
     }
-    this.formData.pci_devices.push({
-      host_address: ""
-    });
+    if (device.primary_gpu) {
+      this.formData.pci_devices.forEach((d2, i4) => {
+        if (this.editingPCIDeviceIndex === null || i4 != this.editingPCIDeviceIndex) {
+          d2.primary_gpu = false;
+        }
+      });
+    }
+    if (this.editingPCIDeviceIndex !== null) {
+      this.formData.pci_devices[this.editingPCIDeviceIndex] = device;
+    } else {
+      this.formData.pci_devices.push(device);
+    }
+    this.showPCIModal = false;
+    this.pciDraft = null;
+    this.editingPCIDeviceIndex = null;
+    this.pciHostSelection = "";
     this.requestUpdate();
   }
   removePCIDevice(index2) {
@@ -60464,6 +60955,11 @@ let CreateVMWizardEnhanced = class extends i$2 {
     const sizes = ["B", "KB", "MB", "GB", "TB"];
     const i4 = Math.floor(Math.log(bytes) / Math.log(k2));
     return parseFloat((bytes / Math.pow(k2, i4)).toFixed(1)) + " " + sizes[i4];
+  }
+  generateDefaultVmName() {
+    const ts = Date.now().toString(36);
+    const rand = Math.random().toString(36).slice(2, 6);
+    return `vm-${ts}-${rand}`.toLowerCase().replace(/[^a-z0-9-]/g, "");
   }
   renderBasicConfig() {
     return x`
@@ -60667,6 +61163,13 @@ let CreateVMWizardEnhanced = class extends i$2 {
                         </td>
                         <td>
                           <button
+                            class="btn-icon-ghost"
+                            title="Edit device"
+                            @click=${() => this.openEditDiskModal(index2)}
+                          >
+                            ✎
+                          </button>
+                          <button
                             class="btn-remove btn-icon"
                             title="Remove device"
                             @click=${() => this.removeDisk(index2)}
@@ -60703,6 +61206,24 @@ let CreateVMWizardEnhanced = class extends i$2 {
     `;
   }
   renderNetworkConfig() {
+    const networksValue = this.networksController.value;
+    const networksArray = networksValue instanceof Map ? Array.from(networksValue.values()) : Array.isArray(networksValue) ? networksValue : [];
+    const bridges = Array.from(this.bridgesController.value || []);
+    const bridgeInterfaces = bridges.filter((iface) => iface.type === "bridge");
+    const getStatus = (nic) => {
+      if (nic.type === "network") {
+        const vn = networksArray.find((n3) => n3.name === (nic.source || ""));
+        if (!vn) return { label: "Unknown", className: "warning" };
+        return vn.state === "active" ? { label: "Active", className: "success" } : { label: "Inactive", className: "warning" };
+      }
+      if (nic.type === "bridge") {
+        const br = bridgeInterfaces.find((b2) => b2.name === (nic.source || ""));
+        if (!br) return { label: "Unknown", className: "warning" };
+        return br.state === "up" ? { label: "Up", className: "success" } : { label: "Down", className: "warning" };
+      }
+      if (nic.type === "user") return { label: "User Mode", className: "success" };
+      return { label: "N/A", className: "" };
+    };
     return x`
       <div class="section ${this.expandedSections.has("network") ? "expanded" : ""}">
         <div class="section-header" @click=${() => this.toggleSection("network")}>
@@ -60714,194 +61235,126 @@ let CreateVMWizardEnhanced = class extends i$2 {
         <div class="section-content">
           <div class="form-group">
             <label>Network Interfaces</label>
-            <div class="list-container">
-              ${this.formData.networks?.map((network, index2) => x`
-                <div class="list-item">
-                  <div class="list-item-content">
-                    <div class="grid-3">
-                      <select
-                        .value=${network.type}
-                        @change=${(e3) => {
-      network.type = e3.target.value;
-      this.requestUpdate();
-    }}
-                      >
-                        <option value="network">Network</option>
-                        <option value="bridge">Bridge</option>
-                        <option value="direct">Direct (Macvtap)</option>
-                        <option value="user">User Mode</option>
-                      </select>
 
-                      ${network.type === "network" ? x`
-                        <select
-                          .value=${network.source || "default"}
-                          @change=${(e3) => {
-      network.source = e3.target.value;
-      this.requestUpdate();
-    }}
-                        >
-                          <option value="default">default</option>
-                          ${(() => {
-      const networks = this.networksController.value;
-      const networksArray = networks instanceof Map ? Array.from(networks.values()) : Array.isArray(networks) ? networks : [];
-      return networksArray.map((virtualNetwork) => x`
-                              <option value=${virtualNetwork.name}>
-                                ${virtualNetwork.name} ${virtualNetwork.state === "active" ? "(Active)" : "(Inactive)"}
-                              </option>
-                            `);
-    })()}
-                        </select>
-                      ` : network.type === "bridge" ? x`
-                        <select
-                          .value=${network.source || ""}
-                          @change=${(e3) => {
-      network.source = e3.target.value;
-      this.requestUpdate();
-    }}
-                        >
-                          <option value="">Select a bridge</option>
-                          ${(() => {
-      const bridges = this.bridgesController.value || [];
-      const bridgeInterfaces = bridges.filter(
-        (iface) => iface.type === "bridge"
-      );
-      return bridgeInterfaces.map((bridge) => x`
-                              <option value=${bridge.name}>
-                                ${bridge.name} ${bridge.state === "up" ? "(Up)" : "(Down)"}
-                              </option>
-                            `);
-    })()}
-                        </select>
-                      ` : x`
-                        <input
-                          type="text"
-                          placeholder="Source (e.g., default, br0)"
-                          .value=${network.source || ""}
-                          @input=${(e3) => {
-      network.source = e3.target.value;
-      this.requestUpdate();
-    }}
-                        />
-                      `}
+            ${this.formData.networks?.length ? x`
+              <div class="storage-table-wrapper">
+                <table class="storage-table">
+                  <thead>
+                    <tr>
+                      <th>Type</th>
+                      <th>Source</th>
+                      <th>Model</th>
+                      <th>MAC</th>
+                      <th>Status</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${this.formData.networks.map((nic, index2) => {
+      const status = getStatus(nic);
+      return x`
+                        <tr>
+                          <td>
+                            <span class="storage-badge">${(nic.type || "network").toUpperCase()}</span>
+                          </td>
+                          <td>
+                            <span class="monospace storage-path">${nic.source || "-"}</span>
+                          </td>
+                          <td>${(nic.model || "virtio").toUpperCase()}</td>
+                          <td><span class="monospace">${nic.mac || "-"}</span></td>
+                          <td>
+                            <span class="storage-badge ${status.className}">${status.label}</span>
+                          </td>
+                          <td>
+                            <button
+                              class="btn-icon-ghost"
+                              title="Edit device"
+                              @click=${() => this.openEditNetworkModal(index2)}
+                            >
+                              ✎
+                            </button>
+                            <button
+                              class="btn-remove btn-icon"
+                              title="Remove device"
+                              @click=${() => this.removeNetwork(index2)}
+                            >
+                              ✕
+                            </button>
+                          </td>
+                        </tr>
+                      `;
+    })}
+                  </tbody>
+                </table>
+              </div>
+            ` : x`<div class="help-text">No devices configured</div>`}
 
-                      <select
-                        .value=${network.model || "virtio"}
-                        @change=${(e3) => {
-      network.model = e3.target.value;
-      this.requestUpdate();
-    }}
-                      >
-                        <option value="virtio">VirtIO</option>
-                        <option value="e1000">Intel E1000</option>
-                        <option value="rtl8139">Realtek RTL8139</option>
-                        <option value="vmxnet3">VMware vmxnet3</option>
-                      </select>
-                    </div>
-
-                    <div class="form-group" style="margin-top: 8px;">
-                      <input
-                        type="text"
-                        placeholder="MAC Address (optional, auto-generated if empty)"
-                        .value=${network.mac || ""}
-                        @input=${(e3) => {
-      network.mac = e3.target.value;
-      this.requestUpdate();
-    }}
-                      />
-                    </div>
-                  </div>
-                  <div class="list-item-actions">
-                    <button class="btn-remove" @click=${() => this.removeNetwork(index2)}>
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              `) || ""}
-              <button class="btn-add" @click=${this.addNetwork}>
-                + Add Network Interface
+            <div class="btn-add-dropdown">
+              <button class="btn-add" @click=${this.openAddNetworkModal}>
+                + Add Device
               </button>
             </div>
           </div>
 
           <div class="form-group">
             <label>Graphics</label>
-            <div class="list-container">
-              ${this.formData.graphics?.map((graphics, index2) => x`
-                <div class="list-item">
-                  <div class="list-item-content">
-                    <div class="grid-3">
-                      <select
-                        .value=${graphics.type}
-                        @change=${(e3) => {
-      graphics.type = e3.target.value;
-      this.requestUpdate();
-    }}
-                      >
-                        <option value="vnc">VNC</option>
-                        <option value="spice">SPICE</option>
-                        <option value="egl-headless">EGL Headless</option>
-                        <option value="none">None</option>
-                      </select>
 
-                      ${graphics.type !== "none" && graphics.type !== "egl-headless" ? x`
-                        <input
-                          type="number"
-                          placeholder="Port (auto if empty)"
-                          .value=${String(graphics.port || "")}
-                          @input=${(e3) => {
-      graphics.port = Number(e3.target.value);
-      this.requestUpdate();
-    }}
-                        />
+            ${this.formData.graphics?.length ? x`
+              <div class="storage-table-wrapper">
+                <table class="storage-table">
+                  <thead>
+                    <tr>
+                      <th>Type</th>
+                      <th>Listen</th>
+                      <th>Port</th>
+                      <th>Auto Port</th>
+                      <th>Password</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${this.formData.graphics.map((g2, index2) => {
+      const portLabel = g2.type === "none" || g2.type === "egl-headless" ? "-" : g2.autoport ? "Auto" : g2.port ? String(g2.port) : "-";
+      const autoLabel = g2.type === "none" || g2.type === "egl-headless" ? "-" : g2.autoport ? "Yes" : "No";
+      const pwLabel = g2.type === "none" || g2.type === "egl-headless" ? "-" : g2.password ? "Set" : "None";
+      return x`
+                        <tr>
+                          <td><span class="storage-badge">${(g2.type || "vnc").toUpperCase()}</span></td>
+                          <td><span class="monospace">${g2.listen || "-"}</span></td>
+                          <td><span class="monospace">${portLabel}</span></td>
+                          <td>
+                            <span class="storage-badge ${autoLabel === "Yes" ? "success" : ""}">${autoLabel}</span>
+                          </td>
+                          <td>
+                            <span class="storage-badge ${pwLabel === "Set" ? "warning" : ""}">${pwLabel}</span>
+                          </td>
+                          <td>
+                            <button
+                              class="btn-icon-ghost"
+                              title="Edit device"
+                              @click=${() => this.openEditGraphicsModal(index2)}
+                            >
+                              ✎
+                            </button>
+                            <button
+                              class="btn-remove btn-icon"
+                              title="Remove device"
+                              @click=${() => this.removeGraphics(index2)}
+                            >
+                              ✕
+                            </button>
+                          </td>
+                        </tr>
+                      `;
+    })}
+                  </tbody>
+                </table>
+              </div>
+            ` : x`<div class="help-text">No devices configured</div>`}
 
-                        <input
-                          type="text"
-                          placeholder="Listen address"
-                          .value=${graphics.listen || "0.0.0.0"}
-                          @input=${(e3) => {
-      graphics.listen = e3.target.value;
-      this.requestUpdate();
-    }}
-                        />
-                      ` : ""}
-                    </div>
-
-                    ${graphics.type !== "none" && graphics.type !== "egl-headless" ? x`
-                      <div class="grid-2" style="margin-top: 8px;">
-                        <input
-                          type="password"
-                          placeholder="Password (optional)"
-                          .value=${graphics.password || ""}
-                          @input=${(e3) => {
-      graphics.password = e3.target.value;
-      this.requestUpdate();
-    }}
-                        />
-
-                        <div class="checkbox-group">
-                          <input
-                            type="checkbox"
-                            id="autoport-${index2}"
-                            ?checked=${graphics.autoport}
-                            @change=${(e3) => {
-      graphics.autoport = e3.target.checked;
-      this.requestUpdate();
-    }}
-                          />
-                          <label for="autoport-${index2}">Auto-assign port</label>
-                        </div>
-                      </div>
-                    ` : ""}
-                  </div>
-                  <div class="list-item-actions">
-                    <button class="btn-remove" @click=${() => this.removeGraphics(index2)}>
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              `) || ""}
-              <button class="btn-add" @click=${this.addGraphics}>
-                + Add Graphics
+            <div class="btn-add-dropdown">
+              <button class="btn-add" @click=${this.openAddGraphicsModal}>
+                + Add Device
               </button>
             </div>
           </div>
@@ -60910,6 +61363,7 @@ let CreateVMWizardEnhanced = class extends i$2 {
     `;
   }
   renderAdvancedConfig() {
+    const getDeviceInfo = (addr) => this.availablePCIDevices.find((d2) => d2.pci_address === addr);
     return x`
       <div class="section ${this.expandedSections.has("advanced") ? "expanded" : ""}">
         <div class="section-header" @click=${() => this.toggleSection("advanced")}>
@@ -60922,182 +61376,89 @@ let CreateVMWizardEnhanced = class extends i$2 {
           <div class="form-group">
             <label>PCI Device Passthrough</label>
             <div class="help-text">Configure PCI devices (GPUs, network cards, USB controllers) to pass through to the VM</div>
-            
+
             ${this.isLoadingPCIDevices ? x`
               <div class="list-container">
                 <div class="help-text">Loading available PCI devices...</div>
               </div>
             ` : x`
-              <div class="list-container">
-                ${this.formData.pci_devices?.map((device, index2) => x`
-                  <div class="list-item">
-                    <div class="list-item-content">
-                      <div class="grid-2">
-                        <div class="form-group">
-                          <label>Host PCI Address <span class="required">*</span></label>
-                          ${this.availablePCIDevices.length > 0 ? x`
-                            <select
-                              .value=${device.host_address || ""}
-                              @change=${(e3) => {
-      const value = e3.target.value;
-      device.host_address = value;
-      const selectedDevice = this.availablePCIDevices.find((d2) => d2.pci_address === value);
-      if (selectedDevice) {
-        this.showNotification(
-          `Selected: ${selectedDevice.product_name || "Unknown Device"} (${selectedDevice.vendor_name || "Unknown Vendor"})`,
-          "info"
-        );
-      }
-      this.requestUpdate();
-    }}
-                            >
-                              <option value="">Select a PCI device</option>
-                              ${this.availablePCIDevices.filter((d2) => d2.is_available).map((d2) => x`
-                                  <option value=${d2.pci_address} ?disabled=${!d2.is_available}>
-                                    ${d2.pci_address} - ${d2.product_name || "Unknown"} 
-                                    (${d2.vendor_name || "Unknown"})
-                                    ${d2.device_type ? `[${d2.device_type.toUpperCase()}]` : ""}
-                                    ${d2.assigned_to_vm ? `(Assigned to: ${d2.assigned_to_vm})` : ""}
-                                  </option>
-                                `)}
-                              <option value="custom">Enter custom address...</option>
-                            </select>
-                            ${device.host_address === "custom" ? x`
-                              <input
-                                type="text"
-                                placeholder="0000:01:00.0"
-                                style="margin-top: 8px;"
-                                @input=${(e3) => {
-      device.host_address = e3.target.value;
-      this.requestUpdate();
-    }}
-                              />
-                            ` : ""}
-                          ` : x`
-                            <input
-                              type="text"
-                              placeholder="0000:01:00.0"
-                              .value=${device.host_address || ""}
-                              @input=${(e3) => {
-      device.host_address = e3.target.value;
-      this.requestUpdate();
-    }}
-                            />
-                          `}
-                          <div class="help-text">
-                            PCI address on the host (e.g., 0000:01:00.0)
-                            ${(() => {
-      const selectedDevice = this.availablePCIDevices.find((d2) => d2.pci_address === device.host_address);
-      if (selectedDevice) {
-        return x`<br><strong>IOMMU Group:</strong> ${selectedDevice.iommu_group || "Unknown"}`;
-      }
-      return "";
-    })()}
-                          </div>
-                        </div>
+              ${this.formData.pci_devices?.length ? x`
+                <div class="storage-table-wrapper">
+                  <table class="storage-table">
+                    <thead>
+                      <tr>
+                        <th>Host</th>
+                        <th>Device</th>
+                        <th>Type</th>
+                        <th>IOMMU</th>
+                        <th>Flags</th>
+                        <th>Guest</th>
+                        <th>ROM</th>
+                        <th>Status</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${this.formData.pci_devices.map((dev, index2) => {
+      const info = getDeviceInfo(dev.host_address);
+      const typeLabel = info?.device_type ? String(info.device_type).toUpperCase() : "-";
+      const status = info ? info.is_available ? { label: "Available", cls: "success" } : { label: "In Use", cls: "warning" } : { label: "Unknown", cls: "warning" };
+      const flags = [];
+      if (dev.primary_gpu) flags.push("Primary GPU");
+      if (dev.multifunction) flags.push("Multi");
+      return x`
+                          <tr>
+                            <td><span class="monospace">${dev.host_address}</span></td>
+                            <td>
+                              <span class="monospace storage-path">
+                                ${info ? `${info.product_name || "Unknown"} (${info.vendor_name || "Unknown"})` : "-"}
+                              </span>
+                            </td>
+                            <td><span class="storage-badge">${typeLabel}</span></td>
+                            <td>${info?.iommu_group || "-"}</td>
+                            <td>
+                              ${flags.length ? flags.map((f2) => x`<span class="storage-badge warning" style="margin-right: 6px;">${f2}</span>`) : x`-`}
+                            </td>
+                            <td><span class="monospace">${dev.guest_address || "-"}</span></td>
+                            <td><span class="monospace storage-path">${dev.rom_file || "-"}</span></td>
+                            <td><span class="storage-badge ${status.cls}">${status.label}</span></td>
+                            <td>
+                              <button
+                                class="btn-icon-ghost"
+                                title="Edit device"
+                                @click=${() => this.openEditPCIDeviceModal(index2)}
+                              >
+                                ✎
+                              </button>
+                              <button
+                                class="btn-remove btn-icon"
+                                title="Remove device"
+                                @click=${() => this.removePCIDevice(index2)}
+                              >
+                                ✕
+                              </button>
+                            </td>
+                          </tr>
+                        `;
+    })}
+                    </tbody>
+                  </table>
+                </div>
+              ` : x`<div class="help-text">No devices configured</div>`}
 
-                        <div class="form-group">
-                          <label>Guest PCI Address (Optional)</label>
-                          <input
-                            type="text"
-                            placeholder="0000:05:00.0 (auto if empty)"
-                            .value=${device.guest_address || ""}
-                            @input=${(e3) => {
-      device.guest_address = e3.target.value;
-      this.requestUpdate();
-    }}
-                          />
-                          <div class="help-text">PCI address in the guest VM</div>
-                        </div>
-                      </div>
-
-                      <div class="form-group">
-                        <label>ROM File (Optional)</label>
-                        <input
-                          type="text"
-                          placeholder="/usr/share/vgabios/nvidia.rom"
-                          .value=${device.rom_file || ""}
-                          @input=${(e3) => {
-      device.rom_file = e3.target.value;
-      this.requestUpdate();
-    }}
-                        />
-                        <div class="help-text">Path to option ROM file (required for some GPUs to work properly)</div>
-                      </div>
-
-                      <div class="grid-2" style="margin-top: 12px;">
-                        <div class="checkbox-group">
-                          <input
-                            type="checkbox"
-                            id="multifunction-${index2}"
-                            ?checked=${device.multifunction}
-                            @change=${(e3) => {
-      device.multifunction = e3.target.checked;
-      this.requestUpdate();
-    }}
-                          />
-                          <label for="multifunction-${index2}">Multi-function device</label>
-                          <div class="help-text" style="margin-left: 24px;">Enable for devices with multiple functions (e.g., GPU with audio)</div>
-                        </div>
-
-                        <div class="checkbox-group">
-                          <input
-                            type="checkbox"
-                            id="primary-gpu-${index2}"
-                            ?checked=${device.primary_gpu}
-                            @change=${(e3) => {
-      device.primary_gpu = e3.target.checked;
-      if (device.primary_gpu && this.formData.pci_devices) {
-        this.formData.pci_devices.forEach((d2, i4) => {
-          if (i4 !== index2) d2.primary_gpu = false;
-        });
-      }
-      this.requestUpdate();
-    }}
-                          />
-                          <label for="primary-gpu-${index2}">Primary GPU</label>
-                          <div class="help-text" style="margin-left: 24px;">Set as the primary display adapter</div>
-                        </div>
-                      </div>
-
-                      ${(() => {
-      const selectedDevice = this.availablePCIDevices.find((d2) => d2.pci_address === device.host_address);
-      if (selectedDevice && selectedDevice.device_type === "gpu") {
-        return x`
-                            <div class="help-text" style="margin-top: 12px; padding: 8px; background: var(--vscode-inputValidation-infoBackground); border-radius: 4px;">
-                              <strong>GPU Passthrough Tips:</strong>
-                              <ul style="margin: 4px 0; padding-left: 20px;">
-                                <li>Ensure the GPU is not being used by the host (blacklist driver or use vfio-pci)</li>
-                                <li>Consider passing through the audio device (usually at .1 address) as well</li>
-                                <li>You may need a ROM file for certain NVIDIA GPUs</li>
-                                <li>Enable "Primary GPU" if this will be the main display</li>
-                              </ul>
-                            </div>
-                          `;
-      }
-      return "";
-    })()}
-                    </div>
-                    <div class="list-item-actions">
-                      <button class="btn-remove" @click=${() => this.removePCIDevice(index2)}>
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                `) || x`<div class="help-text">No PCI devices configured</div>`}
-                
-                <button class="btn-add" @click=${this.addPCIDevice}>
-                  + Add PCI Device
+              <div class="btn-add-dropdown">
+                <button class="btn-add" @click=${this.openAddPCIDeviceModal}>
+                  + Add Device
                 </button>
-                
-                ${this.availablePCIDevices.length > 0 ? x`
-                  <div class="help-text" style="margin-top: 12px;">
-                    <strong>Available Devices:</strong> ${this.availablePCIDevices.filter((d2) => d2.is_available).length} of ${this.availablePCIDevices.length} devices available for passthrough
-                  </div>
-                ` : ""}
               </div>
+
+              ${this.availablePCIDevices.length > 0 ? x`
+                <div class="help-text" style="margin-top: 12px;">
+                  <strong>Available Devices:</strong> ${this.availablePCIDevices.filter((d2) => d2.is_available).length} of ${this.availablePCIDevices.length} devices available for passthrough
+                </div>
+              ` : ""}
             `}
-            
+
             <div class="help-text" style="margin-top: 12px; padding: 12px; background: var(--vscode-inputValidation-warningBackground); border-radius: 4px;">
               <strong>⚠️ Important:</strong> PCI passthrough requires:
               <ul style="margin: 4px 0; padding-left: 20px;">
@@ -61109,78 +61470,7 @@ let CreateVMWizardEnhanced = class extends i$2 {
             </div>
           </div>
 
-          <div class="form-group">
-            <label>Custom XML (Optional)</label>
-            <textarea
-              class="code-editor"
-              rows="10"
-              placeholder="Enter custom libvirt XML configuration..."
-              .value=${this.formData.custom_xml || ""}
-              @input=${(e3) => this.updateFormData("custom_xml", e3.target.value)}
-            ></textarea>
-            <div class="help-text">Advanced libvirt XML configuration to be merged with the generated XML</div>
-          </div>
 
-          <div class="form-group">
-            <label>Metadata Tags</label>
-            <div class="help-text">Add custom metadata key-value pairs for organization and automation</div>
-            <div class="list-container">
-              ${Object.entries(this.formData.metadata || {}).map(([key, value]) => x`
-                <div class="list-item">
-                  <div class="list-item-content">
-                    <div class="grid-2">
-                      <input
-                        type="text"
-                        placeholder="Key"
-                        .value=${key}
-                        disabled
-                      />
-                      <input
-                        type="text"
-                        placeholder="Value"
-                        .value=${value}
-                        @input=${(e3) => {
-      if (this.formData.metadata) {
-        this.formData.metadata[key] = e3.target.value;
-        this.requestUpdate();
-      }
-    }}
-                      />
-                    </div>
-                  </div>
-                  <div class="list-item-actions">
-                    <button class="btn-remove" @click=${() => {
-      if (this.formData.metadata) {
-        delete this.formData.metadata[key];
-        this.requestUpdate();
-      }
-    }}>
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              `)}
-              <div class="grid-2">
-                <input type="text" id="new-metadata-key" placeholder="New key" />
-                <input type="text" id="new-metadata-value" placeholder="New value" />
-              </div>
-              <button class="btn-add" @click=${() => {
-      const keyInput = this.shadowRoot?.querySelector("#new-metadata-key");
-      const valueInput = this.shadowRoot?.querySelector("#new-metadata-value");
-      if (keyInput?.value && valueInput?.value) {
-        if (!this.formData.metadata) {
-          this.formData.metadata = {};
-        }
-        this.formData.metadata[keyInput.value] = valueInput.value;
-        keyInput.value = "";
-        valueInput.value = "";
-        this.requestUpdate();
-      }
-    }}>
-                + Add Metadata
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     `;
@@ -61302,6 +61592,12 @@ let CreateVMWizardEnhanced = class extends i$2 {
     `;
   }
   renderReview() {
+    const disks = this.formData.storage?.disks || [];
+    const networks = this.formData.networks || [];
+    const graphics = this.formData.graphics || [];
+    const pci = this.formData.pci_devices || [];
+    const cloud = this.formData.cloud_init;
+    const cloudEnabled = !!cloud && Object.keys(cloud).some((k2) => cloud[k2] && (Array.isArray(cloud[k2]) ? cloud[k2].length : true));
     return x`
       <div class="section expanded">
         <div class="section-header">
@@ -61310,14 +61606,227 @@ let CreateVMWizardEnhanced = class extends i$2 {
           </div>
         </div>
         <div class="section-content">
-          <div class="form-group">
-            <label>Configuration JSON</label>
-            <textarea
-              class="code-editor"
-              rows="20"
-              readonly
-              .value=${JSON.stringify(this.formData, null, 2)}
-            ></textarea>
+          <div class="tabs">
+            <button class="tab active" data-tab="gui">Summary</button>
+            <button class="tab" data-tab="json">JSON</button>
+          </div>
+
+          <div class="tab-content active" data-content="gui">
+            <div class="form-group">
+              <label>Basic</label>
+              <div class="list-container">
+                <div class="grid-2">
+                  <div>
+                    <div class="help-text">Name</div>
+                    <div class="monospace">${this.formData.name || "-"}</div>
+                  </div>
+                  <div>
+                    <div class="help-text">Architecture</div>
+                    <div>${this.formData.architecture || "-"}</div>
+                  </div>
+                </div>
+
+                <div class="grid-2" style="margin-top: 12px;">
+                  <div>
+                    <div class="help-text">Memory</div>
+                    <div>${this.formData.memory || 0} MB</div>
+                  </div>
+                  <div>
+                    <div class="help-text">vCPUs</div>
+                    <div>${this.formData.vcpus || 0}</div>
+                  </div>
+                </div>
+
+                <div class="grid-2" style="margin-top: 12px;">
+                  <div>
+                    <div class="help-text">OS Type</div>
+                    <div>${this.formData.os_type || "-"}</div>
+                  </div>
+                  <div>
+                    <div class="help-text">OS Variant</div>
+                    <div>${this.formData.os_variant || "-"}</div>
+                  </div>
+                </div>
+
+                <div style="margin-top: 12px;">
+                  <span class="storage-badge ${this.formData.uefi ? "success" : ""}" style="margin-right: 6px;">UEFI: ${this.formData.uefi ? "On" : "Off"}</span>
+                  <span class="storage-badge ${this.formData.secure_boot ? "success" : ""}" style="margin-right: 6px;">Secure Boot: ${this.formData.secure_boot ? "On" : "Off"}</span>
+                  <span class="storage-badge ${this.formData.tpm ? "success" : ""}" style="margin-right: 6px;">TPM: ${this.formData.tpm ? "On" : "Off"}</span>
+                  <span class="storage-badge ${this.formData.autostart ? "success" : ""}">Autostart: ${this.formData.autostart ? "On" : "Off"}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Storage</label>
+              ${disks.length ? x`
+                <div class="storage-table-wrapper">
+                  <table class="storage-table">
+                    <thead>
+                      <tr>
+                        <th>Target</th>
+                        <th>Type</th>
+                        <th>Source</th>
+                        <th>Format</th>
+                        <th>Bus</th>
+                        <th>Size</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${disks.map((d2) => x`
+                        <tr>
+                          <td><span class="monospace">${d2.target || "Auto"}</span></td>
+                          <td><span class="storage-badge ${d2.device === "cdrom" ? "warning" : ""}">${(d2.device || "disk").toUpperCase()}</span></td>
+                          <td><span class="monospace storage-path">${d2.path || (d2.action === "create" ? "New disk" : d2.action === "clone" ? d2.clone_from || "-" : "-")}</span></td>
+                          <td>${(d2.format || "qcow2").toUpperCase()}</td>
+                          <td>${(d2.bus || "virtio").toUpperCase()}</td>
+                          <td>${d2.action === "create" && d2.size ? `${d2.size} GB` : "N/A"}</td>
+                          <td><span class="storage-badge ${d2.readonly ? "warning" : "success"}">${d2.readonly ? "Read-Only" : "Read/Write"}</span></td>
+                        </tr>
+                      `)}
+                    </tbody>
+                  </table>
+                </div>
+              ` : x`<div class="help-text">No disks configured</div>`}
+            </div>
+
+            <div class="form-group">
+              <label>Network Interfaces</label>
+              ${networks.length ? x`
+                <div class="storage-table-wrapper">
+                  <table class="storage-table">
+                    <thead>
+                      <tr>
+                        <th>Type</th>
+                        <th>Source</th>
+                        <th>Model</th>
+                        <th>MAC</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${networks.map((n3) => x`
+                        <tr>
+                          <td><span class="storage-badge">${(n3.type || "network").toUpperCase()}</span></td>
+                          <td><span class="monospace storage-path">${n3.source || "-"}</span></td>
+                          <td>${(n3.model || "virtio").toUpperCase()}</td>
+                          <td><span class="monospace">${n3.mac || "-"}</span></td>
+                        </tr>
+                      `)}
+                    </tbody>
+                  </table>
+                </div>
+              ` : x`<div class="help-text">No network interfaces configured</div>`}
+            </div>
+
+            <div class="form-group">
+              <label>Graphics</label>
+              ${graphics.length ? x`
+                <div class="storage-table-wrapper">
+                  <table class="storage-table">
+                    <thead>
+                      <tr>
+                        <th>Type</th>
+                        <th>Listen</th>
+                        <th>Port</th>
+                        <th>Auto Port</th>
+                        <th>Password</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${graphics.map((g2) => {
+      const portLabel = g2.type === "none" || g2.type === "egl-headless" ? "-" : g2.autoport ? "Auto" : g2.port ? String(g2.port) : "-";
+      const autoLabel = g2.type === "none" || g2.type === "egl-headless" ? "-" : g2.autoport ? "Yes" : "No";
+      const pwLabel = g2.type === "none" || g2.type === "egl-headless" ? "-" : g2.password ? "Set" : "None";
+      return x`
+                          <tr>
+                            <td><span class="storage-badge">${(g2.type || "vnc").toUpperCase()}</span></td>
+                            <td><span class="monospace">${g2.listen || "-"}</span></td>
+                            <td><span class="monospace">${portLabel}</span></td>
+                            <td>${autoLabel}</td>
+                            <td>${pwLabel}</td>
+                          </tr>
+                        `;
+    })}
+                    </tbody>
+                  </table>
+                </div>
+              ` : x`<div class="help-text">No graphics configured</div>`}
+            </div>
+
+            <div class="form-group">
+              <label>PCI Devices</label>
+              ${pci.length ? x`
+                <div class="storage-table-wrapper">
+                  <table class="storage-table">
+                    <thead>
+                      <tr>
+                        <th>Host</th>
+                        <th>Guest</th>
+                        <th>ROM</th>
+                        <th>Flags</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${pci.map((d2) => {
+      const flags = [];
+      if (d2.primary_gpu) flags.push("Primary GPU");
+      if (d2.multifunction) flags.push("Multi");
+      return x`
+                          <tr>
+                            <td><span class="monospace">${d2.host_address}</span></td>
+                            <td><span class="monospace">${d2.guest_address || "-"}</span></td>
+                            <td><span class="monospace storage-path">${d2.rom_file || "-"}</span></td>
+                            <td>${flags.length ? flags.join(", ") : "-"}</td>
+                          </tr>
+                        `;
+    })}
+                    </tbody>
+                  </table>
+                </div>
+              ` : x`<div class="help-text">No PCI devices configured</div>`}
+            </div>
+
+            <div class="form-group">
+              <label>Cloud-Init</label>
+              <div class="list-container">
+                <div style="margin-bottom: 8px;">
+                  <span class="storage-badge ${cloudEnabled ? "success" : ""}">${cloudEnabled ? "Enabled" : "Not configured"}</span>
+                </div>
+                <div class="grid-2">
+                  <div>
+                    <div class="help-text">Users</div>
+                    <div>${cloud?.users?.length || 0}</div>
+                  </div>
+                  <div>
+                    <div class="help-text">Packages</div>
+                    <div>${cloud?.packages?.length || 0}</div>
+                  </div>
+                </div>
+                <div class="grid-2" style="margin-top: 12px;">
+                  <div>
+                    <div class="help-text">SSH Keys</div>
+                    <div>${cloud?.ssh_keys?.length || 0}</div>
+                  </div>
+                  <div>
+                    <div class="help-text">Raw user-data</div>
+                    <div>${cloud?.user_data ? "Yes" : "No"}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-content" data-content="json">
+            <div class="form-group">
+              <label>Configuration JSON</label>
+              <textarea
+                class="code-editor"
+                rows="20"
+                readonly
+                .value=${JSON.stringify(this.formData, null, 2)}
+              ></textarea>
+            </div>
           </div>
         </div>
       </div>
@@ -61365,7 +61874,7 @@ let CreateVMWizardEnhanced = class extends i$2 {
       const contents = this.shadowRoot?.querySelectorAll(".tab-content");
       tabs?.forEach((tab) => {
         tab.addEventListener("click", (e3) => {
-          const target = e3.target;
+          const target = e3.currentTarget;
           const tabName = target.dataset.tab;
           tabs.forEach((t2) => t2.classList.remove("active"));
           contents?.forEach((c2) => c2.classList.remove("active"));
@@ -61448,6 +61957,12 @@ let CreateVMWizardEnhanced = class extends i$2 {
       </div>
 
       ${this.renderDeviceModal()}
+
+      ${this.renderNetworkModal()}
+
+      ${this.renderGraphicsModal()}
+
+      ${this.renderPCIDeviceModal()}
 
       ${this.showCloseConfirmation ? x`
         <delete-modal
@@ -61855,6 +62370,19 @@ CreateVMWizardEnhanced.styles = i$5`
       font-size: 12px;
     }
 
+    .btn-icon-ghost {
+      padding: 4px 8px;
+      font-size: 12px;
+      margin-right: 6px;
+      background: transparent;
+      color: var(--vscode-foreground, #cccccc);
+      border: 1px solid var(--vscode-widget-border, #454545);
+    }
+
+    .btn-icon-ghost:hover:not(:disabled) {
+      background: var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.1));
+    }
+
     .monospace {
       font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
     }
@@ -62077,6 +62605,39 @@ __decorateClass$k([
 __decorateClass$k([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "deviceDraft", 2);
+__decorateClass$k([
+  r$1()
+], CreateVMWizardEnhanced.prototype, "editingDiskIndex", 2);
+__decorateClass$k([
+  r$1()
+], CreateVMWizardEnhanced.prototype, "showNetworkModal", 2);
+__decorateClass$k([
+  r$1()
+], CreateVMWizardEnhanced.prototype, "networkDraft", 2);
+__decorateClass$k([
+  r$1()
+], CreateVMWizardEnhanced.prototype, "editingNetworkIndex", 2);
+__decorateClass$k([
+  r$1()
+], CreateVMWizardEnhanced.prototype, "showGraphicsModal", 2);
+__decorateClass$k([
+  r$1()
+], CreateVMWizardEnhanced.prototype, "graphicsDraft", 2);
+__decorateClass$k([
+  r$1()
+], CreateVMWizardEnhanced.prototype, "editingGraphicsIndex", 2);
+__decorateClass$k([
+  r$1()
+], CreateVMWizardEnhanced.prototype, "showPCIModal", 2);
+__decorateClass$k([
+  r$1()
+], CreateVMWizardEnhanced.prototype, "pciDraft", 2);
+__decorateClass$k([
+  r$1()
+], CreateVMWizardEnhanced.prototype, "editingPCIDeviceIndex", 2);
+__decorateClass$k([
+  r$1()
+], CreateVMWizardEnhanced.prototype, "pciHostSelection", 2);
 __decorateClass$k([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "validationErrors", 2);
