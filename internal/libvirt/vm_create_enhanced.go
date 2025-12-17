@@ -443,7 +443,7 @@ func (s *Service) applyVMTemplate(ctx context.Context, req *VMCreateRequestEnhan
 	if len(req.Networks) == 0 && template.NetworkModel != "" {
 		req.Networks = []NetworkConfig{
 			{
-				Type:   NetworkTypeNAT,
+				Type:   NetworkTypeNetwork,
 				Source: "default",
 				Model:  template.NetworkModel,
 			},

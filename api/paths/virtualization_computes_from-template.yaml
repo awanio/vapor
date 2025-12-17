@@ -60,7 +60,7 @@ post:
                   type: string
                   enum:
                     - bridge
-                    - nat
+                    - network
                     - direct
                     - user
                   description: Network type

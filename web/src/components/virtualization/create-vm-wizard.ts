@@ -967,30 +967,32 @@ export class CreateVMWizard extends LitElement {
   private renderNetworkConfig() {
     const wizardState = this.wizardController.value;
     const { formData } = wizardState;
-    const networkConfig = formData.network || { type: 'nat' };
+    const networkConfig = formData.network || { type: 'network' } as any;
+    const rawType = (networkConfig as any).type;
+    const selectedType = rawType === 'nat' ? 'network' : (rawType || 'network');
 
     return html`
       <div>
         <div class="form-group">
           <label>Network Type</label>
           <select
-            .value=${networkConfig.type || 'nat'}
+            .value=${selectedType}
             @change=${(e: Event) => {
               const type = (e.target as HTMLSelectElement).value;
               this.updateFormData('network', { ...networkConfig, type });
             }}
           >
-            <option value="nat">NAT (Default)</option>
+            <option value="network">Network (Default / NAT)</option>
             <option value="bridge">Bridge</option>
             <option value="user">User Mode</option>
             <option value="direct">Direct (Macvtap)</option>
           </select>
           <div class="help-text">
-            NAT provides internet access through the host. Bridge connects directly to the network.
+            Network attaches to a libvirt network (commonly 'default', often NAT'd). Bridge connects directly to a host bridge.
           </div>
         </div>
 
-        ${networkConfig.type === 'bridge' ? html`
+        ${selectedType === 'bridge' ? html`
           <div class="form-group">
             <label>Bridge Interface</label>
             <input

@@ -614,10 +614,21 @@ func (s *Service) generateEnhancedDomainXML(req *VMCreateRequestEnhanced, diskCo
 
 	// Add networks
 	if len(req.Networks) > 0 {
-		for _, net := range req.Networks {
-			netType := string(net.Type)
-			if netType == "" {
-				netType = "network"
+		for i, net := range req.Networks {
+			requestedType := strings.ToLower(strings.TrimSpace(string(net.Type)))
+			if requestedType == "" {
+				requestedType = string(NetworkTypeNetwork)
+			}
+
+			interfaceType := requestedType
+			switch requestedType {
+			case string(NetworkTypeNAT):
+				// User-facing alias: treat as a libvirt 'network' interface.
+				interfaceType = string(NetworkTypeNetwork)
+			case string(NetworkTypeNetwork), string(NetworkTypeBridge), string(NetworkTypeDirect), string(NetworkTypeUser):
+				// supported
+			default:
+				return "", fmt.Errorf("networks[%d].type '%s' is not supported", i, requestedType)
 			}
 
 			model := net.Model
@@ -625,20 +636,40 @@ func (s *Service) generateEnhancedDomainXML(req *VMCreateRequestEnhanced, diskCo
 				model = "virtio"
 			}
 
-			xml += fmt.Sprintf(`
-<interface type='%s'>`, netType)
-
-			if netType == "bridge" {
-				xml += fmt.Sprintf(`
-<source bridge='%s'/>`, net.Source)
-			} else {
-				xml += fmt.Sprintf(`
-<source network='%s'/>`, net.Source)
+			// Validate required fields
+			switch interfaceType {
+			case string(NetworkTypeNetwork), string(NetworkTypeBridge), string(NetworkTypeDirect):
+				if strings.TrimSpace(net.Source) == "" {
+					return "", fmt.Errorf("networks[%d].source is required for type '%s'", i, interfaceType)
+				}
 			}
 
 			xml += fmt.Sprintf(`
-<model type='%s'/>
-</interface>`, model)
+	<interface type='%s'>`, interfaceType)
+
+			switch interfaceType {
+			case string(NetworkTypeBridge):
+				xml += fmt.Sprintf(`
+	<source bridge='%s'/>`, net.Source)
+			case string(NetworkTypeDirect):
+				// Default direct mode to bridge (most common).
+				xml += fmt.Sprintf(`
+	<source dev='%s' mode='bridge'/>`, net.Source)
+			case string(NetworkTypeUser):
+				// user-mode networking does not require a <source/>
+			default: // network
+				xml += fmt.Sprintf(`
+	<source network='%s'/>`, net.Source)
+			}
+
+			if net.MAC != "" {
+				xml += fmt.Sprintf(`
+	<mac address='%s'/>`, net.MAC)
+			}
+
+			xml += fmt.Sprintf(`
+	<model type='%s'/>
+	</interface>`, model)
 		}
 	}
 
@@ -649,11 +680,25 @@ func (s *Service) generateEnhancedDomainXML(req *VMCreateRequestEnhanced, diskCo
 </console>`
 
 	// Graphics
+	//
+	// Notes:
+	// - vnc/spice use port/autoport/listen/password
+	// - egl-headless does not use port/listen semantics (keep element minimal)
+	// - none means "no graphics" (do not emit a <graphics/> element)
 	if len(req.Graphics) > 0 {
 		for _, graphics := range req.Graphics {
-			graphicsType := graphics.Type
+			graphicsType := strings.ToLower(strings.TrimSpace(graphics.Type))
 			if graphicsType == "" {
 				graphicsType = "vnc"
+			}
+
+			switch graphicsType {
+			case "none":
+				continue
+			case "egl-headless":
+				// Keep minimal to avoid invalid attributes for this backend.
+				xml += "\n\t<graphics type='egl-headless'/>"
+				continue
 			}
 
 			port := graphics.Port
@@ -1070,7 +1115,9 @@ func getNetworkSourceAttr(netType NetworkType) string {
 	switch netType {
 	case NetworkTypeBridge:
 		return "bridge"
-	case NetworkTypeNAT, NetworkTypeDirect:
+	case NetworkTypeDirect:
+		return "dev"
+	case NetworkTypeNetwork, NetworkTypeNAT:
 		return "network"
 	default:
 		return "network"

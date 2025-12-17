@@ -29,15 +29,18 @@ const (
 	DiskBusUSB    DiskBus = "usb"
 )
 
-// NetworkType represents network interface types
+// NetworkType represents libvirt domain interface types and user-facing aliases.
+//
+// Note: libvirt interface types are: network, bridge, direct, user, ...
+// We keep NetworkTypeNAT as a user-facing alias for the common libvirt network named "default" (often NAT'd).
 type NetworkType string
 
 const (
-	NetworkTypeBridge NetworkType = "bridge"
-	NetworkTypeNAT    NetworkType = "nat"
-	NetworkTypeDirect NetworkType = "direct"
-	NetworkTypeUser   NetworkType = "user"
-	NetworkTypeVirtio NetworkType = "virtio"
+	NetworkTypeNetwork NetworkType = "network"
+	NetworkTypeBridge  NetworkType = "bridge"
+	NetworkTypeNAT     NetworkType = "nat" // alias for NetworkTypeNetwork during XML generation
+	NetworkTypeDirect  NetworkType = "direct"
+	NetworkTypeUser    NetworkType = "user"
 )
 
 // VM represents a virtual machine
@@ -129,8 +132,9 @@ type VMCreateRequest struct {
 // NetworkConfig for VM creation
 type NetworkConfig struct {
 	Type   NetworkType `json:"type"`
-	Source string      `json:"source"` // bridge/network name
+	Source string      `json:"source"` // network name, bridge name, or interface name (for direct)
 	Model  string      `json:"model"`  // virtio by default
+	MAC    string      `json:"mac,omitempty"`
 }
 
 // GraphicsConfig for VM creation

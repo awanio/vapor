@@ -2,6 +2,7 @@ package libvirt
 
 import (
 	"context"
+	"strings"
 	"testing"
 )
 
@@ -280,7 +281,163 @@ func TestDiskDefaults(t *testing.T) {
 	}
 }
 
+func TestGenerateEnhancedDomainXML_NetworkBridge(t *testing.T) {
+	svc := &Service{}
+	req := &VMCreateRequestEnhanced{
+		Name:         "test-vm",
+		Memory:       2048,
+		VCPUs:        2,
+		Architecture: "x86_64",
+		Networks: []NetworkConfig{
+			{
+				Type:   NetworkTypeBridge,
+				Source: "br_private0",
+				Model:  "virtio",
+			},
+		},
+	}
+
+	disks := []PreparedDisk{
+		{
+			Path: "/var/lib/libvirt/images/test.qcow2",
+			Config: DiskCreateConfig{
+				Format: "qcow2",
+				Bus:    DiskBusVirtio,
+				Target: "vda",
+				Device: "disk",
+			},
+		},
+	}
+
+	xml, err := svc.generateEnhancedDomainXML(req, disks)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if !strings.Contains(xml, "<interface type='bridge'>") {
+		t.Fatalf("expected bridge interface, got xml: %s", xml)
+	}
+	if !strings.Contains(xml, "<source bridge='br_private0'/>") {
+		t.Fatalf("expected bridge source br_private0, got xml: %s", xml)
+	}
+	if !strings.Contains(xml, "<model type='virtio'/>") {
+		t.Fatalf("expected model virtio, got xml: %s", xml)
+	}
+}
+
+func TestGenerateEnhancedDomainXML_NetworkNatAliasMapsToNetwork(t *testing.T) {
+	svc := &Service{}
+	req := &VMCreateRequestEnhanced{
+		Name:         "test-vm",
+		Memory:       2048,
+		VCPUs:        2,
+		Architecture: "x86_64",
+		Networks: []NetworkConfig{
+			{
+				Type:   NetworkTypeNAT,
+				Source: "default",
+				Model:  "virtio",
+			},
+		},
+	}
+
+	disks := []PreparedDisk{
+		{
+			Path: "/var/lib/libvirt/images/test.qcow2",
+			Config: DiskCreateConfig{
+				Format: "qcow2",
+				Bus:    DiskBusVirtio,
+				Target: "vda",
+				Device: "disk",
+			},
+		},
+	}
+
+	xml, err := svc.generateEnhancedDomainXML(req, disks)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if !strings.Contains(xml, "<interface type='network'>") {
+		t.Fatalf("expected nat alias to render as network interface, got xml: %s", xml)
+	}
+	if !strings.Contains(xml, "<source network='default'/>") {
+		t.Fatalf("expected network source default, got xml: %s", xml)
+	}
+}
+
+func TestGenerateEnhancedDomainXML_GraphicsEGLHeadlessMinimal(t *testing.T) {
+	svc := &Service{}
+	req := &VMCreateRequestEnhanced{
+		Name:         "test-vm",
+		Memory:       2048,
+		VCPUs:        2,
+		Architecture: "x86_64",
+		Graphics: []EnhancedGraphicsConfig{
+			{Type: "egl-headless"},
+		},
+	}
+
+	disks := []PreparedDisk{
+		{
+			Path: "/var/lib/libvirt/images/test.qcow2",
+			Config: DiskCreateConfig{
+				Format: "qcow2",
+				Bus:    DiskBusVirtio,
+				Target: "vda",
+				Device: "disk",
+			},
+		},
+	}
+
+	xml, err := svc.generateEnhancedDomainXML(req, disks)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if !strings.Contains(xml, "<graphics type='egl-headless'/>") {
+		t.Fatalf("expected egl-headless graphics element, got xml: %s", xml)
+	}
+	if strings.Contains(xml, "type='egl-headless' port=") || strings.Contains(xml, "type='egl-headless' listen=") {
+		t.Fatalf("expected egl-headless graphics to be minimal (no port/listen attrs), got xml: %s", xml)
+	}
+}
+
+func TestGenerateEnhancedDomainXML_GraphicsNoneDisablesDefault(t *testing.T) {
+	svc := &Service{}
+	req := &VMCreateRequestEnhanced{
+		Name:         "test-vm",
+		Memory:       2048,
+		VCPUs:        2,
+		Architecture: "x86_64",
+		Graphics: []EnhancedGraphicsConfig{
+			{Type: "none"},
+		},
+	}
+
+	disks := []PreparedDisk{
+		{
+			Path: "/var/lib/libvirt/images/test.qcow2",
+			Config: DiskCreateConfig{
+				Format: "qcow2",
+				Bus:    DiskBusVirtio,
+				Target: "vda",
+				Device: "disk",
+			},
+		},
+	}
+
+	xml, err := svc.generateEnhancedDomainXML(req, disks)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if strings.Contains(xml, "<graphics") {
+		t.Fatalf("expected no <graphics> elements when type is none, got xml: %s", xml)
+	}
+}
+
 // Helper function
 func contains(s, substr string) bool {
-	return len(s) > 0 && len(substr) > 0 && (s == substr || len(s) > len(substr) && (s[0:len(substr)] == substr || s[len(s)-len(substr):] == substr || len(s) > 2*len(substr) && s[len(substr):len(s)-len(substr)] == substr))
+	return strings.Contains(s, substr)
 }

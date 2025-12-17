@@ -41,7 +41,7 @@ export interface DiskInfo {
 
 export interface NetworkInterface {
   name: string;
-  type: 'bridge' | 'nat' | 'user' | 'direct';
+  type: 'bridge' | 'network' | 'user' | 'direct';
   source?: string;
   model?: 'virtio' | 'e1000' | 'rtl8139';
   mac?: string;
@@ -142,7 +142,7 @@ export interface DiskConfig {
 }
 
 export interface NetworkConfig {
-  type: 'bridge' | 'nat' | 'user' | 'direct';
+  type: 'bridge' | 'network' | 'user' | 'direct';
   source?: string;       // Bridge/network name
   model?: 'virtio' | 'e1000' | 'rtl8139';
   mac?: string;          // Optional MAC address

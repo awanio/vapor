@@ -1813,7 +1813,7 @@ func (s *Service) parseNetworkConfiguration(xmlDesc string) ([]NetworkConfigDeta
 
 		// Parse interface type
 		if strings.Contains(ifaceXML, "type='network'") || strings.Contains(ifaceXML, "type=\"network\"") {
-			network.Type = NetworkTypeNAT
+			network.Type = NetworkTypeNetwork
 		} else if strings.Contains(ifaceXML, "type='bridge'") || strings.Contains(ifaceXML, "type=\"bridge\"") {
 			network.Type = NetworkTypeBridge
 		} else if strings.Contains(ifaceXML, "type='direct'") || strings.Contains(ifaceXML, "type=\"direct\"") {
