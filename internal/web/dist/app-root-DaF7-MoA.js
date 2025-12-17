@@ -1,4 +1,4 @@
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-BZxTZ46p.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-Dd9xUbBw.js";
 function perfIncrement(name, delta = 1) {
   return;
 }
@@ -17442,7 +17442,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-BZxTZ46p.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-Dd9xUbBw.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17487,7 +17487,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-BZxTZ46p.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-Dd9xUbBw.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17555,7 +17555,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-BZxTZ46p.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-Dd9xUbBw.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17668,7 +17668,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-BZxTZ46p.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-Dd9xUbBw.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -36397,7 +36397,7 @@ class KubernetesApi {
       if (contentType === "json") {
         parsedResource = JSON.parse(content);
       } else {
-        const yaml = await import("./index-DCW6p9NQ.js");
+        const yaml = await import("./index-DY4hmqOb.js");
         parsedResource = yaml.parse(content);
       }
     } catch (error) {
@@ -52463,7 +52463,7 @@ let KubernetesCRDs = class extends i$2 {
         unwrapped = JSON.parse(JSON.stringify(unwrapped));
         delete unwrapped.metadata.managedFields;
       }
-      const yaml = await import("./index-DCW6p9NQ.js");
+      const yaml = await import("./index-DY4hmqOb.js");
       this.createResourceValue = yaml.stringify(unwrapped);
       this.isCreating = false;
     } catch (error) {
@@ -58875,29 +58875,31 @@ let CreateVMWizard = class extends i$2 {
   renderNetworkConfig() {
     const wizardState = this.wizardController.value;
     const { formData } = wizardState;
-    const networkConfig = formData.network || { type: "nat" };
+    const networkConfig = formData.network || { type: "network" };
+    const rawType = networkConfig.type;
+    const selectedType = rawType === "nat" ? "network" : rawType || "network";
     return x`
       <div>
         <div class="form-group">
           <label>Network Type</label>
           <select
-            .value=${networkConfig.type || "nat"}
+            .value=${selectedType}
             @change=${(e3) => {
       const type = e3.target.value;
       this.updateFormData("network", { ...networkConfig, type });
     }}
           >
-            <option value="nat">NAT (Default)</option>
+            <option value="network">Network (Default / NAT)</option>
             <option value="bridge">Bridge</option>
             <option value="user">User Mode</option>
             <option value="direct">Direct (Macvtap)</option>
           </select>
           <div class="help-text">
-            NAT provides internet access through the host. Bridge connects directly to the network.
+            Network attaches to a libvirt network (commonly 'default', often NAT'd). Bridge connects directly to a host bridge.
           </div>
         </div>
 
-        ${networkConfig.type === "bridge" ? x`
+        ${selectedType === "bridge" ? x`
           <div class="form-group">
             <label>Bridge Interface</label>
             <input
