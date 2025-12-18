@@ -1,7 +1,4 @@
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-Dd9xUbBw.js";
-function perfIncrement(name, delta = 1) {
-  return;
-}
+import { g as getApiUrl, i as i18n, r as registerPerfGauge, a as getWsUrl, b as auth, p as perfIncrement, t as t$5, c as theme } from "./index-BXCfY6X8.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -16962,6 +16959,17 @@ computed(
   (health) => health.filter((h3) => h3.status === "connected").length
 );
 computed($connectionHealth, (health) => health.length);
+registerPerfGauge(() => {
+  const gauges = {};
+  try {
+    const health = $connectionHealth.get();
+    gauges["ws_connections"] = health.length;
+    gauges["ws_reconnecting"] = health.filter((h3) => h3.status === "reconnecting").length;
+    gauges["ws_errors"] = health.filter((h3) => h3.lastError).length;
+  } catch {
+  }
+  return gauges;
+});
 class ApiError extends Error {
   constructor(message, code, details, status) {
     super(message);
@@ -17367,7 +17375,7 @@ const $metricsAlerts = computed(
     return alerts;
   }
 );
-computed(
+const $metricsState = computed(
   [
     $systemSummary,
     $cpuInfo,
@@ -17442,7 +17450,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-Dd9xUbBw.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-BXCfY6X8.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17487,7 +17495,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-Dd9xUbBw.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-BXCfY6X8.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17555,7 +17563,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-Dd9xUbBw.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-BXCfY6X8.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17599,6 +17607,18 @@ function formatUptime(seconds) {
 if (typeof window !== "undefined") {
   window.addEventListener("beforeunload", cleanupMetrics);
 }
+registerPerfGauge(() => {
+  const gauges = {};
+  try {
+    const state = $metricsState.get();
+    gauges["metrics_cpuHistory"] = state.cpuHistory.length;
+    gauges["metrics_memoryHistory"] = state.memoryHistory.length;
+    gauges["metrics_diskHistory"] = state.diskHistory.length;
+    gauges["metrics_networkHistory"] = state.networkHistory.length;
+  } catch {
+  }
+  return gauges;
+});
 const metrics = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   $cpuHistory,
@@ -17618,6 +17638,7 @@ const metrics = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePrope
   $metricsAlerts,
   $metricsConnected,
   $metricsError,
+  $metricsState,
   $networkHistory,
   $systemSummary,
   calculateAverage,
@@ -17668,7 +17689,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-Dd9xUbBw.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-BXCfY6X8.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -36397,7 +36418,7 @@ class KubernetesApi {
       if (contentType === "json") {
         parsedResource = JSON.parse(content);
       } else {
-        const yaml = await import("./index-DY4hmqOb.js");
+        const yaml = await import("./index-BNbCWpCy.js");
         parsedResource = yaml.parse(content);
       }
     } catch (error) {
@@ -52463,7 +52484,7 @@ let KubernetesCRDs = class extends i$2 {
         unwrapped = JSON.parse(JSON.stringify(unwrapped));
         delete unwrapped.metadata.managedFields;
       }
-      const yaml = await import("./index-DY4hmqOb.js");
+      const yaml = await import("./index-BNbCWpCy.js");
       this.createResourceValue = yaml.stringify(unwrapped);
       this.isCreating = false;
     } catch (error) {
@@ -53832,6 +53853,9 @@ async function apiRequest$1(endpoint, options = {}) {
     $virtualizationEnabled.set(true);
     $virtualizationDisabledMessage.set(null);
   }
+  if (response.status === 204) {
+    return {};
+  }
   const jsonData = await response.json();
   if (jsonData.status === "success" && jsonData.data !== void 0) {
     if (endpoint.includes("/isos") && jsonData.data.isos) {
@@ -54923,8 +54947,43 @@ const $volumeStats = computed(
     };
   }
 );
+registerPerfGauge(() => {
+  const gauges = {};
+  try {
+    const items = vmStore.$items.get();
+    gauges["virt_vms"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
+  } catch {
+  }
+  try {
+    const items = storagePoolStore.$items.get();
+    gauges["virt_storage_pools"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
+  } catch {
+  }
+  try {
+    const items = isoStore.$items.get();
+    gauges["virt_isos"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
+  } catch {
+  }
+  try {
+    const items = templateStore.$items.get();
+    gauges["virt_templates"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
+  } catch {
+  }
+  try {
+    const items = networkStore.$items.get();
+    gauges["virt_networks"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
+  } catch {
+  }
+  try {
+    const items = volumeStore.$items.get();
+    gauges["virt_volumes"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
+  } catch {
+  }
+  return gauges;
+});
 const vmActions = {
   async fetchAll() {
+    perfIncrement("virt_vm_fetchAll");
     await vmStore.fetch();
   },
   /**
@@ -55179,6 +55238,7 @@ const wizardActions = {
 };
 const storagePoolActions = {
   async fetchAll() {
+    perfIncrement("virt_storagePool_fetchAll");
     await storagePoolStore.fetch();
   },
   async refresh(poolName) {
@@ -55251,6 +55311,7 @@ const storagePoolActions = {
 };
 const volumeActions = {
   async fetchAll() {
+    perfIncrement("virt_volume_fetchAll");
     await volumeStore.fetch();
   },
   async delete(volumeId) {
@@ -55340,13 +55401,10 @@ const snapshotActions = {
    * List snapshots for a VM
    */
   async list(vmId) {
-    const response = await apiRequest$1(
+    const data = await apiRequest$1(
       `/computes/${vmId}/snapshots`
     );
-    if (response.status === "success" && response.data?.snapshots) {
-      return response.data.snapshots;
-    }
-    return [];
+    return Array.isArray(data?.snapshots) ? data.snapshots : [];
   },
   /**
    * Create a snapshot with full options
@@ -55361,19 +55419,27 @@ const snapshotActions = {
    * Get snapshot capabilities for a VM
    */
   async getCapabilities(vmId) {
-    const response = await apiRequest$1(
+    const data = await apiRequest$1(
       `/computes/${vmId}/snapshots/capabilities`
     );
-    if (response.status === "success" && response.data) {
-      return response.data;
-    }
-    return null;
+    return data?.capabilities ?? null;
+  },
+  /**
+   * Get snapshot detail
+   */
+  async getDetail(vmId, snapshotName) {
+    const safeName = encodeURIComponent(snapshotName);
+    const data = await apiRequest$1(
+      `/computes/${vmId}/snapshots/${safeName}`
+    );
+    return data?.snapshot ?? null;
   },
   /**
    * Revert VM to a snapshot
    */
   async revert(vmId, snapshotName) {
-    return apiRequest$1(`/computes/${vmId}/snapshots/${snapshotName}/revert`, {
+    const safeName = encodeURIComponent(snapshotName);
+    return apiRequest$1(`/computes/${vmId}/snapshots/${safeName}/revert`, {
       method: "POST"
     });
   },
@@ -55381,7 +55447,8 @@ const snapshotActions = {
    * Delete a snapshot
    */
   async delete(vmId, snapshotName) {
-    return apiRequest$1(`/computes/${vmId}/snapshots/${snapshotName}`, {
+    const safeName = encodeURIComponent(snapshotName);
+    await apiRequest$1(`/computes/${vmId}/snapshots/${safeName}`, {
       method: "DELETE"
     });
   }
@@ -56126,18 +56193,41 @@ let VMDetailDrawer = class extends i$2 {
     this.isLoadingMetrics = false;
     this.showConsole = false;
     this.snapshots = [];
+    this.snapshotsLoadedForVmId = null;
     this.isLoadingSnapshots = false;
     this.showCreateSnapshotModal = false;
     this.snapshotName = "";
     this.snapshotDescription = "";
+    this.createIncludeMemory = false;
+    this.createQuiesce = false;
     this.isCreatingSnapshot = false;
     this.snapshotCapabilities = null;
+    this.showSnapshotDetailModal = false;
+    this.isLoadingSnapshotDetail = false;
+    this.selectedSnapshot = null;
+    this.snapshotDetail = null;
+    this.showSnapshotActionModal = false;
+    this.snapshotActionMode = "delete";
+    this.snapshotActionName = "";
+    this.isSnapshotActionLoading = false;
     this.showStopDropdown = false;
     this.metricsRefreshInterval = null;
     this.handleKeyDown = (event) => {
       if (this.show && event.key === "Escape") {
         if (this.showConsole) {
           this.showConsole = false;
+          return;
+        }
+        if (this.showSnapshotActionModal) {
+          this.cancelSnapshotAction();
+          return;
+        }
+        if (this.showSnapshotDetailModal) {
+          this.closeSnapshotDetailModal();
+          return;
+        }
+        if (this.showCreateSnapshotModal) {
+          this.showCreateSnapshotModal = false;
           return;
         }
         if (this.showDeleteModal) {
@@ -56172,6 +56262,20 @@ let VMDetailDrawer = class extends i$2 {
       const previousVm = changedProperties.get("vm");
       if (this.vm && (!previousVm || previousVm.id !== this.vm.id)) {
         this.loadVMDetails();
+        this.snapshots = [];
+        this.snapshotCapabilities = null;
+        this.snapshotsLoadedForVmId = null;
+        this.showCreateSnapshotModal = false;
+        this.showSnapshotDetailModal = false;
+        this.selectedSnapshot = null;
+        this.snapshotDetail = null;
+        this.snapshotName = "";
+        this.snapshotDescription = "";
+        this.createIncludeMemory = false;
+        this.createQuiesce = false;
+        if (this.activeTab === "snapshots" && this.show) {
+          this.ensureSnapshotsLoaded();
+        }
       }
     }
     if (changedProperties.has("activeTab")) {
@@ -56180,12 +56284,18 @@ let VMDetailDrawer = class extends i$2 {
       } else {
         this.stopMetricsRefresh();
       }
+      if (this.activeTab === "snapshots" && this.show) {
+        this.ensureSnapshotsLoaded();
+      }
     }
     if (changedProperties.has("show")) {
       if (!this.show) {
         this.stopMetricsRefresh();
       } else if (this.activeTab === "metrics") {
         this.startMetricsRefresh();
+      }
+      if (this.show && this.activeTab === "snapshots") {
+        this.ensureSnapshotsLoaded();
       }
     }
   }
@@ -56508,10 +56618,9 @@ let VMDetailDrawer = class extends i$2 {
     this.showNotification("Clone functionality coming soon", "info");
   }
   handleSnapshot() {
-    this.dispatchEvent(new CustomEvent("snapshot-vm", {
-      detail: { vm: this.vm }
-    }));
-    this.showNotification("Snapshot functionality coming soon", "info");
+    this.activeTab = "snapshots";
+    this.ensureSnapshotsLoaded();
+    this.showCreateSnapshotModal = true;
   }
   handleDeleteVM() {
     const currentState = this.vm?.state || this.vmDetails?.state;
@@ -57063,87 +57172,215 @@ let VMDetailDrawer = class extends i$2 {
       </div>
     `;
   }
+  ensureSnapshotsLoaded() {
+    if (!this.vm) return;
+    if (this.isLoadingSnapshots) return;
+    if (this.snapshotsLoadedForVmId === this.vm.id) return;
+    this.loadSnapshots();
+  }
   async loadSnapshots() {
     if (!this.vm) return;
     this.isLoadingSnapshots = true;
     try {
-      this.snapshots = await snapshotActions.list(this.vm.id);
-      this.snapshotCapabilities = await snapshotActions.getCapabilities(this.vm.id);
+      const [snapshots, capabilities] = await Promise.all([
+        snapshotActions.list(this.vm.id),
+        snapshotActions.getCapabilities(this.vm.id)
+      ]);
+      this.snapshots = snapshots;
+      this.snapshotCapabilities = capabilities;
+      this.snapshotsLoadedForVmId = this.vm.id;
     } catch (error) {
       console.error("Failed to load snapshots:", error);
       this.snapshots = [];
+      this.snapshotCapabilities = null;
+      this.showNotification(error?.message || "Failed to load snapshots", "error");
     } finally {
       this.isLoadingSnapshots = false;
     }
   }
+  getSnapshotNameError(name) {
+    const trimmed = name.trim();
+    if (!trimmed) return "Snapshot name is required.";
+    if (trimmed.length > 64) return "Snapshot name must be 64 characters or less.";
+    if (!/^[A-Za-z0-9._-]+$/.test(trimmed)) {
+      return "Use only letters, numbers, dot (.), underscore (_), or hyphen (-).";
+    }
+    return null;
+  }
   async handleCreateSnapshot() {
-    if (!this.vm || !this.snapshotName.trim()) return;
+    if (!this.vm) return;
+    const nameError = this.getSnapshotNameError(this.snapshotName);
+    if (nameError) {
+      this.showNotification(nameError, "error");
+      return;
+    }
+    const supportsSnapshots = this.snapshotCapabilities?.supports_snapshots;
+    if (supportsSnapshots === false) {
+      this.showNotification("Snapshots are not supported for this VM/host.", "warning");
+      return;
+    }
+    const includeMemory = this.snapshotCapabilities?.supports_memory ? this.createIncludeMemory : false;
     this.isCreatingSnapshot = true;
     try {
-      await snapshotActions.create(this.vm.id, {
+      const result = await snapshotActions.create(this.vm.id, {
         name: this.snapshotName.trim(),
-        description: this.snapshotDescription.trim() || void 0
+        description: this.snapshotDescription.trim() || void 0,
+        include_memory: includeMemory,
+        quiesce: this.createQuiesce
       });
       this.showCreateSnapshotModal = false;
       this.snapshotName = "";
       this.snapshotDescription = "";
+      this.createIncludeMemory = false;
+      this.createQuiesce = false;
+      this.snapshotsLoadedForVmId = null;
       await this.loadSnapshots();
-      this.dispatchEvent(new CustomEvent("notification", {
-        detail: { type: "success", message: "Snapshot created successfully" },
-        bubbles: true,
-        composed: true
-      }));
+      const warnings = result?.warnings;
+      if (warnings?.length) {
+        this.showNotification(
+          `Snapshot created with warnings: ${warnings[0]}${warnings.length > 1 ? ` (+${warnings.length - 1} more)` : ""}`,
+          "warning"
+        );
+      } else {
+        this.showNotification("Snapshot created successfully", "success");
+      }
     } catch (error) {
-      this.dispatchEvent(new CustomEvent("notification", {
-        detail: { type: "error", message: error.message || "Failed to create snapshot" },
-        bubbles: true,
-        composed: true
-      }));
+      this.showNotification(error?.message || "Failed to create snapshot", "error");
     } finally {
       this.isCreatingSnapshot = false;
     }
   }
-  async handleRevertSnapshot(snapshotName) {
+  openSnapshotDetail(snapshot) {
+    this.selectedSnapshot = snapshot;
+    this.snapshotDetail = null;
+    this.showSnapshotDetailModal = true;
+    this.loadSnapshotDetail(snapshot.name);
+  }
+  closeSnapshotDetailModal() {
+    this.showSnapshotDetailModal = false;
+    this.isLoadingSnapshotDetail = false;
+    this.selectedSnapshot = null;
+    this.snapshotDetail = null;
+  }
+  requestSnapshotAction(mode, snapshotName) {
+    this.snapshotActionMode = mode;
+    this.snapshotActionName = snapshotName;
+    this.showSnapshotActionModal = true;
+    this.isSnapshotActionLoading = false;
+  }
+  cancelSnapshotAction() {
+    this.showSnapshotActionModal = false;
+    this.isSnapshotActionLoading = false;
+    this.snapshotActionName = "";
+  }
+  async confirmSnapshotAction() {
     if (!this.vm) return;
-    if (!confirm(`Are you sure you want to revert to snapshot "${snapshotName}"? This will discard all changes since the snapshot was taken.`)) {
-      return;
-    }
+    if (!this.snapshotActionName) return;
+    if (this.isSnapshotActionLoading) return;
+    this.isSnapshotActionLoading = true;
+    const snapshotName = this.snapshotActionName;
+    const mode = this.snapshotActionMode;
     try {
-      await snapshotActions.revert(this.vm.id, snapshotName);
-      this.dispatchEvent(new CustomEvent("notification", {
-        detail: { type: "success", message: `Reverted to snapshot "${snapshotName}"` },
-        bubbles: true,
-        composed: true
-      }));
-      this.loadVMDetails();
+      if (mode === "revert") {
+        await snapshotActions.revert(this.vm.id, snapshotName);
+        this.showNotification(`Reverted to snapshot "${snapshotName}"`, "success");
+        this.loadVMDetails();
+      } else {
+        await snapshotActions.delete(this.vm.id, snapshotName);
+        this.snapshotsLoadedForVmId = null;
+        await this.loadSnapshots();
+        if (this.selectedSnapshot?.name === snapshotName) {
+          this.closeSnapshotDetailModal();
+        }
+        this.showNotification(`Snapshot "${snapshotName}" deleted`, "success");
+      }
+      this.showSnapshotActionModal = false;
+      this.snapshotActionName = "";
     } catch (error) {
-      this.dispatchEvent(new CustomEvent("notification", {
-        detail: { type: "error", message: error.message || "Failed to revert snapshot" },
-        bubbles: true,
-        composed: true
-      }));
+      this.showNotification(error?.message || `Failed to ${mode} snapshot`, "error");
+    } finally {
+      this.isSnapshotActionLoading = false;
     }
   }
-  async handleDeleteSnapshot(snapshotName) {
+  renderSnapshotActionModal() {
+    const open = this.showSnapshotActionModal;
+    if (!open) return x``;
+    const mode = this.snapshotActionMode;
+    const snapshotName = this.snapshotActionName;
+    const title = mode === "delete" ? "Delete Snapshot" : "Revert to Snapshot";
+    const icon = mode === "delete" ? "🗑️" : "↩️";
+    const confirmLabel = mode === "delete" ? "Delete" : "Revert";
+    return x`
+      <div class="modal-overlay show">
+        <div class="modal" @click=${(e3) => e3.stopPropagation()}>
+          <div class="modal-header">
+            <span class="modal-icon">${icon}</span>
+            <h3 class="modal-title">${title}</h3>
+          </div>
+
+          <div class="modal-body">
+            <p class="modal-message">
+              ${mode === "delete" ? x`Are you sure you want to delete this snapshot? This action cannot be undone.` : x`Are you sure you want to revert to this snapshot? This will discard all changes since the snapshot was taken.`}
+            </p>
+
+            <div class="vm-info-box">
+              <div class="vm-info-row">
+                <span class="vm-info-label">VM:</span>
+                <span class="vm-info-value">${this.vm?.name}</span>
+              </div>
+              <div class="vm-info-row">
+                <span class="vm-info-label">Snapshot:</span>
+                <span class="vm-info-value monospace">${snapshotName}</span>
+              </div>
+            </div>
+
+            <div class="warning-box">
+              <span class="warning-icon">⚠️</span>
+              <div>
+                <strong>Warning:</strong>
+                ${mode === "delete" ? x`Deleting a snapshot is permanent.` : x`Reverting will overwrite the current VM state.`}
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button
+              class="modal-btn cancel"
+              @click=${this.cancelSnapshotAction}
+              ?disabled=${this.isSnapshotActionLoading}
+            >
+              Cancel
+            </button>
+            <button
+              class="modal-btn ${mode === "delete" ? "delete" : "primary"}"
+              @click=${this.confirmSnapshotAction}
+              ?disabled=${this.isSnapshotActionLoading}
+            >
+              ${this.isSnapshotActionLoading ? x`<span class="spinner-small"></span> ${mode === "delete" ? "Deleting…" : "Reverting…"}` : x`${confirmLabel}`}
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  async loadSnapshotDetail(snapshotName) {
     if (!this.vm) return;
-    if (!confirm(`Are you sure you want to delete snapshot "${snapshotName}"? This action cannot be undone.`)) {
-      return;
-    }
+    this.isLoadingSnapshotDetail = true;
     try {
-      await snapshotActions.delete(this.vm.id, snapshotName);
-      await this.loadSnapshots();
-      this.dispatchEvent(new CustomEvent("notification", {
-        detail: { type: "success", message: `Snapshot "${snapshotName}" deleted` },
-        bubbles: true,
-        composed: true
-      }));
+      const detail = await snapshotActions.getDetail(this.vm.id, snapshotName);
+      this.snapshotDetail = detail;
     } catch (error) {
-      this.dispatchEvent(new CustomEvent("notification", {
-        detail: { type: "error", message: error.message || "Failed to delete snapshot" },
-        bubbles: true,
-        composed: true
-      }));
+      console.error("Failed to load snapshot detail:", error);
+      this.showNotification(error?.message || "Failed to load snapshot detail", "error");
+    } finally {
+      this.isLoadingSnapshotDetail = false;
     }
+  }
+  async handleRevertSnapshot(snapshotName) {
+    this.requestSnapshotAction("revert", snapshotName);
+  }
+  async handleDeleteSnapshot(snapshotName) {
+    this.requestSnapshotAction("delete", snapshotName);
   }
   formatSnapshotDate(dateStr) {
     if (!dateStr) return "Unknown";
@@ -57155,129 +57392,306 @@ let VMDetailDrawer = class extends i$2 {
   }
   renderCreateSnapshotModal() {
     if (!this.showCreateSnapshotModal) return x``;
+    const nameError = this.getSnapshotNameError(this.snapshotName);
+    const supportsSnapshots = this.snapshotCapabilities?.supports_snapshots;
+    const supportsMemory = this.snapshotCapabilities?.supports_memory;
     return x`
-      <div class="modal-overlay" @click=${() => this.showCreateSnapshotModal = false}>
-        <div class="modal" @click=${(e3) => e3.stopPropagation()}>
-          <div class="modal-header">
-            <h3>Create Snapshot</h3>
-            <button class="close-btn" @click=${() => this.showCreateSnapshotModal = false}>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="2"/>
-              </svg>
-            </button>
+      <modal-dialog
+        .open=${this.showCreateSnapshotModal}
+        .title=${"Create Snapshot"}
+        size="medium"
+        @modal-close=${() => this.showCreateSnapshotModal = false}
+      >
+        ${supportsSnapshots === false ? x`<div class="warning-box"><strong>Snapshots are not supported on this VM/host.</strong></div>` : ""}
+
+        <div class="form-group">
+          <label for="snapshot-name">Snapshot Name <span class="required">*</span></label>
+          <input
+            type="text"
+            id="snapshot-name"
+            .value=${this.snapshotName}
+            @input=${(e3) => this.snapshotName = e3.target.value}
+            placeholder="e.g. before-upgrade"
+            ?disabled=${this.isCreatingSnapshot}
+          />
+          ${nameError ? x`<div class="form-error">${nameError}</div>` : x`<div class="form-hint">Allowed: letters, numbers, . _ -</div>`}
+        </div>
+
+        <div class="form-group">
+          <label for="snapshot-desc">Description (optional)</label>
+          <textarea
+            id="snapshot-desc"
+            .value=${this.snapshotDescription}
+            @input=${(e3) => this.snapshotDescription = e3.target.value}
+            placeholder="What is this snapshot for?"
+            rows="3"
+            ?disabled=${this.isCreatingSnapshot}
+          ></textarea>
+        </div>
+
+        <div class="checkbox-group">
+          <input
+            type="checkbox"
+            .checked=${this.createIncludeMemory}
+            @change=${(e3) => this.createIncludeMemory = e3.target.checked}
+            ?disabled=${this.isCreatingSnapshot || supportsMemory === false}
+          />
+          <div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <span>Include memory</span>
+              ${supportsMemory === false ? x`<span class="badge warning">Unsupported</span>` : ""}
+            </div>
+            <div class="form-hint">Includes the VM RAM state in the snapshot when supported.</div>
           </div>
-          <div class="modal-body">
-            <div class="form-group">
-              <label for="snapshot-name">Snapshot Name *</label>
-              <input 
-                type="text" 
-                id="snapshot-name"
-                .value=${this.snapshotName}
-                @input=${(e3) => this.snapshotName = e3.target.value}
-                placeholder="Enter snapshot name"
-                ?disabled=${this.isCreatingSnapshot}
-              />
-            </div>
-            <div class="form-group">
-              <label for="snapshot-desc">Description (optional)</label>
-              <textarea 
-                id="snapshot-desc"
-                .value=${this.snapshotDescription}
-                @input=${(e3) => this.snapshotDescription = e3.target.value}
-                placeholder="Enter description"
-                rows="3"
-                ?disabled=${this.isCreatingSnapshot}
-              ></textarea>
-            </div>
-            ${this.snapshotCapabilities?.warnings?.length ? x`
+        </div>
+
+        <div class="checkbox-group">
+          <input
+            type="checkbox"
+            .checked=${this.createQuiesce}
+            @change=${(e3) => this.createQuiesce = e3.target.checked}
+            ?disabled=${this.isCreatingSnapshot}
+          />
+          <div>
+            <div>Quiesce filesystem</div>
+            <div class="form-hint">May require the QEMU guest agent inside the VM.</div>
+          </div>
+        </div>
+
+        ${this.snapshotCapabilities?.warnings?.length ? x`
               <div class="warning-box">
-                <strong>⚠️ Warnings:</strong>
+                <strong>Warnings</strong>
                 <ul>
                   ${this.snapshotCapabilities.warnings.map((w) => x`<li>${w}</li>`)}
                 </ul>
               </div>
             ` : ""}
-          </div>
-          <div class="modal-footer">
-            <button 
-              class="btn btn-secondary" 
-              @click=${() => this.showCreateSnapshotModal = false}
-              ?disabled=${this.isCreatingSnapshot}
-            >Cancel</button>
-            <button 
-              class="btn btn-primary" 
-              @click=${this.handleCreateSnapshot}
-              ?disabled=${this.isCreatingSnapshot || !this.snapshotName.trim()}
-            >
-              ${this.isCreatingSnapshot ? x`<span class="spinner-small"></span> Creating...` : "Create Snapshot"}
-            </button>
-          </div>
+
+        ${this.snapshotCapabilities?.recommendations?.length ? x`
+              <div class="info-box">
+                <strong>Recommendations</strong>
+                <ul>
+                  ${this.snapshotCapabilities.recommendations.map((r2) => x`<li>${r2}</li>`)}
+                </ul>
+              </div>
+            ` : ""}
+
+        <div slot="footer" style="display:flex; justify-content:flex-end; gap:8px;">
+          <button
+            class="btn btn-secondary"
+            @click=${() => this.showCreateSnapshotModal = false}
+            ?disabled=${this.isCreatingSnapshot}
+          >
+            Cancel
+          </button>
+          <button
+            class="btn btn-primary"
+            @click=${this.handleCreateSnapshot}
+            ?disabled=${this.isCreatingSnapshot || !!nameError || supportsSnapshots === false}
+          >
+            ${this.isCreatingSnapshot ? "Creating…" : "Create Snapshot"}
+          </button>
         </div>
-      </div>
+      </modal-dialog>
+    `;
+  }
+  renderSnapshotDetailModal() {
+    if (!this.showSnapshotDetailModal) return x``;
+    const base = this.selectedSnapshot;
+    const detail = this.snapshotDetail;
+    const snapshot = detail && base ? { ...base, ...detail } : detail || base;
+    return x`
+      <modal-dialog
+        .open=${this.showSnapshotDetailModal}
+        .title=${"Snapshot Details"}
+        size="medium"
+        @modal-close=${this.closeSnapshotDetailModal}
+      >
+        ${this.isLoadingSnapshotDetail ? x`
+              <div class="loading-state">
+                <span class="spinner"></span>
+                <span>Loading snapshot details...</span>
+              </div>
+            ` : ""}
+
+        ${snapshot ? x`
+              <div class="info-grid">
+                <div class="info-item">
+                  <span class="info-label">Name</span>
+                  <span class="info-value monospace">${snapshot.name}</span>
+                </div>
+
+                <div class="info-item">
+                  <span class="info-label">Created</span>
+                  <span class="info-value">${this.formatSnapshotDate(
+      snapshot.created_at || snapshot.creation_time || ""
+    )}</span>
+                </div>
+
+                ${snapshot.type ? x`
+                      <div class="info-item">
+                        <span class="info-label">Type</span>
+                        <span class="info-value">${snapshot.type}</span>
+                      </div>
+                    ` : ""}
+
+                ${typeof snapshot.memory === "boolean" ? x`
+                      <div class="info-item">
+                        <span class="info-label">Memory</span>
+                        <span class="info-value">${snapshot.memory ? "Included" : "Not included"}</span>
+                      </div>
+                    ` : ""}
+
+                ${snapshot.parent ? x`
+                      <div class="info-item">
+                        <span class="info-label">Parent</span>
+                        <span class="info-value monospace">${snapshot.parent}</span>
+                      </div>
+                    ` : ""}
+
+                ${snapshot.disk_formats?.length ? x`
+                      <div class="info-item">
+                        <span class="info-label">Disk formats</span>
+                        <span class="info-value">${snapshot.disk_formats.join(", ")}</span>
+                      </div>
+                    ` : ""}
+
+                ${snapshot.description ? x`
+                      <div class="info-item" style="grid-column: 1 / -1;">
+                        <span class="info-label">Description</span>
+                        <span class="info-value">${snapshot.description}</span>
+                      </div>
+                    ` : ""}
+              </div>
+
+              ${snapshot.warnings?.length ? x`
+                    <div class="warning-box" style="margin-top: 12px;">
+                      <strong>Warnings</strong>
+                      <ul>
+                        ${snapshot.warnings.map((w) => x`<li>${w}</li>`)}
+                      </ul>
+                    </div>
+                  ` : ""}
+            ` : x`<div class="empty-state-message">No snapshot selected</div>`}
+
+        <div slot="footer" style="display:flex; justify-content:flex-end; gap:8px;">
+          <button class="btn btn-secondary" @click=${this.closeSnapshotDetailModal}>Close</button>
+          ${snapshot ? x`
+                <button
+                  class="btn btn-secondary"
+                  @click=${() => this.handleRevertSnapshot(snapshot.name)}
+                  ?disabled=${this.isLoadingSnapshotDetail}
+                >
+                  ↩️ Revert
+                </button>
+                <button
+                  class="btn btn-danger"
+                  @click=${() => this.handleDeleteSnapshot(snapshot.name)}
+                  ?disabled=${this.isLoadingSnapshotDetail}
+                >
+                  🗑️ Delete
+                </button>
+              ` : ""}
+        </div>
+      </modal-dialog>
     `;
   }
   renderSnapshotsTab() {
-    if (this.snapshots.length === 0 && !this.isLoadingSnapshots && this.vm) {
-      this.loadSnapshots();
-    }
+    const supportsSnapshots = this.snapshotCapabilities?.supports_snapshots;
     return x`
       <div class="section">
         <div class="section-header">
           <h3 class="section-title">Snapshots</h3>
-          <button 
-            class="btn btn-primary btn-sm" 
-            @click=${() => this.showCreateSnapshotModal = true}
-            ?disabled=${this.isLoadingSnapshots}
-          >
-            + Create Snapshot
-          </button>
+          <div class="section-actions">
+            <button
+              class="btn btn-secondary btn-sm"
+              @click=${() => {
+      this.snapshotsLoadedForVmId = null;
+      this.loadSnapshots();
+    }}
+              ?disabled=${this.isLoadingSnapshots || !this.vm}
+              title="Refresh"
+            >
+              ↻ Refresh
+            </button>
+            <button
+              class="btn btn-primary btn-sm"
+              @click=${() => this.showCreateSnapshotModal = true}
+              ?disabled=${this.isLoadingSnapshots || supportsSnapshots === false}
+            >
+              + Create Snapshot
+            </button>
+          </div>
         </div>
-        
+
         ${this.isLoadingSnapshots ? x`
-          <div class="loading-state">
-            <span class="spinner"></span>
-            <span>Loading snapshots...</span>
-          </div>
-        ` : this.snapshots.length === 0 ? x`
-          <div class="empty-state">
-            <div class="empty-state-icon">📸</div>
-            <div class="empty-state-message">No snapshots available</div>
-            <div class="empty-state-hint">Create a snapshot to save the current state of this VM</div>
-          </div>
-        ` : x`
-          <div class="snapshot-list">
-            ${this.snapshots.map((snapshot) => x`
-              <div class="snapshot-item">
-                <div class="snapshot-info">
-                  <div class="snapshot-name">${snapshot.name}</div>
-                  <div class="snapshot-meta">
-                    ${snapshot.description ? x`<span class="snapshot-desc">${snapshot.description}</span>` : ""}
-                    <span class="snapshot-date">Created: ${this.formatSnapshotDate(snapshot.created_at || snapshot.creation_time)}</span>
-                    ${snapshot.state ? x`<span class="snapshot-state">${snapshot.state}</span>` : ""}
-                  </div>
-                </div>
-                <div class="snapshot-actions">
-                  <button 
-                    class="btn btn-sm btn-secondary" 
-                    @click=${() => this.handleRevertSnapshot(snapshot.name)}
-                    title="Revert to this snapshot"
-                  >
-                    ↩️ Revert
-                  </button>
-                  <button 
-                    class="btn btn-sm btn-danger" 
-                    @click=${() => this.handleDeleteSnapshot(snapshot.name)}
-                    title="Delete this snapshot"
-                  >
-                    🗑️ Delete
-                  </button>
-                </div>
+              <div class="loading-state">
+                <span class="spinner"></span>
+                <span>Loading snapshots...</span>
               </div>
-            `)}
-          </div>
-        `}
+            ` : supportsSnapshots === false ? x`
+                <div class="empty-state">
+                  <div class="empty-state-icon">📸</div>
+                  <div class="empty-state-message">Snapshots are not supported</div>
+                  <div class="empty-state-hint">This host/VM does not support libvirt snapshots.</div>
+                </div>
+              ` : this.snapshots.length === 0 ? x`
+                  <div class="empty-state">
+                    <div class="empty-state-icon">📸</div>
+                    <div class="empty-state-message">No snapshots available</div>
+                    <div class="empty-state-hint">Create a snapshot to save the current state of this VM</div>
+                  </div>
+                ` : x`
+                  <div class="snapshot-list">
+                    ${this.snapshots.map(
+      (snapshot) => x`
+                        <div class="snapshot-item" @click=${() => this.openSnapshotDetail(snapshot)}>
+                          <div class="snapshot-info">
+                            <div class="snapshot-name">
+                              ${snapshot.name}
+                              ${snapshot.warnings?.length ? x`<span class="badge warning">Warnings</span>` : ""}
+                              ${snapshot.type ? x`<span class="badge">${snapshot.type}</span>` : ""}
+                              ${snapshot.memory ? x`<span class="badge success">Memory</span>` : ""}
+                            </div>
+                            <div class="snapshot-meta">
+                              ${snapshot.description ? x`<span class="snapshot-desc">${snapshot.description}</span>` : ""}
+                              <span class="snapshot-date">Created: ${this.formatSnapshotDate(
+        snapshot.created_at || snapshot.creation_time || ""
+      )}</span>
+                              ${snapshot.parent ? x`<span class="snapshot-parent">Parent: ${snapshot.parent}</span>` : ""}
+                              ${snapshot.disk_formats?.length ? x`<span class="snapshot-disks">Disks: ${snapshot.disk_formats.join(
+        ", "
+      )}</span>` : ""}
+                            </div>
+                          </div>
+                          <div class="snapshot-actions">
+                            <button
+                              class="btn btn-sm btn-secondary"
+                              @click=${(e3) => {
+        e3.stopPropagation();
+        this.handleRevertSnapshot(snapshot.name);
+      }}
+                              title="Revert to this snapshot"
+                            >
+                              ↩️ Revert
+                            </button>
+                            <button
+                              class="btn btn-sm btn-danger"
+                              @click=${(e3) => {
+        e3.stopPropagation();
+        this.handleDeleteSnapshot(snapshot.name);
+      }}
+                              title="Delete this snapshot"
+                            >
+                              🗑️ Delete
+                            </button>
+                          </div>
+                        </div>
+                      `
+    )}
+                  </div>
+                `}
       </div>
-      ${this.renderCreateSnapshotModal()}
     `;
   }
   render() {
@@ -57423,6 +57837,10 @@ let VMDetailDrawer = class extends i$2 {
         </div>
       </div>
       
+      ${this.renderCreateSnapshotModal()}
+      ${this.renderSnapshotDetailModal()}
+      ${this.renderSnapshotActionModal()}
+
       <!-- Delete Confirmation Modal -->
       <div class="modal-overlay ${this.showDeleteModal ? "show" : ""}">
         <div class="modal">
@@ -58323,6 +58741,17 @@ VMDetailDrawer.styles = i$5`
       background: var(--vscode-inputValidation-errorBorder, #be1100);
     }
 
+    .modal-btn.primary {
+      background: var(--vscode-button-background, #0e639c);
+      color: var(--vscode-button-foreground, #ffffff);
+      border-color: var(--vscode-button-background, #0e639c);
+    }
+
+    .modal-btn.primary:hover:not(:disabled) {
+      background: var(--vscode-button-hoverBackground, #1177bb);
+      border-color: var(--vscode-button-hoverBackground, #1177bb);
+    }
+
     /* Snapshot styles */
     .section-header {
       display: flex;
@@ -58354,6 +58783,7 @@ VMDetailDrawer.styles = i$5`
     }
 
     .snapshot-item {
+      cursor: pointer;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -58374,6 +58804,10 @@ VMDetailDrawer.styles = i$5`
     .snapshot-name {
       font-weight: 600;
       margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
     .snapshot-meta {
@@ -58425,6 +58859,142 @@ VMDetailDrawer.styles = i$5`
     .warning-box li {
       margin: 4px 0;
     }
+
+    .section-actions {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    /* Generic buttons used in snapshot UI */
+    .btn {
+      padding: 8px 16px;
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      color: var(--vscode-button-secondaryForeground, #cccccc);
+      border: 1px solid var(--vscode-button-border, #5a5a5a);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .btn:hover:not(:disabled) {
+      background: var(--vscode-button-secondaryHoverBackground, #45494e);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: var(--vscode-button-background, #0e639c);
+      color: var(--vscode-button-foreground, #ffffff);
+      border-color: var(--vscode-button-background, #0e639c);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--vscode-button-hoverBackground, #1177bb);
+      border-color: var(--vscode-button-hoverBackground, #1177bb);
+    }
+
+    .btn-secondary {
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      color: var(--vscode-button-secondaryForeground, #cccccc);
+      border-color: var(--vscode-button-border, #5a5a5a);
+    }
+
+    /* Form controls (snapshot modals) */
+    .form-group {
+      margin-bottom: 20px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--vscode-foreground, #cccccc);
+    }
+
+    .required {
+      color: var(--vscode-errorForeground, #f48771);
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      max-width: 100%;
+      padding: 8px 12px;
+      background: var(--vscode-input-background, #3c3c3c);
+      color: var(--vscode-input-foreground, #cccccc);
+      border: 1px solid var(--vscode-input-border, #858585);
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: inherit;
+      transition: all 0.2s;
+      box-sizing: border-box;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: var(--vscode-focusBorder, #007acc);
+      box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc);
+    }
+
+    .form-hint {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground, #8b8b8b);
+    }
+
+    .form-error {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--vscode-inputValidation-errorForeground, #f48771);
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    input[type="checkbox"] {
+      width: auto;
+      margin: 2px 0 0 0;
+    }
+
+    .info-box {
+      background: var(--vscode-editor-inactiveSelectionBackground, rgba(37, 37, 38, 0.9));
+      border: 1px solid var(--vscode-widget-border, #454545);
+      border-radius: 4px;
+      padding: 12px;
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--vscode-foreground, #cccccc);
+    }
+
+    .info-box ul {
+      margin: 8px 0 0 0;
+      padding-left: 20px;
+    }
+
+    .info-box li {
+      margin: 4px 0;
+    }
+
   `;
 __decorateClass$m([
   n2({ type: Boolean, reflect: true })
@@ -58470,6 +59040,9 @@ __decorateClass$m([
 ], VMDetailDrawer.prototype, "snapshots", 2);
 __decorateClass$m([
   r$1()
+], VMDetailDrawer.prototype, "snapshotsLoadedForVmId", 2);
+__decorateClass$m([
+  r$1()
 ], VMDetailDrawer.prototype, "isLoadingSnapshots", 2);
 __decorateClass$m([
   r$1()
@@ -58482,10 +59055,40 @@ __decorateClass$m([
 ], VMDetailDrawer.prototype, "snapshotDescription", 2);
 __decorateClass$m([
   r$1()
+], VMDetailDrawer.prototype, "createIncludeMemory", 2);
+__decorateClass$m([
+  r$1()
+], VMDetailDrawer.prototype, "createQuiesce", 2);
+__decorateClass$m([
+  r$1()
 ], VMDetailDrawer.prototype, "isCreatingSnapshot", 2);
 __decorateClass$m([
   r$1()
 ], VMDetailDrawer.prototype, "snapshotCapabilities", 2);
+__decorateClass$m([
+  r$1()
+], VMDetailDrawer.prototype, "showSnapshotDetailModal", 2);
+__decorateClass$m([
+  r$1()
+], VMDetailDrawer.prototype, "isLoadingSnapshotDetail", 2);
+__decorateClass$m([
+  r$1()
+], VMDetailDrawer.prototype, "selectedSnapshot", 2);
+__decorateClass$m([
+  r$1()
+], VMDetailDrawer.prototype, "snapshotDetail", 2);
+__decorateClass$m([
+  r$1()
+], VMDetailDrawer.prototype, "showSnapshotActionModal", 2);
+__decorateClass$m([
+  r$1()
+], VMDetailDrawer.prototype, "snapshotActionMode", 2);
+__decorateClass$m([
+  r$1()
+], VMDetailDrawer.prototype, "snapshotActionName", 2);
+__decorateClass$m([
+  r$1()
+], VMDetailDrawer.prototype, "isSnapshotActionLoading", 2);
 __decorateClass$m([
   r$1()
 ], VMDetailDrawer.prototype, "showStopDropdown", 2);
