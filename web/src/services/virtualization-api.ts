@@ -34,8 +34,10 @@ import type {
   ConsolesResponse,
   ConsoleConnection,
   VMSnapshotRequest,
-  VMSnapshotResponse,
-  SnapshotCapabilities,
+  VMSnapshotListResponse,
+  VMSnapshotCreateResponse,
+  VMSnapshotRevertResponse,
+  SnapshotCapabilitiesResponse,
   VMBackupRequest,
   VMBackupResponse,
   VMMetricsEnhanced,
@@ -1029,15 +1031,15 @@ export class VirtualizationAPI {
   /**
    * Get VM snapshots with full type support
    */
-  async getSnapshots(vmId: string): Promise<VMSnapshotResponse> {
-    return apiRequest<VMSnapshotResponse>(`/computes/${vmId}/snapshots`);
+  async getSnapshots(vmId: string): Promise<VMSnapshotListResponse> {
+    return apiRequest<VMSnapshotListResponse>(`/computes/${vmId}/snapshots`);
   }
   
   /**
    * Create a VM snapshot
    */
-  async createSnapshotTyped(vmId: string, request: VMSnapshotRequest): Promise<VMSnapshotResponse> {
-    return apiRequest<VMSnapshotResponse>(`/computes/${vmId}/snapshots`, {
+  async createSnapshotTyped(vmId: string, request: VMSnapshotRequest): Promise<VMSnapshotCreateResponse> {
+    return apiRequest<VMSnapshotCreateResponse>(`/computes/${vmId}/snapshots`, {
       method: 'POST',
       body: JSON.stringify(request),
     });
@@ -1046,8 +1048,8 @@ export class VirtualizationAPI {
   /**
    * Revert VM to a snapshot
    */
-  async revertSnapshot(vmId: string, snapshotName: string): Promise<OperationResult> {
-    return apiRequest<OperationResult>(`/computes/${vmId}/snapshots/${snapshotName}/revert`, {
+  async revertSnapshot(vmId: string, snapshotName: string): Promise<VMSnapshotRevertResponse> {
+    return apiRequest<VMSnapshotRevertResponse>(`/computes/${vmId}/snapshots/${snapshotName}/revert`, {
       method: 'POST',
     });
   }
@@ -1055,8 +1057,8 @@ export class VirtualizationAPI {
   /**
    * Delete a VM snapshot
    */
-  async deleteSnapshotTyped(vmId: string, snapshotName: string): Promise<OperationResult> {
-    return apiRequest<OperationResult>(`/computes/${vmId}/snapshots/${snapshotName}`, {
+  async deleteSnapshotTyped(vmId: string, snapshotName: string): Promise<void> {
+    return apiRequest<void>(`/computes/${vmId}/snapshots/${snapshotName}`, {
       method: 'DELETE',
     });
   }
@@ -1064,8 +1066,8 @@ export class VirtualizationAPI {
   /**
    * Get snapshot capabilities for a VM
    */
-  async getSnapshotCapabilities(vmId: string): Promise<SnapshotCapabilities> {
-    return apiRequest<SnapshotCapabilities>(`/computes/${vmId}/snapshots/capabilities`);
+  async getSnapshotCapabilities(vmId: string): Promise<SnapshotCapabilitiesResponse> {
+    return apiRequest<SnapshotCapabilitiesResponse>(`/computes/${vmId}/snapshots/capabilities`);
   }
   
   /**

@@ -19,7 +19,9 @@ import type {
   VMState,
   ConsoleInfo,
   VirtualNetwork,
-  StorageVolume
+  StorageVolume,
+  VMSnapshot,
+  SnapshotCapabilities
 } from '../../types/virtualization';
 
 // ============ Virtualization Global State ============
@@ -89,6 +91,11 @@ async function apiRequest<T>(
     $virtualizationDisabledMessage.set(null);
   }
   
+  // Handle empty responses
+  if (response.status === 204) {
+    return {} as T;
+  }
+
   const jsonData = await response.json();
   
   // Handle new response format with status and data fields
@@ -2240,14 +2247,11 @@ export const snapshotActions = {
   /**
    * List snapshots for a VM
    */
-  async list(vmId: string) {
-    const response = await apiRequest<{ status: string; data: { snapshots: any[] } }>(
+  async list(vmId: string): Promise<VMSnapshot[]> {
+    const data = await apiRequest<{ snapshots?: VMSnapshot[] }>(
       `/computes/${vmId}/snapshots`
     );
-    if (response.status === 'success' && response.data?.snapshots) {
-      return response.data.snapshots;
-    }
-    return [];
+    return Array.isArray(data?.snapshots) ? data.snapshots : [];
   },
 
   /**
@@ -2256,11 +2260,11 @@ export const snapshotActions = {
   async create(vmId: string, options: {
     name: string;
     description?: string;
-    type?: 'internal' | 'external' | 'internal-memory';
     include_memory?: boolean;
     quiesce?: boolean;
-  }) {
-    return apiRequest<any>(`/computes/${vmId}/snapshots`, {
+    force_external?: boolean;
+  }): Promise<{ snapshot?: VMSnapshot; message?: string; warnings?: string[] }> {
+    return apiRequest(`/computes/${vmId}/snapshots`, {
       method: 'POST',
       body: JSON.stringify(options),
     });
@@ -2269,21 +2273,30 @@ export const snapshotActions = {
   /**
    * Get snapshot capabilities for a VM
    */
-  async getCapabilities(vmId: string) {
-    const response = await apiRequest<{ status: string; data: any }>(
+  async getCapabilities(vmId: string): Promise<SnapshotCapabilities | null> {
+    const data = await apiRequest<{ capabilities?: SnapshotCapabilities }>(
       `/computes/${vmId}/snapshots/capabilities`
     );
-    if (response.status === 'success' && response.data) {
-      return response.data;
-    }
-    return null;
+    return data?.capabilities ?? null;
+  },
+
+  /**
+   * Get snapshot detail
+   */
+  async getDetail(vmId: string, snapshotName: string): Promise<VMSnapshot | null> {
+    const safeName = encodeURIComponent(snapshotName);
+    const data = await apiRequest<{ snapshot?: VMSnapshot }>(
+      `/computes/${vmId}/snapshots/${safeName}`
+    );
+    return data?.snapshot ?? null;
   },
 
   /**
    * Revert VM to a snapshot
    */
   async revert(vmId: string, snapshotName: string) {
-    return apiRequest<any>(`/computes/${vmId}/snapshots/${snapshotName}/revert`, {
+    const safeName = encodeURIComponent(snapshotName);
+    return apiRequest(`/computes/${vmId}/snapshots/${safeName}/revert`, {
       method: 'POST',
     });
   },
@@ -2291,8 +2304,9 @@ export const snapshotActions = {
   /**
    * Delete a snapshot
    */
-  async delete(vmId: string, snapshotName: string) {
-    return apiRequest<void>(`/computes/${vmId}/snapshots/${snapshotName}`, {
+  async delete(vmId: string, snapshotName: string): Promise<void> {
+    const safeName = encodeURIComponent(snapshotName);
+    await apiRequest(`/computes/${vmId}/snapshots/${safeName}`, {
       method: 'DELETE',
     });
   },

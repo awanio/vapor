@@ -180,14 +180,24 @@ export interface VMTemplate {
 // ============ Snapshots & Backups ============
 
 export interface VMSnapshot {
-  id: string;
-  vm_id: string;
+  // Backend uses snapshot name as the primary identifier
   name: string;
   description?: string;
-  state: 'disk' | 'memory' | 'full';
-  created_at: string;
-  parent?: string;       // Parent snapshot ID
-  size?: number;         // Size in bytes
+  created_at?: string;
+
+  // List endpoint fields
+  type?: SnapshotType;
+  memory?: boolean;
+  parent?: string;
+  disk_formats?: string[];
+  warnings?: string[];
+
+  // Legacy/older fields (kept optional for compatibility)
+  id?: string;
+  vm_id?: string;
+  state?: 'disk' | 'memory' | 'full';
+  size?: number;
+  creation_time?: string;
 }
 
 export interface VMBackup {
@@ -491,27 +501,69 @@ export type SnapshotType = 'internal' | 'external' | 'internal-memory';
 export interface VMSnapshotRequest {
   name: string;
   description?: string;
-  type?: SnapshotType;
   include_memory?: boolean;
   quiesce?: boolean;
   force_external?: boolean;
 }
 
-export interface VMSnapshotResponse {
+export interface VMSnapshotListResponse {
+  status: string;
+  data: {
+    snapshots: VMSnapshot[];
+    count: number;
+    vm_id: string;
+  };
+}
+
+export interface VMSnapshotCreateResponse {
   status: string;
   data: {
     snapshot: VMSnapshot;
+    message?: string;
     warnings?: string[];
   };
 }
 
+export interface VMSnapshotDetailResponse {
+  status: string;
+  data: {
+    snapshot: VMSnapshot;
+  };
+}
+
+export interface VMSnapshotRevertResponse {
+  status: string;
+  data: {
+    vm_name: string;
+    snapshot_name: string;
+    reverted_at: string;
+    message: string;
+  };
+}
+
+export interface SnapshotDiskFormatCapability {
+  name: string;
+  path?: string;
+  format: string;
+  supports_internal: boolean;
+  size_bytes?: number;
+}
+
 export interface SnapshotCapabilities {
-  internal_supported: boolean;
-  external_supported: boolean;
-  memory_supported: boolean;
-  quiesce_supported: boolean;
-  disk_formats: { device: string; format: string }[];
+  supports_snapshots: boolean;
+  supports_internal: boolean;
+  supports_external: boolean;
+  supports_memory: boolean;
+  disk_formats: SnapshotDiskFormatCapability[];
   warnings?: string[];
+  recommendations?: string[];
+}
+
+export interface SnapshotCapabilitiesResponse {
+  status: string;
+  data: {
+    capabilities: SnapshotCapabilities;
+  };
 }
 
 // ============ Backup Request Types ============

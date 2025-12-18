@@ -394,7 +394,8 @@ export class VMDetailsDrawer extends LitElement {
     return `${gb} GB`;
   }
 
-  private formatDate(dateString: string): string {
+  private formatDate(dateString?: string): string {
+    if (!dateString) return 'Unknown';
     return new Date(dateString).toLocaleString();
   }
 
