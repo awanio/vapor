@@ -543,20 +543,48 @@ func getSnapshotCapabilities(service *libvirt.Service) gin.HandlerFunc {
 		capabilities, err := service.GetSnapshotCapabilities(c.Request.Context(), id)
 		if err != nil {
 			msg := err.Error()
-
-			if strings.Contains(msg, "not found") {
+			if strings.Contains(msg, "domain not found") {
 				sendComputeError(c, "VM_NOT_FOUND", "Virtual machine not found", err, http.StatusNotFound)
 				return
 			}
-
 			sendComputeError(c, "SNAPSHOT_CAPABILITIES_FAILED", "Failed to get snapshot capabilities", err, http.StatusInternalServerError)
 			return
+		}
+
+		// Map libvirt capabilities into the OpenAPI-ish schema expected by the frontend.
+		diskFormats := make([]gin.H, 0, len(capabilities.Disks))
+		for _, d := range capabilities.Disks {
+			supportsInternal := false
+			if dc, ok := capabilities.DiskCapabilities[d.Device]; ok {
+				supportsInternal = dc.InternalSnapshots
+			}
+			diskFormats = append(diskFormats, gin.H{
+				"name":              d.Device,
+				"path":              d.Path,
+				"format":            string(d.Format),
+				"supports_internal": supportsInternal,
+				"size_bytes":        d.Size,
+			})
+		}
+
+		apiCaps := gin.H{
+			"supports_snapshots": true,
+			"supports_internal":  capabilities.OverallCapabilities.InternalSnapshots,
+			"supports_external":  capabilities.OverallCapabilities.ExternalSnapshots,
+			"supports_memory":    capabilities.OverallCapabilities.MemorySnapshots,
+			"disk_formats":       diskFormats,
+		}
+		if len(capabilities.OverallCapabilities.Limitations) > 0 {
+			apiCaps["warnings"] = capabilities.OverallCapabilities.Limitations
+		}
+		if len(capabilities.Recommendations) > 0 {
+			apiCaps["recommendations"] = capabilities.Recommendations
 		}
 
 		c.JSON(http.StatusOK, gin.H{
 			"status": "success",
 			"data": gin.H{
-				"capabilities": capabilities,
+				"capabilities": apiCaps,
 			},
 		})
 	}
@@ -602,31 +630,79 @@ func listSnapshots(service *libvirt.Service) gin.HandlerFunc {
 func createSnapshot(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
-		var req libvirt.VMSnapshotRequest
+
+		// Accept both the OpenAPI field names (include_memory/force_external)
+		// and the legacy backend field names (memory/external).
+		type createSnapshotRequest struct {
+			Name          string `json:"name" binding:"required"`
+			Description   string `json:"description,omitempty"`
+			IncludeMemory *bool  `json:"include_memory,omitempty"`
+			Memory        *bool  `json:"memory,omitempty"`
+			Quiesce       *bool  `json:"quiesce,omitempty"`
+			ForceExternal *bool  `json:"force_external,omitempty"`
+			External      *bool  `json:"external,omitempty"`
+		}
+
+		var req createSnapshotRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			sendComputeError(c, "INVALID_REQUEST", "Invalid snapshot request", err, http.StatusBadRequest)
 			return
 		}
 
-		snapshot, err := service.CreateSnapshot(c.Request.Context(), id, &req)
+		memory := false
+		if req.IncludeMemory != nil {
+			memory = *req.IncludeMemory
+		} else if req.Memory != nil {
+			memory = *req.Memory
+		}
+
+		quiesce := false
+		if req.Quiesce != nil {
+			quiesce = *req.Quiesce
+		}
+
+		external := false
+		if req.ForceExternal != nil {
+			external = *req.ForceExternal
+		} else if req.External != nil {
+			external = *req.External
+		}
+
+		libReq := libvirt.VMSnapshotRequest{
+			Name:        req.Name,
+			Description: req.Description,
+			Memory:      memory,
+			Quiesce:     quiesce,
+			External:    external,
+		}
+
+		snapshot, err := service.CreateSnapshotEnhanced(c.Request.Context(), id, &libReq)
 		if err != nil {
 			msg := err.Error()
-
-			if strings.Contains(msg, "not found") {
+			if strings.Contains(msg, "domain not found") {
 				sendComputeError(c, "VM_NOT_FOUND", "Virtual machine not found", err, http.StatusNotFound)
 				return
 			}
-
+			// Treat capability/format/state-related failures as a client error.
+			if strings.Contains(msg, "not supported") || strings.Contains(msg, "limitations") || strings.Contains(msg, "unsupported") || strings.Contains(msg, "incompatible") {
+				sendComputeError(c, "SNAPSHOT_NOT_SUPPORTED", "Snapshot request not supported for this VM", err, http.StatusBadRequest)
+				return
+			}
 			sendComputeError(c, "CREATE_SNAPSHOT_FAILED", "Failed to create snapshot", err, http.StatusInternalServerError)
 			return
 		}
 
+		data := gin.H{
+			"snapshot": snapshot,
+			"message":  "Snapshot created successfully",
+		}
+		if len(snapshot.Warnings) > 0 {
+			data["warnings"] = snapshot.Warnings
+		}
+
 		c.JSON(http.StatusCreated, gin.H{
 			"status": "success",
-			"data": gin.H{
-				"snapshot": snapshot,
-				"message":  "Snapshot created successfully",
-			},
+			"data":   data,
 		})
 	}
 }
@@ -638,12 +714,14 @@ func revertSnapshot(service *libvirt.Service) gin.HandlerFunc {
 
 		if err := service.RevertSnapshot(c.Request.Context(), id, snapshotName); err != nil {
 			msg := err.Error()
-
-			if strings.Contains(msg, "not found") {
+			if strings.Contains(msg, "domain not found") {
+				sendComputeError(c, "VM_NOT_FOUND", "Virtual machine not found", err, http.StatusNotFound)
+				return
+			}
+			if strings.Contains(msg, "snapshot not found") || strings.Contains(msg, "failed to find snapshot") {
 				sendComputeError(c, "SNAPSHOT_NOT_FOUND", "Snapshot not found", err, http.StatusNotFound)
 				return
 			}
-
 			// Default to internal error; specific conflict states can be mapped here if needed
 			sendComputeError(c, "REVERT_SNAPSHOT_FAILED", "Failed to revert to snapshot", err, http.StatusInternalServerError)
 			return
@@ -668,12 +746,14 @@ func deleteSnapshot(service *libvirt.Service) gin.HandlerFunc {
 
 		if err := service.DeleteSnapshot(c.Request.Context(), id, snapshotName); err != nil {
 			msg := err.Error()
-
-			if strings.Contains(msg, "not found") {
+			if strings.Contains(msg, "domain not found") {
+				sendComputeError(c, "VM_NOT_FOUND", "Virtual machine not found", err, http.StatusNotFound)
+				return
+			}
+			if strings.Contains(msg, "snapshot not found") || strings.Contains(msg, "failed to find snapshot") {
 				sendComputeError(c, "SNAPSHOT_NOT_FOUND", "Snapshot not found", err, http.StatusNotFound)
 				return
 			}
-
 			sendComputeError(c, "DELETE_SNAPSHOT_FAILED", "Failed to delete snapshot", err, http.StatusInternalServerError)
 			return
 		}
@@ -2484,12 +2564,14 @@ func getSnapshotDetail(service *libvirt.Service) gin.HandlerFunc {
 		snapshot, err := service.GetSnapshotDetail(c.Request.Context(), id, snapshotName)
 		if err != nil {
 			msg := err.Error()
-
-			if strings.Contains(msg, "not found") {
+			if strings.Contains(msg, "domain not found") {
+				sendComputeError(c, "VM_NOT_FOUND", "Virtual machine not found", err, http.StatusNotFound)
+				return
+			}
+			if strings.Contains(msg, "snapshot not found") || strings.Contains(msg, "failed to find snapshot") {
 				sendComputeError(c, "SNAPSHOT_NOT_FOUND", "Snapshot not found", err, http.StatusNotFound)
 				return
 			}
-
 			sendComputeError(c, "GET_SNAPSHOT_FAILED", "Failed to get snapshot details", err, http.StatusInternalServerError)
 			return
 		}

@@ -1154,16 +1154,99 @@ func (s *Service) snapshotToVMSnapshot(snapshot *libvirt.DomainSnapshot) (*VMSna
 		return nil, err
 	}
 
-	_, err = snapshot.GetXMLDesc(0)
+	xmlDesc, err := snapshot.GetXMLDesc(0)
 	if err != nil {
 		return nil, err
 	}
 
-	// Parse XML for details
-	// This is simplified - would need proper XML parsing
+	// Best-effort parse of libvirt snapshot XML (virsh snapshot-dumpxml)
+	type parentXML struct {
+		Name string `xml:"name"`
+	}
+	type memoryXML struct {
+		Snapshot string `xml:"snapshot,attr"`
+	}
+	type snapshotXML struct {
+		Name         string     `xml:"name"`
+		Description  string     `xml:"description"`
+		State        string     `xml:"state"`
+		CreationTime int64      `xml:"creationTime"`
+		Parent       *parentXML `xml:"parent"`
+		Memory       memoryXML  `xml:"memory"`
+		Metadata     struct {
+			InnerXML string `xml:",innerxml"`
+		} `xml:"metadata"`
+	}
+
+	parsed := snapshotXML{Name: name}
+	if err := xml.Unmarshal([]byte(xmlDesc), &parsed); err != nil {
+		// If we can't parse XML, still return a usable minimal snapshot.
+		return &VMSnapshot{Name: name, CreatedAt: time.Now().UTC()}, nil
+	}
+
+	createdAt := time.Now().UTC()
+	if parsed.CreationTime > 0 {
+		createdAt = time.Unix(parsed.CreationTime, 0).UTC()
+	}
+
+	memoryAttr := strings.ToLower(strings.TrimSpace(parsed.Memory.Snapshot))
+	memoryIncluded := memoryAttr != "" && memoryAttr != "no" && memoryAttr != "false"
+
+	// Parse Vapor metadata (if present) from the snapshot XML.
+	var snapshotType string
+	var diskFormats []string
+	if parsed.Metadata.InnerXML != "" {
+		if m := regexp.MustCompile(`(?s)<vapor:type>\s*([^<]+?)\s*</vapor:type>`).FindStringSubmatch(parsed.Metadata.InnerXML); m != nil {
+			snapshotType = strings.TrimSpace(m[1])
+		}
+		if m := regexp.MustCompile(`(?s)<vapor:disk_formats>\s*([^<]+?)\s*</vapor:disk_formats>`).FindStringSubmatch(parsed.Metadata.InnerXML); m != nil {
+			raw := strings.TrimSpace(m[1])
+			if raw != "" {
+				diskFormats = strings.Split(raw, ",")
+				for i := range diskFormats {
+					diskFormats[i] = strings.TrimSpace(diskFormats[i])
+				}
+			}
+		}
+	}
+
+	if snapshotType == "" {
+		// Fallback heuristic if metadata isn't present.
+		if memoryIncluded {
+			snapshotType = "internal-memory"
+		} else {
+			snapshotType = "internal"
+		}
+	}
+
 	vmSnapshot := &VMSnapshot{
-		Name:      name,
-		CreatedAt: time.Now(), // Would be parsed from XML
+		Name:        name,
+		Description: parsed.Description,
+		CreatedAt:   createdAt,
+		Parent:      "",
+		Memory:      memoryIncluded,
+		Type:        snapshotType,
+		DiskFormats: diskFormats,
+	}
+
+	if parsed.Parent != nil {
+		vmSnapshot.Parent = parsed.Parent.Name
+	}
+
+	// Map snapshot state (string) onto our VMState enum for backwards-compatible UI display.
+	switch strings.ToLower(strings.TrimSpace(parsed.State)) {
+	case "running":
+		vmSnapshot.State = VMStateRunning
+	case "paused":
+		vmSnapshot.State = VMStatePaused
+	case "shutoff":
+		vmSnapshot.State = VMStateShutoff
+	case "shutdown":
+		vmSnapshot.State = VMStateStopped
+	case "crashed":
+		vmSnapshot.State = VMStateCrashed
+	default:
+		vmSnapshot.State = VMStateUnknown
 	}
 
 	return vmSnapshot, nil
