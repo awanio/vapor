@@ -56,9 +56,15 @@ func (s *Service) RestoreBackup(ctx context.Context, req *VMRestoreRequest) (*VM
 
 	// Restore the VM from backup files
 	// This is a simplified implementation
-	backupFile := filepath.Join(backup.DestinationPath, backup.ID+".qcow2")
+	backupFile := filepath.Join(backup.DestinationPath, fmt.Sprintf("%s-%s.qcow2", backup.VMName, backup.ID))
 	if _, err := os.Stat(backupFile); os.IsNotExist(err) {
-		return nil, fmt.Errorf("backup file not found: %s", backupFile)
+		// Backward compatibility: older backups may have been stored as <id>.qcow2
+		alt := filepath.Join(backup.DestinationPath, backup.ID+".qcow2")
+		if _, err2 := os.Stat(alt); err2 == nil {
+			backupFile = alt
+		} else {
+			return nil, fmt.Errorf("backup file not found: %s", backupFile)
+		}
 	}
 
 	// Create a new VM with the restored disk
@@ -83,16 +89,23 @@ func (s *Service) DeleteBackup(ctx context.Context, backupID string) error {
 
 	// Get backup information
 	var destPath string
-	err := s.db.QueryRowContext(ctx, "SELECT destination_path FROM vm_backups WHERE id = ?", backupID).Scan(&destPath)
+	var vmName string
+	err := s.db.QueryRowContext(ctx, "SELECT vm_name, destination_path FROM vm_backups WHERE id = ?", backupID).Scan(&vmName, &destPath)
 	if err != nil {
 		return fmt.Errorf("backup not found: %w", err)
 	}
 
 	// Delete backup files
-	backupFile := filepath.Join(destPath, backupID+".qcow2")
+	backupFile := filepath.Join(destPath, fmt.Sprintf("%s-%s.qcow2", vmName, backupID))
 	if err := os.Remove(backupFile); err != nil && !os.IsNotExist(err) {
 		// Log but don't fail if file doesn't exist
 		fmt.Printf("Warning: failed to delete backup file %s: %v\n", backupFile, err)
+	}
+
+	// Backward compatibility: older backups may have been stored as <id>.qcow2
+	alt := filepath.Join(destPath, backupID+".qcow2")
+	if err := os.Remove(alt); err != nil && !os.IsNotExist(err) {
+		fmt.Printf("Warning: failed to delete backup file %s: %v\n", alt, err)
 	}
 
 	// Update database record

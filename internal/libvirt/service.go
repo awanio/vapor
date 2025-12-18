@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"os"
@@ -131,6 +132,16 @@ func (s *Service) CreateBackup(ctx context.Context, nameOrUUID string, req *VMBa
 		StartedAt:       time.Now(),
 	}
 
+	// Attach persistable metadata
+	backup.Compressed = req.Compression != BackupCompressionNone
+	backup.Retention = req.RetentionDays
+	if req.Description != "" || req.IncludeMemory {
+		backup.Metadata = map[string]string{}
+		if req.Description != "" {
+			backup.Metadata["description"] = req.Description
+		}
+		backup.Metadata["include_memory"] = fmt.Sprintf("%t", req.IncludeMemory)
+	}
 	// Store initial backup record in DB
 	if s.db != nil {
 		if err := s.saveBackupRecord(backup); err != nil {
@@ -155,7 +166,7 @@ func (s *Service) ListBackups(ctx context.Context, nameOrUUID string) ([]VMBacku
 		return nil, err
 	}
 
-	rows, err := s.db.QueryContext(ctx, "SELECT id, vm_uuid, vm_name, type, status, destination_path, size_bytes, compression, encryption, parent_backup_id, started_at, completed_at, error_message, retention_days FROM vm_backups WHERE vm_uuid = ? ORDER BY started_at DESC", vm.UUID)
+	rows, err := s.db.QueryContext(ctx, "SELECT id, vm_uuid, vm_name, type, status, destination_path, size_bytes, compression, encryption, parent_backup_id, started_at, completed_at, error_message, retention_days, metadata FROM vm_backups WHERE vm_uuid = ? ORDER BY started_at DESC", vm.UUID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query backups: %w", err)
 	}
@@ -167,7 +178,8 @@ func (s *Service) ListBackups(ctx context.Context, nameOrUUID string) ([]VMBacku
 		var completedAt sql.NullTime
 		var parentID sql.NullString
 		var errMsg sql.NullString
-		if err := rows.Scan(&b.ID, &b.VMUUID, &b.VMName, &b.Type, &b.Status, &b.DestinationPath, &b.SizeBytes, &b.Compression, &b.Encryption, &parentID, &b.StartedAt, &completedAt, &errMsg, &b.Retention); err != nil {
+		var metadata sql.NullString
+		if err := rows.Scan(&b.ID, &b.VMUUID, &b.VMName, &b.Type, &b.Status, &b.DestinationPath, &b.SizeBytes, &b.Compression, &b.Encryption, &parentID, &b.StartedAt, &completedAt, &errMsg, &b.Retention, &metadata); err != nil {
 			return nil, fmt.Errorf("failed to scan backup row: %w", err)
 		}
 		if completedAt.Valid {
@@ -178,6 +190,12 @@ func (s *Service) ListBackups(ctx context.Context, nameOrUUID string) ([]VMBacku
 		}
 		if errMsg.Valid {
 			b.ErrorMessage = errMsg.String
+		}
+		if metadata.Valid && metadata.String != "" {
+			var m map[string]string
+			if err := json.Unmarshal([]byte(metadata.String), &m); err == nil {
+				b.Metadata = m
+			}
 		}
 		backups = append(backups, b)
 	}
@@ -423,15 +441,44 @@ func (s *Service) saveBackupRecord(backup *VMBackup) error {
 		completedAt = backup.CompletedAt
 	}
 
+	var parentBackupID any
+	if backup.ParentBackupID != "" {
+		parentBackupID = backup.ParentBackupID
+	}
+
+	var metadata any
+	if backup.Metadata != nil && len(backup.Metadata) > 0 {
+		b, err := json.Marshal(backup.Metadata)
+		if err != nil {
+			return fmt.Errorf("failed to marshal backup metadata: %w", err)
+		}
+		metadata = string(b)
+	}
+
 	_, err := s.db.Exec(`
 		INSERT OR REPLACE INTO vm_backups (
-			backup_id, vm_uuid, vm_name, backup_type, status, 
-			destination_path, size_bytes, compressed, encryption_type, 
-			parent_backup_id, started_at, completed_at, error_message
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, backup.ID, backup.VMUUID, backup.VMName, backup.Type, backup.Status,
-		backup.DestinationPath, backup.SizeBytes, backup.Compressed, backup.Encryption,
-		backup.ParentBackupID, backup.StartedAt, completedAt, backup.ErrorMessage)
+			id, vm_uuid, vm_name, type, status,
+			destination_path, size_bytes, compression, encryption,
+			parent_backup_id, started_at, completed_at, error_message,
+			retention_days, metadata
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`,
+		backup.ID,
+		backup.VMUUID,
+		backup.VMName,
+		backup.Type,
+		backup.Status,
+		backup.DestinationPath,
+		backup.SizeBytes,
+		backup.Compression,
+		backup.Encryption,
+		parentBackupID,
+		backup.StartedAt,
+		completedAt,
+		backup.ErrorMessage,
+		backup.Retention,
+		metadata,
+	)
 
 	return err
 }

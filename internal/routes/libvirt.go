@@ -767,32 +767,55 @@ func listBackups(service *libvirt.Service) gin.HandlerFunc {
 		id := c.Param("id")
 		backups, err := service.ListBackups(c.Request.Context(), id)
 		if err != nil {
-			if strings.Contains(err.Error(), "not found") {
-				c.JSON(http.StatusNotFound, gin.H{
-					"status": "error",
-					"error": gin.H{
-						"code":    "VM_NOT_FOUND",
-						"message": "Virtual machine not found",
-						"details": err.Error(),
-					},
-				})
+			msg := err.Error()
+			if strings.Contains(msg, "domain not found") || strings.Contains(msg, "not found") {
+				sendComputeError(c, "VM_NOT_FOUND", "Virtual machine not found", err, http.StatusNotFound)
 				return
 			}
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"status": "error",
-				"error": gin.H{
-					"code":    "LIST_BACKUPS_FAILED",
-					"message": "Failed to list VM backups",
-					"details": err.Error(),
-				},
-			})
+			if strings.Contains(msg, "database is not configured") {
+				sendComputeError(c, "BACKUPS_NOT_AVAILABLE", "Backups are not available (database not configured)", err, http.StatusInternalServerError)
+				return
+			}
+			sendComputeError(c, "LIST_BACKUPS_FAILED", "Failed to list VM backups", err, http.StatusInternalServerError)
 			return
 		}
+
+		apiBackups := make([]gin.H, 0, len(backups))
+		for _, b := range backups {
+			includeMemory := false
+			if b.Metadata != nil {
+				if v, ok := b.Metadata["include_memory"]; ok {
+					includeMemory = strings.ToLower(strings.TrimSpace(v)) == "true"
+				}
+			}
+			apiBackups = append(apiBackups, gin.H{
+				"id":               b.ID,
+				"backup_id":        b.ID,
+				"vm_uuid":          b.VMUUID,
+				"vm_name":          b.VMName,
+				"type":             b.Type,
+				"backup_type":      b.Type,
+				"status":           b.Status,
+				"destination_path": b.DestinationPath,
+				"size_bytes":       b.SizeBytes,
+				"compressed":       b.Compressed,
+				"compression":      b.Compression,
+				"encryption":       b.Encryption,
+				"parent_backup_id": b.ParentBackupID,
+				"started_at":       b.StartedAt,
+				"completed_at":     b.CompletedAt,
+				"retention_days":   b.Retention,
+				"include_memory":   includeMemory,
+				"error_message":    b.ErrorMessage,
+				"metadata":         b.Metadata,
+			})
+		}
+
 		c.JSON(http.StatusOK, gin.H{
 			"status": "success",
 			"data": gin.H{
-				"backups": backups,
-				"count":   len(backups),
+				"backups": apiBackups,
+				"count":   len(apiBackups),
 				"vm_id":   id,
 			},
 		})
@@ -802,29 +825,131 @@ func listBackups(service *libvirt.Service) gin.HandlerFunc {
 func createBackup(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
-		var req libvirt.VMBackupRequest
+
+		// Accept both OpenAPI request fields (backup_type) and legacy/internal fields (type).
+		type createBackupRequest struct {
+			BackupType      *string `json:"backup_type,omitempty"`
+			Type            *string `json:"type,omitempty"`
+			DestinationPath string  `json:"destination_path,omitempty"`
+			Destination     string  `json:"destination,omitempty"`
+			Compression     *string `json:"compression,omitempty"`
+			Encryption      *string `json:"encryption,omitempty"`
+			EncryptionKey   string  `json:"encryption_key,omitempty"`
+			IncludeMemory   *bool   `json:"include_memory,omitempty"`
+			RetentionDays   *int    `json:"retention_days,omitempty"`
+			Description     string  `json:"description,omitempty"`
+		}
+
+		var req createBackupRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			sendComputeError(c, "INVALID_REQUEST", "Invalid backup request", err, http.StatusBadRequest)
 			return
 		}
 
-		backup, err := service.CreateBackup(c.Request.Context(), id, &req)
+		backupType := ""
+		if req.BackupType != nil {
+			backupType = strings.TrimSpace(*req.BackupType)
+		} else if req.Type != nil {
+			backupType = strings.TrimSpace(*req.Type)
+		}
+		if backupType == "" {
+			sendComputeError(c, "INVALID_REQUEST", "Invalid backup request", fmt.Errorf("backup_type/type is required"), http.StatusBadRequest)
+			return
+		}
+
+		dest := req.DestinationPath
+		if dest == "" {
+			dest = req.Destination
+		}
+
+		compression := "none"
+		if req.Compression != nil && strings.TrimSpace(*req.Compression) != "" {
+			compression = strings.TrimSpace(*req.Compression)
+		}
+
+		encryption := "none"
+		if req.Encryption != nil && strings.TrimSpace(*req.Encryption) != "" {
+			encryption = strings.TrimSpace(*req.Encryption)
+		}
+		encNorm := strings.ToLower(strings.TrimSpace(encryption))
+		encNorm = strings.ReplaceAll(encNorm, "_", "-")
+		switch encNorm {
+		case "", "none":
+			encryption = "none"
+		case "aes-256", "aes256":
+			encryption = "aes256"
+		case "aes-128", "aes128":
+			encryption = "aes128"
+		default:
+			// Keep as-is (best-effort)
+			encryption = strings.ReplaceAll(encNorm, "-", "")
+		}
+
+		includeMemory := false
+		if req.IncludeMemory != nil {
+			includeMemory = *req.IncludeMemory
+		}
+
+		retentionDays := 0
+		if req.RetentionDays != nil {
+			retentionDays = *req.RetentionDays
+		}
+
+		libReq := libvirt.VMBackupRequest{
+			Type:            libvirt.BackupType(backupType),
+			DestinationPath: dest,
+			Compression:     libvirt.BackupCompressionType(compression),
+			Encryption:      libvirt.BackupEncryptionType(encryption),
+			EncryptionKey:   req.EncryptionKey,
+			Description:     req.Description,
+			RetentionDays:   retentionDays,
+			IncludeMemory:   includeMemory,
+		}
+
+		backup, err := service.CreateBackup(c.Request.Context(), id, &libReq)
 		if err != nil {
 			msg := err.Error()
-
 			if strings.Contains(msg, "domain not found") || strings.Contains(msg, "not found") {
 				sendComputeError(c, "VM_NOT_FOUND", "Virtual machine not found", err, http.StatusNotFound)
 				return
 			}
-
 			sendComputeError(c, "CREATE_BACKUP_FAILED", "Failed to create backup", err, http.StatusInternalServerError)
 			return
+		}
+
+		includeMemoryResp := libReq.IncludeMemory
+		if backup.Metadata != nil {
+			if v, ok := backup.Metadata["include_memory"]; ok {
+				includeMemoryResp = strings.ToLower(strings.TrimSpace(v)) == "true"
+			}
+		}
+
+		backupData := gin.H{
+			"id":               backup.ID,
+			"backup_id":        backup.ID,
+			"vm_uuid":          backup.VMUUID,
+			"vm_name":          backup.VMName,
+			"type":             backup.Type,
+			"backup_type":      backup.Type,
+			"status":           backup.Status,
+			"destination_path": backup.DestinationPath,
+			"size_bytes":       backup.SizeBytes,
+			"compressed":       backup.Compressed,
+			"compression":      backup.Compression,
+			"encryption":       backup.Encryption,
+			"parent_backup_id": backup.ParentBackupID,
+			"started_at":       backup.StartedAt,
+			"completed_at":     backup.CompletedAt,
+			"retention_days":   backup.Retention,
+			"include_memory":   includeMemoryResp,
+			"error_message":    backup.ErrorMessage,
+			"metadata":         backup.Metadata,
 		}
 
 		c.JSON(http.StatusAccepted, gin.H{
 			"status": "success",
 			"data": gin.H{
-				"backup":  backup,
+				"backup":  backupData,
 				"message": "Backup initiated successfully",
 			},
 		})
