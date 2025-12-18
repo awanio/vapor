@@ -4,8 +4,13 @@ set -euo pipefail
 # Simple functional test for ISO endpoints, including pool_name metadata
 # Follows the pattern of test_storage_pools_api.sh and test_volumes_api.sh
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/vapor_api.sh
+source "${SCRIPT_DIR}/lib/vapor_api.sh"
+
 API_BASE="${API_BASE:-https://localhost:7770/api/v1}"
-AUTH_TOKEN="${AUTH_TOKEN:-}" 
+AUTH_TOKEN="${AUTH_TOKEN:-}"
+RESP_FILE="${RESP_FILE:-/tmp/isos_api_resp.json}"
 
 TEST_POOL_NAME="vapor-test-pool-iso-$$"
 TEST_POOL_PATH="/var/lib/libvirt/images/${TEST_POOL_NAME}"
@@ -14,72 +19,8 @@ TEST_ISO_NAME_TUS="vapor-test-iso-tus-$$"
 TEST_POOL_NAME_JSON="vapor-iso-json-pool-$$"
 TEST_POOL_NAME_TUS="vapor-iso-tus-pool-$$"
 
-# Check dependencies
-if ! command -v curl >/dev/null 2>&1; then
-  echo "ERROR: curl is required" >&2
-  exit 1
-fi
-
-if ! command -v jq >/dev/null 2>&1; then
-  echo "ERROR: jq is required" >&2
-  exit 1
-fi
-
-# Obtain AUTH_TOKEN if not provided
-if [[ -z "${AUTH_TOKEN}" ]]; then
-  if [[ -z "${VAPOR_USERNAME:-}" || -z "${VAPOR_PASSWORD:-}" ]]; then
-    echo "ERROR: AUTH_TOKEN is not set and no VAPOR_USERNAME/VAPOR_PASSWORD provided." >&2
-    exit 1
-  fi
-
-  echo "Logging in to obtain AUTH_TOKEN..."
-  LOGIN_RESP=$(curl -ksS -X POST "${API_BASE}/auth/login" \
-    -H "Content-Type: application/json" \
-    -d "{\"username\":\"${VAPOR_USERNAME}\",\"password\":\"${VAPOR_PASSWORD}\"}")
-
-  AUTH_TOKEN=$(echo "${LOGIN_RESP}" | jq -r '.token // empty') || AUTH_TOKEN=""
-  if [[ -z "${AUTH_TOKEN}" || "${AUTH_TOKEN}" == "null" ]]; then
-    echo "ERROR: Failed to obtain AUTH_TOKEN from /auth/login response" >&2
-    echo "Response was: ${LOGIN_RESP}" >&2
-    exit 1
-  fi
-fi
-
-# Helper to call API with JSON
-api_call() {
-  local method="$1"; shift
-  local path="$1"; shift
-  local data="${1:-}"
-
-  local url="${API_BASE}${path}"
-  echo
-  echo "=== ${method} ${url} ==="
-
-  local response_file
-  response_file="/tmp/isos_api_resp.json"
-
-  if [[ -n "${data}" ]]; then
-    http_code=$(curl -ksS -o "${response_file}" -w '%{http_code}' \
-      -X "${method}" "${url}" \
-      -H "Authorization: Bearer ${AUTH_TOKEN}" \
-      -H "Content-Type: application/json" \
-      -d "${data}")
-  else
-    http_code=$(curl -ksS -o "${response_file}" -w '%{http_code}' \
-      -X "${method}" "${url}" \
-      -H "Authorization: Bearer ${AUTH_TOKEN}")
-  fi
-
-  echo "HTTP ${http_code}"
-  if [[ -s "${response_file}" ]]; then
-    cat "${response_file}" | jq . || cat "${response_file}"
-  fi
-
-  if [[ ! "${http_code}" =~ ^2 ]]; then
-    echo "ERROR: Request to ${path} failed with HTTP ${http_code}" >&2
-    exit 1
-  fi
-}
+require_deps
+login_if_needed
 
 # Helper for TUS upload calls (no JSON wrapper, raw curl)
 iso_upload_call() {

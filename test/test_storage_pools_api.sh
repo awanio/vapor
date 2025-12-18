@@ -14,7 +14,7 @@
 #   - DELETE /api/v1/virtualization/storages/pools/:name?delete_volumes=true
 #
 # Requirements:
-#   - A running Vapor API (default: http://localhost:7770).
+#   - A running Vapor API (default: https://localhost:7770).
 #   - libvirt installed and running on the target host.
 #   - curl and jq installed.
 #   - A valid JWT token with sufficient permissions, provided via AUTH_TOKEN
@@ -27,105 +27,27 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/vapor_api.sh
+source "${SCRIPT_DIR}/lib/vapor_api.sh"
+
 API_BASE="${API_BASE:-https://localhost:7770/api/v1}"
 AUTH_TOKEN="${AUTH_TOKEN:-}"
 VAPOR_USERNAME="${VAPOR_USERNAME:-}"
 VAPOR_PASSWORD="${VAPOR_PASSWORD:-}"
+RESP_FILE="${RESP_FILE:-/tmp/storage_pools_api_resp.json}"
 
 TEST_POOL_NAME="${TEST_POOL_NAME:-vapor-test-pool-$$}"
 TEST_POOL_PATH="${TEST_POOL_PATH:-/var/lib/libvirt/images/${TEST_POOL_NAME}}"
-
-if ! command -v curl >/dev/null 2>&1; then
-  echo "ERROR: curl is required" >&2
-  exit 1
-fi
-
-if ! command -v jq >/dev/null 2>&1; then
-  echo "ERROR: jq is required" >&2
-  exit 1
-fi
 
 log() {
   echo -e "\n[storage-pools-test] $*" >&2
 }
 
-# Perform login if AUTH_TOKEN is not provided but credentials are.
-login_if_needed() {
-  if [[ -n "$AUTH_TOKEN" ]]; then
-    return
-  fi
-
-  if [[ -z "$VAPOR_USERNAME" || -z "$VAPOR_PASSWORD" ]]; then
-    cat >&2 <<EOF_USAGE
-ERROR: AUTH_TOKEN is not set and no VAPOR_USERNAME/VAPOR_PASSWORD provided.
-
-Set one of:
-  - AUTH_TOKEN   : existing JWT token
-  - VAPOR_USERNAME and VAPOR_PASSWORD : credentials to POST to /auth/login
-
-Example:
-  VAPOR_USERNAME=admin VAPOR_PASSWORD=admin123 ./test/test_storage_pools_api.sh
-EOF_USAGE
-    exit 1
-  fi
-
-  log "Attempting login as '","$VAPOR_USERNAME","' to ${API_BASE}/auth/login"
-  local login_resp
-  login_resp=$(curl -sS -X POST \
-    -H "Content-Type: application/json" \
-    "${API_BASE}/auth/login" \
-    -d "{\"username\":\"${VAPOR_USERNAME}\",\"password\":\"${VAPOR_PASSWORD}\"}")
-
-  AUTH_TOKEN=$(echo "$login_resp" | jq -r '.token // empty') || true
-  if [[ -z "$AUTH_TOKEN" || "$AUTH_TOKEN" == "null" ]]; then
-    echo "ERROR: Failed to obtain AUTH_TOKEN from /auth/login response" >&2
-    echo "Response was:" >&2
-    echo "$login_resp" | jq . >&2 || echo "$login_resp" >&2
-    exit 1
-  fi
-
-  log "Successfully obtained AUTH_TOKEN from /auth/login"
-}
-
-# Helper to call the API and assert 2xx status.
-# Usage: api_call METHOD PATH [JSON_BODY]
-api_call() {
-  local method="$1"; shift
-  local path="$1"; shift
-  local data="${1-}"
-
-  local url="${API_BASE}${path}"
-
-  log "${method} ${url}"
-
-  local http_code
-  if [[ -n "$data" ]]; then
-    http_code=$(curl -sS -k -o /tmp/storage_pools_api_resp.json -w '%{http_code}' \
-      -X "$method" \
-      -H "Authorization: Bearer ${AUTH_TOKEN}" \
-      -H "Content-Type: application/json" \
-      "$url" \
-      -d "$data")
-  else
-    http_code=$(curl -sS -k -o /tmp/storage_pools_api_resp.json -w '%{http_code}' \
-      -X "$method" \
-      -H "Authorization: Bearer ${AUTH_TOKEN}" \
-      -H "Content-Type: application/json" \
-      "$url")
-  fi
-
-  echo "HTTP ${http_code}" >&2
-  cat /tmp/storage_pools_api_resp.json | jq . >&2 || cat /tmp/storage_pools_api_resp.json >&2
-
-  if [[ "$http_code" != 2?? ]]; then
-    echo "ERROR: Request to ${path} failed with HTTP ${http_code}" >&2
-    exit 1
-  fi
-}
+require_deps
+login_if_needed
 
 main() {
-  login_if_needed
-
   log "Using API_BASE=${API_BASE}"
   log "Using TEST_POOL_NAME=${TEST_POOL_NAME}"
   log "Using TEST_POOL_PATH=${TEST_POOL_PATH}"

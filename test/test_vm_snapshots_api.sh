@@ -33,8 +33,14 @@ set -euo pipefail
 #   FORCE_EXTERNAL   : 1 to request force_external=true (default: 0)
 #   DO_REVERT        : 1 to actually revert to the snapshot (default: 0). WARNING: reverting is disruptive.
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/vapor_api.sh
+source "${SCRIPT_DIR}/lib/vapor_api.sh"
+
 API_BASE="${API_BASE:-https://localhost:7770/api/v1}"
 AUTH_TOKEN="${AUTH_TOKEN:-}"
+VAPOR_USERNAME="${VAPOR_USERNAME:-}"
+VAPOR_PASSWORD="${VAPOR_PASSWORD:-}"
 
 VM_ID="${VM_ID:-}"
 SNAPSHOT_NAME="${SNAPSHOT_NAME:-vapor-test-snapshot-$(date +%s)-$$}"
@@ -45,78 +51,15 @@ QUIESCE="${QUIESCE:-0}"
 FORCE_EXTERNAL="${FORCE_EXTERNAL:-0}"
 DO_REVERT="${DO_REVERT:-0}"
 
-RESP_FILE="/tmp/vm_snapshots_api_resp.json"
-
-# Dependencies
-if ! command -v curl >/dev/null 2>&1; then
-  echo "ERROR: curl is required" >&2
-  exit 1
-fi
-
-if ! command -v jq >/dev/null 2>&1; then
-  echo "ERROR: jq is required" >&2
-  exit 1
-fi
+# Keep legacy response file name for compatibility with earlier versions of this script.
+RESP_FILE="${RESP_FILE:-/tmp/vm_snapshots_api_resp.json}"
 
 log() {
   echo -e "\n[vm-snapshots-test] $*" >&2
 }
 
-# Obtain AUTH_TOKEN if not provided
-if [[ -z "${AUTH_TOKEN}" ]]; then
-  if [[ -z "${VAPOR_USERNAME:-}" || -z "${VAPOR_PASSWORD:-}" ]]; then
-    echo "ERROR: AUTH_TOKEN is not set and no VAPOR_USERNAME/VAPOR_PASSWORD provided." >&2
-    exit 1
-  fi
-
-  log "Logging in to obtain AUTH_TOKEN..."
-  LOGIN_RESP=$(curl -ksS -X POST "${API_BASE}/auth/login" \
-    -H "Content-Type: application/json" \
-    -d "{\"username\":\"${VAPOR_USERNAME}\",\"password\":\"${VAPOR_PASSWORD}\"}")
-
-  AUTH_TOKEN=$(echo "${LOGIN_RESP}" | jq -r '.token // empty') || AUTH_TOKEN=""
-  if [[ -z "${AUTH_TOKEN}" || "${AUTH_TOKEN}" == "null" ]]; then
-    echo "ERROR: Failed to obtain AUTH_TOKEN from /auth/login response" >&2
-    echo "Response was: ${LOGIN_RESP}" >&2
-    exit 1
-  fi
-fi
-
-# Helper to call API with optional JSON body.
-# Writes response body to $RESP_FILE.
-api_call() {
-  local method="$1"; shift
-  local path="$1"; shift
-  local data="${1:-}"
-
-  local url="${API_BASE}${path}"
-  log "${method} ${url}"
-
-  local http_code
-  rm -f "${RESP_FILE}"
-
-  if [[ -n "${data}" ]]; then
-    http_code=$(curl -ksS -o "${RESP_FILE}" -w '%{http_code}' \
-      -X "${method}" "${url}" \
-      -H "Authorization: Bearer ${AUTH_TOKEN}" \
-      -H "Content-Type: application/json" \
-      -d "${data}")
-  else
-    http_code=$(curl -ksS -o "${RESP_FILE}" -w '%{http_code}' \
-      -X "${method}" "${url}" \
-      -H "Authorization: Bearer ${AUTH_TOKEN}")
-  fi
-
-  echo "HTTP ${http_code}" >&2
-  if [[ -s "${RESP_FILE}" ]]; then
-    cat "${RESP_FILE}" | jq . >&2 || cat "${RESP_FILE}" >&2
-  fi
-
-  if [[ ! "${http_code}" =~ ^2 ]]; then
-    echo "ERROR: Request to ${path} failed with HTTP ${http_code}" >&2
-    exit 1
-  fi
-}
+require_deps
+login_if_needed
 
 cleanup() {
   log "Cleaning up test snapshot (best-effort): ${SNAPSHOT_NAME}"
@@ -137,15 +80,13 @@ pick_vm_if_needed() {
   fi
 
   log "VM_ID not set; selecting first VM from GET /virtualization/computes"
-  local list_resp
-  list_resp=$(curl -ksS -X GET "${API_BASE}/virtualization/computes" \
-    -H "Authorization: Bearer ${AUTH_TOKEN}")
+  api_call GET "/virtualization/computes"
 
-  VM_ID=$(echo "${list_resp}" | jq -r '.data.vms[0].name // .data.vms[0].uuid // empty') || VM_ID=""
+  VM_ID=$(jq -r '.data.vms[0].name // .data.vms[0].uuid // empty' "${RESP_FILE}" 2>/dev/null || true)
   if [[ -z "${VM_ID}" || "${VM_ID}" == "null" ]]; then
     echo "ERROR: No VM found. Provide VM_ID=<vm-name-or-uuid> and retry." >&2
     echo "Response was:" >&2
-    echo "${list_resp}" | jq . >&2 || echo "${list_resp}" >&2
+    cat "${RESP_FILE}" | jq . >&2 || cat "${RESP_FILE}" >&2
     exit 1
   fi
 
