@@ -592,7 +592,11 @@ export class VirtualizationNetworks extends LitElement {
       { label: 'View Details', action: 'view' },
     ];
 
-    if (network.state !== 'active') {
+    if (network.state === 'active') {
+      actions.push({ label: 'Stop', action: 'stop' });
+      // Optional: allow quick restart from the dropdown
+      actions.push({ label: 'Restart', action: 'restart' });
+    } else {
       actions.push({ label: 'Start', action: 'start' });
     }
 
@@ -882,7 +886,6 @@ export class VirtualizationNetworks extends LitElement {
         return;
       }
       const message = this.mapNetworkErrorToMessage(error, `Failed to ${action} network`);
-      this.error = message;
       notificationActions.addNotification({
         type: 'error',
         title: `Failed to ${action} network`,
@@ -936,7 +939,6 @@ export class VirtualizationNetworks extends LitElement {
         this.error = error.message;
       } else {
         const message = this.mapNetworkErrorToMessage(error, 'Failed to load network for editing');
-        this.error = message;
         notificationActions.addNotification({
           type: 'error',
           title: 'Failed to load network for editing',
@@ -992,7 +994,6 @@ export class VirtualizationNetworks extends LitElement {
         return;
       }
       const message = this.mapNetworkErrorToMessage(error, 'Failed to delete network');
-      this.error = message;
       notificationActions.addNotification({
         type: 'error',
         title: 'Failed to delete network',
@@ -1127,7 +1128,6 @@ export class VirtualizationNetworks extends LitElement {
         return;
       }
       const message = this.mapNetworkErrorToMessage(error, 'Failed to create network');
-      this.error = message;
       notificationActions.addNotification({
         type: 'error',
         title: 'Failed to create network',
@@ -1163,7 +1163,6 @@ export class VirtualizationNetworks extends LitElement {
         return;
       }
       const message = this.mapNetworkErrorToMessage(error, 'Failed to update network');
-      this.error = message;
       notificationActions.addNotification({
         type: 'error',
         title: 'Failed to update network',

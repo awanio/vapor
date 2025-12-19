@@ -40,6 +40,7 @@ import { virtualizationAPI, VirtualizationAPIError } from "../../services/virtua
 
 @customElement('virtualization-volumes')
 export class VirtualizationVolumes extends LitElement {
+  private notificationContainer: any = null;
   // Local UI state
   @state() private poolFilter: string = 'all';
   @state() private showDetails = false;
@@ -735,6 +736,34 @@ export class VirtualizationVolumes extends LitElement {
     await this.loadData();
   }
 
+  override firstUpdated(_changedProperties: any) {
+    this.notificationContainer = this.renderRoot.querySelector('notification-container');
+    // Listen for bubbled show-notification events from this view and its children
+    this.addEventListener('show-notification', this.handleShowNotification as EventListener);
+  }
+
+  override disconnectedCallback() {
+    super.disconnectedCallback();
+    this.removeEventListener('show-notification', this.handleShowNotification as EventListener);
+  }
+
+  private handleShowNotification = (event: Event) => {
+    const detail = (event as CustomEvent).detail as
+      | { message: string; type: 'success' | 'error' | 'info' | 'warning'; duration?: number }
+      | undefined;
+    if (!detail) return;
+
+    const nc = this.notificationContainer as any;
+    if (nc && typeof nc.addNotification === 'function') {
+      nc.addNotification({
+        type: detail.type,
+        message: detail.message,
+        // Errors should stay until dismissed
+        duration: detail.duration ?? (detail.type === 'error' ? 0 : undefined),
+      });
+    }
+  };
+
   private async loadData() {
     try {
       await Promise.all([
@@ -753,10 +782,10 @@ export class VirtualizationVolumes extends LitElement {
     }
   }
 
-  private showNotification(message: string, type: 'success' | 'error' | 'info' = 'info') {
+  private showNotification(message: string, type: 'success' | 'error' | 'info' = 'info', duration?: number) {
     // Dispatch event for notification container
     this.dispatchEvent(new CustomEvent('show-notification', {
-      detail: { message, type },
+      detail: { message, type, duration },
       bubbles: true,
       composed: true
     }));
@@ -882,22 +911,24 @@ export class VirtualizationVolumes extends LitElement {
       this.deleteItem = null;
       this.deletingVolume = null;
     } catch (error) {
-      let message = 'Unknown error';
+      let apiMessage = 'Unknown error';
+      let codeSuffix = '';
+
       if (error instanceof VirtualizationAPIError) {
-        switch (error.code) {
-          case 'VOLUME_NOT_FOUND':
-            message = 'Volume not found. It may have already been deleted.';
-            break;
-          case 'VOLUME_IN_USE':
-            message = 'This volume is currently attached to one or more virtual machines.';
-            break;
-          default:
-            message = error.message;
-        }
+        const parts = [
+          error.message,
+          typeof error.details === 'string' ? error.details : '',
+        ]
+          .map((s) => (s || '').trim())
+          .filter(Boolean);
+        apiMessage = parts.length ? parts.join(' — ') : error.message;
+        codeSuffix = error.code ? ` (${error.code})` : '';
       } else if (error instanceof Error) {
-        message = error.message;
+        apiMessage = error.message;
       }
-      this.showNotification(`Failed to delete volume: ${message}`, 'error');
+
+      // Persistent error toast (red, manual close)
+      this.showNotification(`Failed to delete volume "${volume.name}": ${apiMessage}${codeSuffix}`, 'error', 0);
     } finally {
       this.isDeleting = false;
     }

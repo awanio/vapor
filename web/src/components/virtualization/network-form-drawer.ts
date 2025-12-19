@@ -437,6 +437,18 @@ export class NetworkFormDrawer extends LitElement {
     // IP range: require both address and netmask if either is provided
     const hasIpAddress = !!this.formData.ipAddress.trim();
     const hasNetmask = !!this.formData.netmask.trim();
+    // For NAT/route networks, libvirt requires an IPv4 <ip> block (address+netmask).
+    if (this.formData.mode === 'nat' || this.formData.mode === 'route') {
+      if (!hasIpAddress || !hasNetmask) {
+        this.errors = {
+          ...this.errors,
+          ipAddress: !hasIpAddress ? 'IP address is required for NAT/Route networks' : (this.errors.ipAddress || ''),
+          netmask: !hasNetmask ? 'Netmask is required for NAT/Route networks' : (this.errors.netmask || ''),
+        };
+        isValid = false;
+      }
+    }
+
     if (hasIpAddress || hasNetmask) {
       if (!hasIpAddress || !hasNetmask) {
         this.errors = {
@@ -500,9 +512,9 @@ export class NetworkFormDrawer extends LitElement {
     const hosts = this.formData.hosts.map((host, i) =>
       i === index
         ? {
-            ...host,
-            [field]: value,
-          }
+          ...host,
+          [field]: value,
+        }
         : host,
     );
     this.formData = {
@@ -585,11 +597,11 @@ export class NetworkFormDrawer extends LitElement {
                   .value=${this.formData.name}
                   ?disabled=${this.loading || this.editMode}
                   @input=${(e: Event) =>
-                    this.handleInputChange('name', (e.target as HTMLInputElement).value)}
+        this.handleInputChange('name', (e.target as HTMLInputElement).value)}
                 />
                 ${this.errors.name
-                  ? html`<div class="error-text">${this.errors.name}</div>`
-                  : html`<div class="hint">Use lowercase letters, numbers, dashes, and underscores.</div>`}
+        ? html`<div class="error-text">${this.errors.name}</div>`
+        : html`<div class="hint">Use lowercase letters, numbers, dashes, and underscores.</div>`}
               </div>
 
               <div class="field">
@@ -599,7 +611,7 @@ export class NetworkFormDrawer extends LitElement {
                   .value=${this.formData.mode}
                   ?disabled=${this.loading}
                   @change=${(e: Event) =>
-                    this.handleModeChange((e.target as HTMLSelectElement).value as NetworkMode)}
+        this.handleModeChange((e.target as HTMLSelectElement).value as NetworkMode)}
                 >
                   <option value="nat">NAT</option>
                   <option value="route">Route</option>
@@ -609,7 +621,7 @@ export class NetworkFormDrawer extends LitElement {
               </div>
 
               ${this.formData.mode === 'bridge'
-                ? html`<div class="field">
+        ? html`<div class="field">
                     <label for="network-bridge" class="required">Host bridge name</label>
                     <input
                       id="network-bridge"
@@ -618,13 +630,13 @@ export class NetworkFormDrawer extends LitElement {
                       .value=${this.formData.bridge}
                       ?disabled=${this.loading}
                       @input=${(e: Event) =>
-                        this.handleInputChange('bridge', (e.target as HTMLInputElement).value)}
+            this.handleInputChange('bridge', (e.target as HTMLInputElement).value)}
                     />
                     ${this.errors.bridge
-                      ? html`<div class="error-text">${this.errors.bridge}</div>`
-                      : html`<div class="hint">Existing host bridge to attach this virtual network to (e.g. br0).</div>`}
+            ? html`<div class="error-text">${this.errors.bridge}</div>`
+            : html`<div class="hint">Existing host bridge to attach this virtual network to (e.g. br0).</div>`}
                   </div>`
-                : null}
+        : null}
 
               <div class="checkbox-row">
                 <input
@@ -633,14 +645,14 @@ export class NetworkFormDrawer extends LitElement {
                   .checked=${this.formData.autostart}
                   ?disabled=${this.loading}
                   @change=${(e: Event) =>
-                    this.handleInputChange('autostart', (e.target as HTMLInputElement).checked)}
+        this.handleInputChange('autostart', (e.target as HTMLInputElement).checked)}
                 />
                 <label for="network-autostart">Start network automatically on host boot</label>
               </div>
             </div>
 
             <div class="section">
-              <h3 class="section-title">IP Range (optional)</h3>
+              <h3 class="section-title">IP Range</h3>
               <div class="field-row">
                 <div class="field">
                   <label for="ip-address">Address</label>
@@ -651,11 +663,11 @@ export class NetworkFormDrawer extends LitElement {
                     .value=${this.formData.ipAddress}
                     ?disabled=${this.loading}
                     @input=${(e: Event) =>
-                      this.handleInputChange('ipAddress', (e.target as HTMLInputElement).value)}
+        this.handleInputChange('ipAddress', (e.target as HTMLInputElement).value)}
                   />
                   ${this.errors.ipAddress
-                    ? html`<div class="error-text">${this.errors.ipAddress}</div>`
-                    : html`<div class="hint">Gateway IP, e.g. 192.168.250.1</div>`}
+        ? html`<div class="error-text">${this.errors.ipAddress}</div>`
+        : html`<div class="hint">Gateway IP, e.g. 192.168.250.1</div>`}
                 </div>
                 <div class="field">
                   <label for="netmask">Netmask</label>
@@ -666,18 +678,18 @@ export class NetworkFormDrawer extends LitElement {
                     .value=${this.formData.netmask}
                     ?disabled=${this.loading}
                     @input=${(e: Event) =>
-                      this.handleInputChange('netmask', (e.target as HTMLInputElement).value)}
+        this.handleInputChange('netmask', (e.target as HTMLInputElement).value)}
                   />
                   ${this.errors.netmask
-                    ? html`<div class="error-text">${this.errors.netmask}</div>`
-                    : html`<div class="hint">Netmask, e.g. 255.255.255.0</div>`}
+        ? html`<div class="error-text">${this.errors.netmask}</div>`
+        : html`<div class="hint">Netmask, e.g. 255.255.255.0</div>`}
                 </div>
               </div>
-              <div class="hint">Leave empty to let libvirt manage addressing implicitly.</div>
+              <div class="hint">Required for NAT/Route networks. Optional for Bridge/Private.</div>
             </div>
 
             ${this.showDhcpSection
-              ? html`<div class="section">
+        ? html`<div class="section">
                   <h3 class="section-title">DHCP (optional)</h3>
                   <div class="field-row">
                     <div class="field">
@@ -689,11 +701,11 @@ export class NetworkFormDrawer extends LitElement {
                         .value=${this.formData.dhcpStart}
                         ?disabled=${this.loading}
                         @input=${(e: Event) =>
-                          this.handleInputChange('dhcpStart', (e.target as HTMLInputElement).value)}
+            this.handleInputChange('dhcpStart', (e.target as HTMLInputElement).value)}
                       />
                       ${this.errors.dhcpStart
-                        ? html`<div class="error-text">${this.errors.dhcpStart}</div>`
-                        : html`<div class="hint">First IP in DHCP pool.</div>`}
+            ? html`<div class="error-text">${this.errors.dhcpStart}</div>`
+            : html`<div class="hint">First IP in DHCP pool.</div>`}
                     </div>
                     <div class="field">
                       <label for="dhcp-end">End IP</label>
@@ -704,11 +716,11 @@ export class NetworkFormDrawer extends LitElement {
                         .value=${this.formData.dhcpEnd}
                         ?disabled=${this.loading}
                         @input=${(e: Event) =>
-                          this.handleInputChange('dhcpEnd', (e.target as HTMLInputElement).value)}
+            this.handleInputChange('dhcpEnd', (e.target as HTMLInputElement).value)}
                       />
                       ${this.errors.dhcpEnd
-                        ? html`<div class="error-text">${this.errors.dhcpEnd}</div>`
-                        : html`<div class="hint">Last IP in DHCP pool.</div>`}
+            ? html`<div class="error-text">${this.errors.dhcpEnd}</div>`
+            : html`<div class="hint">Last IP in DHCP pool.</div>`}
                     </div>
                   </div>
 
@@ -725,18 +737,18 @@ export class NetworkFormDrawer extends LitElement {
                       </thead>
                       <tbody>
                         ${this.formData.hosts.map(
-                          (host, index) => html`<tr>
+              (host, index) => html`<tr>
                             <td>
                               <input
                                 type="text"
                                 .value=${host.mac}
                                 ?disabled=${this.loading}
                                 @input=${(e: Event) =>
-                                  this.updateHostRow(
-                                    index,
-                                    'mac',
-                                    (e.target as HTMLInputElement).value,
-                                  )}
+                  this.updateHostRow(
+                    index,
+                    'mac',
+                    (e.target as HTMLInputElement).value,
+                  )}
                               />
                             </td>
                             <td>
@@ -745,11 +757,11 @@ export class NetworkFormDrawer extends LitElement {
                                 .value=${host.ip}
                                 ?disabled=${this.loading}
                                 @input=${(e: Event) =>
-                                  this.updateHostRow(
-                                    index,
-                                    'ip',
-                                    (e.target as HTMLInputElement).value,
-                                  )}
+                  this.updateHostRow(
+                    index,
+                    'ip',
+                    (e.target as HTMLInputElement).value,
+                  )}
                               />
                             </td>
                             <td>
@@ -758,11 +770,11 @@ export class NetworkFormDrawer extends LitElement {
                                 .value=${host.name}
                                 ?disabled=${this.loading}
                                 @input=${(e: Event) =>
-                                  this.updateHostRow(
-                                    index,
-                                    'name',
-                                    (e.target as HTMLInputElement).value,
-                                  )}
+                  this.updateHostRow(
+                    index,
+                    'name',
+                    (e.target as HTMLInputElement).value,
+                  )}
                               />
                             </td>
                             <td style="text-align: center;">
@@ -776,7 +788,7 @@ export class NetworkFormDrawer extends LitElement {
                               </button>
                             </td>
                           </tr>`,
-                        )}
+            )}
                       </tbody>
                     </table>
                     <button
@@ -789,7 +801,7 @@ export class NetworkFormDrawer extends LitElement {
                     </button>
                   </div>
                 </div>`
-              : null}
+        : null}
           </form>
         </div>
         <div class="drawer-footer">
@@ -808,12 +820,12 @@ export class NetworkFormDrawer extends LitElement {
             ?disabled=${this.loading}
           >
             ${this.loading
-              ? this.editMode
-                ? 'Updating...'
-                : 'Creating...'
-              : this.editMode
-                ? 'Update'
-                : 'Create'}
+        ? this.editMode
+          ? 'Updating...'
+          : 'Creating...'
+        : this.editMode
+          ? 'Update'
+          : 'Create'}
           </button>
         </div>
       </div>

@@ -3,7 +3,10 @@ import { customElement, property } from 'lit/decorators.js';
 
 @customElement('empty-state')
 export class EmptyState extends LitElement {
+  // Back-compat: many views used `message` before `title`/`description` existed.
   @property({ type: String }) message = 'No data available';
+  @property({ type: String }) title = '';
+  @property({ type: String }) description = '';
   @property({ type: String }) icon = '📭';
   @property({ type: String }) actionLabel = '';
 
@@ -24,9 +27,18 @@ export class EmptyState extends LitElement {
       opacity: 0.5;
     }
 
-    .message {
+    .title {
       font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--text-primary, var(--vscode-foreground));
+    }
+
+    .description {
+      font-size: 0.9rem;
       margin-bottom: 1rem;
+      color: var(--text-secondary);
+      white-space: pre-wrap;
     }
 
     .action {
@@ -51,22 +63,30 @@ export class EmptyState extends LitElement {
   `;
 
   private handleAction() {
-    this.dispatchEvent(new CustomEvent('action-click', {
-      bubbles: true,
-      composed: true
-    }));
+    this.dispatchEvent(
+      new CustomEvent('action-click', {
+        bubbles: true,
+        composed: true,
+      }),
+    );
   }
 
   override render() {
+    const title = this.title || this.message;
+    const description = this.description;
+
     return html`
       <div class="empty-state">
         <div class="icon">${this.icon}</div>
-        <div class="message">${this.message}</div>
-        ${this.actionLabel ? html`
-          <div class="action">
-            <button @click="${this.handleAction}">${this.actionLabel}</button>
-          </div>
-        ` : ''}
+        <div class="title">${title}</div>
+        ${description ? html`<div class="description">${description}</div>` : ''}
+        ${this.actionLabel
+          ? html`
+              <div class="action">
+                <button @click="${this.handleAction}">${this.actionLabel}</button>
+              </div>
+            `
+          : ''}
       </div>
     `;
   }

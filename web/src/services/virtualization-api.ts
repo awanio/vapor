@@ -627,9 +627,19 @@ export class VirtualizationAPI {
    */
   async deleteVolume(poolName: string, volumeName: string, force = false): Promise<void> {
     const suffix = force ? '?force=true' : '';
-    await apiRequest<void>(`/storages/pools/${poolName}/volumes/${volumeName}${suffix}`, {
+    const result = await apiRequest<any>(`/storages/pools/${poolName}/volumes/${volumeName}${suffix}`, {
       method: 'DELETE',
     });
+
+    // Some endpoints may respond with an error envelope while still returning 2xx.
+    if (result && typeof result === 'object' && 'status' in result && (result as any).status === 'error') {
+      const err = (result as any).error || {};
+      throw new VirtualizationAPIError(
+        err.code || 'API_ERROR',
+        err.message || 'Failed to delete volume',
+        err.details,
+      );
+    }
   }
   
   // ============ ISO Management ============

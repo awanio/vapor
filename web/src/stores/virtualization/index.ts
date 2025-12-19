@@ -353,7 +353,7 @@ function transformISOResponse(apiIso: any): ISOImage {
     architecture: apiIso.architecture,
     uploaded_at: apiIso.created_at || apiIso.uploaded_at,
     checksum: apiIso.checksum,
-    storage_pool: apiIso.storage_pool || 'default',
+    storage_pool: apiIso.storage_pool || apiIso.pool_name || apiIso.metadata?.pool_name || 'default',
   };
 }
 
