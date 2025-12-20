@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/awanio/vapor/internal/logs"
+	"github.com/awanio/vapor/internal/system"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/websocket"
@@ -19,8 +21,6 @@ import (
 	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/load"
 	"github.com/shirou/gopsutil/v3/mem"
-	"github.com/awanio/vapor/internal/system"
-	"github.com/awanio/vapor/internal/logs"
 )
 
 var upgrader = websocket.Upgrader{
@@ -28,6 +28,35 @@ var upgrader = websocket.Upgrader{
 		// In production, implement proper origin checking
 		return true
 	},
+}
+
+// ServeEventsWebSocket handles WebSocket connections for event streams (VMs, containers, k8s)
+func ServeEventsWebSocket(hub *Hub, jwtSecret string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+		if err != nil {
+			log.Printf("Failed to upgrade to websocket: %v", err)
+			return
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		client := &Client{
+			hub:           hub,
+			conn:          conn,
+			send:          make(chan []byte, 256),
+			id:            fmt.Sprintf("events-%d", time.Now().UnixNano()),
+			subscriptions: make(map[string]bool),
+			ctx:           ctx,
+			cancel:        cancel,
+		}
+
+		client.hub.register <- client
+		client.jwtSecret = jwtSecret
+		client.handlerType = "events"
+
+		go client.readPump()
+		go client.writePump()
+	}
 }
 
 // ServeMetricsWebSocket handles WebSocket connections for system metrics
@@ -290,11 +319,11 @@ func tailLogs(client *Client, logService *logs.Service, msg Message) {
 
 	// Build journalctl command for following logs
 	args := []string{"-f", "-o", "json", "--no-pager"}
-	
+
 	if filters.Unit != "" {
 		args = append(args, "-u", filters.Unit)
 	}
-	
+
 	if filters.Priority != "" {
 		args = append(args, "-p", filters.Priority)
 	}

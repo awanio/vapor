@@ -1,0 +1,41 @@
+type: object
+required:
+  - vm_name
+  - path
+properties:
+  backup_id:
+    type: string
+    description: Optional ID to register; if omitted the server generates one
+  vm_uuid:
+    type: string
+    description: Optional VM UUID to associate with the backup
+  vm_name:
+    type: string
+    description: VM name the backup belongs to
+    example: myvm
+  path:
+    type: string
+    description: Absolute path to the existing qcow2 backup file on disk
+    example: /var/lib/libvirt/vapor-backups/myvm/myvm-abc123.qcow2
+  type:
+    type: string
+    enum: [full, incremental, differential]
+    description: Backup type
+    default: full
+  compression:
+    type: string
+    enum: [none, gzip, bzip2, xz, zstd]
+    description: Compression used in the backup file
+    default: none
+  encryption:
+    type: string
+    enum: [none, aes256, aes128]
+    description: Encryption used in the backup file
+    default: none
+  retention_days:
+    type: integer
+    description: Retention policy in days
+    example: 30
+  description:
+    type: string
+    description: Optional description metadata

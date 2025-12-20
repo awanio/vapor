@@ -9,6 +9,7 @@ import type {
   VirtualMachine,
   StoragePool,
   ISOImage,
+  OSVariant,
   VMTemplate,
   VMSnapshot,
   VMBackup,
@@ -786,6 +787,49 @@ export class VirtualizationAPI {
     });
   }
   
+
+  // ============ OS Variants ============
+
+  /**
+   * List OS variants for autocomplete suggestions.
+   * Backend returns an envelope: { status: 'success', data: { variants, count } }.
+   */
+  async listOSVariants(params?: {
+    q?: string;
+    family?: string;
+    limit?: number;
+  }): Promise<{ variants: OSVariant[]; count: number }> {
+    const queryParams = new URLSearchParams();
+    if (params?.q) queryParams.append('q', params.q);
+    if (params?.family) queryParams.append('family', params.family);
+    if (typeof params?.limit === 'number') queryParams.append('limit', params.limit.toString());
+
+    const query = queryParams.toString();
+    const response = await apiRequest<{
+      status: string;
+      data?: { variants?: OSVariant[]; count?: number };
+    }>(`/os-variants${query ? `?${query}` : ''}`);
+
+    if (response.status === 'success' && response.data) {
+      const variants = response.data.variants || [];
+      return { variants, count: response.data.count ?? variants.length };
+    }
+
+    // Fallbacks for unexpected formats
+    const anyResponse: any = response as any;
+    if (anyResponse?.data?.variants && Array.isArray(anyResponse.data.variants)) {
+      return {
+        variants: anyResponse.data.variants as OSVariant[],
+        count: anyResponse.data.count ?? anyResponse.data.variants.length,
+      };
+    }
+    if (anyResponse?.variants && Array.isArray(anyResponse.variants)) {
+      return { variants: anyResponse.variants as OSVariant[], count: anyResponse.count ?? anyResponse.variants.length };
+    }
+
+    return { variants: [], count: 0 };
+  }
+
   // ============ Virtual Networks ============
   
   /**

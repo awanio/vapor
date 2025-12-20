@@ -109,7 +109,12 @@ func main() {
 	router.POST("/api/v1/auth/challenge/verify", authService.VerifySSHChallenge)
 	router.GET("/api/v1/auth/users/:username/keys", authService.GetUserKeys)
 
+	eventsHub := websocket.NewHub()
+
 	api := router.Group("/api/v1")
+
+	// OS info routes (osinfo-query based). These must stay available even if libvirt is unavailable.
+	routes.OSInfoRoutes(api, authService)
 
 	// Protected API routes
 	// Libvirt VM management endpoints
@@ -126,6 +131,7 @@ func main() {
 	} else {
 		// Set database for backup tracking
 		libvirtService.SetDatabase(db.DB)
+		libvirtService.SetEventHub(eventsHub)
 		log.Printf("Libvirt integration initialized with URI: %s", libvirtURI)
 		routes.LibvirtRoutes(api, authService, libvirtService)
 		defer libvirtService.Close() // Close service when server shuts down
@@ -150,11 +156,12 @@ func main() {
 			log.Printf("Warning: Failed to create Docker client: %v", err)
 		} else {
 			defer dockerClient.Close() // Close client when server shuts down
+			go docker.StartEventForwarder(context.Background(), dockerClient, eventsHub)
 			routes.DockerRoutesWithClient(api, dockerClient)
 		}
 
 		// Kubernetes routes
-		routes.KubernetesRoutes(api)
+		routes.KubernetesRoutes(api, eventsHub)
 
 		// User management routes
 		userService := users.NewService()
@@ -206,11 +213,13 @@ func main() {
 	go metricsHub.Run()
 	go logsHub.Run()
 	go terminalHub.Run()
+	go eventsHub.Run()
 
 	// WebSocket routes
 	router.GET("/ws/metrics", websocket.ServeMetricsWebSocket(metricsHub, cfg.GetJWTSecret()))
 	router.GET("/ws/logs", websocket.ServeLogsWebSocket(logsHub, cfg.GetJWTSecret()))
 	router.GET("/ws/terminal", websocket.ServeTerminalWebSocket(terminalHub, cfg.GetJWTSecret()))
+	router.GET("/ws/events", websocket.ServeEventsWebSocket(eventsHub, cfg.GetJWTSecret()))
 
 	// Serve embedded web UI
 	if web.HasWebUI() {

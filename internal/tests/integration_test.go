@@ -7,10 +7,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
 	"github.com/awanio/vapor/internal/auth"
 	"github.com/awanio/vapor/internal/common"
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
 )
 
 func setupRouter() *gin.Engine {
@@ -18,7 +18,7 @@ func setupRouter() *gin.Engine {
 	router := gin.Default()
 
 	authService := auth.NewService("test-secret")
-	
+
 	// Public endpoints
 	router.POST("/api/v1/auth/login", authService.Login)
 
@@ -47,12 +47,14 @@ func TestHealthEndpoint(t *testing.T) {
 	assert.Equal(t, "success", response.Status)
 }
 
-func TestLoginEndpoint(t *testing.T) {
+func TestLoginEndpoint_InvalidCredentials(t *testing.T) {
 	router := setupRouter()
 
+	// Auth service validates against the host OS (Linux users). In unit/integration
+	// tests we do not assume any system users exist, so we validate the error path.
 	loginReq := auth.LoginRequest{
-		Username: "admin",
-		Password: "admin123",
+		Username: "nonexistentuser",
+		Password: "wrong-password",
 	}
 	body, _ := json.Marshal(loginReq)
 
@@ -61,17 +63,5 @@ func TestLoginEndpoint(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-
-	var response struct {
-		Status string `json:"status"`
-		Data   struct {
-			Token     string `json:"token"`
-			ExpiresAt int64  `json:"expires_at"`
-		} `json:"data"`
-	}
-	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
-	assert.Equal(t, "success", response.Status)
-	assert.NotEmpty(t, response.Data.Token)
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }

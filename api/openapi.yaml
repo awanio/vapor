@@ -179,6 +179,12 @@ servers:
   - url: http://localhost:7770/api/v1
     description: Local development server
 paths:
+  /virtualization/computes/backups/{backup_id}/download: 
+    $ref: ./paths/virtualization_computes_backups_{backup_id}_download.yaml
+  /virtualization/computes/backups/import: 
+    $ref: ./paths/virtualization_computes_backups_import.yaml
+  /virtualization/computes/backups: 
+    $ref: ./paths/virtualization_computes_backups.yaml
   /auth/login:
     $ref: paths/auth_login.yaml
   /auth/refresh:
@@ -300,6 +306,12 @@ paths:
   /storage/multipath/devices:
     $ref: paths/storage_multipath_devices.yaml
   /storage/multipath/paths:
+  /virtualization/computes/backups/{backup_id}/download: 
+    $ref: ./paths/virtualization_computes_backups_{backup_id}_download.yaml
+  /virtualization/computes/backups/import: 
+    $ref: ./paths/virtualization_computes_backups_import.yaml
+  /virtualization/computes/backups: 
+    $ref: ./paths/virtualization_computes_backups.yaml
     $ref: paths/storage_multipath_paths.yaml
   /storage/btrfs/subvolumes:
     $ref: paths/storage_btrfs_subvolumes.yaml
@@ -372,6 +384,9 @@ paths:
   /virtualization/computes/{id}/action:
     $ref: paths/virtualization_computes_{id}_action.yaml
 
+  /virtualization/computes/{id}/clone:
+    $ref: paths/virtualization_computes_{id}_clone.yaml
+
   /virtualization/computes/{id}/network-link:
     $ref: paths/virtualization_computes_{id}_network-link.yaml
   /virtualization/computes/{id}/network-link/{interface-name}:
@@ -426,10 +441,14 @@ paths:
     $ref: paths/virtualization_computes_templates.yaml
   /virtualization/computes/templates/{id}:
     $ref: paths/virtualization_computes_templates_{id}.yaml
+  /virtualization/computes/{id}/template:
+    $ref: paths/virtualization_computes_{id}_template.yaml
   /virtualization/computes/from-template:
     $ref: paths/virtualization_computes_from-template.yaml
   # /virtualization/computes/create-enhanced:
   #   $ref: paths/virtualization_computes_create-enhanced.yaml
+  /virtualization/os-variants:
+    $ref: paths/virtualization_os-variants.yaml
   /virtualization/isos:
     $ref: paths/virtualization_isos.yaml
   /virtualization/isos/{id}:

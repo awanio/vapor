@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -72,7 +73,8 @@ func LibvirtRoutes(r *gin.RouterGroup, authService *auth.EnhancedService, servic
 		vmGroup.DELETE("/backups/:backup_id", deleteBackup(service)) // Delete backup
 
 		// Cloning
-		vmGroup.POST("/clone", cloneVM(service)) // Clone VM
+		vmGroup.POST("/:id/clone", cloneVM(service)) // Clone VM
+		vmGroup.POST("/clone", cloneVM(service))     // Clone VM
 
 		// Metrics & Monitoring
 		vmGroup.GET("/:id/metrics", getVMMetrics(service))           // Get VM metrics
@@ -84,6 +86,7 @@ func LibvirtRoutes(r *gin.RouterGroup, authService *auth.EnhancedService, servic
 		vmGroup.POST("/templates", createTemplate(service))           // Create new template
 		vmGroup.PUT("/templates/:id", updateTemplate(service))        // Update template
 		vmGroup.DELETE("/templates/:id", deleteTemplate(service))     // Delete template
+		vmGroup.POST("/:id/template", createTemplateFromVM(service))  // Create template from existing VM
 		vmGroup.POST("/from-template", createVMFromTemplate(service)) // Create VM from template
 
 		// Migration
@@ -95,9 +98,12 @@ func LibvirtRoutes(r *gin.RouterGroup, authService *auth.EnhancedService, servic
 		vmGroup.POST("/:id/pci-devices", attachPCIDevice(service))              // Attach PCI device to VM
 		vmGroup.DELETE("/:id/pci-devices/:device_id", detachPCIDevice(service)) // Detach PCI device from VM
 
-		// Resource Hotplug
-		vmGroup.POST("/:id/hotplug", hotplugResource(service)) // Hotplug resources to VM
 	}
+
+	// Global Backups
+	r.GET("/virtualization/computes/backups", listAllBackups(service))
+	r.POST("/virtualization/computes/backups/import", importBackup(service))
+	r.GET("/virtualization/computes/backups/:backup_id/download", downloadBackup(service))
 
 	// ISO Management
 	isoGroup := r.Group("/virtualization/isos")
@@ -824,6 +830,60 @@ func listBackups(service *libvirt.Service) gin.HandlerFunc {
 	}
 }
 
+func listAllBackups(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		backups, err := service.ListAllBackups(c.Request.Context())
+		if err != nil {
+			msg := err.Error()
+			if strings.Contains(msg, "database is not configured") {
+				sendComputeError(c, "BACKUPS_NOT_AVAILABLE", "Backups are not available (database not configured)", err, http.StatusInternalServerError)
+				return
+			}
+			sendComputeError(c, "LIST_BACKUPS_FAILED", "Failed to list VM backups", err, http.StatusInternalServerError)
+			return
+		}
+
+		apiBackups := make([]gin.H, 0, len(backups))
+		for _, b := range backups {
+			includeMemory := false
+			if b.Metadata != nil {
+				if v, ok := b.Metadata["include_memory"]; ok {
+					includeMemory = strings.ToLower(strings.TrimSpace(v)) == "true"
+				}
+			}
+			apiBackups = append(apiBackups, gin.H{
+				"id":               b.ID,
+				"backup_id":        b.ID,
+				"vm_uuid":          b.VMUUID,
+				"vm_name":          b.VMName,
+				"type":             b.Type,
+				"backup_type":      b.Type,
+				"status":           b.Status,
+				"destination_path": b.DestinationPath,
+				"size_bytes":       b.SizeBytes,
+				"compressed":       b.Compressed,
+				"compression":      b.Compression,
+				"encryption":       b.Encryption,
+				"parent_backup_id": b.ParentBackupID,
+				"started_at":       b.StartedAt,
+				"completed_at":     b.CompletedAt,
+				"retention_days":   b.Retention,
+				"include_memory":   includeMemory,
+				"error_message":    b.ErrorMessage,
+				"metadata":         b.Metadata,
+			})
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data": gin.H{
+				"backups": apiBackups,
+				"count":   len(apiBackups),
+			},
+		})
+	}
+}
+
 func createBackup(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
@@ -1014,8 +1074,102 @@ func deleteBackup(service *libvirt.Service) gin.HandlerFunc {
 	}
 }
 
+func downloadBackup(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		backupID := c.Param("backup_id")
+
+		backup, err := service.GetBackupByID(c.Request.Context(), backupID)
+		if err != nil {
+			if strings.Contains(err.Error(), "not configured") {
+				sendComputeError(c, "BACKUPS_NOT_AVAILABLE", "Backups are not available (database not configured)", err, http.StatusInternalServerError)
+				return
+			}
+			sendComputeError(c, "BACKUP_NOT_FOUND", "Backup not found", err, http.StatusNotFound)
+			return
+		}
+
+		primaryPath := filepath.Join(backup.DestinationPath, fmt.Sprintf("%s-%s.qcow2", backup.VMName, backup.ID))
+		altPath := filepath.Join(backup.DestinationPath, backup.ID+".qcow2")
+
+		filePath := ""
+		if stat, err := os.Stat(primaryPath); err == nil && !stat.IsDir() {
+			filePath = primaryPath
+		} else if stat, err := os.Stat(altPath); err == nil && !stat.IsDir() {
+			filePath = altPath
+		}
+
+		if filePath == "" {
+			sendComputeError(c, "BACKUP_FILE_NOT_FOUND", "Backup file not found on disk", fmt.Errorf("missing backup file"), http.StatusNotFound)
+			return
+		}
+
+		c.FileAttachment(filePath, fmt.Sprintf("%s-%s.qcow2", backup.VMName, backup.ID))
+	}
+}
+
+func importBackup(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req libvirt.VMBackupImportRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			sendComputeError(c, "INVALID_REQUEST", "Invalid import backup request", err, http.StatusBadRequest)
+			return
+		}
+
+		backup, err := service.ImportBackup(c.Request.Context(), &req)
+		if err != nil {
+			msg := err.Error()
+			if strings.Contains(msg, "database is not configured") {
+				sendComputeError(c, "BACKUPS_NOT_AVAILABLE", "Backups are not available (database not configured)", err, http.StatusInternalServerError)
+				return
+			}
+			if strings.Contains(msg, "backup file not accessible") || strings.Contains(msg, "must be a file") {
+				sendComputeError(c, "BACKUP_FILE_INVALID", "Backup file not accessible", err, http.StatusBadRequest)
+				return
+			}
+			sendComputeError(c, "IMPORT_BACKUP_FAILED", "Failed to import backup", err, http.StatusInternalServerError)
+			return
+		}
+
+		includeMemory := false
+		if backup.Metadata != nil {
+			if v, ok := backup.Metadata["include_memory"]; ok {
+				includeMemory = strings.ToLower(strings.TrimSpace(v)) == "true"
+			}
+		}
+
+		c.JSON(http.StatusCreated, gin.H{
+			"status": "success",
+			"data": gin.H{
+				"backup": gin.H{
+					"id":               backup.ID,
+					"backup_id":        backup.ID,
+					"vm_uuid":          backup.VMUUID,
+					"vm_name":          backup.VMName,
+					"type":             backup.Type,
+					"backup_type":      backup.Type,
+					"status":           backup.Status,
+					"destination_path": backup.DestinationPath,
+					"size_bytes":       backup.SizeBytes,
+					"compressed":       backup.Compressed,
+					"compression":      backup.Compression,
+					"encryption":       backup.Encryption,
+					"parent_backup_id": backup.ParentBackupID,
+					"started_at":       backup.StartedAt,
+					"completed_at":     backup.CompletedAt,
+					"retention_days":   backup.Retention,
+					"include_memory":   includeMemory,
+					"metadata":         backup.Metadata,
+				},
+				"message": "Backup imported successfully",
+			},
+		})
+	}
+}
+
 func cloneVM(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		sourceID := strings.TrimSpace(c.Param("id"))
+
 		var req libvirt.VMCloneRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -1029,42 +1183,44 @@ func cloneVM(service *libvirt.Service) gin.HandlerFunc {
 			return
 		}
 
-		vm, err := service.CloneVM(c.Request.Context(), &req)
-		if err != nil {
-			// Map common error cases to appropriate HTTP status codes
-			msg := err.Error()
-			if strings.Contains(msg, "source VM not found") || strings.Contains(msg, "not found") {
-				c.JSON(http.StatusNotFound, gin.H{
-					"status": "error",
-					"error": gin.H{
-						"code":    "VM_NOT_FOUND",
-						"message": "Source virtual machine not found",
-						"details": msg,
-					},
-				})
-				return
-			}
-
-			if strings.Contains(msg, "already exists") || strings.Contains(msg, "exists") {
-				c.JSON(http.StatusConflict, gin.H{
-					"status": "error",
-					"error": gin.H{
-						"code":    "VM_ALREADY_EXISTS",
-						"message": "Virtual machine with the requested name already exists",
-						"details": msg,
-					},
-				})
-				return
-			}
-
-			c.JSON(http.StatusInternalServerError, gin.H{
+		if sourceID == "" {
+			sourceID = strings.TrimSpace(req.SourceVM)
+		}
+		if sourceID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{
 				"status": "error",
 				"error": gin.H{
-					"code":    "CLONE_VM_FAILED",
-					"message": "Failed to clone virtual machine",
-					"details": msg,
+					"code":    "INVALID_REQUEST",
+					"message": "Invalid VM clone request",
+					"details": "source_vm is required (or provide source VM id in the URL)",
 				},
 			})
+			return
+		}
+
+		vm, err := service.CloneVM(c.Request.Context(), sourceID, &req)
+		if err != nil {
+			msg := err.Error()
+
+			// Not found
+			if strings.Contains(msg, "source VM not found") || strings.Contains(msg, "not found") {
+				sendComputeError(c, "VM_NOT_FOUND", "Source virtual machine not found", err, http.StatusNotFound)
+				return
+			}
+
+			// Duplicate
+			if strings.Contains(msg, "already exists") || strings.Contains(msg, "exists") {
+				sendComputeError(c, "VM_ALREADY_EXISTS", "Virtual machine with the requested name already exists", err, http.StatusConflict)
+				return
+			}
+
+			// Validation / unsupported
+			if strings.Contains(msg, "invalid") || strings.Contains(msg, "required") || strings.Contains(msg, "not supported") {
+				sendComputeError(c, "INVALID_REQUEST", "Invalid VM clone request", err, http.StatusBadRequest)
+				return
+			}
+
+			sendComputeError(c, "CLONE_VM_FAILED", "Failed to clone virtual machine", err, http.StatusInternalServerError)
 			return
 		}
 
@@ -1172,20 +1328,18 @@ func streamVMMetrics(service *libvirt.Service) gin.HandlerFunc {
 }
 
 func listTemplates(service *libvirt.Service) gin.HandlerFunc {
-
 	return func(c *gin.Context) {
-		templates, err := service.TemplateService.ListTemplates(c.Request.Context())
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"status": "error",
-				"error": gin.H{
-					"code":    "LIST_TEMPLATES_FAILED",
-					"message": "Failed to list VM templates",
-					"details": err.Error(),
-				},
-			})
+		if service.TemplateService == nil {
+			sendComputeError(c, "TEMPLATE_SERVICE_UNAVAILABLE", "Template service unavailable", fmt.Errorf("template service not initialized"), http.StatusServiceUnavailable)
 			return
 		}
+
+		templates, err := service.TemplateService.ListTemplates(c.Request.Context())
+		if err != nil {
+			sendComputeError(c, "LIST_TEMPLATES_FAILED", "Failed to list VM templates", err, http.StatusInternalServerError)
+			return
+		}
+
 		c.JSON(http.StatusOK, gin.H{
 			"status": "success",
 			"data": gin.H{
@@ -1198,37 +1352,29 @@ func listTemplates(service *libvirt.Service) gin.HandlerFunc {
 
 func getTemplate(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if service.TemplateService == nil {
+			sendComputeError(c, "TEMPLATE_SERVICE_UNAVAILABLE", "Template service unavailable", fmt.Errorf("template service not initialized"), http.StatusServiceUnavailable)
+			return
+		}
+
 		idStr := c.Param("id")
 		id, err := strconv.Atoi(idStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid template ID"})
+			sendComputeError(c, "INVALID_TEMPLATE_ID", "Invalid template ID", err, http.StatusBadRequest)
 			return
 		}
 
 		template, err := service.TemplateService.GetTemplate(c.Request.Context(), id)
-
 		if err != nil {
-			if strings.Contains(err.Error(), "not found") {
-				c.JSON(http.StatusNotFound, gin.H{
-					"status": "error",
-					"error": gin.H{
-						"code":    "VM_NOT_FOUND",
-						"message": "Virtual machine not found",
-						"details": err.Error(),
-					},
-				})
-				return
+			switch {
+			case errors.Is(err, libvirt.ErrTemplateNotFound):
+				sendComputeError(c, "TEMPLATE_NOT_FOUND", "Template not found", err, http.StatusNotFound)
+			default:
+				sendComputeError(c, "GET_TEMPLATE_FAILED", "Failed to get template", err, http.StatusInternalServerError)
 			}
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"status": "error",
-				"error": gin.H{
-					"code":    "GET_VM_FAILED",
-					"message": "Failed to get virtual machine",
-					"details": err.Error(),
-				},
-			})
 			return
 		}
+
 		c.JSON(http.StatusOK, gin.H{
 			"status": "success",
 			"data":   template,
@@ -1237,38 +1383,31 @@ func getTemplate(service *libvirt.Service) gin.HandlerFunc {
 }
 
 func createTemplate(service *libvirt.Service) gin.HandlerFunc {
-
 	return func(c *gin.Context) {
+		if service.TemplateService == nil {
+			sendComputeError(c, "TEMPLATE_SERVICE_UNAVAILABLE", "Template service unavailable", fmt.Errorf("template service not initialized"), http.StatusServiceUnavailable)
+			return
+		}
+
 		var req libvirt.VMTemplateCreateRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			sendComputeError(c, "INVALID_REQUEST", "Invalid template create request", err, http.StatusBadRequest)
 			return
 		}
 
 		template, err := service.TemplateService.CreateTemplate(c.Request.Context(), &req)
-
 		if err != nil {
-			if strings.Contains(err.Error(), "not found") {
-				c.JSON(http.StatusNotFound, gin.H{
-					"status": "error",
-					"error": gin.H{
-						"code":    "TEMPLATE_NOT_FOUND",
-						"message": "Virtual machine template not found",
-						"details": err.Error(),
-					},
-				})
-				return
+			switch {
+			case errors.Is(err, libvirt.ErrTemplateAlreadyExists):
+				sendComputeError(c, "TEMPLATE_ALREADY_EXISTS", "Template already exists", err, http.StatusConflict)
+			case errors.Is(err, libvirt.ErrTemplateValidation):
+				sendComputeError(c, "TEMPLATE_VALIDATION_FAILED", "Invalid template", err, http.StatusBadRequest)
+			default:
+				sendComputeError(c, "CREATE_TEMPLATE_FAILED", "Failed to create template", err, http.StatusInternalServerError)
 			}
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"status": "error",
-				"error": gin.H{
-					"code":    "GET_VM_FAILED",
-					"message": "Failed to get virtual machine template",
-					"details": err.Error(),
-				},
-			})
 			return
 		}
+
 		c.JSON(http.StatusCreated, gin.H{
 			"status": "success",
 			"data":   template,
@@ -1277,45 +1416,38 @@ func createTemplate(service *libvirt.Service) gin.HandlerFunc {
 }
 
 func updateTemplate(service *libvirt.Service) gin.HandlerFunc {
-
 	return func(c *gin.Context) {
+		if service.TemplateService == nil {
+			sendComputeError(c, "TEMPLATE_SERVICE_UNAVAILABLE", "Template service unavailable", fmt.Errorf("template service not initialized"), http.StatusServiceUnavailable)
+			return
+		}
+
 		idStr := c.Param("id")
 		id, err := strconv.Atoi(idStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid template ID"})
+			sendComputeError(c, "INVALID_TEMPLATE_ID", "Invalid template ID", err, http.StatusBadRequest)
 			return
 		}
 
 		var req libvirt.VMTemplateUpdateRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			sendComputeError(c, "INVALID_REQUEST", "Invalid template update request", err, http.StatusBadRequest)
 			return
 		}
 
 		template, err := service.TemplateService.UpdateTemplate(c.Request.Context(), id, &req)
-
 		if err != nil {
-			if strings.Contains(err.Error(), "not found") {
-				c.JSON(http.StatusNotFound, gin.H{
-					"status": "error",
-					"error": gin.H{
-						"code":    "VM_NOT_FOUND",
-						"message": "Virtual machine not found",
-						"details": err.Error(),
-					},
-				})
-				return
+			switch {
+			case errors.Is(err, libvirt.ErrTemplateNotFound):
+				sendComputeError(c, "TEMPLATE_NOT_FOUND", "Template not found", err, http.StatusNotFound)
+			case errors.Is(err, libvirt.ErrTemplateValidation):
+				sendComputeError(c, "TEMPLATE_VALIDATION_FAILED", "Invalid template", err, http.StatusBadRequest)
+			default:
+				sendComputeError(c, "UPDATE_TEMPLATE_FAILED", "Failed to update template", err, http.StatusInternalServerError)
 			}
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"status": "error",
-				"error": gin.H{
-					"code":    "GET_VM_FAILED",
-					"message": "Failed to get virtual machine",
-					"details": err.Error(),
-				},
-			})
 			return
 		}
+
 		c.JSON(http.StatusOK, gin.H{
 			"status": "success",
 			"data":   template,
@@ -1325,29 +1457,181 @@ func updateTemplate(service *libvirt.Service) gin.HandlerFunc {
 
 func deleteTemplate(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if service.TemplateService == nil {
+			sendComputeError(c, "TEMPLATE_SERVICE_UNAVAILABLE", "Template service unavailable", fmt.Errorf("template service not initialized"), http.StatusServiceUnavailable)
+			return
+		}
+
 		idStr := c.Param("id")
 		id, err := strconv.Atoi(idStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid template ID"})
+			sendComputeError(c, "INVALID_TEMPLATE_ID", "Invalid template ID", err, http.StatusBadRequest)
 			return
 		}
 
 		err = service.TemplateService.DeleteTemplate(c.Request.Context(), id)
 		if err != nil {
-			if err.Error() == "template not found" {
-				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-				return
+			switch {
+			case errors.Is(err, libvirt.ErrTemplateNotFound):
+				sendComputeError(c, "TEMPLATE_NOT_FOUND", "Template not found", err, http.StatusNotFound)
+			default:
+				sendComputeError(c, "DELETE_TEMPLATE_FAILED", "Failed to delete template", err, http.StatusInternalServerError)
 			}
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
-		c.JSON(http.StatusNoContent, nil)
+		c.Status(http.StatusNoContent)
+	}
+}
+
+func createTemplateFromVM(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if service.TemplateService == nil {
+			sendComputeError(c, "TEMPLATE_SERVICE_UNAVAILABLE", "Template service unavailable", fmt.Errorf("template service not initialized"), http.StatusServiceUnavailable)
+			return
+		}
+
+		vmID := c.Param("id")
+
+		var body struct {
+			Name        string `json:"name" binding:"required"`
+			Description string `json:"description,omitempty"`
+		}
+		if err := c.ShouldBindJSON(&body); err != nil {
+			sendComputeError(c, "INVALID_REQUEST", "Invalid template create-from-VM request", err, http.StatusBadRequest)
+			return
+		}
+
+		vm, err := service.GetVMEnhanced(c.Request.Context(), vmID)
+		if err != nil {
+			// Maintain existing error style: treat lookup issues as not-found.
+			if strings.Contains(err.Error(), "not found") {
+				sendComputeError(c, "VM_NOT_FOUND", "Virtual machine not found", err, http.StatusNotFound)
+				return
+			}
+			sendComputeError(c, "GET_VM_FAILED", "Failed to get virtual machine", err, http.StatusInternalServerError)
+			return
+		}
+
+		// Pick a primary disk for sizing and format.
+		var diskSizeGB uint64
+		diskFormat := ""
+		if vm.Storage != nil && len(vm.Storage.Disks) > 0 {
+			bestIdx := -1
+			bestBootOrder := 0
+			for i, d := range vm.Storage.Disks {
+				if d.Device != "disk" {
+					continue
+				}
+				// Prefer the lowest (best) boot order when present.
+				if d.BootOrder > 0 && (bestIdx == -1 || d.BootOrder < bestBootOrder || bestBootOrder == 0) {
+					bestIdx = i
+					bestBootOrder = d.BootOrder
+					continue
+				}
+				// Fallback: first disk device.
+				if bestIdx == -1 {
+					bestIdx = i
+				}
+			}
+			if bestIdx >= 0 {
+				d := vm.Storage.Disks[bestIdx]
+				if d.Size > 0 {
+					diskSizeGB = d.Size
+				} else if d.Capacity > 0 {
+					// Round up bytes to GiB.
+					diskSizeGB = (d.Capacity + (1 << 30) - 1) / (1 << 30)
+				}
+				diskFormat = d.Format
+			}
+		}
+
+		if diskSizeGB == 0 {
+			sendComputeError(c, "INVALID_VM_DISK", "Failed to determine VM disk size for template", fmt.Errorf("vm has no disk size information"), http.StatusBadRequest)
+			return
+		}
+		if diskFormat == "" {
+			diskFormat = "qcow2"
+		}
+
+		osType := vm.OSType
+		if osType == "" {
+			osType = "other"
+		}
+
+		networkModel := "virtio"
+		if len(vm.Networks) > 0 && vm.Networks[0].Model != "" {
+			networkModel = vm.Networks[0].Model
+		}
+
+		graphicsType := "vnc"
+		if len(vm.Graphics) > 0 && vm.Graphics[0].Type != "" {
+			graphicsType = vm.Graphics[0].Type
+		}
+
+		cloudInit := vm.CloudInit != nil
+		defaultUser := ""
+		if vm.CloudInit != nil {
+			for _, u := range vm.CloudInit.Users {
+				if u.Name != "" {
+					defaultUser = u.Name
+					break
+				}
+			}
+		}
+
+		createReq := &libvirt.VMTemplateCreateRequest{
+			Name:              body.Name,
+			Description:       body.Description,
+			OSType:            osType,
+			OSVariant:         vm.OSVariant,
+			MinMemory:         vm.Memory,
+			RecommendedMemory: vm.Memory,
+			MinVCPUs:          vm.VCPUs,
+			RecommendedVCPUs:  vm.VCPUs,
+			MinDisk:           diskSizeGB,
+			RecommendedDisk:   diskSizeGB,
+			DiskFormat:        diskFormat,
+			NetworkModel:      networkModel,
+			GraphicsType:      graphicsType,
+			CloudInit:         cloudInit,
+			UEFIBoot:          vm.UEFI,
+			SecureBoot:        vm.SecureBoot,
+			TPM:               vm.TPM,
+			DefaultUser:       defaultUser,
+			Metadata: map[string]string{
+				"source_vm_uuid": vm.UUID,
+				"source_vm_name": vm.Name,
+			},
+		}
+
+		template, err := service.TemplateService.CreateTemplate(c.Request.Context(), createReq)
+		if err != nil {
+			switch {
+			case errors.Is(err, libvirt.ErrTemplateAlreadyExists):
+				sendComputeError(c, "TEMPLATE_ALREADY_EXISTS", "Template already exists", err, http.StatusConflict)
+			case errors.Is(err, libvirt.ErrTemplateValidation):
+				sendComputeError(c, "TEMPLATE_VALIDATION_FAILED", "Invalid template", err, http.StatusBadRequest)
+			default:
+				sendComputeError(c, "CREATE_TEMPLATE_FAILED", "Failed to create template", err, http.StatusInternalServerError)
+			}
+			return
+		}
+
+		c.JSON(http.StatusCreated, gin.H{
+			"status": "success",
+			"data":   template,
+		})
 	}
 }
 
 func createVMFromTemplate(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if service.TemplateService == nil {
+			sendComputeError(c, "TEMPLATE_SERVICE_UNAVAILABLE", "Template service unavailable", fmt.Errorf("template service not initialized"), http.StatusServiceUnavailable)
+			return
+		}
+
 		var req struct {
 			TemplateID int                      `json:"template_id" binding:"required"`
 			Name       string                   `json:"name" binding:"required"`
@@ -1368,12 +1652,12 @@ func createVMFromTemplate(service *libvirt.Service) gin.HandlerFunc {
 		// Get the template
 		template, err := service.TemplateService.GetTemplate(c.Request.Context(), req.TemplateID)
 		if err != nil {
-			if err.Error() == "template not found" {
+			switch {
+			case errors.Is(err, libvirt.ErrTemplateNotFound):
 				sendComputeError(c, "TEMPLATE_NOT_FOUND", "Template not found", err, http.StatusNotFound)
-				return
+			default:
+				sendComputeError(c, "GET_TEMPLATE_FAILED", "Failed to get template", err, http.StatusInternalServerError)
 			}
-
-			sendComputeError(c, "GET_TEMPLATE_FAILED", "Failed to get template", err, http.StatusInternalServerError)
 			return
 		}
 
@@ -2764,8 +3048,13 @@ func LibvirtUnavailableRoutes(api *gin.RouterGroup) {
 		})
 	}
 
-	// Match any virtualization-related path and method under this API group
-	virtualization.Any("/*any", handler)
+	// NOTE: Don't use a catch-all wildcard (/*any) here, because it prevents registering
+	// specific sub-routes like /virtualization/os-variants (Gin will panic on conflicts).
+	// Instead, use param-based routes as a "catch-all" that still allows explicit routes.
+	virtualization.Any("", handler)
+	virtualization.Any("/", handler)
+	virtualization.Any("/:first", handler)
+	virtualization.Any("/:first/*rest", handler)
 }
 
 func getConsoleStats(service *libvirt.Service) gin.HandlerFunc {

@@ -15,6 +15,8 @@ import type {
   StoragePoolState, 
   ISOImage, 
   VMTemplate,
+  VMTemplateCreateRequest,
+  VMTemplateUpdateRequest,
   VMCreateRequest,
   VMState,
   ConsoleInfo,
@@ -73,11 +75,14 @@ async function apiRequest<T>(
         status,
       );
     }
-
     // Handle new error format with status and error fields
     if (isApiErrorBody(errorData) && errorData.status === 'error' && errorData.error) {
       const err = errorData.error;
-      throw new Error(err.message || err.details || `Request failed: ${status}`);
+      const e: any = new Error(err.message || err.details || `Request failed: ${status}`);
+      e.code = err.code;
+      e.details = err.details;
+      e.status = status;
+      throw e;
     }
 
     // Handle simple error message format
@@ -435,18 +440,39 @@ const baseTemplateStore = createStore<VMTemplate>({
 // Transform function to map API response fields to VMTemplate interface
 function transformTemplateResponse(apiTemplate: any): VMTemplate {
   return {
-    id: apiTemplate.id || apiTemplate.uuid,
-    name: apiTemplate.name,
-    description: apiTemplate.description,
-    os_type: apiTemplate.os_type || apiTemplate.os?.type || 'unknown',
-    os_variant: apiTemplate.os_variant || apiTemplate.os?.variant,
-    memory: Math.floor((apiTemplate.memory || 0) / 1024), // Convert from KB to MB if needed
-    vcpus: apiTemplate.vcpus || 1,
-    disk_size: apiTemplate.disk_size || 20,
-    network_type: apiTemplate.network_type || 'bridge',
-    graphics_type: apiTemplate.graphics_type || 'vnc',
+    id: String(apiTemplate.id ?? apiTemplate.uuid ?? ''),
+    name: apiTemplate.name || '',
+    description: apiTemplate.description || undefined,
+    os_type: apiTemplate.os_type || 'other',
+    os_variant: apiTemplate.os_variant || undefined,
+
+    min_memory: Number(apiTemplate.min_memory ?? 0),
+    recommended_memory: apiTemplate.recommended_memory !== undefined && apiTemplate.recommended_memory !== null
+      ? Number(apiTemplate.recommended_memory)
+      : undefined,
+    min_vcpus: Number(apiTemplate.min_vcpus ?? 0),
+    recommended_vcpus: apiTemplate.recommended_vcpus !== undefined && apiTemplate.recommended_vcpus !== null
+      ? Number(apiTemplate.recommended_vcpus)
+      : undefined,
+    min_disk: Number(apiTemplate.min_disk ?? 0),
+    recommended_disk: apiTemplate.recommended_disk !== undefined && apiTemplate.recommended_disk !== null
+      ? Number(apiTemplate.recommended_disk)
+      : undefined,
+
+    disk_format: apiTemplate.disk_format || undefined,
+    network_model: apiTemplate.network_model || undefined,
+    graphics_type: apiTemplate.graphics_type || undefined,
+
+    cloud_init: Boolean(apiTemplate.cloud_init),
+    uefi_boot: Boolean(apiTemplate.uefi_boot),
+    secure_boot: Boolean(apiTemplate.secure_boot),
+    tpm: Boolean(apiTemplate.tpm),
+
+    default_user: apiTemplate.default_user || undefined,
+    metadata: apiTemplate.metadata || undefined,
+
     created_at: apiTemplate.created_at,
-    tags: apiTemplate.tags || [],
+    updated_at: apiTemplate.updated_at || apiTemplate.created_at,
   };
 }
 
@@ -761,14 +787,43 @@ export const volumeStore = {
 export const $selectedVMId = atom<string | null>(null);
 
 // VM creation wizard state
+export type TemplateWizardContext = Pick<
+  VMTemplate,
+  | 'id'
+  | 'name'
+  | 'os_type'
+  | 'os_variant'
+  | 'min_memory'
+  | 'recommended_memory'
+  | 'min_vcpus'
+  | 'recommended_vcpus'
+  | 'min_disk'
+  | 'recommended_disk'
+  | 'disk_format'
+  | 'network_model'
+  | 'graphics_type'
+  | 'cloud_init'
+  | 'uefi_boot'
+  | 'secure_boot'
+  | 'tpm'
+  | 'default_user'
+  | 'metadata'
+>;
+
 export const $vmWizardState = atom<{
   isOpen: boolean;
   currentStep: number;
+  openId: number;
   formData: Partial<VMCreateRequest>;
   errors: Record<string, string>;
+  editMode?: boolean;
+  editingVmId?: string;
+  templateMode?: boolean;
+  templateContext?: TemplateWizardContext;
 }>({
   isOpen: false,
   currentStep: 1,
+  openId: 0,
   formData: {},
   errors: {},
 });
@@ -1636,6 +1691,43 @@ export const vmActions = {
     
     return { success: true, data: response };
   },
+
+  async createFromTemplate(templateId: string, data: {
+    name: string;
+    memory?: number;
+    vcpus?: number;
+    disk_size?: number;
+    network?: any;
+    graphics?: any;
+    cloud_init?: any;
+    metadata?: Record<string, string>;
+  }) {
+    const template_id = Number(templateId);
+    if (!Number.isFinite(template_id)) {
+      throw new Error('Invalid template ID');
+    }
+
+    const response = await apiRequest<VirtualMachine>(
+      '/computes/from-template',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          template_id,
+          ...data,
+        }),
+      },
+    );
+
+    // Add to store
+    const items = new Map(vmStore.$items.get());
+    items.set(response.id, response);
+    vmStore.$items.set(items);
+
+    // Select the new VM
+    $selectedVMId.set(response.id);
+
+    return response;
+  },
   
   /**
    * Execute a VM action using the unified action endpoint
@@ -1724,24 +1816,173 @@ export const vmActions = {
   },
 };
 
+// Template Actions
+export const templateActions = {
+  async fetchAll() {
+    perfIncrement('virt_template_fetchAll');
+    await templateStore.fetch();
+  },
+
+  async create(templateData: VMTemplateCreateRequest) {
+    const createdRaw = await apiRequest<any>(
+      '/computes/templates',
+      {
+        method: 'POST',
+        body: JSON.stringify(templateData),
+      },
+    );
+
+    const created = transformTemplateResponse(createdRaw);
+
+    const currentItems: any = templateStore.$items.get();
+    const items = currentItems instanceof Map
+      ? new Map(currentItems)
+      : (currentItems && typeof currentItems === 'object'
+          ? new Map(Object.entries(currentItems as Record<string, VMTemplate>))
+          : new Map<string, VMTemplate>());
+
+    items.set(created.id, created);
+    templateStore.$items.set(items);
+
+    templateStore.emit({
+      type: StoreEventType.CREATED,
+      payload: created as any,
+      timestamp: Date.now(),
+    });
+
+    return created;
+  },
+
+  async update(templateId: string, updates: VMTemplateUpdateRequest) {
+    const updatedRaw = await apiRequest<any>(
+      `/computes/templates/${encodeURIComponent(templateId)}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      },
+    );
+
+    const updated = transformTemplateResponse(updatedRaw);
+
+    const currentItems: any = templateStore.$items.get();
+    const items = currentItems instanceof Map
+      ? new Map(currentItems)
+      : (currentItems && typeof currentItems === 'object'
+          ? new Map(Object.entries(currentItems as Record<string, VMTemplate>))
+          : new Map<string, VMTemplate>());
+
+    items.set(updated.id, updated);
+    templateStore.$items.set(items);
+
+    templateStore.emit({
+      type: StoreEventType.UPDATED,
+      payload: updated as any,
+      timestamp: Date.now(),
+    });
+
+    return updated;
+  },
+
+  async delete(templateId: string) {
+    await apiRequest(
+      `/computes/templates/${encodeURIComponent(templateId)}`,
+      { method: 'DELETE' },
+    );
+
+    const currentItems: any = templateStore.$items.get();
+    const items = currentItems instanceof Map
+      ? new Map(currentItems)
+      : (currentItems && typeof currentItems === 'object'
+          ? new Map(Object.entries(currentItems as Record<string, VMTemplate>))
+          : new Map<string, VMTemplate>());
+
+    const deleted = items.get(templateId);
+    items.delete(templateId);
+    templateStore.$items.set(items);
+
+    templateStore.emit({
+      type: StoreEventType.DELETED,
+      payload: deleted as any,
+      timestamp: Date.now(),
+    });
+  },
+
+  async createFromVM(vmIdOrName: string, name: string, description?: string) {
+    const createdRaw = await apiRequest<any>(
+      `/computes/${encodeURIComponent(vmIdOrName)}/template`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ name, description }),
+      },
+    );
+
+    const created = transformTemplateResponse(createdRaw);
+
+    const currentItems: any = templateStore.$items.get();
+    const items = currentItems instanceof Map
+      ? new Map(currentItems)
+      : (currentItems && typeof currentItems === 'object'
+          ? new Map(Object.entries(currentItems as Record<string, VMTemplate>))
+          : new Map<string, VMTemplate>());
+
+    items.set(created.id, created);
+    templateStore.$items.set(items);
+
+    templateStore.emit({
+      type: StoreEventType.CREATED,
+      payload: created as any,
+      timestamp: Date.now(),
+    });
+
+    return created;
+  },
+};
+
 // Wizard Actions
 export const wizardActions = {
   openWizard() {
     $vmWizardState.set({
       isOpen: true,
       currentStep: 1,
+      openId: Date.now(),
       formData: {
         memory: 2048,
         vcpus: 2,
         storage: {
           default_pool: 'default',
-          disks: [{ action: 'create', size: 20, format: 'qcow2' }],
+          disks: [{ action: 'create', size: 20, format: 'qcow2', storage_pool: 'default' }],
         },
       },
       errors: {},
+      editMode: false,
+      editingVmId: undefined,
+      templateMode: false,
+      templateContext: undefined,
     });
   },
-  
+
+  openWizardFromTemplate(template: VMTemplate) {
+    const defaultMemory = template.recommended_memory ?? template.min_memory;
+    const defaultVcpus = template.recommended_vcpus ?? template.min_vcpus;
+
+    $vmWizardState.set({
+      isOpen: true,
+      currentStep: 1,
+      openId: Date.now(),
+      formData: {
+        name: `${template.name}-vm`,
+        memory: defaultMemory,
+        vcpus: defaultVcpus,
+        metadata: template.metadata,
+      },
+      errors: {},
+      editMode: false,
+      editingVmId: undefined,
+      templateMode: true,
+      templateContext: template,
+    } as any);
+  },
+
   openWizardForEdit(vm: VirtualMachine) {
     // Prepare the form data from existing VM
     // Derive storage pool information for each disk using the volume store when possible
@@ -1783,6 +2024,7 @@ export const wizardActions = {
       action: 'create' as const,
       size: 20,
       format: 'qcow2' as const,
+      storage_pool: 'default',
     }];
     
     const inferredDefaultPool =
@@ -1812,10 +2054,13 @@ export const wizardActions = {
     $vmWizardState.set({
       isOpen: true,
       currentStep: 1,
+      openId: Date.now(),
       formData,
       errors: {},
       editMode: true,
       editingVmId: vm.id,
+      templateMode: false,
+      templateContext: undefined,
     } as any);
   },
 
@@ -1827,10 +2072,13 @@ export const wizardActions = {
     $vmWizardState.set({
       isOpen: true,
       currentStep: 1,
+      openId: Date.now(),
       formData,
       errors: {},
       editMode: true,
       editingVmId: vmId,
+      templateMode: false,
+      templateContext: undefined,
     } as any);
   },
   
@@ -1838,8 +2086,13 @@ export const wizardActions = {
     $vmWizardState.set({
       isOpen: false,
       currentStep: 1,
+      openId: Date.now(),
       formData: {},
       errors: {},
+      editMode: false,
+      editingVmId: undefined,
+      templateMode: false,
+      templateContext: undefined,
     });
   },
   
@@ -2629,8 +2882,13 @@ export function cleanupVirtualizationStores() {
   $vmWizardState.set({
     isOpen: false,
     currentStep: 1,
+    openId: Date.now(),
     formData: {},
     errors: {},
+    editMode: false,
+    editingVmId: undefined,
+    templateMode: false,
+    templateContext: undefined,
   });
   $consoleConnections.set({});
   $activeVMTab.set('all');

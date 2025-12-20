@@ -1,0 +1,31 @@
+type: object
+description: OS variant entry from libosinfo (osinfo-query)
+properties:
+  short_id:
+    type: string
+    description: Short ID (used as os_variant in libvirt)
+    example: ubuntu22.04
+  name:
+    type: string
+    description: Human-readable OS name
+    example: Ubuntu 22.04 LTS
+  version:
+    type: string
+    description: OS version
+    example: '22.04'
+  family:
+    type: string
+    description: OS family
+    example: linux
+  distro:
+    type: string
+    description: Distribution identifier
+    example: ubuntu
+  vendor:
+    type: string
+    description: Vendor
+    example: Canonical Ltd.
+  id:
+    type: string
+    description: libosinfo ID (URI)
+    example: http://ubuntu.com/ubuntu/22.04

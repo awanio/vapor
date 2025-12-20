@@ -8,27 +8,27 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/awanio/vapor/internal/logs"
+	"github.com/gorilla/websocket"
 )
 
 // Client represents a WebSocket client
 type Client struct {
-	hub          *Hub
-	conn         *websocket.Conn
-	send         chan []byte
-	id           string
+	hub            *Hub
+	conn           *websocket.Conn
+	send           chan []byte
+	id             string
 	authenticated  bool
-	username      string
-	subscriptions map[string]bool
-	mu            sync.RWMutex
-	jwtSecret     string
-	handlerType   string
-	logService    *logs.Service
+	username       string
+	subscriptions  map[string]bool
+	mu             sync.RWMutex
+	jwtSecret      string
+	handlerType    string
+	logService     *logs.Service
 	pseudoTerminal *PseudoTerminal
-	ctx           context.Context
-	cancel        context.CancelFunc
-	closed        bool
+	ctx            context.Context
+	cancel         context.CancelFunc
+	closed         bool
 }
 
 // Hub maintains the set of active clients and broadcasts messages to the clients
@@ -204,6 +204,17 @@ func (c *Client) processMessage(data []byte) {
 			return
 		}
 
+		var payload SubscribePayload
+		if data, err := json.Marshal(msg.Payload); err == nil {
+			_ = json.Unmarshal(data, &payload)
+		}
+		if payload.Channel != "" {
+			c.mu.Lock()
+			c.subscriptions[payload.Channel] = true
+			c.mu.Unlock()
+			log.Printf("Client %s subscribed to %s", c.id, payload.Channel)
+		}
+
 		c.mu.RLock()
 		handlerType := c.handlerType
 		c.mu.RUnlock()
@@ -337,23 +348,23 @@ func (c *Client) sendMessage(msg Message) {
 	c.mu.RLock()
 	closed := c.closed
 	c.mu.RUnlock()
-	
+
 	if closed {
 		return
 	}
-	
+
 	data, err := json.Marshal(msg)
 	if err != nil {
 		return
 	}
-	
+
 	// Use a non-blocking send with recovery for closed channel panic
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("Recovered from panic while sending to client %s: %v", c.id, r)
 		}
 	}()
-	
+
 	select {
 	case c.send <- data:
 	default:

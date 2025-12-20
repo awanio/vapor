@@ -56,6 +56,13 @@ func GetAllMigrations() []database.Migration {
 			Version:     8,
 			Description: "Add pool_name to ISO images",
 			SQL:         isoImagePoolNameSchema,
+		},
+
+		// Version 9: VM templates default_user
+		{
+			Version:     9,
+			Description: "Add default_user to VM templates",
+			SQL:         vmTemplateDefaultUserSchema,
 		}}
 }
 
@@ -283,4 +290,10 @@ const isoImageSchema = `
 const isoImagePoolNameSchema = `
 	ALTER TABLE iso_images ADD COLUMN pool_name TEXT;
 	CREATE INDEX IF NOT EXISTS idx_iso_pool_name ON iso_images(pool_name);
+`
+
+// VM template default_user extension
+const vmTemplateDefaultUserSchema = `
+	ALTER TABLE vm_templates ADD COLUMN default_user TEXT;
+	CREATE INDEX IF NOT EXISTS idx_templates_default_user ON vm_templates(default_user);
 `

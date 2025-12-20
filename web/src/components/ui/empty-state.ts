@@ -5,7 +5,7 @@ import { customElement, property } from 'lit/decorators.js';
 export class EmptyState extends LitElement {
   // Back-compat: many views used `message` before `title`/`description` existed.
   @property({ type: String }) message = 'No data available';
-  @property({ type: String }) title = '';
+  @property({ type: String }) override title = '';
   @property({ type: String }) description = '';
   @property({ type: String }) icon = '📭';
   @property({ type: String }) actionLabel = '';

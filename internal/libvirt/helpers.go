@@ -244,7 +244,9 @@ func (s *Service) createDisk(poolName, vmName string, sizeGB uint64) (string, er
 	return vol.GetPath()
 }
 
-// cloneDisk clones an existing disk
+// cloneDisk clones an existing disk.
+//
+// It preserves the source volume's format when possible.
 func (s *Service) cloneDisk(poolName, sourcePath, newVMName string) (string, error) {
 	pool, err := s.conn.LookupStoragePoolByName(poolName)
 	if err != nil {
@@ -252,10 +254,7 @@ func (s *Service) cloneDisk(poolName, sourcePath, newVMName string) (string, err
 	}
 	defer pool.Free()
 
-	// Create new volume name
-	volName := fmt.Sprintf("%s-clone.qcow2", newVMName)
-
-	// Get source volume to determine size
+	// Get source volume to determine size/format
 	sourceVol, err := s.conn.LookupStorageVolByPath(sourcePath)
 	if err != nil {
 		return "", fmt.Errorf("source volume not found: %w", err)
@@ -267,16 +266,37 @@ func (s *Service) cloneDisk(poolName, sourcePath, newVMName string) (string, err
 		return "", fmt.Errorf("failed to get source volume info: %w", err)
 	}
 
+	format := "qcow2"
+	if xmlDesc, err := sourceVol.GetXMLDesc(0); err == nil {
+		if m := regexp.MustCompile(`format\s+type=['"]([^'"]+)['"]`).FindStringSubmatch(xmlDesc); len(m) > 1 {
+			format = m[1]
+		}
+	}
+
+	ext := format
+	// Prefer conventional file extensions.
+	switch format {
+	case "qcow2":
+		ext = "qcow2"
+	case "raw":
+		ext = "raw"
+	case "vmdk":
+		ext = "vmdk"
+	}
+
+	// Create new volume name
+	volName := fmt.Sprintf("%s-clone.%s", newVMName, ext)
+
 	// Create clone volume XML
 	volXML := fmt.Sprintf(`
-		<volume>
-			<name>%s</name>
-			<capacity>%d</capacity>
-			<target>
-				<format type='qcow2'/>
-			</target>
-		</volume>
-	`, volName, sourceInfo.Capacity)
+<volume>
+<name>%s</name>
+<capacity>%d</capacity>
+<target>
+<format type='%s'/>
+</target>
+</volume>
+`, volName, sourceInfo.Capacity, format)
 
 	// Create the new volume
 	newVol, err := pool.StorageVolCreateXMLFrom(volXML, sourceVol, 0)
@@ -374,17 +394,19 @@ func (s *Service) applyTemplateToRequest(req *VMCreateRequest, template *VMTempl
 
 	// Apply cloud-init setting if template supports it and not already set
 	if template.CloudInit && req.CloudInit == nil {
-		// Set up basic cloud-init configuration
-		req.CloudInit = &CloudInitConfig{
-			Users: []CloudInitUser{
+		ci := &CloudInitConfig{}
+		// Only add a default user when the template provides one.
+		if template.DefaultUser != "" {
+			ci.Users = []CloudInitUser{
 				{
 					Name:   template.DefaultUser,
 					Sudo:   "ALL=(ALL) NOPASSWD:ALL",
 					Groups: "sudo",
 					Shell:  "/bin/bash",
 				},
-			},
+			}
 		}
+		req.CloudInit = ci
 	}
 
 	// Store template metadata for reference

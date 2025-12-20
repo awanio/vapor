@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"github.com/awanio/vapor/internal/websocket"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -28,6 +29,8 @@ type Service struct {
 	db              *sql.DB // Optional database for tracking
 	TemplateService *VMTemplateService
 	consoleProxy    *ConsoleProxy
+	eventHub        *websocket.Hub
+	eventOnce       sync.Once
 }
 
 // NewService creates a new libvirt service
@@ -79,6 +82,56 @@ func (s *Service) Close() error {
 	return nil
 }
 
+// SetEventHub attaches a websocket hub for emitting domain events
+func (s *Service) SetEventHub(h *websocket.Hub) {
+	s.mu.Lock()
+	s.eventHub = h
+	s.mu.Unlock()
+
+	if h == nil || s.conn == nil {
+		return
+	}
+
+	s.eventOnce.Do(func() {
+		_ = libvirt.EventRegisterDefaultImpl()
+		go func() {
+			for {
+				if err := libvirt.EventRunDefaultImpl(); err != nil {
+					time.Sleep(500 * time.Millisecond)
+				}
+			}
+		}()
+
+		s.conn.DomainEventLifecycleRegister(nil, s.handleLifecycleEvent)
+	})
+}
+
+func (s *Service) handleLifecycleEvent(conn *libvirt.Connect, dom *libvirt.Domain, event *libvirt.DomainEventLifecycle) {
+	s.mu.RLock()
+	hub := s.eventHub
+	s.mu.RUnlock()
+	if hub == nil {
+		return
+	}
+
+	name, _ := dom.GetName()
+	uuid, _ := dom.GetUUIDString()
+
+	payload := map[string]interface{}{
+		"kind":      "vm",
+		"id":        uuid,
+		"name":      name,
+		"event":     event.Event,
+		"detail":    event.Detail,
+		"timestamp": time.Now().UTC(),
+	}
+
+	msg := websocket.Message{Type: websocket.MessageTypeEvent, Payload: payload}
+	if b, err := json.Marshal(msg); err == nil {
+		hub.BroadcastToChannel("vm-events", b)
+	}
+}
+
 // SetDatabase sets the database connection for the service
 func (s *Service) SetDatabase(db *sql.DB) {
 	s.mu.Lock()
@@ -90,7 +143,75 @@ func (s *Service) SetDatabase(db *sql.DB) {
 	}
 }
 
+// ImportBackup registers an existing qcow2 backup file into the backup catalog.
+func (s *Service) ImportBackup(ctx context.Context, req *VMBackupImportRequest) (*VMBackup, error) {
+	if s.db == nil {
+		return nil, fmt.Errorf("database is not configured")
+	}
+
+	info, err := os.Stat(req.Path)
+	if err != nil {
+		return nil, fmt.Errorf("backup file not accessible: %w", err)
+	}
+	if info.IsDir() {
+		return nil, fmt.Errorf("backup path must be a file")
+	}
+
+	backupID := req.BackupID
+	if backupID == "" {
+		backupID, err = generateRandomID(16)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate backup ID: %w", err)
+		}
+	}
+
+	typeVal := req.Type
+	if typeVal == "" {
+		typeVal = BackupTypeFull
+	}
+
+	compression := req.Compression
+	if compression == "" {
+		compression = BackupCompressionNone
+	}
+	encryption := req.Encryption
+	if encryption == "" {
+		encryption = BackupEncryptionNone
+	}
+
+	destPath := filepath.Dir(req.Path)
+
+	now := time.Now()
+	backup := &VMBackup{
+		ID:              backupID,
+		VMUUID:          req.VMUUID,
+		VMName:          req.VMName,
+		Type:            typeVal,
+		Status:          BackupStatusCompleted,
+		DestinationPath: destPath,
+		SizeBytes:       info.Size(),
+		Compression:     compression,
+		Compressed:      compression != BackupCompressionNone,
+		Encryption:      encryption,
+		StartedAt:       now,
+		CompletedAt:     &now,
+		Retention:       req.RetentionDays,
+	}
+
+	if req.Description != "" {
+		backup.Metadata = map[string]string{"description": req.Description}
+	}
+
+	// Note: we do not move/copy the file; we just register it.
+	if err := s.saveBackupRecord(backup); err != nil {
+		return nil, fmt.Errorf("failed to save imported backup: %w", err)
+	}
+
+	return backup, nil
+}
+
 // CreateBackup creates a backup of a VM.
+
 func (s *Service) CreateBackup(ctx context.Context, nameOrUUID string, req *VMBackupRequest) (*VMBackup, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -153,6 +274,84 @@ func (s *Service) CreateBackup(ctx context.Context, nameOrUUID string, req *VMBa
 	go s.runBackupJob(domain, backup, req)
 
 	return backup, nil
+}
+
+// ListAllBackups lists backups across all VMs.
+func (s *Service) ListAllBackups(ctx context.Context) ([]VMBackup, error) {
+	if s.db == nil {
+		return nil, fmt.Errorf("database is not configured")
+	}
+
+	rows, err := s.db.QueryContext(ctx, "SELECT id, vm_uuid, vm_name, type, status, destination_path, size_bytes, compression, encryption, parent_backup_id, started_at, completed_at, error_message, retention_days, metadata FROM vm_backups ORDER BY started_at DESC")
+	if err != nil {
+		return nil, fmt.Errorf("failed to query backups: %w", err)
+	}
+	defer rows.Close()
+
+	backups := []VMBackup{}
+	for rows.Next() {
+		var b VMBackup
+		var completedAt sql.NullTime
+		var parentID sql.NullString
+		var errMsg sql.NullString
+		var metadata sql.NullString
+		if err := rows.Scan(&b.ID, &b.VMUUID, &b.VMName, &b.Type, &b.Status, &b.DestinationPath, &b.SizeBytes, &b.Compression, &b.Encryption, &parentID, &b.StartedAt, &completedAt, &errMsg, &b.Retention, &metadata); err != nil {
+			return nil, fmt.Errorf("failed to scan backup row: %w", err)
+		}
+		if completedAt.Valid {
+			b.CompletedAt = &completedAt.Time
+		}
+		if parentID.Valid {
+			b.ParentBackupID = parentID.String
+		}
+		if errMsg.Valid {
+			b.ErrorMessage = errMsg.String
+		}
+		if metadata.Valid && metadata.String != "" {
+			var m map[string]string
+			if err := json.Unmarshal([]byte(metadata.String), &m); err == nil {
+				b.Metadata = m
+			}
+		}
+		backups = append(backups, b)
+	}
+
+	return backups, nil
+}
+
+// GetBackupByID returns a backup by its ID.
+func (s *Service) GetBackupByID(ctx context.Context, backupID string) (*VMBackup, error) {
+	if s.db == nil {
+		return nil, fmt.Errorf("database is not configured")
+	}
+
+	row := s.db.QueryRowContext(ctx, "SELECT id, vm_uuid, vm_name, type, status, destination_path, size_bytes, compression, encryption, parent_backup_id, started_at, completed_at, error_message, retention_days, metadata FROM vm_backups WHERE id = ?", backupID)
+
+	var b VMBackup
+	var completedAt sql.NullTime
+	var parentID sql.NullString
+	var errMsg sql.NullString
+	var metadata sql.NullString
+	if err := row.Scan(&b.ID, &b.VMUUID, &b.VMName, &b.Type, &b.Status, &b.DestinationPath, &b.SizeBytes, &b.Compression, &b.Encryption, &parentID, &b.StartedAt, &completedAt, &errMsg, &b.Retention, &metadata); err != nil {
+		return nil, fmt.Errorf("backup not found: %w", err)
+	}
+	if completedAt.Valid {
+		b.CompletedAt = &completedAt.Time
+	}
+	if parentID.Valid {
+		b.ParentBackupID = parentID.String
+	}
+	if errMsg.Valid {
+		b.ErrorMessage = errMsg.String
+	}
+	if metadata.Valid && metadata.String != "" {
+		var m map[string]string
+		if err := json.Unmarshal([]byte(metadata.String), &m); err == nil {
+			b.Metadata = m
+		}
+	}
+
+	return &b, nil
 }
 
 // ListBackups lists all backups for a specific VM.
@@ -967,61 +1166,154 @@ func (s *Service) DeleteSnapshot(ctx context.Context, nameOrUUID string, snapsho
 	return snapshot.Delete(0)
 }
 
-// CloneVM clones a virtual machine
-func (s *Service) CloneVM(ctx context.Context, req *VMCloneRequest) (*VM, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+// CloneVM clones a virtual machine.
+//
+// Notes:
+// - Only full clones are currently supported (linked clone is rejected).
+// - Snapshot cloning is not supported yet.
+// - The clone uses the enhanced VM create flow so disks and NICs are preserved.
+func (s *Service) CloneVM(ctx context.Context, sourceNameOrUUID string, req *VMCloneRequest) (*VM, error) {
+	if req == nil {
+		return nil, fmt.Errorf("clone request cannot be nil")
+	}
+	if strings.TrimSpace(sourceNameOrUUID) == "" {
+		return nil, fmt.Errorf("source VM not found")
+	}
+	if strings.TrimSpace(req.Name) == "" {
+		return nil, fmt.Errorf("invalid clone request: name is required")
+	}
 
-	// Get source domain
-	sourceDomain, err := s.lookupDomain(req.SourceVM)
+	fullClone := true
+	if req.FullClone != nil {
+		fullClone = *req.FullClone
+	}
+	snapshots := false
+	if req.Snapshots != nil {
+		snapshots = *req.Snapshots
+	}
+
+	if snapshots {
+		return nil, fmt.Errorf("snapshot cloning is not supported yet")
+	}
+	if !fullClone {
+		return nil, fmt.Errorf("linked clone is not supported yet")
+	}
+
+	// Ensure target name doesn't already exist.
+	if existing, err := s.conn.LookupDomainByName(req.Name); err == nil {
+		existing.Free()
+		return nil, fmt.Errorf("virtual machine already exists")
+	}
+
+	// Load source VM configuration.
+	source, err := s.GetVMEnhanced(ctx, sourceNameOrUUID)
 	if err != nil {
 		return nil, fmt.Errorf("source VM not found: %w", err)
 	}
-	defer sourceDomain.Free()
 
-	// Get source XML
-	_, err = sourceDomain.GetXMLDesc(0)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get source XML: %w", err)
+	if source.Storage == nil || len(source.Storage.Disks) == 0 {
+		return nil, fmt.Errorf("source VM has no disks to clone")
 	}
 
-	// Modify XML for clone
-	// This is simplified - in production you'd parse and modify the XML properly
-	// For now, we'll create a new VM based on the source configuration
-
-	// Parse source VM
-	sourceVM, err := s.domainToVM(sourceDomain)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse source VM: %w", err)
-	}
-
-	// Create clone request
-	createReq := &VMCreateRequest{
+	// Build an enhanced create request based on the source VM.
+	createReq := &VMCreateRequestEnhanced{
 		Name:         req.Name,
-		Memory:       sourceVM.Memory / 1024, // Convert from KB to MB
-		VCPUs:        sourceVM.VCPUs,
-		OSType:       sourceVM.OS.Type,
-		Architecture: sourceVM.OS.Architecture,
-		StoragePool:  req.StoragePool,
+		Memory:       source.Memory,
+		VCPUs:        source.VCPUs,
+		Storage:      &StorageConfig{Disks: []DiskCreateConfig{}},
+		OSInfo:       source.OSInfo,
+		OSType:       source.OSType,
+		OSVariant:    source.OSVariant,
+		Architecture: source.Architecture,
+		UEFI:         source.UEFI,
+		SecureBoot:   source.SecureBoot,
+		TPM:          source.TPM,
+		AutoStart:    source.AutoStart,
+		Template:     source.Template,
+		Metadata:     map[string]string{},
 	}
 
-	// Handle disk cloning
-	if req.FullClone && len(sourceVM.Disks) > 0 {
-		// Clone the primary disk
-		sourceDisk := sourceVM.Disks[0]
-		poolName := req.StoragePool
+	if createReq.OSType == "" {
+		createReq.OSType = "hvm"
+	}
+	if createReq.Architecture == "" {
+		createReq.Architecture = "x86_64"
+	}
+
+	// Copy metadata (best-effort) and annotate clone origin.
+	for k, v := range source.Metadata {
+		createReq.Metadata[k] = v
+	}
+	createReq.Metadata["cloned_from"] = source.Name
+
+	targetPool := strings.TrimSpace(req.StoragePool)
+
+	for _, disk := range source.Storage.Disks {
+		if strings.TrimSpace(disk.Path) == "" {
+			continue
+		}
+
+		poolName := targetPool
+		if poolName == "" {
+			poolName = strings.TrimSpace(disk.StoragePool)
+		}
+		if poolName == "" {
+			poolName = s.getStoragePoolFromPath(disk.Path)
+		}
 		if poolName == "" {
 			poolName = "default"
 		}
 
-		clonedDiskPath, err := s.cloneDisk(poolName, sourceDisk.Source, req.Name)
-		if err != nil {
-			return nil, fmt.Errorf("failed to clone disk: %w", err)
+		device := strings.ToLower(strings.TrimSpace(disk.Device))
+		if device == "" {
+			device = "disk"
 		}
-		createReq.DiskPath = clonedDiskPath
+
+		cfg := DiskCreateConfig{
+			StoragePool: poolName,
+			Bus:         disk.Bus,
+			Target:      disk.Target,
+			BootOrder:   disk.BootOrder,
+			Cache:       disk.Cache,
+			IOMode:      disk.IOMode,
+			ReadOnly:    disk.ReadOnly,
+			Device:      device,
+			Format:      disk.Format,
+		}
+
+		// Full clone for writable disks; attach for readonly/media.
+		if device == "disk" && !disk.ReadOnly {
+			cfg.Action = "clone"
+			cfg.CloneFrom = disk.Path
+		} else {
+			cfg.Action = "attach"
+			cfg.Path = disk.Path
+		}
+
+		createReq.Storage.Disks = append(createReq.Storage.Disks, cfg)
 	}
 
-	return s.CreateVM(ctx, createReq)
+	// Networks (omit MAC to avoid duplicates).
+	for _, net := range source.Networks {
+		createReq.Networks = append(createReq.Networks, NetworkConfig{
+			Type:   net.Type,
+			Source: net.Source,
+			Model:  net.Model,
+		})
+	}
+
+	// Graphics
+	for _, g := range source.Graphics {
+		createReq.Graphics = append(createReq.Graphics, EnhancedGraphicsConfig{
+			Type:     g.Type,
+			Port:     g.Port,
+			AutoPort: g.AutoPort,
+			Listen:   g.Listen,
+			Password: g.Password,
+		})
+	}
+
+	return s.CreateVMEnhanced(ctx, createReq)
 }
 
 // ApplyTemplateToRequest applies template settings to a VM creation request
@@ -1351,12 +1643,12 @@ func (s *Service) loadDefaultTemplates() {
 		Description:       "Ubuntu 22.04 LTS Server",
 		OSType:            "linux",
 		OSVariant:         "ubuntu22.04",
-		MinMemory:         2048 * 1024 * 1024, // 2GB in bytes
-		RecommendedMemory: 4096 * 1024 * 1024, // 4GB in bytes
+		MinMemory:         2048, // 2GB in MB
+		RecommendedMemory: 4096, // 4GB in MB
 		MinVCPUs:          2,
 		RecommendedVCPUs:  4,
-		MinDisk:           20 * 1024 * 1024 * 1024, // 20GB in bytes
-		RecommendedDisk:   50 * 1024 * 1024 * 1024, // 50GB in bytes
+		MinDisk:           20, // 20GB in GB
+		RecommendedDisk:   50, // 50GB in GB
 		DiskFormat:        "qcow2",
 		NetworkModel:      "virtio",
 		GraphicsType:      "vnc",
@@ -1370,12 +1662,12 @@ func (s *Service) loadDefaultTemplates() {
 		Description:       "CentOS Stream 9",
 		OSType:            "linux",
 		OSVariant:         "centos-stream9",
-		MinMemory:         2048 * 1024 * 1024, // 2GB in bytes
-		RecommendedMemory: 4096 * 1024 * 1024, // 4GB in bytes
+		MinMemory:         2048, // 2GB in MB
+		RecommendedMemory: 4096, // 4GB in MB
 		MinVCPUs:          2,
 		RecommendedVCPUs:  4,
-		MinDisk:           20 * 1024 * 1024 * 1024, // 20GB in bytes
-		RecommendedDisk:   50 * 1024 * 1024 * 1024, // 50GB in bytes
+		MinDisk:           20, // 20GB in GB
+		RecommendedDisk:   50, // 50GB in GB
 		DiskFormat:        "qcow2",
 		NetworkModel:      "virtio",
 		GraphicsType:      "vnc",

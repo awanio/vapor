@@ -246,6 +246,19 @@ type VMRestoreRequest struct {
 	Overwrite     bool   `json:"overwrite"` // Overwrite existing VM
 }
 
+// VMBackupImportRequest registers an existing backup file.
+type VMBackupImportRequest struct {
+	BackupID      string                `json:"backup_id,omitempty"` // Optional; if empty, a new ID is generated
+	VMUUID        string                `json:"vm_uuid,omitempty"`
+	VMName        string                `json:"vm_name" binding:"required"`
+	Path          string                `json:"path" binding:"required"` // Absolute path to qcow2
+	Type          BackupType            `json:"type" binding:"omitempty,oneof=full incremental differential"`
+	Compression   BackupCompressionType `json:"compression,omitempty"`
+	Encryption    BackupEncryptionType  `json:"encryption,omitempty"`
+	RetentionDays int                   `json:"retention_days,omitempty"`
+	Description   string                `json:"description,omitempty"`
+}
+
 // VMUpdateRequest for updating VM configuration
 type VMUpdateRequest struct {
 	Memory    *uint64 `json:"memory,omitempty"` // in MB
@@ -285,10 +298,13 @@ type VMSnapshot struct {
 
 // VMCloneRequest for cloning VMs
 type VMCloneRequest struct {
-	SourceVM    string `json:"source_vm" binding:"required"`
-	Name        string `json:"name" binding:"required"`
-	FullClone   bool   `json:"full_clone"` // full clone vs linked clone
-	Snapshots   bool   `json:"snapshots"`  // clone snapshots too
+	// SourceVM is optional when using the /computes/:id/clone endpoint; the path parameter is the source.
+	SourceVM string `json:"source_vm,omitempty"`
+	Name     string `json:"name" binding:"required"`
+	// FullClone defaults to true when omitted.
+	FullClone *bool `json:"full_clone,omitempty"`
+	// Snapshots defaults to false when omitted.
+	Snapshots   *bool  `json:"snapshots,omitempty"`
 	StoragePool string `json:"storage_pool,omitempty"`
 }
 

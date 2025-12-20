@@ -1,0 +1,26 @@
+get:
+  summary: Download a VM backup artifact
+  description: Download the qcow2 backup file by backup ID
+  tags:
+    - Virtualization Compute
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: backup_id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Backup ID
+  responses:
+    '200':
+      description: Backup file stream
+      content:
+        application/octet-stream:
+          schema:
+            type: string
+            format: binary
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

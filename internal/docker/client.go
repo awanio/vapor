@@ -10,6 +10,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
@@ -36,6 +37,7 @@ type Client interface {
 	CreateContainer(ctx context.Context, config container.Config, hostConfig container.HostConfig, networkConfig network.NetworkingConfig, containerName string) (string, error)
 	PullImage(ctx context.Context, imageName string) error
 	ImportImage(ctx context.Context, req ImageImportRequest) (ImageImportResult, error)
+	Events(ctx context.Context, opts types.EventsOptions) (<-chan events.Message, <-chan error)
 }
 
 // dockerClient implements the Client interface using Docker SDK
@@ -53,7 +55,7 @@ func NewClient() (Client, error) {
 	// Test connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	
+
 	_, err = cli.Ping(ctx)
 	if err != nil {
 		cli.Close()
@@ -96,7 +98,7 @@ func (c *dockerClient) ListContainers(ctx context.Context, options ContainerList
 		result = append(result, convertContainer(container))
 	}
 
-return result, nil
+	return result, nil
 }
 
 // ContainerDetail fetches detailed information of a specific container
@@ -221,12 +223,12 @@ func (c *dockerClient) PullImage(ctx context.Context, imageName string) error {
 		return fmt.Errorf("failed to pull image: %w", err)
 	}
 	defer reader.Close()
-	
+
 	_, err = io.Copy(io.Discard, reader)
 	if err != nil {
 		return fmt.Errorf("failed to read image pull response: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -254,7 +256,7 @@ func (c *dockerClient) ImportImage(ctx context.Context, req ImageImportRequest) 
 	}
 
 	responseText := string(respContent)
-	
+
 	// Parse the response to extract image information
 	// Docker load response typically contains "Loaded image: name:tag" or "Loaded image ID: sha256:..."
 	imageID := ""
@@ -274,7 +276,7 @@ func (c *dockerClient) ImportImage(ctx context.Context, req ImageImportRequest) 
 				newestImage = img
 			}
 		}
-		
+
 		if newestImage.ID != "" {
 			imageID = newestImage.ID
 			repoTags = newestImage.RepoTags
@@ -426,7 +428,7 @@ func convertVolume(volume *volume.Volume) Volume {
 	if volume.CreatedAt != "" {
 		createdAt, _ = time.Parse(time.RFC3339Nano, volume.CreatedAt)
 	}
-	
+
 	v := Volume{
 		Name:       volume.Name,
 		Driver:     volume.Driver,
@@ -445,4 +447,8 @@ func convertVolume(volume *volume.Volume) Volume {
 	}
 
 	return v
+}
+
+func (c *dockerClient) Events(ctx context.Context, opts types.EventsOptions) (<-chan events.Message, <-chan error) {
+	return c.client.Events(ctx, opts)
 }

@@ -110,6 +110,17 @@ export interface ISOImage {
   storage_pool?: string;
 }
 
+
+export interface OSVariant {
+  short_id: string;
+  name: string;
+  version?: string;
+  family?: string;
+  distro?: string;
+  vendor?: string;
+  id?: string;
+}
+
 // ============ VM Creation Types ============
 
 export interface VMCreateRequest {
@@ -162,20 +173,75 @@ export interface VMCreateResponse {
 
 // ============ Templates Types ============
 
+export type VMTemplateOsType = 'linux' | 'windows' | 'bsd' | 'other' | 'hvm';
+
+export type VMTemplateDiskFormat = 'qcow2' | 'raw' | 'vmdk' | 'qed' | 'vdi';
+
+export type VMTemplateNetworkModel = 'virtio' | 'e1000' | 'rtl8139';
+
+export type VMTemplateGraphicsType = 'vnc' | 'spice' | 'none' | 'egl-headless';
+
 export interface VMTemplate {
+  // Store/BaseEntity requires string IDs; backend returns number IDs
   id: string;
   name: string;
   description?: string;
-  os_type: string;
+  os_type: VMTemplateOsType;
   os_variant?: string;
-  memory: number;
-  vcpus: number;
-  disk_size: number;
-  network_type?: string;
-  graphics_type?: string;
+
+  // Requirements (units: memory MB, disk GB)
+  min_memory: number;
+  recommended_memory?: number;
+  min_vcpus: number;
+  recommended_vcpus?: number;
+  min_disk: number;
+  recommended_disk?: number;
+
+  // Optional defaults
+  disk_format?: VMTemplateDiskFormat;
+  network_model?: VMTemplateNetworkModel;
+  graphics_type?: VMTemplateGraphicsType;
+
+  // Feature flags
+  cloud_init: boolean;
+  uefi_boot: boolean;
+  secure_boot: boolean;
+  tpm: boolean;
+
+  default_user?: string;
+  metadata?: Record<string, string>;
+
   created_at: string;
-  tags?: string[];
+  updated_at: string;
 }
+
+export interface VMTemplateCreateRequest {
+  name: string;
+  description?: string;
+  os_type: VMTemplateOsType;
+  os_variant?: string;
+
+  min_memory: number;
+  recommended_memory?: number;
+  min_vcpus: number;
+  recommended_vcpus?: number;
+  min_disk: number;
+  recommended_disk?: number;
+
+  disk_format?: VMTemplateDiskFormat;
+  network_model?: VMTemplateNetworkModel;
+  graphics_type?: VMTemplateGraphicsType;
+
+  cloud_init?: boolean;
+  uefi_boot?: boolean;
+  secure_boot?: boolean;
+  tpm?: boolean;
+
+  default_user?: string;
+  metadata?: Record<string, string>;
+}
+
+export type VMTemplateUpdateRequest = Partial<VMTemplateCreateRequest>;
 
 // ============ Snapshots & Backups ============
 
@@ -420,7 +486,7 @@ export interface HotplugResponse {
 // ============ Clone Types ============
 
 export interface VMCloneRequest {
-  source_vm: string;
+  source_vm?: string;
   name: string;
   full_clone?: boolean;
   snapshots?: boolean;

@@ -18,13 +18,9 @@ get:
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/VMTemplate.yaml
+            $ref: ../components/schemas/VMTemplateDirectResponse.yaml
     '404':
-      description: Template not found
-      content:
-        application/json:
-          schema:
-            $ref: ../components/schemas/ErrorResponse.yaml
+      $ref: ../components/responses/NotFound.yaml
     '500':
       $ref: ../components/responses/InternalError.yaml
 put:
@@ -53,15 +49,11 @@ put:
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/VMTemplate.yaml
+            $ref: ../components/schemas/VMTemplateDirectResponse.yaml
     '400':
       $ref: ../components/responses/BadRequest.yaml
     '404':
-      description: Template not found
-      content:
-        application/json:
-          schema:
-            $ref: ../components/schemas/ErrorResponse.yaml
+      $ref: ../components/responses/NotFound.yaml
     '500':
       $ref: ../components/responses/InternalError.yaml
 delete:
@@ -82,10 +74,6 @@ delete:
     '204':
       description: Template deleted successfully
     '404':
-      description: Template not found
-      content:
-        application/json:
-          schema:
-            $ref: ../components/schemas/ErrorResponse.yaml
+      $ref: ../components/responses/NotFound.yaml
     '500':
       $ref: ../components/responses/InternalError.yaml

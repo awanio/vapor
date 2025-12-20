@@ -1,0 +1,48 @@
+get:
+  summary: List OS variants
+  description: |
+    Returns OS variants from the libosinfo database by running `osinfo-query os`.
+
+    This endpoint is used by the frontend to provide suggestions for:
+    - VM creation (os_variant)
+    - ISO upload metadata (os_variant)
+  tags:
+    - Virtualization
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: q
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Case-insensitive substring filter applied to short_id, name, version, distro, vendor, id.
+    - name: family
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Filter by OS family (e.g. linux, windows).
+    - name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 0
+        maximum: 2000
+      description: Maximum number of results to return.
+  responses:
+    '200':
+      description: OS variants listed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/OSVariantsResponse.yaml
+    '400':
+      $ref: ../components/responses/BadRequest.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml
+    '503':
+      $ref: ../components/responses/ServiceUnavailable.yaml

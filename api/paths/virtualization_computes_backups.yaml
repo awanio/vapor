@@ -1,0 +1,16 @@
+get:
+  summary: List all VM backups
+  description: List backups across all VMs
+  tags:
+    - Virtualization Compute
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: Backups listed successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/VMBackupsListResponse.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

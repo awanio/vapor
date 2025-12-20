@@ -15,6 +15,7 @@ import '../../components/ui/loading-state.js';
 import '../../components/tables/resource-table.js';
 import '../../components/modals/delete-modal.js';
 import '../../components/ui/notification-container.js';
+import '../../components/virtualization/os-variant-autocomplete.js';
 
 // Import store and types
 import {
@@ -1290,15 +1291,15 @@ export class ISOManagement extends LitElement {
             
             <div class="form-group">
               <label>OS Variant (Optional)</label>
-              <input
-                type="text"
-                placeholder="e.g., ubuntu-22.04, windows-11, etc."
+              <os-variant-autocomplete
                 .value=${this.uploadMetadata.os_variant}
-                @input=${(e: InputEvent) =>
-        this.uploadMetadata.os_variant = (e.target as HTMLInputElement).value
-      }
+                .family=${this.uploadMetadata.os_type}
+                placeholder="e.g. ubuntu22.04"
                 ?disabled=${isUploading}
-              />
+                @os-variant-change=${(e: CustomEvent<{ value: string }>) =>
+        this.uploadMetadata.os_variant = e.detail.value
+      }
+              ></os-variant-autocomplete>
               <div class="help-text">
                 Specify the exact OS version or distribution
               </div>

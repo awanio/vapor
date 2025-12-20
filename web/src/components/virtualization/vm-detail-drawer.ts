@@ -122,6 +122,14 @@ export class VMDetailDrawer extends LitElement {
   // @state() private error: string | null = null; // TODO: Display errors in UI
   @state() private isPowerActionLoading = false;
   @state() private showDeleteModal = false;
+  @state() private showCloneModal = false;
+  @state() private isCloning = false;
+  @state() private cloneName = '';
+  @state() private cloneStoragePool = '';
+  @state() private clonePools: Array<{ name: string; state?: string; type?: string }> = [];
+  @state() private isLoadingClonePools = false;
+  @state() private clonePoolsError: string | null = null;
+
   @state() private isDeleting = false;
   @state() private isLoadingMetrics = false;
   @state() private showConsole = false;
@@ -1732,14 +1740,222 @@ export class VMDetailDrawer extends LitElement {
     this.showConsole = false;
   }
   
+  public openCloneModal() {
+    this.handleCloneVM();
+  }
+
   private handleCloneVM() {
-    // Clone functionality - dispatch event for parent to handle
-    this.dispatchEvent(new CustomEvent('clone-vm', {
-      detail: { vm: this.vm }
-    }));
-    this.showNotification('Clone functionality coming soon', 'info');
+    if (!this.vm) return;
+
+    // Open clone modal
+    this.cloneName = `${this.vm.name}-clone`;
+    this.cloneStoragePool = '';
+    this.showCloneModal = true;
+
+    // Load storage pools for the dropdown (best-effort)
+    void this.loadClonePools();
+  }
+
+  private async loadClonePools() {
+    this.isLoadingClonePools = true;
+    this.clonePoolsError = null;
+    this.clonePools = [];
+
+    try {
+      const token = auth.getToken();
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const url = getApiUrl('/virtualization/storages/pools?state=all&page_size=100');
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      let data: any = null;
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
+
+      const isErrorEnvelope =
+        data && typeof data === 'object' && 'status' in data && data.status !== 'success';
+
+      if (!response.ok || isErrorEnvelope) {
+        const msg =
+          data?.error?.details ||
+          data?.error?.message ||
+          response.statusText ||
+          'Failed to load storage pools';
+        throw new Error(msg);
+      }
+
+      const pools = data?.data?.pools ?? data?.pools;
+      if (!Array.isArray(pools)) {
+        throw new Error('Invalid storage pools response');
+      }
+
+      const normalized = pools
+        .map((p: any) => ({
+          name: typeof p?.name === 'string' ? p.name : '',
+          state: typeof p?.state === 'string' ? p.state : undefined,
+          type: typeof p?.type === 'string' ? p.type : undefined,
+        }))
+        .filter((p: any) => p.name);
+
+      normalized.sort((a: any, b: any) => a.name.localeCompare(b.name));
+      this.clonePools = normalized;
+    } catch (error: any) {
+      console.error('Failed to load storage pools:', error);
+      this.clonePoolsError = error?.message || 'Failed to load storage pools';
+    } finally {
+      this.isLoadingClonePools = false;
+    }
   }
   
+  private async confirmCloneVM() {
+    if (!this.vm || this.isCloning) return;
+
+    const name = this.cloneName.trim();
+    if (!name) {
+      this.showNotification('Clone name is required', 'error');
+      return;
+    }
+
+    this.isCloning = true;
+
+    try {
+      const url = getApiUrl(`/virtualization/computes/${encodeURIComponent(this.vm.id)}/clone`);
+      const token = auth.getToken();
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const payload: any = {
+        name,
+        full_clone: true,
+        snapshots: false,
+      };
+      const pool = this.cloneStoragePool.trim();
+      if (pool) payload.storage_pool = pool;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      let data: any = null;
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
+
+      const isErrorEnvelope =
+        data && typeof data === 'object' && 'status' in data && data.status !== 'success';
+
+      if (!response.ok || isErrorEnvelope) {
+        const msg =
+          data?.error?.details ||
+          data?.error?.message ||
+          (typeof data?.message === 'string' ? data.message : null) ||
+          response.statusText ||
+          'Clone failed';
+        throw new Error(msg);
+      }
+
+      this.showNotification(`VM cloned as "${name}"`, 'success');
+      this.showCloneModal = false;
+
+      this.dispatchEvent(
+        new CustomEvent('vm-cloned', {
+          detail: { source: this.vm, cloned: data?.data ?? null },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+    } catch (error: any) {
+      console.error('Failed to clone VM:', error);
+      this.showNotification(error?.message || 'Failed to clone VM', 'error');
+    } finally {
+      this.isCloning = false;
+    }
+  }
+
+  private renderCloneModal() {
+    if (!this.showCloneModal) return html``;
+
+    return html`
+      <modal-dialog
+        .open=${this.showCloneModal}
+        .title=${'Clone Virtual Machine'}
+        size="medium"
+        @modal-close=${() => {
+          if (!this.isCloning) this.showCloneModal = false;
+        }}
+      >
+        <div class="form-group">
+          <label for="clone-name">New VM Name <span class="required">*</span></label>
+          <input
+            id="clone-name"
+            type="text"
+            .value=${this.cloneName}
+            @input=${(e: Event) => (this.cloneName = (e.target as HTMLInputElement).value)}
+            placeholder="e.g. my-vm-clone"
+            ?disabled=${this.isCloning}
+          />
+          <div class="form-hint">A full clone will be created (linked clone is not supported yet).</div>
+        </div>
+
+        <div class="form-group">
+          <label for="clone-pool">Target Storage Pool (optional)</label>
+          <select
+            id="clone-pool"
+            .value=${this.cloneStoragePool}
+            @change=${(e: Event) => (this.cloneStoragePool = (e.target as HTMLSelectElement).value)}
+            ?disabled=${this.isCloning || this.isLoadingClonePools}
+          >
+            <option value="">Keep source disk pools</option>
+            ${this.clonePools.map(
+              (p) =>
+                html`<option value=${p.name}>${p.name}${p.state ? ' (' + p.state + ')' : ''}</option>`,
+            )}
+          </select>
+          ${this.isLoadingClonePools
+            ? html`<div class="form-hint">Loading storage pools…</div>`
+            : this.clonePoolsError
+              ? html`<div class="form-error">${this.clonePoolsError}</div>`
+              : html`<div class="form-hint">If empty, Vapor will try to clone each disk into its original pool.</div>`}
+        </div>
+
+        <div slot="footer" style="display:flex; justify-content:flex-end; gap:8px;">
+          <button
+            class="btn btn-secondary"
+            @click=${() => (this.showCloneModal = false)}
+            ?disabled=${this.isCloning}
+          >
+            Cancel
+          </button>
+          <button
+            class="btn btn-primary"
+            @click=${this.confirmCloneVM}
+            ?disabled=${this.isCloning || !this.cloneName.trim()}
+          >
+            ${this.isCloning ? 'Cloning…' : 'Clone VM'}
+          </button>
+        </div>
+      </modal-dialog>
+    `;
+  }
+
   private handleSnapshot() {
     // Jump to the Snapshots tab and open the create modal
     this.activeTab = 'snapshots';
@@ -2300,50 +2516,6 @@ export class VMDetailDrawer extends LitElement {
           </div>
         </div>
       ` : ''}
-    `;
-  }
-
-  private renderConsoleTab() {
-    return html`
-      <div class="section">
-        <h3 class="section-title">Console Preview</h3>
-        <div class="console-preview">
-          <button class="console-connect-btn" @click=${this.handleConsoleConnect}>
-            Open Full Console
-          </button>
-          <div>
-            ${this.vm?.state === 'running' ? html`
-              <div>Last login: ${new Date().toLocaleString()}</div>
-              <div>Welcome to ${this.vm.name}</div>
-              <div>[root@${this.vm.name} ~]# _</div>
-            ` : html`
-              <div style="color: #888;">Console is not available. VM is ${this.vm?.state}.</div>
-            `}
-          </div>
-        </div>
-      </div>
-
-      <div class="section">
-        <h3 class="section-title">Console Settings</h3>
-        <div class="info-grid">
-          <div class="info-item">
-            <span class="info-label">Console Type</span>
-            <span class="info-value">${(Array.isArray(this.vm?.graphics) ? this.vm?.graphics[0]?.type?.toUpperCase() : this.vm?.graphics?.type?.toUpperCase()) || 'VNC'}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Port</span>
-            <span class="info-value">${(Array.isArray(this.vm?.graphics) ? this.vm?.graphics[0]?.port : this.vm?.graphics?.port) || 'Auto'}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Listen Address</span>
-            <span class="info-value monospace">${(Array.isArray(this.vm?.graphics) ? this.vm?.graphics[0]?.listen : (this.vm?.graphics as any)?.listen) || '0.0.0.0'}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Password Protected</span>
-            <span class="info-value">${(Array.isArray(this.vm?.graphics) ? this.vm?.graphics[0]?.password : (this.vm?.graphics as any)?.password) ? 'Yes' : 'No'}</span>
-          </div>
-        </div>
-      </div>
     `;
   }
 
@@ -3087,10 +3259,6 @@ export class VMDetailDrawer extends LitElement {
                   @click=${() => this.activeTab = 'network'}>
             Network
           </button>
-          <button class="tab ${this.activeTab === 'console' ? 'active' : ''}" 
-                  @click=${() => this.activeTab = 'console'}>
-            Console
-          </button>
           <button class="tab ${this.activeTab === 'snapshots' ? 'active' : ''}" 
                   @click=${() => this.activeTab = 'snapshots'}>
             Snapshots
@@ -3108,7 +3276,6 @@ export class VMDetailDrawer extends LitElement {
               this.activeTab === 'metrics' ? this.renderMetricsTab() :
               this.activeTab === 'storage' ? this.renderStorageTab() :
               this.activeTab === 'network' ? this.renderNetworkTab() :
-              this.activeTab === 'console' ? this.renderConsoleTab() :
               this.activeTab === 'snapshots' ? this.renderSnapshotsTab() :
               html``}
           `}
@@ -3118,6 +3285,7 @@ export class VMDetailDrawer extends LitElement {
       ${this.renderCreateSnapshotModal()}
       ${this.renderSnapshotDetailModal()}
       ${this.renderSnapshotActionModal()}
+      ${this.renderCloneModal()}
 
       <!-- Delete Confirmation Modal -->
       <div class="modal-overlay ${this.showDeleteModal ? 'show' : ''}">

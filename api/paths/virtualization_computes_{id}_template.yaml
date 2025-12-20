@@ -1,0 +1,50 @@
+post:
+  summary: Create VM template from existing VM
+  description: |
+    Create a new VM template by extracting sizing and configuration defaults from an existing VM.
+
+    The backend derives the template fields from the VM's enhanced details (memory, vCPUs, disk,
+    OS info, graphics, cloud-init detection, UEFI/SecureBoot/TPM flags).
+  tags:
+    - Virtualization Compute
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: VM name or UUID
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
+              description: New template name (unique)
+              example: web-server-template
+            description:
+              type: string
+              description: Template description
+              example: Template derived from VM web-server-01
+  responses:
+    '201':
+      description: Template created successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/VMTemplateDirectResponse.yaml
+    '400':
+      $ref: ../components/responses/BadRequest.yaml
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '409':
+      $ref: ../components/responses/Conflict.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

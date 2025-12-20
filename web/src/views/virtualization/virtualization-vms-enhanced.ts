@@ -18,8 +18,10 @@ import '../../components/tables/resource-table.js';
 import '../../components/virtualization/vm-detail-drawer.js';
 import '../../components/modals/delete-modal.js';
 import '../../components/ui/notification-container.js';
+import '../../components/modal-dialog.js';
 import '../../components/virtualization/create-vm-wizard.js';
 import '../../components/virtualization/create-vm-wizard-enhanced.js';
+import '../../components/virtualization/os-variant-autocomplete.js';
 
 // Import types
 import type { Tab } from '../../components/tabs/tab-group.js';
@@ -31,6 +33,7 @@ import type { ActionItem } from '../../components/ui/action-dropdown.js';
 import {
   vmStore,
   templateStore,
+  templateActions,
   $filteredVMs,
   // $activeVMTab, // Unused - using local state instead
   $vmSearchQuery,
@@ -44,7 +47,7 @@ import {
   $virtualizationEnabled,
   $virtualizationDisabledMessage,
 } from '../../stores/virtualization';
-import type { VirtualMachine, VMState, VMTemplate } from '../../types/virtualization';
+import type { VirtualMachine, VMState, VMTemplate, VMTemplateCreateRequest, VMTemplateUpdateRequest, VMTemplateOsType, VMTemplateDiskFormat, VMTemplateNetworkModel, VMTemplateGraphicsType } from '../../types/virtualization';
 import { VirtualizationDisabledError } from '../../utils/api-errors';
 import virtualizationAPI from '../../services/virtualization-api';
 
@@ -170,6 +173,67 @@ export class VirtualizationVMsEnhanced extends LitElement {
   @state() private stateFilter: 'all' | VMState = 'all';
   @state() private templates: VMTemplate[] = [];
   @state() private selectedVMForDetails: VirtualMachine | null = null;
+
+  // Templates UI state
+  @state() private showTemplateDrawer = false;
+  @state() private templateDrawerMode: 'create' | 'edit' = 'create';
+  @state() private editingTemplateId: string | null = null;
+  @state() private isSavingTemplate = false;
+
+  @state() private templateForm: {
+    name: string;
+    description: string;
+    os_type: VMTemplateOsType;
+    os_variant: string;
+    min_memory: string;
+    recommended_memory: string;
+    min_vcpus: string;
+    recommended_vcpus: string;
+    min_disk: string;
+    recommended_disk: string;
+    disk_format: '' | VMTemplateDiskFormat;
+    network_model: '' | VMTemplateNetworkModel;
+    graphics_type: '' | VMTemplateGraphicsType;
+    cloud_init: boolean;
+    uefi_boot: boolean;
+    secure_boot: boolean;
+    tpm: boolean;
+    default_user: string;
+    metadata_json: string;
+  } = {
+    name: '',
+    description: '',
+    os_type: 'linux',
+    os_variant: '',
+    min_memory: '1024',
+    recommended_memory: '',
+    min_vcpus: '1',
+    recommended_vcpus: '',
+    min_disk: '10',
+    recommended_disk: '',
+    disk_format: '',
+    network_model: '',
+    graphics_type: '',
+    cloud_init: false,
+    uefi_boot: false,
+    secure_boot: false,
+    tpm: false,
+    default_user: '',
+    metadata_json: '',
+  };
+
+  @state() private templateFormErrors: Record<string, string> = {};
+
+  @state() private showTemplateDeleteModal = false;
+  @state() private templateToDelete: VMTemplate | null = null;
+  @state() private isDeletingTemplate = false;
+
+  // Create template from VM modal
+  @state() private showCreateTemplateFromVmModal = false;
+  @state() private vmForTemplateCreation: VirtualMachine | null = null;
+  @state() private templateFromVmName = '';
+  @state() private templateFromVmDescription = '';
+  @state() private isCreatingTemplateFromVm = false;
 
   static override styles = css`
     :host {
@@ -442,6 +506,267 @@ export class VirtualizationVMsEnhanced extends LitElement {
       font-size: 13px;
       color: var(--vscode-descriptionForeground);
     }
+    /* Templates drawer + form */
+    .drawer-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+    }
+
+    .drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 520px;
+      max-width: calc(100vw - 40px);
+      height: 100vh;
+      background: var(--vscode-editor-background, var(--vscode-bg-light));
+      border-left: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      box-shadow: -2px 0 12px rgba(0, 0, 0, 0.25);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .drawer-header {
+      padding: 16px 20px;
+      background: var(--vscode-bg-lighter, #2c2f3a);
+      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .drawer-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--vscode-foreground);
+    }
+
+    .drawer-close {
+      background: none;
+      border: none;
+      color: var(--vscode-descriptionForeground);
+      cursor: pointer;
+      padding: 6px 8px;
+      border-radius: 4px;
+    }
+
+    .drawer-close:hover {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--vscode-foreground);
+    }
+
+    .drawer-content {
+      padding: 16px 20px;
+      overflow: auto;
+      flex: 1;
+    }
+
+    .drawer-footer {
+      padding: 14px 20px;
+      border-top: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      background: var(--vscode-bg);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    /* Buttons (match create-vm-wizard-enhanced) */
+    .btn {
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+      font-family: inherit;
+    }
+
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: var(--vscode-button-background, #0e639c);
+      color: var(--vscode-button-foreground, #ffffff);
+      border: 1px solid var(--vscode-button-background, #0e639c);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--vscode-button-hoverBackground, #1177bb);
+      border-color: var(--vscode-button-hoverBackground, #1177bb);
+    }
+
+    .btn-secondary {
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      color: var(--vscode-button-secondaryForeground, #cccccc);
+      border: 1px solid var(--vscode-button-border, #5a5a5a);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--vscode-button-secondaryHoverBackground, rgba(90, 93, 94, 0.25));
+    }
+
+    .modal-footer-actions {
+      width: 100%;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    /* Form elements (match create-vm-wizard-enhanced) */
+    .form-group {
+      margin-bottom: 20px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--vscode-foreground, #cccccc);
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      max-width: 100%;
+      padding: 8px 12px;
+      background: var(--vscode-input-background, #3c3c3c);
+      color: var(--vscode-input-foreground, #cccccc);
+      border: 1px solid var(--vscode-input-border, #858585);
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: inherit;
+      transition: all 0.2s;
+      box-sizing: border-box;
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+      color: var(--vscode-input-placeholderForeground, rgba(204, 204, 204, 0.6));
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: var(--vscode-focusBorder, #007acc);
+      box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc);
+    }
+
+    input:disabled,
+    select:disabled,
+    textarea:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    input[type="checkbox"] {
+      width: auto;
+      max-width: none;
+      padding: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    textarea {
+      min-height: 90px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    }
+
+    .help-text {
+      font-size: 11px;
+      color: var(--vscode-descriptionForeground);
+      opacity: 0.8;
+    }
+
+    .error-text {
+      color: var(--vscode-inputValidation-errorForeground, #f48771);
+      font-size: 12px;
+    }
+
+    .toggle-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 10px 0 6px;
+    }
+
+    .toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .toggle input {
+      width: 14px;
+      height: 14px;
+    }
+
+    .flag-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .flag-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .flag-badge.on {
+      border-color: rgba(137, 209, 133, 0.6);
+      color: rgba(137, 209, 133, 1);
+    }
+
+    .flag-badge.off {
+      opacity: 0.6;
+    }
+
+    @media (max-width: 820px) {
+      .drawer {
+        width: 100%;
+        max-width: 100%;
+      }
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+      .toggle-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
 
   `;
 
@@ -500,12 +825,12 @@ export class VirtualizationVMsEnhanced extends LitElement {
     if (this.activeMainTab === 'templates') {
       return [
         { key: 'name', label: 'Name', type: 'link' },
-        { key: 'description', label: 'Description' },
-        { key: 'os_type', label: 'OS Type' },
-        { key: 'vcpus', label: 'vCPUs' },
+        { key: 'os', label: 'OS' },
         { key: 'memory', label: 'Memory (MB)' },
-        { key: 'disk_size', label: 'Disk (GB)' },
-        { key: 'created_at', label: 'Created' }
+        { key: 'vcpus', label: 'vCPUs' },
+        { key: 'disk', label: 'Disk (GB)' },
+        { key: 'flags', label: 'Flags' },
+        { key: 'updated', label: 'Updated' }
       ];
     }
     return [
@@ -595,9 +920,10 @@ export class VirtualizationVMsEnhanced extends LitElement {
         break;
     }
 
-    // Add snapshot action for all states
+    // Add snapshot and template actions for all states
     actions.push(
-      { label: 'Snapshot', action: 'snapshot', icon: '📸' }
+      { label: 'Snapshot', action: 'snapshot', icon: '📸' },
+      { label: 'Create Template', action: 'create-template', icon: '📄' },
     );
 
     return actions;
@@ -609,7 +935,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
 
     // Load appropriate data
     if (tabId === 'templates') {
-      await templateStore.fetch();
+      await templateActions.fetchAll();
     } else {
       await vmActions.fetchAll();
     }
@@ -631,14 +957,25 @@ export class VirtualizationVMsEnhanced extends LitElement {
 
   private handleCellClick(event: CustomEvent) {
     const { column, item } = event.detail;
-    // Check if clicking on the name column for VMs (not templates)
-    if (column.key === 'name' && this.activeMainTab === 'vms') {
+
+    if (column.key !== 'name') return;
+
+    if (this.activeMainTab === 'vms') {
       this.showVMDetails(item as VirtualMachine);
+      return;
     }
+
+    this.openEditTemplateDrawer(item as VMTemplate);
   }
 
   private async handleAction(event: CustomEvent) {
     const { action, item } = event.detail;
+
+    if (this.activeMainTab === 'templates') {
+      await this.handleTemplateAction(action as string, item as VMTemplate);
+      return;
+    }
+
     const vm = item as VirtualMachine;
 
     try {
@@ -677,6 +1014,9 @@ export class VirtualizationVMsEnhanced extends LitElement {
           break;
         case 'snapshot':
           await this.createSnapshot(vm);
+          break;
+        case 'create-template':
+          this.openCreateTemplateFromVmModal(vm);
           break;
         case 'delete':
           this.confirmDeleteVM(vm);
@@ -734,9 +1074,19 @@ export class VirtualizationVMsEnhanced extends LitElement {
   }
 
   private async cloneVM(vm: VirtualMachine) {
-    // TODO: Open clone dialog
-    console.log('Clone VM:', vm.name);
-    this.showNotification('Clone functionality coming soon', 'info');
+    // Reuse the clone modal in the VM detail drawer for list dropdown actions
+    this.selectedVMForDetails = vm;
+    this.showDetailsDrawer = true;
+
+    // Wait for the drawer to render before invoking its public method
+    await this.updateComplete;
+
+    const drawer = this.renderRoot.querySelector('vm-detail-drawer') as any;
+    if (drawer && typeof drawer.openCloneModal === 'function') {
+      drawer.openCloneModal();
+    } else {
+      this.showNotification('Unable to open clone dialog', 'error');
+    }
   }
 
   private async createSnapshot(vm: VirtualMachine) {
@@ -782,13 +1132,17 @@ export class VirtualizationVMsEnhanced extends LitElement {
   }
 
   private handleCreateNew() {
+    if (this.activeMainTab === 'templates') {
+      this.openCreateTemplateDrawer();
+      return;
+    }
     wizardActions.openWizard();
   }
 
   private async handleRefresh() {
     try {
       if (this.activeMainTab === 'templates') {
-        await templateStore.fetch();
+        await templateActions.fetchAll();
         this.showNotification('Templates refreshed', 'success');
       } else {
         await vmActions.fetchAll();
@@ -877,6 +1231,683 @@ export class VirtualizationVMsEnhanced extends LitElement {
     const { vm } = event.detail;
     await this.openConsole(vm);
   }
+  private async handleVMCloned(event: CustomEvent) {
+    try {
+      const clonedName: string | undefined = event.detail?.cloned?.name;
+      await vmActions.fetchAll();
+
+      if (clonedName) {
+        const items: any = vmStore.$items.get();
+        let vms: any[] = [];
+        if (items instanceof Map) {
+          vms = Array.from(items.values());
+        } else if (Array.isArray(items)) {
+          vms = items;
+        } else if (items && typeof items === 'object') {
+          vms = Object.values(items);
+        }
+
+        const found = vms.find((v: any) => v?.name === clonedName);
+        if (found) {
+          this.showVMDetails(found);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to refresh VMs after clone:', error);
+    }
+  }
+
+
+  
+  private async handleWizardVmCreated(event: CustomEvent) {
+    const vm = (event.detail as any)?.vm;
+    if (!vm) return;
+
+    this.activeMainTab = 'vms';
+    // Ensure list is fresh, then open details
+    try {
+      await vmActions.fetchAll();
+    } catch {}
+    this.showVMDetails(vm);
+  }
+
+// ============ Templates helpers ============
+
+  private getTemplateActions(_template: VMTemplate): ActionItem[] {
+    return [
+      { label: 'Create VM', action: 'create-vm', icon: '🖥️' },
+      { label: 'Edit', action: 'edit', icon: '✏️' },
+      { label: 'Delete', action: 'delete', icon: '🗑️', danger: true },
+    ];
+  }
+
+  private renderTemplateFlags(template: VMTemplate) {
+    const flags = [
+      { label: 'Cloud-Init', on: template.cloud_init },
+      { label: 'UEFI', on: template.uefi_boot },
+      { label: 'Secure Boot', on: template.secure_boot },
+      { label: 'TPM', on: template.tpm },
+    ];
+
+    return html`
+      <div class="flag-badges">
+        ${flags.map(f => html`
+          <span class="flag-badge ${f.on ? 'on' : 'off'}">
+            ${f.on ? '✓' : '—'} ${f.label}
+          </span>
+        `)}
+      </div>
+    `;
+  }
+
+  private async handleTemplateAction(action: string, template: VMTemplate) {
+    switch (action) {
+      case 'create-vm':
+        wizardActions.openWizardFromTemplate(template);
+        break;
+      case 'view':
+      case 'edit':
+        this.openEditTemplateDrawer(template);
+        break;
+      case 'delete':
+        this.confirmDeleteTemplate(template);
+        break;
+      default:
+        console.warn(`Unknown template action: ${action}`);
+    }
+  }
+
+  private openCreateTemplateDrawer() {
+    this.templateDrawerMode = 'create';
+    this.editingTemplateId = null;
+    this.templateFormErrors = {};
+
+    this.templateForm = {
+      name: '',
+      description: '',
+      os_type: 'linux',
+      os_variant: '',
+      min_memory: '1024',
+      recommended_memory: '',
+      min_vcpus: '1',
+      recommended_vcpus: '',
+      min_disk: '10',
+      recommended_disk: '',
+      disk_format: '',
+      network_model: '',
+      graphics_type: '',
+      cloud_init: false,
+      uefi_boot: false,
+      secure_boot: false,
+      tpm: false,
+      default_user: '',
+      metadata_json: '',
+    };
+
+    this.showTemplateDrawer = true;
+  }
+
+  private openEditTemplateDrawer(template: VMTemplate) {
+    this.templateDrawerMode = 'edit';
+    this.editingTemplateId = template.id;
+    this.templateFormErrors = {};
+
+    this.templateForm = {
+      name: template.name || '',
+      description: template.description || '',
+      os_type: (template.os_type || 'linux') as VMTemplateOsType,
+      os_variant: template.os_variant || '',
+      min_memory: String(template.min_memory ?? ''),
+      recommended_memory: template.recommended_memory !== undefined && template.recommended_memory !== null
+        ? String(template.recommended_memory)
+        : '',
+      min_vcpus: String(template.min_vcpus ?? ''),
+      recommended_vcpus: template.recommended_vcpus !== undefined && template.recommended_vcpus !== null
+        ? String(template.recommended_vcpus)
+        : '',
+      min_disk: String(template.min_disk ?? ''),
+      recommended_disk: template.recommended_disk !== undefined && template.recommended_disk !== null
+        ? String(template.recommended_disk)
+        : '',
+      disk_format: template.disk_format || '',
+      network_model: template.network_model || '',
+      graphics_type: template.graphics_type || '',
+      cloud_init: !!template.cloud_init,
+      uefi_boot: !!template.uefi_boot,
+      secure_boot: !!template.secure_boot,
+      tpm: !!template.tpm,
+      default_user: template.default_user || '',
+      metadata_json: template.metadata ? JSON.stringify(template.metadata, null, 2) : '',
+    };
+
+    this.showTemplateDrawer = true;
+  }
+
+  private closeTemplateDrawer() {
+    this.showTemplateDrawer = false;
+    this.templateFormErrors = {};
+  }
+
+  private async saveTemplate() {
+    const errors: Record<string, string> = {};
+
+    const name = this.templateForm.name.trim();
+    if (this.templateDrawerMode === 'create' && !name) {
+      errors.name = 'Name is required';
+    }
+
+    const min_memory = Number(this.templateForm.min_memory);
+    if (!Number.isFinite(min_memory) || min_memory <= 0) {
+      errors.min_memory = 'Min memory must be a positive number';
+    }
+
+    const min_vcpus = Number(this.templateForm.min_vcpus);
+    if (!Number.isFinite(min_vcpus) || min_vcpus <= 0) {
+      errors.min_vcpus = 'Min vCPUs must be a positive number';
+    }
+
+    const min_disk = Number(this.templateForm.min_disk);
+    if (!Number.isFinite(min_disk) || min_disk <= 0) {
+      errors.min_disk = 'Min disk must be a positive number';
+    }
+
+    const parseOptional = (value: string) => {
+      const v = value.trim();
+      if (!v) return undefined;
+      const n = Number(v);
+      if (!Number.isFinite(n)) return undefined;
+      return n;
+    };
+
+    const recommended_memory = parseOptional(this.templateForm.recommended_memory);
+    if (recommended_memory !== undefined && Number.isFinite(min_memory) && recommended_memory < min_memory) {
+      errors.recommended_memory = 'Recommended memory must be >= min memory';
+    }
+
+    const recommended_vcpus = parseOptional(this.templateForm.recommended_vcpus);
+    if (recommended_vcpus !== undefined && Number.isFinite(min_vcpus) && recommended_vcpus < min_vcpus) {
+      errors.recommended_vcpus = 'Recommended vCPUs must be >= min vCPUs';
+    }
+
+    const recommended_disk = parseOptional(this.templateForm.recommended_disk);
+    if (recommended_disk !== undefined && Number.isFinite(min_disk) && recommended_disk < min_disk) {
+      errors.recommended_disk = 'Recommended disk must be >= min disk';
+    }
+
+    let metadata: Record<string, string> | undefined;
+    const metaText = this.templateForm.metadata_json.trim();
+    if (metaText) {
+      try {
+        const parsed = JSON.parse(metaText);
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+          errors.metadata_json = 'Metadata must be a JSON object (key/value)';
+        } else {
+          const out: Record<string, string> = {};
+          for (const [k, v] of Object.entries(parsed)) {
+            if (v === null || v === undefined) continue;
+            if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
+              out[String(k)] = String(v);
+            } else {
+              errors.metadata_json = 'Metadata values must be strings/numbers/booleans';
+              break;
+            }
+          }
+          if (!errors.metadata_json) {
+            metadata = out;
+          }
+        }
+      } catch {
+        errors.metadata_json = 'Metadata must be valid JSON';
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      this.templateFormErrors = errors;
+      return;
+    }
+
+    const common: Omit<VMTemplateCreateRequest, 'name'> = {
+      description: this.templateForm.description.trim() || undefined,
+      os_type: this.templateForm.os_type,
+      os_variant: this.templateForm.os_variant.trim() || undefined,
+      min_memory,
+      recommended_memory,
+      min_vcpus,
+      recommended_vcpus,
+      min_disk,
+      recommended_disk,
+      disk_format: this.templateForm.disk_format || undefined,
+      network_model: this.templateForm.network_model || undefined,
+      graphics_type: this.templateForm.graphics_type || undefined,
+      cloud_init: this.templateForm.cloud_init,
+      uefi_boot: this.templateForm.uefi_boot,
+      secure_boot: this.templateForm.secure_boot,
+      tpm: this.templateForm.tpm,
+      default_user: this.templateForm.default_user.trim() || undefined,
+      metadata,
+    };
+
+    this.isSavingTemplate = true;
+    try {
+      if (this.templateDrawerMode === 'create') {
+        const created = await templateActions.create({
+          name: this.templateForm.name.trim(),
+          ...common,
+        });
+        this.showNotification(`Template "${created.name}" created`, 'success');
+      } else if (this.editingTemplateId) {
+        const updated = await templateActions.update(this.editingTemplateId, common as VMTemplateUpdateRequest);
+        this.showNotification(`Template "${updated.name}" updated`, 'success');
+      }
+      this.closeTemplateDrawer();
+    } catch (error) {
+      const err: any = error;
+      const code = err?.code ? ` (${err.code})` : '';
+      const details = err?.details ? ` - ${err.details}` : '';
+      this.showNotification(`Failed to save template: ${err instanceof Error ? err.message : 'Unknown error'}${details}${code}`, 'error');
+    } finally {
+      this.isSavingTemplate = false;
+    }
+  }
+
+  private confirmDeleteTemplate(template: VMTemplate) {
+    this.templateToDelete = template;
+    this.showTemplateDeleteModal = true;
+    this.requestUpdate();
+  }
+
+  private async handleDeleteTemplate() {
+    if (!this.templateToDelete) return;
+
+    this.isDeletingTemplate = true;
+    try {
+      await templateActions.delete(this.templateToDelete.id);
+      this.showNotification(`Template "${this.templateToDelete.name}" deleted successfully`, 'success');
+      this.showTemplateDeleteModal = false;
+      this.templateToDelete = null;
+    } catch (error) {
+      const err: any = error;
+      const code = err?.code ? ` (${err.code})` : '';
+      const details = err?.details ? ` - ${err.details}` : '';
+      this.showNotification(`Failed to delete template: ${err instanceof Error ? err.message : 'Unknown error'}${details}${code}`, 'error');
+    } finally {
+      this.isDeletingTemplate = false;
+    }
+  }
+
+  private openCreateTemplateFromVmModal(vm: VirtualMachine) {
+    this.vmForTemplateCreation = vm;
+    this.templateFromVmName = `${vm.name}-template`;
+    this.templateFromVmDescription = '';
+    this.showCreateTemplateFromVmModal = true;
+  }
+
+  private closeCreateTemplateFromVmModal() {
+    this.showCreateTemplateFromVmModal = false;
+    this.vmForTemplateCreation = null;
+    this.templateFromVmName = '';
+    this.templateFromVmDescription = '';
+    this.isCreatingTemplateFromVm = false;
+  }
+
+  private async submitCreateTemplateFromVm() {
+    if (!this.vmForTemplateCreation) return;
+
+    const name = this.templateFromVmName.trim();
+    if (!name) {
+      this.showNotification('Template name is required', 'error');
+      return;
+    }
+
+    this.isCreatingTemplateFromVm = true;
+    try {
+      const created = await templateActions.createFromVM(
+        this.vmForTemplateCreation.id,
+        name,
+        this.templateFromVmDescription.trim() || undefined,
+      );
+      this.showNotification(`Template "${created.name}" created from VM "${this.vmForTemplateCreation.name}"`, 'success');
+      this.activeMainTab = 'templates';
+      this.closeCreateTemplateFromVmModal();
+    } catch (error) {
+      const err: any = error;
+      const code = err?.code ? ` (${err.code})` : '';
+      const details = err?.details ? ` - ${err.details}` : '';
+      this.showNotification(`Failed to create template: ${err instanceof Error ? err.message : 'Unknown error'}${details}${code}`, 'error');
+      this.isCreatingTemplateFromVm = false;
+    }
+  }
+
+  private renderCreateTemplateFromVmModal() {
+    return html`
+      <modal-dialog
+        .open=${this.showCreateTemplateFromVmModal}
+        .title=${this.vmForTemplateCreation
+          ? `Create Template from ${this.vmForTemplateCreation.name}`
+          : 'Create Template from VM'}
+        size="small"
+        @modal-close=${this.closeCreateTemplateFromVmModal}
+      >
+        <div class="form-group">
+          <label>Template Name</label>
+          <input
+            type="text"
+            .value=${this.templateFromVmName}
+            @input=${(e: InputEvent) => {
+              this.templateFromVmName = (e.target as HTMLInputElement).value;
+            }}
+          />
+        </div>
+        <div class="form-group">
+          <label>Description (optional)</label>
+          <input
+            type="text"
+            .value=${this.templateFromVmDescription}
+            @input=${(e: InputEvent) => {
+              this.templateFromVmDescription = (e.target as HTMLInputElement).value;
+            }}
+          />
+        </div>
+
+        <div slot="footer" class="modal-footer-actions">
+          <button class="btn btn-secondary" @click=${this.closeCreateTemplateFromVmModal}>
+            Cancel
+          </button>
+          <button
+            class="btn btn-primary"
+            @click=${this.submitCreateTemplateFromVm}
+            ?disabled=${this.isCreatingTemplateFromVm || !this.templateFromVmName.trim()}
+          >
+            ${this.isCreatingTemplateFromVm ? 'Creating…' : 'Create Template'}
+          </button>
+        </div>
+      </modal-dialog>
+    `;
+  }
+
+  private renderTemplateDrawer() {
+    if (!this.showTemplateDrawer) return html``;
+
+    const isEdit = this.templateDrawerMode === 'edit';
+
+    return html`
+      <div class="drawer-overlay" @click=${this.closeTemplateDrawer}></div>
+      <div class="drawer">
+        <div class="drawer-header">
+          <h2 class="drawer-title">${isEdit ? 'Edit Template' : 'Create Template'}</h2>
+          <button class="drawer-close" @click=${this.closeTemplateDrawer} aria-label="Close">✕</button>
+        </div>
+
+        <div class="drawer-content">
+          <div class="form-group">
+            <label>Name${isEdit ? '' : ' *'}</label>
+            <input
+              type="text"
+              .value=${this.templateForm.name}
+              ?disabled=${isEdit}
+              @input=${(e: InputEvent) => {
+                this.templateForm = { ...this.templateForm, name: (e.target as HTMLInputElement).value };
+              }}
+            />
+            ${this.templateFormErrors.name ? html`<div class="error-text">${this.templateFormErrors.name}</div>` : ''}
+            ${isEdit ? html`<div class="help-text">Template name cannot be changed.</div>` : ''}
+          </div>
+
+          <div class="form-group">
+            <label>Description</label>
+            <input
+              type="text"
+              .value=${this.templateForm.description}
+              @input=${(e: InputEvent) => {
+                this.templateForm = { ...this.templateForm, description: (e.target as HTMLInputElement).value };
+              }}
+            />
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label>OS Type *</label>
+              <select
+                .value=${this.templateForm.os_type}
+                @change=${(e: Event) => {
+                  this.templateForm = { ...this.templateForm, os_type: (e.target as HTMLSelectElement).value as VMTemplateOsType };
+                }}
+              >
+                <option value="linux">linux</option>
+                <option value="windows">windows</option>
+                <option value="bsd">bsd</option>
+                <option value="other">other</option>
+                <option value="hvm">hvm</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>OS Variant</label>
+              <os-variant-autocomplete
+                .value=${this.templateForm.os_variant}
+                .family=${this.templateForm.os_type}
+                placeholder="ubuntu22.04"
+                @os-variant-change=${(e: CustomEvent<{ value: string }>) => {
+                  this.templateForm = { ...this.templateForm, os_variant: e.detail.value };
+                }}
+              ></os-variant-autocomplete>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Min Memory (MB) *</label>
+              <input
+                type="number"
+                min="1"
+                .value=${this.templateForm.min_memory}
+                @input=${(e: InputEvent) => {
+                  this.templateForm = { ...this.templateForm, min_memory: (e.target as HTMLInputElement).value };
+                }}
+              />
+              ${this.templateFormErrors.min_memory ? html`<div class="error-text">${this.templateFormErrors.min_memory}</div>` : ''}
+            </div>
+
+            <div class="form-group">
+              <label>Recommended Memory (MB)</label>
+              <input
+                type="number"
+                min="1"
+                .value=${this.templateForm.recommended_memory}
+                @input=${(e: InputEvent) => {
+                  this.templateForm = { ...this.templateForm, recommended_memory: (e.target as HTMLInputElement).value };
+                }}
+              />
+              ${this.templateFormErrors.recommended_memory ? html`<div class="error-text">${this.templateFormErrors.recommended_memory}</div>` : ''}
+            </div>
+
+            <div class="form-group">
+              <label>Min vCPUs *</label>
+              <input
+                type="number"
+                min="1"
+                .value=${this.templateForm.min_vcpus}
+                @input=${(e: InputEvent) => {
+                  this.templateForm = { ...this.templateForm, min_vcpus: (e.target as HTMLInputElement).value };
+                }}
+              />
+              ${this.templateFormErrors.min_vcpus ? html`<div class="error-text">${this.templateFormErrors.min_vcpus}</div>` : ''}
+            </div>
+
+            <div class="form-group">
+              <label>Recommended vCPUs</label>
+              <input
+                type="number"
+                min="1"
+                .value=${this.templateForm.recommended_vcpus}
+                @input=${(e: InputEvent) => {
+                  this.templateForm = { ...this.templateForm, recommended_vcpus: (e.target as HTMLInputElement).value };
+                }}
+              />
+              ${this.templateFormErrors.recommended_vcpus ? html`<div class="error-text">${this.templateFormErrors.recommended_vcpus}</div>` : ''}
+            </div>
+
+            <div class="form-group">
+              <label>Min Disk (GB) *</label>
+              <input
+                type="number"
+                min="1"
+                .value=${this.templateForm.min_disk}
+                @input=${(e: InputEvent) => {
+                  this.templateForm = { ...this.templateForm, min_disk: (e.target as HTMLInputElement).value };
+                }}
+              />
+              ${this.templateFormErrors.min_disk ? html`<div class="error-text">${this.templateFormErrors.min_disk}</div>` : ''}
+            </div>
+
+            <div class="form-group">
+              <label>Recommended Disk (GB)</label>
+              <input
+                type="number"
+                min="1"
+                .value=${this.templateForm.recommended_disk}
+                @input=${(e: InputEvent) => {
+                  this.templateForm = { ...this.templateForm, recommended_disk: (e.target as HTMLInputElement).value };
+                }}
+              />
+              ${this.templateFormErrors.recommended_disk ? html`<div class="error-text">${this.templateFormErrors.recommended_disk}</div>` : ''}
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Disk Format</label>
+              <select
+                .value=${this.templateForm.disk_format}
+                @change=${(e: Event) => {
+                  this.templateForm = { ...this.templateForm, disk_format: (e.target as HTMLSelectElement).value as ('' | VMTemplateDiskFormat) };
+                }}
+              >
+                <option value="">Default</option>
+                <option value="qcow2">qcow2</option>
+                <option value="raw">raw</option>
+                <option value="vmdk">vmdk</option>
+                <option value="qed">qed</option>
+                <option value="vdi">vdi</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Network Model</label>
+              <select
+                .value=${this.templateForm.network_model}
+                @change=${(e: Event) => {
+                  this.templateForm = { ...this.templateForm, network_model: (e.target as HTMLSelectElement).value as ('' | VMTemplateNetworkModel) };
+                }}
+              >
+                <option value="">Default</option>
+                <option value="virtio">virtio</option>
+                <option value="e1000">e1000</option>
+                <option value="rtl8139">rtl8139</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Graphics Type</label>
+              <select
+                .value=${this.templateForm.graphics_type}
+                @change=${(e: Event) => {
+                  this.templateForm = { ...this.templateForm, graphics_type: (e.target as HTMLSelectElement).value as ('' | VMTemplateGraphicsType) };
+                }}
+              >
+                <option value="">Default</option>
+                <option value="vnc">vnc</option>
+                <option value="spice">spice</option>
+                <option value="none">none</option>
+                <option value="egl-headless">egl-headless</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Default User</label>
+              <input
+                type="text"
+                .value=${this.templateForm.default_user}
+                @input=${(e: InputEvent) => {
+                  this.templateForm = { ...this.templateForm, default_user: (e.target as HTMLInputElement).value };
+                }}
+              />
+            </div>
+          </div>
+
+          <div class="toggle-row">
+            <label class="toggle">
+              <input
+                type="checkbox"
+                .checked=${this.templateForm.cloud_init}
+                @change=${(e: Event) => {
+                  this.templateForm = { ...this.templateForm, cloud_init: (e.target as HTMLInputElement).checked };
+                }}
+              />
+              Cloud-Init
+            </label>
+            <label class="toggle">
+              <input
+                type="checkbox"
+                .checked=${this.templateForm.uefi_boot}
+                @change=${(e: Event) => {
+                  this.templateForm = { ...this.templateForm, uefi_boot: (e.target as HTMLInputElement).checked };
+                }}
+              />
+              UEFI Boot
+            </label>
+            <label class="toggle">
+              <input
+                type="checkbox"
+                .checked=${this.templateForm.secure_boot}
+                @change=${(e: Event) => {
+                  this.templateForm = { ...this.templateForm, secure_boot: (e.target as HTMLInputElement).checked };
+                }}
+              />
+              Secure Boot
+            </label>
+            <label class="toggle">
+              <input
+                type="checkbox"
+                .checked=${this.templateForm.tpm}
+                @change=${(e: Event) => {
+                  this.templateForm = { ...this.templateForm, tpm: (e.target as HTMLInputElement).checked };
+                }}
+              />
+              TPM
+            </label>
+          </div>
+
+          <div class="form-group">
+            <label>Metadata (JSON)</label>
+            <textarea
+              .value=${this.templateForm.metadata_json}
+              placeholder="{\n  \"key\": \"value\"\n}"
+              @input=${(e: InputEvent) => {
+                this.templateForm = { ...this.templateForm, metadata_json: (e.target as HTMLTextAreaElement).value };
+              }}
+            ></textarea>
+            ${this.templateFormErrors.metadata_json ? html`<div class="error-text">${this.templateFormErrors.metadata_json}</div>` : ''}
+            <div class="help-text">Must be a JSON object with scalar values (strings/numbers/booleans).</div>
+          </div>
+        </div>
+
+        <div class="drawer-footer">
+          <button class="btn btn-secondary" @click=${this.closeTemplateDrawer} ?disabled=${this.isSavingTemplate}>
+            Cancel
+          </button>
+          <button
+            class="btn btn-primary"
+            @click=${this.saveTemplate}
+            ?disabled=${this.isSavingTemplate}
+          >
+            ${this.isSavingTemplate ? 'Saving…' : (isEdit ? 'Save Changes' : 'Create Template')}
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
 
   private renderVirtualizationDisabledBanner(details?: string | null) {
     return html`
@@ -937,22 +1968,36 @@ export class VirtualizationVMsEnhanced extends LitElement {
     if (this.stateFilter !== 'all') {
       displayVMs = filteredVMs.filter(vm => vm.state === this.stateFilter);
     }
-
     // Transform data for table rendering
+    const query = (searchQuery || '').toLowerCase().trim();
+
+    const displayTemplates = query
+      ? this.templates.filter(t => {
+          const hay = `${t.name} ${t.description || ''} ${t.os_type} ${t.os_variant || ''}`.toLowerCase();
+          return hay.includes(query);
+        })
+      : this.templates;
+
+    const formatMinRec = (min: number, rec?: number) =>
+      rec !== undefined && rec !== null ? `${min} / ${rec}` : `${min}`;
+
     const tableData = this.activeMainTab === 'templates'
-      ? this.templates.map(template => ({
-        ...template,
-        memory_formatted: this.formatMemory(template.memory),
-        disk_formatted: this.formatDiskSize(template.disk_size),
-        created_formatted: new Date(template.created_at).toLocaleDateString()
-      }))
+      ? displayTemplates.map(template => ({
+          ...template,
+          os: template.os_variant ? `${template.os_type} / ${template.os_variant}` : template.os_type,
+          memory: formatMinRec(template.min_memory, template.recommended_memory),
+          vcpus: formatMinRec(template.min_vcpus, template.recommended_vcpus),
+          disk: formatMinRec(template.min_disk, template.recommended_disk),
+          flags: template,
+          updated: new Date(template.updated_at || template.created_at).toLocaleDateString(),
+        }))
       : displayVMs.map(vm => ({
-        ...vm,
-        state_rendered: this.renderStateCell(vm.state),
-        memory_formatted: this.formatMemory(vm.memory),
-        disk_formatted: this.formatDiskSize(vm.disk_size),
-        created_formatted: new Date(vm.created_at).toLocaleDateString()
-      }));
+          ...vm,
+          state_rendered: this.renderStateCell(vm.state),
+          memory_formatted: this.formatMemory(vm.memory),
+          disk_formatted: this.formatDiskSize(vm.disk_size),
+          created_formatted: new Date(vm.created_at).toLocaleDateString()
+        }));
 
     return html`
       <div class="container">
@@ -1050,7 +2095,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
               🔄
             </button>
             <button class="btn-create" @click=${this.handleCreateNew}>
-              <span>+ New VM</span>
+              <span>+ New ${this.activeMainTab === 'templates' ? 'Template' : 'VM'}</span>
             </button>
           </div>
         </div>
@@ -1079,7 +2124,14 @@ export class VirtualizationVMsEnhanced extends LitElement {
             <resource-table
               .columns=${this.getColumns()}
               .data=${tableData}
-              .getActions=${(item: any) => this.activeMainTab === 'templates' ? [] : this.getActions(item)}
+              .getActions=${(item: any) =>
+                this.activeMainTab === 'templates'
+                  ? this.getTemplateActions(item as VMTemplate)
+                  : this.getActions(item as VirtualMachine)
+              }
+              .customRenderers=${this.activeMainTab === 'templates'
+                ? { flags: (tpl: any) => this.renderTemplateFlags(tpl as VMTemplate) }
+                : {}}
               @cell-click=${this.handleCellClick}
               @action=${this.handleAction}
             ></resource-table>
@@ -1096,6 +2148,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
       }}
           @power-action=${this.handleVMPowerAction}
           @console-connect=${this.handleVMConsoleConnect}
+          @vm-cloned=${this.handleVMCloned}
         ></vm-detail-drawer>
 
         <!-- Delete Confirmation Modal -->
@@ -1114,9 +2167,28 @@ export class VirtualizationVMsEnhanced extends LitElement {
       }}
         ></delete-modal>
 
+        <!-- Template Delete Confirmation Modal -->
+        <delete-modal
+          .show=${this.showTemplateDeleteModal}
+          .item=${this.templateToDelete ? {
+        name: this.templateToDelete.name,
+        type: 'Template'
+      } : null}
+          .loading=${this.isDeletingTemplate}
+          @confirm-delete=${this.handleDeleteTemplate}
+          @cancel-delete=${() => {
+        this.showTemplateDeleteModal = false;
+        this.templateToDelete = null;
+        this.requestUpdate();
+      }}
+        ></delete-modal>
+
+        ${this.renderTemplateDrawer()}
+        ${this.renderCreateTemplateFromVmModal()}
+
         <!-- VM Creation Wizard -->
         ${this.useEnhancedWizard ? html`
-          <create-vm-wizard-enhanced></create-vm-wizard-enhanced>
+          <create-vm-wizard-enhanced @vm-created=${this.handleWizardVmCreated}></create-vm-wizard-enhanced>
         ` : html`
           <create-vm-wizard></create-vm-wizard>
         `}

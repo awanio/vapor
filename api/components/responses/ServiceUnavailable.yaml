@@ -1,0 +1,5 @@
+description: Service unavailable
+content:
+  application/json:
+    schema:
+      $ref: ../schemas/ErrorResponse.yaml

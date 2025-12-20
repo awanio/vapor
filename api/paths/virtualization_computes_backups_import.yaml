@@ -1,0 +1,24 @@
+post:
+  summary: Import an existing backup file
+  description: Register an existing qcow2 backup file on disk into the backup catalog
+  tags:
+    - Virtualization Compute
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/VMBackupImportRequest.yaml
+  responses:
+    '201':
+      description: Backup imported successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/VMBackupResponse.yaml
+    '400':
+      $ref: ../components/responses/BadRequest.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

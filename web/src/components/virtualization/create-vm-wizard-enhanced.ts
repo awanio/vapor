@@ -24,6 +24,7 @@ import {
   networkStore,
   volumeActions,
 } from '../../stores/virtualization';
+import type { TemplateWizardContext } from '../../stores/virtualization';
 import type { StorageVolume } from '../../types/virtualization';
 import type { VirtualNetwork } from '../../types/virtualization';
 
@@ -35,6 +36,7 @@ import '../ui/loading-state.js';
 import '../ui/empty-state.js';
 import '../modals/delete-modal.js';
 import '../modal-dialog';
+import './os-variant-autocomplete.js';
 
 interface EnhancedDiskConfig {
   action: 'create' | 'clone' | 'attach';
@@ -150,27 +152,13 @@ export class CreateVMWizardEnhanced extends LitElement {
   @state() private isLoadingPCIDevices = false;
   @state() private editMode = false;
   @state() private editingVmId: string | null = null;
+  @state() private templateMode = false;
+  @state() private templateContext: TemplateWizardContext | null = null;
+  @state() private templateDiskSizeGB: number | null = null;
   @state() private showCloseConfirmation = false;
-  @state() private formData: Partial<EnhancedVMCreateRequest> = {
-    name: this.generateDefaultVmName(),
-    memory: 2048,
-    vcpus: 2,
-    os_type: 'linux',
-    architecture: 'x86_64',
-    storage: {
-      disks: []
-    },
-    networks: [{
-      type: 'network',
-      source: 'default',
-      model: 'virtio'
-    }],
-    graphics: [{
-      type: 'vnc',
-      autoport: true,
-      listen: '0.0.0.0'
-    }]
-  };
+  @state() private formData: Partial<EnhancedVMCreateRequest> = this.buildDefaultFormData();
+
+  private lastInitializedOpenId: number | null = null;
 
   static override styles = css`
     :host {
@@ -869,31 +857,39 @@ export class CreateVMWizardEnhanced extends LitElement {
     this.showCloseConfirmation = false;
   }
 
-  private resetFormData() {
-    this.formData = {
+  private buildDefaultFormData(): Partial<EnhancedVMCreateRequest> {
+    return {
       name: this.generateDefaultVmName(),
       memory: 2048,
       vcpus: 2,
       os_type: 'linux',
       architecture: 'x86_64',
       storage: {
-        disks: []
+        disks: [],
       },
       networks: [{
         type: 'network',
         source: 'default',
-        model: 'virtio'
+        model: 'virtio',
       }],
       graphics: [{
         type: 'vnc',
         autoport: true,
-        listen: '0.0.0.0'
-      }]
+        listen: '0.0.0.0',
+      }],
     };
+  }
+
+  private resetFormData() {
+    this.formData = this.buildDefaultFormData();
     this.currentStep = 1;
     this.validationErrors = {};
     this.editMode = false;
     this.editingVmId = null;
+    this.templateMode = false;
+    this.templateContext = null;
+    this.templateDiskSizeGB = null;
+    this.lastInitializedOpenId = null;
   }
   private goToStep(step: number) {
     this.currentStep = step;
@@ -921,14 +917,36 @@ export class CreateVMWizardEnhanced extends LitElement {
         if (!this.formData.name) {
           errors.name = 'VM name is required';
         }
-        if (!this.formData.memory || this.formData.memory < 512) {
-          errors.memory = 'Memory must be at least 512 MB';
-        }
-        if (!this.formData.vcpus || this.formData.vcpus < 1) {
-          errors.vcpus = 'At least 1 vCPU is required';
+        {
+          const t = this.templateMode ? this.templateContext : null;
+          const minMemory = t?.min_memory ?? 512;
+          const minVcpus = t?.min_vcpus ?? 1;
+
+          if (!this.formData.memory || this.formData.memory < minMemory) {
+            errors.memory = t
+              ? `Memory must be at least ${minMemory} MB (template min)`
+              : 'Memory must be at least 512 MB';
+          }
+          if (!this.formData.vcpus || this.formData.vcpus < minVcpus) {
+            errors.vcpus = t
+              ? `At least ${minVcpus} vCPU is required (template min)`
+              : 'At least 1 vCPU is required';
+          }
         }
         break;
       case 2: { // Storage
+        if (this.templateMode && this.templateContext) {
+          const size = this.templateDiskSizeGB;
+          if (size === null || size === undefined || !Number.isFinite(size) || size <= 0) {
+            errors.disk_size = 'Disk size is required';
+            break;
+          }
+          if (size < this.templateContext.min_disk) {
+            errors.disk_size = `Disk must be >= template min (${this.templateContext.min_disk} GB)`;
+          }
+          break;
+        }
+
         const disks = this.formData.storage?.disks || [];
         if (disks.length === 0) {
           errors.storage_pool = 'At least one disk is required';
@@ -1809,6 +1827,51 @@ export class CreateVMWizardEnhanced extends LitElement {
     this.isCreating = true;
 
     try {
+      if (this.templateMode) {
+        const template = this.templateContext;
+        if (!template) {
+          throw new Error('No template selected');
+        }
+
+        const name = (this.formData.name || '').trim();
+        const memory = this.formData.memory;
+        const vcpus = this.formData.vcpus;
+        const disk_size = this.templateDiskSizeGB ?? undefined;
+
+        const network = this.formData.networks?.[0];
+        const graphics = this.formData.graphics?.[0];
+        const cloud_init = this.formData.cloud_init;
+        const metadata = this.formData.metadata;
+
+        const created = await (vmActions as any).createFromTemplate(template.id, {
+          name,
+          memory,
+          vcpus,
+          disk_size,
+          network,
+          graphics,
+          cloud_init,
+          metadata,
+        });
+
+        this.showNotification(
+          `VM "${created.name}" created from template "${template.name}"`,
+          'success',
+        );
+
+        this.dispatchEvent(
+          new CustomEvent('vm-created', {
+            detail: { vm: created, template },
+            bubbles: true,
+            composed: true,
+          }),
+        );
+
+        wizardActions.closeWizard();
+        await vmActions.fetchAll();
+        return;
+      }
+
       const token =
         localStorage.getItem('jwt_token') ||
         localStorage.getItem('auth_token') ||
@@ -1889,6 +1952,11 @@ export class CreateVMWizardEnhanced extends LitElement {
     }
   }
   private openAddNetworkModal() {
+    if (this.templateMode && (this.formData.networks?.length || 0) >= 1) {
+      this.showNotification('Only one network interface is supported in template mode', 'error');
+      return;
+    }
+
     this.editingNetworkIndex = null;
     this.networkDraft = {
       type: 'network',
@@ -1939,7 +2007,11 @@ export class CreateVMWizardEnhanced extends LitElement {
     if (this.editingNetworkIndex !== null) {
       this.formData.networks[this.editingNetworkIndex] = nic;
     } else {
-      this.formData.networks.push(nic);
+      if (this.templateMode && this.formData.networks.length >= 1) {
+        this.formData.networks[0] = nic;
+      } else {
+        this.formData.networks.push(nic);
+      }
     }
 
     this.showNetworkModal = false;
@@ -1956,6 +2028,11 @@ export class CreateVMWizardEnhanced extends LitElement {
   }
 
   private openAddGraphicsModal() {
+    if (this.templateMode && (this.formData.graphics?.length || 0) >= 1) {
+      this.showNotification('Only one graphics device is supported in template mode', 'error');
+      return;
+    }
+
     this.editingGraphicsIndex = null;
     this.graphicsDraft = {
       type: 'vnc',
@@ -2017,7 +2094,11 @@ export class CreateVMWizardEnhanced extends LitElement {
     if (this.editingGraphicsIndex !== null) {
       this.formData.graphics[this.editingGraphicsIndex] = gfx;
     } else {
-      this.formData.graphics.push(gfx);
+      if (this.templateMode && this.formData.graphics.length >= 1) {
+        this.formData.graphics[0] = gfx;
+      } else {
+        this.formData.graphics.push(gfx);
+      }
     }
 
     this.showGraphicsModal = false;
@@ -2153,6 +2234,13 @@ export class CreateVMWizardEnhanced extends LitElement {
   }
 
   private renderBasicConfig() {
+    const t = this.templateMode ? this.templateContext : null;
+    const minLine = t
+      ? `Min: ${t.min_memory} MB, ${t.min_vcpus} vCPU, ${t.min_disk} GB`
+      : '';
+    const recLine = t
+      ? `Recommended: ${t.recommended_memory ?? '-'} MB, ${t.recommended_vcpus ?? '-'} vCPU, ${t.recommended_disk ?? '-'} GB`
+      : '';
 
     return html`
       <div class="section ${this.expandedSections.has('basic') ? 'expanded' : ''}">
@@ -2164,6 +2252,17 @@ export class CreateVMWizardEnhanced extends LitElement {
           </div>
         </div>
         <div class="section-content">
+          ${t ? html`
+            <div
+              style="margin-bottom: 12px; padding: 10px; border-radius: 6px; background: var(--vscode-inputValidation-infoBackground); border: 1px solid var(--vscode-inputValidation-infoBorder);"
+            >
+              <div style="font-weight: 600; margin-bottom: 4px;">Creating VM from template: ${t.name}</div>
+              <div class="help-text">Only name, memory/vCPU, disk size, network, graphics, and cloud-init can be changed here. Other fields are controlled by the template.</div>
+              <div class="help-text" style="margin-top: 6px;">${minLine}</div>
+              <div class="help-text">${recLine}</div>
+            </div>
+          ` : ''}
+
           <div class="form-group">
             <label>VM Name <span class="required">*</span></label>
             <input
@@ -2187,7 +2286,7 @@ export class CreateVMWizardEnhanced extends LitElement {
               <div class="input-with-unit">
                 <input
                   type="number"
-                  min="512"
+                  min=${t ? String(t.min_memory) : '512'}
                   max="524288"
                   step="512"
                   .value=${String(this.formData.memory || 2048)}
@@ -2224,6 +2323,7 @@ export class CreateVMWizardEnhanced extends LitElement {
               <label>OS Type</label>
               <select
                 .value=${this.formData.os_type || 'linux'}
+                ?disabled=${this.templateMode}
                 @change=${(e: Event) => 
                   this.updateFormData('os_type', (e.target as HTMLSelectElement).value)
                 }
@@ -2237,14 +2337,15 @@ export class CreateVMWizardEnhanced extends LitElement {
 
             <div class="form-group">
               <label>OS Variant</label>
-              <input
-                type="text"
-                placeholder="ubuntu22.04"
+              <os-variant-autocomplete
                 .value=${this.formData.os_variant || ''}
-                @input=${(e: InputEvent) => 
-                  this.updateFormData('os_variant', (e.target as HTMLInputElement).value)
+                .family=${this.formData.os_type || 'linux'}
+                placeholder="ubuntu22.04"
+                ?disabled=${this.templateMode}
+                @os-variant-change=${(e: CustomEvent<{ value: string }>) =>
+                  this.updateFormData('os_variant', e.detail.value)
                 }
-              />
+              ></os-variant-autocomplete>
               <div class="help-text">e.g., ubuntu22.04, win11, rhel9</div>
             </div>
 
@@ -2252,6 +2353,7 @@ export class CreateVMWizardEnhanced extends LitElement {
               <label>Architecture</label>
               <select
                 .value=${this.formData.architecture || 'x86_64'}
+                ?disabled=${this.templateMode}
                 @change=${(e: Event) => 
                   this.updateFormData('architecture', (e.target as HTMLSelectElement).value)
                 }
@@ -2270,6 +2372,7 @@ export class CreateVMWizardEnhanced extends LitElement {
                 type="checkbox"
                 id="uefi"
                 ?checked=${this.formData.uefi}
+                ?disabled=${this.templateMode}
                 @change=${(e: Event) => 
                   this.updateFormData('uefi', (e.target as HTMLInputElement).checked)
                 }
@@ -2282,6 +2385,7 @@ export class CreateVMWizardEnhanced extends LitElement {
                 type="checkbox"
                 id="secure_boot"
                 ?checked=${this.formData.secure_boot}
+                ?disabled=${this.templateMode}
                 @change=${(e: Event) => 
                   this.updateFormData('secure_boot', (e.target as HTMLInputElement).checked)
                 }
@@ -2294,6 +2398,7 @@ export class CreateVMWizardEnhanced extends LitElement {
                 type="checkbox"
                 id="tpm"
                 ?checked=${this.formData.tpm}
+                ?disabled=${this.templateMode}
                 @change=${(e: Event) => 
                   this.updateFormData('tpm', (e.target as HTMLInputElement).checked)
                 }
@@ -2307,6 +2412,7 @@ export class CreateVMWizardEnhanced extends LitElement {
               type="checkbox"
               id="autostart"
               ?checked=${this.formData.autostart}
+                ?disabled=${this.templateMode}
               @change=${(e: Event) => 
                 this.updateFormData('autostart', (e.target as HTMLInputElement).checked)
               }
@@ -2321,6 +2427,49 @@ export class CreateVMWizardEnhanced extends LitElement {
   }
 
   private renderStorageConfig() {
+    if (this.templateMode && this.templateContext) {
+      const t = this.templateContext;
+      const defaultDisk = t.recommended_disk ?? t.min_disk;
+      const diskValue = this.templateDiskSizeGB ?? defaultDisk;
+
+      return html`
+        <div class="section ${this.expandedSections.has('storage') ? 'expanded' : ''}">
+          <div class="section-header" @click=${() => this.toggleSection('storage')}>
+            <div class="section-title">
+              <span class="section-toggle">▶</span>
+              <span>Storage Configuration</span>
+              <span class="badge">Required</span>
+            </div>
+          </div>
+          <div class="section-content">
+            <div class="form-group">
+              <label>Disk Size (GB) <span class="required">*</span></label>
+              ${this.validationErrors.disk_size ? html`
+                <div class="error-message">${this.validationErrors.disk_size}</div>
+              ` : ''}
+
+              <input
+                type="number"
+                min=${String(t.min_disk)}
+                step="1"
+                .value=${String(diskValue)}
+                @input=${(e: InputEvent) => {
+                  const n = Number((e.target as HTMLInputElement).value);
+                  this.templateDiskSizeGB = Number.isFinite(n) ? n : null;
+                }}
+              />
+              <div class="help-text" style="margin-top: 6px;">
+                Template min: ${t.min_disk} GB • Recommended: ${t.recommended_disk ?? '-'} GB
+              </div>
+              <div class="help-text">
+                Storage devices are derived from the template. In template mode, you can only override the disk size.
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
     return html`
       <div class="section ${this.expandedSections.has('storage') ? 'expanded' : ''}">
         <div class="section-header" @click=${() => this.toggleSection('storage')}>
@@ -2520,7 +2669,7 @@ export class CreateVMWizardEnhanced extends LitElement {
             ` : html`<div class="help-text">No devices configured</div>`}
 
             <div class="btn-add-dropdown">
-              <button class="btn-add" @click=${this.openAddNetworkModal}>
+              <button class="btn-add" @click=${this.openAddNetworkModal} ?disabled=${this.templateMode && (this.formData.networks?.length || 0) >= 1}>
                 + Add Device
               </button>
             </div>
@@ -2590,7 +2739,7 @@ export class CreateVMWizardEnhanced extends LitElement {
             ` : html`<div class="help-text">No devices configured</div>`}
 
             <div class="btn-add-dropdown">
-              <button class="btn-add" @click=${this.openAddGraphicsModal}>
+              <button class="btn-add" @click=${this.openAddGraphicsModal} ?disabled=${this.templateMode && (this.formData.graphics?.length || 0) >= 1}>
                 + Add Device
               </button>
             </div>
@@ -2601,6 +2750,27 @@ export class CreateVMWizardEnhanced extends LitElement {
   }
 
   private renderAdvancedConfig() {
+    if (this.templateMode) {
+      return html`
+        <div class="section ${this.expandedSections.has('advanced') ? 'expanded' : ''}">
+          <div class="section-header" @click=${() => this.toggleSection('advanced')}>
+            <div class="section-title">
+              <span class="section-toggle">▶</span>
+              <span>Advanced Configuration</span>
+            </div>
+          </div>
+          <div class="section-content">
+            <div
+              class="help-text"
+              style="padding: 10px; border-radius: 6px; background: var(--vscode-inputValidation-infoBackground); border: 1px solid var(--vscode-inputValidation-infoBorder);"
+            >
+              Advanced options are controlled by the template and are not editable in template mode.
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
     const getDeviceInfo = (addr: string) => this.availablePCIDevices.find(d => d.pci_address === addr);
 
     return html`
@@ -3089,31 +3259,77 @@ export class CreateVMWizardEnhanced extends LitElement {
 
   override render() {
     const wizardState = this.wizardController.value;
-    
-    // Update component state from wizard state
-    if ((wizardState as any).editMode !== undefined) {
-      this.editMode = (wizardState as any).editMode;
+
+    const openId = (wizardState as any).openId ?? 0;
+
+    // Initialize component state from wizard state only once per openId
+    if (openId !== this.lastInitializedOpenId) {
+      this.lastInitializedOpenId = openId;
+      this.currentStep = 1;
+      this.validationErrors = {};
+
+      this.editMode = !!(wizardState as any).editMode;
       this.editingVmId = (wizardState as any).editingVmId || null;
+      this.templateMode = !!(wizardState as any).templateMode;
+      this.templateContext = (wizardState as any).templateContext || null;
+
+      const base = this.buildDefaultFormData();
+
+      if (this.editMode && wizardState.formData && Object.keys(wizardState.formData).length > 0) {
+        // Convert from VMCreateRequest format to EnhancedVMCreateRequest format
+        const vmFormData = wizardState.formData as any;
+        this.formData = {
+          ...base,
+          ...vmFormData,
+          // Convert single network to array of networks
+          networks: vmFormData.network ? [{
+            type: vmFormData.network.type,
+            source: vmFormData.network.source,
+            model: vmFormData.network.model,
+            mac: vmFormData.network.mac,
+          }] : base.networks,
+          // Convert single graphics to array
+          graphics: vmFormData.graphics ? [vmFormData.graphics] : base.graphics,
+        } as Partial<EnhancedVMCreateRequest>;
+        this.templateDiskSizeGB = null;
+      } else if (this.templateMode && this.templateContext) {
+        const t = this.templateContext;
+        const defaults: any = wizardState.formData || {};
+
+        const netModel = (t as any).network_model || 'virtio';
+        const gfxType = (t as any).graphics_type || 'vnc';
+
+        this.formData = {
+          ...base,
+          ...defaults,
+          os_type: (t as any).os_type || base.os_type,
+          os_variant: (t as any).os_variant || base.os_variant,
+          uefi: !!(t as any).uefi_boot,
+          secure_boot: !!(t as any).secure_boot,
+          tpm: !!(t as any).tpm,
+          networks: [{
+            type: 'network',
+            source: (base.networks?.[0] as any)?.source || 'default',
+            model: netModel,
+          }],
+          graphics: [{
+            type: gfxType,
+            autoport: true,
+            listen: '0.0.0.0',
+          }],
+        } as Partial<EnhancedVMCreateRequest>;
+
+        this.templateDiskSizeGB = (t.recommended_disk ?? t.min_disk) as any;
+      } else {
+        // Create mode
+        this.formData = {
+          ...base,
+          ...(wizardState.formData || {}),
+        } as Partial<EnhancedVMCreateRequest>;
+        this.templateDiskSizeGB = null;
+      }
     }
-    
-    // Update form data from wizard state if in edit mode
-    if (this.editMode && wizardState.formData && Object.keys(wizardState.formData).length > 0) {
-      // Convert from VMCreateRequest format to EnhancedVMCreateRequest format
-      const vmFormData = wizardState.formData;
-      this.formData = {
-        ...vmFormData,
-        // Convert single network to array of networks
-        networks: vmFormData.network ? [{
-          type: vmFormData.network.type,
-          source: vmFormData.network.source,
-          model: vmFormData.network.model,
-          mac: vmFormData.network.mac,
-        }] : this.formData.networks,
-        // Convert single graphics to array
-        graphics: vmFormData.graphics ? [vmFormData.graphics] : this.formData.graphics,
-      } as Partial<EnhancedVMCreateRequest>;
-    }
-    
+
     if (wizardState.isOpen) {
       this.setAttribute('show', '');
     } else {
@@ -3157,7 +3373,7 @@ export class CreateVMWizardEnhanced extends LitElement {
         <div class="drawer-header">
           <h2 class="header-title">
             <span>🖥️</span>
-            ${this.editMode ? 'Edit' : 'Create'} Virtual Machine (Enhanced)
+            ${this.editMode ? 'Edit' : (this.templateMode ? 'Create from Template' : 'Create')} Virtual Machine (Enhanced)
           </h2>
           <button 
             class="close-button" 

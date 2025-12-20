@@ -4,7 +4,17 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"strings"
+
+	sqlite3 "github.com/mattn/go-sqlite3"
+)
+
+var (
+	ErrTemplateNotFound      = errors.New("template not found")
+	ErrTemplateAlreadyExists = errors.New("template already exists")
+	ErrTemplateValidation    = errors.New("template validation failed")
 )
 
 // VMTemplateService handles VM template operations
@@ -18,6 +28,10 @@ func NewVMTemplateService(db *sql.DB) *VMTemplateService {
 }
 
 // VMTemplateCreateRequest represents a request to create a VM template
+//
+// Units:
+//   - min_memory / recommended_memory: MB
+//   - min_disk / recommended_disk: GB
 type VMTemplateCreateRequest struct {
 	Name              string            `json:"name" binding:"required"`
 	Description       string            `json:"description"`
@@ -36,15 +50,22 @@ type VMTemplateCreateRequest struct {
 	UEFIBoot          bool              `json:"uefi_boot"`
 	SecureBoot        bool              `json:"secure_boot"`
 	TPM               bool              `json:"tpm"`
+	DefaultUser       string            `json:"default_user,omitempty"`
 	Metadata          map[string]string `json:"metadata,omitempty"`
 }
 
 // VMTemplateUpdateRequest represents a request to update a VM template
+//
+// Note: fields are pointers where omission should not change the value.
 type VMTemplateUpdateRequest struct {
 	Description       *string           `json:"description,omitempty"`
+	OSType            *string           `json:"os_type,omitempty"`
 	OSVariant         *string           `json:"os_variant,omitempty"`
+	MinMemory         *uint64           `json:"min_memory,omitempty"`
 	RecommendedMemory *uint64           `json:"recommended_memory,omitempty"`
+	MinVCPUs          *uint             `json:"min_vcpus,omitempty"`
 	RecommendedVCPUs  *uint             `json:"recommended_vcpus,omitempty"`
+	MinDisk           *uint64           `json:"min_disk,omitempty"`
 	RecommendedDisk   *uint64           `json:"recommended_disk,omitempty"`
 	DiskFormat        *string           `json:"disk_format,omitempty"`
 	NetworkModel      *string           `json:"network_model,omitempty"`
@@ -53,21 +74,22 @@ type VMTemplateUpdateRequest struct {
 	UEFIBoot          *bool             `json:"uefi_boot,omitempty"`
 	SecureBoot        *bool             `json:"secure_boot,omitempty"`
 	TPM               *bool             `json:"tpm,omitempty"`
+	DefaultUser       *string           `json:"default_user,omitempty"`
 	Metadata          map[string]string `json:"metadata,omitempty"`
 }
 
-// Note: VMTemplate type is now defined in types.go to avoid duplication
+// Note: VMTemplate type is defined in types.go
 
 // ListTemplates retrieves all VM templates
 func (s *VMTemplateService) ListTemplates(ctx context.Context) ([]VMTemplate, error) {
 	query := `
-		SELECT id, name, description, os_type, os_variant, min_memory, recommended_memory,
-		       min_vcpus, recommended_vcpus, min_disk, recommended_disk, disk_format,
-		       network_model, graphics_type, cloud_init, uefi_boot, secure_boot, tpm,
-		       metadata, created_at, updated_at
-		FROM vm_templates
-		ORDER BY name
-	`
+SELECT id, name, description, os_type, os_variant, min_memory, recommended_memory,
+       min_vcpus, recommended_vcpus, min_disk, recommended_disk, disk_format,
+       network_model, graphics_type, cloud_init, uefi_boot, secure_boot, tpm,
+       default_user, metadata, created_at, updated_at
+FROM vm_templates
+ORDER BY name
+`
 
 	rows, err := s.db.QueryContext(ctx, query)
 	if err != nil {
@@ -80,6 +102,7 @@ func (s *VMTemplateService) ListTemplates(ctx context.Context) ([]VMTemplate, er
 		var t VMTemplate
 		var metadataJSON sql.NullString
 		var osVariant sql.NullString
+		var defaultUser sql.NullString
 		var recMemory, recVCPUs, recDisk sql.NullInt64
 
 		err := rows.Scan(
@@ -87,7 +110,7 @@ func (s *VMTemplateService) ListTemplates(ctx context.Context) ([]VMTemplate, er
 			&t.MinMemory, &recMemory, &t.MinVCPUs, &recVCPUs,
 			&t.MinDisk, &recDisk, &t.DiskFormat, &t.NetworkModel,
 			&t.GraphicsType, &t.CloudInit, &t.UEFIBoot, &t.SecureBoot,
-			&t.TPM, &metadataJSON, &t.CreatedAt, &t.UpdatedAt,
+			&t.TPM, &defaultUser, &metadataJSON, &t.CreatedAt, &t.UpdatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan template: %w", err)
@@ -95,6 +118,9 @@ func (s *VMTemplateService) ListTemplates(ctx context.Context) ([]VMTemplate, er
 
 		if osVariant.Valid {
 			t.OSVariant = osVariant.String
+		}
+		if defaultUser.Valid {
+			t.DefaultUser = defaultUser.String
 		}
 		if recMemory.Valid {
 			t.RecommendedMemory = uint64(recMemory.Int64)
@@ -108,7 +134,7 @@ func (s *VMTemplateService) ListTemplates(ctx context.Context) ([]VMTemplate, er
 
 		if metadataJSON.Valid && metadataJSON.String != "" {
 			if err := json.Unmarshal([]byte(metadataJSON.String), &t.Metadata); err != nil {
-				// Log error but don't fail the entire operation
+				// Don't fail the entire operation.
 				t.Metadata = make(map[string]string)
 			}
 		}
@@ -122,17 +148,18 @@ func (s *VMTemplateService) ListTemplates(ctx context.Context) ([]VMTemplate, er
 // GetTemplate retrieves a specific VM template by ID
 func (s *VMTemplateService) GetTemplate(ctx context.Context, id int) (*VMTemplate, error) {
 	query := `
-		SELECT id, name, description, os_type, os_variant, min_memory, recommended_memory,
-		       min_vcpus, recommended_vcpus, min_disk, recommended_disk, disk_format,
-		       network_model, graphics_type, cloud_init, uefi_boot, secure_boot, tpm,
-		       metadata, created_at, updated_at
-		FROM vm_templates
-		WHERE id = ?
-	`
+SELECT id, name, description, os_type, os_variant, min_memory, recommended_memory,
+       min_vcpus, recommended_vcpus, min_disk, recommended_disk, disk_format,
+       network_model, graphics_type, cloud_init, uefi_boot, secure_boot, tpm,
+       default_user, metadata, created_at, updated_at
+FROM vm_templates
+WHERE id = ?
+`
 
 	var t VMTemplate
 	var metadataJSON sql.NullString
 	var osVariant sql.NullString
+	var defaultUser sql.NullString
 	var recMemory, recVCPUs, recDisk sql.NullInt64
 
 	err := s.db.QueryRowContext(ctx, query, id).Scan(
@@ -140,17 +167,20 @@ func (s *VMTemplateService) GetTemplate(ctx context.Context, id int) (*VMTemplat
 		&t.MinMemory, &recMemory, &t.MinVCPUs, &recVCPUs,
 		&t.MinDisk, &recDisk, &t.DiskFormat, &t.NetworkModel,
 		&t.GraphicsType, &t.CloudInit, &t.UEFIBoot, &t.SecureBoot,
-		&t.TPM, &metadataJSON, &t.CreatedAt, &t.UpdatedAt,
+		&t.TPM, &defaultUser, &metadataJSON, &t.CreatedAt, &t.UpdatedAt,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("template not found")
+			return nil, ErrTemplateNotFound
 		}
 		return nil, fmt.Errorf("failed to get template: %w", err)
 	}
 
 	if osVariant.Valid {
 		t.OSVariant = osVariant.String
+	}
+	if defaultUser.Valid {
+		t.DefaultUser = defaultUser.String
 	}
 	if recMemory.Valid {
 		t.RecommendedMemory = uint64(recMemory.Int64)
@@ -174,17 +204,18 @@ func (s *VMTemplateService) GetTemplate(ctx context.Context, id int) (*VMTemplat
 // GetTemplateByName retrieves a specific VM template by name
 func (s *VMTemplateService) GetTemplateByName(ctx context.Context, name string) (*VMTemplate, error) {
 	query := `
-		SELECT id, name, description, os_type, os_variant, min_memory, recommended_memory,
-		       min_vcpus, recommended_vcpus, min_disk, recommended_disk, disk_format,
-		       network_model, graphics_type, cloud_init, uefi_boot, secure_boot, tpm,
-		       metadata, created_at, updated_at
-		FROM vm_templates
-		WHERE name = ?
-	`
+SELECT id, name, description, os_type, os_variant, min_memory, recommended_memory,
+       min_vcpus, recommended_vcpus, min_disk, recommended_disk, disk_format,
+       network_model, graphics_type, cloud_init, uefi_boot, secure_boot, tpm,
+       default_user, metadata, created_at, updated_at
+FROM vm_templates
+WHERE name = ?
+`
 
 	var t VMTemplate
 	var metadataJSON sql.NullString
 	var osVariant sql.NullString
+	var defaultUser sql.NullString
 	var recMemory, recVCPUs, recDisk sql.NullInt64
 
 	err := s.db.QueryRowContext(ctx, query, name).Scan(
@@ -192,17 +223,20 @@ func (s *VMTemplateService) GetTemplateByName(ctx context.Context, name string) 
 		&t.MinMemory, &recMemory, &t.MinVCPUs, &recVCPUs,
 		&t.MinDisk, &recDisk, &t.DiskFormat, &t.NetworkModel,
 		&t.GraphicsType, &t.CloudInit, &t.UEFIBoot, &t.SecureBoot,
-		&t.TPM, &metadataJSON, &t.CreatedAt, &t.UpdatedAt,
+		&t.TPM, &defaultUser, &metadataJSON, &t.CreatedAt, &t.UpdatedAt,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("template not found")
+			return nil, ErrTemplateNotFound
 		}
 		return nil, fmt.Errorf("failed to get template: %w", err)
 	}
 
 	if osVariant.Valid {
 		t.OSVariant = osVariant.String
+	}
+	if defaultUser.Valid {
+		t.DefaultUser = defaultUser.String
 	}
 	if recMemory.Valid {
 		t.RecommendedMemory = uint64(recMemory.Int64)
@@ -223,6 +257,81 @@ func (s *VMTemplateService) GetTemplateByName(ctx context.Context, name string) 
 	return &t, nil
 }
 
+func validateTemplateFields(t *VMTemplate) error {
+	if t == nil {
+		return fmt.Errorf("%w: missing template", ErrTemplateValidation)
+	}
+	if strings.TrimSpace(t.Name) == "" {
+		return fmt.Errorf("%w: name is required", ErrTemplateValidation)
+	}
+
+	switch t.OSType {
+	case "linux", "windows", "bsd", "other", "hvm":
+	// ok
+	case "":
+		return fmt.Errorf("%w: os_type is required", ErrTemplateValidation)
+	default:
+		return fmt.Errorf("%w: invalid os_type %q", ErrTemplateValidation, t.OSType)
+	}
+
+	if t.MinMemory == 0 {
+		return fmt.Errorf("%w: min_memory must be > 0", ErrTemplateValidation)
+	}
+	if t.MinVCPUs == 0 {
+		return fmt.Errorf("%w: min_vcpus must be > 0", ErrTemplateValidation)
+	}
+	if t.MinDisk == 0 {
+		return fmt.Errorf("%w: min_disk must be > 0", ErrTemplateValidation)
+	}
+
+	if t.RecommendedMemory > 0 && t.RecommendedMemory < t.MinMemory {
+		return fmt.Errorf("%w: recommended_memory (%d) must be >= min_memory (%d)", ErrTemplateValidation, t.RecommendedMemory, t.MinMemory)
+	}
+	if t.RecommendedVCPUs > 0 && t.RecommendedVCPUs < t.MinVCPUs {
+		return fmt.Errorf("%w: recommended_vcpus (%d) must be >= min_vcpus (%d)", ErrTemplateValidation, t.RecommendedVCPUs, t.MinVCPUs)
+	}
+	if t.RecommendedDisk > 0 && t.RecommendedDisk < t.MinDisk {
+		return fmt.Errorf("%w: recommended_disk (%d) must be >= min_disk (%d)", ErrTemplateValidation, t.RecommendedDisk, t.MinDisk)
+	}
+
+	// Validate enumerations we actually use.
+	if t.DiskFormat != "" {
+		switch t.DiskFormat {
+		case "qcow2", "raw", "vmdk", "qed", "vdi":
+		// ok
+		default:
+			return fmt.Errorf("%w: invalid disk_format %q", ErrTemplateValidation, t.DiskFormat)
+		}
+	}
+	if t.NetworkModel != "" {
+		switch t.NetworkModel {
+		case "virtio", "e1000", "rtl8139":
+		// ok
+		default:
+			return fmt.Errorf("%w: invalid network_model %q", ErrTemplateValidation, t.NetworkModel)
+		}
+	}
+	if t.GraphicsType != "" {
+		switch t.GraphicsType {
+		case "vnc", "spice", "none", "egl-headless":
+		// ok
+		default:
+			return fmt.Errorf("%w: invalid graphics_type %q", ErrTemplateValidation, t.GraphicsType)
+		}
+	}
+
+	return nil
+}
+
+func isSQLiteUniqueConstraint(err error) bool {
+	var se sqlite3.Error
+	if errors.As(err, &se) {
+		return se.ExtendedCode == sqlite3.ErrConstraintUnique || se.ExtendedCode == sqlite3.ErrConstraintPrimaryKey
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "UNIQUE constraint failed")
+}
+
 // CreateTemplate creates a new VM template
 func (s *VMTemplateService) CreateTemplate(ctx context.Context, req *VMTemplateCreateRequest) (*VMTemplate, error) {
 	// Set defaults
@@ -236,6 +345,32 @@ func (s *VMTemplateService) CreateTemplate(ctx context.Context, req *VMTemplateC
 		req.GraphicsType = "vnc"
 	}
 
+	// Validate
+	candidate := &VMTemplate{
+		Name:              req.Name,
+		Description:       req.Description,
+		OSType:            req.OSType,
+		OSVariant:         req.OSVariant,
+		MinMemory:         req.MinMemory,
+		RecommendedMemory: req.RecommendedMemory,
+		MinVCPUs:          req.MinVCPUs,
+		RecommendedVCPUs:  req.RecommendedVCPUs,
+		MinDisk:           req.MinDisk,
+		RecommendedDisk:   req.RecommendedDisk,
+		DiskFormat:        req.DiskFormat,
+		NetworkModel:      req.NetworkModel,
+		GraphicsType:      req.GraphicsType,
+		CloudInit:         req.CloudInit,
+		UEFIBoot:          req.UEFIBoot,
+		SecureBoot:        req.SecureBoot,
+		TPM:               req.TPM,
+		DefaultUser:       req.DefaultUser,
+		Metadata:          req.Metadata,
+	}
+	if err := validateTemplateFields(candidate); err != nil {
+		return nil, err
+	}
+
 	var metadataJSON string
 	if req.Metadata != nil && len(req.Metadata) > 0 {
 		data, err := json.Marshal(req.Metadata)
@@ -246,12 +381,13 @@ func (s *VMTemplateService) CreateTemplate(ctx context.Context, req *VMTemplateC
 	}
 
 	query := `
-		INSERT INTO vm_templates (
-			name, description, os_type, os_variant, min_memory, recommended_memory,
-			min_vcpus, recommended_vcpus, min_disk, recommended_disk, disk_format,
-			network_model, graphics_type, cloud_init, uefi_boot, secure_boot, tpm, metadata
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`
+INSERT INTO vm_templates (
+name, description, os_type, os_variant, min_memory, recommended_memory,
+min_vcpus, recommended_vcpus, min_disk, recommended_disk, disk_format,
+network_model, graphics_type, cloud_init, uefi_boot, secure_boot, tpm,
+default_user, metadata
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`
 
 	result, err := s.db.ExecContext(ctx, query,
 		req.Name, req.Description, req.OSType, nullString(req.OSVariant),
@@ -260,9 +396,13 @@ func (s *VMTemplateService) CreateTemplate(ctx context.Context, req *VMTemplateC
 		req.MinDisk, nullInt64(int64(req.RecommendedDisk)),
 		req.DiskFormat, req.NetworkModel, req.GraphicsType,
 		req.CloudInit, req.UEFIBoot, req.SecureBoot, req.TPM,
+		nullString(req.DefaultUser),
 		nullString(metadataJSON),
 	)
 	if err != nil {
+		if isSQLiteUniqueConstraint(err) {
+			return nil, fmt.Errorf("%w: %s", ErrTemplateAlreadyExists, req.Name)
+		}
 		return nil, fmt.Errorf("failed to create template: %w", err)
 	}
 
@@ -276,6 +416,72 @@ func (s *VMTemplateService) CreateTemplate(ctx context.Context, req *VMTemplateC
 
 // UpdateTemplate updates an existing VM template
 func (s *VMTemplateService) UpdateTemplate(ctx context.Context, id int, req *VMTemplateUpdateRequest) (*VMTemplate, error) {
+	existing, err := s.GetTemplate(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Compute the post-update candidate for validation
+	candidate := *existing
+	if req.Description != nil {
+		candidate.Description = *req.Description
+	}
+	if req.OSType != nil {
+		candidate.OSType = *req.OSType
+	}
+	if req.OSVariant != nil {
+		candidate.OSVariant = *req.OSVariant
+	}
+	if req.MinMemory != nil {
+		candidate.MinMemory = *req.MinMemory
+	}
+	if req.RecommendedMemory != nil {
+		candidate.RecommendedMemory = *req.RecommendedMemory
+	}
+	if req.MinVCPUs != nil {
+		candidate.MinVCPUs = *req.MinVCPUs
+	}
+	if req.RecommendedVCPUs != nil {
+		candidate.RecommendedVCPUs = *req.RecommendedVCPUs
+	}
+	if req.MinDisk != nil {
+		candidate.MinDisk = *req.MinDisk
+	}
+	if req.RecommendedDisk != nil {
+		candidate.RecommendedDisk = *req.RecommendedDisk
+	}
+	if req.DiskFormat != nil {
+		candidate.DiskFormat = *req.DiskFormat
+	}
+	if req.NetworkModel != nil {
+		candidate.NetworkModel = *req.NetworkModel
+	}
+	if req.GraphicsType != nil {
+		candidate.GraphicsType = *req.GraphicsType
+	}
+	if req.CloudInit != nil {
+		candidate.CloudInit = *req.CloudInit
+	}
+	if req.UEFIBoot != nil {
+		candidate.UEFIBoot = *req.UEFIBoot
+	}
+	if req.SecureBoot != nil {
+		candidate.SecureBoot = *req.SecureBoot
+	}
+	if req.TPM != nil {
+		candidate.TPM = *req.TPM
+	}
+	if req.DefaultUser != nil {
+		candidate.DefaultUser = *req.DefaultUser
+	}
+	if req.Metadata != nil {
+		candidate.Metadata = req.Metadata
+	}
+
+	if err := validateTemplateFields(&candidate); err != nil {
+		return nil, err
+	}
+
 	// Build dynamic update query
 	updates := []string{}
 	args := []interface{}{}
@@ -284,17 +490,33 @@ func (s *VMTemplateService) UpdateTemplate(ctx context.Context, id int, req *VMT
 		updates = append(updates, "description = ?")
 		args = append(args, *req.Description)
 	}
+	if req.OSType != nil {
+		updates = append(updates, "os_type = ?")
+		args = append(args, *req.OSType)
+	}
 	if req.OSVariant != nil {
 		updates = append(updates, "os_variant = ?")
 		args = append(args, nullString(*req.OSVariant))
+	}
+	if req.MinMemory != nil {
+		updates = append(updates, "min_memory = ?")
+		args = append(args, *req.MinMemory)
 	}
 	if req.RecommendedMemory != nil {
 		updates = append(updates, "recommended_memory = ?")
 		args = append(args, nullInt64(int64(*req.RecommendedMemory)))
 	}
+	if req.MinVCPUs != nil {
+		updates = append(updates, "min_vcpus = ?")
+		args = append(args, *req.MinVCPUs)
+	}
 	if req.RecommendedVCPUs != nil {
 		updates = append(updates, "recommended_vcpus = ?")
 		args = append(args, nullInt64(int64(*req.RecommendedVCPUs)))
+	}
+	if req.MinDisk != nil {
+		updates = append(updates, "min_disk = ?")
+		args = append(args, *req.MinDisk)
 	}
 	if req.RecommendedDisk != nil {
 		updates = append(updates, "recommended_disk = ?")
@@ -328,6 +550,10 @@ func (s *VMTemplateService) UpdateTemplate(ctx context.Context, id int, req *VMT
 		updates = append(updates, "tpm = ?")
 		args = append(args, *req.TPM)
 	}
+	if req.DefaultUser != nil {
+		updates = append(updates, "default_user = ?")
+		args = append(args, nullString(*req.DefaultUser))
+	}
 	if req.Metadata != nil {
 		data, err := json.Marshal(req.Metadata)
 		if err != nil {
@@ -338,10 +564,10 @@ func (s *VMTemplateService) UpdateTemplate(ctx context.Context, id int, req *VMT
 	}
 
 	if len(updates) == 0 {
-		return s.GetTemplate(ctx, id)
+		return existing, nil
 	}
 
-	// Add updated_at
+	// Keep updated_at consistent even if the trigger is changed/removed.
 	updates = append(updates, "updated_at = CURRENT_TIMESTAMP")
 
 	// Add ID to args
@@ -352,9 +578,16 @@ func (s *VMTemplateService) UpdateTemplate(ctx context.Context, id int, req *VMT
 		joinStrings(updates, ", "),
 	)
 
-	_, err := s.db.ExecContext(ctx, query, args...)
+	result, err := s.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update template: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get affected rows: %w", err)
+	}
+	if rows == 0 {
+		return nil, ErrTemplateNotFound
 	}
 
 	return s.GetTemplate(ctx, id)
@@ -374,7 +607,7 @@ func (s *VMTemplateService) DeleteTemplate(ctx context.Context, id int) error {
 	}
 
 	if rows == 0 {
-		return fmt.Errorf("template not found")
+		return ErrTemplateNotFound
 	}
 
 	return nil

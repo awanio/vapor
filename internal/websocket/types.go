@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"encoding/json"
 	"time"
 )
 
@@ -11,6 +12,7 @@ const (
 	// Message types
 	MessageTypeAuth        MessageType = "auth"
 	MessageTypeSubscribe   MessageType = "subscribe"
+	MessageTypeEvent       MessageType = "event"
 	MessageTypeUnsubscribe MessageType = "unsubscribe"
 	MessageTypeData        MessageType = "data"
 	MessageTypeInput       MessageType = "input"
@@ -23,10 +25,14 @@ const (
 
 // Message represents a WebSocket message
 type Message struct {
-	Type    MessageType    `json:"type"`
-	Payload interface{}    `json:"payload,omitempty"`
-	Error   string         `json:"error,omitempty"`
-	ID      string         `json:"id,omitempty"`
+	Type    MessageType `json:"type"`
+	Payload interface{} `json:"payload,omitempty"`
+	Error   string      `json:"error,omitempty"`
+	ID      string      `json:"id,omitempty"`
+}
+
+func MarshalMessage(msg Message) ([]byte, error) {
+	return json.Marshal(msg)
 }
 
 // AuthPayload represents authentication data
@@ -42,10 +48,10 @@ type SubscribePayload struct {
 
 // MetricsData represents system metrics
 type MetricsData struct {
-	Timestamp time.Time    `json:"timestamp"`
-	CPU       CPUMetrics   `json:"cpu"`
-	Memory    MemoryMetrics `json:"memory"`
-	Disk      []DiskMetrics `json:"disk"`
+	Timestamp time.Time        `json:"timestamp"`
+	CPU       CPUMetrics       `json:"cpu"`
+	Memory    MemoryMetrics    `json:"memory"`
+	Disk      []DiskMetrics    `json:"disk"`
 	Network   []NetworkMetrics `json:"network"`
 }
 

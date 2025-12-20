@@ -352,7 +352,7 @@ func (s *Service) createEnhancedDisk(ctx context.Context, config DiskCreateConfi
 // cloneEnhancedDisk clones an existing disk to a new location
 func (s *Service) cloneEnhancedDisk(ctx context.Context, sourcePath string, poolName string, diskName string) (string, error) {
 	// Use the existing cloneDisk method
-	return s.cloneDisk(sourcePath, poolName, diskName)
+	return s.cloneDisk(poolName, sourcePath, diskName)
 }
 
 // generateDiskTarget generates a disk target device name based on bus type

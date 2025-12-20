@@ -1,0 +1,13 @@
+allOf:
+  - $ref: ./APIResponse.yaml
+  - type: object
+    properties:
+      data:
+        type: object
+        properties:
+          templates:
+            type: array
+            items:
+              $ref: ./VMTemplate.yaml
+          count:
+            type: integer
