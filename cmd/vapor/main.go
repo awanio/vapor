@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -387,10 +388,64 @@ func main() {
 
 func corsMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		origin := c.Request.Header.Get("Origin")
+		if origin != "" {
+			// When Allow-Credentials is true, wildcard origins are not permitted.
+			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+			c.Writer.Header().Set("Vary", "Origin")
+		} else {
+			// Non-CORS request
+			c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		}
+
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
+
+		// Allow headers needed by the web UI and TUS protocol.
+		c.Writer.Header().Set("Access-Control-Allow-Headers", strings.Join([]string{
+			"Authorization",
+			"Content-Type",
+			"Content-Length",
+			"Accept",
+			"Accept-Encoding",
+			"Origin",
+			"Cache-Control",
+			"Pragma",
+			"X-Requested-With",
+			"X-CSRF-Token",
+			// TUS / resumable upload headers
+			"Tus-Resumable",
+			"Upload-Length",
+			"Upload-Offset",
+			"Upload-Metadata",
+			"Upload-Defer-Length",
+			"Upload-Concat",
+		}, ", "))
+
+		// Allow methods needed by the API and TUS uploads.
+		c.Writer.Header().Set("Access-Control-Allow-Methods", strings.Join([]string{
+			"GET",
+			"POST",
+			"PUT",
+			"DELETE",
+			"OPTIONS",
+			"PATCH",
+			"HEAD",
+		}, ", "))
+
+		// Expose TUS headers to the browser so the client can read Location/offsets.
+		c.Writer.Header().Set("Access-Control-Expose-Headers", strings.Join([]string{
+			"Location",
+			"Tus-Resumable",
+			"Upload-Length",
+			"Upload-Offset",
+			"Upload-Metadata",
+			"Upload-Expires",
+			"Upload-Defer-Length",
+			"Upload-Concat",
+		}, ", "))
+
+		// Cache preflight response
+		c.Writer.Header().Set("Access-Control-Max-Age", "86400")
 
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
