@@ -287,6 +287,10 @@ paths:
     $ref: paths/virtualization_networks_{name}_dhcp-leases.yaml
   /virtualization/networks/{name}/ports:
     $ref: paths/virtualization_networks_{name}_ports.yaml
+    $ref: paths/virtualization/networks/{name}/start:
+    $ref: paths  $ref: paths/virtualization_networks_{name}_start.yaml
+    $ref: paths/virtualization/networks/{name}/stop:
+    $ref: paths  $ref: paths/virtualization_networks_{name}_stop.yaml
   /storage/iscsi/sessions:
     $ref: paths/storage_iscsi_sessions.yaml
   /storage/iscsi/login:

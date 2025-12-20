@@ -1,0 +1,29 @@
+post:
+  summary: Start virtual network
+  description: Starts (activates) an existing virtual network.
+  tags:
+    - Virtualization Network
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: name
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Network name
+  responses:
+    '200':
+      description: Network started successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MessageResponse.yaml
+    '404':
+      description: Network not found
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

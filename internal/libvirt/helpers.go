@@ -604,12 +604,26 @@ func (s *Service) generateEnhancedDomainXML(req *VMCreateRequestEnhanced, diskCo
 			busType = "virtio"
 		}
 
+		driverType := disk.Config.Format
+		if driverType == "" {
+			driverType = "qcow2"
+		}
+
+		if strings.EqualFold(filepath.Ext(disk.Path), ".iso") {
+			// Safety: ISO images are raw files.
+			driverType = "raw"
+			// Common client mistake: attaching ISOs as floppy/disk.
+			if deviceType == "" || strings.EqualFold(deviceType, "disk") || strings.EqualFold(deviceType, "floppy") {
+				deviceType = "cdrom"
+			}
+		}
+
 		xml += fmt.Sprintf(`
-<disk type='file' device='%s'>
-<driver name='qemu' type='%s'/>
-<source file='%s'/>
-<target dev='%s' bus='%s'/>`,
-			deviceType, disk.Config.Format, disk.Path, disk.Config.Target, busType)
+	<disk type='file' device='%s'>
+	<driver name='qemu' type='%s'/>
+	<source file='%s'/>
+	<target dev='%s' bus='%s'/>`,
+			deviceType, driverType, disk.Path, disk.Config.Target, busType)
 
 		if disk.Config.ReadOnly {
 			xml += `
@@ -964,6 +978,10 @@ func (s *Service) hotplugNetwork(domain *libvirt.Domain, action string, config i
 		return fmt.Errorf("invalid network configuration")
 	}
 
+	// HotplugResource only allows this on running VMs. Use both LIVE and CONFIG so the
+	// interface persists across reboot.
+	flags := libvirt.DOMAIN_DEVICE_MODIFY_LIVE | libvirt.DOMAIN_DEVICE_MODIFY_CONFIG
+
 	switch action {
 	case "add":
 		mac := netConfig.MAC
@@ -974,21 +992,40 @@ func (s *Service) hotplugNetwork(domain *libvirt.Domain, action string, config i
 		if model == "" {
 			model = "virtio"
 		}
-		netXML := fmt.Sprintf(`
-			<interface type='%s'>
-				<source %s='%s'/>
-				<model type='%s'/>
-				<mac address='%s'/>
-			</interface>
-		`, netConfig.Type, getNetworkSourceAttr(netConfig.Type), netConfig.Source, model, mac)
-		return domain.AttachDevice(netXML)
+
+		// Build interface XML.
+		// - user interfaces do not have a <source/>
+		// - direct interfaces default to mode='bridge'
+		xml := fmt.Sprintf(`
+				<interface type='%s'>`, netConfig.Type)
+		switch netConfig.Type {
+		case NetworkTypeUser:
+		// no <source/>
+		case NetworkTypeDirect:
+			xml += fmt.Sprintf(`
+					<source dev='%s' mode='bridge'/>`, netConfig.Source)
+		default:
+			xml += fmt.Sprintf(`
+					<source %s='%s'/>`, getNetworkSourceAttr(netConfig.Type), netConfig.Source)
+		}
+		xml += fmt.Sprintf(`
+					<model type='%s'/>
+					<mac address='%s'/>
+				</interface>
+			`, model, mac)
+
+		return domain.AttachDeviceFlags(xml, flags)
 	case "remove":
+		// For safety, require MAC for removal (libvirt needs a unique match).
+		if strings.TrimSpace(netConfig.MAC) == "" {
+			return fmt.Errorf("MAC is required to remove a network interface")
+		}
 		netXML := fmt.Sprintf(`
-			<interface type='%s'>
-				<mac address='%s'/>
-			</interface>
-		`, netConfig.Type, netConfig.MAC)
-		return domain.DetachDevice(netXML)
+<interface type='%s'>
+<mac address='%s'/>
+</interface>
+`, netConfig.Type, netConfig.MAC)
+		return domain.DetachDeviceFlags(netXML, flags)
 	default:
 		return fmt.Errorf("unsupported action: %s", action)
 	}

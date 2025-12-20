@@ -12,6 +12,10 @@ properties:
     type: string
     description: Full path to ISO file
     example: /var/lib/libvirt/images/iso/ubuntu-22.04-live-server-amd64.iso
+  storage_pool:
+    type: string
+    description: Associated storage pool name
+    example: default
   size:
     type: integer
     format: int64

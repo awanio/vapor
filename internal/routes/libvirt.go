@@ -166,6 +166,8 @@ func LibvirtRoutes(r *gin.RouterGroup, authService *auth.EnhancedService, servic
 		networkGroup.GET("/:name", getNetwork(service))                       // Get network details
 		networkGroup.POST("", createNetwork(service))                         // Create network
 		networkGroup.PUT("/:name", updateNetwork(service))                    // Update network
+		networkGroup.POST("/:name/start", startNetwork(service))              // Start network
+		networkGroup.POST("/:name/stop", stopNetwork(service))                // Stop network
 		networkGroup.GET("/:name/dhcp-leases", getNetworkDHCPLeases(service)) // Get DHCP leases
 		networkGroup.GET("/:name/ports", getNetworkPorts(service))            // Get network ports
 		networkGroup.DELETE("/:name", deleteNetwork(service))                 // Delete network
@@ -1953,6 +1955,21 @@ func createNetwork(service *libvirt.Service) gin.HandlerFunc {
 		}
 
 		network, err := service.CreateNetwork(c.Request.Context(), &req)
+		// Basic validation: NAT/route networks require an IP range (libvirt will reject forward mode without it).
+		if req.Mode == "nat" || req.Mode == "route" {
+			if req.IPRange == nil || strings.TrimSpace(req.IPRange.Address) == "" || strings.TrimSpace(req.IPRange.Netmask) == "" {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"status": "error",
+					"error": gin.H{
+						"code":    "INVALID_NETWORK_REQUEST",
+						"message": "Invalid network create request",
+						"details": "ip_range.address and ip_range.netmask are required for nat/route networks",
+					},
+				})
+				return
+			}
+		}
+
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"status": "error",
@@ -2026,6 +2043,21 @@ func updateNetwork(service *libvirt.Service) gin.HandlerFunc {
 		}
 
 		network, err := service.UpdateNetwork(c.Request.Context(), name, &req)
+		// Basic validation: NAT/route networks require an IP range.
+		if req.Mode != nil && (*req.Mode == "nat" || *req.Mode == "route") {
+			if req.IPRange == nil || strings.TrimSpace(req.IPRange.Address) == "" || strings.TrimSpace(req.IPRange.Netmask) == "" {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"status": "error",
+					"error": gin.H{
+						"code":    "INVALID_REQUEST",
+						"message": "Invalid network update request",
+						"details": "ip_range.address and ip_range.netmask are required for nat/route networks",
+					},
+				})
+				return
+			}
+		}
+
 		if err != nil {
 			if strings.Contains(err.Error(), "not found") {
 				c.JSON(http.StatusNotFound, gin.H{
@@ -2054,6 +2086,78 @@ func updateNetwork(service *libvirt.Service) gin.HandlerFunc {
 			"data": gin.H{
 				"network": network,
 				"message": "Virtual network updated successfully",
+			},
+		})
+	}
+}
+
+func startNetwork(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		name := c.Param("name")
+		err := service.StartNetwork(c.Request.Context(), name)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				c.JSON(http.StatusNotFound, gin.H{
+					"status": "error",
+					"error": gin.H{
+						"code":    "NETWORK_NOT_FOUND",
+						"message": "Virtual network not found",
+						"details": err.Error(),
+					},
+				})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "START_NETWORK_FAILED",
+					"message": "Failed to start virtual network",
+					"details": err.Error(),
+				},
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data": gin.H{
+				"message": "Virtual network started successfully",
+			},
+		})
+	}
+}
+
+func stopNetwork(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		name := c.Param("name")
+		err := service.StopNetwork(c.Request.Context(), name)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				c.JSON(http.StatusNotFound, gin.H{
+					"status": "error",
+					"error": gin.H{
+						"code":    "NETWORK_NOT_FOUND",
+						"message": "Virtual network not found",
+						"details": err.Error(),
+					},
+				})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error": gin.H{
+					"code":    "STOP_NETWORK_FAILED",
+					"message": "Failed to stop virtual network",
+					"details": err.Error(),
+				},
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data": gin.H{
+				"message": "Virtual network stopped successfully",
 			},
 		})
 	}

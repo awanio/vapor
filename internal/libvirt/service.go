@@ -317,7 +317,15 @@ func (s *Service) AttachPCIDevice(ctx context.Context, vmName string, req *PCIPa
 	`, boolToYesNo(req.Managed), parts[0], parts[1], funcParts[0], funcParts[1])
 
 	// Attach the device
-	if err := domain.AttachDevice(pciXML); err != nil {
+	state, _, stErr := domain.GetState()
+	if stErr != nil {
+		return "", fmt.Errorf("failed to get VM state: %w", stErr)
+	}
+	flags := libvirt.DOMAIN_DEVICE_MODIFY_CONFIG
+	if state == libvirt.DOMAIN_RUNNING {
+		flags = flags | libvirt.DOMAIN_DEVICE_MODIFY_LIVE
+	}
+	if err := domain.AttachDeviceFlags(pciXML, flags); err != nil {
 		return "", fmt.Errorf("failed to attach PCI device: %w", err)
 	}
 
@@ -378,7 +386,15 @@ func (s *Service) DetachPCIDevice(ctx context.Context, vmName string, req *PCIDe
 	`, parts[0], parts[1], funcParts[0], funcParts[1])
 
 	// Detach the device
-	if err := domain.DetachDevice(pciXML); err != nil {
+	state, _, stErr := domain.GetState()
+	if stErr != nil {
+		return fmt.Errorf("failed to get VM state: %w", stErr)
+	}
+	flags := libvirt.DOMAIN_DEVICE_MODIFY_CONFIG
+	if state == libvirt.DOMAIN_RUNNING {
+		flags = flags | libvirt.DOMAIN_DEVICE_MODIFY_LIVE
+	}
+	if err := domain.DetachDeviceFlags(pciXML, flags); err != nil {
 		return fmt.Errorf("failed to detach PCI device: %w", err)
 	}
 
@@ -1638,6 +1654,57 @@ func (s *Service) networkToType(net *libvirt.Network) (*Network, error) {
 		n.State = "inactive"
 	}
 
+	// Best-effort parse of network XML for forward mode, IP range, and DHCP configuration.
+	if xmlDesc, err := net.GetXMLDesc(0); err == nil {
+		var netXML struct {
+			Forward *struct {
+				Mode string `xml:"mode,attr"`
+				Dev  string `xml:"dev,attr"`
+			} `xml:"forward"`
+			IPs []struct {
+				Address string `xml:"address,attr"`
+				Netmask string `xml:"netmask,attr"`
+				DHCP    *struct {
+					Ranges []struct {
+						Start string `xml:"start,attr"`
+						End   string `xml:"end,attr"`
+					} `xml:"range"`
+					Hosts []struct {
+						MAC  string `xml:"mac,attr"`
+						IP   string `xml:"ip,attr"`
+						Name string `xml:"name,attr"`
+					} `xml:"host"`
+				} `xml:"dhcp"`
+			} `xml:"ip"`
+		}
+
+		if err := xml.Unmarshal([]byte(xmlDesc), &netXML); err == nil {
+			if netXML.Forward != nil {
+				n.Mode = netXML.Forward.Mode
+			}
+
+			// Prefer IPv4 ip blocks (address+netmask).
+			for _, ip := range netXML.IPs {
+				if ip.Address == "" || ip.Netmask == "" {
+					continue
+				}
+				n.IPRange = NetworkIPRange{Address: ip.Address, Netmask: ip.Netmask}
+
+				if ip.DHCP != nil && len(ip.DHCP.Ranges) > 0 {
+					r := ip.DHCP.Ranges[0]
+					dhcp := &DHCPConfig{Start: r.Start, End: r.End}
+					if len(ip.DHCP.Hosts) > 0 {
+						for _, h := range ip.DHCP.Hosts {
+							dhcp.Hosts = append(dhcp.Hosts, DHCPHost{MAC: h.MAC, IP: h.IP, Name: h.Name})
+						}
+					}
+					n.DHCP = dhcp
+				}
+				break
+			}
+		}
+	}
+
 	return n, nil
 }
 
@@ -1867,6 +1934,7 @@ func (s *Service) parseStorageConfiguration(xmlDesc string) (*StorageConfigDetai
 			disk.Device = "disk"
 		} else if strings.Contains(diskXML, "device='cdrom'") || strings.Contains(diskXML, "device=\"cdrom\"") {
 			disk.Device = "cdrom"
+		} else if strings.Contains(diskXML, "device='floppy'") || strings.Contains(diskXML, "device=\"floppy\"") {
 			disk.Device = "floppy"
 		}
 

@@ -2,6 +2,7 @@ package libvirt
 
 import (
 	"context"
+	"encoding/xml"
 	"fmt"
 	"log"
 	"os"
@@ -264,19 +265,46 @@ func (s *Service) prepareEnhancedStorageConfig(ctx context.Context, req *VMCreat
 			prepDisk.Created = true
 		}
 
-		// Auto-generate target if not specified
-		if prepDisk.Config.Target == "" {
-			prepDisk.Config.Target = s.generateDiskTarget(diskConfig.Bus, i)
-		}
+		// If this is an ISO attachment, normalize disk settings to avoid invalid driver/device combos.
+		// ISO images are raw files and should be attached as a read-only CD-ROM.
+		if strings.EqualFold(filepath.Ext(prepDisk.Path), ".iso") {
+			if prepDisk.Config.Format == "" || !strings.EqualFold(prepDisk.Config.Format, "raw") {
+				if prepDisk.Config.Format != "" && !strings.EqualFold(prepDisk.Config.Format, "raw") {
+					log.Printf("prepareEnhancedStorageConfig: overriding disk format %q to %q for ISO %q\n", prepDisk.Config.Format, "raw", prepDisk.Path)
+				}
+				prepDisk.Config.Format = "raw"
+			}
 
-		// Set default format if not specified
-		if prepDisk.Config.Format == "" {
-			prepDisk.Config.Format = "qcow2"
+			if prepDisk.Config.Device == "" || strings.EqualFold(prepDisk.Config.Device, "disk") || strings.EqualFold(prepDisk.Config.Device, "floppy") {
+				prepDisk.Config.Device = "cdrom"
+			}
+
+			prepDisk.Config.ReadOnly = true
+
+			// Prefer IDE if caller didn't specify a bus; it's the most compatible for CD-ROMs.
+			if prepDisk.Config.Bus == "" {
+				prepDisk.Config.Bus = DiskBusIDE
+			}
+
+			// Conventional IDE CD-ROM target is hdc; only set when caller didn't specify.
+			if prepDisk.Config.Target == "" && prepDisk.Config.Bus == DiskBusIDE {
+				prepDisk.Config.Target = "hdc"
+			}
 		}
 
 		// Set default bus if not specified
 		if prepDisk.Config.Bus == "" {
 			prepDisk.Config.Bus = DiskBusVirtio
+		}
+
+		// Auto-generate target if not specified
+		if prepDisk.Config.Target == "" {
+			prepDisk.Config.Target = s.generateDiskTarget(prepDisk.Config.Bus, i)
+		}
+
+		// Set default format if not specified
+		if prepDisk.Config.Format == "" {
+			prepDisk.Config.Format = "qcow2"
 		}
 
 		disks = append(disks, prepDisk)
@@ -538,6 +566,7 @@ func (s *Service) UploadISO(ctx context.Context, req *ISOUploadRequest) (*ISOIma
 		Architecture: req.Architecture,
 		Description:  req.Description,
 		CreatedAt:    time.Now(),
+		StoragePool:  poolName,
 		UploadStatus: "completed",
 		IsPublic:     true,
 		UploadedBy:   "system",
@@ -613,6 +642,7 @@ func (s *Service) ListISOs(ctx context.Context) ([]ISOImage, error) {
 			iso.Metadata = make(map[string]string)
 		}
 		iso.Metadata["pool_name"] = poolName
+		iso.StoragePool = poolName
 		isos = append(isos, iso)
 	}
 
@@ -682,12 +712,13 @@ func (s *Service) GetISO(ctx context.Context, isoID string) (ISOImage, error) {
 	}
 
 	// Get ISO info
+	var id int
 	var iso ISOImage
 	var poolName string
 	err := s.db.QueryRowContext(ctx, `SELECT id, name, path, size_bytes, 
 		       COALESCE(os_type, ''), COALESCE(os_variant, ''), COALESCE(architecture, ''), 
 		       COALESCE(description, ''), uploaded_at, 
-		       COALESCE(md5_hash, ''), COALESCE(sha256_hash, ''), COALESCE(pool_name, 'default') FROM iso_images WHERE id = ?`, numericID).Scan(&iso.ImageID, &iso.Filename, &iso.Path, &iso.SizeBytes,
+		       COALESCE(md5_hash, ''), COALESCE(sha256_hash, ''), COALESCE(pool_name, 'default') FROM iso_images WHERE id = ?`, numericID).Scan(&id, &iso.Filename, &iso.Path, &iso.SizeBytes,
 		&iso.OSType, &iso.OSVersion, &iso.Architecture,
 		&iso.Description, &iso.CreatedAt, &iso.MD5Hash, &iso.SHA256Hash, &poolName)
 	if err != nil {
@@ -695,10 +726,12 @@ func (s *Service) GetISO(ctx context.Context, isoID string) (ISOImage, error) {
 		return ISOImage{}, fmt.Errorf("ISO not found: %w", err)
 	}
 
+	iso.ImageID = fmt.Sprintf("iso-%d", id)
 	if iso.Metadata == nil {
 		iso.Metadata = make(map[string]string)
 	}
 	iso.Metadata["pool_name"] = poolName
+	iso.StoragePool = poolName
 
 	return iso, nil
 }
@@ -810,29 +843,230 @@ func (s *Service) UpdateVMEnhanced(ctx context.Context, nameOrUUID string, req *
 		log.Printf("UpdateVMEnhanced warning - failed to update autostart: %v\n", err)
 	}
 
-	// Handle storage updates if specified
-	// Note: Most storage changes require VM to be stopped
-	if req.Storage != nil && !isRunning {
+	// Handle storage updates if specified.
+	//
+	// We support adding disks (create/attach/clone) by attaching new <disk/> devices.
+	// If the VM is running, we attempt a live+config attach; otherwise config-only.
+	if req.Storage != nil {
 		log.Printf("UpdateVMEnhanced: Processing storage updates")
-		// Storage updates are complex and typically require rebuilding domain XML
-		// For now, we log the intent
-		if len(req.Storage.Disks) > 0 {
-			log.Printf("UpdateVMEnhanced: Storage disk updates requested - %d disks", len(req.Storage.Disks))
-			requiresRestart = true
+		diskConfigs, err := s.prepareEnhancedStorageConfig(ctx, req)
+		if err != nil {
+			log.Printf("UpdateVMEnhanced error preparing storage: %v\n", err)
+			return nil, fmt.Errorf("failed to prepare storage: %w", err)
 		}
-	} else if req.Storage != nil && isRunning {
-		log.Printf("UpdateVMEnhanced warning: Storage changes require VM to be stopped")
-		requiresRestart = true
+
+		xmlDesc, err := domain.GetXMLDesc(0)
+		if err != nil {
+			log.Printf("UpdateVMEnhanced error getting domain XML: %v\n", err)
+			return nil, fmt.Errorf("failed to get VM XML: %w", err)
+		}
+
+		existingTargets, existingSources, err := parseDomainDiskAttachments(xmlDesc)
+		if err != nil {
+			log.Printf("UpdateVMEnhanced warning: failed to parse existing disks: %v\n", err)
+			existingTargets = map[string]bool{}
+			existingSources = map[string]bool{}
+		}
+
+		attachFlags := libvirt.DOMAIN_DEVICE_MODIFY_CONFIG
+		if isRunning {
+			attachFlags = attachFlags | libvirt.DOMAIN_DEVICE_MODIFY_LIVE
+		}
+
+		createdButNotAttached := map[string]bool{}
+		for _, d := range diskConfigs {
+			if d.Path == "" || d.Config.Target == "" {
+				continue
+			}
+
+			// Skip if already attached by path or by target.
+			if existingSources[d.Path] || existingTargets[d.Config.Target] {
+				log.Printf("UpdateVMEnhanced: skipping already-attached disk path=%s target=%s", d.Path, d.Config.Target)
+				continue
+			}
+
+			if d.Created {
+				createdButNotAttached[d.Path] = true
+			}
+
+			diskXML := s.buildEnhancedAttachDiskXML(d)
+			if err := domain.AttachDeviceFlags(diskXML, attachFlags); err != nil {
+				log.Printf("UpdateVMEnhanced error attaching disk: %v\n", err)
+				// Best-effort cleanup for newly created disks that were not attached.
+				for p := range createdButNotAttached {
+					_ = os.Remove(p)
+				}
+				return nil, fmt.Errorf("failed to attach disk: %w", err)
+			}
+
+			delete(createdButNotAttached, d.Path)
+			existingSources[d.Path] = true
+			existingTargets[d.Config.Target] = true
+		}
 	}
 
-	// Handle network updates if specified
+	// Handle network updates (sync) if specified.
+	//
+	// If the VM is stopped, we sync the VM's interfaces to match req.Networks:
+	// - Detach existing interfaces not present in the desired config.
+	// - Attach interfaces present in the desired config but not currently attached.
+	//
+	// For safety, we require the VM to be stopped for network changes.
 	if len(req.Networks) > 0 {
-		log.Printf("UpdateVMEnhanced: Processing network updates - %d networks", len(req.Networks))
-		// Network interfaces can potentially be hot-plugged
-		// For now, we mark it as requiring restart for safety
 		if isRunning {
-			log.Printf("UpdateVMEnhanced warning: Network changes may require restart")
-			requiresRestart = true
+			return nil, fmt.Errorf("network changes require VM to be stopped")
+		}
+
+		log.Printf("UpdateVMEnhanced: Processing network updates - %d networks", len(req.Networks))
+
+		xmlDesc, err := domain.GetXMLDesc(0)
+		if err != nil {
+			log.Printf("UpdateVMEnhanced error getting domain XML: %v\n", err)
+			return nil, fmt.Errorf("failed to get VM XML: %w", err)
+		}
+
+		// Parse existing interfaces.
+		existingMACs := map[string]bool{}
+		existingKeys := map[string]bool{}
+		type existingIface struct {
+			ifaceType string
+			source    string
+			model     string
+			mac       string
+			key       string
+		}
+		var existing []existingIface
+
+		var dom DomainInterfaceXML
+		if err := xml.Unmarshal([]byte(xmlDesc), &dom); err == nil {
+			for _, iface := range dom.Devices.Interfaces {
+				ifaceType := strings.ToLower(strings.TrimSpace(iface.Type))
+				if ifaceType == "" {
+					continue
+				}
+
+				model := strings.TrimSpace(iface.Model.Type)
+				if model == "" {
+					model = "virtio"
+				}
+
+				source := ""
+				if strings.TrimSpace(iface.Source.Network) != "" {
+					source = strings.TrimSpace(iface.Source.Network)
+				} else if strings.TrimSpace(iface.Source.Bridge) != "" {
+					source = strings.TrimSpace(iface.Source.Bridge)
+				} else if strings.TrimSpace(iface.Source.Dev) != "" {
+					source = strings.TrimSpace(iface.Source.Dev)
+				}
+
+				mac := strings.ToLower(strings.TrimSpace(iface.MAC.Address))
+				key := fmt.Sprintf("%s|%s|%s", ifaceType, source, model)
+
+				existing = append(existing, existingIface{ifaceType: ifaceType, source: source, model: model, mac: mac, key: key})
+				if mac != "" {
+					existingMACs[mac] = true
+				}
+				existingKeys[key] = true
+			}
+		}
+
+		// Desired interface sets.
+		desiredKeys := map[string]bool{}
+		desiredMACs := map[string]bool{}
+		desiredKeyMACs := map[string]map[string]bool{} // key -> allowed MACs (if explicitly provided)
+		for i, net := range req.Networks {
+			ifaceType, source, model, mac, key, hadMAC, err := s.normalizeNetworkForKey(net)
+			if err != nil {
+				return nil, fmt.Errorf("networks[%d]: %w", i, err)
+			}
+			_ = ifaceType
+			_ = source
+			_ = model
+			desiredKeys[key] = true
+			if hadMAC {
+				macLower := strings.ToLower(strings.TrimSpace(mac))
+				if macLower != "" {
+					desiredMACs[macLower] = true
+					if desiredKeyMACs[key] == nil {
+						desiredKeyMACs[key] = map[string]bool{}
+					}
+					desiredKeyMACs[key][macLower] = true
+				}
+			}
+		}
+
+		// Detach interfaces not desired.
+		for _, ex := range existing {
+			// Skip non-network-ish interfaces (conservative).
+			switch ex.ifaceType {
+			case string(NetworkTypeNetwork), string(NetworkTypeBridge), string(NetworkTypeDirect), string(NetworkTypeUser):
+			// ok
+			default:
+				continue
+			}
+
+			keep := false
+			if ex.mac != "" && desiredMACs[ex.mac] {
+				keep = true
+			} else if desiredKeys[ex.key] {
+				// If desired explicitly specifies MAC(s) for this key, only keep if MAC matches.
+				if macs := desiredKeyMACs[ex.key]; macs != nil {
+					keep = ex.mac != "" && macs[ex.mac]
+				} else {
+					keep = true
+				}
+			}
+
+			if keep {
+				continue
+			}
+
+			if ex.mac == "" {
+				log.Printf("UpdateVMEnhanced warning: cannot detach interface without MAC (type=%s key=%s)", ex.ifaceType, ex.key)
+				continue
+			}
+
+			detachXML := fmt.Sprintf(`
+				<interface type='%s'>
+					<mac address='%s'/>
+				</interface>
+			`, ex.ifaceType, ex.mac)
+			if err := domain.DetachDeviceFlags(detachXML, libvirt.DOMAIN_DEVICE_MODIFY_CONFIG); err != nil {
+				return nil, fmt.Errorf("failed to detach network interface (mac=%s): %w", ex.mac, err)
+			}
+			delete(existingMACs, ex.mac)
+			delete(existingKeys, ex.key)
+		}
+
+		// Attach interfaces not already present.
+		for i, net := range req.Networks {
+			ifaceType, _, _, mac, key, hadMAC, err := s.normalizeNetworkForKey(net)
+			if err != nil {
+				return nil, fmt.Errorf("networks[%d]: %w", i, err)
+			}
+			_ = ifaceType
+
+			macLower := strings.ToLower(strings.TrimSpace(mac))
+			if hadMAC && macLower != "" && existingMACs[macLower] {
+				continue
+			}
+			if !hadMAC && existingKeys[key] {
+				continue
+			}
+
+			ifaceXML, _, attachedMAC, _, err := s.buildEnhancedAttachInterfaceXML(net)
+			if err != nil {
+				return nil, fmt.Errorf("failed to build interface XML for networks[%d]: %w", i, err)
+			}
+
+			if err := domain.AttachDeviceFlags(ifaceXML, libvirt.DOMAIN_DEVICE_MODIFY_CONFIG); err != nil {
+				return nil, fmt.Errorf("failed to attach network interface: %w", err)
+			}
+
+			if attachedMAC != "" {
+				existingMACs[strings.ToLower(strings.TrimSpace(attachedMAC))] = true
+			}
+			existingKeys[key] = true
 		}
 	}
 
@@ -891,4 +1125,169 @@ func (s *Service) UpdateVMEnhanced(ctx context.Context, nameOrUUID string, req *
 
 	// Return the updated VM information
 	return s.domainToVM(domain)
+}
+
+// buildEnhancedAttachDiskXML builds a libvirt <disk> device XML snippet for AttachDeviceFlags.
+func (s *Service) buildEnhancedAttachDiskXML(d PreparedDisk) string {
+	deviceType := "disk"
+	if strings.TrimSpace(d.Config.Device) != "" {
+		deviceType = strings.TrimSpace(d.Config.Device)
+	}
+
+	busType := string(d.Config.Bus)
+	if strings.TrimSpace(busType) == "" {
+		busType = "virtio"
+	}
+
+	driverType := strings.TrimSpace(d.Config.Format)
+	if driverType == "" {
+		driverType = "qcow2"
+	}
+
+	// Safety: ISO images are raw and should be attached as a read-only CD-ROM.
+	if strings.EqualFold(filepath.Ext(d.Path), ".iso") {
+		driverType = "raw"
+		if deviceType == "" || strings.EqualFold(deviceType, "disk") || strings.EqualFold(deviceType, "floppy") {
+			deviceType = "cdrom"
+		}
+	}
+
+	xml := fmt.Sprintf(`
+<disk type='file' device='%s'>
+<driver name='qemu' type='%s'/>
+<source file='%s'/>
+<target dev='%s' bus='%s'/>`, deviceType, driverType, d.Path, d.Config.Target, busType)
+
+	if d.Config.ReadOnly {
+		xml += `
+<readonly/>`
+	}
+
+	if d.Config.BootOrder > 0 {
+		xml += fmt.Sprintf(`
+<boot order='%d'/>`, d.Config.BootOrder)
+	}
+
+	xml += `
+</disk>`
+
+	return xml
+}
+
+// buildEnhancedAttachInterfaceXML builds a libvirt <interface> device XML snippet for AttachDeviceFlags.
+// It returns:
+// - xml snippet
+// - a key used for best-effort idempotency when MAC is not provided
+// - the MAC used (generated if empty)
+// - whether the caller explicitly provided MAC
+func (s *Service) buildEnhancedAttachInterfaceXML(net NetworkConfig) (string, string, string, bool, error) {
+	reqType := strings.ToLower(strings.TrimSpace(string(net.Type)))
+	if reqType == "" {
+		reqType = string(NetworkTypeNetwork)
+	}
+
+	// Treat NAT as an alias of libvirt 'network'.
+	if reqType == string(NetworkTypeNAT) {
+		reqType = string(NetworkTypeNetwork)
+	}
+
+	interfaceType := reqType
+	switch interfaceType {
+	case string(NetworkTypeNetwork), string(NetworkTypeBridge), string(NetworkTypeDirect), string(NetworkTypeUser):
+	// supported
+	default:
+		return "", "", "", false, fmt.Errorf("unsupported network type: %s", interfaceType)
+	}
+
+	source := strings.TrimSpace(net.Source)
+	switch interfaceType {
+	case string(NetworkTypeNetwork), string(NetworkTypeBridge), string(NetworkTypeDirect):
+		if source == "" {
+			return "", "", "", false, fmt.Errorf("source is required for type '%s'", interfaceType)
+		}
+	case string(NetworkTypeUser):
+		// source is not used
+		source = ""
+	}
+
+	model := strings.TrimSpace(net.Model)
+	if model == "" {
+		model = "virtio"
+	}
+
+	mac := strings.TrimSpace(net.MAC)
+	hadMAC := mac != ""
+	if mac == "" {
+		mac = generateMAC()
+	}
+
+	key := fmt.Sprintf("%s|%s|%s", interfaceType, source, model)
+
+	xml := fmt.Sprintf(`
+<interface type='%s'>`, interfaceType)
+
+	switch interfaceType {
+	case string(NetworkTypeBridge):
+		xml += fmt.Sprintf(`
+<source bridge='%s'/>`, source)
+	case string(NetworkTypeDirect):
+		// Default direct mode to bridge (most common).
+		xml += fmt.Sprintf(`
+<source dev='%s' mode='bridge'/>`, source)
+	case string(NetworkTypeUser):
+	// user-mode networking does not require a <source/>
+	default: // network
+		xml += fmt.Sprintf(`
+<source %s='%s'/>`, getNetworkSourceAttr(NetworkType(interfaceType)), source)
+	}
+
+	xml += fmt.Sprintf(`
+<mac address='%s'/>
+<model type='%s'/>
+</interface>`, mac, model)
+
+	return xml, key, mac, hadMAC, nil
+}
+
+// normalizeNetworkForKey normalizes a NetworkConfig to the effective libvirt interface type/source/model
+// and returns a stable key for idempotency/diffing.
+func (s *Service) normalizeNetworkForKey(net NetworkConfig) (ifaceType string, source string, model string, mac string, key string, hadMAC bool, err error) {
+	reqType := strings.ToLower(strings.TrimSpace(string(net.Type)))
+	if reqType == "" {
+		reqType = string(NetworkTypeNetwork)
+	}
+
+	// Treat NAT as an alias of libvirt 'network'.
+	if reqType == string(NetworkTypeNAT) {
+		reqType = string(NetworkTypeNetwork)
+	}
+
+	ifaceType = reqType
+	switch ifaceType {
+	case string(NetworkTypeNetwork), string(NetworkTypeBridge), string(NetworkTypeDirect), string(NetworkTypeUser):
+	// supported
+	default:
+		return "", "", "", "", "", false, fmt.Errorf("unsupported network type: %s", ifaceType)
+	}
+
+	source = strings.TrimSpace(net.Source)
+	switch ifaceType {
+	case string(NetworkTypeNetwork), string(NetworkTypeBridge), string(NetworkTypeDirect):
+		if source == "" {
+			return "", "", "", "", "", false, fmt.Errorf("source is required for type '%s'", ifaceType)
+		}
+	case string(NetworkTypeUser):
+		source = ""
+	}
+
+	model = strings.TrimSpace(net.Model)
+	if model == "" {
+		model = "virtio"
+	}
+
+	mac = strings.TrimSpace(net.MAC)
+	hadMAC = mac != ""
+
+	key = fmt.Sprintf("%s|%s|%s", ifaceType, source, model)
+	return ifaceType, source, model, mac, key, hadMAC, nil
 }

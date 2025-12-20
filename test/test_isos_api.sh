@@ -16,11 +16,18 @@ TEST_POOL_NAME="vapor-test-pool-iso-$$"
 TEST_POOL_PATH="/var/lib/libvirt/images/${TEST_POOL_NAME}"
 TEST_ISO_NAME_JSON="vapor-test-iso-json-$$"
 TEST_ISO_NAME_TUS="vapor-test-iso-tus-$$"
-TEST_POOL_NAME_JSON="vapor-iso-json-pool-$$"
-TEST_POOL_NAME_TUS="vapor-iso-tus-pool-$$"
+TEST_POOL_NAME_JSON="${TEST_POOL_NAME}"
+TEST_POOL_NAME_TUS="${TEST_POOL_NAME}"
 
 require_deps
 login_if_needed
+
+echo "
+=== Creating test storage pool for ISO uploads: ${TEST_POOL_NAME} ==="
+api_call POST "/virtualization/storages/pools" "$(jq -n \
+  --arg name "${TEST_POOL_NAME}" \
+  --arg path "${TEST_POOL_PATH}" \
+  '{name: $name, type: "dir", path: $path, autostart: false}')"
 
 # Helper for TUS upload calls (no JSON wrapper, raw curl)
 iso_upload_call() {

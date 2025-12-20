@@ -609,6 +609,7 @@ type ISOImage struct {
 	UploadStatus   string            `json:"upload_status"`
 	UploadProgress int               `json:"upload_progress"`
 	CreatedAt      time.Time         `json:"created_at"`
+	StoragePool    string            `json:"storage_pool,omitempty"`
 	Metadata       map[string]string `json:"metadata,omitempty"`
 }
 
@@ -685,6 +686,7 @@ type InterfaceXML struct {
 	Source struct {
 		Network string `xml:"network,attr"`
 		Bridge  string `xml:"bridge,attr"`
+		Dev     string `xml:"dev,attr"`
 	} `xml:"source"`
 	Model struct {
 		Type string `xml:"type,attr"`

@@ -441,3 +441,108 @@ func TestGenerateEnhancedDomainXML_GraphicsNoneDisablesDefault(t *testing.T) {
 func contains(s, substr string) bool {
 	return strings.Contains(s, substr)
 }
+
+func TestGenerateEnhancedDomainXML_ISOForcesRawDriverAndCdrom(t *testing.T) {
+	service := &Service{}
+
+	req := &VMCreateRequestEnhanced{
+		Name:         "vm-test",
+		Memory:       1024,
+		VCPUs:        1,
+		Architecture: "x86_64",
+	}
+
+	disks := []PreparedDisk{
+		{
+			Path: "/var/lib/libvirt/images/iso/alpine-virt.iso",
+			Config: DiskCreateConfig{
+				Action:      "attach",
+				Format:      "qcow2",  // wrong on purpose
+				Device:      "floppy", // wrong on purpose
+				Bus:         DiskBusIDE,
+				Target:      "hda",
+				ReadOnly:    true,
+				BootOrder:   0,
+				StoragePool: "default",
+			},
+		},
+	}
+
+	xml, err := service.generateEnhancedDomainXML(req, disks)
+	if err != nil {
+		t.Fatalf("generateEnhancedDomainXML returned error: %v", err)
+	}
+
+	if !strings.Contains(xml, "<driver name='qemu' type='raw'/>") {
+		t.Fatalf("expected ISO disk to use raw driver, got XML:\n%s", xml)
+	}
+	if !strings.Contains(xml, "<disk type='file' device='cdrom'>") {
+		t.Fatalf("expected ISO disk to be attached as cdrom device, got XML:\n%s", xml)
+	}
+}
+
+func TestBuildEnhancedAttachInterfaceXML(t *testing.T) {
+	service := &Service{}
+
+	t.Run("nat_normalizes_to_network", func(t *testing.T) {
+		xml, key, mac, hadMAC, err := service.buildEnhancedAttachInterfaceXML(NetworkConfig{
+			Type:   NetworkTypeNAT,
+			Source: "default",
+			Model:  "virtio",
+			MAC:    "52:54:00:aa:bb:cc",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !hadMAC {
+			t.Fatalf("expected hadMAC=true")
+		}
+		if mac != "52:54:00:aa:bb:cc" {
+			t.Fatalf("expected mac to be preserved, got %q", mac)
+		}
+		if key != "network|default|virtio" {
+			t.Fatalf("unexpected key: %q", key)
+		}
+		if !strings.Contains(xml, "<interface type='network'>") {
+			t.Fatalf("expected interface type network, got XML:\n%s", xml)
+		}
+		if !strings.Contains(xml, "<source network='default'/>") {
+			t.Fatalf("expected network source, got XML:\n%s", xml)
+		}
+	})
+
+	t.Run("direct_includes_mode_bridge", func(t *testing.T) {
+		xml, key, _, _, err := service.buildEnhancedAttachInterfaceXML(NetworkConfig{
+			Type:   NetworkTypeDirect,
+			Source: "eth0",
+			Model:  "virtio",
+			MAC:    "52:54:00:11:22:33",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if key != "direct|eth0|virtio" {
+			t.Fatalf("unexpected key: %q", key)
+		}
+		if !strings.Contains(xml, "<source dev='eth0' mode='bridge'/>") {
+			t.Fatalf("expected direct source dev with mode bridge, got XML:\n%s", xml)
+		}
+	})
+
+	t.Run("user_has_no_source", func(t *testing.T) {
+		xml, key, _, _, err := service.buildEnhancedAttachInterfaceXML(NetworkConfig{
+			Type:  NetworkTypeUser,
+			MAC:   "52:54:00:44:55:66",
+			Model: "virtio",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if key != "user||virtio" {
+			t.Fatalf("unexpected key: %q", key)
+		}
+		if strings.Contains(xml, "<source ") {
+			t.Fatalf("expected no <source/> for user interface, got XML:\n%s", xml)
+		}
+	})
+}

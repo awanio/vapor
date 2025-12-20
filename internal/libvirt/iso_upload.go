@@ -2,6 +2,7 @@ package libvirt
 
 import (
 	"encoding/base64"
+	"encoding/xml"
 	"fmt"
 	"io"
 	"log"
@@ -84,6 +85,20 @@ func (h *ISOResumableUploadHandler) CreateUpload(c *gin.Context) {
 		common.SendError(c, 400, "UNSUPPORTED_FILE_TYPE", "Only .iso files are supported")
 		return
 	}
+
+	// Validate/normalize pool selection
+	poolName := metadata["pool_name"]
+	if poolName == "" {
+		poolName = "default"
+	}
+	// Unit tests may run without an initialized libvirt connection; validate only when available.
+	if h.service != nil && h.service.conn != nil {
+		if _, err := h.service.resolveISODestinationDir(poolName); err != nil {
+			common.SendError(c, 400, "INVALID_STORAGE_POOL", "Invalid storage pool for ISO upload: "+err.Error())
+			return
+		}
+	}
+	metadata["pool_name"] = poolName
 
 	// Extract additional ISO metadata if provided
 	osType := metadata["os_type"]
@@ -325,8 +340,21 @@ func (h *ISOResumableUploadHandler) CompleteUpload(c *gin.Context) {
 	description := upload.Metadata["description"]
 	tags := upload.Metadata["tags"]
 
-	// Generate final ISO path
-	isoDir := filepath.Join("/var/lib/libvirt/images/iso")
+	// Generate final ISO path (pool-aware)
+	filename = filepath.Base(filename)
+	poolName := upload.Metadata["pool_name"]
+	if poolName == "" {
+		poolName = "default"
+	}
+	isoDir, err := h.service.resolveISODestinationDir(poolName)
+	if err != nil {
+		common.SendError(c, 400, "INVALID_STORAGE_POOL", "Invalid storage pool for ISO upload: "+err.Error())
+		return
+	}
+	if err := os.MkdirAll(isoDir, 0755); err != nil {
+		common.SendError(c, 500, "ISO_DIR_CREATE_ERROR", "Failed to create ISO directory: "+err.Error())
+		return
+	}
 	finalPath := filepath.Join(isoDir, filename)
 
 	// Check if file already exists
@@ -365,7 +393,7 @@ func (h *ISOResumableUploadHandler) CompleteUpload(c *gin.Context) {
 		Architecture: architecture,
 		Description:  description,
 		Tags:         h.parseTags(tags),
-		PoolName:     upload.Metadata["pool_name"],
+		PoolName:     poolName,
 	}
 
 	// Register the ISO using the service
@@ -479,6 +507,61 @@ func (h *ISOResumableUploadHandler) ListUploads(c *gin.Context) {
 		"uploads": isoUploads,
 		"count":   len(isoUploads),
 	})
+}
+
+// resolveISODestinationDir resolves the directory where ISO files should be stored for the given storage pool.
+// It currently supports directory-backed pools (dir/fs/netfs).
+func (s *Service) resolveISODestinationDir(poolName string) (string, error) {
+	if poolName == "" {
+		poolName = "default"
+	}
+	if s == nil || s.conn == nil {
+		// Fallback for unit tests / early startup: default pool goes to the legacy ISO dir.
+		if poolName == "default" {
+			return filepath.Join("/var/lib/libvirt/images/iso"), nil
+		}
+		return "", fmt.Errorf("libvirt connection not available")
+	}
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	pool, err := s.conn.LookupStoragePoolByName(poolName)
+	if err != nil {
+		return "", fmt.Errorf("storage pool %q not found: %w", poolName, err)
+	}
+	defer pool.Free()
+
+	// Prefer active pools since some types rely on mounted targets.
+	if active, err := pool.IsActive(); err == nil && !active {
+		return "", fmt.Errorf("storage pool %q is not active", poolName)
+	}
+
+	xmlDesc, err := pool.GetXMLDesc(0)
+	if err != nil {
+		return "", fmt.Errorf("failed to get pool XML: %w", err)
+	}
+	var poolXML struct {
+		Type   string `xml:"type,attr"`
+		Target struct {
+			Path string `xml:"path"`
+		} `xml:"target"`
+	}
+	if err := xml.Unmarshal([]byte(xmlDesc), &poolXML); err != nil {
+		return "", fmt.Errorf("failed to parse pool XML: %w", err)
+	}
+	if poolXML.Target.Path == "" {
+		return "", fmt.Errorf("storage pool %q has no target path", poolName)
+	}
+	// Only support filesystem path-backed pools for now.
+	switch poolXML.Type {
+	case "dir", "fs", "netfs":
+		// ok
+	default:
+		return "", fmt.Errorf("unsupported storage pool type %q for ISO upload", poolXML.Type)
+	}
+
+	return filepath.Join(poolXML.Target.Path, "iso"), nil
 }
 
 // Helper functions

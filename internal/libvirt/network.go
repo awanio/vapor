@@ -77,6 +77,52 @@ func (s *Service) CreateNetwork(ctx context.Context, req *NetworkCreateRequest) 
 	return s.networkToType(net)
 }
 
+// StartNetwork starts (activates) a virtual network
+func (s *Service) StartNetwork(ctx context.Context, name string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	net, err := s.conn.LookupNetworkByName(name)
+	if err != nil {
+		return fmt.Errorf("network not found: %w", err)
+	}
+	defer net.Free()
+
+	active, err := net.IsActive()
+	if err == nil && active {
+		return nil
+	}
+
+	if err := net.Create(); err != nil {
+		return fmt.Errorf("failed to start network: %w", err)
+	}
+
+	return nil
+}
+
+// StopNetwork stops (deactivates) a virtual network
+func (s *Service) StopNetwork(ctx context.Context, name string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	net, err := s.conn.LookupNetworkByName(name)
+	if err != nil {
+		return fmt.Errorf("network not found: %w", err)
+	}
+	defer net.Free()
+
+	active, err := net.IsActive()
+	if err == nil && !active {
+		return nil
+	}
+
+	if err := net.Destroy(); err != nil {
+		return fmt.Errorf("failed to stop network: %w", err)
+	}
+
+	return nil
+}
+
 // DeleteNetwork deletes a virtual network
 func (s *Service) DeleteNetwork(ctx context.Context, name string) error {
 	s.mu.Lock()
