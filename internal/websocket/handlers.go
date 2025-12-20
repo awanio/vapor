@@ -46,6 +46,7 @@ func ServeEventsWebSocket(hub *Hub, jwtSecret string) gin.HandlerFunc {
 			send:          make(chan []byte, 256),
 			id:            fmt.Sprintf("events-%d", time.Now().UnixNano()),
 			subscriptions: make(map[string]bool),
+			eventsHub:     hub,
 			ctx:           ctx,
 			cancel:        cancel,
 		}
@@ -214,10 +215,22 @@ func sendMetrics(client *Client) {
 				}
 			}
 
-			client.sendMessage(Message{
-				Type:    MessageTypeData,
-				Payload: metricsData,
-			})
+			// For the consolidated /ws/events endpoint, emit metrics as event payloads
+			// to keep the envelope consistent with logs and other event kinds.
+			if client.handlerType == "events" {
+				client.sendMessage(Message{
+					Type: MessageTypeEvent,
+					Payload: map[string]interface{}{
+						"kind": "metrics",
+						"data": metricsData,
+					},
+				})
+			} else {
+				client.sendMessage(Message{
+					Type:    MessageTypeData,
+					Payload: metricsData,
+				})
+			}
 			// Also publish to events channel if available
 			if client.eventsHub != nil {
 				msg := Message{Type: MessageTypeEvent, Payload: map[string]interface{}{
