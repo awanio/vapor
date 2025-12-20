@@ -6,6 +6,7 @@
 import { atom, computed } from 'nanostores';
 import { persistentAtom } from '@nanostores/persistent';
 import { wsManager } from './websocket';
+import { subscribeToEventsChannel } from './events-stream';
 import { perfIncrement, registerPerfGauge } from '../perf-debug';
 import type { 
   SystemSummary, 
@@ -474,79 +475,181 @@ let unsubscribeMetrics: (() => void) | null = null;
 export async function connectMetrics(): Promise<void> {
   // Import auth here to avoid circular dependency
   const { auth } = await import('../../auth');
-  
+
   // Check if user is authenticated before connecting
   if (!auth.isAuthenticated()) {
     return;
   }
-  
+
   if (unsubscribeMetrics) {
-    // Force reconnect to ensure fresh auth token
-    wsManager.forceReconnectShared('metrics');
+    // Force reconnect to ensure fresh auth token (shared /ws/events)
+    wsManager.forceReconnectShared('events');
     return;
   }
-  
-  // Subscribe to metrics WebSocket
-  unsubscribeMetrics = wsManager.subscribeToShared('metrics', {
+
+  // Track previous network counters to derive per-second rates when the backend provides cumulative totals
+  const lastNetworkSample = new Map<
+    string,
+    { ts: number; rxBytes: number; txBytes: number; rxPackets: number; txPackets: number }
+  >();
+
+  // Subscribe to metrics via the shared /ws/events connection
+  unsubscribeMetrics = subscribeToEventsChannel({
+    channel: 'metrics',
     routeId: 'metrics-store',
-    handler: (message) => {
-      // Handle authentication
-      if (message.type === 'auth' && message.payload?.authenticated) {
-        $metricsConnected.set(true);
+    onConnectionChange: (connected) => {
+      $metricsConnected.set(connected);
+      if (!connected) {
+        // Don't spam errors here; consumers can degrade gracefully.
         $metricsError.set(null);
-        
-        // Send subscribe message
-        wsManager.send('shared:metrics', { type: 'subscribe' });
-        return;
-      }
-      
-      // Handle metric data
-      if (message.type === 'data' && message.payload) {
-        const data = message.payload;
-        try { perfIncrement('metrics_data'); } catch {}
-        
-        // Update CPU metrics
-        if (data.cpu) {
-          const cpuData: CPUMetricData = {
-            usage_percent: data.cpu.usage,
-            load1: data.cpu.load_average?.[0] || 0,
-            load5: data.cpu.load_average?.[1] || 0,
-            load15: data.cpu.load_average?.[2] || 0,
-            cores: data.cpu.cores || [],
-          };
-          updateCpuMetrics(cpuData);
-        }
-        
-        // Update Memory metrics
-        if (data.memory) {
-          updateMemoryMetrics(data.memory);
-        }
-        
-        // Update Disk metrics
-        if (data.disk) {
-          updateDiskMetrics(data.disk);
-        }
-        
-        // Update Network metrics
-        if (data.network) {
-          updateNetworkMetrics(data.network);
-        }
-      }
-      
-      // Handle errors
-      if (message.type === 'error') {
-        console.error('[MetricsStore] WebSocket error:', message);
-        $metricsError.set(message.payload?.message || 'WebSocket error');
-        $metricsConnected.set(false);
       }
     },
-    onError: (error) => {
-      console.error('[MetricsStore] WebSocket error:', error);
-      $metricsError.set(error.message);
-      $metricsConnected.set(false);
+    onEvent: (payload: any) => {
+      // Expected payload (from /ws/events): { kind: 'metrics', data: { cpu, memory, disk, network, timestamp } }
+      // Be tolerant of variations: payload may be the data directly.
+      const data = payload?.data ?? payload;
+      if (!data) return;
+
+      try { perfIncrement('metrics_data'); } catch {}
+
+      // CPU mapping
+      if (data.cpu) {
+        const la = Array.isArray(data.cpu.load_average) ? data.cpu.load_average : [];
+        const perCore = Array.isArray(data.cpu.per_core) ? data.cpu.per_core : [];
+        const coresArr = perCore.map((usage: number, idx: number) => ({ core: idx, usage_percent: usage }));
+
+        const cpuData: CPUMetricData = {
+          usage_percent: Number(data.cpu.usage ?? 0),
+          load1: Number(la[0] ?? 0),
+          load5: Number(la[1] ?? 0),
+          load15: Number(la[2] ?? 0),
+          cores: coresArr,
+        };
+        updateCpuMetrics(cpuData);
+      }
+
+      // Memory mapping
+      if (data.memory) {
+        const swapTotal = Number(data.memory.swap_total ?? 0);
+        const swapUsed = Number(data.memory.swap_used ?? 0);
+        const swapUsedPercent = swapTotal > 0 ? (swapUsed / swapTotal) * 100 : 0;
+
+        const memData: MemoryMetricData = {
+          total: Number(data.memory.total ?? 0),
+          used: Number(data.memory.used ?? 0),
+          free: Number(data.memory.free ?? 0),
+          available: Number(data.memory.available ?? 0),
+          used_percent: Number(data.memory.used_percent ?? 0),
+          swap_total: swapTotal,
+          swap_used: swapUsed,
+          swap_free: Number(data.memory.swap_free ?? 0),
+          swap_used_percent: swapUsedPercent,
+        };
+        updateMemoryMetrics(memData);
+      }
+
+      // Disk mapping
+      if (Array.isArray(data.disk)) {
+        const disks = data.disk.map((d: any) => ({
+          device: String(d.device ?? ''),
+          mount_point: String(d.mountpoint ?? d.mount_point ?? ''),
+          filesystem: String(d.fstype ?? d.filesystem ?? ''),
+          total: Number(d.total ?? 0),
+          used: Number(d.used ?? 0),
+          free: Number(d.free ?? 0),
+          used_percent: Number(d.used_percent ?? 0),
+        }));
+
+        const diskData: DiskMetricData = { disks };
+        updateDiskMetrics(diskData);
+      }
+
+      // Network mapping
+      if (Array.isArray(data.network)) {
+        const now = Date.now();
+
+        const num = (v: any) => {
+          const n = Number(v);
+          return Number.isFinite(n) ? n : 0;
+        };
+
+        const interfaces = data.network.map((n: any) => {
+          const name = String(n.interface ?? n.name ?? '');
+
+          // Prefer explicit per-second rates if present
+          const rxBytesPerSecProvided = num(
+            n.rx_bytes_per_sec ?? n.rxBytesPerSec ?? n.bytes_recv_per_sec ?? n.bytesRecvPerSec,
+          );
+          const txBytesPerSecProvided = num(
+            n.tx_bytes_per_sec ?? n.txBytesPerSec ?? n.bytes_sent_per_sec ?? n.bytesSentPerSec,
+          );
+          const rxPacketsPerSecProvided = num(
+            n.rx_packets_per_sec ?? n.rxPacketsPerSec ?? n.packets_recv_per_sec ?? n.packetsRecvPerSec,
+          );
+          const txPacketsPerSecProvided = num(
+            n.tx_packets_per_sec ?? n.txPacketsPerSec ?? n.packets_sent_per_sec ?? n.packetsSentPerSec,
+          );
+
+          // Fallback: derive rates from cumulative counters
+          const rxBytesTotal = num(n.bytes_recv ?? n.rx_bytes ?? n.rxBytes ?? n.rxbytes);
+          const txBytesTotal = num(n.bytes_sent ?? n.tx_bytes ?? n.txBytes ?? n.txbytes);
+          const rxPacketsTotal = num(n.packets_recv ?? n.rx_packets ?? n.rxPackets ?? n.rxpackets);
+          const txPacketsTotal = num(n.packets_sent ?? n.tx_packets ?? n.txPackets ?? n.txpackets);
+
+          let rx_bytes_per_sec = rxBytesPerSecProvided;
+          let tx_bytes_per_sec = txBytesPerSecProvided;
+          let rx_packets_per_sec = rxPacketsPerSecProvided;
+          let tx_packets_per_sec = txPacketsPerSecProvided;
+
+          if (
+            name &&
+            (rx_bytes_per_sec === 0 || tx_bytes_per_sec === 0 || rx_packets_per_sec === 0 || tx_packets_per_sec === 0)
+          ) {
+            const prev = lastNetworkSample.get(name);
+            if (prev) {
+              const dt = Math.max(0.001, (now - prev.ts) / 1000);
+              const dRxB = rxBytesTotal >= prev.rxBytes ? rxBytesTotal - prev.rxBytes : 0;
+              const dTxB = txBytesTotal >= prev.txBytes ? txBytesTotal - prev.txBytes : 0;
+              const dRxP = rxPacketsTotal >= prev.rxPackets ? rxPacketsTotal - prev.rxPackets : 0;
+              const dTxP = txPacketsTotal >= prev.txPackets ? txPacketsTotal - prev.txPackets : 0;
+
+              if (rx_bytes_per_sec === 0) rx_bytes_per_sec = dRxB / dt;
+              if (tx_bytes_per_sec === 0) tx_bytes_per_sec = dTxB / dt;
+              if (rx_packets_per_sec === 0) rx_packets_per_sec = dRxP / dt;
+              if (tx_packets_per_sec === 0) tx_packets_per_sec = dTxP / dt;
+            }
+
+            // Update sample
+            lastNetworkSample.set(name, {
+              ts: now,
+              rxBytes: rxBytesTotal,
+              txBytes: txBytesTotal,
+              rxPackets: rxPacketsTotal,
+              txPackets: txPacketsTotal,
+            });
+          }
+
+          return {
+            name,
+            rx_bytes_per_sec,
+            tx_bytes_per_sec,
+            rx_packets_per_sec,
+            tx_packets_per_sec,
+            rx_errors: num(n.errin ?? n.rx_errors ?? n.rxErrors),
+            tx_errors: num(n.errout ?? n.tx_errors ?? n.txErrors),
+            rx_dropped: num(n.dropin ?? n.rx_dropped ?? n.rxDropped),
+            tx_dropped: num(n.dropout ?? n.tx_dropped ?? n.txDropped),
+          };
+        });
+
+        const netData: NetworkMetricData = { interfaces };
+        updateNetworkMetrics(netData);
+      }
+
+      $metricsError.set(null);
     },
   });
-  
+
   // Fetch initial system info if not cached
   if (!$systemSummary.get()) {
     fetchSystemInfo();

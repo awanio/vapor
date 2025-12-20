@@ -34,7 +34,6 @@ class WebSocketManager implements IWebSocketManager {
   
   // Shared connections for broadcast/read-only data
   public sharedConnections = {
-    metrics: null as WebSocket | null,
     events: null as WebSocket | null,
     notifications: null as WebSocket | null,
   };
@@ -70,9 +69,6 @@ class WebSocketManager implements IWebSocketManager {
   
   private constructor() {
     // Set default reconnection strategies
-    if (DEFAULT_RECONNECT_STRATEGIES.metrics) {
-      this.reconnectStrategies.set('metrics', DEFAULT_RECONNECT_STRATEGIES.metrics);
-    }
     if (DEFAULT_RECONNECT_STRATEGIES.terminal) {
       this.reconnectStrategies.set('terminal', DEFAULT_RECONNECT_STRATEGIES.terminal);
     }
@@ -728,7 +724,6 @@ class WebSocketManager implements IWebSocketManager {
    */
   private getEndpointPath(type: string, id?: string): string {
     const endpoints: Record<string, string> = {
-      metrics: '/ws/metrics',  // Fixed: using /ws/metrics with 's'
       events: '/ws/events',
       notifications: '/ws/notifications',
       terminals: `/ws/terminal${id ? `?id=${id}` : ''}`,

@@ -2,7 +2,7 @@ import { wsManager } from './websocket';
 import { WebSocketEventType } from '../types/websocket';
 import type { MessageRouter, WebSocketEvent, WebSocketMessage } from '../types/websocket';
 
-export type EventsChannel = 'vm-events' | 'container-events' | 'k8s-events';
+export type EventsChannel = string;
 
 export interface SubscribeToEventsChannelOptions<TPayload = any> {
   channel: EventsChannel;
@@ -12,6 +12,10 @@ export interface SubscribeToEventsChannelOptions<TPayload = any> {
   onEvent: (payload: TPayload, message: WebSocketMessage<TPayload>) => void;
   /** Called when the underlying /ws/events connection changes state. */
   onConnectionChange?: (connected: boolean) => void;
+  /** Extra fields to include in the subscribe payload (e.g. filters). */
+  subscribePayload?: Record<string, any>;
+  /** Override which WS message type(s) to route; defaults to 'event'. */
+  messageType?: string | string[];
 }
 
 const EVENTS_CONNECTION_ID = 'shared:events';
@@ -22,13 +26,13 @@ export function subscribeToEventsChannel<TPayload = any>(
   const sendSubscribe = () => {
     wsManager.send(EVENTS_CONNECTION_ID, {
       type: 'subscribe',
-      payload: { channel: options.channel },
+      payload: { channel: options.channel, ...(options.subscribePayload || {}) },
     });
   };
 
   const router: MessageRouter<TPayload> = {
     routeId: options.routeId,
-    messageType: 'event',
+    messageType: options.messageType ?? 'event',
     handler: (message: WebSocketMessage<TPayload>) => {
       options.onEvent(message.payload, message);
     },

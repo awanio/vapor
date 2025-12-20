@@ -16,6 +16,8 @@ export class ActionDropdown extends LitElement {
   @state() private isOpen = false;
   @state() private dropdownPosition = { top: 0, left: 0 };
   private dropdownElement: HTMLDivElement | null = null;
+  private anchorRect: DOMRect | null = null;
+  private viewportMargin = 8;
 
   static override styles = css`
     :host {
@@ -94,7 +96,8 @@ export class ActionDropdown extends LitElement {
       min-width: 160px;
       z-index: 99999;
       display: block;
-      overflow: hidden;
+      overflow: auto;
+      max-height: calc(100vh - 16px);
     `;
 
     this.dropdownElement.innerHTML = this.actions.map(action => `
@@ -140,6 +143,40 @@ export class ActionDropdown extends LitElement {
     });
 
     document.body.appendChild(this.dropdownElement);
+
+    // After attaching, measure and adjust position to avoid viewport clipping
+    requestAnimationFrame(() => this.adjustDropdownPosition());
+  }
+
+
+  private adjustDropdownPosition() {
+    if (!this.dropdownElement || !this.anchorRect) return;
+
+    const margin = this.viewportMargin;
+    const menuRect = this.dropdownElement.getBoundingClientRect();
+    const anchor = this.anchorRect;
+
+    // Preferred horizontal placement: align dropdown's right edge with button's right edge.
+    let left = anchor.right - menuRect.width;
+    left = Math.max(margin, Math.min(left, window.innerWidth - menuRect.width - margin));
+
+    // Preferred vertical placement: below if it fits, otherwise above.
+    const spaceBelow = window.innerHeight - anchor.bottom;
+    const spaceAbove = anchor.top;
+
+    let top: number;
+    if (menuRect.height + margin <= spaceBelow) {
+      top = anchor.bottom + 4;
+    } else if (menuRect.height + margin <= spaceAbove) {
+      top = anchor.top - menuRect.height - 4;
+    } else {
+      // If it can't fully fit either way, clamp within viewport.
+      const preferred = anchor.bottom + 4;
+      top = Math.max(margin, Math.min(preferred, window.innerHeight - menuRect.height - margin));
+    }
+
+    this.dropdownElement.style.left = `${left}px`;
+    this.dropdownElement.style.top = `${top}px`;
   }
 
   private removeDropdown() {
@@ -151,6 +188,7 @@ export class ActionDropdown extends LitElement {
 
   private closeDropdown() {
     this.isOpen = false;
+    this.anchorRect = null;
     this.removeDropdown();
   }
 
@@ -171,10 +209,12 @@ export class ActionDropdown extends LitElement {
       const button = event.currentTarget as HTMLElement;
       const rect = button.getBoundingClientRect();
       
-      // Simple positioning - just put it below and to the left of the button
+      this.anchorRect = rect;
+
+      // Initial positioning (will be adjusted after measuring the menu)
       const top = rect.bottom + 4;
-      const left = rect.left - 100; // Position to the left of the button
-      
+      const left = rect.right;
+
       this.dropdownPosition = { top, left };
       
       this.isOpen = true;

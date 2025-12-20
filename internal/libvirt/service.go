@@ -1474,6 +1474,10 @@ func (s *Service) domainToVM(domain *libvirt.Domain) (*VM, error) {
 		persistent = false
 	}
 
+	// Default timestamps unknown; will try to derive below
+	var createdAt time.Time
+	var updatedAt time.Time
+
 	vm := &VM{
 		UUID:       uuid,
 		Name:       name,
@@ -1483,13 +1487,30 @@ func (s *Service) domainToVM(domain *libvirt.Domain) (*VM, error) {
 		VCPUs:      info.NrVirtCpu,
 		AutoStart:  autostart,
 		Persistent: persistent,
-		CreatedAt:  time.Now(), // Would need to be stored/retrieved properly
-		UpdatedAt:  time.Now(),
+		CreatedAt:  createdAt,
+		UpdatedAt:  updatedAt,
 	}
 
 	// Parse XML for additional details including OS metadata
 	xmlDesc, err := domain.GetXMLDesc(0)
 	if err == nil {
+		// Try to derive timestamps from disk path mtime as a best-effort proxy
+		if createdAt.IsZero() || updatedAt.IsZero() {
+			if diskPath := s.firstDiskPathFromXML(xmlDesc); diskPath != "" {
+				if fi, err := os.Stat(diskPath); err == nil {
+					createdAt = fi.ModTime()
+					updatedAt = fi.ModTime()
+				}
+			}
+		}
+
+		if !createdAt.IsZero() {
+			vm.CreatedAt = createdAt
+		}
+		if !updatedAt.IsZero() {
+			vm.UpdatedAt = updatedAt
+		}
+
 		// Parse OS metadata
 		vm.OSInfoDetail = s.parseOSMetadata(xmlDesc)
 
@@ -2791,4 +2812,40 @@ func (s *Service) GetNetworkLinkState(ctx context.Context, nameOrUUID string, in
 	}
 
 	return nil, fmt.Errorf("interface %s not found", interfaceName)
+}
+
+func (s *Service) firstDiskPathFromXML(xmlDesc string) string {
+	type DiskSource struct {
+		File string `xml:"file,attr"`
+		Dev  string `xml:"dev,attr"`
+		Name string `xml:"name,attr"`
+	}
+	type Disk struct {
+		Device string     `xml:"device,attr"`
+		Source DiskSource `xml:"source"`
+	}
+	type Devices struct {
+		Disks []Disk `xml:"disk"`
+	}
+	type DomainXML struct {
+		Devices Devices `xml:"devices"`
+	}
+	var dom DomainXML
+	if err := xml.Unmarshal([]byte(xmlDesc), &dom); err != nil {
+		return ""
+	}
+	for _, d := range dom.Devices.Disks {
+		if d.Device == "disk" {
+			if d.Source.File != "" {
+				return d.Source.File
+			}
+			if d.Source.Dev != "" {
+				return d.Source.Dev
+			}
+			if d.Source.Name != "" {
+				return d.Source.Name
+			}
+		}
+	}
+	return ""
 }

@@ -221,7 +221,6 @@ export interface IWebSocketManager {
    * Shared connections for broadcast/read-only data
    */
   sharedConnections: {
-    metrics: WebSocket | null;
     events: WebSocket | null;
     notifications: WebSocket | null;
   };

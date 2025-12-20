@@ -59,71 +59,6 @@ func ServeEventsWebSocket(hub *Hub, jwtSecret string) gin.HandlerFunc {
 	}
 }
 
-// ServeMetricsWebSocket handles WebSocket connections for system metrics
-func ServeMetricsWebSocket(hub *Hub, jwtSecret string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-		if err != nil {
-			log.Printf("Failed to upgrade to websocket: %v", err)
-			return
-		}
-
-		ctx, cancel := context.WithCancel(context.Background())
-		client := &Client{
-			hub:           hub,
-			conn:          conn,
-			send:          make(chan []byte, 256),
-			id:            fmt.Sprintf("metrics-%d", time.Now().UnixNano()),
-			subscriptions: make(map[string]bool),
-			ctx:           ctx,
-			cancel:        cancel,
-		}
-
-		client.hub.register <- client
-
-		// Store handler context
-		client.jwtSecret = jwtSecret
-		client.handlerType = "metrics"
-
-		// Start goroutines for reading and writing
-		go client.readPump()
-		go client.writePump()
-	}
-}
-
-// ServeLogsWebSocket handles WebSocket connections for system logs
-func ServeLogsWebSocket(hub *Hub, jwtSecret string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-		if err != nil {
-			log.Printf("Failed to upgrade to websocket: %v", err)
-			return
-		}
-
-		ctx, cancel := context.WithCancel(context.Background())
-		client := &Client{
-			hub:           hub,
-			conn:          conn,
-			send:          make(chan []byte, 256),
-			id:            fmt.Sprintf("logs-%d", time.Now().UnixNano()),
-			subscriptions: make(map[string]bool),
-			ctx:           ctx,
-			cancel:        cancel,
-		}
-
-		client.hub.register <- client
-
-		// Store handler context
-		client.jwtSecret = jwtSecret
-		client.handlerType = "logs"
-		client.logService = logs.NewService()
-
-		// Start goroutines for reading and writing
-		go client.readPump()
-		go client.writePump()
-	}
-}
-
 // ServeTerminalWebSocket handles WebSocket connections for terminal sessions
 func ServeTerminalWebSocket(hub *Hub, jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -283,6 +218,16 @@ func sendMetrics(client *Client) {
 				Type:    MessageTypeData,
 				Payload: metricsData,
 			})
+			// Also publish to events channel if available
+			if client.eventsHub != nil {
+				msg := Message{Type: MessageTypeEvent, Payload: map[string]interface{}{
+					"kind": "metrics",
+					"data": metricsData,
+				}}
+				if b, err := json.Marshal(msg); err == nil {
+					client.eventsHub.BroadcastToChannel("metrics", b)
+				}
+			}
 		}
 	}
 }
@@ -373,10 +318,30 @@ func tailLogs(client *Client, logService *logs.Service, msg Message) {
 			var entry map[string]interface{}
 			if err := json.Unmarshal([]byte(line), &entry); err == nil {
 				logEntry := parseJournalEntry(entry)
-				client.sendMessage(Message{
-					Type:    MessageTypeData,
-					Payload: logEntry,
-				})
+				handlerType := func() string { client.mu.RLock(); defer client.mu.RUnlock(); return client.handlerType }()
+				if handlerType == "events" {
+					client.sendMessage(Message{
+						Type: MessageTypeEvent,
+						Payload: map[string]interface{}{
+							"kind":  "log",
+							"entry": logEntry,
+						},
+					})
+				} else {
+					client.sendMessage(Message{
+						Type:    MessageTypeData,
+						Payload: logEntry,
+					})
+				}
+				if client.eventsHub != nil {
+					msg := Message{Type: MessageTypeEvent, Payload: map[string]interface{}{
+						"kind":  "log",
+						"entry": logEntry,
+					}}
+					if b, err := json.Marshal(msg); err == nil {
+						client.eventsHub.BroadcastToChannel("log-events", b)
+					}
+				}
 			}
 		}
 	}

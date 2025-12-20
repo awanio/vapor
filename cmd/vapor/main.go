@@ -206,18 +206,12 @@ func main() {
 	router.Static("/docs", "./docs")
 
 	// Setup WebSocket hub
-	metricsHub := websocket.NewHub()
-	logsHub := websocket.NewHub()
 	terminalHub := websocket.NewHub()
 
-	go metricsHub.Run()
-	go logsHub.Run()
 	go terminalHub.Run()
 	go eventsHub.Run()
 
 	// WebSocket routes
-	router.GET("/ws/metrics", websocket.ServeMetricsWebSocket(metricsHub, cfg.GetJWTSecret()))
-	router.GET("/ws/logs", websocket.ServeLogsWebSocket(logsHub, cfg.GetJWTSecret()))
 	router.GET("/ws/terminal", websocket.ServeTerminalWebSocket(terminalHub, cfg.GetJWTSecret()))
 	router.GET("/ws/events", websocket.ServeEventsWebSocket(eventsHub, cfg.GetJWTSecret()))
 

@@ -657,17 +657,16 @@ export class VirtualizationVolumes extends LitElement {
       nameCell: (volume: StorageVolume) => {
         const iconClass = volume.type === 'dir' ? 'dir'
           : volume.format === 'iso' ? 'iso'
-          : 'disk';
+            : 'disk';
         const icon = volume.type === 'dir' ? '📁'
           : volume.format === 'iso' ? '💿'
-          : '💾';
+            : '💾';
 
         return html`
           <div class="volume-name">
             <span class="volume-icon ${iconClass}">${icon}</span>
             <div class="volume-details">
               <div class="volume-title">${volume.name}</div>
-              <div class="volume-path">${volume.path}</div>
             </div>
           </div>
         `;
@@ -1233,9 +1232,9 @@ export class VirtualizationVolumes extends LitElement {
             .show=${this.showDetails}
             .loading=${this.detailsLoading}
             @close=${() => {
-              this.showDetails = false;
-              this.selectedVolume = null;
-            }}
+          this.showDetails = false;
+          this.selectedVolume = null;
+        }}
           >
             <div style="padding: 20px;">
               <h3>Volume Information</h3>

@@ -14,6 +14,7 @@ import (
 
 // Client represents a WebSocket client
 type Client struct {
+	eventsHub      *Hub
 	hub            *Hub
 	conn           *websocket.Conn
 	send           chan []byte
@@ -221,6 +222,14 @@ func (c *Client) processMessage(data []byte) {
 
 		// Start the appropriate service based on handler type
 		switch handlerType {
+		case "events":
+			// Dispatch based on subscribed channel
+			switch payload.Channel {
+			case "log-events":
+				go tailLogs(c, c.logService, msg)
+			case "metrics":
+				go sendMetrics(c)
+			}
 		case "metrics":
 			// Start sending metrics immediately
 			go sendMetrics(c)

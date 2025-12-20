@@ -149,6 +149,11 @@ func (s *Service) storageVolumeToType(vol *libvirt.StorageVol) (*StorageVolume, 
 		volumeType = "dir"
 	}
 
+	createdAt := time.Time{}
+	if fi, err := os.Stat(path); err == nil {
+		createdAt = fi.ModTime()
+	}
+
 	return &StorageVolume{
 		Name:       name,
 		Type:       volumeType,
@@ -156,7 +161,7 @@ func (s *Service) storageVolumeToType(vol *libvirt.StorageVol) (*StorageVolume, 
 		Allocation: info.Allocation,
 		Path:       path,
 		Format:     volXML.Target.Format.Type,
-		CreatedAt:  time.Now(), // Would need to be retrieved from metadata
+		CreatedAt:  createdAt,
 	}, nil
 }
 

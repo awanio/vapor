@@ -2,7 +2,7 @@ import { html, css } from 'lit';
 import { state } from 'lit/decorators.js';
 import { t } from '../i18n';
 import { I18nLitElement } from '../i18n-mixin';
-import { WebSocketManager } from '../api';
+import { subscribeToEventsChannel } from '../stores/shared/events-stream';
 import type { WSLogMessage } from '../types/api';
 
 export class LogsTab extends I18nLitElement {
@@ -27,20 +27,33 @@ export class LogsTab extends I18nLitElement {
   @state()
   private autoScroll = true;
 
-  private wsManager: WebSocketManager | null = null;
+  private unsubscribeLogs: (() => void) | null = null;
   private logsContainer: HTMLElement | null = null;
   private maxLogs = 1000; // Maximum number of logs to keep in memory
 
-  // Ensure update triggers on state change
-  override update(changedProperties: Map<string | number | symbol, unknown>) {
-    super.update(changedProperties);
-    // Debugging
-    console.log('Component updated', {
-      logs: this.logs.length,
-      connected: this.connected
-    });
+  private buildFilters(): any {
+    const filters: any = {
+      follow: this.follow,
+    };
+
+    if (this.serviceFilter) {
+      const serviceName = this.serviceFilter.trim();
+      if (serviceName) {
+        filters.unit = serviceName;
+      }
+    }
+
+    if (this.priorityFilter && this.priorityFilter !== 'all') {
+      filters.priority = this.priorityFilter;
+    }
+
+    if (this.sinceFilter) {
+      filters.since = this.sinceFilter;
+    }
+
+    return filters;
   }
-  
+
   static override styles = css`
     :host {
       display: block;
@@ -260,128 +273,59 @@ export class LogsTab extends I18nLitElement {
   }
 
   private async initWebSocket() {
-    try {
-      this.wsManager = new WebSocketManager('/ws/logs');
-      
-      // Listen for authentication success before subscribing
-      this.wsManager.on('auth', (message: any) => {
-        if (message.payload?.authenticated === true) {
-          this.connected = true;
-          // Subscribe to logs after successful authentication
-          this.subscribeToLogs();
-        }
-      });
-      
-      // Listen for data messages (server sends type: "data" for log entries)
-      this.wsManager.on('data', (message: any) => {
-        console.log('Received data message:', message); // Debug
-        
-        // Extract log data from the WebSocket message payload
-        const logData = message.payload || message;
-        
-        if (logData.message) {
-          const logEntry: WSLogMessage = {
-            type: 'log',
-            timestamp: logData.timestamp || new Date().toISOString(),
-            service: logData.service || logData.unit || 'system',
-            priority: logData.priority || logData.level || 'info',
-            message: logData.message || '',
-            hostname: logData.hostname,
-            pid: logData.pid
-          };
-          this.addLog(logEntry);
-        }
-      });
-      
-      // Also listen for 'logs' event in case the server sends batch logs
-      this.wsManager.on('logs', (message: any) => {
-        console.log('Received logs message:', message); // Debug
-        
-        if (message.payload && Array.isArray(message.payload)) {
-          // Handle batch of logs
-          message.payload.forEach((logData: any) => {
-            const logEntry: WSLogMessage = {
-              type: 'log',
-              timestamp: logData.timestamp || new Date().toISOString(),
-              service: logData.service || logData.unit || 'system',
-              priority: logData.priority || logData.level || 'info',
-              message: logData.message || '',
-              hostname: logData.hostname,
-              pid: logData.pid
-            };
-            this.addLog(logEntry);
-          });
-        }
-      });
-      
-      this.wsManager.on('error', (message) => {
-        console.error('WebSocket error:', message.error);
-        this.connected = false;
-      });
-
-      await this.wsManager.connect();
-    } catch (error) {
-      console.error('Failed to connect to logs WebSocket:', error);
-      this.connected = false;
-    }
+    // Logs now stream via the shared /ws/events connection.
+    this.subscribeToLogs();
   }
 
   private subscribeToLogs() {
-    if (!this.wsManager) return;
-    
-    const filters: any = {
-      follow: this.follow
-    };
-    
-    // Handle service filter - can be unit name for systemd services
-    if (this.serviceFilter) {
-      const serviceName = this.serviceFilter.trim();
-      if (serviceName) {
-        filters.unit = serviceName;
-      }
+    // Replace existing subscription to avoid duplicate routers.
+    if (this.unsubscribeLogs) {
+      this.unsubscribeLogs();
+      this.unsubscribeLogs = null;
     }
-    
-    // Handle priority filter - journalctl priority levels
-    if (this.priorityFilter && this.priorityFilter !== 'all') {
-      filters.priority = this.priorityFilter;
-    }
-    
-    // Handle since filter for time-based filtering
-    if (this.sinceFilter) {
-      filters.since = this.sinceFilter;
-    }
-    
-    const subscribeMessage = {
-      type: 'subscribe',
-      payload: {
-        filters
-      }
-    };
-    
-    console.log('Sending subscribe message:', subscribeMessage); // Debug
-    this.wsManager.send(subscribeMessage);
+
+    const filters = this.buildFilters();
+
+    this.unsubscribeLogs = subscribeToEventsChannel({
+      channel: 'log-events',
+      routeId: 'logs-tab',
+      subscribePayload: { filters },
+      onConnectionChange: (connected) => {
+        this.connected = connected;
+      },
+      onEvent: (payload: any) => {
+        // Expected payload (from /ws/events): { kind: 'log', entry: { timestamp, level, unit, message, ... } }
+        const kind = payload?.kind;
+        const entry = payload?.entry ?? payload;
+
+        if (kind && kind !== 'log') return;
+        if (!entry) return;
+
+        const messageText = entry.message ?? entry.msg ?? '';
+        if (!messageText) return;
+
+        const logEntry: WSLogMessage = {
+          type: 'log',
+          timestamp: entry.timestamp || new Date().toISOString(),
+          service: entry.unit || entry.service || 'system',
+          priority: String(entry.level || entry.priority || 'info').toLowerCase(),
+          message: String(messageText),
+          hostname: entry.hostname,
+          pid: entry.pid,
+        };
+
+        this.addLog(logEntry);
+      },
+    });
   }
 
   private addLog(log: WSLogMessage) {
-    console.log('Adding log entry:', log); // Debug logging
-    console.log('Current logs count before:', this.logs.length);
-    
     // Create a new array to ensure reactive update
     const newLogs = [...this.logs, log];
-    
+
     // Keep only the last maxLogs entries
-    if (newLogs.length > this.maxLogs) {
-      this.logs = newLogs.slice(-this.maxLogs);
-    } else {
-      this.logs = newLogs;
-    }
-    
-    console.log('Current logs count after:', this.logs.length);
-    console.log('First log:', this.logs[0]);
-    
-    // Force update
-    this.requestUpdate();
-    
+    this.logs = newLogs.length > this.maxLogs ? newLogs.slice(-this.maxLogs) : newLogs;
+
     // Auto-scroll if enabled
     if (this.autoScroll && this.logsContainer) {
       this.updateComplete.then(() => {
@@ -394,33 +338,25 @@ export class LogsTab extends I18nLitElement {
 
   private handleServiceFilterChange(event: Event) {
     this.serviceFilter = (event.target as HTMLInputElement).value;
-    if (this.connected) {
-      this.logs = []; // Clear logs when filter changes
-      this.subscribeToLogs();
-    }
+    this.logs = []; // Clear logs when filter changes
+    this.subscribeToLogs();
   }
 
   private handlePriorityChange(event: Event) {
     this.priorityFilter = (event.target as HTMLSelectElement).value;
-    if (this.connected) {
-      this.logs = []; // Clear logs when filter changes
-      this.subscribeToLogs();
-    }
+    this.logs = []; // Clear logs when filter changes
+    this.subscribeToLogs();
   }
 
   private handleSinceFilterChange(event: Event) {
     this.sinceFilter = (event.target as HTMLInputElement).value;
-    if (this.connected) {
-      this.logs = []; // Clear logs when filter changes
-      this.subscribeToLogs();
-    }
+    this.logs = []; // Clear logs when filter changes
+    this.subscribeToLogs();
   }
 
   private handleFollowChange(event: Event) {
     this.follow = (event.target as HTMLInputElement).checked;
-    if (this.connected) {
-      this.subscribeToLogs();
-    }
+    this.subscribeToLogs();
   }
 
   private handleAutoScrollChange(event: Event) {
@@ -436,9 +372,9 @@ export class LogsTab extends I18nLitElement {
   }
 
   private cleanup() {
-    if (this.wsManager) {
-      this.wsManager.disconnect();
-      this.wsManager = null;
+    if (this.unsubscribeLogs) {
+      this.unsubscribeLogs();
+      this.unsubscribeLogs = null;
     }
     this.connected = false;
   }
