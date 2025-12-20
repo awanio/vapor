@@ -49,6 +49,7 @@ import {
 } from '../../stores/virtualization';
 import type { VirtualMachine, VMState, VMTemplate, VMTemplateCreateRequest, VMTemplateUpdateRequest, VMTemplateOsType, VMTemplateDiskFormat, VMTemplateNetworkModel, VMTemplateGraphicsType } from '../../types/virtualization';
 import { VirtualizationDisabledError } from '../../utils/api-errors';
+import { subscribeToEventsChannel } from '../../stores/shared/events-stream';
 import virtualizationAPI from '../../services/virtualization-api';
 
 
@@ -173,6 +174,16 @@ export class VirtualizationVMsEnhanced extends LitElement {
   @state() private stateFilter: 'all' | VMState = 'all';
   @state() private templates: VMTemplate[] = [];
   @state() private selectedVMForDetails: VirtualMachine | null = null;
+
+  // Live events stream (VMs)
+  @state() private vmEventsLive = false;
+  private unsubscribeVmEvents: (() => void) | null = null;
+  private vmPollingTimer: number | null = null;
+  private vmRefetchTimer: number | null = null;
+  private vmStaleCheckTimer: number | null = null;
+  private vmLastEventAt = 0;
+  private vmDropNotified = false;
+  private vmHasConnectedOnce = false;
 
   // Templates UI state
   @state() private showTemplateDrawer = false;
@@ -406,6 +417,38 @@ export class VirtualizationVMsEnhanced extends LitElement {
       display: flex;
       align-items: center;
       gap: 8px;
+    }
+
+    .live-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      font-size: 11px;
+      color: var(--vscode-descriptionForeground);
+      user-select: none;
+    }
+
+    .live-indicator .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(204, 204, 204, 0.5);
+    }
+
+    .live-indicator.on {
+      border-color: rgba(137, 209, 133, 0.6);
+      color: rgba(137, 209, 133, 1);
+    }
+
+    .live-indicator.on .dot {
+      background: rgba(137, 209, 133, 1);
+    }
+
+    .live-indicator.off {
+      opacity: 0.75;
     }
 
     search-input {
@@ -779,7 +822,14 @@ export class VirtualizationVMsEnhanced extends LitElement {
     super.connectedCallback();
     // Initialize stores
     await this.initializeData();
+    this.startVmEventStream();
   }
+
+  override disconnectedCallback() {
+    super.disconnectedCallback();
+    this.stopVmEventStream();
+  }
+
 
   override firstUpdated(_changedProperties: any) {
     this.notificationContainer = this.renderRoot.querySelector('notification-container');
@@ -1155,7 +1205,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
     }
   }
 
-  private showNotification(message: string, type: 'success' | 'error' | 'info' = 'info') {
+  private showNotification(message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') {
     // Dispatch event for notification container
     this.dispatchEvent(new CustomEvent('show-notification', {
       detail: { message, type },
@@ -1163,6 +1213,156 @@ export class VirtualizationVMsEnhanced extends LitElement {
       composed: true
     }));
   }
+
+  private startVmEventStream() {
+    if (this.unsubscribeVmEvents) return;
+
+    this.unsubscribeVmEvents = subscribeToEventsChannel({
+      channel: 'vm-events',
+      routeId: 'virtualization:vm-events',
+      onEvent: (payload: any) => this.handleVmEvent(payload),
+      onConnectionChange: (connected) => this.handleVmEventsConnectionChange(connected),
+    });
+
+    // Stale detection: if we haven't seen any events for a while while connected, refetch.
+    this.vmLastEventAt = Date.now();
+    if (this.vmStaleCheckTimer) window.clearInterval(this.vmStaleCheckTimer);
+    this.vmStaleCheckTimer = window.setInterval(() => {
+      if (!this.vmEventsLive) return;
+      if (!this.virtualizationEnabledController.value) return;
+      const elapsed = Date.now() - (this.vmLastEventAt || 0);
+      if (elapsed > 60000) {
+        this.scheduleVmRefetch('stale');
+      }
+    }, 15000);
+  }
+
+  private stopVmEventStream() {
+    if (this.unsubscribeVmEvents) {
+      this.unsubscribeVmEvents();
+      this.unsubscribeVmEvents = null;
+    }
+    if (this.vmPollingTimer) {
+      window.clearInterval(this.vmPollingTimer);
+      this.vmPollingTimer = null;
+    }
+    if (this.vmRefetchTimer) {
+      window.clearTimeout(this.vmRefetchTimer);
+      this.vmRefetchTimer = null;
+    }
+    if (this.vmStaleCheckTimer) {
+      window.clearInterval(this.vmStaleCheckTimer);
+      this.vmStaleCheckTimer = null;
+    }
+    this.vmEventsLive = false;
+    this.vmDropNotified = false;
+  }
+
+  private handleVmEventsConnectionChange(connected: boolean) {
+    this.vmEventsLive = connected;
+
+    if (!connected) {
+      if (this.vmHasConnectedOnce && !this.vmDropNotified) {
+        this.showNotification('Live VM updates disconnected — falling back to polling', 'warning');
+        this.vmDropNotified = true;
+      }
+      this.ensureVmPolling();
+      return;
+    }
+
+    // Connected
+    this.vmHasConnectedOnce = true;
+    this.vmDropNotified = false;
+    if (this.vmPollingTimer) {
+      window.clearInterval(this.vmPollingTimer);
+      this.vmPollingTimer = null;
+    }
+
+    // On reconnect, do a light refetch to close gaps.
+    this.scheduleVmRefetch('reconnected');
+  }
+
+  private ensureVmPolling() {
+    if (this.vmPollingTimer) return;
+    this.vmPollingTimer = window.setInterval(() => {
+      if (!this.virtualizationEnabledController.value) return;
+      if (this.activeMainTab !== 'vms') return;
+      void vmActions.fetchAll();
+    }, 30000);
+  }
+
+  private scheduleVmRefetch(_reason: string) {
+    if (this.vmRefetchTimer) return;
+
+    this.vmRefetchTimer = window.setTimeout(async () => {
+      this.vmRefetchTimer = null;
+      if (!this.virtualizationEnabledController.value) return;
+      if (this.activeMainTab !== 'vms') return;
+      try {
+        await vmActions.fetchAll();
+        this.vmLastEventAt = Date.now();
+      } catch (e) {
+        // ignore
+      }
+    }, 800);
+  }
+
+  private mapVmLifecycleEventToState(eventCode: number): VMState {
+    switch (eventCode) {
+      case 2: // started
+      case 4: // resumed
+        return 'running';
+      case 3: // suspended
+        return 'paused';
+      case 7: // pmsuspended
+        return 'suspended';
+      case 0: // defined
+      case 5: // stopped
+      case 6: // shutdown
+      case 8: // crashed
+      case 1: // undefined
+        return 'stopped';
+      default:
+        return 'unknown';
+    }
+  }
+
+  private vmExists(vmId: string): boolean {
+    const currentItems = vmStore.$items.get() as any;
+    if (currentItems instanceof Map) return currentItems.has(vmId);
+    if (currentItems && typeof currentItems === 'object') return vmId in currentItems;
+    return false;
+  }
+
+  private handleVmEvent(payload: any) {
+    if (!payload || payload.kind !== 'vm') return;
+    if (!payload.id) return;
+
+    this.vmLastEventAt = Date.now();
+
+    const vmId = String(payload.id);
+    const state = this.mapVmLifecycleEventToState(Number(payload.event));
+
+    // If we don't have the VM yet, refetch (covers create/delete/out-of-band changes).
+    if (!this.vmExists(vmId)) {
+      this.scheduleVmRefetch('vm-missing');
+      return;
+    }
+
+    // Update table + store immediately.
+    vmActions.updateLocalState(vmId, state);
+
+    // Update open details drawer if needed.
+    if (this.selectedVMForDetails?.id === vmId) {
+      this.selectedVMForDetails = { ...this.selectedVMForDetails, state };
+    }
+
+    // Undefined events often mean removed/unregistered VM; refetch to reconcile list.
+    if (Number(payload.event) === 1) {
+      this.scheduleVmRefetch('vm-undefined');
+    }
+  }
+
 
   private async handleVMPowerAction(event: CustomEvent) {
     const { action, vm, success } = event.detail;
@@ -2091,6 +2291,12 @@ export class VirtualizationVMsEnhanced extends LitElement {
             ></search-input>
           </div>
           <div class="actions-section">
+            ${this.activeMainTab === 'vms' ? html`
+              <span class="live-indicator ${this.vmEventsLive ? 'on' : 'off'}" title="${this.vmEventsLive ? 'Live updates connected' : 'Live updates disconnected'}">
+                <span class="dot"></span>
+                Live
+              </span>
+            ` : ''}
             <button class="btn-refresh" @click=${this.handleRefresh} title="Refresh">
               🔄
             </button>

@@ -2,6 +2,7 @@ import { LitElement, html, css } from 'lit';
 import { keyed } from 'lit/directives/keyed.js';
 import { customElement, property, state } from 'lit/decorators.js';
 import { KubernetesApi } from '../../services/kubernetes-api.js';
+import { subscribeToEventsChannel } from '../../stores/shared/events-stream';
 import type {
   KubernetesNamespace,
   KubernetesPod,
@@ -72,6 +73,14 @@ export class KubernetesWorkloads extends LitElement {
   @state() private containerImages: ContainerImage[] = [];
   @state() private isPerformingAction = false;
 
+  // Live events stream (Kubernetes pods)
+  @state() private k8sEventsLive = false;
+  private unsubscribeK8sEvents: (() => void) | null = null;
+  private k8sPollingTimer: number | null = null;
+  private k8sRefetchTimer: number | null = null;
+  private k8sDropNotified = false;
+  private k8sHasConnectedOnce = false;
+
   static override styles = css`
     :host {
       display: block;
@@ -123,6 +132,38 @@ export class KubernetesWorkloads extends LitElement {
       display: flex;
       align-items: center;
       gap: 1rem;
+    }
+
+    .live-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      font-size: 11px;
+      color: var(--vscode-descriptionForeground);
+      user-select: none;
+    }
+
+    .live-indicator .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(204, 204, 204, 0.5);
+    }
+
+    .live-indicator.on {
+      border-color: rgba(137, 209, 133, 0.6);
+      color: rgba(137, 209, 133, 1);
+    }
+
+    .live-indicator.on .dot {
+      background: rgba(137, 209, 133, 1);
+    }
+
+    .live-indicator.off {
+      opacity: 0.75;
     }
 
     namespace-dropdown {
@@ -829,9 +870,109 @@ export class KubernetesWorkloads extends LitElement {
     }
   }
 
+  private showToast(message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') {
+    const nc = this.shadowRoot?.querySelector('notification-container') as any;
+    if (nc && typeof nc.addNotification === 'function') {
+      nc.addNotification({ type, message });
+    }
+  }
+
+  private startK8sEventStream() {
+    if (this.unsubscribeK8sEvents) return;
+    this.unsubscribeK8sEvents = subscribeToEventsChannel({
+      channel: 'k8s-events',
+      routeId: 'kubernetes:k8s-events',
+      onEvent: (payload: any) => this.handleK8sEvent(payload),
+      onConnectionChange: (connected) => this.handleK8sEventsConnectionChange(connected),
+    });
+  }
+
+  private stopK8sEventStream() {
+    if (this.unsubscribeK8sEvents) {
+      this.unsubscribeK8sEvents();
+      this.unsubscribeK8sEvents = null;
+    }
+    if (this.k8sPollingTimer) {
+      window.clearInterval(this.k8sPollingTimer);
+      this.k8sPollingTimer = null;
+    }
+    if (this.k8sRefetchTimer) {
+      window.clearTimeout(this.k8sRefetchTimer);
+      this.k8sRefetchTimer = null;
+    }
+    this.k8sEventsLive = false;
+    this.k8sDropNotified = false;
+  }
+
+  private handleK8sEventsConnectionChange(connected: boolean) {
+    this.k8sEventsLive = connected;
+    if (!connected) {
+      if (this.k8sHasConnectedOnce && !this.k8sDropNotified) {
+        this.showToast('Live Kubernetes updates disconnected — falling back to polling', 'warning');
+        this.k8sDropNotified = true;
+      }
+      this.ensureK8sPolling();
+      return;
+    }
+    this.k8sHasConnectedOnce = true;
+    this.k8sDropNotified = false;
+    if (this.k8sPollingTimer) {
+      window.clearInterval(this.k8sPollingTimer);
+      this.k8sPollingTimer = null;
+    }
+    this.scheduleK8sRefetch('reconnected');
+  }
+
+  private ensureK8sPolling() {
+    if (this.k8sPollingTimer) return;
+    this.k8sPollingTimer = window.setInterval(() => {
+      void this.fetchData();
+    }, 30000);
+  }
+
+  private scheduleK8sRefetch(_reason: string) {
+    if (this.k8sRefetchTimer) return;
+    this.k8sRefetchTimer = window.setTimeout(async () => {
+      this.k8sRefetchTimer = null;
+      try {
+        await this.fetchData();
+      } catch {}
+    }, 700);
+  }
+
+  private handleK8sEvent(payload: any) {
+    if (!payload || payload.kind !== 'k8s-pod') return;
+
+    // Only apply to the Pods tab; other workload types can be reconciled via normal refresh.
+    if (this.activeTab !== 'pods') {
+      // If user is not on pods, keep it best-effort and avoid churn.
+      return;
+    }
+
+    const action = String(payload.action || '');
+    const name = String(payload.name || '');
+    const namespace = String(payload.namespace || '');
+    if (!name || !namespace) return;
+
+    if (action === 'DELETED') {
+      this.workloads = this.workloads.filter((w) => !(w.type === 'Pod' && w.name === name && w.namespace === namespace));
+      return;
+    }
+
+    // ADDED / MODIFIED: refetch to update status/ready/restarts accurately.
+    this.scheduleK8sRefetch(action);
+  }
+
   override connectedCallback() {
     super.connectedCallback();
+    this.startK8sEventStream();
     this.fetchData();
+  }
+
+
+  override disconnectedCallback() {
+    super.disconnectedCallback();
+    this.stopK8sEventStream();
   }
 
   override render() {
@@ -859,6 +1000,10 @@ export class KubernetesWorkloads extends LitElement {
           ></search-input>
           
           <div class="controls">
+            <span class="live-indicator ${this.k8sEventsLive ? 'on' : 'off'}" title="${this.k8sEventsLive ? 'Live updates connected' : 'Live updates disconnected'}">
+              <span class="dot"></span>
+              Live
+            </span>
             <button class="btn-create" @click="${this.handleCreate}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="12" y1="5" x2="12" y2="19"></line>

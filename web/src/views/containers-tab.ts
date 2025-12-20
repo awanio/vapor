@@ -5,6 +5,8 @@ import { t } from '../i18n';
 import { api, ApiError } from '../api';
 import type { Container, Image, ContainersResponse, ImagesResponse } from '../types/api';
 import '../components/modal-dialog';
+import '../components/ui/notification-container.js';
+import { subscribeToEventsChannel } from '../stores/shared/events-stream';
 
 interface UploadItem {
   id: string;
@@ -32,6 +34,15 @@ export class ContainersTab extends LitElement {
 
   @state()
   private runtime: string | null = null;
+
+  @state()
+  private containerEventsLive = false;
+
+  private unsubscribeContainerEvents: (() => void) | null = null;
+  private containerPollingTimer: number | null = null;
+  private containerRefetchTimer: number | null = null;
+  private containerDropNotified = false;
+  private containerHasConnectedOnce = false;
 
   @state()
   private showConfirmModal = false;
@@ -195,6 +206,45 @@ export class ContainersTab extends LitElement {
       color: var(--vscode-text-dim);
     }
 
+
+    .title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .live-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      font-size: 11px;
+      color: var(--vscode-descriptionForeground);
+      user-select: none;
+    }
+
+    .live-indicator .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(204, 204, 204, 0.5);
+    }
+
+    .live-indicator.on {
+      border-color: rgba(137, 209, 133, 0.6);
+      color: rgba(137, 209, 133, 1);
+    }
+
+    .live-indicator.on .dot {
+      background: rgba(137, 209, 133, 1);
+    }
+
+    .live-indicator.off {
+      opacity: 0.75;
+    }
     h1 {
       margin: 0 0 24px 0;
       font-size: 24px;
@@ -954,6 +1004,7 @@ export class ContainersTab extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback();
+    this.startContainerEventStream();
     this.handleLocationChange();
     window.addEventListener('popstate', this.handleLocationChange);
     // Add click handler to close menus when clicking outside
@@ -965,6 +1016,7 @@ export class ContainersTab extends LitElement {
 
   override disconnectedCallback() {
     super.disconnectedCallback();
+    this.stopContainerEventStream();
     window.removeEventListener('popstate', this.handleLocationChange);
     this.removeEventListener('click', this.handleOutsideClick.bind(this));
     document.removeEventListener('keydown', this.handleKeyDown);
@@ -994,6 +1046,100 @@ export class ContainersTab extends LitElement {
     } else if (this.activeTab === 'images') {
       await this.fetchImages();
     }
+  }
+
+  private showToast(message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') {
+    const nc = this.renderRoot?.querySelector('notification-container') as any;
+    if (nc && typeof nc.addNotification === 'function') {
+      nc.addNotification({ type, message });
+    }
+  }
+
+  private startContainerEventStream() {
+    if (this.unsubscribeContainerEvents) return;
+    this.unsubscribeContainerEvents = subscribeToEventsChannel({
+      channel: 'container-events',
+      routeId: 'containers:container-events',
+      onEvent: (payload: any) => this.handleContainerEvent(payload),
+      onConnectionChange: (connected) => this.handleContainerEventsConnectionChange(connected),
+    });
+  }
+
+  private stopContainerEventStream() {
+    if (this.unsubscribeContainerEvents) {
+      this.unsubscribeContainerEvents();
+      this.unsubscribeContainerEvents = null;
+    }
+    if (this.containerPollingTimer) {
+      window.clearInterval(this.containerPollingTimer);
+      this.containerPollingTimer = null;
+    }
+    if (this.containerRefetchTimer) {
+      window.clearTimeout(this.containerRefetchTimer);
+      this.containerRefetchTimer = null;
+    }
+    this.containerEventsLive = false;
+    this.containerDropNotified = false;
+  }
+
+  private handleContainerEventsConnectionChange(connected: boolean) {
+    this.containerEventsLive = connected;
+    if (!connected) {
+      if (this.containerHasConnectedOnce && !this.containerDropNotified) {
+        this.showToast('Live container updates disconnected — falling back to polling', 'warning');
+        this.containerDropNotified = true;
+      }
+      this.ensureContainerPolling();
+      return;
+    }
+    this.containerHasConnectedOnce = true;
+    this.containerDropNotified = false;
+    if (this.containerPollingTimer) {
+      window.clearInterval(this.containerPollingTimer);
+      this.containerPollingTimer = null;
+    }
+    this.scheduleContainersRefetch('reconnected');
+  }
+
+  private ensureContainerPolling() {
+    if (this.containerPollingTimer) return;
+    this.containerPollingTimer = window.setInterval(() => {
+      if (this.activeTab !== 'containers') return;
+      void this.fetchContainers();
+    }, 30000);
+  }
+
+  private scheduleContainersRefetch(_reason: string) {
+    if (this.containerRefetchTimer) return;
+    this.containerRefetchTimer = window.setTimeout(async () => {
+      this.containerRefetchTimer = null;
+      if (this.activeTab !== 'containers') return;
+      try {
+        await this.fetchContainers();
+      } catch {}
+    }, 600);
+  }
+
+  private handleContainerEvent(payload: any) {
+    if (!payload || payload.kind !== 'container') return;
+    const id = payload.id ? String(payload.id) : '';
+    if (!id) return;
+
+    const action = String(payload.action || '').toLowerCase();
+
+    if (action === 'destroy') {
+      this.containers = this.containers.filter(c => c.id !== id);
+      return;
+    }
+
+    // Best-effort local status update for common actions, plus a quick refetch to stay accurate.
+    if (action === 'start') {
+      this.containers = this.containers.map(c => c.id === id ? { ...c, state: 'running', status: c.status || 'running' } : c);
+    } else if (action === 'stop' || action === 'die') {
+      this.containers = this.containers.map(c => c.id === id ? { ...c, state: 'exited', status: c.status || 'exited' } : c);
+    }
+
+    this.scheduleContainersRefetch(action);
   }
 
   async fetchContainerDetails(id: string) {
@@ -1550,7 +1696,16 @@ renderImagesTable() {
   override render() {
     return html`
       <div class="tab-container">
-        <h1>${t('containers.title')}${this.runtime ? html` <span style="font-size: 0.875rem; color: var(--text-secondary); font-weight: normal;">(${this.runtime})</span>` : ''}</h1>
+        <div class="title-row">
+          <h1>
+            ${t('containers.title')}
+            ${this.runtime ? html` <span style="font-size: 0.875rem; color: var(--text-secondary); font-weight: normal;">(${this.runtime})</span>` : ''}
+          </h1>
+          <span class="live-indicator ${this.containerEventsLive ? 'on' : 'off'}" title="${this.containerEventsLive ? 'Live updates connected' : 'Live updates disconnected'}">
+            <span class="dot"></span>
+            Live
+          </span>
+        </div>
         ${this.renderTabs()}
         <div class="tab-content">
           ${this.error ? html`
@@ -1582,6 +1737,8 @@ renderImagesTable() {
           ` : ''}
         </div>
       </div>
+
+      <notification-container></notification-container>
 
       <modal-dialog
         ?open=${this.showConfirmModal}
