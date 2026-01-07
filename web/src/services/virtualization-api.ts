@@ -39,8 +39,9 @@ import type {
   VMSnapshotCreateResponse,
   VMSnapshotRevertResponse,
   SnapshotCapabilitiesResponse,
-  VMBackupRequest,
-  VMBackupResponse,
+  BackupCreateRequest,
+  BackupImportRequest,
+  BackupRestoreRequest,
   VMMetricsEnhanced,
 } from '../types/virtualization';
 import { isVirtualizationDisabled, VirtualizationDisabledError, type ApiErrorBody } from '../utils/api-errors';
@@ -424,30 +425,112 @@ export class VirtualizationAPI {
   // ============ Backups ============
   
   /**
-   * List VM backups
+   * List backups for a specific VM
    */
   async listBackups(vmId: string): Promise<VMBackup[]> {
-    return apiRequest<VMBackup[]>(`/computes/${vmId}/backups`);
+    const response = await apiRequest<any>(`/computes/${vmId}/backups`);
+    return this.normalizeBackups(response);
+  }
+
+  /**
+   * List backups across all VMs
+   */
+  async listAllBackups(params?: { search?: string; status?: string; type?: string }): Promise<VMBackup[]> {
+    const query = new URLSearchParams();
+    if (params?.search) query.set('q', params.search);
+    if (params?.status) query.set('status', params.status);
+    if (params?.type) query.set('type', params.type);
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    const response = await apiRequest<any>(`/computes/backups${suffix}`);
+    return this.normalizeBackups(response);
   }
   
   /**
-   * Create a backup
+   * Create a backup for a VM
    */
-  async createBackup(vmId: string, name: string, type: 'full' | 'incremental'): Promise<VMBackup> {
-    return apiRequest<VMBackup>(`/computes/${vmId}/backups`, {
+  async createBackup(vmId: string, payload: BackupCreateRequest): Promise<VMBackup> {
+    const response = await apiRequest<any>(`/computes/${vmId}/backups`, {
       method: 'POST',
-      body: JSON.stringify({ name, type }),
+      body: JSON.stringify(payload),
+    });
+    const backups = this.normalizeBackups(response);
+    const [first] = backups;
+    if (!first) {
+      throw new VirtualizationAPIError('INVALID_RESPONSE', 'Backup response missing backup data');
+    }
+    return first;
+  }
+
+  /**
+   * Import an existing backup file into Vapor
+   */
+  async importBackup(payload: BackupImportRequest): Promise<VMBackup> {
+    const response = await apiRequest<any>('/computes/backups/import', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    const backups = this.normalizeBackups(response);
+    const [first] = backups;
+    if (first) return first;
+    return response as VMBackup;
+  }
+
+  /**
+   * Restore a backup (optionally to a new VM)
+   */
+  async restoreBackup(payload: BackupRestoreRequest): Promise<any> {
+    return apiRequest<any>('/computes/restore', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     });
   }
-  
+
   /**
-   * Restore from backup
+   * Delete a backup by its ID
    */
-  async restoreFromBackup(vmId: string, backupId: string): Promise<OperationResult> {
-    return apiRequest<OperationResult>(
-      `/computes/${vmId}/backups/${backupId}/restore`,
-      { method: 'POST' }
-    );
+  async deleteBackup(backupId: string): Promise<void> {
+    const result = await apiRequest<any>(`/computes/backups/${backupId}`, { method: 'DELETE' });
+    if (result?.status === 'error') {
+      throw new VirtualizationAPIError(
+        result.error?.code || 'BACKUP_DELETE_FAILED',
+        result.error?.message || 'Failed to delete backup',
+        result.error?.details,
+      );
+    }
+  }
+
+  /**
+   * Download a backup qcow2 file
+   */
+  async downloadBackup(backupId: string): Promise<Blob> {
+    const token = getAuthToken();
+    const url = getApiUrl(`${API_BASE}/computes/backups/${backupId}/download`);
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => null);
+      const code = errorBody?.error?.code || `HTTP_${response.status}`;
+      const message = errorBody?.error?.message || response.statusText || 'Failed to download backup';
+      throw new VirtualizationAPIError(code, message, errorBody?.error?.details);
+    }
+
+    return response.blob();
+  }
+
+  private normalizeBackups(response: any): VMBackup[] {
+    if (!response) return [];
+    if (Array.isArray(response)) return response;
+    if (response.data?.backups) return response.data.backups;
+    if (response.backups) return response.backups;
+    if (response.data?.backup) return [response.data.backup];
+    if (response.backup) return [response.backup];
+    if (response.data?.backups?.items) return response.data.backups.items;
+    return [];
   }
   
   // ============ Storage Pools ============
@@ -1127,18 +1210,15 @@ export class VirtualizationAPI {
   /**
    * Get VM backups with full type support
    */
-  async getBackups(vmId: string): Promise<VMBackupResponse> {
-    return apiRequest<VMBackupResponse>(`/computes/${vmId}/backups`);
+  async getBackups(vmId: string): Promise<VMBackup[]> {
+    return this.listBackups(vmId);
   }
   
   /**
    * Create a VM backup
    */
-  async createBackupTyped(vmId: string, request: VMBackupRequest): Promise<VMBackupResponse> {
-    return apiRequest<VMBackupResponse>(`/computes/${vmId}/backups`, {
-      method: 'POST',
-      body: JSON.stringify(request),
-    });
+  async createBackupTyped(vmId: string, request: BackupCreateRequest): Promise<VMBackup> {
+    return this.createBackup(vmId, request);
   }
   
   /**

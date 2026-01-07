@@ -4,6 +4,7 @@ import '../ui/action-dropdown.js';
 import '../ui/status-badge.js';
 import '../ui/empty-state.js';
 import type { ActionItem } from '../ui/action-dropdown.js';
+export type { ActionItem } from '../ui/action-dropdown.js';
 
 export interface Column {
   key: string;

@@ -10,6 +10,7 @@ import { getApiUrl } from '../../config';
 import { auth } from '../../auth';
 import './vm-console';
 import '../modal-dialog';
+import './vm-backups-tab';
 import { snapshotActions } from '../../stores/virtualization';
 
 interface VMMetrics {
@@ -3263,6 +3264,10 @@ export class VMDetailDrawer extends LitElement {
                   @click=${() => this.activeTab = 'snapshots'}>
             Snapshots
           </button>
+          <button class="tab ${this.activeTab === 'backups' ? 'active' : ''}" 
+                  @click=${() => this.activeTab = 'backups'}>
+            Backups
+          </button>
         </div>
 
         <div class="drawer-content">
@@ -3277,6 +3282,7 @@ export class VMDetailDrawer extends LitElement {
               this.activeTab === 'storage' ? this.renderStorageTab() :
               this.activeTab === 'network' ? this.renderNetworkTab() :
               this.activeTab === 'snapshots' ? this.renderSnapshotsTab() :
+              this.activeTab === 'backups' ? html`<vm-backups-tab .vm=${this.vm}></vm-backups-tab>` :
               html``}
           `}
         </div>

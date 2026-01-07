@@ -430,6 +430,12 @@ export class SidebarTree extends I18nLitElement {
           label: 'virtualization.volumes',
           icon: 'volumes',
           route: 'virtualization/volumes'
+        },
+        {
+          id: 'virtualization-backups',
+          label: 'virtualization.backups',
+          icon: 'volumes',
+          route: 'virtualization/backups'
         }
       ]
     },

@@ -357,7 +357,8 @@
     "storage-pools": "Storage Pools",
     "iso-images": "ISO Images",
     "networks": "Networks",
-    "volumes": "Volumes"
+    "volumes": "Volumes",
+    "backups": "Backups"
   },
   "users": {
     "title": "User Management",

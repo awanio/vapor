@@ -266,17 +266,36 @@ export interface VMSnapshot {
   creation_time?: string;
 }
 
+export type BackupStatus = 'pending' | 'running' | 'completed' | 'failed' | 'unknown';
+
 export interface VMBackup {
-  id: string;
-  vm_id: string;
-  name: string;
-  type: 'full' | 'incremental';
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  created_at: string;
-  completed_at?: string;
-  size?: number;
+  backup_id: string;
+  id?: string;
+  vm_uuid?: string;
+  vm_id?: string;
+  vm_name?: string;
+  type: BackupType;
+  status: BackupStatus;
+  destination_path?: string;
+  size_bytes?: number;
+  compressed?: boolean;
+  compression?: CompressionType | string | null;
+  encryption?: EncryptionType | string | null;
+  parent_backup_id?: string | null;
+  started_at?: string;
+  completed_at?: string | null;
+  retention_days?: number | null;
+  include_memory?: boolean;
+  metadata?: Record<string, any>;
+  description?: string;
+  error_message?: string | null;
+  // Legacy/compat fields for older responses
+  created_at?: string;
   location?: string;
+  size?: number;
+  name?: string;
   error?: string;
+  state?: string;
 }
 
 // ============ Console Types ============
@@ -638,25 +657,56 @@ export type BackupType = 'full' | 'incremental' | 'differential';
 export type CompressionType = 'none' | 'gzip' | 'bzip2' | 'xz' | 'zstd';
 export type EncryptionType = 'none' | 'aes-256' | 'aes-128';
 
-export interface VMBackupRequest {
-  name: string;
-  description?: string;
-  type?: BackupType;
-  compression?: CompressionType;
-  encryption?: EncryptionType;
+export interface BackupCreateRequest {
+  backup_type: BackupType;
+  destination_path?: string;
+  compression?: CompressionType | string;
+  encryption?: EncryptionType | string;
+  encryption_key?: string;
   include_memory?: boolean;
-  destination?: string;
   retention_days?: number;
+  description?: string;
 }
 
-export interface VMBackupResponse {
-  status: string;
+export interface BackupRestoreRequest {
+  backup_id: string;
+  new_vm_name?: string;
+  overwrite?: boolean;
+  decryption_key?: string;
+}
+
+export interface BackupImportRequest {
+  path: string;
+  vm_name: string;
+  vm_uuid?: string;
+  backup_id?: string;
+  type?: BackupType;
+  compression?: CompressionType | string;
+  encryption?: EncryptionType | string;
+  retention_days?: number;
+  description?: string;
+}
+
+export interface BackupListResponse {
+  status: 'success';
+  data: {
+    backups: VMBackup[];
+    count?: number;
+    vm_id?: string;
+  };
+}
+
+export interface BackupSingleResponse {
+  status: 'success';
   data: {
     backup: VMBackup;
     estimated_size?: number;
     estimated_time?: number;
   };
 }
+
+export type VMBackupRequest = BackupCreateRequest;
+export type VMBackupResponse = BackupListResponse | BackupSingleResponse;
 
 // ============ Enhanced VM Metrics Types ============
 

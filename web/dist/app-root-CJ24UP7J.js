@@ -1,7 +1,4 @@
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-y7gYUWM2.js";
-function perfIncrement(name, delta = 1) {
-  return;
-}
+import { g as getApiUrl, i as i18n, r as registerPerfGauge, a as getWsUrl, b as auth, p as perfIncrement, t as t$5, c as theme } from "./index-yDJN8gco.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -1218,14 +1215,14 @@ class I18nLitElement extends i$2 {
     }
   }
 }
-var __defProp$W = Object.defineProperty;
-var __getOwnPropDesc$O = Object.getOwnPropertyDescriptor;
-var __decorateClass$X = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$O(target, key) : target;
+var __defProp$Z = Object.defineProperty;
+var __getOwnPropDesc$R = Object.getOwnPropertyDescriptor;
+var __decorateClass$_ = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$R(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$W(target, key, result);
+  if (kind && result) __defProp$Z(target, key, result);
   return result;
 };
 let LoginPage = class extends I18nLitElement {
@@ -1499,22 +1496,22 @@ LoginPage.styles = i$5`
       fill: var(--primary);
     }
   `;
-__decorateClass$X([
+__decorateClass$_([
   r$1()
 ], LoginPage.prototype, "username", 2);
-__decorateClass$X([
+__decorateClass$_([
   r$1()
 ], LoginPage.prototype, "password", 2);
-__decorateClass$X([
+__decorateClass$_([
   r$1()
 ], LoginPage.prototype, "loading", 2);
-__decorateClass$X([
+__decorateClass$_([
   r$1()
 ], LoginPage.prototype, "error", 2);
-__decorateClass$X([
+__decorateClass$_([
   r$1()
 ], LoginPage.prototype, "showPassword", 2);
-LoginPage = __decorateClass$X([
+LoginPage = __decorateClass$_([
   t$2("login-page")
 ], LoginPage);
 /*!
@@ -16363,14 +16360,6 @@ var WebSocketEventType = /* @__PURE__ */ ((WebSocketEventType2) => {
   return WebSocketEventType2;
 })(WebSocketEventType || {});
 const DEFAULT_RECONNECT_STRATEGIES = {
-  metrics: {
-    maxAttempts: Infinity,
-    initialDelay: 3e3,
-    maxDelay: 3e4,
-    backoffMultiplier: 1.5,
-    jitter: true,
-    timeout: 1e4
-  },
   terminal: {
     maxAttempts: 5,
     initialDelay: 1e3,
@@ -16393,7 +16382,6 @@ const STALE_CONNECTION_THRESHOLD_MS = 18e4;
 let WebSocketManager$1 = class WebSocketManager {
   constructor() {
     this.sharedConnections = {
-      metrics: null,
       events: null,
       notifications: null
     };
@@ -16410,9 +16398,6 @@ let WebSocketManager$1 = class WebSocketManager {
     this.reconnectTimers = /* @__PURE__ */ new Map();
     this.healthCheckIntervals = /* @__PURE__ */ new Map();
     this.debug = false;
-    if (DEFAULT_RECONNECT_STRATEGIES.metrics) {
-      this.reconnectStrategies.set("metrics", DEFAULT_RECONNECT_STRATEGIES.metrics);
-    }
     if (DEFAULT_RECONNECT_STRATEGIES.terminal) {
       this.reconnectStrategies.set("terminal", DEFAULT_RECONNECT_STRATEGIES.terminal);
     }
@@ -16872,8 +16857,6 @@ let WebSocketManager$1 = class WebSocketManager {
    */
   getEndpointPath(type, id) {
     const endpoints = {
-      metrics: "/ws/metrics",
-      // Fixed: using /ws/metrics with 's'
       events: "/ws/events",
       notifications: "/ws/notifications",
       terminals: `/ws/terminal${id ? `?id=${id}` : ""}`,
@@ -16962,6 +16945,52 @@ computed(
   (health) => health.filter((h3) => h3.status === "connected").length
 );
 computed($connectionHealth, (health) => health.length);
+registerPerfGauge(() => {
+  const gauges = {};
+  try {
+    const health = $connectionHealth.get();
+    gauges["ws_connections"] = health.length;
+    gauges["ws_reconnecting"] = health.filter((h3) => h3.status === "reconnecting").length;
+    gauges["ws_errors"] = health.filter((h3) => h3.lastError).length;
+  } catch {
+  }
+  return gauges;
+});
+const EVENTS_CONNECTION_ID = "shared:events";
+function subscribeToEventsChannel(options) {
+  const sendSubscribe = () => {
+    wsManager.send(EVENTS_CONNECTION_ID, {
+      type: "subscribe",
+      payload: { channel: options.channel, ...options.subscribePayload || {} }
+    });
+  };
+  const router = {
+    routeId: options.routeId,
+    messageType: options.messageType ?? "event",
+    handler: (message) => {
+      options.onEvent(message.payload, message);
+    }
+  };
+  const unsubscribeFromWs = wsManager.subscribeToShared("events", router);
+  sendSubscribe();
+  const initial = wsManager.getConnectionStatus(EVENTS_CONNECTION_ID);
+  options.onConnectionChange?.(initial?.status === "connected");
+  const handleWsEvent = (evt) => {
+    const detail = evt.detail;
+    if (!detail || detail.connectionId !== EVENTS_CONNECTION_ID) return;
+    if (detail.type === WebSocketEventType.CONNECTED) {
+      options.onConnectionChange?.(true);
+      sendSubscribe();
+    } else if (detail.type === WebSocketEventType.DISCONNECTED || detail.type === WebSocketEventType.ERROR || detail.type === WebSocketEventType.RECONNECTING) {
+      options.onConnectionChange?.(false);
+    }
+  };
+  window.addEventListener("websocket:event", handleWsEvent);
+  return () => {
+    window.removeEventListener("websocket:event", handleWsEvent);
+    unsubscribeFromWs();
+  };
+}
 class ApiError extends Error {
   constructor(message, code, details, status) {
     super(message);
@@ -17276,7 +17305,7 @@ class WebSocketManager2 {
     return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
   }
 }
-const api = Api;
+const api$1 = Api;
 const DEFAULT_HISTORY_CONFIG = {
   maxPoints: 60
 };
@@ -17367,7 +17396,7 @@ const $metricsAlerts = computed(
     return alerts;
   }
 );
-computed(
+const $metricsState = computed(
   [
     $systemSummary,
     $cpuInfo,
@@ -17442,7 +17471,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-y7gYUWM2.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-yDJN8gco.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17487,59 +17516,139 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-y7gYUWM2.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-yDJN8gco.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
   if (unsubscribeMetrics) {
-    wsManager.forceReconnectShared("metrics");
+    wsManager.forceReconnectShared("events");
     return;
   }
-  unsubscribeMetrics = wsManager.subscribeToShared("metrics", {
+  const lastNetworkSample = /* @__PURE__ */ new Map();
+  unsubscribeMetrics = subscribeToEventsChannel({
+    channel: "metrics",
     routeId: "metrics-store",
-    handler: (message) => {
-      if (message.type === "auth" && message.payload?.authenticated) {
-        $metricsConnected.set(true);
+    onConnectionChange: (connected) => {
+      $metricsConnected.set(connected);
+      if (!connected) {
         $metricsError.set(null);
-        wsManager.send("shared:metrics", { type: "subscribe" });
-        return;
-      }
-      if (message.type === "data" && message.payload) {
-        const data = message.payload;
-        try {
-          perfIncrement("metrics_data");
-        } catch {
-        }
-        if (data.cpu) {
-          const cpuData = {
-            usage_percent: data.cpu.usage,
-            load1: data.cpu.load_average?.[0] || 0,
-            load5: data.cpu.load_average?.[1] || 0,
-            load15: data.cpu.load_average?.[2] || 0,
-            cores: data.cpu.cores || []
-          };
-          updateCpuMetrics(cpuData);
-        }
-        if (data.memory) {
-          updateMemoryMetrics(data.memory);
-        }
-        if (data.disk) {
-          updateDiskMetrics(data.disk);
-        }
-        if (data.network) {
-          updateNetworkMetrics(data.network);
-        }
-      }
-      if (message.type === "error") {
-        console.error("[MetricsStore] WebSocket error:", message);
-        $metricsError.set(message.payload?.message || "WebSocket error");
-        $metricsConnected.set(false);
       }
     },
-    onError: (error) => {
-      console.error("[MetricsStore] WebSocket error:", error);
-      $metricsError.set(error.message);
-      $metricsConnected.set(false);
+    onEvent: (payload) => {
+      const data = payload?.data ?? payload;
+      if (!data) return;
+      try {
+        perfIncrement("metrics_data");
+      } catch {
+      }
+      if (data.cpu) {
+        const la = Array.isArray(data.cpu.load_average) ? data.cpu.load_average : [];
+        const perCore = Array.isArray(data.cpu.per_core) ? data.cpu.per_core : [];
+        const coresArr = perCore.map((usage, idx) => ({ core: idx, usage_percent: usage }));
+        const cpuData = {
+          usage_percent: Number(data.cpu.usage ?? 0),
+          load1: Number(la[0] ?? 0),
+          load5: Number(la[1] ?? 0),
+          load15: Number(la[2] ?? 0),
+          cores: coresArr
+        };
+        updateCpuMetrics(cpuData);
+      }
+      if (data.memory) {
+        const swapTotal = Number(data.memory.swap_total ?? 0);
+        const swapUsed = Number(data.memory.swap_used ?? 0);
+        const swapUsedPercent = swapTotal > 0 ? swapUsed / swapTotal * 100 : 0;
+        const memData = {
+          total: Number(data.memory.total ?? 0),
+          used: Number(data.memory.used ?? 0),
+          free: Number(data.memory.free ?? 0),
+          available: Number(data.memory.available ?? 0),
+          used_percent: Number(data.memory.used_percent ?? 0),
+          swap_total: swapTotal,
+          swap_used: swapUsed,
+          swap_free: Number(data.memory.swap_free ?? 0),
+          swap_used_percent: swapUsedPercent
+        };
+        updateMemoryMetrics(memData);
+      }
+      if (Array.isArray(data.disk)) {
+        const disks = data.disk.map((d2) => ({
+          device: String(d2.device ?? ""),
+          mount_point: String(d2.mountpoint ?? d2.mount_point ?? ""),
+          filesystem: String(d2.fstype ?? d2.filesystem ?? ""),
+          total: Number(d2.total ?? 0),
+          used: Number(d2.used ?? 0),
+          free: Number(d2.free ?? 0),
+          used_percent: Number(d2.used_percent ?? 0)
+        }));
+        const diskData = { disks };
+        updateDiskMetrics(diskData);
+      }
+      if (Array.isArray(data.network)) {
+        const now = Date.now();
+        const num = (v2) => {
+          const n3 = Number(v2);
+          return Number.isFinite(n3) ? n3 : 0;
+        };
+        const interfaces = data.network.map((n3) => {
+          const name = String(n3.interface ?? n3.name ?? "");
+          const rxBytesPerSecProvided = num(
+            n3.rx_bytes_per_sec ?? n3.rxBytesPerSec ?? n3.bytes_recv_per_sec ?? n3.bytesRecvPerSec
+          );
+          const txBytesPerSecProvided = num(
+            n3.tx_bytes_per_sec ?? n3.txBytesPerSec ?? n3.bytes_sent_per_sec ?? n3.bytesSentPerSec
+          );
+          const rxPacketsPerSecProvided = num(
+            n3.rx_packets_per_sec ?? n3.rxPacketsPerSec ?? n3.packets_recv_per_sec ?? n3.packetsRecvPerSec
+          );
+          const txPacketsPerSecProvided = num(
+            n3.tx_packets_per_sec ?? n3.txPacketsPerSec ?? n3.packets_sent_per_sec ?? n3.packetsSentPerSec
+          );
+          const rxBytesTotal = num(n3.bytes_recv ?? n3.rx_bytes ?? n3.rxBytes ?? n3.rxbytes);
+          const txBytesTotal = num(n3.bytes_sent ?? n3.tx_bytes ?? n3.txBytes ?? n3.txbytes);
+          const rxPacketsTotal = num(n3.packets_recv ?? n3.rx_packets ?? n3.rxPackets ?? n3.rxpackets);
+          const txPacketsTotal = num(n3.packets_sent ?? n3.tx_packets ?? n3.txPackets ?? n3.txpackets);
+          let rx_bytes_per_sec = rxBytesPerSecProvided;
+          let tx_bytes_per_sec = txBytesPerSecProvided;
+          let rx_packets_per_sec = rxPacketsPerSecProvided;
+          let tx_packets_per_sec = txPacketsPerSecProvided;
+          if (name && (rx_bytes_per_sec === 0 || tx_bytes_per_sec === 0 || rx_packets_per_sec === 0 || tx_packets_per_sec === 0)) {
+            const prev = lastNetworkSample.get(name);
+            if (prev) {
+              const dt = Math.max(1e-3, (now - prev.ts) / 1e3);
+              const dRxB = rxBytesTotal >= prev.rxBytes ? rxBytesTotal - prev.rxBytes : 0;
+              const dTxB = txBytesTotal >= prev.txBytes ? txBytesTotal - prev.txBytes : 0;
+              const dRxP = rxPacketsTotal >= prev.rxPackets ? rxPacketsTotal - prev.rxPackets : 0;
+              const dTxP = txPacketsTotal >= prev.txPackets ? txPacketsTotal - prev.txPackets : 0;
+              if (rx_bytes_per_sec === 0) rx_bytes_per_sec = dRxB / dt;
+              if (tx_bytes_per_sec === 0) tx_bytes_per_sec = dTxB / dt;
+              if (rx_packets_per_sec === 0) rx_packets_per_sec = dRxP / dt;
+              if (tx_packets_per_sec === 0) tx_packets_per_sec = dTxP / dt;
+            }
+            lastNetworkSample.set(name, {
+              ts: now,
+              rxBytes: rxBytesTotal,
+              txBytes: txBytesTotal,
+              rxPackets: rxPacketsTotal,
+              txPackets: txPacketsTotal
+            });
+          }
+          return {
+            name,
+            rx_bytes_per_sec,
+            tx_bytes_per_sec,
+            rx_packets_per_sec,
+            tx_packets_per_sec,
+            rx_errors: num(n3.errin ?? n3.rx_errors ?? n3.rxErrors),
+            tx_errors: num(n3.errout ?? n3.tx_errors ?? n3.txErrors),
+            rx_dropped: num(n3.dropin ?? n3.rx_dropped ?? n3.rxDropped),
+            tx_dropped: num(n3.dropout ?? n3.tx_dropped ?? n3.txDropped)
+          };
+        });
+        const netData = { interfaces };
+        updateNetworkMetrics(netData);
+      }
+      $metricsError.set(null);
     }
   });
   if (!$systemSummary.get()) {
@@ -17555,7 +17664,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-y7gYUWM2.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-yDJN8gco.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17599,6 +17708,18 @@ function formatUptime(seconds) {
 if (typeof window !== "undefined") {
   window.addEventListener("beforeunload", cleanupMetrics);
 }
+registerPerfGauge(() => {
+  const gauges = {};
+  try {
+    const state = $metricsState.get();
+    gauges["metrics_cpuHistory"] = state.cpuHistory.length;
+    gauges["metrics_memoryHistory"] = state.memoryHistory.length;
+    gauges["metrics_diskHistory"] = state.diskHistory.length;
+    gauges["metrics_networkHistory"] = state.networkHistory.length;
+  } catch {
+  }
+  return gauges;
+});
 const metrics = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   $cpuHistory,
@@ -17618,6 +17739,7 @@ const metrics = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePrope
   $metricsAlerts,
   $metricsConnected,
   $metricsError,
+  $metricsState,
   $networkHistory,
   $systemSummary,
   calculateAverage,
@@ -17635,9 +17757,9 @@ const metrics = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePrope
   updateMemoryMetrics,
   updateNetworkMetrics
 }, Symbol.toStringTag, { value: "Module" }));
-var __getOwnPropDesc$N = Object.getOwnPropertyDescriptor;
-var __decorateClass$W = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$N(target, key) : target;
+var __getOwnPropDesc$Q = Object.getOwnPropertyDescriptor;
+var __decorateClass$Z = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$Q(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(result) || result;
@@ -17668,7 +17790,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-y7gYUWM2.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-yDJN8gco.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -18288,7 +18410,7 @@ DashboardTabV2.styles = i$5`
       margin-bottom: 16px;
     }
   `;
-DashboardTabV2 = __decorateClass$W([
+DashboardTabV2 = __decorateClass$Z([
   t$2("dashboard-tab-v2")
 ], DashboardTabV2);
 const $interfaces = atom([]);
@@ -18406,7 +18528,7 @@ const networkActions = {
     $interfacesError.set(null);
     try {
       const url = type ? `/network/interfaces?type=${type}` : "/network/interfaces";
-      const data = await api.get(url);
+      const data = await api$1.get(url);
       $interfaces.set(data.interfaces || []);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to fetch interfaces";
@@ -18421,7 +18543,7 @@ const networkActions = {
     $bridgesLoading.set(true);
     $bridgesError.set(null);
     try {
-      const data = await api.get("/network/bridges");
+      const data = await api$1.get("/network/bridges");
       $bridges.set(data.bridges || []);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to fetch bridges";
@@ -18436,7 +18558,7 @@ const networkActions = {
     $bondsLoading.set(true);
     $bondsError.set(null);
     try {
-      const data = await api.get("/network/bonds");
+      const data = await api$1.get("/network/bonds");
       $bonds.set(data.bonds || []);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to fetch bonds";
@@ -18451,7 +18573,7 @@ const networkActions = {
     $vlansLoading.set(true);
     $vlansError.set(null);
     try {
-      const data = await api.get("/network/vlans");
+      const data = await api$1.get("/network/vlans");
       $vlans.set(data.vlans || []);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to fetch VLANs";
@@ -18466,7 +18588,7 @@ const networkActions = {
     const newState = iface.state === "up" ? "down" : "up";
     const url = `/network/interfaces/${iface.name}/${newState}`;
     try {
-      await api.put(url);
+      await api$1.put(url);
       await this.fetchInterfaces();
       return true;
     } catch (error) {
@@ -18477,7 +18599,7 @@ const networkActions = {
   // Configure interface address
   async configureAddress(interfaceName, request) {
     try {
-      await api.post(`/network/interfaces/${interfaceName}/address`, request);
+      await api$1.post(`/network/interfaces/${interfaceName}/address`, request);
       await this.fetchInterfaces();
       return true;
     } catch (error) {
@@ -18488,7 +18610,7 @@ const networkActions = {
   // Add IP address to interface
   async addIpAddress(interfaceName, request) {
     try {
-      await api.post(`/network/interfaces/${interfaceName}/address`, request);
+      await api$1.post(`/network/interfaces/${interfaceName}/address`, request);
       await this.fetchInterfaces();
       const selectedIface = $selectedInterface.get();
       if (selectedIface && selectedIface.name === interfaceName) {
@@ -18506,8 +18628,8 @@ const networkActions = {
   // Update IP address
   async updateIpAddress(interfaceName, oldAddress, newRequest) {
     try {
-      await api.delete(`/network/interfaces/${interfaceName}/address?address=${encodeURIComponent(oldAddress)}`);
-      await api.post(`/network/interfaces/${interfaceName}/address`, newRequest);
+      await api$1.delete(`/network/interfaces/${interfaceName}/address?address=${encodeURIComponent(oldAddress)}`);
+      await api$1.post(`/network/interfaces/${interfaceName}/address`, newRequest);
       await this.fetchInterfaces();
       const selectedIface = $selectedInterface.get();
       if (selectedIface && selectedIface.name === interfaceName) {
@@ -18525,7 +18647,7 @@ const networkActions = {
   // Delete IP address
   async deleteIpAddress(interfaceName, address) {
     try {
-      await api.delete(`/network/interfaces/${interfaceName}/address?address=${encodeURIComponent(address)}`);
+      await api$1.delete(`/network/interfaces/${interfaceName}/address?address=${encodeURIComponent(address)}`);
       await this.fetchInterfaces();
       const selectedIface = $selectedInterface.get();
       if (selectedIface && selectedIface.name === interfaceName) {
@@ -18543,7 +18665,7 @@ const networkActions = {
   // Create bridge
   async createBridge(request) {
     try {
-      const response = await api.post("/network/bridge", request);
+      const response = await api$1.post("/network/bridge", request);
       await Promise.all([
         this.fetchBridges(),
         this.fetchInterfaces()
@@ -18557,7 +18679,7 @@ const networkActions = {
   // Delete bridge
   async deleteBridge(name) {
     try {
-      await api.delete(`/network/bridge/${name}`);
+      await api$1.delete(`/network/bridge/${name}`);
       await this.fetchBridges();
       return true;
     } catch (error) {
@@ -18568,7 +18690,7 @@ const networkActions = {
   // Create bond
   async createBond(request) {
     try {
-      const response = await api.post("/network/bond", request);
+      const response = await api$1.post("/network/bond", request);
       await Promise.all([
         this.fetchBonds(),
         this.fetchInterfaces()
@@ -18582,7 +18704,7 @@ const networkActions = {
   // Delete bond
   async deleteBond(name) {
     try {
-      await api.delete(`/network/bond/${name}`);
+      await api$1.delete(`/network/bond/${name}`);
       await this.fetchBonds();
       return true;
     } catch (error) {
@@ -18593,7 +18715,7 @@ const networkActions = {
   // Create VLAN
   async createVlan(request) {
     try {
-      const response = await api.post("/network/vlan", request);
+      const response = await api$1.post("/network/vlan", request);
       await Promise.all([
         this.fetchVlans(),
         this.fetchInterfaces()
@@ -18607,7 +18729,7 @@ const networkActions = {
   // Delete VLAN
   async deleteVlan(name) {
     try {
-      await api.delete(`/network/vlan/${name}`);
+      await api$1.delete(`/network/vlan/${name}`);
       await this.fetchVlans();
       return true;
     } catch (error) {
@@ -18618,7 +18740,7 @@ const networkActions = {
   // Update bridge
   async updateBridge(name, request) {
     try {
-      const response = await api.put(`/network/bridge/${name}`, request);
+      const response = await api$1.put(`/network/bridge/${name}`, request);
       await Promise.all([
         this.fetchBridges(),
         this.fetchInterfaces()
@@ -18632,7 +18754,7 @@ const networkActions = {
   // Update bond
   async updateBond(name, request) {
     try {
-      const response = await api.put(`/network/bond/${name}`, request);
+      const response = await api$1.put(`/network/bond/${name}`, request);
       await Promise.all([
         this.fetchBonds(),
         this.fetchInterfaces()
@@ -18646,7 +18768,7 @@ const networkActions = {
   // Update VLAN
   async updateVlan(name, request) {
     try {
-      const response = await api.put(`/network/vlan/${name}`, request);
+      const response = await api$1.put(`/network/vlan/${name}`, request);
       await Promise.all([
         this.fetchVlans(),
         this.fetchInterfaces()
@@ -18660,7 +18782,7 @@ const networkActions = {
   // Update interface address
   async updateInterfaceAddress(interfaceName, request) {
     try {
-      const response = await api.put(`/network/interfaces/${interfaceName}/address`, request);
+      const response = await api$1.put(`/network/interfaces/${interfaceName}/address`, request);
       await this.fetchInterfaces();
       return response || {};
     } catch (error) {
@@ -18715,13 +18837,13 @@ async function initializeNetworkStore() {
   // Actions
   ...networkActions
 });
-var __defProp$V = Object.defineProperty;
-var __decorateClass$V = (decorators, target, key, kind) => {
+var __defProp$Y = Object.defineProperty;
+var __decorateClass$Y = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$V(target, key, result);
+  if (result) __defProp$Y(target, key, result);
   return result;
 };
 class ModalDialog extends I18nLitElement {
@@ -18924,27 +19046,27 @@ class ModalDialog extends I18nLitElement {
     `;
   }
 }
-__decorateClass$V([
+__decorateClass$Y([
   n2({ type: Boolean, reflect: true })
 ], ModalDialog.prototype, "open");
-__decorateClass$V([
+__decorateClass$Y([
   n2({ type: String })
 ], ModalDialog.prototype, "title");
-__decorateClass$V([
+__decorateClass$Y([
   n2({ type: String })
 ], ModalDialog.prototype, "size");
-__decorateClass$V([
+__decorateClass$Y([
   n2({ type: Boolean })
 ], ModalDialog.prototype, "showFooter");
 customElements.define("modal-dialog", ModalDialog);
-var __defProp$U = Object.defineProperty;
-var __getOwnPropDesc$M = Object.getOwnPropertyDescriptor;
-var __decorateClass$U = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$M(target, key) : target;
+var __defProp$X = Object.defineProperty;
+var __getOwnPropDesc$P = Object.getOwnPropertyDescriptor;
+var __decorateClass$X = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$P(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$U(target, key, result);
+  if (kind && result) __defProp$X(target, key, result);
   return result;
 };
 let OperationWarning = class extends i$2 {
@@ -19130,31 +19252,31 @@ OperationWarning.styles = i$5`
       color: var(--text-primary, var(--vscode-foreground, #cccccc));
     }
   `;
-__decorateClass$U([
+__decorateClass$X([
   n2({ type: String })
 ], OperationWarning.prototype, "type", 2);
-__decorateClass$U([
+__decorateClass$X([
   n2({ type: String })
 ], OperationWarning.prototype, "message", 2);
-__decorateClass$U([
+__decorateClass$X([
   n2({ type: Array })
 ], OperationWarning.prototype, "failures", 2);
-__decorateClass$U([
+__decorateClass$X([
   n2({ type: Array })
 ], OperationWarning.prototype, "successfulItems", 2);
-__decorateClass$U([
+__decorateClass$X([
   n2({ type: Boolean })
 ], OperationWarning.prototype, "dismissible", 2);
-OperationWarning = __decorateClass$U([
+OperationWarning = __decorateClass$X([
   t$2("operation-warning")
 ], OperationWarning);
-var __defProp$T = Object.defineProperty;
-var __decorateClass$T = (decorators, target, key, kind) => {
+var __defProp$W = Object.defineProperty;
+var __decorateClass$W = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$T(target, key, result);
+  if (result) __defProp$W(target, key, result);
   return result;
 };
 class NetworkTab extends I18nLitElement {
@@ -20065,7 +20187,7 @@ class NetworkTab extends I18nLitElement {
   }
   async fetchInterfaceTypes() {
     try {
-      const response = await api.get("/network/interface-types");
+      const response = await api$1.get("/network/interface-types");
       if (response && response.types) {
         this.interfaceTypes = response.types;
       }
@@ -20075,7 +20197,7 @@ class NetworkTab extends I18nLitElement {
   }
   async fetchAvailableInterfacesForBridge() {
     try {
-      const response = await api.get("/network/interfaces?type=device,vlan,bond");
+      const response = await api$1.get("/network/interfaces?type=device,vlan,bond");
       if (response && response.interfaces) {
         this.availableInterfacesForBridge = response.interfaces.map((iface) => iface.name);
       }
@@ -20415,7 +20537,7 @@ class NetworkTab extends I18nLitElement {
       gateway: this.configureFormData.gateway || void 0
     };
     try {
-      await api.post(`/network/interfaces/${this.configureNetworkInterface.name}/address`, request);
+      await api$1.post(`/network/interfaces/${this.configureNetworkInterface.name}/address`, request);
       this.showConfigureDrawer = false;
       this.configureNetworkInterface = null;
       await this.fetchInterfaces();
@@ -20513,7 +20635,7 @@ class NetworkTab extends I18nLitElement {
       t$5("network.confirmDeleteIp", { address }),
       async () => {
         try {
-          await api.delete(`/network/interfaces/${this.selectedInterface.name}/address?address=${encodeURIComponent(address)}`);
+          await api$1.delete(`/network/interfaces/${this.selectedInterface.name}/address?address=${encodeURIComponent(address)}`);
           await this.fetchInterfaces();
           const updatedInterface = this.interfaces.find((i4) => i4.name === this.selectedInterface?.name);
           if (updatedInterface) {
@@ -20547,7 +20669,7 @@ class NetworkTab extends I18nLitElement {
       gateway: this.newIpGateway || void 0
     };
     try {
-      const response = await api.post(`/network/interfaces/${this.selectedInterface.name}/address`, request);
+      const response = await api$1.post(`/network/interfaces/${this.selectedInterface.name}/address`, request);
       if (response?.warning) {
         this.showOperationWarning("warning", response.warning);
       }
@@ -21750,147 +21872,147 @@ ${this.interfaces.length > 0 ? x`
     `;
   }
 }
-__decorateClass$T([
+__decorateClass$W([
   n2({ type: String })
 ], NetworkTab.prototype, "subRoute");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "activeTab");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "showConfigureDrawer");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "showDetailsDrawer");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "editingIpIndex");
-__decorateClass$T([
+__decorateClass$W([
   r$1(),
   r$1()
 ], NetworkTab.prototype, "showAddIpModal");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "showEditIpModal");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "editIpAddress");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "editIpNetmask");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "editIpGateway");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "originalIpAddress");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "newIpAddress");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "newIpNetmask");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "newIpGateway");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "showBridgeDrawer");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "isEditingBridge");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "editingBridgeName");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "bridgeFormData");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "showBondDrawer");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "isEditingBond");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "editingBondName");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "bondFormData");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "vlanFormData");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "showVLANDrawer");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "interfaceTypes");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "isEditingVlan");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "editingVlanName");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "operationWarning");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "configureNetworkInterface");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "configureFormData");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "showConfirmModal");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "confirmAction");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "confirmTitle");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "confirmMessage");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "availableInterfacesForBridge");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "showBridgeInterfacesSuggestions");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "bridgeInterfaceInputValue");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "selectedSuggestionIndex");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "bondInterfaceInputValue");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "showBondInterfacesSuggestions");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "selectedBondSuggestionIndex");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "vlanInterfaceInputValue");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "showVlanInterfacesSuggestions");
-__decorateClass$T([
+__decorateClass$W([
   r$1()
 ], NetworkTab.prototype, "selectedVlanSuggestionIndex");
 customElements.define("network-tab", NetworkTab);
-var __defProp$S = Object.defineProperty;
-var __decorateClass$S = (decorators, target, key, kind) => {
+var __defProp$V = Object.defineProperty;
+var __decorateClass$V = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$S(target, key, result);
+  if (result) __defProp$V(target, key, result);
   return result;
 };
 class StorageTab extends I18nLitElement {
@@ -22261,7 +22383,7 @@ class StorageTab extends I18nLitElement {
   }
   async fetchDisks() {
     try {
-      const response = await api.get("/storage/disks");
+      const response = await api$1.get("/storage/disks");
       this.disks = response?.disks || [];
     } catch (error) {
       console.error("Error fetching disks:", error);
@@ -22272,9 +22394,9 @@ class StorageTab extends I18nLitElement {
   async fetchLVM() {
     try {
       const [vgs, lvs, pvs] = await Promise.all([
-        api.get("/storage/lvm/vgs"),
-        api.get("/storage/lvm/lvs"),
-        api.get("/storage/lvm/pvs")
+        api$1.get("/storage/lvm/vgs"),
+        api$1.get("/storage/lvm/lvs"),
+        api$1.get("/storage/lvm/pvs")
       ]);
       this.volumeGroups = vgs?.volume_groups || [];
       this.logicalVolumes = lvs?.logical_volumes || [];
@@ -22290,8 +22412,8 @@ class StorageTab extends I18nLitElement {
   async fetchRAID() {
     try {
       const [devices, available] = await Promise.all([
-        api.get("/storage/raid/devices"),
-        api.get("/storage/raid/available-disks")
+        api$1.get("/storage/raid/devices"),
+        api$1.get("/storage/raid/available-disks")
       ]);
       this.raidDevices = devices?.devices || [];
       this.availableRaidDisks = available?.disks || [];
@@ -22304,7 +22426,7 @@ class StorageTab extends I18nLitElement {
   }
   async fetchiSCSI() {
     try {
-      const sessions = await api.get("/storage/iscsi/sessions");
+      const sessions = await api$1.get("/storage/iscsi/sessions");
       this.iscsiSessions = sessions?.sessions || [];
     } catch (error) {
       console.error("Error fetching iSCSI data:", error);
@@ -22314,7 +22436,7 @@ class StorageTab extends I18nLitElement {
   }
   async fetchMultipath() {
     try {
-      const devices = await api.get("/storage/multipath/devices");
+      const devices = await api$1.get("/storage/multipath/devices");
       this.multipathDevices = devices?.devices || [];
     } catch (error) {
       console.error("Error fetching multipath data:", error);
@@ -22852,7 +22974,7 @@ class StorageTab extends I18nLitElement {
   // Action methods
   async mountPartition(device, mountPoint) {
     try {
-      await api.post("/storage/mount", { device, mount_point: mountPoint });
+      await api$1.post("/storage/mount", { device, mount_point: mountPoint });
       await this.fetchDisks();
     } catch (error) {
       console.error("Error mounting partition:", error);
@@ -22860,7 +22982,7 @@ class StorageTab extends I18nLitElement {
   }
   async unmountPartition(mountPoint) {
     try {
-      await api.post("/storage/unmount", { mount_point: mountPoint });
+      await api$1.post("/storage/unmount", { mount_point: mountPoint });
       await this.fetchDisks();
     } catch (error) {
       console.error("Error unmounting partition:", error);
@@ -22869,7 +22991,7 @@ class StorageTab extends I18nLitElement {
   async destroyRAID(device) {
     if (!confirm(t$5("storage.raid.confirmDestroy"))) return;
     try {
-      await api.post("/storage/raid/destroy", { device });
+      await api$1.post("/storage/raid/destroy", { device });
       await this.fetchRAID();
     } catch (error) {
       console.error("Error destroying RAID:", error);
@@ -22877,7 +22999,7 @@ class StorageTab extends I18nLitElement {
   }
   async logoutISCSI(target) {
     try {
-      await api.post("/storage/iscsi/logout", { target });
+      await api$1.post("/storage/iscsi/logout", { target });
       await this.fetchiSCSI();
     } catch (error) {
       console.error("Error logging out from iSCSI:", error);
@@ -22885,7 +23007,7 @@ class StorageTab extends I18nLitElement {
   }
   async loginISCSI(target) {
     try {
-      await api.post("/storage/iscsi/login", {
+      await api$1.post("/storage/iscsi/login", {
         target: target.iqn,
         portal: target.portal
       });
@@ -22911,46 +23033,46 @@ class StorageTab extends I18nLitElement {
     console.log("Show create subvolume dialog");
   }
 }
-__decorateClass$S([
+__decorateClass$V([
   n2({ type: Array })
 ], StorageTab.prototype, "disks");
-__decorateClass$S([
+__decorateClass$V([
   n2({ type: Array })
 ], StorageTab.prototype, "volumeGroups");
-__decorateClass$S([
+__decorateClass$V([
   n2({ type: Array })
 ], StorageTab.prototype, "logicalVolumes");
-__decorateClass$S([
+__decorateClass$V([
   n2({ type: Array })
 ], StorageTab.prototype, "physicalVolumes");
-__decorateClass$S([
+__decorateClass$V([
   n2({ type: Array })
 ], StorageTab.prototype, "raidDevices");
-__decorateClass$S([
+__decorateClass$V([
   n2({ type: Array })
 ], StorageTab.prototype, "availableRaidDisks");
-__decorateClass$S([
+__decorateClass$V([
   n2({ type: Array })
 ], StorageTab.prototype, "iscsiTargets");
-__decorateClass$S([
+__decorateClass$V([
   n2({ type: Array })
 ], StorageTab.prototype, "iscsiSessions");
-__decorateClass$S([
+__decorateClass$V([
   n2({ type: Array })
 ], StorageTab.prototype, "multipathDevices");
-__decorateClass$S([
+__decorateClass$V([
   n2({ type: Array })
 ], StorageTab.prototype, "btrfsSubvolumes");
-__decorateClass$S([
+__decorateClass$V([
   n2({ type: String })
 ], StorageTab.prototype, "activeSection");
-__decorateClass$S([
+__decorateClass$V([
   n2({ type: String })
 ], StorageTab.prototype, "subRoute");
-__decorateClass$S([
+__decorateClass$V([
   n2({ type: Boolean })
 ], StorageTab.prototype, "loading");
-__decorateClass$S([
+__decorateClass$V([
   n2({ type: String })
 ], StorageTab.prototype, "error");
 customElements.define("storage-tab", StorageTab);
@@ -22997,13 +23119,336 @@ let e$1 = class e extends i$1 {
 };
 e$1.directiveName = "unsafeHTML", e$1.resultType = 1;
 const o = e$2(e$1);
-var __defProp$R = Object.defineProperty;
-var __decorateClass$R = (decorators, target, key, kind) => {
+var __defProp$U = Object.defineProperty;
+var __getOwnPropDesc$O = Object.getOwnPropertyDescriptor;
+var __decorateClass$U = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$O(target, key) : target;
+  for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
+    if (decorator = decorators[i4])
+      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
+  if (kind && result) __defProp$U(target, key, result);
+  return result;
+};
+let NotificationContainer = class extends i$2 {
+  constructor() {
+    super(...arguments);
+    this.notifications = [];
+    this.defaultDuration = 5e3;
+    this.maxNotifications = 5;
+    this.closingIds = /* @__PURE__ */ new Set();
+    this.timers = /* @__PURE__ */ new Map();
+  }
+  render() {
+    const visibleNotifications = this.notifications.slice(-this.maxNotifications);
+    return x`
+      <div class="container" part="container">
+        ${visibleNotifications.map((notification) => this.renderNotification(notification))}
+      </div>
+    `;
+  }
+  renderNotification(notification) {
+    const isClosing = this.closingIds.has(notification.id);
+    const icon = this.getIcon(notification.type);
+    return x`
+      <div
+        class="notification ${notification.type} ${isClosing ? "closing" : ""}"
+        part="notification notification-${notification.type}"
+        @animationend=${(e3) => this.handleAnimationEnd(e3, notification.id)}
+      >
+        <svg class="notification-icon" viewBox="0 0 20 20" fill="currentColor">
+          ${icon}
+        </svg>
+        
+        <div class="notification-content">
+          <div class="notification-message">${notification.message}</div>
+          
+          ${notification.actions && notification.actions.length > 0 ? x`
+            <div class="notification-actions">
+              ${notification.actions.map((action) => x`
+                <button
+                  class="notification-action"
+                  @click=${() => {
+      action.handler();
+      this.closeNotification(notification.id);
+    }}
+                >
+                  ${action.label}
+                </button>
+              `)}
+            </div>
+          ` : ""}
+        </div>
+        
+        <button
+          class="close-button"
+          @click=${() => this.closeNotification(notification.id)}
+          aria-label="Close notification"
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+            <path d="M9 3L3 9M3 3l6 6" stroke="currentColor" stroke-width="2"/>
+          </svg>
+        </button>
+        
+        ${notification.duration ? x`
+          <div
+            class="progress-bar"
+            style="width: 100%; transition-duration: ${notification.duration}ms;"
+          ></div>
+        ` : ""}
+      </div>
+    `;
+  }
+  getIcon(type) {
+    switch (type) {
+      case "info":
+        return x`<path d="M10 2a8 8 0 100 16 8 8 0 000-16zM9 7h2v7H9zm0-2h2v1.5H9z"/>`;
+      case "success":
+        return x`<path d="M10 2a8 8 0 100 16 8 8 0 000-16zm4 6l-5 5-3-3 1-1 2 2 4-4 1 1z"/>`;
+      case "warning":
+        return x`<path d="M10 2l8 14H2L10 2zm0 4l-4 7h8l-4-7zm-1 3h2v3H9zm0 4h2v1H9z"/>`;
+      case "error":
+        return x`<path d="M10 2a8 8 0 100 16 8 8 0 000-16zm3 4L10 9l-3-3-1 1 3 3-3 3 1 1 3-3 3 3 1-1-3-3 3-3-1-1z"/>`;
+    }
+  }
+  closeNotification(id) {
+    this.closingIds.add(id);
+    this.requestUpdate();
+    const timer = this.timers.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      this.timers.delete(id);
+    }
+  }
+  handleAnimationEnd(e3, id) {
+    if (e3.animationName === "slideOut") {
+      this.removeNotification(id);
+    }
+  }
+  removeNotification(id) {
+    this.notifications = this.notifications.filter((n3) => n3.id !== id);
+    this.closingIds.delete(id);
+    this.timers.delete(id);
+    this.dispatchEvent(new CustomEvent("notification-closed", {
+      detail: { id },
+      bubbles: true,
+      composed: true
+    }));
+  }
+  addNotification(notification) {
+    const id = `notification-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const newNotification = {
+      ...notification,
+      id,
+      duration: notification.duration ?? (notification.type === "error" ? 0 : this.defaultDuration)
+    };
+    this.notifications = [...this.notifications, newNotification];
+    if (newNotification.duration && newNotification.duration > 0) {
+      const timer = setTimeout(() => {
+        this.closeNotification(id);
+      }, newNotification.duration);
+      this.timers.set(id, timer);
+    }
+    return id;
+  }
+  removeAllNotifications() {
+    this.timers.forEach((timer) => clearTimeout(timer));
+    this.timers.clear();
+    this.notifications.forEach((n3) => this.closingIds.add(n3.id));
+    this.requestUpdate();
+    setTimeout(() => {
+      this.notifications = [];
+      this.closingIds.clear();
+    }, 300);
+  }
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.timers.forEach((timer) => clearTimeout(timer));
+    this.timers.clear();
+  }
+};
+NotificationContainer.styles = i$5`
+    :host {
+      display: block;
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      pointer-events: none;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-width: 400px;
+    }
+
+    .notification {
+      background: var(--notification-bg, #2c2f3a);
+      border: 1px solid var(--notification-border, #3a3d4a);
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      pointer-events: auto;
+      animation: slideIn 0.3s ease-out;
+      position: relative;
+    }
+
+    .notification.closing {
+      animation: slideOut 0.3s ease-out forwards;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideOut {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+    }
+
+    .notification-icon {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+    }
+
+    .notification.info {
+      border-color: var(--info-border, #2196f3);
+    }
+
+    .notification.info .notification-icon {
+      color: var(--info-color, #2196f3);
+    }
+
+    .notification.success {
+      border-color: var(--success-border, #4caf50);
+    }
+
+    .notification.success .notification-icon {
+      color: var(--success-color, #4caf50);
+    }
+
+    .notification.warning {
+      border-color: var(--warning-border, #ff9800);
+    }
+
+    .notification.warning .notification-icon {
+      color: var(--warning-color, #ff9800);
+    }
+
+    .notification.error {
+      border-color: var(--error-border, #f44336);
+    }
+
+    .notification.error .notification-icon {
+      color: var(--error-color, #f44336);
+    }
+
+    .notification-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .notification-message {
+      color: var(--message-color, #e0e0e0);
+      font-size: 14px;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+
+    .notification-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .notification-action {
+      background: none;
+      border: 1px solid var(--action-border, #4a4d5a);
+      color: var(--action-color, #e0e0e0);
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .notification-action:hover {
+      background: var(--action-hover-bg, rgba(255, 255, 255, 0.1));
+      border-color: var(--action-hover-border, #5a5d6a);
+    }
+
+    .close-button {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: none;
+      border: none;
+      color: var(--close-color, #999);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      transition: all 0.2s;
+      opacity: 0.7;
+    }
+
+    .close-button:hover {
+      background: var(--close-hover-bg, rgba(255, 255, 255, 0.1));
+      opacity: 1;
+    }
+
+    .progress-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 3px;
+      background: var(--progress-color, currentColor);
+      border-radius: 0 0 8px 8px;
+      transition: width linear;
+      opacity: 0.3;
+    }
+  `;
+__decorateClass$U([
+  n2({ type: Array })
+], NotificationContainer.prototype, "notifications", 2);
+__decorateClass$U([
+  n2({ type: Number })
+], NotificationContainer.prototype, "defaultDuration", 2);
+__decorateClass$U([
+  n2({ type: Number })
+], NotificationContainer.prototype, "maxNotifications", 2);
+__decorateClass$U([
+  r$1()
+], NotificationContainer.prototype, "closingIds", 2);
+NotificationContainer = __decorateClass$U([
+  t$2("notification-container")
+], NotificationContainer);
+var __defProp$T = Object.defineProperty;
+var __decorateClass$T = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$R(target, key, result);
+  if (result) __defProp$T(target, key, result);
   return result;
 };
 class ContainersTab extends i$2 {
@@ -23015,6 +23460,12 @@ class ContainersTab extends i$2 {
     this.searchTerm = "";
     this.error = null;
     this.runtime = null;
+    this.containerEventsLive = false;
+    this.unsubscribeContainerEvents = null;
+    this.containerPollingTimer = null;
+    this.containerRefetchTimer = null;
+    this.containerDropNotified = false;
+    this.containerHasConnectedOnce = false;
     this.showConfirmModal = false;
     this.confirmAction = null;
     this.selectedContainer = null;
@@ -23150,6 +23601,45 @@ class ContainersTab extends i$2 {
       color: var(--vscode-text-dim);
     }
 
+
+    .title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .live-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      font-size: 11px;
+      color: var(--vscode-descriptionForeground);
+      user-select: none;
+    }
+
+    .live-indicator .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(204, 204, 204, 0.5);
+    }
+
+    .live-indicator.on {
+      border-color: rgba(137, 209, 133, 0.6);
+      color: rgba(137, 209, 133, 1);
+    }
+
+    .live-indicator.on .dot {
+      background: rgba(137, 209, 133, 1);
+    }
+
+    .live-indicator.off {
+      opacity: 0.75;
+    }
     h1 {
       margin: 0 0 24px 0;
       font-size: 24px;
@@ -23909,6 +24399,7 @@ class ContainersTab extends i$2 {
   }
   connectedCallback() {
     super.connectedCallback();
+    this.startContainerEventStream();
     this.handleLocationChange();
     window.addEventListener("popstate", this.handleLocationChange);
     this.addEventListener("click", this.handleOutsideClick.bind(this));
@@ -23917,6 +24408,7 @@ class ContainersTab extends i$2 {
   }
   disconnectedCallback() {
     super.disconnectedCallback();
+    this.stopContainerEventStream();
     window.removeEventListener("popstate", this.handleLocationChange);
     this.removeEventListener("click", this.handleOutsideClick.bind(this));
     document.removeEventListener("keydown", this.handleKeyDown);
@@ -23935,10 +24427,93 @@ class ContainersTab extends i$2 {
       await this.fetchImages();
     }
   }
+  showToast(message, type = "info") {
+    const nc = this.renderRoot?.querySelector("notification-container");
+    if (nc && typeof nc.addNotification === "function") {
+      nc.addNotification({ type, message });
+    }
+  }
+  startContainerEventStream() {
+    if (this.unsubscribeContainerEvents) return;
+    this.unsubscribeContainerEvents = subscribeToEventsChannel({
+      channel: "container-events",
+      routeId: "containers:container-events",
+      onEvent: (payload) => this.handleContainerEvent(payload),
+      onConnectionChange: (connected) => this.handleContainerEventsConnectionChange(connected)
+    });
+  }
+  stopContainerEventStream() {
+    if (this.unsubscribeContainerEvents) {
+      this.unsubscribeContainerEvents();
+      this.unsubscribeContainerEvents = null;
+    }
+    if (this.containerPollingTimer) {
+      window.clearInterval(this.containerPollingTimer);
+      this.containerPollingTimer = null;
+    }
+    if (this.containerRefetchTimer) {
+      window.clearTimeout(this.containerRefetchTimer);
+      this.containerRefetchTimer = null;
+    }
+    this.containerEventsLive = false;
+    this.containerDropNotified = false;
+  }
+  handleContainerEventsConnectionChange(connected) {
+    this.containerEventsLive = connected;
+    if (!connected) {
+      if (this.containerHasConnectedOnce && !this.containerDropNotified) {
+        this.showToast("Live container updates disconnected — falling back to polling", "warning");
+        this.containerDropNotified = true;
+      }
+      this.ensureContainerPolling();
+      return;
+    }
+    this.containerHasConnectedOnce = true;
+    this.containerDropNotified = false;
+    if (this.containerPollingTimer) {
+      window.clearInterval(this.containerPollingTimer);
+      this.containerPollingTimer = null;
+    }
+    this.scheduleContainersRefetch("reconnected");
+  }
+  ensureContainerPolling() {
+    if (this.containerPollingTimer) return;
+    this.containerPollingTimer = window.setInterval(() => {
+      if (this.activeTab !== "containers") return;
+      void this.fetchContainers();
+    }, 3e4);
+  }
+  scheduleContainersRefetch(_reason) {
+    if (this.containerRefetchTimer) return;
+    this.containerRefetchTimer = window.setTimeout(async () => {
+      this.containerRefetchTimer = null;
+      if (this.activeTab !== "containers") return;
+      try {
+        await this.fetchContainers();
+      } catch {
+      }
+    }, 600);
+  }
+  handleContainerEvent(payload) {
+    if (!payload || payload.kind !== "container") return;
+    const id = payload.id ? String(payload.id) : "";
+    if (!id) return;
+    const action = String(payload.action || "").toLowerCase();
+    if (action === "destroy") {
+      this.containers = this.containers.filter((c2) => c2.id !== id);
+      return;
+    }
+    if (action === "start") {
+      this.containers = this.containers.map((c2) => c2.id === id ? { ...c2, state: "running", status: c2.status || "running" } : c2);
+    } else if (action === "stop" || action === "die") {
+      this.containers = this.containers.map((c2) => c2.id === id ? { ...c2, state: "exited", status: c2.status || "exited" } : c2);
+    }
+    this.scheduleContainersRefetch(action);
+  }
   async fetchContainerDetails(id) {
     try {
       this.detailError = null;
-      const response = await api.get(`/containers/${id}`);
+      const response = await api$1.get(`/containers/${id}`);
       console.log("Full container details response:", response);
       let container = null;
       if (response?.data?.container) {
@@ -23963,7 +24538,7 @@ class ContainersTab extends i$2 {
   async fetchImageDetails(id) {
     try {
       this.detailError = null;
-      const response = await api.get(`/containers/images/${id}`);
+      const response = await api$1.get(`/containers/images/${id}`);
       console.log("Full image details response:", response);
       let image = null;
       if (response?.data?.image) {
@@ -23987,7 +24562,7 @@ class ContainersTab extends i$2 {
   }
   async fetchContainers() {
     try {
-      const data = await api.get("/containers");
+      const data = await api$1.get("/containers");
       this.containers = data.containers || [];
       this.runtime = data.runtime || null;
       this.error = null;
@@ -24006,7 +24581,7 @@ class ContainersTab extends i$2 {
   }
   async fetchImages() {
     try {
-      const data = await api.get("/containers/images");
+      const data = await api$1.get("/containers/images");
       this.images = data.images || [];
       this.runtime = data.runtime || null;
       this.error = null;
@@ -24052,7 +24627,7 @@ class ContainersTab extends i$2 {
       `Are you sure you want to start container "${name || id}"?`,
       async () => {
         try {
-          await api.post(`/containers/${id}/start`);
+          await api$1.post(`/containers/${id}/start`);
           this.fetchContainers();
         } catch (error) {
           console.error("Error starting container:", error);
@@ -24066,7 +24641,7 @@ class ContainersTab extends i$2 {
       `Are you sure you want to stop container "${name || id}"?`,
       async () => {
         try {
-          await api.post(`/containers/${id}/stop`);
+          await api$1.post(`/containers/${id}/stop`);
           this.fetchContainers();
         } catch (error) {
           console.error("Error stopping container:", error);
@@ -24080,7 +24655,7 @@ class ContainersTab extends i$2 {
       `Are you sure you want to remove container "${name || id}"? This action cannot be undone.`,
       async () => {
         try {
-          await api.delete(`/containers/${id}`);
+          await api$1.delete(`/containers/${id}`);
           this.fetchContainers();
         } catch (error) {
           console.error("Error removing container:", error);
@@ -24094,7 +24669,7 @@ class ContainersTab extends i$2 {
       `Are you sure you want to remove image "${tag || id}"? This action cannot be undone.`,
       async () => {
         try {
-          await api.delete(`/containers/images/${id}`);
+          await api$1.delete(`/containers/images/${id}`);
           this.fetchImages();
         } catch (error) {
           console.error("Error removing image:", error);
@@ -24109,7 +24684,7 @@ class ContainersTab extends i$2 {
       this.containerLogs = "Loading logs...";
       this.logsSearchTerm = "";
       this.showLogsDrawer = true;
-      const response = await api.get(`/containers/${id}/logs`);
+      const response = await api$1.get(`/containers/${id}/logs`);
       console.log("Logs response:", response);
       if (response?.data?.logs) {
         this.containerLogs = response.data.logs;
@@ -24456,7 +25031,16 @@ class ContainersTab extends i$2 {
   render() {
     return x`
       <div class="tab-container">
-        <h1>${t$5("containers.title")}${this.runtime ? x` <span style="font-size: 0.875rem; color: var(--text-secondary); font-weight: normal;">(${this.runtime})</span>` : ""}</h1>
+        <div class="title-row">
+          <h1>
+            ${t$5("containers.title")}
+            ${this.runtime ? x` <span style="font-size: 0.875rem; color: var(--text-secondary); font-weight: normal;">(${this.runtime})</span>` : ""}
+          </h1>
+          <span class="live-indicator ${this.containerEventsLive ? "on" : "off"}" title="${this.containerEventsLive ? "Live updates connected" : "Live updates disconnected"}">
+            <span class="dot"></span>
+            Live
+          </span>
+        </div>
         ${this.renderTabs()}
         <div class="tab-content">
           ${this.error ? x`
@@ -24480,6 +25064,8 @@ class ContainersTab extends i$2 {
           ` : ""}
         </div>
       </div>
+
+      <notification-container></notification-container>
 
       <modal-dialog
         ?open=${this.showConfirmModal}
@@ -24887,89 +25473,92 @@ class ContainersTab extends i$2 {
     `;
   }
 }
-__decorateClass$R([
+__decorateClass$T([
   r$1()
 ], ContainersTab.prototype, "activeTab");
-__decorateClass$R([
+__decorateClass$T([
   r$1()
 ], ContainersTab.prototype, "containers");
-__decorateClass$R([
+__decorateClass$T([
   r$1()
 ], ContainersTab.prototype, "images");
-__decorateClass$R([
+__decorateClass$T([
   r$1()
 ], ContainersTab.prototype, "searchTerm");
-__decorateClass$R([
+__decorateClass$T([
   r$1()
 ], ContainersTab.prototype, "error");
-__decorateClass$R([
+__decorateClass$T([
   r$1()
 ], ContainersTab.prototype, "runtime");
-__decorateClass$R([
+__decorateClass$T([
+  r$1()
+], ContainersTab.prototype, "containerEventsLive");
+__decorateClass$T([
   r$1()
 ], ContainersTab.prototype, "showConfirmModal");
-__decorateClass$R([
+__decorateClass$T([
   r$1()
 ], ContainersTab.prototype, "confirmAction");
-__decorateClass$R([
+__decorateClass$T([
   r$1()
 ], ContainersTab.prototype, "selectedContainer");
-__decorateClass$R([
+__decorateClass$T([
   r$1()
 ], ContainersTab.prototype, "selectedImage");
-__decorateClass$R([
+__decorateClass$T([
   r$1()
 ], ContainersTab.prototype, "showDrawer");
-__decorateClass$R([
+__decorateClass$T([
   r$1()
 ], ContainersTab.prototype, "detailError");
-__decorateClass$R([
+__decorateClass$T([
   r$1()
 ], ContainersTab.prototype, "confirmTitle");
-__decorateClass$R([
+__decorateClass$T([
   r$1()
 ], ContainersTab.prototype, "confirmMessage");
-__decorateClass$R([
+__decorateClass$T([
   r$1()
 ], ContainersTab.prototype, "showLogsDrawer");
-__decorateClass$R([
+__decorateClass$T([
   r$1()
 ], ContainersTab.prototype, "containerLogs");
-__decorateClass$R([
+__decorateClass$T([
   r$1()
 ], ContainersTab.prototype, "logsError");
-__decorateClass$R([
+__decorateClass$T([
   r$1()
 ], ContainersTab.prototype, "logsSearchTerm");
-__decorateClass$R([
+__decorateClass$T([
   r$1()
 ], ContainersTab.prototype, "showImageActionsDropdown");
-__decorateClass$R([
+__decorateClass$T([
   r$1()
 ], ContainersTab.prototype, "showPullImageModal");
-__decorateClass$R([
+__decorateClass$T([
   r$1()
 ], ContainersTab.prototype, "imageName");
-__decorateClass$R([
+__decorateClass$T([
   r$1()
 ], ContainersTab.prototype, "selectedFile");
-__decorateClass$R([
+__decorateClass$T([
   r$1()
 ], ContainersTab.prototype, "showUploadDrawer");
-__decorateClass$R([
+__decorateClass$T([
   r$1()
 ], ContainersTab.prototype, "uploadQueue");
-__decorateClass$R([
+__decorateClass$T([
   r$1()
 ], ContainersTab.prototype, "isUploading");
 customElements.define("containers-tab", ContainersTab);
-var __defProp$Q = Object.defineProperty;
-var __decorateClass$Q = (decorators, target, key, kind) => {
+var __defProp$S = Object.defineProperty;
+var __decorateClass$S = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$Q(target, key, result);
+  if (result) __defProp$S(target, key, result);
   return result;
 };
 class LogsTab extends I18nLitElement {
@@ -24982,18 +25571,28 @@ class LogsTab extends I18nLitElement {
     this.follow = true;
     this.connected = false;
     this.autoScroll = true;
-    this.wsManager = null;
+    this.unsubscribeLogs = null;
     this.logsContainer = null;
     this.maxLogs = 1e3;
   }
   // Maximum number of logs to keep in memory
-  // Ensure update triggers on state change
-  update(changedProperties) {
-    super.update(changedProperties);
-    console.log("Component updated", {
-      logs: this.logs.length,
-      connected: this.connected
-    });
+  buildFilters() {
+    const filters = {
+      follow: this.follow
+    };
+    if (this.serviceFilter) {
+      const serviceName = this.serviceFilter.trim();
+      if (serviceName) {
+        filters.unit = serviceName;
+      }
+    }
+    if (this.priorityFilter && this.priorityFilter !== "all") {
+      filters.priority = this.priorityFilter;
+    }
+    if (this.sinceFilter) {
+      filters.since = this.sinceFilter;
+    }
+    return filters;
   }
   static {
     this.styles = i$5`
@@ -25212,95 +25811,44 @@ class LogsTab extends I18nLitElement {
     this.logsContainer = this.shadowRoot?.querySelector(".logs-container");
   }
   async initWebSocket() {
-    try {
-      this.wsManager = new WebSocketManager2("/ws/logs");
-      this.wsManager.on("auth", (message) => {
-        if (message.payload?.authenticated === true) {
-          this.connected = true;
-          this.subscribeToLogs();
-        }
-      });
-      this.wsManager.on("data", (message) => {
-        console.log("Received data message:", message);
-        const logData = message.payload || message;
-        if (logData.message) {
-          const logEntry = {
-            type: "log",
-            timestamp: logData.timestamp || (/* @__PURE__ */ new Date()).toISOString(),
-            service: logData.service || logData.unit || "system",
-            priority: logData.priority || logData.level || "info",
-            message: logData.message || "",
-            hostname: logData.hostname,
-            pid: logData.pid
-          };
-          this.addLog(logEntry);
-        }
-      });
-      this.wsManager.on("logs", (message) => {
-        console.log("Received logs message:", message);
-        if (message.payload && Array.isArray(message.payload)) {
-          message.payload.forEach((logData) => {
-            const logEntry = {
-              type: "log",
-              timestamp: logData.timestamp || (/* @__PURE__ */ new Date()).toISOString(),
-              service: logData.service || logData.unit || "system",
-              priority: logData.priority || logData.level || "info",
-              message: logData.message || "",
-              hostname: logData.hostname,
-              pid: logData.pid
-            };
-            this.addLog(logEntry);
-          });
-        }
-      });
-      this.wsManager.on("error", (message) => {
-        console.error("WebSocket error:", message.error);
-        this.connected = false;
-      });
-      await this.wsManager.connect();
-    } catch (error) {
-      console.error("Failed to connect to logs WebSocket:", error);
-      this.connected = false;
-    }
+    this.subscribeToLogs();
   }
   subscribeToLogs() {
-    if (!this.wsManager) return;
-    const filters = {
-      follow: this.follow
-    };
-    if (this.serviceFilter) {
-      const serviceName = this.serviceFilter.trim();
-      if (serviceName) {
-        filters.unit = serviceName;
+    if (this.unsubscribeLogs) {
+      this.unsubscribeLogs();
+      this.unsubscribeLogs = null;
+    }
+    const filters = this.buildFilters();
+    this.unsubscribeLogs = subscribeToEventsChannel({
+      channel: "log-events",
+      routeId: "logs-tab",
+      subscribePayload: { filters },
+      onConnectionChange: (connected) => {
+        this.connected = connected;
+      },
+      onEvent: (payload) => {
+        const kind = payload?.kind;
+        const entry = payload?.entry ?? payload;
+        if (kind && kind !== "log") return;
+        if (!entry) return;
+        const messageText = entry.message ?? entry.msg ?? "";
+        if (!messageText) return;
+        const logEntry = {
+          type: "log",
+          timestamp: entry.timestamp || (/* @__PURE__ */ new Date()).toISOString(),
+          service: entry.unit || entry.service || "system",
+          priority: String(entry.level || entry.priority || "info").toLowerCase(),
+          message: String(messageText),
+          hostname: entry.hostname,
+          pid: entry.pid
+        };
+        this.addLog(logEntry);
       }
-    }
-    if (this.priorityFilter && this.priorityFilter !== "all") {
-      filters.priority = this.priorityFilter;
-    }
-    if (this.sinceFilter) {
-      filters.since = this.sinceFilter;
-    }
-    const subscribeMessage = {
-      type: "subscribe",
-      payload: {
-        filters
-      }
-    };
-    console.log("Sending subscribe message:", subscribeMessage);
-    this.wsManager.send(subscribeMessage);
+    });
   }
   addLog(log2) {
-    console.log("Adding log entry:", log2);
-    console.log("Current logs count before:", this.logs.length);
     const newLogs = [...this.logs, log2];
-    if (newLogs.length > this.maxLogs) {
-      this.logs = newLogs.slice(-this.maxLogs);
-    } else {
-      this.logs = newLogs;
-    }
-    console.log("Current logs count after:", this.logs.length);
-    console.log("First log:", this.logs[0]);
-    this.requestUpdate();
+    this.logs = newLogs.length > this.maxLogs ? newLogs.slice(-this.maxLogs) : newLogs;
     if (this.autoScroll && this.logsContainer) {
       this.updateComplete.then(() => {
         if (this.logsContainer) {
@@ -25311,30 +25859,22 @@ class LogsTab extends I18nLitElement {
   }
   handleServiceFilterChange(event) {
     this.serviceFilter = event.target.value;
-    if (this.connected) {
-      this.logs = [];
-      this.subscribeToLogs();
-    }
+    this.logs = [];
+    this.subscribeToLogs();
   }
   handlePriorityChange(event) {
     this.priorityFilter = event.target.value;
-    if (this.connected) {
-      this.logs = [];
-      this.subscribeToLogs();
-    }
+    this.logs = [];
+    this.subscribeToLogs();
   }
   handleSinceFilterChange(event) {
     this.sinceFilter = event.target.value;
-    if (this.connected) {
-      this.logs = [];
-      this.subscribeToLogs();
-    }
+    this.logs = [];
+    this.subscribeToLogs();
   }
   handleFollowChange(event) {
     this.follow = event.target.checked;
-    if (this.connected) {
-      this.subscribeToLogs();
-    }
+    this.subscribeToLogs();
   }
   handleAutoScrollChange(event) {
     this.autoScroll = event.target.checked;
@@ -25346,9 +25886,9 @@ class LogsTab extends I18nLitElement {
     this.logs = [];
   }
   cleanup() {
-    if (this.wsManager) {
-      this.wsManager.disconnect();
-      this.wsManager = null;
+    if (this.unsubscribeLogs) {
+      this.unsubscribeLogs();
+      this.unsubscribeLogs = null;
     }
     this.connected = false;
   }
@@ -25447,25 +25987,25 @@ class LogsTab extends I18nLitElement {
     `;
   }
 }
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], LogsTab.prototype, "logs");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], LogsTab.prototype, "serviceFilter");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], LogsTab.prototype, "priorityFilter");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], LogsTab.prototype, "sinceFilter");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], LogsTab.prototype, "follow");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], LogsTab.prototype, "connected");
-__decorateClass$Q([
+__decorateClass$S([
   r$1()
 ], LogsTab.prototype, "autoScroll");
 customElements.define("logs-tab", LogsTab);
@@ -32386,14 +32926,14 @@ class TerminalStore {
   }
 }
 const terminalStore = new TerminalStore();
-var __defProp$P = Object.defineProperty;
-var __getOwnPropDesc$L = Object.getOwnPropertyDescriptor;
-var __decorateClass$P = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$L(target, key) : target;
+var __defProp$R = Object.defineProperty;
+var __getOwnPropDesc$N = Object.getOwnPropertyDescriptor;
+var __decorateClass$R = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$N(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$P(target, key, result);
+  if (kind && result) __defProp$R(target, key, result);
   return result;
 };
 let TerminalTabV2 = class extends i$2 {
@@ -33083,28 +33623,28 @@ TerminalTabV2.styles = [
     }
   `
 ];
-__decorateClass$P([
+__decorateClass$R([
   r$1()
 ], TerminalTabV2.prototype, "isFullscreen", 2);
-__decorateClass$P([
+__decorateClass$R([
   r$1()
 ], TerminalTabV2.prototype, "localSessions", 2);
-__decorateClass$P([
+__decorateClass$R([
   r$1()
 ], TerminalTabV2.prototype, "localActiveSessionId", 2);
-__decorateClass$P([
+__decorateClass$R([
   r$1()
 ], TerminalTabV2.prototype, "localActiveSession", 2);
-TerminalTabV2 = __decorateClass$P([
+TerminalTabV2 = __decorateClass$R([
   t$2("terminal-tab-v2")
 ], TerminalTabV2);
-var __defProp$O = Object.defineProperty;
-var __decorateClass$O = (decorators, target, key, kind) => {
+var __defProp$Q = Object.defineProperty;
+var __decorateClass$Q = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$O(target, key, result);
+  if (result) __defProp$Q(target, key, result);
   return result;
 };
 class UsersTab extends i$2 {
@@ -33487,7 +34027,7 @@ class UsersTab extends i$2 {
   }
   async fetchUsers() {
     try {
-      const data = await api.get("/users");
+      const data = await api$1.get("/users");
       this.users = data.users;
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -33495,7 +34035,7 @@ class UsersTab extends i$2 {
   }
   async createUser() {
     try {
-      await api.post("/users", this.newUser);
+      await api$1.post("/users", this.newUser);
       this.showCreateForm = false;
       this.newUser = { username: "", password: "", groups: "" };
       this.fetchUsers();
@@ -33506,7 +34046,7 @@ class UsersTab extends i$2 {
   async deleteUser() {
     if (this.userToDelete) {
       try {
-        await api.delete(`/users/${this.userToDelete}`);
+        await api$1.delete(`/users/${this.userToDelete}`);
         this.userToDelete = null;
         this.fetchUsers();
         this.closeDeleteModal();
@@ -33552,7 +34092,7 @@ class UsersTab extends i$2 {
       return;
     }
     try {
-      await api.put(`/users/${this.resetPasswordUsername}/password`, {
+      await api$1.put(`/users/${this.resetPasswordUsername}/password`, {
         password: this.newPassword
       });
       this.closeResetPasswordDrawer();
@@ -33576,7 +34116,7 @@ class UsersTab extends i$2 {
   async updateUser() {
     if (!this.editingUser) return;
     try {
-      await api.put(`/users/${this.editingUser.username}`, {
+      await api$1.put(`/users/${this.editingUser.username}`, {
         groups: this.editingUser.groups.join(",")
       });
       this.showEditForm = false;
@@ -33862,47 +34402,47 @@ class UsersTab extends i$2 {
     `;
   }
 }
-__decorateClass$O([
+__decorateClass$Q([
   n2({ type: Array })
 ], UsersTab.prototype, "users");
-__decorateClass$O([
+__decorateClass$Q([
   n2({ type: Boolean })
 ], UsersTab.prototype, "showCreateForm");
-__decorateClass$O([
+__decorateClass$Q([
   n2({ type: Boolean })
 ], UsersTab.prototype, "showEditForm");
-__decorateClass$O([
+__decorateClass$Q([
   n2({ type: Boolean })
 ], UsersTab.prototype, "showResetPasswordForm");
-__decorateClass$O([
+__decorateClass$Q([
   n2({ type: Object })
 ], UsersTab.prototype, "newUser");
-__decorateClass$O([
+__decorateClass$Q([
   n2({ type: Object })
 ], UsersTab.prototype, "editingUser");
-__decorateClass$O([
+__decorateClass$Q([
   n2({ type: String })
 ], UsersTab.prototype, "userToDelete");
-__decorateClass$O([
+__decorateClass$Q([
   n2({ type: String })
 ], UsersTab.prototype, "resetPasswordUsername");
-__decorateClass$O([
+__decorateClass$Q([
   n2({ type: String })
 ], UsersTab.prototype, "newPassword");
-__decorateClass$O([
+__decorateClass$Q([
   n2({ type: String })
 ], UsersTab.prototype, "confirmPassword");
-__decorateClass$O([
+__decorateClass$Q([
   n2({ type: String })
 ], UsersTab.prototype, "searchQuery");
 customElements.define("users-tab", UsersTab);
-var __defProp$N = Object.defineProperty;
-var __decorateClass$N = (decorators, target, key, kind) => {
+var __defProp$P = Object.defineProperty;
+var __decorateClass$P = (decorators, target, key, kind) => {
   var result = void 0;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = decorator(target, key, result) || result;
-  if (result) __defProp$N(target, key, result);
+  if (result) __defProp$P(target, key, result);
   return result;
 };
 class DockerTab extends i$2 {
@@ -34889,7 +35429,7 @@ class DockerTab extends i$2 {
   }
   async fetchContainers() {
     try {
-      const data = await api.get("/docker/ps");
+      const data = await api$1.get("/docker/ps");
       this.containers = data.containers || [];
       this.error = null;
     } catch (error) {
@@ -34899,7 +35439,7 @@ class DockerTab extends i$2 {
   }
   async fetchImages() {
     try {
-      const data = await api.get("/docker/images");
+      const data = await api$1.get("/docker/images");
       this.images = data.images || [];
       this.error = null;
     } catch (error) {
@@ -34909,7 +35449,7 @@ class DockerTab extends i$2 {
   }
   async fetchVolumes() {
     try {
-      const data = await api.get("/docker/volumes");
+      const data = await api$1.get("/docker/volumes");
       this.volumes = data.volumes || [];
       this.error = null;
     } catch (error) {
@@ -34919,7 +35459,7 @@ class DockerTab extends i$2 {
   }
   async fetchNetworks() {
     try {
-      const data = await api.get("/docker/networks");
+      const data = await api$1.get("/docker/networks");
       this.networks = data.networks || [];
       this.error = null;
     } catch (error) {
@@ -35393,7 +35933,7 @@ class DockerTab extends i$2 {
   async deleteSelectedContainer() {
     if (!this.selectedContainer) return;
     try {
-      await api.delete(`/docker/containers/${this.selectedContainer.id}`);
+      await api$1.delete(`/docker/containers/${this.selectedContainer.id}`);
       this.showConfirmModal = false;
       this.fetchContainers();
       this.selectedContainer = null;
@@ -35404,7 +35944,7 @@ class DockerTab extends i$2 {
   async deleteSelectedImage() {
     if (!this.selectedImage) return;
     try {
-      await api.delete(`/docker/images/${this.selectedImage.id}`);
+      await api$1.delete(`/docker/images/${this.selectedImage.id}`);
       this.showConfirmModal = false;
       this.fetchImages();
       this.selectedImage = null;
@@ -35521,7 +36061,7 @@ class DockerTab extends i$2 {
     this.confirmMessage = `Are you sure you want to delete volume ${volume.name}?`;
     this.confirmAction = async () => {
       try {
-        await api.delete(`/docker/volumes/${volume.name}`);
+        await api$1.delete(`/docker/volumes/${volume.name}`);
         this.showConfirmModal = false;
         this.fetchVolumes();
       } catch (error) {
@@ -35535,7 +36075,7 @@ class DockerTab extends i$2 {
     this.confirmMessage = `Are you sure you want to delete network ${network.name}?`;
     this.confirmAction = async () => {
       try {
-        await api.delete(`/docker/networks/${network.id}`);
+        await api$1.delete(`/docker/networks/${network.id}`);
         this.showConfirmModal = false;
         this.fetchNetworks();
       } catch (error) {
@@ -35609,7 +36149,7 @@ class DockerTab extends i$2 {
   async startSelectedContainer() {
     if (!this.selectedContainer) return;
     try {
-      await api.post(`/docker/containers/${this.selectedContainer.id}/start`);
+      await api$1.post(`/docker/containers/${this.selectedContainer.id}/start`);
       this.showConfirmModal = false;
       this.fetchContainers();
       this.selectedContainer = null;
@@ -35620,7 +36160,7 @@ class DockerTab extends i$2 {
   async stopSelectedContainer() {
     if (!this.selectedContainer) return;
     try {
-      await api.post(`/docker/containers/${this.selectedContainer.id}/stop`);
+      await api$1.post(`/docker/containers/${this.selectedContainer.id}/stop`);
       this.showConfirmModal = false;
       this.fetchContainers();
       this.selectedContainer = null;
@@ -35631,7 +36171,7 @@ class DockerTab extends i$2 {
   async restartSelectedContainer() {
     if (!this.selectedContainer) return;
     try {
-      await api.post(`/docker/containers/${this.selectedContainer.id}/restart`);
+      await api$1.post(`/docker/containers/${this.selectedContainer.id}/restart`);
       this.showConfirmModal = false;
       this.fetchContainers();
       this.selectedContainer = null;
@@ -35642,7 +36182,7 @@ class DockerTab extends i$2 {
   async pauseSelectedContainer() {
     if (!this.selectedContainer) return;
     try {
-      await api.post(`/docker/containers/${this.selectedContainer.id}/pause`);
+      await api$1.post(`/docker/containers/${this.selectedContainer.id}/pause`);
       this.showConfirmModal = false;
       this.fetchContainers();
       this.selectedContainer = null;
@@ -35653,7 +36193,7 @@ class DockerTab extends i$2 {
   async unpauseSelectedContainer() {
     if (!this.selectedContainer) return;
     try {
-      await api.post(`/docker/containers/${this.selectedContainer.id}/unpause`);
+      await api$1.post(`/docker/containers/${this.selectedContainer.id}/unpause`);
       this.showConfirmModal = false;
       this.fetchContainers();
       this.selectedContainer = null;
@@ -35666,7 +36206,7 @@ class DockerTab extends i$2 {
       this.logsError = null;
       this.containerLogs = "Loading logs...";
       this.showLogsDrawer = true;
-      const response = await api.get(`/docker/containers/${container.id}/logs`);
+      const response = await api$1.get(`/docker/containers/${container.id}/logs`);
       this.containerLogs = response.logs || "No logs available";
     } catch (error) {
       console.error("Error fetching container logs:", error);
@@ -35676,7 +36216,7 @@ class DockerTab extends i$2 {
   async fetchContainerDetails(containerId) {
     try {
       this.detailError = null;
-      const response = await api.get(`/docker/containers/${containerId}`);
+      const response = await api$1.get(`/docker/containers/${containerId}`);
       this.selectedContainer = response.container || response;
       this.selectedImage = null;
       this.showDrawer = true;
@@ -35798,7 +36338,7 @@ class DockerTab extends i$2 {
   async fetchImageDetails(imageId) {
     try {
       this.detailError = null;
-      const response = await api.get(`/docker/images/${imageId}`);
+      const response = await api$1.get(`/docker/images/${imageId}`);
       this.selectedImage = response.image || response;
       this.selectedContainer = null;
       this.showDrawer = true;
@@ -35842,7 +36382,7 @@ class DockerTab extends i$2 {
           this.updateUploadItem(item.id, { progress: currentItem.progress + 10 });
         }
       }, 200);
-      await api.post("/docker/images/upload", formData);
+      await api$1.post("/docker/images/upload", formData);
       clearInterval(progressInterval);
       this.updateUploadItem(item.id, { status: "completed", progress: 100 });
       this.fetchImages();
@@ -35875,7 +36415,7 @@ class DockerTab extends i$2 {
   async handlePullImage() {
     if (!this.imageName.trim()) return;
     try {
-      await api.post("/docker/images/pull", {
+      await api$1.post("/docker/images/pull", {
         image: this.imageName.trim()
       });
       this.showPullImageModal = false;
@@ -35886,79 +36426,79 @@ class DockerTab extends i$2 {
     }
   }
 }
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], DockerTab.prototype, "activeTab");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], DockerTab.prototype, "containers");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], DockerTab.prototype, "images");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], DockerTab.prototype, "volumes");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], DockerTab.prototype, "networks");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], DockerTab.prototype, "searchTerm");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], DockerTab.prototype, "error");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], DockerTab.prototype, "showConfirmModal");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], DockerTab.prototype, "confirmAction");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], DockerTab.prototype, "selectedContainer");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], DockerTab.prototype, "selectedImage");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], DockerTab.prototype, "showDrawer");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], DockerTab.prototype, "detailError");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], DockerTab.prototype, "confirmTitle");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], DockerTab.prototype, "confirmMessage");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], DockerTab.prototype, "showLogsDrawer");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], DockerTab.prototype, "containerLogs");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], DockerTab.prototype, "logsError");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], DockerTab.prototype, "logsSearchTerm");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], DockerTab.prototype, "showImageActionsDropdown");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], DockerTab.prototype, "showPullImageModal");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], DockerTab.prototype, "imageName");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], DockerTab.prototype, "showUploadDrawer");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], DockerTab.prototype, "uploadQueue");
-__decorateClass$N([
+__decorateClass$P([
   r$1()
 ], DockerTab.prototype, "isUploading");
 customElements.define("docker-tab", DockerTab);
@@ -36397,7 +36937,7 @@ class KubernetesApi {
       if (contentType === "json") {
         parsedResource = JSON.parse(content);
       } else {
-        const yaml = await import("./index-b6Sp4UvG.js");
+        const yaml = await import("./index-zTJ6x03j.js");
         parsedResource = yaml.parse(content);
       }
     } catch (error) {
@@ -36503,14 +37043,14 @@ class KubernetesApi {
     await Api.delete(endpoint);
   }
 }
-var __defProp$M = Object.defineProperty;
-var __getOwnPropDesc$K = Object.getOwnPropertyDescriptor;
-var __decorateClass$M = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$K(target, key) : target;
+var __defProp$O = Object.defineProperty;
+var __getOwnPropDesc$M = Object.getOwnPropertyDescriptor;
+var __decorateClass$O = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$M(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$M(target, key, result);
+  if (kind && result) __defProp$O(target, key, result);
   return result;
 };
 let SearchInput = class extends i$2 {
@@ -36598,54 +37138,61 @@ SearchInput.styles = i$5`
       cursor: not-allowed;
     }
   `;
-__decorateClass$M([
+__decorateClass$O([
   n2({ type: String })
 ], SearchInput.prototype, "value", 2);
-__decorateClass$M([
+__decorateClass$O([
   n2({ type: String })
 ], SearchInput.prototype, "placeholder", 2);
-__decorateClass$M([
+__decorateClass$O([
   n2({ type: Number })
 ], SearchInput.prototype, "width", 2);
-__decorateClass$M([
+__decorateClass$O([
   n2({ type: Boolean })
 ], SearchInput.prototype, "disabled", 2);
-SearchInput = __decorateClass$M([
+SearchInput = __decorateClass$O([
   t$2("search-input")
 ], SearchInput);
-var __defProp$L = Object.defineProperty;
-var __getOwnPropDesc$J = Object.getOwnPropertyDescriptor;
-var __decorateClass$L = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$J(target, key) : target;
+var __defProp$N = Object.defineProperty;
+var __getOwnPropDesc$L = Object.getOwnPropertyDescriptor;
+var __decorateClass$N = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$L(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$L(target, key, result);
+  if (kind && result) __defProp$N(target, key, result);
   return result;
 };
 let EmptyState = class extends i$2 {
   constructor() {
     super(...arguments);
     this.message = "No data available";
+    this.title = "";
+    this.description = "";
     this.icon = "📭";
     this.actionLabel = "";
   }
   handleAction() {
-    this.dispatchEvent(new CustomEvent("action-click", {
-      bubbles: true,
-      composed: true
-    }));
+    this.dispatchEvent(
+      new CustomEvent("action-click", {
+        bubbles: true,
+        composed: true
+      })
+    );
   }
   render() {
+    const title = this.title || this.message;
+    const description = this.description;
     return x`
       <div class="empty-state">
         <div class="icon">${this.icon}</div>
-        <div class="message">${this.message}</div>
+        <div class="title">${title}</div>
+        ${description ? x`<div class="description">${description}</div>` : ""}
         ${this.actionLabel ? x`
-          <div class="action">
-            <button @click="${this.handleAction}">${this.actionLabel}</button>
-          </div>
-        ` : ""}
+              <div class="action">
+                <button @click="${this.handleAction}">${this.actionLabel}</button>
+              </div>
+            ` : ""}
       </div>
     `;
   }
@@ -36667,9 +37214,18 @@ EmptyState.styles = i$5`
       opacity: 0.5;
     }
 
-    .message {
+    .title {
       font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--text-primary, var(--vscode-foreground));
+    }
+
+    .description {
+      font-size: 0.9rem;
       margin-bottom: 1rem;
+      color: var(--text-secondary);
+      white-space: pre-wrap;
     }
 
     .action {
@@ -36692,26 +37248,32 @@ EmptyState.styles = i$5`
       background: var(--vscode-button-hoverBackground, #005a9e);
     }
   `;
-__decorateClass$L([
+__decorateClass$N([
   n2({ type: String })
 ], EmptyState.prototype, "message", 2);
-__decorateClass$L([
+__decorateClass$N([
+  n2({ type: String })
+], EmptyState.prototype, "title", 2);
+__decorateClass$N([
+  n2({ type: String })
+], EmptyState.prototype, "description", 2);
+__decorateClass$N([
   n2({ type: String })
 ], EmptyState.prototype, "icon", 2);
-__decorateClass$L([
+__decorateClass$N([
   n2({ type: String })
 ], EmptyState.prototype, "actionLabel", 2);
-EmptyState = __decorateClass$L([
+EmptyState = __decorateClass$N([
   t$2("empty-state")
 ], EmptyState);
-var __defProp$K = Object.defineProperty;
-var __getOwnPropDesc$I = Object.getOwnPropertyDescriptor;
-var __decorateClass$K = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$I(target, key) : target;
+var __defProp$M = Object.defineProperty;
+var __getOwnPropDesc$K = Object.getOwnPropertyDescriptor;
+var __decorateClass$M = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$K(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$K(target, key, result);
+  if (kind && result) __defProp$M(target, key, result);
   return result;
 };
 let LoadingState = class extends i$2 {
@@ -36764,20 +37326,20 @@ LoadingState.styles = i$5`
       }
     }
   `;
-__decorateClass$K([
+__decorateClass$M([
   n2({ type: String })
 ], LoadingState.prototype, "message", 2);
-LoadingState = __decorateClass$K([
+LoadingState = __decorateClass$M([
   t$2("loading-state")
 ], LoadingState);
-var __defProp$J = Object.defineProperty;
-var __getOwnPropDesc$H = Object.getOwnPropertyDescriptor;
-var __decorateClass$J = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$H(target, key) : target;
+var __defProp$L = Object.defineProperty;
+var __getOwnPropDesc$J = Object.getOwnPropertyDescriptor;
+var __decorateClass$L = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$J(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$J(target, key, result);
+  if (kind && result) __defProp$L(target, key, result);
   return result;
 };
 let NamespaceDropdown = class extends i$2 {
@@ -37082,41 +37644,41 @@ NamespaceDropdown.styles = i$5`
       background: var(--scrollbar-thumb-hover, #5a5d6a);
     }
   `;
-__decorateClass$J([
+__decorateClass$L([
   n2({ type: Array })
 ], NamespaceDropdown.prototype, "namespaces", 2);
-__decorateClass$J([
+__decorateClass$L([
   n2({ type: String })
 ], NamespaceDropdown.prototype, "selectedNamespace", 2);
-__decorateClass$J([
+__decorateClass$L([
   n2({ type: Boolean })
 ], NamespaceDropdown.prototype, "loading", 2);
-__decorateClass$J([
+__decorateClass$L([
   n2({ type: String })
 ], NamespaceDropdown.prototype, "placeholder", 2);
-__decorateClass$J([
+__decorateClass$L([
   n2({ type: Boolean })
 ], NamespaceDropdown.prototype, "showCounts", 2);
-__decorateClass$J([
+__decorateClass$L([
   n2({ type: Boolean })
 ], NamespaceDropdown.prototype, "includeAllOption", 2);
-__decorateClass$J([
+__decorateClass$L([
   r$1()
 ], NamespaceDropdown.prototype, "isOpen", 2);
-__decorateClass$J([
+__decorateClass$L([
   r$1()
 ], NamespaceDropdown.prototype, "searchQuery", 2);
-NamespaceDropdown = __decorateClass$J([
+NamespaceDropdown = __decorateClass$L([
   t$2("namespace-dropdown")
 ], NamespaceDropdown);
-var __defProp$I = Object.defineProperty;
-var __getOwnPropDesc$G = Object.getOwnPropertyDescriptor;
-var __decorateClass$I = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$G(target, key) : target;
+var __defProp$K = Object.defineProperty;
+var __getOwnPropDesc$I = Object.getOwnPropertyDescriptor;
+var __decorateClass$K = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$I(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$I(target, key, result);
+  if (kind && result) __defProp$K(target, key, result);
   return result;
 };
 let TabGroup = class extends i$2 {
@@ -37184,23 +37746,23 @@ TabGroup.styles = i$5`
       font-size: 1rem;
     }
   `;
-__decorateClass$I([
+__decorateClass$K([
   n2({ type: Array })
 ], TabGroup.prototype, "tabs", 2);
-__decorateClass$I([
+__decorateClass$K([
   n2({ type: String })
 ], TabGroup.prototype, "activeTab", 2);
-TabGroup = __decorateClass$I([
+TabGroup = __decorateClass$K([
   t$2("tab-group")
 ], TabGroup);
-var __defProp$H = Object.defineProperty;
-var __getOwnPropDesc$F = Object.getOwnPropertyDescriptor;
-var __decorateClass$H = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$F(target, key) : target;
+var __defProp$J = Object.defineProperty;
+var __getOwnPropDesc$H = Object.getOwnPropertyDescriptor;
+var __decorateClass$J = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$H(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$H(target, key, result);
+  if (kind && result) __defProp$J(target, key, result);
   return result;
 };
 let ActionDropdown = class extends i$2 {
@@ -37211,6 +37773,8 @@ let ActionDropdown = class extends i$2 {
     this.isOpen = false;
     this.dropdownPosition = { top: 0, left: 0 };
     this.dropdownElement = null;
+    this.anchorRect = null;
+    this.viewportMargin = 8;
     this.handleOutsideClick = (event) => {
       const target = event.target;
       if (!this.contains(target) && !this.dropdownElement?.contains(target)) {
@@ -37232,8 +37796,9 @@ let ActionDropdown = class extends i$2 {
       if (!this.isOpen) {
         const button = event.currentTarget;
         const rect = button.getBoundingClientRect();
+        this.anchorRect = rect;
         const top = rect.bottom + 4;
-        const left = rect.left - 100;
+        const left = rect.right;
         this.dropdownPosition = { top, left };
         this.isOpen = true;
         setTimeout(() => this.createDropdown(), 0);
@@ -37270,7 +37835,8 @@ let ActionDropdown = class extends i$2 {
       min-width: 160px;
       z-index: 99999;
       display: block;
-      overflow: hidden;
+      overflow: auto;
+      max-height: calc(100vh - 16px);
     `;
     this.dropdownElement.innerHTML = this.actions.map((action) => `
       <button 
@@ -37312,6 +37878,28 @@ let ActionDropdown = class extends i$2 {
       });
     });
     document.body.appendChild(this.dropdownElement);
+    requestAnimationFrame(() => this.adjustDropdownPosition());
+  }
+  adjustDropdownPosition() {
+    if (!this.dropdownElement || !this.anchorRect) return;
+    const margin = this.viewportMargin;
+    const menuRect = this.dropdownElement.getBoundingClientRect();
+    const anchor = this.anchorRect;
+    let left = anchor.right - menuRect.width;
+    left = Math.max(margin, Math.min(left, window.innerWidth - menuRect.width - margin));
+    const spaceBelow = window.innerHeight - anchor.bottom;
+    const spaceAbove = anchor.top;
+    let top;
+    if (menuRect.height + margin <= spaceBelow) {
+      top = anchor.bottom + 4;
+    } else if (menuRect.height + margin <= spaceAbove) {
+      top = anchor.top - menuRect.height - 4;
+    } else {
+      const preferred = anchor.bottom + 4;
+      top = Math.max(margin, Math.min(preferred, window.innerHeight - menuRect.height - margin));
+    }
+    this.dropdownElement.style.left = `${left}px`;
+    this.dropdownElement.style.top = `${top}px`;
   }
   removeDropdown() {
     if (this.dropdownElement) {
@@ -37321,6 +37909,7 @@ let ActionDropdown = class extends i$2 {
   }
   closeDropdown() {
     this.isOpen = false;
+    this.anchorRect = null;
     this.removeDropdown();
   }
   handleActionClick(action) {
@@ -37362,29 +37951,29 @@ ActionDropdown.styles = i$5`
       background-color: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.1)));
     }
   `;
-__decorateClass$H([
+__decorateClass$J([
   n2({ type: Array })
 ], ActionDropdown.prototype, "actions", 2);
-__decorateClass$H([
+__decorateClass$J([
   n2({ type: String })
 ], ActionDropdown.prototype, "menuId", 2);
-__decorateClass$H([
+__decorateClass$J([
   r$1()
 ], ActionDropdown.prototype, "isOpen", 2);
-__decorateClass$H([
+__decorateClass$J([
   r$1()
 ], ActionDropdown.prototype, "dropdownPosition", 2);
-ActionDropdown = __decorateClass$H([
+ActionDropdown = __decorateClass$J([
   t$2("action-dropdown")
 ], ActionDropdown);
-var __defProp$G = Object.defineProperty;
-var __getOwnPropDesc$E = Object.getOwnPropertyDescriptor;
-var __decorateClass$G = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$E(target, key) : target;
+var __defProp$I = Object.defineProperty;
+var __getOwnPropDesc$G = Object.getOwnPropertyDescriptor;
+var __decorateClass$I = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$G(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$G(target, key, result);
+  if (kind && result) __defProp$I(target, key, result);
   return result;
 };
 let StatusBadge = class extends i$2 {
@@ -37468,23 +38057,23 @@ StatusBadge.styles = i$5`
       color: rgb(107, 114, 128);
     }
   `;
-__decorateClass$G([
+__decorateClass$I([
   n2({ type: String })
 ], StatusBadge.prototype, "status", 2);
-__decorateClass$G([
+__decorateClass$I([
   n2({ type: String })
 ], StatusBadge.prototype, "text", 2);
-StatusBadge = __decorateClass$G([
+StatusBadge = __decorateClass$I([
   t$2("status-badge")
 ], StatusBadge);
-var __defProp$F = Object.defineProperty;
-var __getOwnPropDesc$D = Object.getOwnPropertyDescriptor;
-var __decorateClass$F = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$D(target, key) : target;
+var __defProp$H = Object.defineProperty;
+var __getOwnPropDesc$F = Object.getOwnPropertyDescriptor;
+var __decorateClass$H = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$F(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$F(target, key, result);
+  if (kind && result) __defProp$H(target, key, result);
   return result;
 };
 let ResourceTable = class extends i$2 {
@@ -37639,35 +38228,35 @@ ResourceTable.styles = i$5`
       text-align: center;
     }
   `;
-__decorateClass$F([
+__decorateClass$H([
   n2({ type: Array })
 ], ResourceTable.prototype, "columns", 2);
-__decorateClass$F([
+__decorateClass$H([
   n2({ type: Array })
 ], ResourceTable.prototype, "data", 2);
-__decorateClass$F([
+__decorateClass$H([
   n2({ type: String })
 ], ResourceTable.prototype, "emptyMessage", 2);
-__decorateClass$F([
+__decorateClass$H([
   n2({ type: Boolean })
 ], ResourceTable.prototype, "showActions", 2);
-__decorateClass$F([
+__decorateClass$H([
   n2({ type: Function })
 ], ResourceTable.prototype, "getActions", 2);
-__decorateClass$F([
+__decorateClass$H([
   n2({ type: Object })
 ], ResourceTable.prototype, "customRenderers", 2);
-ResourceTable = __decorateClass$F([
+ResourceTable = __decorateClass$H([
   t$2("resource-table")
 ], ResourceTable);
-var __defProp$E = Object.defineProperty;
-var __getOwnPropDesc$C = Object.getOwnPropertyDescriptor;
-var __decorateClass$E = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$C(target, key) : target;
+var __defProp$G = Object.defineProperty;
+var __getOwnPropDesc$E = Object.getOwnPropertyDescriptor;
+var __decorateClass$G = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$E(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$E(target, key, result);
+  if (kind && result) __defProp$G(target, key, result);
   return result;
 };
 let DetailDrawer = class extends i$2 {
@@ -37806,32 +38395,32 @@ DetailDrawer.styles = i$5`
       padding-bottom: 40px; /* Extra padding at bottom to ensure last content is visible */
     }
   `;
-__decorateClass$E([
+__decorateClass$G([
   n2({ type: String })
 ], DetailDrawer.prototype, "title", 2);
-__decorateClass$E([
+__decorateClass$G([
   n2({ type: Boolean })
 ], DetailDrawer.prototype, "show", 2);
-__decorateClass$E([
+__decorateClass$G([
   n2({ type: Boolean })
 ], DetailDrawer.prototype, "loading", 2);
-__decorateClass$E([
+__decorateClass$G([
   n2({ type: Number })
 ], DetailDrawer.prototype, "width", 2);
-__decorateClass$E([
+__decorateClass$G([
   r$1()
 ], DetailDrawer.prototype, "isClosing", 2);
-DetailDrawer = __decorateClass$E([
+DetailDrawer = __decorateClass$G([
   t$2("detail-drawer")
 ], DetailDrawer);
-var __defProp$D = Object.defineProperty;
-var __getOwnPropDesc$B = Object.getOwnPropertyDescriptor;
-var __decorateClass$D = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$B(target, key) : target;
+var __defProp$F = Object.defineProperty;
+var __getOwnPropDesc$D = Object.getOwnPropertyDescriptor;
+var __decorateClass$F = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$D(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$D(target, key, result);
+  if (kind && result) __defProp$F(target, key, result);
   return result;
 };
 let LogsDrawer = class extends i$2 {
@@ -38296,50 +38885,50 @@ LogsDrawer.styles = i$5`
       background: var(--vscode-scrollbarSlider-hoverBackground, rgba(100, 100, 100, 0.7));
     }
   `;
-__decorateClass$D([
+__decorateClass$F([
   n2({ type: Boolean, reflect: true })
 ], LogsDrawer.prototype, "show", 2);
-__decorateClass$D([
+__decorateClass$F([
   n2({ type: String })
 ], LogsDrawer.prototype, "title", 2);
-__decorateClass$D([
+__decorateClass$F([
   n2({ type: String })
 ], LogsDrawer.prototype, "subtitle", 2);
-__decorateClass$D([
+__decorateClass$F([
   n2({ type: String })
 ], LogsDrawer.prototype, "logs", 2);
-__decorateClass$D([
+__decorateClass$F([
   n2({ type: Boolean })
 ], LogsDrawer.prototype, "loading", 2);
-__decorateClass$D([
+__decorateClass$F([
   n2({ type: String })
 ], LogsDrawer.prototype, "error", 2);
-__decorateClass$D([
+__decorateClass$F([
   n2({ type: Boolean })
 ], LogsDrawer.prototype, "autoScroll", 2);
-__decorateClass$D([
+__decorateClass$F([
   n2({ type: Boolean })
 ], LogsDrawer.prototype, "showTimestamps", 2);
-__decorateClass$D([
+__decorateClass$F([
   n2({ type: Boolean })
 ], LogsDrawer.prototype, "colorize", 2);
-__decorateClass$D([
+__decorateClass$F([
   r$1()
 ], LogsDrawer.prototype, "searchQuery", 2);
-__decorateClass$D([
+__decorateClass$F([
   r$1()
 ], LogsDrawer.prototype, "isFollowing", 2);
-LogsDrawer = __decorateClass$D([
+LogsDrawer = __decorateClass$F([
   t$2("logs-drawer")
 ], LogsDrawer);
-var __defProp$C = Object.defineProperty;
-var __getOwnPropDesc$A = Object.getOwnPropertyDescriptor;
-var __decorateClass$C = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$A(target, key) : target;
+var __defProp$E = Object.defineProperty;
+var __getOwnPropDesc$C = Object.getOwnPropertyDescriptor;
+var __decorateClass$E = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$C(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$C(target, key, result);
+  if (kind && result) __defProp$E(target, key, result);
   return result;
 };
 let DeleteModal = class extends i$2 {
@@ -38596,50 +39185,50 @@ DeleteModal.styles = i$5`
       cursor: not-allowed;
     }
   `;
-__decorateClass$C([
+__decorateClass$E([
   n2({ type: Object })
 ], DeleteModal.prototype, "item", 2);
-__decorateClass$C([
+__decorateClass$E([
   n2({ type: Boolean, reflect: true })
 ], DeleteModal.prototype, "show", 2);
-__decorateClass$C([
+__decorateClass$E([
   n2({ type: Boolean })
 ], DeleteModal.prototype, "loading", 2);
-__decorateClass$C([
+__decorateClass$E([
   n2({ type: String, attribute: "modal-title" })
 ], DeleteModal.prototype, "modalTitle", 2);
-__decorateClass$C([
+__decorateClass$E([
   n2({ type: String, attribute: "message" })
 ], DeleteModal.prototype, "message", 2);
-__decorateClass$C([
+__decorateClass$E([
   n2({ type: String, attribute: "confirm-label" })
 ], DeleteModal.prototype, "confirmLabel", 2);
-__decorateClass$C([
+__decorateClass$E([
   n2({ type: String, attribute: "confirm-button-class" })
 ], DeleteModal.prototype, "confirmButtonClass", 2);
-__decorateClass$C([
+__decorateClass$E([
   n2({ type: Boolean, attribute: "has-volumes" })
 ], DeleteModal.prototype, "hasVolumes", 2);
-__decorateClass$C([
+__decorateClass$E([
   n2({ type: Number, attribute: "volume-count" })
 ], DeleteModal.prototype, "volumeCount", 2);
-__decorateClass$C([
+__decorateClass$E([
   n2({ type: Boolean, attribute: "delete-volumes" })
 ], DeleteModal.prototype, "deleteVolumes", 2);
-__decorateClass$C([
+__decorateClass$E([
   n2({ type: Boolean, attribute: "acknowledge" })
 ], DeleteModal.prototype, "acknowledge", 2);
-DeleteModal = __decorateClass$C([
+DeleteModal = __decorateClass$E([
   t$2("delete-modal")
 ], DeleteModal);
-var __defProp$B = Object.defineProperty;
-var __getOwnPropDesc$z = Object.getOwnPropertyDescriptor;
-var __decorateClass$B = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$z(target, key) : target;
+var __defProp$D = Object.defineProperty;
+var __getOwnPropDesc$B = Object.getOwnPropertyDescriptor;
+var __decorateClass$D = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$B(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$B(target, key, result);
+  if (kind && result) __defProp$D(target, key, result);
   return result;
 };
 let SetImageModal = class extends i$2 {
@@ -38980,35 +39569,35 @@ SetImageModal.styles = i$5`
       to { transform: rotate(360deg); }
     }
   `;
-__decorateClass$B([
+__decorateClass$D([
   n2({ type: Boolean, reflect: true })
 ], SetImageModal.prototype, "show", 2);
-__decorateClass$B([
+__decorateClass$D([
   n2({ type: Boolean })
 ], SetImageModal.prototype, "loading", 2);
-__decorateClass$B([
+__decorateClass$D([
   n2({ type: String })
 ], SetImageModal.prototype, "deploymentName", 2);
-__decorateClass$B([
+__decorateClass$D([
   n2({ type: String })
 ], SetImageModal.prototype, "namespace", 2);
-__decorateClass$B([
+__decorateClass$D([
   n2({ type: Array })
 ], SetImageModal.prototype, "containers", 2);
-__decorateClass$B([
+__decorateClass$D([
   r$1()
 ], SetImageModal.prototype, "containerImages", 2);
-SetImageModal = __decorateClass$B([
+SetImageModal = __decorateClass$D([
   t$2("set-image-modal")
 ], SetImageModal);
-var __defProp$A = Object.defineProperty;
-var __getOwnPropDesc$y = Object.getOwnPropertyDescriptor;
-var __decorateClass$A = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$y(target, key) : target;
+var __defProp$C = Object.defineProperty;
+var __getOwnPropDesc$A = Object.getOwnPropertyDescriptor;
+var __decorateClass$C = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$A(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$A(target, key, result);
+  if (kind && result) __defProp$C(target, key, result);
   return result;
 };
 let ResourceDetailView = class extends i$2 {
@@ -39846,10 +40435,10 @@ ResourceDetailView.styles = i$5`
       opacity: 0.7;
     }
   `;
-__decorateClass$A([
+__decorateClass$C([
   n2({ type: Object })
 ], ResourceDetailView.prototype, "resource", 2);
-ResourceDetailView = __decorateClass$A([
+ResourceDetailView = __decorateClass$C([
   t$2("resource-detail-view")
 ], ResourceDetailView);
 const ALIAS = Symbol.for("yaml.alias");
@@ -46253,14 +46842,14 @@ const YAML = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty
   visit: visit$1,
   visitAsync
 }, Symbol.toStringTag, { value: "Module" }));
-var __defProp$z = Object.defineProperty;
-var __getOwnPropDesc$x = Object.getOwnPropertyDescriptor;
-var __decorateClass$z = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$x(target, key) : target;
+var __defProp$B = Object.defineProperty;
+var __getOwnPropDesc$z = Object.getOwnPropertyDescriptor;
+var __decorateClass$B = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$z(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$z(target, key, result);
+  if (kind && result) __defProp$B(target, key, result);
   return result;
 };
 let CreateResourceDrawer = class extends i$2 {
@@ -46860,367 +47449,44 @@ CreateResourceDrawer.styles = i$5`
       background: var(--scrollbar-thumb-hover, #5a5d6a);
     }
   `;
-__decorateClass$z([
+__decorateClass$B([
   n2({ type: Boolean, reflect: true })
 ], CreateResourceDrawer.prototype, "show", 2);
-__decorateClass$z([
+__decorateClass$B([
   n2({ type: String })
 ], CreateResourceDrawer.prototype, "title", 2);
-__decorateClass$z([
+__decorateClass$B([
   n2({ type: String })
 ], CreateResourceDrawer.prototype, "value", 2);
-__decorateClass$z([
+__decorateClass$B([
   n2({ type: Boolean })
 ], CreateResourceDrawer.prototype, "loading", 2);
-__decorateClass$z([
+__decorateClass$B([
   n2({ type: String })
 ], CreateResourceDrawer.prototype, "error", 2);
-__decorateClass$z([
+__decorateClass$B([
   n2({ type: String })
 ], CreateResourceDrawer.prototype, "format", 2);
-__decorateClass$z([
+__decorateClass$B([
   n2({ type: String })
 ], CreateResourceDrawer.prototype, "submitLabel", 2);
-__decorateClass$z([
+__decorateClass$B([
   r$1()
 ], CreateResourceDrawer.prototype, "validationMessage", 2);
-__decorateClass$z([
+__decorateClass$B([
   r$1()
 ], CreateResourceDrawer.prototype, "validationStatus", 2);
-CreateResourceDrawer = __decorateClass$z([
+CreateResourceDrawer = __decorateClass$B([
   t$2("create-resource-drawer")
 ], CreateResourceDrawer);
-var __defProp$y = Object.defineProperty;
-var __getOwnPropDesc$w = Object.getOwnPropertyDescriptor;
-var __decorateClass$y = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$w(target, key) : target;
+var __defProp$A = Object.defineProperty;
+var __getOwnPropDesc$y = Object.getOwnPropertyDescriptor;
+var __decorateClass$A = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$y(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$y(target, key, result);
-  return result;
-};
-let NotificationContainer = class extends i$2 {
-  constructor() {
-    super(...arguments);
-    this.notifications = [];
-    this.defaultDuration = 5e3;
-    this.maxNotifications = 5;
-    this.closingIds = /* @__PURE__ */ new Set();
-    this.timers = /* @__PURE__ */ new Map();
-  }
-  render() {
-    const visibleNotifications = this.notifications.slice(-this.maxNotifications);
-    return x`
-      <div class="container" part="container">
-        ${visibleNotifications.map((notification) => this.renderNotification(notification))}
-      </div>
-    `;
-  }
-  renderNotification(notification) {
-    const isClosing = this.closingIds.has(notification.id);
-    const icon = this.getIcon(notification.type);
-    return x`
-      <div
-        class="notification ${notification.type} ${isClosing ? "closing" : ""}"
-        part="notification notification-${notification.type}"
-        @animationend=${(e3) => this.handleAnimationEnd(e3, notification.id)}
-      >
-        <svg class="notification-icon" viewBox="0 0 20 20" fill="currentColor">
-          ${icon}
-        </svg>
-        
-        <div class="notification-content">
-          <div class="notification-message">${notification.message}</div>
-          
-          ${notification.actions && notification.actions.length > 0 ? x`
-            <div class="notification-actions">
-              ${notification.actions.map((action) => x`
-                <button
-                  class="notification-action"
-                  @click=${() => {
-      action.handler();
-      this.closeNotification(notification.id);
-    }}
-                >
-                  ${action.label}
-                </button>
-              `)}
-            </div>
-          ` : ""}
-        </div>
-        
-        <button
-          class="close-button"
-          @click=${() => this.closeNotification(notification.id)}
-          aria-label="Close notification"
-        >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-            <path d="M9 3L3 9M3 3l6 6" stroke="currentColor" stroke-width="2"/>
-          </svg>
-        </button>
-        
-        ${notification.duration ? x`
-          <div
-            class="progress-bar"
-            style="width: 100%; transition-duration: ${notification.duration}ms;"
-          ></div>
-        ` : ""}
-      </div>
-    `;
-  }
-  getIcon(type) {
-    switch (type) {
-      case "info":
-        return x`<path d="M10 2a8 8 0 100 16 8 8 0 000-16zM9 7h2v7H9zm0-2h2v1.5H9z"/>`;
-      case "success":
-        return x`<path d="M10 2a8 8 0 100 16 8 8 0 000-16zm4 6l-5 5-3-3 1-1 2 2 4-4 1 1z"/>`;
-      case "warning":
-        return x`<path d="M10 2l8 14H2L10 2zm0 4l-4 7h8l-4-7zm-1 3h2v3H9zm0 4h2v1H9z"/>`;
-      case "error":
-        return x`<path d="M10 2a8 8 0 100 16 8 8 0 000-16zm3 4L10 9l-3-3-1 1 3 3-3 3 1 1 3-3 3 3 1-1-3-3 3-3-1-1z"/>`;
-    }
-  }
-  closeNotification(id) {
-    this.closingIds.add(id);
-    this.requestUpdate();
-    const timer = this.timers.get(id);
-    if (timer) {
-      clearTimeout(timer);
-      this.timers.delete(id);
-    }
-  }
-  handleAnimationEnd(e3, id) {
-    if (e3.animationName === "slideOut") {
-      this.removeNotification(id);
-    }
-  }
-  removeNotification(id) {
-    this.notifications = this.notifications.filter((n3) => n3.id !== id);
-    this.closingIds.delete(id);
-    this.timers.delete(id);
-    this.dispatchEvent(new CustomEvent("notification-closed", {
-      detail: { id },
-      bubbles: true,
-      composed: true
-    }));
-  }
-  addNotification(notification) {
-    const id = `notification-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const newNotification = {
-      ...notification,
-      id,
-      duration: notification.duration ?? (notification.type === "error" ? 0 : this.defaultDuration)
-    };
-    this.notifications = [...this.notifications, newNotification];
-    if (newNotification.duration && newNotification.duration > 0) {
-      const timer = setTimeout(() => {
-        this.closeNotification(id);
-      }, newNotification.duration);
-      this.timers.set(id, timer);
-    }
-    return id;
-  }
-  removeAllNotifications() {
-    this.timers.forEach((timer) => clearTimeout(timer));
-    this.timers.clear();
-    this.notifications.forEach((n3) => this.closingIds.add(n3.id));
-    this.requestUpdate();
-    setTimeout(() => {
-      this.notifications = [];
-      this.closingIds.clear();
-    }, 300);
-  }
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    this.timers.forEach((timer) => clearTimeout(timer));
-    this.timers.clear();
-  }
-};
-NotificationContainer.styles = i$5`
-    :host {
-      display: block;
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      z-index: 9999;
-      pointer-events: none;
-    }
-
-    .container {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      max-width: 400px;
-    }
-
-    .notification {
-      background: var(--notification-bg, #2c2f3a);
-      border: 1px solid var(--notification-border, #3a3d4a);
-      border-radius: 8px;
-      padding: 16px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      pointer-events: auto;
-      animation: slideIn 0.3s ease-out;
-      position: relative;
-    }
-
-    .notification.closing {
-      animation: slideOut 0.3s ease-out forwards;
-    }
-
-    @keyframes slideIn {
-      from {
-        transform: translateX(100%);
-        opacity: 0;
-      }
-      to {
-        transform: translateX(0);
-        opacity: 1;
-      }
-    }
-
-    @keyframes slideOut {
-      from {
-        transform: translateX(0);
-        opacity: 1;
-      }
-      to {
-        transform: translateX(100%);
-        opacity: 0;
-      }
-    }
-
-    .notification-icon {
-      flex-shrink: 0;
-      width: 20px;
-      height: 20px;
-    }
-
-    .notification.info {
-      border-color: var(--info-border, #2196f3);
-    }
-
-    .notification.info .notification-icon {
-      color: var(--info-color, #2196f3);
-    }
-
-    .notification.success {
-      border-color: var(--success-border, #4caf50);
-    }
-
-    .notification.success .notification-icon {
-      color: var(--success-color, #4caf50);
-    }
-
-    .notification.warning {
-      border-color: var(--warning-border, #ff9800);
-    }
-
-    .notification.warning .notification-icon {
-      color: var(--warning-color, #ff9800);
-    }
-
-    .notification.error {
-      border-color: var(--error-border, #f44336);
-    }
-
-    .notification.error .notification-icon {
-      color: var(--error-color, #f44336);
-    }
-
-    .notification-content {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .notification-message {
-      color: var(--message-color, #e0e0e0);
-      font-size: 14px;
-      line-height: 1.5;
-      word-break: break-word;
-    }
-
-    .notification-actions {
-      display: flex;
-      gap: 8px;
-      margin-top: 4px;
-    }
-
-    .notification-action {
-      background: none;
-      border: 1px solid var(--action-border, #4a4d5a);
-      color: var(--action-color, #e0e0e0);
-      padding: 4px 12px;
-      border-radius: 4px;
-      font-size: 12px;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .notification-action:hover {
-      background: var(--action-hover-bg, rgba(255, 255, 255, 0.1));
-      border-color: var(--action-hover-border, #5a5d6a);
-    }
-
-    .close-button {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      background: none;
-      border: none;
-      color: var(--close-color, #999);
-      cursor: pointer;
-      padding: 4px;
-      border-radius: 4px;
-      transition: all 0.2s;
-      opacity: 0.7;
-    }
-
-    .close-button:hover {
-      background: var(--close-hover-bg, rgba(255, 255, 255, 0.1));
-      opacity: 1;
-    }
-
-    .progress-bar {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      height: 3px;
-      background: var(--progress-color, currentColor);
-      border-radius: 0 0 8px 8px;
-      transition: width linear;
-      opacity: 0.3;
-    }
-  `;
-__decorateClass$y([
-  n2({ type: Array })
-], NotificationContainer.prototype, "notifications", 2);
-__decorateClass$y([
-  n2({ type: Number })
-], NotificationContainer.prototype, "defaultDuration", 2);
-__decorateClass$y([
-  n2({ type: Number })
-], NotificationContainer.prototype, "maxNotifications", 2);
-__decorateClass$y([
-  r$1()
-], NotificationContainer.prototype, "closingIds", 2);
-NotificationContainer = __decorateClass$y([
-  t$2("notification-container")
-], NotificationContainer);
-var __defProp$x = Object.defineProperty;
-var __getOwnPropDesc$v = Object.getOwnPropertyDescriptor;
-var __decorateClass$x = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$v(target, key) : target;
-  for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
-    if (decorator = decorators[i4])
-      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$x(target, key, result);
+  if (kind && result) __defProp$A(target, key, result);
   return result;
 };
 let KubernetesWorkloads = class extends i$2 {
@@ -47261,6 +47527,12 @@ let KubernetesWorkloads = class extends i$2 {
     this.workloadForSetImage = null;
     this.containerImages = [];
     this.isPerformingAction = false;
+    this.k8sEventsLive = false;
+    this.unsubscribeK8sEvents = null;
+    this.k8sPollingTimer = null;
+    this.k8sRefetchTimer = null;
+    this.k8sDropNotified = false;
+    this.k8sHasConnectedOnce = false;
     this.tabs = [
       { id: "pods", label: "Pods" },
       { id: "deployments", label: "Deployments" },
@@ -47931,9 +48203,94 @@ spec:
       this.loading = false;
     }
   }
+  showToast(message, type = "info") {
+    const nc = this.shadowRoot?.querySelector("notification-container");
+    if (nc && typeof nc.addNotification === "function") {
+      nc.addNotification({ type, message });
+    }
+  }
+  startK8sEventStream() {
+    if (this.unsubscribeK8sEvents) return;
+    this.unsubscribeK8sEvents = subscribeToEventsChannel({
+      channel: "k8s-events",
+      routeId: "kubernetes:k8s-events",
+      onEvent: (payload) => this.handleK8sEvent(payload),
+      onConnectionChange: (connected) => this.handleK8sEventsConnectionChange(connected)
+    });
+  }
+  stopK8sEventStream() {
+    if (this.unsubscribeK8sEvents) {
+      this.unsubscribeK8sEvents();
+      this.unsubscribeK8sEvents = null;
+    }
+    if (this.k8sPollingTimer) {
+      window.clearInterval(this.k8sPollingTimer);
+      this.k8sPollingTimer = null;
+    }
+    if (this.k8sRefetchTimer) {
+      window.clearTimeout(this.k8sRefetchTimer);
+      this.k8sRefetchTimer = null;
+    }
+    this.k8sEventsLive = false;
+    this.k8sDropNotified = false;
+  }
+  handleK8sEventsConnectionChange(connected) {
+    this.k8sEventsLive = connected;
+    if (!connected) {
+      if (this.k8sHasConnectedOnce && !this.k8sDropNotified) {
+        this.showToast("Live Kubernetes updates disconnected — falling back to polling", "warning");
+        this.k8sDropNotified = true;
+      }
+      this.ensureK8sPolling();
+      return;
+    }
+    this.k8sHasConnectedOnce = true;
+    this.k8sDropNotified = false;
+    if (this.k8sPollingTimer) {
+      window.clearInterval(this.k8sPollingTimer);
+      this.k8sPollingTimer = null;
+    }
+    this.scheduleK8sRefetch("reconnected");
+  }
+  ensureK8sPolling() {
+    if (this.k8sPollingTimer) return;
+    this.k8sPollingTimer = window.setInterval(() => {
+      void this.fetchData();
+    }, 3e4);
+  }
+  scheduleK8sRefetch(_reason) {
+    if (this.k8sRefetchTimer) return;
+    this.k8sRefetchTimer = window.setTimeout(async () => {
+      this.k8sRefetchTimer = null;
+      try {
+        await this.fetchData();
+      } catch {
+      }
+    }, 700);
+  }
+  handleK8sEvent(payload) {
+    if (!payload || payload.kind !== "k8s-pod") return;
+    if (this.activeTab !== "pods") {
+      return;
+    }
+    const action = String(payload.action || "");
+    const name = String(payload.name || "");
+    const namespace = String(payload.namespace || "");
+    if (!name || !namespace) return;
+    if (action === "DELETED") {
+      this.workloads = this.workloads.filter((w) => !(w.type === "Pod" && w.name === name && w.namespace === namespace));
+      return;
+    }
+    this.scheduleK8sRefetch(action);
+  }
   connectedCallback() {
     super.connectedCallback();
+    this.startK8sEventStream();
     this.fetchData();
+  }
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.stopK8sEventStream();
   }
   render() {
     return x`
@@ -47960,6 +48317,10 @@ spec:
           ></search-input>
           
           <div class="controls">
+            <span class="live-indicator ${this.k8sEventsLive ? "on" : "off"}" title="${this.k8sEventsLive ? "Live updates connected" : "Live updates disconnected"}">
+              <span class="dot"></span>
+              Live
+            </span>
             <button class="btn-create" @click="${this.handleCreate}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -48148,6 +48509,38 @@ KubernetesWorkloads.styles = i$5`
       gap: 1rem;
     }
 
+    .live-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      font-size: 11px;
+      color: var(--vscode-descriptionForeground);
+      user-select: none;
+    }
+
+    .live-indicator .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(204, 204, 204, 0.5);
+    }
+
+    .live-indicator.on {
+      border-color: rgba(137, 209, 133, 0.6);
+      color: rgba(137, 209, 133, 1);
+    }
+
+    .live-indicator.on .dot {
+      background: rgba(137, 209, 133, 1);
+    }
+
+    .live-indicator.off {
+      opacity: 0.75;
+    }
+
     namespace-dropdown {
       --dropdown-bg: var(--vscode-dropdown-background, #3c3c3c);
       --dropdown-color: var(--vscode-dropdown-foreground, #cccccc);
@@ -48162,122 +48555,125 @@ KubernetesWorkloads.styles = i$5`
       --option-selected-bg: var(--vscode-list-activeSelectionBackground, #094771);
     }
   `;
-__decorateClass$x([
+__decorateClass$A([
   n2({ type: Array })
 ], KubernetesWorkloads.prototype, "workloads", 2);
-__decorateClass$x([
+__decorateClass$A([
   n2({ type: Array })
 ], KubernetesWorkloads.prototype, "namespaces", 2);
-__decorateClass$x([
+__decorateClass$A([
   n2({ type: String })
 ], KubernetesWorkloads.prototype, "selectedNamespace", 2);
-__decorateClass$x([
+__decorateClass$A([
   n2({ type: String })
 ], KubernetesWorkloads.prototype, "searchQuery", 2);
-__decorateClass$x([
+__decorateClass$A([
   n2({ type: Boolean })
 ], KubernetesWorkloads.prototype, "loading", 2);
-__decorateClass$x([
+__decorateClass$A([
   n2({ type: String })
 ], KubernetesWorkloads.prototype, "error", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "activeTab", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "showDetails", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "selectedItem", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "loadingDetails", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "detailsData", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "showDeleteModal", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "itemToDelete", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "isDeleting", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "showCreateDrawer", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "createResourceValue", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "createDrawerTitle", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "isCreating", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "showLogsDrawer", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "logsData", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "logsLoading", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "logsError", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "logsPodName", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "logsNamespace", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "resourceFormat", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "isEditMode", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "editingResource", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "showRestartModal", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "showRollbackModal", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "showSetImageModal", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "workloadToRestart", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "workloadToRollback", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "workloadForSetImage", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "containerImages", 2);
-__decorateClass$x([
+__decorateClass$A([
   r$1()
 ], KubernetesWorkloads.prototype, "isPerformingAction", 2);
-KubernetesWorkloads = __decorateClass$x([
+__decorateClass$A([
+  r$1()
+], KubernetesWorkloads.prototype, "k8sEventsLive", 2);
+KubernetesWorkloads = __decorateClass$A([
   t$2("kubernetes-workloads")
 ], KubernetesWorkloads);
-var __defProp$w = Object.defineProperty;
-var __getOwnPropDesc$u = Object.getOwnPropertyDescriptor;
-var __decorateClass$w = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$u(target, key) : target;
+var __defProp$z = Object.defineProperty;
+var __getOwnPropDesc$x = Object.getOwnPropertyDescriptor;
+var __decorateClass$z = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$x(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$w(target, key, result);
+  if (kind && result) __defProp$z(target, key, result);
   return result;
 };
 let KubernetesNetworks = class extends i$2 {
@@ -48826,80 +49222,80 @@ KubernetesNetworks.styles = i$5`
       --option-selected-bg: var(--vscode-list-activeSelectionBackground, #094771);
     }
   `;
-__decorateClass$w([
+__decorateClass$z([
   n2({ type: Array })
 ], KubernetesNetworks.prototype, "resources", 2);
-__decorateClass$w([
+__decorateClass$z([
   n2({ type: Array })
 ], KubernetesNetworks.prototype, "namespaces", 2);
-__decorateClass$w([
+__decorateClass$z([
   n2({ type: String })
 ], KubernetesNetworks.prototype, "selectedNamespace", 2);
-__decorateClass$w([
+__decorateClass$z([
   n2({ type: String })
 ], KubernetesNetworks.prototype, "searchQuery", 2);
-__decorateClass$w([
+__decorateClass$z([
   n2({ type: Boolean })
 ], KubernetesNetworks.prototype, "loading", 2);
-__decorateClass$w([
+__decorateClass$z([
   n2({ type: String })
 ], KubernetesNetworks.prototype, "error", 2);
-__decorateClass$w([
+__decorateClass$z([
   r$1()
 ], KubernetesNetworks.prototype, "activeTab", 2);
-__decorateClass$w([
+__decorateClass$z([
   r$1()
 ], KubernetesNetworks.prototype, "showDetails", 2);
-__decorateClass$w([
+__decorateClass$z([
   r$1()
 ], KubernetesNetworks.prototype, "selectedItem", 2);
-__decorateClass$w([
+__decorateClass$z([
   r$1()
 ], KubernetesNetworks.prototype, "loadingDetails", 2);
-__decorateClass$w([
+__decorateClass$z([
   r$1()
 ], KubernetesNetworks.prototype, "detailsData", 2);
-__decorateClass$w([
+__decorateClass$z([
   r$1()
 ], KubernetesNetworks.prototype, "showDeleteModal", 2);
-__decorateClass$w([
+__decorateClass$z([
   r$1()
 ], KubernetesNetworks.prototype, "itemToDelete", 2);
-__decorateClass$w([
+__decorateClass$z([
   r$1()
 ], KubernetesNetworks.prototype, "isDeleting", 2);
-__decorateClass$w([
+__decorateClass$z([
   r$1()
 ], KubernetesNetworks.prototype, "showCreateDrawer", 2);
-__decorateClass$w([
+__decorateClass$z([
   r$1()
 ], KubernetesNetworks.prototype, "createResourceValue", 2);
-__decorateClass$w([
+__decorateClass$z([
   r$1()
 ], KubernetesNetworks.prototype, "createDrawerTitle", 2);
-__decorateClass$w([
+__decorateClass$z([
   r$1()
 ], KubernetesNetworks.prototype, "isCreating", 2);
-__decorateClass$w([
+__decorateClass$z([
   r$1()
 ], KubernetesNetworks.prototype, "resourceFormat", 2);
-__decorateClass$w([
+__decorateClass$z([
   r$1()
 ], KubernetesNetworks.prototype, "isEditMode", 2);
-__decorateClass$w([
+__decorateClass$z([
   r$1()
 ], KubernetesNetworks.prototype, "editingResource", 2);
-KubernetesNetworks = __decorateClass$w([
+KubernetesNetworks = __decorateClass$z([
   t$2("kubernetes-networks")
 ], KubernetesNetworks);
-var __defProp$v = Object.defineProperty;
-var __getOwnPropDesc$t = Object.getOwnPropertyDescriptor;
-var __decorateClass$v = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$t(target, key) : target;
+var __defProp$y = Object.defineProperty;
+var __getOwnPropDesc$w = Object.getOwnPropertyDescriptor;
+var __decorateClass$y = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$w(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$v(target, key, result);
+  if (kind && result) __defProp$y(target, key, result);
   return result;
 };
 let KubernetesStorage = class extends i$2 {
@@ -49412,80 +49808,80 @@ KubernetesStorage.styles = i$5`
       color: var(--vscode-editor-background, #1e1e1e);
     }
   `;
-__decorateClass$v([
+__decorateClass$y([
   n2({ type: Array })
 ], KubernetesStorage.prototype, "resources", 2);
-__decorateClass$v([
+__decorateClass$y([
   n2({ type: Array })
 ], KubernetesStorage.prototype, "namespaces", 2);
-__decorateClass$v([
+__decorateClass$y([
   n2({ type: String })
 ], KubernetesStorage.prototype, "selectedNamespace", 2);
-__decorateClass$v([
+__decorateClass$y([
   n2({ type: String })
 ], KubernetesStorage.prototype, "searchQuery", 2);
-__decorateClass$v([
+__decorateClass$y([
   n2({ type: Boolean })
 ], KubernetesStorage.prototype, "loading", 2);
-__decorateClass$v([
+__decorateClass$y([
   n2({ type: String })
 ], KubernetesStorage.prototype, "error", 2);
-__decorateClass$v([
+__decorateClass$y([
   r$1()
 ], KubernetesStorage.prototype, "activeTab", 2);
-__decorateClass$v([
+__decorateClass$y([
   r$1()
 ], KubernetesStorage.prototype, "showDetails", 2);
-__decorateClass$v([
+__decorateClass$y([
   r$1()
 ], KubernetesStorage.prototype, "selectedItem", 2);
-__decorateClass$v([
+__decorateClass$y([
   r$1()
 ], KubernetesStorage.prototype, "loadingDetails", 2);
-__decorateClass$v([
+__decorateClass$y([
   r$1()
 ], KubernetesStorage.prototype, "detailsData", 2);
-__decorateClass$v([
+__decorateClass$y([
   r$1()
 ], KubernetesStorage.prototype, "showDeleteModal", 2);
-__decorateClass$v([
+__decorateClass$y([
   r$1()
 ], KubernetesStorage.prototype, "itemToDelete", 2);
-__decorateClass$v([
+__decorateClass$y([
   r$1()
 ], KubernetesStorage.prototype, "isDeleting", 2);
-__decorateClass$v([
+__decorateClass$y([
   r$1()
 ], KubernetesStorage.prototype, "showCreateDrawer", 2);
-__decorateClass$v([
+__decorateClass$y([
   r$1()
 ], KubernetesStorage.prototype, "createResourceValue", 2);
-__decorateClass$v([
+__decorateClass$y([
   r$1()
 ], KubernetesStorage.prototype, "createDrawerTitle", 2);
-__decorateClass$v([
+__decorateClass$y([
   r$1()
 ], KubernetesStorage.prototype, "isCreating", 2);
-__decorateClass$v([
+__decorateClass$y([
   r$1()
 ], KubernetesStorage.prototype, "resourceFormat", 2);
-__decorateClass$v([
+__decorateClass$y([
   r$1()
 ], KubernetesStorage.prototype, "isEditMode", 2);
-__decorateClass$v([
+__decorateClass$y([
   r$1()
 ], KubernetesStorage.prototype, "editingResource", 2);
-KubernetesStorage = __decorateClass$v([
+KubernetesStorage = __decorateClass$y([
   t$2("kubernetes-storage")
 ], KubernetesStorage);
-var __defProp$u = Object.defineProperty;
-var __getOwnPropDesc$s = Object.getOwnPropertyDescriptor;
-var __decorateClass$u = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$s(target, key) : target;
+var __defProp$x = Object.defineProperty;
+var __getOwnPropDesc$v = Object.getOwnPropertyDescriptor;
+var __decorateClass$x = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$v(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$u(target, key, result);
+  if (kind && result) __defProp$x(target, key, result);
   return result;
 };
 let KubernetesConfigurations = class extends i$2 {
@@ -50036,80 +50432,80 @@ KubernetesConfigurations.styles = i$5`
       border-radius: 4px;
     }
   `;
-__decorateClass$u([
+__decorateClass$x([
   n2({ type: Array })
 ], KubernetesConfigurations.prototype, "resources", 2);
-__decorateClass$u([
+__decorateClass$x([
   n2({ type: Array })
 ], KubernetesConfigurations.prototype, "namespaces", 2);
-__decorateClass$u([
+__decorateClass$x([
   n2({ type: String })
 ], KubernetesConfigurations.prototype, "selectedNamespace", 2);
-__decorateClass$u([
+__decorateClass$x([
   n2({ type: String })
 ], KubernetesConfigurations.prototype, "searchQuery", 2);
-__decorateClass$u([
+__decorateClass$x([
   n2({ type: Boolean })
 ], KubernetesConfigurations.prototype, "loading", 2);
-__decorateClass$u([
+__decorateClass$x([
   n2({ type: String })
 ], KubernetesConfigurations.prototype, "error", 2);
-__decorateClass$u([
+__decorateClass$x([
   r$1()
 ], KubernetesConfigurations.prototype, "activeTab", 2);
-__decorateClass$u([
+__decorateClass$x([
   r$1()
 ], KubernetesConfigurations.prototype, "showDetails", 2);
-__decorateClass$u([
+__decorateClass$x([
   r$1()
 ], KubernetesConfigurations.prototype, "selectedItem", 2);
-__decorateClass$u([
+__decorateClass$x([
   r$1()
 ], KubernetesConfigurations.prototype, "loadingDetails", 2);
-__decorateClass$u([
+__decorateClass$x([
   r$1()
 ], KubernetesConfigurations.prototype, "detailsData", 2);
-__decorateClass$u([
+__decorateClass$x([
   r$1()
 ], KubernetesConfigurations.prototype, "showDeleteModal", 2);
-__decorateClass$u([
+__decorateClass$x([
   r$1()
 ], KubernetesConfigurations.prototype, "itemToDelete", 2);
-__decorateClass$u([
+__decorateClass$x([
   r$1()
 ], KubernetesConfigurations.prototype, "isDeleting", 2);
-__decorateClass$u([
+__decorateClass$x([
   r$1()
 ], KubernetesConfigurations.prototype, "showCreateDrawer", 2);
-__decorateClass$u([
+__decorateClass$x([
   r$1()
 ], KubernetesConfigurations.prototype, "createResourceValue", 2);
-__decorateClass$u([
+__decorateClass$x([
   r$1()
 ], KubernetesConfigurations.prototype, "createDrawerTitle", 2);
-__decorateClass$u([
+__decorateClass$x([
   r$1()
 ], KubernetesConfigurations.prototype, "isCreating", 2);
-__decorateClass$u([
+__decorateClass$x([
   r$1()
 ], KubernetesConfigurations.prototype, "resourceFormat", 2);
-__decorateClass$u([
+__decorateClass$x([
   r$1()
 ], KubernetesConfigurations.prototype, "isEditMode", 2);
-__decorateClass$u([
+__decorateClass$x([
   r$1()
 ], KubernetesConfigurations.prototype, "editingResource", 2);
-KubernetesConfigurations = __decorateClass$u([
+KubernetesConfigurations = __decorateClass$x([
   t$2("kubernetes-configurations")
 ], KubernetesConfigurations);
-var __defProp$t = Object.defineProperty;
-var __getOwnPropDesc$r = Object.getOwnPropertyDescriptor;
-var __decorateClass$t = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$r(target, key) : target;
+var __defProp$w = Object.defineProperty;
+var __getOwnPropDesc$u = Object.getOwnPropertyDescriptor;
+var __decorateClass$w = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$u(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$t(target, key, result);
+  if (kind && result) __defProp$w(target, key, result);
   return result;
 };
 let KubernetesHelm = class extends i$2 {
@@ -50614,59 +51010,59 @@ KubernetesHelm.styles = i$5`
       white-space: pre-wrap;
     }
   `;
-__decorateClass$t([
+__decorateClass$w([
   n2({ type: Array })
 ], KubernetesHelm.prototype, "releases", 2);
-__decorateClass$t([
+__decorateClass$w([
   n2({ type: Array })
 ], KubernetesHelm.prototype, "namespaces", 2);
-__decorateClass$t([
+__decorateClass$w([
   n2({ type: String })
 ], KubernetesHelm.prototype, "selectedNamespace", 2);
-__decorateClass$t([
+__decorateClass$w([
   n2({ type: String })
 ], KubernetesHelm.prototype, "searchQuery", 2);
-__decorateClass$t([
+__decorateClass$w([
   n2({ type: Boolean })
 ], KubernetesHelm.prototype, "loading", 2);
-__decorateClass$t([
+__decorateClass$w([
   n2({ type: String })
 ], KubernetesHelm.prototype, "error", 2);
-__decorateClass$t([
+__decorateClass$w([
   r$1()
 ], KubernetesHelm.prototype, "activeTab", 2);
-__decorateClass$t([
+__decorateClass$w([
   r$1()
 ], KubernetesHelm.prototype, "showDetails", 2);
-__decorateClass$t([
+__decorateClass$w([
   r$1()
 ], KubernetesHelm.prototype, "selectedItem", 2);
-__decorateClass$t([
+__decorateClass$w([
   r$1()
 ], KubernetesHelm.prototype, "loadingDetails", 2);
-__decorateClass$t([
+__decorateClass$w([
   r$1()
 ], KubernetesHelm.prototype, "detailsData", 2);
-__decorateClass$t([
+__decorateClass$w([
   r$1()
 ], KubernetesHelm.prototype, "showDeleteModal", 2);
-__decorateClass$t([
+__decorateClass$w([
   r$1()
 ], KubernetesHelm.prototype, "itemToDelete", 2);
-__decorateClass$t([
+__decorateClass$w([
   r$1()
 ], KubernetesHelm.prototype, "isDeleting", 2);
-KubernetesHelm = __decorateClass$t([
+KubernetesHelm = __decorateClass$w([
   t$2("kubernetes-helm")
 ], KubernetesHelm);
-var __defProp$s = Object.defineProperty;
-var __getOwnPropDesc$q = Object.getOwnPropertyDescriptor;
-var __decorateClass$s = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$q(target, key) : target;
+var __defProp$v = Object.defineProperty;
+var __getOwnPropDesc$t = Object.getOwnPropertyDescriptor;
+var __decorateClass$v = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$t(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$s(target, key, result);
+  if (kind && result) __defProp$v(target, key, result);
   return result;
 };
 let KubernetesNodes = class extends i$2 {
@@ -51292,40 +51688,40 @@ KubernetesNodes.styles = i$5`
     }
 
   `;
-__decorateClass$s([
+__decorateClass$v([
   n2({ type: Array })
 ], KubernetesNodes.prototype, "nodes", 2);
-__decorateClass$s([
+__decorateClass$v([
   n2({ type: String })
 ], KubernetesNodes.prototype, "searchQuery", 2);
-__decorateClass$s([
+__decorateClass$v([
   n2({ type: Boolean })
 ], KubernetesNodes.prototype, "loading", 2);
-__decorateClass$s([
+__decorateClass$v([
   n2({ type: String })
 ], KubernetesNodes.prototype, "error", 2);
-__decorateClass$s([
+__decorateClass$v([
   r$1()
 ], KubernetesNodes.prototype, "showDetails", 2);
-__decorateClass$s([
+__decorateClass$v([
   r$1()
 ], KubernetesNodes.prototype, "selectedNode", 2);
-__decorateClass$s([
+__decorateClass$v([
   r$1()
 ], KubernetesNodes.prototype, "loadingDetails", 2);
-__decorateClass$s([
+__decorateClass$v([
   r$1()
 ], KubernetesNodes.prototype, "nodeDetails", 2);
-__decorateClass$s([
+__decorateClass$v([
   r$1()
 ], KubernetesNodes.prototype, "showConfirmModal", 2);
-__decorateClass$s([
+__decorateClass$v([
   r$1()
 ], KubernetesNodes.prototype, "confirmAction", 2);
-__decorateClass$s([
+__decorateClass$v([
   r$1()
 ], KubernetesNodes.prototype, "nodeForAction", 2);
-KubernetesNodes = __decorateClass$s([
+KubernetesNodes = __decorateClass$v([
   t$2("kubernetes-nodes")
 ], KubernetesNodes);
 function evaluateJSONPath(obj, path) {
@@ -51420,14 +51816,14 @@ function formatColumnValue(value, type) {
       return String(value);
   }
 }
-var __defProp$r = Object.defineProperty;
-var __getOwnPropDesc$p = Object.getOwnPropertyDescriptor;
-var __decorateClass$r = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$p(target, key) : target;
+var __defProp$u = Object.defineProperty;
+var __getOwnPropDesc$s = Object.getOwnPropertyDescriptor;
+var __decorateClass$u = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$s(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$r(target, key, result);
+  if (kind && result) __defProp$u(target, key, result);
   return result;
 };
 let CRDInstancesDrawer = class extends i$2 {
@@ -52261,101 +52657,101 @@ CRDInstancesDrawer.styles = i$5`
       pointer-events: auto;
     }
   `;
-__decorateClass$r([
+__decorateClass$u([
   n2({ type: Boolean, reflect: true })
 ], CRDInstancesDrawer.prototype, "show", 2);
-__decorateClass$r([
+__decorateClass$u([
   n2({ type: String })
 ], CRDInstancesDrawer.prototype, "crdName", 2);
-__decorateClass$r([
+__decorateClass$u([
   n2({ type: String })
 ], CRDInstancesDrawer.prototype, "crdKind", 2);
-__decorateClass$r([
+__decorateClass$u([
   n2({ type: String })
 ], CRDInstancesDrawer.prototype, "crdGroup", 2);
-__decorateClass$r([
+__decorateClass$u([
   n2({ type: String })
 ], CRDInstancesDrawer.prototype, "crdVersion", 2);
-__decorateClass$r([
+__decorateClass$u([
   n2({ type: String })
 ], CRDInstancesDrawer.prototype, "crdScope", 2);
-__decorateClass$r([
+__decorateClass$u([
   n2({ type: Boolean })
 ], CRDInstancesDrawer.prototype, "loading", 2);
-__decorateClass$r([
+__decorateClass$u([
   n2({ type: String })
 ], CRDInstancesDrawer.prototype, "width", 2);
-__decorateClass$r([
+__decorateClass$u([
   n2({ type: Object })
 ], CRDInstancesDrawer.prototype, "crdDefinition", 2);
-__decorateClass$r([
+__decorateClass$u([
   r$1()
 ], CRDInstancesDrawer.prototype, "searchQuery", 2);
-__decorateClass$r([
+__decorateClass$u([
   r$1()
 ], CRDInstancesDrawer.prototype, "selectedNamespace", 2);
-__decorateClass$r([
+__decorateClass$u([
   r$1()
 ], CRDInstancesDrawer.prototype, "instances", 2);
-__decorateClass$r([
+__decorateClass$u([
   r$1()
 ], CRDInstancesDrawer.prototype, "showInstanceDetails", 2);
-__decorateClass$r([
+__decorateClass$u([
   r$1()
 ], CRDInstancesDrawer.prototype, "selectedInstance", 2);
-__decorateClass$r([
+__decorateClass$u([
   r$1()
 ], CRDInstancesDrawer.prototype, "instanceDetailsData", 2);
-__decorateClass$r([
+__decorateClass$u([
   r$1()
 ], CRDInstancesDrawer.prototype, "loadingDetails", 2);
-__decorateClass$r([
+__decorateClass$u([
   r$1()
 ], CRDInstancesDrawer.prototype, "error", 2);
-__decorateClass$r([
+__decorateClass$u([
   r$1()
 ], CRDInstancesDrawer.prototype, "showEditDrawer", 2);
-__decorateClass$r([
+__decorateClass$u([
   r$1()
 ], CRDInstancesDrawer.prototype, "editResourceContent", 2);
-__decorateClass$r([
+__decorateClass$u([
   r$1()
 ], CRDInstancesDrawer.prototype, "editResourceFormat", 2);
-__decorateClass$r([
+__decorateClass$u([
   r$1()
 ], CRDInstancesDrawer.prototype, "loadingEdit", 2);
-__decorateClass$r([
+__decorateClass$u([
   r$1()
 ], CRDInstancesDrawer.prototype, "deleting", 2);
-__decorateClass$r([
+__decorateClass$u([
   r$1()
 ], CRDInstancesDrawer.prototype, "showCreateDrawer", 2);
-__decorateClass$r([
+__decorateClass$u([
   r$1()
 ], CRDInstancesDrawer.prototype, "createResourceValue", 2);
-__decorateClass$r([
+__decorateClass$u([
   r$1()
 ], CRDInstancesDrawer.prototype, "createResourceFormat", 2);
-__decorateClass$r([
+__decorateClass$u([
   r$1()
 ], CRDInstancesDrawer.prototype, "isCreating", 2);
-__decorateClass$r([
+__decorateClass$u([
   r$1()
 ], CRDInstancesDrawer.prototype, "showDeleteModal", 2);
-__decorateClass$r([
+__decorateClass$u([
   r$1()
 ], CRDInstancesDrawer.prototype, "deleteItem", 2);
-CRDInstancesDrawer = __decorateClass$r([
+CRDInstancesDrawer = __decorateClass$u([
   t$2("crd-instances-drawer")
 ], CRDInstancesDrawer);
-var __defProp$q = Object.defineProperty;
-var __getOwnPropDesc$o = Object.getOwnPropertyDescriptor;
-var __decorateClass$q = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$o(target, key) : target;
+var __defProp$t = Object.defineProperty;
+var __getOwnPropDesc$r = Object.getOwnPropertyDescriptor;
+var __decorateClass$t = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$r(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$q(target, key, result);
+  if (kind && result) __defProp$t(target, key, result);
   return result;
 };
 let KubernetesCRDs = class extends i$2 {
@@ -52463,7 +52859,7 @@ let KubernetesCRDs = class extends i$2 {
         unwrapped = JSON.parse(JSON.stringify(unwrapped));
         delete unwrapped.metadata.managedFields;
       }
-      const yaml = await import("./index-b6Sp4UvG.js");
+      const yaml = await import("./index-zTJ6x03j.js");
       this.createResourceValue = yaml.stringify(unwrapped);
       this.isCreating = false;
     } catch (error) {
@@ -52794,74 +53190,74 @@ KubernetesCRDs.styles = i$5`
       gap: 1rem;
     }
   `;
-__decorateClass$q([
+__decorateClass$t([
   n2({ type: Array })
 ], KubernetesCRDs.prototype, "resources", 2);
-__decorateClass$q([
+__decorateClass$t([
   n2({ type: String })
 ], KubernetesCRDs.prototype, "searchQuery", 2);
-__decorateClass$q([
+__decorateClass$t([
   n2({ type: Boolean })
 ], KubernetesCRDs.prototype, "loading", 2);
-__decorateClass$q([
+__decorateClass$t([
   n2({ type: String })
 ], KubernetesCRDs.prototype, "error", 2);
-__decorateClass$q([
+__decorateClass$t([
   r$1()
 ], KubernetesCRDs.prototype, "showDetails", 2);
-__decorateClass$q([
+__decorateClass$t([
   r$1()
 ], KubernetesCRDs.prototype, "selectedItem", 2);
-__decorateClass$q([
+__decorateClass$t([
   r$1()
 ], KubernetesCRDs.prototype, "loadingDetails", 2);
-__decorateClass$q([
+__decorateClass$t([
   r$1()
 ], KubernetesCRDs.prototype, "detailsData", 2);
-__decorateClass$q([
+__decorateClass$t([
   r$1()
 ], KubernetesCRDs.prototype, "showDeleteModal", 2);
-__decorateClass$q([
+__decorateClass$t([
   r$1()
 ], KubernetesCRDs.prototype, "itemToDelete", 2);
-__decorateClass$q([
+__decorateClass$t([
   r$1()
 ], KubernetesCRDs.prototype, "isDeleting", 2);
-__decorateClass$q([
+__decorateClass$t([
   r$1()
 ], KubernetesCRDs.prototype, "showCreateDrawer", 2);
-__decorateClass$q([
+__decorateClass$t([
   r$1()
 ], KubernetesCRDs.prototype, "createResourceValue", 2);
-__decorateClass$q([
+__decorateClass$t([
   r$1()
 ], KubernetesCRDs.prototype, "isCreating", 2);
-__decorateClass$q([
+__decorateClass$t([
   r$1()
 ], KubernetesCRDs.prototype, "isEditMode", 2);
-__decorateClass$q([
+__decorateClass$t([
   r$1()
 ], KubernetesCRDs.prototype, "editingResource", 2);
-__decorateClass$q([
+__decorateClass$t([
   r$1()
 ], KubernetesCRDs.prototype, "resourceFormat", 2);
-__decorateClass$q([
+__decorateClass$t([
   r$1()
 ], KubernetesCRDs.prototype, "showInstancesDrawer", 2);
-__decorateClass$q([
+__decorateClass$t([
   r$1()
 ], KubernetesCRDs.prototype, "selectedCRDForInstances", 2);
-KubernetesCRDs = __decorateClass$q([
+KubernetesCRDs = __decorateClass$t([
   t$2("kubernetes-crds")
 ], KubernetesCRDs);
-var __defProp$p = Object.defineProperty;
-var __getOwnPropDesc$n = Object.getOwnPropertyDescriptor;
-var __decorateClass$p = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$n(target, key) : target;
+var __defProp$s = Object.defineProperty;
+var __getOwnPropDesc$q = Object.getOwnPropertyDescriptor;
+var __decorateClass$s = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$q(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$p(target, key, result);
+  if (kind && result) __defProp$s(target, key, result);
   return result;
 };
 let KubernetesTab = class extends i$2 {
@@ -52955,23 +53351,23 @@ KubernetesTab.styles = i$5`
       color: var(--text-secondary);
     }
   `;
-__decorateClass$p([
+__decorateClass$s([
   n2({ type: String })
 ], KubernetesTab.prototype, "subRoute", 2);
-__decorateClass$p([
+__decorateClass$s([
   n2({ type: String })
 ], KubernetesTab.prototype, "activeView", 2);
-KubernetesTab = __decorateClass$p([
+KubernetesTab = __decorateClass$s([
   t$2("kubernetes-tab")
 ], KubernetesTab);
-var __defProp$o = Object.defineProperty;
-var __getOwnPropDesc$m = Object.getOwnPropertyDescriptor;
-var __decorateClass$o = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$m(target, key) : target;
+var __defProp$r = Object.defineProperty;
+var __getOwnPropDesc$p = Object.getOwnPropertyDescriptor;
+var __decorateClass$r = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$p(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$o(target, key, result);
+  if (kind && result) __defProp$r(target, key, result);
   return result;
 };
 let FilterDropdown = class extends i$2 {
@@ -53232,28 +53628,28 @@ FilterDropdown.styles = i$5`
       background: var(--vscode-scrollbarSlider-hoverBackground, #4e4e4e);
     }
   `;
-__decorateClass$o([
+__decorateClass$r([
   n2({ type: Array })
 ], FilterDropdown.prototype, "options", 2);
-__decorateClass$o([
+__decorateClass$r([
   n2({ type: String })
 ], FilterDropdown.prototype, "selectedValue", 2);
-__decorateClass$o([
+__decorateClass$r([
   n2({ type: String })
 ], FilterDropdown.prototype, "label", 2);
-__decorateClass$o([
+__decorateClass$r([
   n2({ type: Boolean })
 ], FilterDropdown.prototype, "showIcon", 2);
-__decorateClass$o([
+__decorateClass$r([
   n2({ type: Boolean })
 ], FilterDropdown.prototype, "showCounts", 2);
-__decorateClass$o([
+__decorateClass$r([
   n2({ type: Boolean })
 ], FilterDropdown.prototype, "showStatusIndicators", 2);
-__decorateClass$o([
+__decorateClass$r([
   r$1()
 ], FilterDropdown.prototype, "isOpen", 2);
-FilterDropdown = __decorateClass$o([
+FilterDropdown = __decorateClass$r([
   t$2("filter-dropdown")
 ], FilterDropdown);
 var StoreEventType = /* @__PURE__ */ ((StoreEventType2) => {
@@ -53787,12 +54183,1114 @@ function mapVMError(error) {
   }
   return "An unexpected error occurred.";
 }
+const API_BASE$1 = "/virtualization";
+class VirtualizationAPIError extends Error {
+  constructor(code, message, details) {
+    super(message);
+    this.code = code;
+    this.details = details;
+    this.name = "VirtualizationAPIError";
+    this.userMessage = mapVMError({ code, message });
+  }
+}
+function getAuthToken() {
+  const token = localStorage.getItem("jwt_token") || localStorage.getItem("auth_token");
+  if (!token) {
+    throw new VirtualizationAPIError("AUTH_ERROR", "No authentication token found");
+  }
+  return token;
+}
+async function apiRequest$1(endpoint, options = {}) {
+  const token = getAuthToken();
+  const config = {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+      ...options.headers
+    }
+  };
+  try {
+    const url = getApiUrl(`${API_BASE$1}${endpoint}`);
+    const response = await fetch(url, config);
+    const status = response.status;
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => ({
+        status: "error",
+        error: { code: "API_ERROR", message: response.statusText }
+      }));
+      if (isVirtualizationDisabled(status, errorBody)) {
+        $virtualizationEnabled.set(false);
+        $virtualizationDisabledMessage.set(
+          errorBody.error?.details || errorBody.error?.message || "Virtualization is disabled on this host."
+        );
+        throw new VirtualizationDisabledError(
+          errorBody.error?.message || "Virtualization is disabled on this host.",
+          errorBody.error?.details,
+          status
+        );
+      }
+      const apiBody = errorBody;
+      if (apiBody.status === "error" && apiBody.error) {
+        throw new VirtualizationAPIError(
+          apiBody.error.code || "API_ERROR",
+          apiBody.error.message || `Request failed: ${status}`,
+          apiBody.error.details
+        );
+      }
+      throw new VirtualizationAPIError(
+        apiBody.code || "API_ERROR",
+        apiBody.message || `Request failed: ${status}`,
+        apiBody.details
+      );
+    }
+    if (response.status === 204) {
+      if ($virtualizationEnabled.get() !== true) {
+        $virtualizationEnabled.set(true);
+        $virtualizationDisabledMessage.set(null);
+      }
+      return {};
+    }
+    if ($virtualizationEnabled.get() !== true) {
+      $virtualizationEnabled.set(true);
+      $virtualizationDisabledMessage.set(null);
+    }
+    return await response.json();
+  } catch (error) {
+    if (error instanceof VirtualizationAPIError || error instanceof VirtualizationDisabledError) {
+      throw error;
+    }
+    throw new VirtualizationAPIError(
+      "NETWORK_ERROR",
+      error instanceof Error ? error.message : "Network request failed"
+    );
+  }
+}
+class VirtualizationAPI {
+  // ============ Virtual Machines ============
+  /**
+   * List all virtual machines
+   */
+  async listVMs(params) {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.pageSize) queryParams.append("pageSize", params.pageSize.toString());
+    if (params?.filter) queryParams.append("filter", params.filter);
+    if (params?.sort) queryParams.append("sort", params.sort);
+    const query = queryParams.toString();
+    return apiRequest$1(
+      `/computes${query ? `?${query}` : ""}`
+    );
+  }
+  /**
+   * Get a specific virtual machine
+   */
+  async getVM(id) {
+    return apiRequest$1(`/computes/${id}`);
+  }
+  /**
+   * Create a new virtual machine (basic)
+   */
+  async createVM(config) {
+    return apiRequest$1("/computes", {
+      method: "POST",
+      body: JSON.stringify(config)
+    });
+  }
+  /**
+   * Create a new virtual machine (enhanced with wizard data)
+   */
+  async createVMEnhanced(config) {
+    return apiRequest$1("/computes", {
+      method: "POST",
+      body: JSON.stringify(config)
+    });
+  }
+  /**
+   * Update a virtual machine
+   */
+  async updateVM(id, updates) {
+    return apiRequest$1(`/computes/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(updates)
+    });
+  }
+  /**
+   * Delete a virtual machine
+   */
+  async deleteVM(id, force = false) {
+    return apiRequest$1(
+      `/computes/${id}${force ? "?force=true" : ""}`,
+      { method: "DELETE" }
+    );
+  }
+  /**
+   * Clone a virtual machine
+   */
+  async cloneVM(id, name) {
+    return apiRequest$1(`/computes/${id}/clone`, {
+      method: "POST",
+      body: JSON.stringify({ name })
+    });
+  }
+  // ============ VM Power Management ============
+  /**
+   * Start a virtual machine
+   */
+  async startVM(id) {
+    return apiRequest$1(`/computes/${id}/start`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Stop a virtual machine
+   */
+  async stopVM(id, force = false) {
+    return apiRequest$1(`/computes/${id}/stop`, {
+      method: "POST",
+      body: JSON.stringify({ force })
+    });
+  }
+  /**
+   * Restart a virtual machine
+   */
+  async restartVM(id, force = false) {
+    return apiRequest$1(`/computes/${id}/restart`, {
+      method: "POST",
+      body: JSON.stringify({ force })
+    });
+  }
+  /**
+   * Pause a virtual machine
+   */
+  async pauseVM(id) {
+    return apiRequest$1(`/computes/${id}/pause`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Resume a paused virtual machine
+   */
+  async resumeVM(id) {
+    return apiRequest$1(`/computes/${id}/resume`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Reset a virtual machine
+   */
+  async resetVM(id) {
+    return apiRequest$1(`/computes/${id}/reset`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Execute a VM action
+   */
+  async executeVMAction(id, action) {
+    return apiRequest$1(`/computes/${id}/action`, {
+      method: "POST",
+      body: JSON.stringify(action)
+    });
+  }
+  // ============ Console Access ============
+  /**
+   * Get console connection information
+   */
+  async getConsoleInfo(id) {
+    return apiRequest$1(`/computes/${id}/console`);
+  }
+  /**
+   * Create a console session
+   */
+  async createConsoleSession(id) {
+    return apiRequest$1(`/computes/${id}/console/session`, {
+      method: "POST"
+    });
+  }
+  // ============ Templates ============
+  /**
+   * List VM templates
+   */
+  async listTemplates() {
+    return apiRequest$1("/computes/templates");
+  }
+  /**
+   * Get a specific template
+   */
+  async getTemplate(id) {
+    return apiRequest$1(`/computes/templates/${id}`);
+  }
+  /**
+   * Create a VM from template
+   */
+  async createFromTemplate(templateId, config) {
+    return apiRequest$1("/computes/from-template", {
+      method: "POST",
+      body: JSON.stringify({ templateId, ...config })
+    });
+  }
+  /**
+   * Create a template from existing VM
+   */
+  async createTemplate(vmId, name, description) {
+    return apiRequest$1(`/computes/${vmId}/template`, {
+      method: "POST",
+      body: JSON.stringify({ name, description })
+    });
+  }
+  // ============ Snapshots ============
+  /**
+   * List VM snapshots
+   */
+  async listSnapshots(vmId) {
+    return apiRequest$1(`/computes/${vmId}/snapshots`);
+  }
+  /**
+   * Create a snapshot
+   */
+  async createSnapshot(vmId, name, description) {
+    return apiRequest$1(`/computes/${vmId}/snapshots`, {
+      method: "POST",
+      body: JSON.stringify({ name, description })
+    });
+  }
+  /**
+   * Revert to snapshot
+   */
+  async revertToSnapshot(vmId, snapshotId) {
+    return apiRequest$1(
+      `/computes/${vmId}/snapshots/${snapshotId}/revert`,
+      { method: "POST" }
+    );
+  }
+  /**
+   * Delete a snapshot
+   */
+  async deleteSnapshot(vmId, snapshotId) {
+    return apiRequest$1(
+      `/computes/${vmId}/snapshots/${snapshotId}`,
+      { method: "DELETE" }
+    );
+  }
+  // ============ Backups ============
+  /**
+   * List backups for a specific VM
+   */
+  async listBackups(vmId) {
+    const response = await apiRequest$1(`/computes/${vmId}/backups`);
+    return this.normalizeBackups(response);
+  }
+  /**
+   * List backups across all VMs
+   */
+  async listAllBackups(params) {
+    const query = new URLSearchParams();
+    if (params?.search) query.set("q", params.search);
+    if (params?.status) query.set("status", params.status);
+    if (params?.type) query.set("type", params.type);
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    const response = await apiRequest$1(`/computes/backups${suffix}`);
+    return this.normalizeBackups(response);
+  }
+  /**
+   * Create a backup for a VM
+   */
+  async createBackup(vmId, payload) {
+    const response = await apiRequest$1(`/computes/${vmId}/backups`, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+    const backups = this.normalizeBackups(response);
+    const [first] = backups;
+    if (!first) {
+      throw new VirtualizationAPIError("INVALID_RESPONSE", "Backup response missing backup data");
+    }
+    return first;
+  }
+  /**
+   * Import an existing backup file into Vapor
+   */
+  async importBackup(payload) {
+    const response = await apiRequest$1("/computes/backups/import", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+    const backups = this.normalizeBackups(response);
+    const [first] = backups;
+    if (first) return first;
+    return response;
+  }
+  /**
+   * Restore a backup (optionally to a new VM)
+   */
+  async restoreBackup(payload) {
+    return apiRequest$1("/computes/restore", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+  }
+  /**
+   * Delete a backup by its ID
+   */
+  async deleteBackup(backupId) {
+    const result = await apiRequest$1(`/computes/backups/${backupId}`, { method: "DELETE" });
+    if (result?.status === "error") {
+      throw new VirtualizationAPIError(
+        result.error?.code || "BACKUP_DELETE_FAILED",
+        result.error?.message || "Failed to delete backup",
+        result.error?.details
+      );
+    }
+  }
+  /**
+   * Download a backup qcow2 file
+   */
+  async downloadBackup(backupId) {
+    const token = getAuthToken();
+    const url = getApiUrl(`${API_BASE$1}/computes/backups/${backupId}/download`);
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => null);
+      const code = errorBody?.error?.code || `HTTP_${response.status}`;
+      const message = errorBody?.error?.message || response.statusText || "Failed to download backup";
+      throw new VirtualizationAPIError(code, message, errorBody?.error?.details);
+    }
+    return response.blob();
+  }
+  normalizeBackups(response) {
+    if (!response) return [];
+    if (Array.isArray(response)) return response;
+    if (response.data?.backups) return response.data.backups;
+    if (response.backups) return response.backups;
+    if (response.data?.backup) return [response.data.backup];
+    if (response.backup) return [response.backup];
+    if (response.data?.backups?.items) return response.data.backups.items;
+    return [];
+  }
+  // ============ Storage Pools ============
+  /**
+   * List storage pools
+   */
+  async listStoragePools() {
+    return apiRequest$1("/storages/pools");
+  }
+  /**
+   * Get a specific storage pool
+   */
+  async getStoragePool(name) {
+    return apiRequest$1(`/storages/pools/${name}`);
+  }
+  /**
+   * Create a storage pool
+   */
+  async createStoragePool(config) {
+    return apiRequest$1("/storages/pools", {
+      method: "POST",
+      body: JSON.stringify(config)
+    });
+  }
+  /**
+   * Delete a storage pool
+   */
+  async deleteStoragePool(name, deleteVolumes = false) {
+    const params = deleteVolumes ? "?delete_volumes=true" : "";
+    return apiRequest$1(`/storages/pools/${name}${params}`, {
+      method: "DELETE"
+    });
+  }
+  /**
+   * Update a storage pool (currently supports autostart only)
+   */
+  async updateStoragePool(name, config) {
+    return apiRequest$1(`/storages/pools/${name}`, {
+      method: "PUT",
+      body: JSON.stringify(config)
+    });
+  }
+  /**
+   * Start a storage pool
+   */
+  async startStoragePool(name) {
+    return apiRequest$1(`/storages/pools/${name}/start`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Stop a storage pool
+   */
+  async stopStoragePool(name) {
+    return apiRequest$1(`/storages/pools/${name}/stop`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Set storage pool autostart
+   */
+  async setStoragePoolAutostart(name, autostart) {
+    return apiRequest$1(`/storages/pools/${name}/autostart`, {
+      method: "PUT",
+      body: JSON.stringify({ autostart })
+    });
+  }
+  /**
+   * Refresh storage pool
+   */
+  async refreshStoragePool(name) {
+    return apiRequest$1(`/storages/pools/${name}/refresh`, {
+      method: "POST"
+    });
+  }
+  /**
+   * List volumes in a storage pool
+   * Returns { volumes, count } from the envelope
+   */
+  async listVolumes(poolName) {
+    const response = await apiRequest$1(
+      `/storages/pools/${poolName}/volumes`
+    );
+    if (response.status === "success" && response.data) {
+      return { volumes: response.data.volumes || [], count: response.data.count || 0 };
+    }
+    return { volumes: [], count: 0 };
+  }
+  /**
+   * Get volume details
+   */
+  async getVolume(poolName, volumeName) {
+    const response = await apiRequest$1(
+      `/storages/pools/${poolName}/volumes/${volumeName}`
+    );
+    if (response.status === "success" && response.data?.volume) {
+      return response.data.volume;
+    }
+    throw new VirtualizationAPIError("INVALID_RESPONSE", "Invalid response format from getVolume");
+  }
+  /**
+   * Create a volume in a storage pool
+   */
+  async createVolume(poolName, config) {
+    const response = await apiRequest$1(
+      `/storages/pools/${poolName}/volumes`,
+      {
+        method: "POST",
+        body: JSON.stringify(config)
+      }
+    );
+    if (response.status === "success" && response.data) {
+      return response.data;
+    }
+    throw new VirtualizationAPIError("INVALID_RESPONSE", "Invalid response format from createVolume");
+  }
+  /**
+   * Resize a volume
+   */
+  async resizeVolume(poolName, volumeName, capacity) {
+    const response = await apiRequest$1(
+      `/storages/pools/${poolName}/volumes/${volumeName}/resize`,
+      {
+        method: "POST",
+        body: JSON.stringify({ capacity })
+      }
+    );
+    if (response.status === "success" && response.data) {
+      return response.data;
+    }
+    throw new VirtualizationAPIError("INVALID_RESPONSE", "Invalid response format from resizeVolume");
+  }
+  /**
+   * Clone a volume
+   */
+  async cloneVolume(poolName, volumeName, payload) {
+    const response = await apiRequest$1(
+      `/storages/pools/${poolName}/volumes/${volumeName}/clone`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload)
+      }
+    );
+    if (response.status === "success" && response.data) {
+      return response.data;
+    }
+    throw new VirtualizationAPIError("INVALID_RESPONSE", "Invalid response format from cloneVolume");
+  }
+  /**
+   * Delete a volume
+   */
+  async deleteVolume(poolName, volumeName, force = false) {
+    const suffix = force ? "?force=true" : "";
+    const result = await apiRequest$1(`/storages/pools/${poolName}/volumes/${volumeName}${suffix}`, {
+      method: "DELETE"
+    });
+    if (result && typeof result === "object" && "status" in result && result.status === "error") {
+      const err = result.error || {};
+      throw new VirtualizationAPIError(
+        err.code || "API_ERROR",
+        err.message || "Failed to delete volume",
+        err.details
+      );
+    }
+  }
+  // ============ ISO Management ============
+  /**
+   * List ISO images
+   */
+  async listISOs() {
+    return apiRequest$1("/isos");
+  }
+  /**
+   * Get ISO details
+   */
+  async getISO(id) {
+    return apiRequest$1(`/isos/${id}`);
+  }
+  /**
+   * Upload an ISO (returns upload URL for TUS)
+   * This creates a TUS upload session following the TUS protocol v1.0.0
+   */
+  async initiateISOUpload(metadata) {
+    const tusMetadata = {};
+    if (metadata.filename) {
+      tusMetadata.filename = btoa(metadata.filename);
+    }
+    if (metadata.os_type) {
+      tusMetadata.os_type = btoa(metadata.os_type);
+    }
+    if (metadata.os_variant) {
+      tusMetadata.os_variant = btoa(metadata.os_variant);
+    }
+    if (metadata.description) {
+      tusMetadata.description = btoa(metadata.description);
+    }
+    if (metadata.architecture) {
+      tusMetadata.architecture = btoa(metadata.architecture);
+    }
+    if (metadata.pool_name) {
+      tusMetadata.pool_name = btoa(metadata.pool_name);
+    }
+    const uploadMetadata = Object.entries(tusMetadata).map(([key, value]) => `${key} ${value}`).join(",");
+    const token = getAuthToken();
+    const url = getApiUrl("/virtualization/isos/upload");
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Upload-Length": metadata.size.toString(),
+        "Upload-Metadata": uploadMetadata,
+        "Tus-Resumable": "1.0.0"
+      }
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({
+        code: "API_ERROR",
+        message: response.statusText
+      }));
+      throw new VirtualizationAPIError(
+        error.code || "API_ERROR",
+        error.message || `Request failed: ${response.status}`,
+        error.details
+      );
+    }
+    const location = response.headers.get("Location");
+    const responseData = await response.json();
+    console.log("[TUS] Session created:", {
+      location,
+      responseData,
+      originalUrl: url
+    });
+    let tusUploadUrl = location || responseData.upload_url;
+    if (tusUploadUrl && !tusUploadUrl.startsWith("http")) {
+      const fullUploadPath = tusUploadUrl.startsWith("/api/") ? tusUploadUrl : `/api/v1/virtualization/isos/upload/${responseData.upload_id}`;
+      const baseUrl = url.substring(0, url.indexOf("/api/"));
+      tusUploadUrl = baseUrl + fullUploadPath;
+    }
+    console.log("[TUS] Final upload URL:", tusUploadUrl);
+    return {
+      uploadUrl: tusUploadUrl,
+      uploadId: responseData.upload_id
+    };
+  }
+  /**
+   * Complete ISO upload
+   */
+  async completeISOUpload(uploadId) {
+    return apiRequest$1(`/isos/upload/${uploadId}/complete`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Get ISO upload progress
+   */
+  async getISOUploadProgress(uploadId) {
+    return apiRequest$1(`/isos/upload/${uploadId}/progress`);
+  }
+  /**
+   * Delete an ISO
+   */
+  async deleteISO(id) {
+    return apiRequest$1(`/isos/${id}`, {
+      method: "DELETE"
+    });
+  }
+  // ============ OS Variants ============
+  /**
+   * List OS variants for autocomplete suggestions.
+   * Backend returns an envelope: { status: 'success', data: { variants, count } }.
+   */
+  async listOSVariants(params) {
+    const queryParams = new URLSearchParams();
+    if (params?.q) queryParams.append("q", params.q);
+    if (params?.family) queryParams.append("family", params.family);
+    if (typeof params?.limit === "number") queryParams.append("limit", params.limit.toString());
+    const query = queryParams.toString();
+    const response = await apiRequest$1(`/os-variants${query ? `?${query}` : ""}`);
+    if (response.status === "success" && response.data) {
+      const variants = response.data.variants || [];
+      return { variants, count: response.data.count ?? variants.length };
+    }
+    const anyResponse = response;
+    if (anyResponse?.data?.variants && Array.isArray(anyResponse.data.variants)) {
+      return {
+        variants: anyResponse.data.variants,
+        count: anyResponse.data.count ?? anyResponse.data.variants.length
+      };
+    }
+    if (anyResponse?.variants && Array.isArray(anyResponse.variants)) {
+      return { variants: anyResponse.variants, count: anyResponse.count ?? anyResponse.variants.length };
+    }
+    return { variants: [], count: 0 };
+  }
+  // ============ Virtual Networks ============
+  /**
+   * List virtual networks
+   * Returns networks and total count using the standard API envelope.
+   */
+  async listNetworks() {
+    const response = await apiRequest$1("/networks");
+    if (response.status === "success" && response.data) {
+      return {
+        networks: response.data.networks || [],
+        count: response.data.count ?? (response.data.networks?.length || 0)
+      };
+    }
+    const anyResponse = response;
+    if (Array.isArray(anyResponse)) {
+      return { networks: anyResponse, count: anyResponse.length };
+    }
+    if (anyResponse.networks && Array.isArray(anyResponse.networks)) {
+      return { networks: anyResponse.networks, count: anyResponse.count || anyResponse.networks.length };
+    }
+    return { networks: [], count: 0 };
+  }
+  /**
+   * Get a specific network
+   * Be tolerant of both enveloped and plain responses.
+   */
+  async getNetwork(name) {
+    const response = await apiRequest$1(`/networks/${name}`);
+    if (response && typeof response === "object") {
+      if (response.status === "success") {
+        if (response.data?.network) {
+          return response.data.network;
+        }
+        if (response.data && !Array.isArray(response.data)) {
+          return response.data;
+        }
+      }
+      if (!("status" in response)) {
+        return response;
+      }
+    }
+    throw new VirtualizationAPIError("INVALID_RESPONSE", "Invalid response format from getNetwork");
+  }
+  /**
+   * Create a virtual network
+   */
+  async createNetwork(config) {
+    const response = await apiRequest$1("/networks", {
+      method: "POST",
+      body: JSON.stringify(config)
+    });
+    if (response.status === "success" && response.data?.network) {
+      return response.data.network;
+    }
+    throw new VirtualizationAPIError("INVALID_RESPONSE", "Invalid response format from createNetwork");
+  }
+  /**
+   * Update a virtual network
+   */
+  async updateNetwork(name, config) {
+    const response = await apiRequest$1(`/networks/${name}`, {
+      method: "PUT",
+      body: JSON.stringify(config)
+    });
+    if (response.status === "success" && response.data?.network) {
+      return response.data.network;
+    }
+    throw new VirtualizationAPIError("INVALID_RESPONSE", "Invalid response format from updateNetwork");
+  }
+  /**
+   * Get DHCP leases for a virtual network
+   */
+  async getNetworkDHCPLeases(name) {
+    const response = await apiRequest$1(`/networks/${name}/dhcp-leases`);
+    if (response.status === "success" && response.data) {
+      return {
+        network_name: response.data.network_name || name,
+        leases: response.data.leases || [],
+        count: response.data.count ?? (response.data.leases?.length || 0)
+      };
+    }
+    throw new VirtualizationAPIError("INVALID_RESPONSE", "Invalid response format from getNetworkDHCPLeases");
+  }
+  /**
+   * Get ports for a virtual network
+   */
+  async getNetworkPorts(name) {
+    const response = await apiRequest$1(`/networks/${name}/ports`);
+    if (response.status === "success" && response.data) {
+      return {
+        network_name: response.data.network_name || name,
+        ports: response.data.ports || [],
+        count: response.data.count ?? (response.data.ports?.length || 0)
+      };
+    }
+    throw new VirtualizationAPIError("INVALID_RESPONSE", "Invalid response format from getNetworkPorts");
+  }
+  /**
+   * Delete a virtual network
+   */
+  async deleteNetwork(name) {
+    await apiRequest$1(`/networks/${name}`, {
+      method: "DELETE"
+    });
+  }
+  /**
+   * Start a network
+   */
+  async startNetwork(name) {
+    return apiRequest$1(`/networks/${name}/start`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Stop a network
+   */
+  async stopNetwork(name) {
+    return apiRequest$1(`/networks/${name}/stop`, {
+      method: "POST"
+    });
+  }
+  // ============ Metrics \u0026 Monitoring ============
+  /**
+   * Get VM metrics
+   */
+  async getVMMetrics(vmId, duration = "1h") {
+    return apiRequest$1(`/computes/${vmId}/metrics?duration=${duration}`);
+  }
+  /**
+   * Get host resource usage
+   */
+  async getHostResources() {
+    return apiRequest$1("/host/resources");
+  }
+  /**
+   * Get real-time VM metrics (WebSocket endpoint info)
+   */
+  getMetricsWebSocketUrl(vmId) {
+    const token = getAuthToken();
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    return `${protocol}//${window.location.host}${API_BASE$1}/computes/${vmId}/metrics/ws?token=${token}`;
+  }
+  // ============ Disk Management ============
+  /**
+   * Attach a disk to VM
+   */
+  async attachDisk(vmId, disk) {
+    return apiRequest$1(`/computes/${vmId}/disks/attach`, {
+      method: "POST",
+      body: JSON.stringify(disk)
+    });
+  }
+  /**
+   * Detach a disk from VM
+   */
+  async detachDisk(vmId, device) {
+    return apiRequest$1(`/computes/${vmId}/disks/${device}/detach`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Resize a VM disk
+   */
+  async resizeDisk(vmId, device, newSize) {
+    return apiRequest$1(`/computes/${vmId}/disks/${device}/resize`, {
+      method: "POST",
+      body: JSON.stringify({ size: newSize })
+    });
+  }
+  // ============ Migration ============
+  /**
+   * Migrate a VM to another host
+   */
+  async migrateVM(vmId, targetHost, live = true) {
+    return apiRequest$1(`/computes/${vmId}/migrate`, {
+      method: "POST",
+      body: JSON.stringify({ targetHost, live })
+    });
+  }
+  /**
+   * Get migration status
+   */
+  async getMigrationStatus(vmId) {
+    return apiRequest$1(`/computes/${vmId}/migrate/status`);
+  }
+  // ============ Enhanced API Methods with Full Types ============
+  /**
+   * Get VM snapshots with full type support
+   */
+  async getSnapshots(vmId) {
+    return apiRequest$1(`/computes/${vmId}/snapshots`);
+  }
+  /**
+   * Create a VM snapshot
+   */
+  async createSnapshotTyped(vmId, request) {
+    return apiRequest$1(`/computes/${vmId}/snapshots`, {
+      method: "POST",
+      body: JSON.stringify(request)
+    });
+  }
+  /**
+   * Revert VM to a snapshot
+   */
+  async revertSnapshot(vmId, snapshotName) {
+    return apiRequest$1(`/computes/${vmId}/snapshots/${snapshotName}/revert`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Delete a VM snapshot
+   */
+  async deleteSnapshotTyped(vmId, snapshotName) {
+    return apiRequest$1(`/computes/${vmId}/snapshots/${snapshotName}`, {
+      method: "DELETE"
+    });
+  }
+  /**
+   * Get snapshot capabilities for a VM
+   */
+  async getSnapshotCapabilities(vmId) {
+    return apiRequest$1(`/computes/${vmId}/snapshots/capabilities`);
+  }
+  /**
+   * Get VM backups with full type support
+   */
+  async getBackups(vmId) {
+    return this.listBackups(vmId);
+  }
+  /**
+   * Create a VM backup
+   */
+  async createBackupTyped(vmId, request) {
+    return this.createBackup(vmId, request);
+  }
+  /**
+   * Clone a VM
+   */
+  async cloneVMTyped(vmId, request) {
+    return apiRequest$1(`/computes/${vmId}/clone`, {
+      method: "POST",
+      body: JSON.stringify(request)
+    });
+  }
+  /**
+   * Hot-plug device to a running VM
+   */
+  async hotplug(vmId, request) {
+    return apiRequest$1(`/computes/${vmId}/hotplug`, {
+      method: "POST",
+      body: JSON.stringify(request)
+    });
+  }
+  /**
+   * Hot-unplug device from a running VM
+   */
+  async hotunplug(vmId, request) {
+    return apiRequest$1(`/computes/${vmId}/hotunplug`, {
+      method: "POST",
+      body: JSON.stringify(request)
+    });
+  }
+  /**
+   * Migrate VM to another host with full type support
+   */
+  async migrateVMTyped(vmId, request) {
+    return apiRequest$1(`/computes/${vmId}/migrate`, {
+      method: "POST",
+      body: JSON.stringify(request)
+    });
+  }
+  /**
+   * Get migration status with full type
+   */
+  async getMigrationStatusTyped(vmId) {
+    return apiRequest$1(`/computes/${vmId}/migrate/status`);
+  }
+  /**
+   * Cancel ongoing migration
+   */
+  async cancelMigration(vmId) {
+    return apiRequest$1(`/computes/${vmId}/migrate/cancel`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Get available consoles for a VM
+   */
+  async getConsoles(vmId) {
+    return apiRequest$1(`/computes/${vmId}/consoles`);
+  }
+  /**
+   * Connect to a specific console type
+   */
+  async connectConsole(vmId, consoleType) {
+    return apiRequest$1(`/computes/${vmId}/consoles/${consoleType}/connect`, {
+      method: "POST"
+    });
+  }
+  /**
+   * Get enhanced VM metrics
+   */
+  async getVMMetricsEnhanced(vmId, duration = "1h") {
+    return apiRequest$1(`/computes/${vmId}/metrics?duration=${duration}&enhanced=true`);
+  }
+}
+const virtualizationAPI = new VirtualizationAPI();
+const api = virtualizationAPI;
+const normalizeBackup = (backup) => {
+  const backup_id = backup.backup_id ?? backup.id;
+  return {
+    ...backup,
+    backup_id,
+    id: backup_id ?? backup.id,
+    vm_uuid: backup.vm_uuid || backup.vm_id || backup.vm_uuid,
+    vm_id: backup.vm_id || backup.vm_uuid
+  };
+};
+const getBackupKey = (backup) => {
+  return (backup.backup_id ?? backup.id) || null;
+};
+const $backups = atom([]);
+const $backupsLoading = atom(false);
+const $backupsError = atom(null);
+computed($backups, (items) => {
+  const map2 = /* @__PURE__ */ new Map();
+  items.forEach((backup) => {
+    const key = backup.vm_uuid || backup.vm_id || "unknown";
+    if (!map2.has(key)) map2.set(key, []);
+    map2.get(key)?.push(backup);
+  });
+  return map2;
+});
+const makeVmBackupsStore = (vmId) => computed($backups, (items) => items.filter((b2) => (b2.vm_uuid || b2.vm_id) === vmId));
+function setError(err) {
+  if (err instanceof VirtualizationAPIError) {
+    $backupsError.set(err.userMessage || err.message);
+  } else {
+    $backupsError.set(mapVMError(err));
+  }
+}
+function mergeBackups(backups) {
+  const current = /* @__PURE__ */ new Map();
+  $backups.get().forEach((b2) => {
+    const key = getBackupKey(b2);
+    if (!key) return;
+    current.set(key, b2);
+  });
+  backups.forEach((b2) => {
+    const normalized = normalizeBackup(b2);
+    const key = getBackupKey(normalized);
+    if (!key) return;
+    current.set(key, normalized);
+  });
+  $backups.set(Array.from(current.values()));
+}
+function replaceBackupsForVm(vmId, backups) {
+  const normalized = backups.map(normalizeBackup);
+  const existing = $backups.get().filter((b2) => (b2.vm_uuid || b2.vm_id) !== vmId);
+  $backups.set([...existing, ...normalized]);
+}
+async function fetchGlobalBackups(filters) {
+  $backupsLoading.set(true);
+  $backupsError.set(null);
+  try {
+    const backups = await api.listAllBackups(filters);
+    mergeBackups(backups || []);
+  } catch (error) {
+    console.error("Failed to fetch global backups", error);
+    setError(error);
+    throw error;
+  } finally {
+    $backupsLoading.set(false);
+  }
+}
+async function fetchVmBackups(vmId) {
+  if (!vmId) return;
+  $backupsLoading.set(true);
+  $backupsError.set(null);
+  try {
+    const backups = await api.listBackups(vmId);
+    replaceBackupsForVm(vmId, backups || []);
+  } catch (error) {
+    console.error("Failed to fetch VM backups", error);
+    setError(error);
+    throw error;
+  } finally {
+    $backupsLoading.set(false);
+  }
+}
+async function createVmBackup(vmId, payload) {
+  $backupsError.set(null);
+  const backup = await api.createBackup(vmId, payload);
+  mergeBackups([backup]);
+  return backup;
+}
+async function importBackup(payload) {
+  $backupsError.set(null);
+  const backup = await api.importBackup(payload);
+  mergeBackups([backup]);
+  return backup;
+}
+async function restoreBackup(payload) {
+  $backupsError.set(null);
+  return api.restoreBackup(payload);
+}
+async function deleteBackup(backupId) {
+  $backupsError.set(null);
+  await api.deleteBackup(backupId);
+  const remaining = $backups.get().filter((b2) => getBackupKey(b2) !== backupId);
+  $backups.set(remaining);
+}
+const backupActions = {
+  fetchGlobal: fetchGlobalBackups,
+  fetchForVm: fetchVmBackups,
+  create: createVmBackup,
+  import: importBackup,
+  restore: restoreBackup,
+  delete: deleteBackup
+};
 const $virtualizationEnabled = atom(null);
 const $virtualizationDisabledMessage = atom(null);
-const API_BASE$1 = "/virtualization";
-async function apiRequest$1(endpoint, options = {}) {
+const API_BASE = "/virtualization";
+async function apiRequest(endpoint, options = {}) {
   const token = localStorage.getItem("jwt_token") || localStorage.getItem("auth_token");
-  const url = getApiUrl(`${API_BASE$1}${endpoint}`);
+  const url = getApiUrl(`${API_BASE}${endpoint}`);
   const response = await fetch(url, {
     ...options,
     headers: {
@@ -53823,7 +55321,11 @@ async function apiRequest$1(endpoint, options = {}) {
     }
     if (isApiErrorBody(errorData) && errorData.status === "error" && errorData.error) {
       const err = errorData.error;
-      throw new Error(err.message || err.details || `Request failed: ${status}`);
+      const e3 = new Error(err.message || err.details || `Request failed: ${status}`);
+      e3.code = err.code;
+      e3.details = err.details;
+      e3.status = status;
+      throw e3;
     }
     const message = errorData.message;
     throw new Error(message || `Request failed: ${status}`);
@@ -53862,7 +55364,7 @@ async function apiRequest$1(endpoint, options = {}) {
 const baseVmStore = createStore({
   name: "virtualization-vms",
   idField: "id",
-  endpoint: getApiUrl(`${API_BASE$1}/computes`),
+  endpoint: getApiUrl(`${API_BASE}/computes`),
   persistent: true,
   persistKey: "vapor.virtualization.vms",
   debug: false,
@@ -53926,7 +55428,7 @@ const vmStore = {
     try {
       baseVmStore.$loading.set(true);
       baseVmStore.$error.set(null);
-      const response = await apiRequest$1("/computes");
+      const response = await apiRequest("/computes");
       let vms = [];
       if (response && typeof response === "object") {
         if (response.data && response.data.vms && Array.isArray(response.data.vms)) {
@@ -53981,7 +55483,7 @@ const vmStore = {
 const baseStoragePoolStore = createStore({
   name: "virtualization-storage-pools",
   idField: "name",
-  endpoint: getApiUrl(`${API_BASE$1}/storages/pools`),
+  endpoint: getApiUrl(`${API_BASE}/storages/pools`),
   persistent: false,
   // Storage pools are dynamic
   debug: false,
@@ -54002,7 +55504,7 @@ const storagePoolStore = {
     try {
       baseStoragePoolStore.$loading.set(true);
       baseStoragePoolStore.$error.set(null);
-      const response = await apiRequest$1("/storages/pools");
+      const response = await apiRequest("/storages/pools");
       const items = /* @__PURE__ */ new Map();
       response.forEach((pool) => {
         const transformed = transformStoragePool(pool);
@@ -54035,7 +55537,7 @@ const storagePoolStore = {
 const baseIsoStore = createStore({
   name: "virtualization-isos",
   idField: "id",
-  endpoint: getApiUrl(`${API_BASE$1}/isos`),
+  endpoint: getApiUrl(`${API_BASE}/isos`),
   persistent: true,
   persistKey: "vapor.virtualization.isos",
   debug: false
@@ -54051,7 +55553,7 @@ function transformISOResponse(apiIso) {
     architecture: apiIso.architecture,
     uploaded_at: apiIso.created_at || apiIso.uploaded_at,
     checksum: apiIso.checksum,
-    storage_pool: apiIso.storage_pool || "default"
+    storage_pool: apiIso.storage_pool || apiIso.pool_name || apiIso.metadata?.pool_name || "default"
   };
 }
 const isoStore = {
@@ -54060,7 +55562,7 @@ const isoStore = {
     try {
       baseIsoStore.$loading.set(true);
       baseIsoStore.$error.set(null);
-      const response = await apiRequest$1("/isos");
+      const response = await apiRequest("/isos");
       let isos = [];
       if (Array.isArray(response)) {
         isos = response.map(transformISOResponse);
@@ -54106,26 +55608,35 @@ const isoStore = {
 const baseTemplateStore = createStore({
   name: "virtualization-templates",
   idField: "id",
-  endpoint: getApiUrl(`${API_BASE$1}/computes/templates`),
+  endpoint: getApiUrl(`${API_BASE}/computes/templates`),
   persistent: true,
   persistKey: "vapor.virtualization.templates",
   debug: false
 });
 function transformTemplateResponse(apiTemplate) {
   return {
-    id: apiTemplate.id || apiTemplate.uuid,
-    name: apiTemplate.name,
-    description: apiTemplate.description,
-    os_type: apiTemplate.os_type || apiTemplate.os?.type || "unknown",
-    os_variant: apiTemplate.os_variant || apiTemplate.os?.variant,
-    memory: Math.floor((apiTemplate.memory || 0) / 1024),
-    // Convert from KB to MB if needed
-    vcpus: apiTemplate.vcpus || 1,
-    disk_size: apiTemplate.disk_size || 20,
-    network_type: apiTemplate.network_type || "bridge",
-    graphics_type: apiTemplate.graphics_type || "vnc",
+    id: String(apiTemplate.id ?? apiTemplate.uuid ?? ""),
+    name: apiTemplate.name || "",
+    description: apiTemplate.description || void 0,
+    os_type: apiTemplate.os_type || "other",
+    os_variant: apiTemplate.os_variant || void 0,
+    min_memory: Number(apiTemplate.min_memory ?? 0),
+    recommended_memory: apiTemplate.recommended_memory !== void 0 && apiTemplate.recommended_memory !== null ? Number(apiTemplate.recommended_memory) : void 0,
+    min_vcpus: Number(apiTemplate.min_vcpus ?? 0),
+    recommended_vcpus: apiTemplate.recommended_vcpus !== void 0 && apiTemplate.recommended_vcpus !== null ? Number(apiTemplate.recommended_vcpus) : void 0,
+    min_disk: Number(apiTemplate.min_disk ?? 0),
+    recommended_disk: apiTemplate.recommended_disk !== void 0 && apiTemplate.recommended_disk !== null ? Number(apiTemplate.recommended_disk) : void 0,
+    disk_format: apiTemplate.disk_format || void 0,
+    network_model: apiTemplate.network_model || void 0,
+    graphics_type: apiTemplate.graphics_type || void 0,
+    cloud_init: Boolean(apiTemplate.cloud_init),
+    uefi_boot: Boolean(apiTemplate.uefi_boot),
+    secure_boot: Boolean(apiTemplate.secure_boot),
+    tpm: Boolean(apiTemplate.tpm),
+    default_user: apiTemplate.default_user || void 0,
+    metadata: apiTemplate.metadata || void 0,
     created_at: apiTemplate.created_at,
-    tags: apiTemplate.tags || []
+    updated_at: apiTemplate.updated_at || apiTemplate.created_at
   };
 }
 const templateStore = {
@@ -54134,7 +55645,7 @@ const templateStore = {
     try {
       baseTemplateStore.$loading.set(true);
       baseTemplateStore.$error.set(null);
-      const response = await apiRequest$1("/computes/templates");
+      const response = await apiRequest("/computes/templates");
       let templates = [];
       if (response && typeof response === "object") {
         if (response.data && response.data.templates && Array.isArray(response.data.templates)) {
@@ -54189,7 +55700,7 @@ const templateStore = {
 const baseNetworkStore = createStore({
   name: "virtualization-networks",
   idField: "name",
-  endpoint: getApiUrl(`${API_BASE$1}/networks`),
+  endpoint: getApiUrl(`${API_BASE}/networks`),
   persistent: false,
   debug: false,
   transform: (data) => ({
@@ -54220,7 +55731,7 @@ const networkStore = {
     try {
       baseNetworkStore.$loading.set(true);
       baseNetworkStore.$error.set(null);
-      const response = await apiRequest$1("/networks");
+      const response = await apiRequest("/networks");
       let networks = [];
       if (response && typeof response === "object") {
         if (response.status === "success" && response.data && Array.isArray(response.data.networks)) {
@@ -54277,7 +55788,7 @@ const networkStore = {
 const baseVolumeStore = createStore({
   name: "virtualization-volumes",
   idField: "id",
-  endpoint: getApiUrl(`${API_BASE$1}/volumes`),
+  endpoint: getApiUrl(`${API_BASE}/volumes`),
   persistent: false,
   debug: false,
   transform: (data) => ({
@@ -54309,7 +55820,7 @@ const volumeStore = {
     try {
       baseVolumeStore.$loading.set(true);
       baseVolumeStore.$error.set(null);
-      const response = await apiRequest$1("/volumes");
+      const response = await apiRequest("/volumes");
       let volumes = [];
       if (response && typeof response === "object") {
         if (response.status === "success" && response.data && Array.isArray(response.data)) {
@@ -54367,6 +55878,7 @@ const $selectedVMId = atom(null);
 const $vmWizardState = atom({
   isOpen: false,
   currentStep: 1,
+  openId: 0,
   formData: {},
   errors: {}
 });
@@ -54926,8 +56438,43 @@ const $volumeStats = computed(
     };
   }
 );
+registerPerfGauge(() => {
+  const gauges = {};
+  try {
+    const items = vmStore.$items.get();
+    gauges["virt_vms"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
+  } catch {
+  }
+  try {
+    const items = storagePoolStore.$items.get();
+    gauges["virt_storage_pools"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
+  } catch {
+  }
+  try {
+    const items = isoStore.$items.get();
+    gauges["virt_isos"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
+  } catch {
+  }
+  try {
+    const items = templateStore.$items.get();
+    gauges["virt_templates"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
+  } catch {
+  }
+  try {
+    const items = networkStore.$items.get();
+    gauges["virt_networks"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
+  } catch {
+  }
+  try {
+    const items = volumeStore.$items.get();
+    gauges["virt_volumes"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
+  } catch {
+  }
+  return gauges;
+});
 const vmActions = {
   async fetchAll() {
+    perfIncrement("virt_vm_fetchAll");
     await vmStore.fetch();
   },
   /**
@@ -54953,7 +56500,7 @@ const vmActions = {
     }
   },
   async create(vmData) {
-    const response = await apiRequest$1(
+    const response = await apiRequest(
       "/computes",
       {
         method: "POST",
@@ -54966,11 +56513,32 @@ const vmActions = {
     $selectedVMId.set(response.id);
     return { success: true, data: response };
   },
+  async createFromTemplate(templateId, data) {
+    const template_id = Number(templateId);
+    if (!Number.isFinite(template_id)) {
+      throw new Error("Invalid template ID");
+    }
+    const response = await apiRequest(
+      "/computes/from-template",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          template_id,
+          ...data
+        })
+      }
+    );
+    const items = new Map(vmStore.$items.get());
+    items.set(response.id, response);
+    vmStore.$items.set(items);
+    $selectedVMId.set(response.id);
+    return response;
+  },
   /**
    * Execute a VM action using the unified action endpoint
    */
   async executeAction(vmId, action, force = false) {
-    await apiRequest$1(`/computes/${vmId}/action`, {
+    await apiRequest(`/computes/${vmId}/action`, {
       method: "POST",
       body: JSON.stringify({ action, force })
     });
@@ -55007,17 +56575,17 @@ const vmActions = {
     }
   },
   async delete(vmId) {
-    await apiRequest$1(`/computes/${vmId}`, { method: "DELETE" });
+    await apiRequest(`/computes/${vmId}`, { method: "DELETE" });
     await vmStore.delete(vmId);
     if ($selectedVMId.get() === vmId) {
       $selectedVMId.set(null);
     }
   },
   async getConsoleInfo(vmId) {
-    return apiRequest$1(`/computes/${vmId}/console`);
+    return apiRequest(`/computes/${vmId}/console`);
   },
   async update(vmId, vmData) {
-    const response = await apiRequest$1(
+    const response = await apiRequest(
       `/computes/${vmId}`,
       {
         method: "PUT",
@@ -55033,20 +56601,127 @@ const vmActions = {
     $selectedVMId.set(vmId);
   }
 };
+const templateActions = {
+  async fetchAll() {
+    perfIncrement("virt_template_fetchAll");
+    await templateStore.fetch();
+  },
+  async create(templateData) {
+    const createdRaw = await apiRequest(
+      "/computes/templates",
+      {
+        method: "POST",
+        body: JSON.stringify(templateData)
+      }
+    );
+    const created = transformTemplateResponse(createdRaw);
+    const currentItems = templateStore.$items.get();
+    const items = currentItems instanceof Map ? new Map(currentItems) : currentItems && typeof currentItems === "object" ? new Map(Object.entries(currentItems)) : /* @__PURE__ */ new Map();
+    items.set(created.id, created);
+    templateStore.$items.set(items);
+    templateStore.emit({
+      type: StoreEventType.CREATED,
+      payload: created,
+      timestamp: Date.now()
+    });
+    return created;
+  },
+  async update(templateId, updates) {
+    const updatedRaw = await apiRequest(
+      `/computes/templates/${encodeURIComponent(templateId)}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(updates)
+      }
+    );
+    const updated = transformTemplateResponse(updatedRaw);
+    const currentItems = templateStore.$items.get();
+    const items = currentItems instanceof Map ? new Map(currentItems) : currentItems && typeof currentItems === "object" ? new Map(Object.entries(currentItems)) : /* @__PURE__ */ new Map();
+    items.set(updated.id, updated);
+    templateStore.$items.set(items);
+    templateStore.emit({
+      type: StoreEventType.UPDATED,
+      payload: updated,
+      timestamp: Date.now()
+    });
+    return updated;
+  },
+  async delete(templateId) {
+    await apiRequest(
+      `/computes/templates/${encodeURIComponent(templateId)}`,
+      { method: "DELETE" }
+    );
+    const currentItems = templateStore.$items.get();
+    const items = currentItems instanceof Map ? new Map(currentItems) : currentItems && typeof currentItems === "object" ? new Map(Object.entries(currentItems)) : /* @__PURE__ */ new Map();
+    const deleted = items.get(templateId);
+    items.delete(templateId);
+    templateStore.$items.set(items);
+    templateStore.emit({
+      type: StoreEventType.DELETED,
+      payload: deleted,
+      timestamp: Date.now()
+    });
+  },
+  async createFromVM(vmIdOrName, name, description) {
+    const createdRaw = await apiRequest(
+      `/computes/${encodeURIComponent(vmIdOrName)}/template`,
+      {
+        method: "POST",
+        body: JSON.stringify({ name, description })
+      }
+    );
+    const created = transformTemplateResponse(createdRaw);
+    const currentItems = templateStore.$items.get();
+    const items = currentItems instanceof Map ? new Map(currentItems) : currentItems && typeof currentItems === "object" ? new Map(Object.entries(currentItems)) : /* @__PURE__ */ new Map();
+    items.set(created.id, created);
+    templateStore.$items.set(items);
+    templateStore.emit({
+      type: StoreEventType.CREATED,
+      payload: created,
+      timestamp: Date.now()
+    });
+    return created;
+  }
+};
 const wizardActions = {
   openWizard() {
     $vmWizardState.set({
       isOpen: true,
       currentStep: 1,
+      openId: Date.now(),
       formData: {
         memory: 2048,
         vcpus: 2,
         storage: {
           default_pool: "default",
-          disks: [{ action: "create", size: 20, format: "qcow2" }]
+          disks: [{ action: "create", size: 20, format: "qcow2", storage_pool: "default" }]
         }
       },
-      errors: {}
+      errors: {},
+      editMode: false,
+      editingVmId: void 0,
+      templateMode: false,
+      templateContext: void 0
+    });
+  },
+  openWizardFromTemplate(template) {
+    const defaultMemory = template.recommended_memory ?? template.min_memory;
+    const defaultVcpus = template.recommended_vcpus ?? template.min_vcpus;
+    $vmWizardState.set({
+      isOpen: true,
+      currentStep: 1,
+      openId: Date.now(),
+      formData: {
+        name: `${template.name}-vm`,
+        memory: defaultMemory,
+        vcpus: defaultVcpus,
+        metadata: template.metadata
+      },
+      errors: {},
+      editMode: false,
+      editingVmId: void 0,
+      templateMode: true,
+      templateContext: template
     });
   },
   openWizardForEdit(vm) {
@@ -55082,7 +56757,8 @@ const wizardActions = {
     }) || [{
       action: "create",
       size: 20,
-      format: "qcow2"
+      format: "qcow2",
+      storage_pool: "default"
     }];
     const inferredDefaultPool = disks[0]?.storage_pool || "default";
     const network = vm.network_interfaces?.[0] ? {
@@ -55106,10 +56782,13 @@ const wizardActions = {
     $vmWizardState.set({
       isOpen: true,
       currentStep: 1,
+      openId: Date.now(),
       formData,
       errors: {},
       editMode: true,
-      editingVmId: vm.id
+      editingVmId: vm.id,
+      templateMode: false,
+      templateContext: void 0
     });
   },
   /**
@@ -55120,18 +56799,26 @@ const wizardActions = {
     $vmWizardState.set({
       isOpen: true,
       currentStep: 1,
+      openId: Date.now(),
       formData,
       errors: {},
       editMode: true,
-      editingVmId: vmId
+      editingVmId: vmId,
+      templateMode: false,
+      templateContext: void 0
     });
   },
   closeWizard() {
     $vmWizardState.set({
       isOpen: false,
       currentStep: 1,
+      openId: Date.now(),
       formData: {},
-      errors: {}
+      errors: {},
+      editMode: false,
+      editingVmId: void 0,
+      templateMode: false,
+      templateContext: void 0
     });
   },
   nextStep() {
@@ -55182,23 +56869,24 @@ const wizardActions = {
 };
 const storagePoolActions = {
   async fetchAll() {
+    perfIncrement("virt_storagePool_fetchAll");
     await storagePoolStore.fetch();
   },
   async refresh(poolName) {
     if (poolName) {
-      await apiRequest$1(`/storages/pools/${poolName}/refresh`, { method: "POST" });
+      await apiRequest(`/storages/pools/${poolName}/refresh`, { method: "POST" });
     }
     await storagePoolStore.fetch();
   },
   async start(poolName) {
-    await apiRequest$1(`/storages/pools/${poolName}/start`, { method: "POST" });
+    await apiRequest(`/storages/pools/${poolName}/start`, { method: "POST" });
     const pool = storagePoolStore.getById(poolName);
     if (pool) {
       await storagePoolStore.update(poolName, { state: "running" });
     }
   },
   async stop(poolName) {
-    await apiRequest$1(`/storages/pools/${poolName}/stop`, { method: "POST" });
+    await apiRequest(`/storages/pools/${poolName}/stop`, { method: "POST" });
     const pool = storagePoolStore.getById(poolName);
     if (pool) {
       await storagePoolStore.update(poolName, { state: "inactive" });
@@ -55206,14 +56894,14 @@ const storagePoolActions = {
   },
   async delete(poolName, deleteVolumes = false) {
     const params = deleteVolumes ? "?delete_volumes=true" : "";
-    await apiRequest$1(`/storages/pools/${poolName}${params}`, { method: "DELETE" });
+    await apiRequest(`/storages/pools/${poolName}${params}`, { method: "DELETE" });
     await storagePoolStore.delete(poolName);
     if ($selectedStoragePoolId.get() === poolName) {
       $selectedStoragePoolId.set(null);
     }
   },
   async create(poolData) {
-    const response = await apiRequest$1(
+    const response = await apiRequest(
       "/storages/pools",
       {
         method: "POST",
@@ -55227,7 +56915,7 @@ const storagePoolActions = {
     return { success: true, data: response };
   },
   async update(poolName, config) {
-    const response = await apiRequest$1(
+    const response = await apiRequest(
       `/storages/pools/${poolName}`,
       {
         method: "PUT",
@@ -55254,6 +56942,7 @@ const storagePoolActions = {
 };
 const volumeActions = {
   async fetchAll() {
+    perfIncrement("virt_volume_fetchAll");
     await volumeStore.fetch();
   },
   async delete(volumeId) {
@@ -55262,9 +56951,9 @@ const volumeActions = {
       return [parts[0] || null, parts[1] || null];
     })() : [null, null];
     if (poolName && volumeName) {
-      await apiRequest$1(`/storages/pools/${poolName}/volumes/${volumeName}`, { method: "DELETE" });
+      await apiRequest(`/storages/pools/${poolName}/volumes/${volumeName}`, { method: "DELETE" });
     } else {
-      await apiRequest$1(`/volumes/${volumeId}`, { method: "DELETE" });
+      await apiRequest(`/volumes/${volumeId}`, { method: "DELETE" });
     }
     await volumeStore.delete(volumeId);
     if ($selectedVolumeId.get() === volumeId) {
@@ -55320,7 +57009,7 @@ const storageActions = {
     });
   },
   async deleteISO(isoId) {
-    await apiRequest$1(`/isos/${isoId}`, { method: "DELETE" });
+    await apiRequest(`/isos/${isoId}`, { method: "DELETE" });
     await isoStore.delete(isoId);
   }
 };
@@ -55343,7 +57032,7 @@ const snapshotActions = {
    * List snapshots for a VM
    */
   async list(vmId) {
-    const data = await apiRequest$1(
+    const data = await apiRequest(
       `/computes/${vmId}/snapshots`
     );
     return Array.isArray(data?.snapshots) ? data.snapshots : [];
@@ -55352,7 +57041,7 @@ const snapshotActions = {
    * Create a snapshot with full options
    */
   async create(vmId, options) {
-    return apiRequest$1(`/computes/${vmId}/snapshots`, {
+    return apiRequest(`/computes/${vmId}/snapshots`, {
       method: "POST",
       body: JSON.stringify(options)
     });
@@ -55361,7 +57050,7 @@ const snapshotActions = {
    * Get snapshot capabilities for a VM
    */
   async getCapabilities(vmId) {
-    const data = await apiRequest$1(
+    const data = await apiRequest(
       `/computes/${vmId}/snapshots/capabilities`
     );
     return data?.capabilities ?? null;
@@ -55371,7 +57060,7 @@ const snapshotActions = {
    */
   async getDetail(vmId, snapshotName) {
     const safeName = encodeURIComponent(snapshotName);
-    const data = await apiRequest$1(
+    const data = await apiRequest(
       `/computes/${vmId}/snapshots/${safeName}`
     );
     return data?.snapshot ?? null;
@@ -55381,7 +57070,7 @@ const snapshotActions = {
    */
   async revert(vmId, snapshotName) {
     const safeName = encodeURIComponent(snapshotName);
-    return apiRequest$1(`/computes/${vmId}/snapshots/${safeName}/revert`, {
+    return apiRequest(`/computes/${vmId}/snapshots/${safeName}/revert`, {
       method: "POST"
     });
   },
@@ -55390,7 +57079,7 @@ const snapshotActions = {
    */
   async delete(vmId, snapshotName) {
     const safeName = encodeURIComponent(snapshotName);
-    await apiRequest$1(`/computes/${vmId}/snapshots/${safeName}`, {
+    await apiRequest(`/computes/${vmId}/snapshots/${safeName}`, {
       method: "DELETE"
     });
   }
@@ -55400,7 +57089,7 @@ const consoleActions = {
    * Get available console types for a VM
    */
   async getAvailable(vmId) {
-    const response = await apiRequest$1(
+    const response = await apiRequest(
       `/computes/${vmId}/consoles`
     );
     if (response.status === "success" && response.data) {
@@ -55412,7 +57101,7 @@ const consoleActions = {
    * Get VNC console connection info
    */
   async getVNC(vmId) {
-    const data = await apiRequest$1(
+    const data = await apiRequest(
       `/computes/${vmId}/console/vnc`
     );
     if (data && data.token) {
@@ -55424,7 +57113,7 @@ const consoleActions = {
    * Get SPICE console connection info
    */
   async getSPICE(vmId) {
-    const data = await apiRequest$1(
+    const data = await apiRequest(
       `/computes/${vmId}/console/spice`
     );
     if (data && data.token) {
@@ -55447,14 +57136,14 @@ const consoleActions = {
     return `${protocol}//${window.location.host}/api/v1/virtualization/computes/${vmId}/console/spice/ws?token=${encodeURIComponent(token)}`;
   }
 };
-var __defProp$n = Object.defineProperty;
-var __getOwnPropDesc$l = Object.getOwnPropertyDescriptor;
-var __decorateClass$n = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$l(target, key) : target;
+var __defProp$q = Object.defineProperty;
+var __getOwnPropDesc$o = Object.getOwnPropertyDescriptor;
+var __decorateClass$q = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$o(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$n(target, key, result);
+  if (kind && result) __defProp$q(target, key, result);
   return result;
 };
 let VMConsole = class extends i$2 {
@@ -56072,50 +57761,597 @@ VMConsole.styles = i$5`
       display: block;
     }
   `;
-__decorateClass$n([
+__decorateClass$q([
   n2({ type: String })
 ], VMConsole.prototype, "vmId", 2);
-__decorateClass$n([
+__decorateClass$q([
   n2({ type: String })
 ], VMConsole.prototype, "vmName", 2);
-__decorateClass$n([
+__decorateClass$q([
   n2({ type: Boolean, reflect: true })
 ], VMConsole.prototype, "show", 2);
-__decorateClass$n([
+__decorateClass$q([
   r$1()
 ], VMConsole.prototype, "isConnecting", 2);
-__decorateClass$n([
+__decorateClass$q([
   r$1()
 ], VMConsole.prototype, "isWSConnected", 2);
-__decorateClass$n([
+__decorateClass$q([
   r$1()
 ], VMConsole.prototype, "error", 2);
-__decorateClass$n([
+__decorateClass$q([
   r$1()
 ], VMConsole.prototype, "connectionStatus", 2);
-__decorateClass$n([
+__decorateClass$q([
   r$1()
 ], VMConsole.prototype, "scaleViewport", 2);
-__decorateClass$n([
+__decorateClass$q([
   r$1()
 ], VMConsole.prototype, "showVirtualKeyboard", 2);
-__decorateClass$n([
+__decorateClass$q([
   r$1()
 ], VMConsole.prototype, "availableConsoles", 2);
-__decorateClass$n([
+__decorateClass$q([
   r$1()
 ], VMConsole.prototype, "selectedConsoleType", 2);
-VMConsole = __decorateClass$n([
+VMConsole = __decorateClass$q([
   t$2("vm-console")
 ], VMConsole);
-var __defProp$m = Object.defineProperty;
-var __getOwnPropDesc$k = Object.getOwnPropertyDescriptor;
-var __decorateClass$m = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$k(target, key) : target;
+var __defProp$p = Object.defineProperty;
+var __getOwnPropDesc$n = Object.getOwnPropertyDescriptor;
+var __decorateClass$p = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$n(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$m(target, key, result);
+  if (kind && result) __defProp$p(target, key, result);
+  return result;
+};
+let VMBackupsTab = class extends i$2 {
+  constructor() {
+    super(...arguments);
+    this.vm = null;
+    this.backups = [];
+    this.isLoading = false;
+    this.error = null;
+    this.toast = null;
+    this.showCreateModal = false;
+    this.showRestoreModal = false;
+    this.restoreTarget = null;
+    this.restoreNewName = "";
+    this.restoreOverwrite = false;
+    this.restoreKey = "";
+    this.isCreating = false;
+    this.isRestoring = false;
+    this.deletingId = null;
+    this.downloadingId = null;
+    this.missingFiles = /* @__PURE__ */ new Set();
+    this.pollingHandle = null;
+    this.createForm = {
+      backup_type: "full",
+      destination_path: "",
+      compression: "none",
+      encryption: "none",
+      include_memory: false,
+      retention_days: 7,
+      description: ""
+    };
+  }
+  connectedCallback() {
+    super.connectedCallback();
+    this.backupWatcher = $backups.subscribe(() => this.syncFromStore());
+  }
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.backupWatcher?.();
+    this.clearPolling();
+  }
+  updated(changed) {
+    if (changed.has("vm")) {
+      this.createForm.destination_path = this.defaultDestination();
+      this.loadBackups();
+    }
+  }
+  defaultDestination() {
+    const name = this.vm?.name || this.vm?.id || "vm";
+    return `/var/lib/libvirt/vapor-backups/${name}`;
+  }
+  syncFromStore() {
+    if (!this.vm) {
+      this.backups = [];
+      return;
+    }
+    const list = makeVmBackupsStore(this.vm.id).get();
+    this.backups = [...list].sort(
+      (a2, b2) => (b2.started_at || b2.created_at || "").localeCompare(a2.started_at || a2.created_at || "")
+    );
+    this.configurePolling();
+  }
+  async loadBackups() {
+    if (!this.vm) return;
+    this.isLoading = true;
+    this.error = null;
+    try {
+      await backupActions.fetchForVm(this.vm.id);
+      this.syncFromStore();
+    } catch (err) {
+      this.error = err?.code === "BACKUPS_NOT_AVAILABLE" ? "Backups are not available on this host." : err?.message || "Failed to load backups";
+    } finally {
+      this.isLoading = false;
+    }
+  }
+  configurePolling() {
+    this.clearPolling();
+    const hasRunning = this.backups.some((b2) => ["running", "pending"].includes((b2.status || "").toLowerCase()));
+    if (hasRunning) {
+      this.pollingHandle = window.setInterval(() => this.loadBackups(), 5e3);
+    }
+  }
+  clearPolling() {
+    if (this.pollingHandle) {
+      window.clearInterval(this.pollingHandle);
+      this.pollingHandle = null;
+    }
+  }
+  async handleCreate() {
+    if (!this.vm) return;
+    this.isCreating = true;
+    try {
+      const payload = { ...this.createForm };
+      if (!payload.destination_path) delete payload.destination_path;
+      if (payload.encryption === "none") delete payload.encryption_key;
+      await backupActions.create(this.vm.id, payload);
+      this.toast = { text: "Backup started", type: "success" };
+      this.showCreateModal = false;
+      this.loadBackups();
+    } catch (err) {
+      this.toast = { text: err?.message || "Failed to create backup", type: "error" };
+    } finally {
+      this.isCreating = false;
+    }
+  }
+  async handleDelete(backup) {
+    const confirmed = window.confirm(`Delete backup ${backup.backup_id || backup.id}?`);
+    if (!confirmed || !backup.backup_id) return;
+    this.deletingId = backup.backup_id;
+    try {
+      await backupActions.delete(backup.backup_id);
+      this.toast = { text: "Backup deleted", type: "success" };
+      this.loadBackups();
+    } catch (err) {
+      this.toast = { text: err?.message || "Failed to delete backup", type: "error" };
+    } finally {
+      this.deletingId = null;
+    }
+  }
+  openRestore(backup) {
+    this.restoreTarget = backup;
+    this.restoreNewName = `${backup.vm_name || backup.vm_uuid || "vm"}-restored`;
+    this.restoreOverwrite = false;
+    this.restoreKey = "";
+    this.showRestoreModal = true;
+  }
+  async confirmRestore() {
+    if (!this.restoreTarget) return;
+    this.isRestoring = true;
+    try {
+      await backupActions.restore({
+        backup_id: this.restoreTarget.backup_id,
+        overwrite: this.restoreOverwrite,
+        new_vm_name: this.restoreOverwrite ? void 0 : this.restoreNewName || `${this.restoreTarget.vm_name || "vm"}-restored`,
+        decryption_key: this.restoreKey || void 0
+      });
+      this.toast = { text: "Restore started", type: "success" };
+      this.showRestoreModal = false;
+    } catch (err) {
+      this.toast = { text: err?.message || "Failed to restore backup", type: "error" };
+    } finally {
+      this.isRestoring = false;
+    }
+  }
+  async handleDownload(backup) {
+    if (!backup.backup_id) return;
+    this.downloadingId = backup.backup_id;
+    try {
+      const blob = await virtualizationAPI.downloadBackup(backup.backup_id);
+      const url = URL.createObjectURL(blob);
+      const a2 = document.createElement("a");
+      a2.href = url;
+      a2.download = `${backup.vm_name || backup.vm_uuid || "vm"}-${backup.backup_id}.qcow2`;
+      a2.click();
+      URL.revokeObjectURL(url);
+      this.toast = { text: "Download started", type: "info" };
+    } catch (err) {
+      const code = err instanceof VirtualizationAPIError ? err.code : "";
+      if (code === "BACKUP_FILE_NOT_FOUND") {
+        const next = new Set(this.missingFiles);
+        next.add(backup.backup_id);
+        this.missingFiles = next;
+      }
+      this.toast = { text: err?.message || "Failed to download backup", type: "error" };
+    } finally {
+      this.downloadingId = null;
+    }
+  }
+  formatDate(val) {
+    if (!val) return "—";
+    const d2 = new Date(val);
+    if (Number.isNaN(d2.getTime())) return val;
+    return d2.toLocaleString();
+  }
+  formatSize(bytes) {
+    if (!bytes) return "—";
+    const units = ["B", "KB", "MB", "GB", "TB"];
+    let value = bytes;
+    let idx = 0;
+    while (value >= 1024 && idx < units.length - 1) {
+      value /= 1024;
+      idx++;
+    }
+    return `${value.toFixed(1)} ${units[idx]}`;
+  }
+  renderStatus(status) {
+    const lower = (status || "unknown").toLowerCase();
+    const cls = lower === "running" || lower === "pending" ? "status-pending" : lower === "completed" ? "status-completed" : lower === "failed" ? "status-failed" : "status-running";
+    return x`<span class="chip"><span class="status-dot ${cls}"></span>${status || "unknown"}</span>`;
+  }
+  renderTable() {
+    if (this.isLoading) {
+      return x`<div class="empty-state">Loading backups...</div>`;
+    }
+    if (this.error) {
+      return x`<div class="error-box">${this.error}</div>`;
+    }
+    if (!this.backups.length) {
+      return x`<div class="empty-state">No backups yet. Create one to get started.</div>`;
+    }
+    return x`
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Type</th>
+            <th>Created</th>
+            <th>Size</th>
+            <th>Destination</th>
+            <th>Retention</th>
+            <th>Memory</th>
+            <th>Encryption</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${this.backups.map(
+      (b2) => x`
+              <tr>
+                <td>${this.renderStatus(b2.status)}</td>
+                <td>${b2.type}</td>
+                <td>${this.formatDate(b2.started_at || b2.created_at)}</td>
+                <td>${this.formatSize(b2.size_bytes || b2.size)}</td>
+                <td class="small">${b2.destination_path || "—"}</td>
+                <td>${b2.retention_days ?? "—"}</td>
+                <td>${b2.include_memory ? "Yes" : "No"}</td>
+                <td>${b2.encryption && b2.encryption !== "none" ? b2.encryption : "None"}</td>
+                <td>
+                  <div style="display:flex; gap:6px; justify-content:flex-end;">
+                    <button class="btn" @click=${() => this.openRestore(b2)} ?disabled=${this.isRestoring}>
+                      Restore
+                    </button>
+                    <button
+                      class="btn"
+                      @click=${() => this.handleDownload(b2)}
+                      ?disabled=${this.downloadingId === b2.backup_id || this.missingFiles.has(b2.backup_id || "")}
+                    >
+                      ${this.downloadingId === b2.backup_id ? "…" : "Download"}
+                    </button>
+                    <button
+                      class="btn danger"
+                      @click=${() => this.handleDelete(b2)}
+                      ?disabled=${this.deletingId === b2.backup_id}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                  ${this.missingFiles.has(b2.backup_id || "") ? x`<div class="small" style="color:#fbbf24;">File missing on disk</div>` : ""}
+                  ${b2.error_message ? x`<div class="small" style="color:#fca5a5;">${b2.error_message}</div>` : ""}
+                </td>
+              </tr>
+            `
+    )}
+        </tbody>
+      </table>
+    `;
+  }
+  render() {
+    return x`
+      <div class="section">
+        <div class="section-header">
+          <h3 class="section-title">Backups</h3>
+          <div class="section-actions">
+            <button class="btn" @click=${() => this.loadBackups()} ?disabled=${this.isLoading}>Refresh</button>
+            <button class="btn primary" @click=${() => this.showCreateModal = true} ?disabled=${this.isLoading}>Create backup</button>
+          </div>
+        </div>
+        ${this.toast ? x`<div class="toast ${this.toast.type}">${this.toast.text}</div>` : ""}
+        ${this.renderTable()}
+      </div>
+
+      ${this.renderCreateModal()}
+      ${this.renderRestoreModal()}
+    `;
+  }
+  renderCreateModal() {
+    return x`
+      <modal-dialog
+        .open=${this.showCreateModal}
+        .title=${"Create backup"}
+        size="medium"
+        @modal-close=${() => this.showCreateModal = false}
+      >
+        <div class="form-group">
+          <label>Type</label>
+          <select
+            .value=${this.createForm.backup_type}
+            @change=${(e3) => this.createForm.backup_type = e3.target.value}
+          >
+            <option value="full">Full</option>
+            <option value="incremental">Incremental</option>
+            <option value="differential">Differential</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Destination path</label>
+          <input
+            type="text"
+            .value=${this.createForm.destination_path || ""}
+            placeholder=${this.defaultDestination()}
+            @input=${(e3) => this.createForm.destination_path = e3.target.value}
+          />
+          <div class="form-hint">Default: ${this.defaultDestination()}</div>
+        </div>
+        <div class="form-group">
+          <label>Compression</label>
+          <select
+            .value=${this.createForm.compression}
+            @change=${(e3) => this.createForm.compression = e3.target.value}
+          >
+            <option value="none">None</option>
+            <option value="gzip">gzip</option>
+            <option value="zstd">zstd</option>
+            <option value="xz">xz</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Encryption</label>
+          <select
+            .value=${this.createForm.encryption}
+            @change=${(e3) => this.createForm.encryption = e3.target.value}
+          >
+            <option value="none">None</option>
+            <option value="aes-256">AES-256</option>
+            <option value="aes-128">AES-128</option>
+          </select>
+        </div>
+        ${this.createForm.encryption && this.createForm.encryption !== "none" ? x`<div class="form-group">
+              <label>Encryption key</label>
+              <input
+                type="password"
+                .value=${this.createForm.encryption_key || ""}
+                @input=${(e3) => this.createForm.encryption_key = e3.target.value}
+              />
+            </div>` : ""}
+        <div class="checkbox-group">
+          <input
+            type="checkbox"
+            .checked=${this.createForm.include_memory || false}
+            @change=${(e3) => this.createForm.include_memory = e3.target.checked}
+          />
+          <div>
+            <div>Include memory</div>
+            <div class="form-hint">Capture RAM state if supported.</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Retention days</label>
+          <input
+            type="number"
+            min="1"
+            .value=${String(this.createForm.retention_days ?? "")}
+            @input=${(e3) => this.createForm.retention_days = Number(e3.target.value)}
+          />
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea
+            rows="2"
+            .value=${this.createForm.description || ""}
+            @input=${(e3) => this.createForm.description = e3.target.value}
+          ></textarea>
+        </div>
+        <div slot="footer" style="display:flex; justify-content:flex-end; gap:8px;">
+          <button class="btn" @click=${() => this.showCreateModal = false} ?disabled=${this.isCreating}>Cancel</button>
+          <button class="btn primary" @click=${() => this.handleCreate()} ?disabled=${this.isCreating}>
+            ${this.isCreating ? "Creating…" : "Create backup"}
+          </button>
+        </div>
+      </modal-dialog>
+    `;
+  }
+  renderRestoreModal() {
+    if (!this.restoreTarget) return x``;
+    return x`
+      <modal-dialog
+        .open=${this.showRestoreModal}
+        .title=${"Restore backup"}
+        size="medium"
+        @modal-close=${() => this.showRestoreModal = false}
+      >
+        <div class="form-group">
+          <label>New VM name</label>
+          <input
+            type="text"
+            .value=${this.restoreNewName}
+            @input=${(e3) => this.restoreNewName = e3.target.value}
+            ?disabled=${this.restoreOverwrite}
+          />
+          <div class="form-hint">Leave blank and enable overwrite to restore into existing VM.</div>
+        </div>
+        <div class="checkbox-group">
+          <input
+            type="checkbox"
+            .checked=${this.restoreOverwrite}
+            @change=${(e3) => this.restoreOverwrite = e3.target.checked}
+          />
+          <div>
+            <div>Overwrite existing VM</div>
+            <div class="form-hint">Unchecked creates a new VM named above.</div>
+          </div>
+        </div>
+        ${this.restoreTarget.encryption && this.restoreTarget.encryption !== "none" ? x`<div class="form-group">
+              <label>Decryption key</label>
+              <input
+                type="password"
+                .value=${this.restoreKey}
+                @input=${(e3) => this.restoreKey = e3.target.value}
+              />
+            </div>` : ""}
+        <div slot="footer" style="display:flex; justify-content:flex-end; gap:8px;">
+          <button class="btn" @click=${() => this.showRestoreModal = false} ?disabled=${this.isRestoring}>Cancel</button>
+          <button class="btn primary" @click=${() => this.confirmRestore()} ?disabled=${this.isRestoring}>
+            ${this.isRestoring ? "Restoring…" : "Restore"}
+          </button>
+        </div>
+      </modal-dialog>
+    `;
+  }
+};
+VMBackupsTab.styles = i$5`
+    :host {
+      display: block;
+    }
+    .section {
+      border: 1px solid var(--vscode-widget-border, #2a2f3a);
+      border-radius: 12px;
+      padding: 16px;
+      background: var(--vscode-editor-background, #1e1e1e);
+    }
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .section-title { font-size: 16px; margin: 0; }
+    .section-actions { display: flex; gap: 8px; }
+    .btn {
+      padding: 8px 12px;
+      border-radius: 4px;
+      border: 1px solid var(--vscode-button-border, #5a5a5a);
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      color: var(--vscode-button-foreground, #ffffff);
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .btn:hover { filter: brightness(1.05); }
+    .btn.primary {
+      background: var(--vscode-button-background, #0e639c);
+      border-color: var(--vscode-button-border, #5a5a5a);
+      color: var(--vscode-button-foreground, #ffffff);
+    }
+    .btn.danger {
+      background: #a4262c;
+      border-color: #a4262c;
+      color: #ffffff;
+    }
+    .btn[disabled] { opacity: 0.6; cursor: not-allowed; }
+    .table { width: 100%; border-collapse: collapse; }
+    .table th, .table td { padding: 10px; border-bottom: 1px solid var(--vscode-widget-border, #2a2f3a); text-align: left; font-size: 13px; }
+    .table th { color: var(--vscode-descriptionForeground, #9ca3af); font-weight: 600; }
+    .badge { padding: 2px 8px; border-radius: 999px; font-size: 12px; background: #1f2937; color: #e5e7eb; }
+    .badge.success { background: #14532d; }
+    .badge.error { background: #7f1d1d; }
+    .badge.warning { background: #92400e; }
+    .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 999px; margin-right: 6px; }
+    .status-running { background: #22c55e; }
+    .status-pending { background: #eab308; }
+    .status-failed { background: #ef4444; }
+    .status-completed { background: #10b981; }
+    .empty-state { text-align: center; padding: 24px 0; color: var(--vscode-descriptionForeground, #9ca3af); }
+    .error-box { border: 1px solid #7f1d1d; background: #1f0f0f; color: #fecdd3; padding: 12px; border-radius: 8px; margin-bottom: 12px; }
+    .toast { margin-bottom: 10px; padding: 10px; border-radius: 8px; }
+    .toast.success { background: #0f172a; color: #bbf7d0; border: 1px solid #14532d; }
+    .toast.error { background: #1f0f0f; color: #fecdd3; border: 1px solid #7f1d1d; }
+
+    /* Form controls aligned with snapshot modals */
+    .form-group { margin-bottom: 14px; width: 100%; box-sizing: border-box; }
+    .form-group label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: var(--vscode-foreground, #cccccc); }
+    .form-hint { margin-top: 6px; font-size: 12px; color: var(--vscode-descriptionForeground, #8b8b8b); }
+    .form-error { margin-top: 6px; color: var(--vscode-errorForeground, #f48771); font-size: 12px; }
+    input, select, textarea { width: 100%; padding: 8px 12px; background: var(--vscode-input-background, #3c3c3c); color: var(--vscode-input-foreground, #cccccc); border: 1px solid var(--vscode-input-border, #858585); border-radius: 4px; font-size: 13px; font-family: inherit; transition: all 0.2s; box-sizing: border-box; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--vscode-focusBorder, #007acc); box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc); }
+    .checkbox-group { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; background: #1f2937; color: #e5e7eb; font-size: 12px; }
+    .small { font-size: 12px; color: #9ca3af; }
+  `;
+__decorateClass$p([
+  n2({ type: Object })
+], VMBackupsTab.prototype, "vm", 2);
+__decorateClass$p([
+  r$1()
+], VMBackupsTab.prototype, "backups", 2);
+__decorateClass$p([
+  r$1()
+], VMBackupsTab.prototype, "isLoading", 2);
+__decorateClass$p([
+  r$1()
+], VMBackupsTab.prototype, "error", 2);
+__decorateClass$p([
+  r$1()
+], VMBackupsTab.prototype, "toast", 2);
+__decorateClass$p([
+  r$1()
+], VMBackupsTab.prototype, "showCreateModal", 2);
+__decorateClass$p([
+  r$1()
+], VMBackupsTab.prototype, "showRestoreModal", 2);
+__decorateClass$p([
+  r$1()
+], VMBackupsTab.prototype, "restoreTarget", 2);
+__decorateClass$p([
+  r$1()
+], VMBackupsTab.prototype, "restoreNewName", 2);
+__decorateClass$p([
+  r$1()
+], VMBackupsTab.prototype, "restoreOverwrite", 2);
+__decorateClass$p([
+  r$1()
+], VMBackupsTab.prototype, "restoreKey", 2);
+__decorateClass$p([
+  r$1()
+], VMBackupsTab.prototype, "isCreating", 2);
+__decorateClass$p([
+  r$1()
+], VMBackupsTab.prototype, "isRestoring", 2);
+__decorateClass$p([
+  r$1()
+], VMBackupsTab.prototype, "deletingId", 2);
+__decorateClass$p([
+  r$1()
+], VMBackupsTab.prototype, "downloadingId", 2);
+__decorateClass$p([
+  r$1()
+], VMBackupsTab.prototype, "missingFiles", 2);
+VMBackupsTab = __decorateClass$p([
+  t$2("vm-backups-tab")
+], VMBackupsTab);
+var __defProp$o = Object.defineProperty;
+var __getOwnPropDesc$m = Object.getOwnPropertyDescriptor;
+var __decorateClass$o = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$m(target, key) : target;
+  for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
+    if (decorator = decorators[i4])
+      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
+  if (kind && result) __defProp$o(target, key, result);
   return result;
 };
 let VMDetailDrawer = class extends i$2 {
@@ -56131,6 +58367,13 @@ let VMDetailDrawer = class extends i$2 {
     this.vmDetails = null;
     this.isPowerActionLoading = false;
     this.showDeleteModal = false;
+    this.showCloneModal = false;
+    this.isCloning = false;
+    this.cloneName = "";
+    this.cloneStoragePool = "";
+    this.clonePools = [];
+    this.isLoadingClonePools = false;
+    this.clonePoolsError = null;
     this.isDeleting = false;
     this.isLoadingMetrics = false;
     this.showConsole = false;
@@ -56553,11 +58796,175 @@ let VMDetailDrawer = class extends i$2 {
     }
     this.showConsole = true;
   }
+  openCloneModal() {
+    this.handleCloneVM();
+  }
   handleCloneVM() {
-    this.dispatchEvent(new CustomEvent("clone-vm", {
-      detail: { vm: this.vm }
-    }));
-    this.showNotification("Clone functionality coming soon", "info");
+    if (!this.vm) return;
+    this.cloneName = `${this.vm.name}-clone`;
+    this.cloneStoragePool = "";
+    this.showCloneModal = true;
+    void this.loadClonePools();
+  }
+  async loadClonePools() {
+    this.isLoadingClonePools = true;
+    this.clonePoolsError = null;
+    this.clonePools = [];
+    try {
+      const token = auth.getToken();
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+      const url = getApiUrl("/virtualization/storages/pools?state=all&page_size=100");
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      let data = null;
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
+      const isErrorEnvelope = data && typeof data === "object" && "status" in data && data.status !== "success";
+      if (!response.ok || isErrorEnvelope) {
+        const msg = data?.error?.details || data?.error?.message || response.statusText || "Failed to load storage pools";
+        throw new Error(msg);
+      }
+      const pools = data?.data?.pools ?? data?.pools;
+      if (!Array.isArray(pools)) {
+        throw new Error("Invalid storage pools response");
+      }
+      const normalized = pools.map((p2) => ({
+        name: typeof p2?.name === "string" ? p2.name : "",
+        state: typeof p2?.state === "string" ? p2.state : void 0,
+        type: typeof p2?.type === "string" ? p2.type : void 0
+      })).filter((p2) => p2.name);
+      normalized.sort((a2, b2) => a2.name.localeCompare(b2.name));
+      this.clonePools = normalized;
+    } catch (error) {
+      console.error("Failed to load storage pools:", error);
+      this.clonePoolsError = error?.message || "Failed to load storage pools";
+    } finally {
+      this.isLoadingClonePools = false;
+    }
+  }
+  async confirmCloneVM() {
+    if (!this.vm || this.isCloning) return;
+    const name = this.cloneName.trim();
+    if (!name) {
+      this.showNotification("Clone name is required", "error");
+      return;
+    }
+    this.isCloning = true;
+    try {
+      const url = getApiUrl(`/virtualization/computes/${encodeURIComponent(this.vm.id)}/clone`);
+      const token = auth.getToken();
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+      const payload = {
+        name,
+        full_clone: true,
+        snapshots: false
+      };
+      const pool = this.cloneStoragePool.trim();
+      if (pool) payload.storage_pool = pool;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+      let data = null;
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
+      const isErrorEnvelope = data && typeof data === "object" && "status" in data && data.status !== "success";
+      if (!response.ok || isErrorEnvelope) {
+        const msg = data?.error?.details || data?.error?.message || (typeof data?.message === "string" ? data.message : null) || response.statusText || "Clone failed";
+        throw new Error(msg);
+      }
+      this.showNotification(`VM cloned as "${name}"`, "success");
+      this.showCloneModal = false;
+      this.dispatchEvent(
+        new CustomEvent("vm-cloned", {
+          detail: { source: this.vm, cloned: data?.data ?? null },
+          bubbles: true,
+          composed: true
+        })
+      );
+    } catch (error) {
+      console.error("Failed to clone VM:", error);
+      this.showNotification(error?.message || "Failed to clone VM", "error");
+    } finally {
+      this.isCloning = false;
+    }
+  }
+  renderCloneModal() {
+    if (!this.showCloneModal) return x``;
+    return x`
+      <modal-dialog
+        .open=${this.showCloneModal}
+        .title=${"Clone Virtual Machine"}
+        size="medium"
+        @modal-close=${() => {
+      if (!this.isCloning) this.showCloneModal = false;
+    }}
+      >
+        <div class="form-group">
+          <label for="clone-name">New VM Name <span class="required">*</span></label>
+          <input
+            id="clone-name"
+            type="text"
+            .value=${this.cloneName}
+            @input=${(e3) => this.cloneName = e3.target.value}
+            placeholder="e.g. my-vm-clone"
+            ?disabled=${this.isCloning}
+          />
+          <div class="form-hint">A full clone will be created (linked clone is not supported yet).</div>
+        </div>
+
+        <div class="form-group">
+          <label for="clone-pool">Target Storage Pool (optional)</label>
+          <select
+            id="clone-pool"
+            .value=${this.cloneStoragePool}
+            @change=${(e3) => this.cloneStoragePool = e3.target.value}
+            ?disabled=${this.isCloning || this.isLoadingClonePools}
+          >
+            <option value="">Keep source disk pools</option>
+            ${this.clonePools.map(
+      (p2) => x`<option value=${p2.name}>${p2.name}${p2.state ? " (" + p2.state + ")" : ""}</option>`
+    )}
+          </select>
+          ${this.isLoadingClonePools ? x`<div class="form-hint">Loading storage pools…</div>` : this.clonePoolsError ? x`<div class="form-error">${this.clonePoolsError}</div>` : x`<div class="form-hint">If empty, Vapor will try to clone each disk into its original pool.</div>`}
+        </div>
+
+        <div slot="footer" style="display:flex; justify-content:flex-end; gap:8px;">
+          <button
+            class="btn btn-secondary"
+            @click=${() => this.showCloneModal = false}
+            ?disabled=${this.isCloning}
+          >
+            Cancel
+          </button>
+          <button
+            class="btn btn-primary"
+            @click=${this.confirmCloneVM}
+            ?disabled=${this.isCloning || !this.cloneName.trim()}
+          >
+            ${this.isCloning ? "Cloning…" : "Clone VM"}
+          </button>
+        </div>
+      </modal-dialog>
+    `;
   }
   handleSnapshot() {
     this.activeTab = "snapshots";
@@ -57069,49 +59476,6 @@ let VMDetailDrawer = class extends i$2 {
           </div>
         </div>
       ` : ""}
-    `;
-  }
-  renderConsoleTab() {
-    return x`
-      <div class="section">
-        <h3 class="section-title">Console Preview</h3>
-        <div class="console-preview">
-          <button class="console-connect-btn" @click=${this.handleConsoleConnect}>
-            Open Full Console
-          </button>
-          <div>
-            ${this.vm?.state === "running" ? x`
-              <div>Last login: ${(/* @__PURE__ */ new Date()).toLocaleString()}</div>
-              <div>Welcome to ${this.vm.name}</div>
-              <div>[root@${this.vm.name} ~]# _</div>
-            ` : x`
-              <div style="color: #888;">Console is not available. VM is ${this.vm?.state}.</div>
-            `}
-          </div>
-        </div>
-      </div>
-
-      <div class="section">
-        <h3 class="section-title">Console Settings</h3>
-        <div class="info-grid">
-          <div class="info-item">
-            <span class="info-label">Console Type</span>
-            <span class="info-value">${(Array.isArray(this.vm?.graphics) ? this.vm?.graphics[0]?.type?.toUpperCase() : this.vm?.graphics?.type?.toUpperCase()) || "VNC"}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Port</span>
-            <span class="info-value">${(Array.isArray(this.vm?.graphics) ? this.vm?.graphics[0]?.port : this.vm?.graphics?.port) || "Auto"}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Listen Address</span>
-            <span class="info-value monospace">${(Array.isArray(this.vm?.graphics) ? this.vm?.graphics[0]?.listen : this.vm?.graphics?.listen) || "0.0.0.0"}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Password Protected</span>
-            <span class="info-value">${(Array.isArray(this.vm?.graphics) ? this.vm?.graphics[0]?.password : this.vm?.graphics?.password) ? "Yes" : "No"}</span>
-          </div>
-        </div>
-      </div>
     `;
   }
   ensureSnapshotsLoaded() {
@@ -57757,13 +60121,13 @@ let VMDetailDrawer = class extends i$2 {
                   @click=${() => this.activeTab = "network"}>
             Network
           </button>
-          <button class="tab ${this.activeTab === "console" ? "active" : ""}" 
-                  @click=${() => this.activeTab = "console"}>
-            Console
-          </button>
           <button class="tab ${this.activeTab === "snapshots" ? "active" : ""}" 
                   @click=${() => this.activeTab = "snapshots"}>
             Snapshots
+          </button>
+          <button class="tab ${this.activeTab === "backups" ? "active" : ""}" 
+                  @click=${() => this.activeTab = "backups"}>
+            Backups
           </button>
         </div>
 
@@ -57774,7 +60138,7 @@ let VMDetailDrawer = class extends i$2 {
               Loading VM details...
             </div>
           ` : x`
-            ${this.activeTab === "overview" ? this.renderOverviewTab() : this.activeTab === "metrics" ? this.renderMetricsTab() : this.activeTab === "storage" ? this.renderStorageTab() : this.activeTab === "network" ? this.renderNetworkTab() : this.activeTab === "console" ? this.renderConsoleTab() : this.activeTab === "snapshots" ? this.renderSnapshotsTab() : x``}
+            ${this.activeTab === "overview" ? this.renderOverviewTab() : this.activeTab === "metrics" ? this.renderMetricsTab() : this.activeTab === "storage" ? this.renderStorageTab() : this.activeTab === "network" ? this.renderNetworkTab() : this.activeTab === "snapshots" ? this.renderSnapshotsTab() : this.activeTab === "backups" ? x`<vm-backups-tab .vm=${this.vm}></vm-backups-tab>` : x``}
           `}
         </div>
       </div>
@@ -57782,6 +60146,7 @@ let VMDetailDrawer = class extends i$2 {
       ${this.renderCreateSnapshotModal()}
       ${this.renderSnapshotDetailModal()}
       ${this.renderSnapshotActionModal()}
+      ${this.renderCloneModal()}
 
       <!-- Delete Confirmation Modal -->
       <div class="modal-overlay ${this.showDeleteModal ? "show" : ""}">
@@ -58938,113 +61303,134 @@ VMDetailDrawer.styles = i$5`
     }
 
   `;
-__decorateClass$m([
+__decorateClass$o([
   n2({ type: Boolean, reflect: true })
 ], VMDetailDrawer.prototype, "show", 2);
-__decorateClass$m([
+__decorateClass$o([
   n2({ type: Object })
 ], VMDetailDrawer.prototype, "vm", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "activeTab", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "isLoading", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "metrics", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "disks", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "networkInterfaces", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "vmDetails", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "isPowerActionLoading", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "showDeleteModal", 2);
-__decorateClass$m([
+__decorateClass$o([
+  r$1()
+], VMDetailDrawer.prototype, "showCloneModal", 2);
+__decorateClass$o([
+  r$1()
+], VMDetailDrawer.prototype, "isCloning", 2);
+__decorateClass$o([
+  r$1()
+], VMDetailDrawer.prototype, "cloneName", 2);
+__decorateClass$o([
+  r$1()
+], VMDetailDrawer.prototype, "cloneStoragePool", 2);
+__decorateClass$o([
+  r$1()
+], VMDetailDrawer.prototype, "clonePools", 2);
+__decorateClass$o([
+  r$1()
+], VMDetailDrawer.prototype, "isLoadingClonePools", 2);
+__decorateClass$o([
+  r$1()
+], VMDetailDrawer.prototype, "clonePoolsError", 2);
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "isDeleting", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "isLoadingMetrics", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "showConsole", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "snapshots", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "snapshotsLoadedForVmId", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "isLoadingSnapshots", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "showCreateSnapshotModal", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "snapshotName", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "snapshotDescription", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "createIncludeMemory", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "createQuiesce", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "isCreatingSnapshot", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "snapshotCapabilities", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "showSnapshotDetailModal", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "isLoadingSnapshotDetail", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "selectedSnapshot", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "snapshotDetail", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "showSnapshotActionModal", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "snapshotActionMode", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "snapshotActionName", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "isSnapshotActionLoading", 2);
-__decorateClass$m([
+__decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "showStopDropdown", 2);
-VMDetailDrawer = __decorateClass$m([
+VMDetailDrawer = __decorateClass$o([
   t$2("vm-detail-drawer")
 ], VMDetailDrawer);
-var __defProp$l = Object.defineProperty;
-var __getOwnPropDesc$j = Object.getOwnPropertyDescriptor;
-var __decorateClass$l = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$j(target, key) : target;
+var __defProp$n = Object.defineProperty;
+var __getOwnPropDesc$l = Object.getOwnPropertyDescriptor;
+var __decorateClass$n = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$l(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$l(target, key, result);
+  if (kind && result) __defProp$n(target, key, result);
   return result;
 };
 let CreateVMWizard = class extends i$2 {
@@ -60199,26 +62585,334 @@ CreateVMWizard.styles = i$5`
       color: var(--close-hover-color, #e0e0e0);
     }
   `;
-__decorateClass$l([
+__decorateClass$n([
   r$1()
 ], CreateVMWizard.prototype, "isCreating", 2);
-__decorateClass$l([
+__decorateClass$n([
   r$1()
 ], CreateVMWizard.prototype, "validationErrors", 2);
-__decorateClass$l([
+__decorateClass$n([
   r$1()
 ], CreateVMWizard.prototype, "showAdvancedOptions", 2);
-CreateVMWizard = __decorateClass$l([
+CreateVMWizard = __decorateClass$n([
   t$2("create-vm-wizard")
 ], CreateVMWizard);
-var __defProp$k = Object.defineProperty;
-var __getOwnPropDesc$i = Object.getOwnPropertyDescriptor;
-var __decorateClass$k = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$i(target, key) : target;
+var __defProp$m = Object.defineProperty;
+var __getOwnPropDesc$k = Object.getOwnPropertyDescriptor;
+var __decorateClass$m = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$k(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$k(target, key, result);
+  if (kind && result) __defProp$m(target, key, result);
+  return result;
+};
+let OSVariantAutocomplete = class extends i$2 {
+  constructor() {
+    super(...arguments);
+    this.value = "";
+    this.family = "";
+    this.placeholder = "e.g. ubuntu22.04";
+    this.disabled = false;
+    this.limit = 2e3;
+    this.loaded = false;
+    this.loading = false;
+    this.error = null;
+    this.open = false;
+    this.variants = [];
+    this.highlightIndex = -1;
+  }
+  updated(changedProperties) {
+    if (changedProperties.has("family")) {
+      this.loaded = false;
+      this.loading = false;
+      this.error = null;
+      this.variants = [];
+      this.highlightIndex = -1;
+      if (this.open) {
+        void this.ensureLoaded();
+      }
+    }
+  }
+  async ensureLoaded() {
+    if (this.loaded || this.loading || this.disabled) return;
+    this.loading = true;
+    this.error = null;
+    try {
+      const { variants } = await virtualizationAPI.listOSVariants({
+        family: this.family || void 0,
+        limit: this.limit
+      });
+      this.variants = variants;
+      this.loaded = true;
+    } catch (err) {
+      this.error = "Suggestions unavailable";
+      this.loaded = true;
+      this.variants = [];
+    } finally {
+      this.loading = false;
+    }
+  }
+  get filteredVariants() {
+    const q = (this.value || "").trim().toLowerCase();
+    const items = this.variants || [];
+    if (!q) return items.slice(0, 20);
+    const score = (v2) => {
+      const shortId = (v2.short_id || "").toLowerCase();
+      const name = (v2.name || "").toLowerCase();
+      if (shortId == q) return 0;
+      if (name == q) return 1;
+      if (shortId.startsWith(q)) return 2;
+      if (name.startsWith(q)) return 3;
+      if (shortId.includes(q)) return 4;
+      if (name.includes(q)) return 5;
+      return 6;
+    };
+    const matches = items.filter((v2) => {
+      const fields = [
+        v2.short_id,
+        v2.name,
+        v2.version,
+        v2.family,
+        v2.distro,
+        v2.vendor,
+        v2.id
+      ].filter(Boolean).map((s2) => String(s2).toLowerCase());
+      return fields.some((f2) => f2.includes(q));
+    });
+    matches.sort((a2, b2) => score(a2) - score(b2));
+    return matches.slice(0, 20);
+  }
+  dispatchChange() {
+    this.dispatchEvent(
+      new CustomEvent("os-variant-change", {
+        detail: { value: this.value },
+        bubbles: true,
+        composed: true
+      })
+    );
+  }
+  handleFocus() {
+    this.open = true;
+    void this.ensureLoaded();
+  }
+  handleBlur() {
+    window.setTimeout(() => {
+      this.open = false;
+      this.highlightIndex = -1;
+    }, 150);
+  }
+  handleInput(event) {
+    const target = event.target;
+    this.value = target.value;
+    this.open = true;
+    this.highlightIndex = -1;
+    this.dispatchChange();
+    void this.ensureLoaded();
+  }
+  handleKeydown(event) {
+    if (!this.open) return;
+    const suggestions = this.filteredVariants;
+    if (event.key === "Escape") {
+      this.open = false;
+      this.highlightIndex = -1;
+      return;
+    }
+    if (!suggestions.length) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      this.highlightIndex = Math.min(this.highlightIndex + 1, suggestions.length - 1);
+      return;
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      this.highlightIndex = Math.max(this.highlightIndex - 1, 0);
+      return;
+    }
+    if (event.key === "Enter" && this.highlightIndex >= 0 && this.highlightIndex < suggestions.length) {
+      event.preventDefault();
+      const selected = suggestions[this.highlightIndex];
+      if (selected) this.selectVariant(selected);
+    }
+  }
+  selectVariant(variant) {
+    this.value = variant.short_id;
+    this.dispatchChange();
+    this.open = false;
+    this.highlightIndex = -1;
+    const input = this.renderRoot?.querySelector("input");
+    input?.focus();
+  }
+  render() {
+    const suggestions = this.filteredVariants;
+    const showDropdown = this.open && !this.disabled && (this.loading || suggestions.length > 0 || !!this.error);
+    return x`
+      <div class="wrapper">
+        <input
+          class="input"
+          type="text"
+          .value=${this.value}
+          placeholder=${this.placeholder}
+          ?disabled=${this.disabled}
+          @focus=${this.handleFocus}
+          @blur=${this.handleBlur}
+          @input=${this.handleInput}
+          @keydown=${this.handleKeydown}
+        />
+
+        ${showDropdown ? x`
+              <div class="dropdown" role="listbox">
+                ${this.loading ? x`<div class="status">Loading suggestions…</div>` : this.error ? x`<div class="status">${this.error}</div>` : suggestions.map((v2, idx) => {
+      const primary = `${v2.name || v2.short_id} (${v2.short_id})`;
+      const secondaryParts = [v2.vendor, v2.distro, v2.version, v2.family].filter(Boolean);
+      const secondary = secondaryParts.length ? secondaryParts.join(" · ") : "";
+      return x`
+                          <div
+                            class="row ${idx === this.highlightIndex ? "highlight" : ""}"
+                            role="option"
+                            @mousedown=${(e3) => {
+        e3.preventDefault();
+      }}
+                            @click=${() => this.selectVariant(v2)}
+                          >
+                            <div class="primary">${primary}</div>
+                            ${secondary ? x`<div class="secondary">${secondary}</div>` : E}
+                          </div>
+                        `;
+    })}
+              </div>
+            ` : E}
+      </div>
+    `;
+  }
+};
+OSVariantAutocomplete.styles = i$5`
+    :host {
+      display: block;
+    }
+
+    .wrapper {
+      position: relative;
+    }
+
+    .input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--vscode-input-border, #858585);
+      border-radius: 4px;
+      background: var(--vscode-input-background, #3c3c3c);
+      color: var(--vscode-input-foreground, #cccccc);
+      font-size: 13px;
+      font-family: inherit;
+      transition: all 0.2s;
+      outline: none;
+      box-sizing: border-box;
+    }
+
+    .input:focus {
+      outline: none;
+      border-color: var(--vscode-focusBorder, #007acc);
+      box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc);
+    }
+
+    .input:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .input::placeholder {
+      color: var(--vscode-input-placeholderForeground, rgba(204, 204, 204, 0.6));
+    }
+
+    .dropdown {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      background: var(--vscode-editorWidget-background, var(--vscode-editor-background, #1e1e1e));
+      border: 1px solid var(--vscode-input-border, #858585);
+      border-radius: 4px;
+      max-height: 260px;
+      overflow: auto;
+      z-index: 1000;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    }
+
+    .row {
+      padding: 8px 10px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .row:hover,
+    .row.highlight {
+      background: var(--vscode-list-hoverBackground, rgba(255, 255, 255, 0.08));
+    }
+
+    .primary {
+      font-size: 13px;
+      color: var(--vscode-foreground, #e0e0e0);
+      line-height: 1.2;
+    }
+
+    .secondary {
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground, #b5b5b5);
+      line-height: 1.2;
+    }
+
+    .status {
+      padding: 8px 10px;
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground, #b5b5b5);
+    }
+  `;
+__decorateClass$m([
+  n2({ type: String })
+], OSVariantAutocomplete.prototype, "value", 2);
+__decorateClass$m([
+  n2({ type: String })
+], OSVariantAutocomplete.prototype, "family", 2);
+__decorateClass$m([
+  n2({ type: String })
+], OSVariantAutocomplete.prototype, "placeholder", 2);
+__decorateClass$m([
+  n2({ type: Boolean })
+], OSVariantAutocomplete.prototype, "disabled", 2);
+__decorateClass$m([
+  n2({ type: Number })
+], OSVariantAutocomplete.prototype, "limit", 2);
+__decorateClass$m([
+  r$1()
+], OSVariantAutocomplete.prototype, "loaded", 2);
+__decorateClass$m([
+  r$1()
+], OSVariantAutocomplete.prototype, "loading", 2);
+__decorateClass$m([
+  r$1()
+], OSVariantAutocomplete.prototype, "error", 2);
+__decorateClass$m([
+  r$1()
+], OSVariantAutocomplete.prototype, "open", 2);
+__decorateClass$m([
+  r$1()
+], OSVariantAutocomplete.prototype, "variants", 2);
+__decorateClass$m([
+  r$1()
+], OSVariantAutocomplete.prototype, "highlightIndex", 2);
+OSVariantAutocomplete = __decorateClass$m([
+  t$2("os-variant-autocomplete")
+], OSVariantAutocomplete);
+var __defProp$l = Object.defineProperty;
+var __getOwnPropDesc$j = Object.getOwnPropertyDescriptor;
+var __decorateClass$l = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$j(target, key) : target;
+  for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
+    if (decorator = decorators[i4])
+      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
+  if (kind && result) __defProp$l(target, key, result);
   return result;
 };
 let CreateVMWizardEnhanced = class extends i$2 {
@@ -60253,27 +62947,12 @@ let CreateVMWizardEnhanced = class extends i$2 {
     this.isLoadingPCIDevices = false;
     this.editMode = false;
     this.editingVmId = null;
+    this.templateMode = false;
+    this.templateContext = null;
+    this.templateDiskSizeGB = null;
     this.showCloseConfirmation = false;
-    this.formData = {
-      name: this.generateDefaultVmName(),
-      memory: 2048,
-      vcpus: 2,
-      os_type: "linux",
-      architecture: "x86_64",
-      storage: {
-        disks: []
-      },
-      networks: [{
-        type: "network",
-        source: "default",
-        model: "virtio"
-      }],
-      graphics: [{
-        type: "vnc",
-        autoport: true,
-        listen: "0.0.0.0"
-      }]
-    };
+    this.formData = this.buildDefaultFormData();
+    this.lastInitializedOpenId = null;
   }
   connectedCallback() {
     super.connectedCallback();
@@ -60354,8 +63033,8 @@ let CreateVMWizardEnhanced = class extends i$2 {
   handleCancelClose() {
     this.showCloseConfirmation = false;
   }
-  resetFormData() {
-    this.formData = {
+  buildDefaultFormData() {
+    return {
       name: this.generateDefaultVmName(),
       memory: 2048,
       vcpus: 2,
@@ -60375,10 +63054,17 @@ let CreateVMWizardEnhanced = class extends i$2 {
         listen: "0.0.0.0"
       }]
     };
+  }
+  resetFormData() {
+    this.formData = this.buildDefaultFormData();
     this.currentStep = 1;
     this.validationErrors = {};
     this.editMode = false;
     this.editingVmId = null;
+    this.templateMode = false;
+    this.templateContext = null;
+    this.templateDiskSizeGB = null;
+    this.lastInitializedOpenId = null;
   }
   goToStep(step) {
     this.currentStep = step;
@@ -60402,14 +63088,30 @@ let CreateVMWizardEnhanced = class extends i$2 {
         if (!this.formData.name) {
           errors.name = "VM name is required";
         }
-        if (!this.formData.memory || this.formData.memory < 512) {
-          errors.memory = "Memory must be at least 512 MB";
-        }
-        if (!this.formData.vcpus || this.formData.vcpus < 1) {
-          errors.vcpus = "At least 1 vCPU is required";
+        {
+          const t2 = this.templateMode ? this.templateContext : null;
+          const minMemory = t2?.min_memory ?? 512;
+          const minVcpus = t2?.min_vcpus ?? 1;
+          if (!this.formData.memory || this.formData.memory < minMemory) {
+            errors.memory = t2 ? `Memory must be at least ${minMemory} MB (template min)` : "Memory must be at least 512 MB";
+          }
+          if (!this.formData.vcpus || this.formData.vcpus < minVcpus) {
+            errors.vcpus = t2 ? `At least ${minVcpus} vCPU is required (template min)` : "At least 1 vCPU is required";
+          }
         }
         break;
       case 2: {
+        if (this.templateMode && this.templateContext) {
+          const size = this.templateDiskSizeGB;
+          if (size === null || size === void 0 || !Number.isFinite(size) || size <= 0) {
+            errors.disk_size = "Disk size is required";
+            break;
+          }
+          if (size < this.templateContext.min_disk) {
+            errors.disk_size = `Disk must be >= template min (${this.templateContext.min_disk} GB)`;
+          }
+          break;
+        }
         const disks = this.formData.storage?.disks || [];
         if (disks.length === 0) {
           errors.storage_pool = "At least one disk is required";
@@ -61225,6 +63927,44 @@ let CreateVMWizardEnhanced = class extends i$2 {
     }
     this.isCreating = true;
     try {
+      if (this.templateMode) {
+        const template = this.templateContext;
+        if (!template) {
+          throw new Error("No template selected");
+        }
+        const name = (this.formData.name || "").trim();
+        const memory = this.formData.memory;
+        const vcpus = this.formData.vcpus;
+        const disk_size = this.templateDiskSizeGB ?? void 0;
+        const network = this.formData.networks?.[0];
+        const graphics = this.formData.graphics?.[0];
+        const cloud_init = this.formData.cloud_init;
+        const metadata = this.formData.metadata;
+        const created = await vmActions.createFromTemplate(template.id, {
+          name,
+          memory,
+          vcpus,
+          disk_size,
+          network,
+          graphics,
+          cloud_init,
+          metadata
+        });
+        this.showNotification(
+          `VM "${created.name}" created from template "${template.name}"`,
+          "success"
+        );
+        this.dispatchEvent(
+          new CustomEvent("vm-created", {
+            detail: { vm: created, template },
+            bubbles: true,
+            composed: true
+          })
+        );
+        wizardActions.closeWizard();
+        await vmActions.fetchAll();
+        return;
+      }
       const token = localStorage.getItem("jwt_token") || localStorage.getItem("auth_token") || localStorage.getItem("token");
       const payload = this.buildRequestPayload();
       const url = this.editMode && this.editingVmId ? getApiUrl(`/virtualization/computes/${this.editingVmId}`) : getApiUrl("/virtualization/computes");
@@ -61289,6 +64029,10 @@ let CreateVMWizardEnhanced = class extends i$2 {
     }
   }
   openAddNetworkModal() {
+    if (this.templateMode && (this.formData.networks?.length || 0) >= 1) {
+      this.showNotification("Only one network interface is supported in template mode", "error");
+      return;
+    }
     this.editingNetworkIndex = null;
     this.networkDraft = {
       type: "network",
@@ -61333,7 +64077,11 @@ let CreateVMWizardEnhanced = class extends i$2 {
     if (this.editingNetworkIndex !== null) {
       this.formData.networks[this.editingNetworkIndex] = nic;
     } else {
-      this.formData.networks.push(nic);
+      if (this.templateMode && this.formData.networks.length >= 1) {
+        this.formData.networks[0] = nic;
+      } else {
+        this.formData.networks.push(nic);
+      }
     }
     this.showNetworkModal = false;
     this.networkDraft = null;
@@ -61347,6 +64095,10 @@ let CreateVMWizardEnhanced = class extends i$2 {
     }
   }
   openAddGraphicsModal() {
+    if (this.templateMode && (this.formData.graphics?.length || 0) >= 1) {
+      this.showNotification("Only one graphics device is supported in template mode", "error");
+      return;
+    }
     this.editingGraphicsIndex = null;
     this.graphicsDraft = {
       type: "vnc",
@@ -61396,7 +64148,11 @@ let CreateVMWizardEnhanced = class extends i$2 {
     if (this.editingGraphicsIndex !== null) {
       this.formData.graphics[this.editingGraphicsIndex] = gfx;
     } else {
-      this.formData.graphics.push(gfx);
+      if (this.templateMode && this.formData.graphics.length >= 1) {
+        this.formData.graphics[0] = gfx;
+      } else {
+        this.formData.graphics.push(gfx);
+      }
     }
     this.showGraphicsModal = false;
     this.graphicsDraft = null;
@@ -61509,6 +64265,9 @@ let CreateVMWizardEnhanced = class extends i$2 {
     return `vm-${ts}-${rand}`.toLowerCase().replace(/[^a-z0-9-]/g, "");
   }
   renderBasicConfig() {
+    const t2 = this.templateMode ? this.templateContext : null;
+    const minLine = t2 ? `Min: ${t2.min_memory} MB, ${t2.min_vcpus} vCPU, ${t2.min_disk} GB` : "";
+    const recLine = t2 ? `Recommended: ${t2.recommended_memory ?? "-"} MB, ${t2.recommended_vcpus ?? "-"} vCPU, ${t2.recommended_disk ?? "-"} GB` : "";
     return x`
       <div class="section ${this.expandedSections.has("basic") ? "expanded" : ""}">
         <div class="section-header" @click=${() => this.toggleSection("basic")}>
@@ -61519,6 +64278,17 @@ let CreateVMWizardEnhanced = class extends i$2 {
           </div>
         </div>
         <div class="section-content">
+          ${t2 ? x`
+            <div
+              style="margin-bottom: 12px; padding: 10px; border-radius: 6px; background: var(--vscode-inputValidation-infoBackground); border: 1px solid var(--vscode-inputValidation-infoBorder);"
+            >
+              <div style="font-weight: 600; margin-bottom: 4px;">Creating VM from template: ${t2.name}</div>
+              <div class="help-text">Only name, memory/vCPU, disk size, network, graphics, and cloud-init can be changed here. Other fields are controlled by the template.</div>
+              <div class="help-text" style="margin-top: 6px;">${minLine}</div>
+              <div class="help-text">${recLine}</div>
+            </div>
+          ` : ""}
+
           <div class="form-group">
             <label>VM Name <span class="required">*</span></label>
             <input
@@ -61540,7 +64310,7 @@ let CreateVMWizardEnhanced = class extends i$2 {
               <div class="input-with-unit">
                 <input
                   type="number"
-                  min="512"
+                  min=${t2 ? String(t2.min_memory) : "512"}
                   max="524288"
                   step="512"
                   .value=${String(this.formData.memory || 2048)}
@@ -61573,6 +64343,7 @@ let CreateVMWizardEnhanced = class extends i$2 {
               <label>OS Type</label>
               <select
                 .value=${this.formData.os_type || "linux"}
+                ?disabled=${this.templateMode}
                 @change=${(e3) => this.updateFormData("os_type", e3.target.value)}
               >
                 <option value="linux">Linux</option>
@@ -61584,12 +64355,13 @@ let CreateVMWizardEnhanced = class extends i$2 {
 
             <div class="form-group">
               <label>OS Variant</label>
-              <input
-                type="text"
-                placeholder="ubuntu22.04"
+              <os-variant-autocomplete
                 .value=${this.formData.os_variant || ""}
-                @input=${(e3) => this.updateFormData("os_variant", e3.target.value)}
-              />
+                .family=${this.formData.os_type || "linux"}
+                placeholder="ubuntu22.04"
+                ?disabled=${this.templateMode}
+                @os-variant-change=${(e3) => this.updateFormData("os_variant", e3.detail.value)}
+              ></os-variant-autocomplete>
               <div class="help-text">e.g., ubuntu22.04, win11, rhel9</div>
             </div>
 
@@ -61597,6 +64369,7 @@ let CreateVMWizardEnhanced = class extends i$2 {
               <label>Architecture</label>
               <select
                 .value=${this.formData.architecture || "x86_64"}
+                ?disabled=${this.templateMode}
                 @change=${(e3) => this.updateFormData("architecture", e3.target.value)}
               >
                 <option value="x86_64">x86_64</option>
@@ -61613,6 +64386,7 @@ let CreateVMWizardEnhanced = class extends i$2 {
                 type="checkbox"
                 id="uefi"
                 ?checked=${this.formData.uefi}
+                ?disabled=${this.templateMode}
                 @change=${(e3) => this.updateFormData("uefi", e3.target.checked)}
               />
               <label for="uefi">Enable UEFI</label>
@@ -61623,6 +64397,7 @@ let CreateVMWizardEnhanced = class extends i$2 {
                 type="checkbox"
                 id="secure_boot"
                 ?checked=${this.formData.secure_boot}
+                ?disabled=${this.templateMode}
                 @change=${(e3) => this.updateFormData("secure_boot", e3.target.checked)}
               />
               <label for="secure_boot">Secure Boot</label>
@@ -61633,6 +64408,7 @@ let CreateVMWizardEnhanced = class extends i$2 {
                 type="checkbox"
                 id="tpm"
                 ?checked=${this.formData.tpm}
+                ?disabled=${this.templateMode}
                 @change=${(e3) => this.updateFormData("tpm", e3.target.checked)}
               />
               <label for="tpm">Enable TPM</label>
@@ -61644,6 +64420,7 @@ let CreateVMWizardEnhanced = class extends i$2 {
               type="checkbox"
               id="autostart"
               ?checked=${this.formData.autostart}
+                ?disabled=${this.templateMode}
               @change=${(e3) => this.updateFormData("autostart", e3.target.checked)}
             />
             <label for="autostart">Autostart VM with host</label>
@@ -61655,6 +64432,47 @@ let CreateVMWizardEnhanced = class extends i$2 {
     `;
   }
   renderStorageConfig() {
+    if (this.templateMode && this.templateContext) {
+      const t2 = this.templateContext;
+      const defaultDisk = t2.recommended_disk ?? t2.min_disk;
+      const diskValue = this.templateDiskSizeGB ?? defaultDisk;
+      return x`
+        <div class="section ${this.expandedSections.has("storage") ? "expanded" : ""}">
+          <div class="section-header" @click=${() => this.toggleSection("storage")}>
+            <div class="section-title">
+              <span class="section-toggle">▶</span>
+              <span>Storage Configuration</span>
+              <span class="badge">Required</span>
+            </div>
+          </div>
+          <div class="section-content">
+            <div class="form-group">
+              <label>Disk Size (GB) <span class="required">*</span></label>
+              ${this.validationErrors.disk_size ? x`
+                <div class="error-message">${this.validationErrors.disk_size}</div>
+              ` : ""}
+
+              <input
+                type="number"
+                min=${String(t2.min_disk)}
+                step="1"
+                .value=${String(diskValue)}
+                @input=${(e3) => {
+        const n3 = Number(e3.target.value);
+        this.templateDiskSizeGB = Number.isFinite(n3) ? n3 : null;
+      }}
+              />
+              <div class="help-text" style="margin-top: 6px;">
+                Template min: ${t2.min_disk} GB • Recommended: ${t2.recommended_disk ?? "-"} GB
+              </div>
+              <div class="help-text">
+                Storage devices are derived from the template. In template mode, you can only override the disk size.
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
     return x`
       <div class="section ${this.expandedSections.has("storage") ? "expanded" : ""}">
         <div class="section-header" @click=${() => this.toggleSection("storage")}>
@@ -61837,7 +64655,7 @@ let CreateVMWizardEnhanced = class extends i$2 {
             ` : x`<div class="help-text">No devices configured</div>`}
 
             <div class="btn-add-dropdown">
-              <button class="btn-add" @click=${this.openAddNetworkModal}>
+              <button class="btn-add" @click=${this.openAddNetworkModal} ?disabled=${this.templateMode && (this.formData.networks?.length || 0) >= 1}>
                 + Add Device
               </button>
             </div>
@@ -61900,7 +64718,7 @@ let CreateVMWizardEnhanced = class extends i$2 {
             ` : x`<div class="help-text">No devices configured</div>`}
 
             <div class="btn-add-dropdown">
-              <button class="btn-add" @click=${this.openAddGraphicsModal}>
+              <button class="btn-add" @click=${this.openAddGraphicsModal} ?disabled=${this.templateMode && (this.formData.graphics?.length || 0) >= 1}>
                 + Add Device
               </button>
             </div>
@@ -61910,6 +64728,26 @@ let CreateVMWizardEnhanced = class extends i$2 {
     `;
   }
   renderAdvancedConfig() {
+    if (this.templateMode) {
+      return x`
+        <div class="section ${this.expandedSections.has("advanced") ? "expanded" : ""}">
+          <div class="section-header" @click=${() => this.toggleSection("advanced")}>
+            <div class="section-title">
+              <span class="section-toggle">▶</span>
+              <span>Advanced Configuration</span>
+            </div>
+          </div>
+          <div class="section-content">
+            <div
+              class="help-text"
+              style="padding: 10px; border-radius: 6px; background: var(--vscode-inputValidation-infoBackground); border: 1px solid var(--vscode-inputValidation-infoBorder);"
+            >
+              Advanced options are controlled by the template and are not editable in template mode.
+            </div>
+          </div>
+        </div>
+      `;
+    }
     const getDeviceInfo = (addr) => this.availablePCIDevices.find((d2) => d2.pci_address === addr);
     return x`
       <div class="section ${this.expandedSections.has("advanced") ? "expanded" : ""}">
@@ -62381,24 +65219,64 @@ let CreateVMWizardEnhanced = class extends i$2 {
   }
   render() {
     const wizardState = this.wizardController.value;
-    if (wizardState.editMode !== void 0) {
-      this.editMode = wizardState.editMode;
+    const openId = wizardState.openId ?? 0;
+    if (openId !== this.lastInitializedOpenId) {
+      this.lastInitializedOpenId = openId;
+      this.currentStep = 1;
+      this.validationErrors = {};
+      this.editMode = !!wizardState.editMode;
       this.editingVmId = wizardState.editingVmId || null;
-    }
-    if (this.editMode && wizardState.formData && Object.keys(wizardState.formData).length > 0) {
-      const vmFormData = wizardState.formData;
-      this.formData = {
-        ...vmFormData,
-        // Convert single network to array of networks
-        networks: vmFormData.network ? [{
-          type: vmFormData.network.type,
-          source: vmFormData.network.source,
-          model: vmFormData.network.model,
-          mac: vmFormData.network.mac
-        }] : this.formData.networks,
-        // Convert single graphics to array
-        graphics: vmFormData.graphics ? [vmFormData.graphics] : this.formData.graphics
-      };
+      this.templateMode = !!wizardState.templateMode;
+      this.templateContext = wizardState.templateContext || null;
+      const base = this.buildDefaultFormData();
+      if (this.editMode && wizardState.formData && Object.keys(wizardState.formData).length > 0) {
+        const vmFormData = wizardState.formData;
+        this.formData = {
+          ...base,
+          ...vmFormData,
+          // Convert single network to array of networks
+          networks: vmFormData.network ? [{
+            type: vmFormData.network.type,
+            source: vmFormData.network.source,
+            model: vmFormData.network.model,
+            mac: vmFormData.network.mac
+          }] : base.networks,
+          // Convert single graphics to array
+          graphics: vmFormData.graphics ? [vmFormData.graphics] : base.graphics
+        };
+        this.templateDiskSizeGB = null;
+      } else if (this.templateMode && this.templateContext) {
+        const t2 = this.templateContext;
+        const defaults2 = wizardState.formData || {};
+        const netModel = t2.network_model || "virtio";
+        const gfxType = t2.graphics_type || "vnc";
+        this.formData = {
+          ...base,
+          ...defaults2,
+          os_type: t2.os_type || base.os_type,
+          os_variant: t2.os_variant || base.os_variant,
+          uefi: !!t2.uefi_boot,
+          secure_boot: !!t2.secure_boot,
+          tpm: !!t2.tpm,
+          networks: [{
+            type: "network",
+            source: base.networks?.[0]?.source || "default",
+            model: netModel
+          }],
+          graphics: [{
+            type: gfxType,
+            autoport: true,
+            listen: "0.0.0.0"
+          }]
+        };
+        this.templateDiskSizeGB = t2.recommended_disk ?? t2.min_disk;
+      } else {
+        this.formData = {
+          ...base,
+          ...wizardState.formData || {}
+        };
+        this.templateDiskSizeGB = null;
+      }
     }
     if (wizardState.isOpen) {
       this.setAttribute("show", "");
@@ -62435,7 +65313,7 @@ let CreateVMWizardEnhanced = class extends i$2 {
         <div class="drawer-header">
           <h2 class="header-title">
             <span>🖥️</span>
-            ${this.editMode ? "Edit" : "Create"} Virtual Machine (Enhanced)
+            ${this.editMode ? "Edit" : this.templateMode ? "Create from Template" : "Create"} Virtual Machine (Enhanced)
           </h2>
           <button 
             class="close-button" 
@@ -63137,973 +66015,101 @@ CreateVMWizardEnhanced.styles = i$5`
       white-space: nowrap;
     }
   `;
-__decorateClass$k([
+__decorateClass$l([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "isCreating", 2);
-__decorateClass$k([
+__decorateClass$l([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "showAddDeviceMenu", 2);
-__decorateClass$k([
+__decorateClass$l([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "showDeviceModal", 2);
-__decorateClass$k([
+__decorateClass$l([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "deviceModalMode", 2);
-__decorateClass$k([
+__decorateClass$l([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "deviceDraft", 2);
-__decorateClass$k([
+__decorateClass$l([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "editingDiskIndex", 2);
-__decorateClass$k([
+__decorateClass$l([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "showNetworkModal", 2);
-__decorateClass$k([
+__decorateClass$l([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "networkDraft", 2);
-__decorateClass$k([
+__decorateClass$l([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "editingNetworkIndex", 2);
-__decorateClass$k([
+__decorateClass$l([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "showGraphicsModal", 2);
-__decorateClass$k([
+__decorateClass$l([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "graphicsDraft", 2);
-__decorateClass$k([
+__decorateClass$l([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "editingGraphicsIndex", 2);
-__decorateClass$k([
+__decorateClass$l([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "showPCIModal", 2);
-__decorateClass$k([
+__decorateClass$l([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "pciDraft", 2);
-__decorateClass$k([
+__decorateClass$l([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "editingPCIDeviceIndex", 2);
-__decorateClass$k([
+__decorateClass$l([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "pciHostSelection", 2);
-__decorateClass$k([
+__decorateClass$l([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "validationErrors", 2);
-__decorateClass$k([
+__decorateClass$l([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "expandedSections", 2);
-__decorateClass$k([
+__decorateClass$l([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "currentStep", 2);
-__decorateClass$k([
+__decorateClass$l([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "availablePCIDevices", 2);
-__decorateClass$k([
+__decorateClass$l([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "isLoadingPCIDevices", 2);
-__decorateClass$k([
+__decorateClass$l([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "editMode", 2);
-__decorateClass$k([
+__decorateClass$l([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "editingVmId", 2);
-__decorateClass$k([
+__decorateClass$l([
+  r$1()
+], CreateVMWizardEnhanced.prototype, "templateMode", 2);
+__decorateClass$l([
+  r$1()
+], CreateVMWizardEnhanced.prototype, "templateContext", 2);
+__decorateClass$l([
+  r$1()
+], CreateVMWizardEnhanced.prototype, "templateDiskSizeGB", 2);
+__decorateClass$l([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "showCloseConfirmation", 2);
-__decorateClass$k([
+__decorateClass$l([
   r$1()
 ], CreateVMWizardEnhanced.prototype, "formData", 2);
-CreateVMWizardEnhanced = __decorateClass$k([
+CreateVMWizardEnhanced = __decorateClass$l([
   t$2("create-vm-wizard-enhanced")
 ], CreateVMWizardEnhanced);
-const API_BASE = "/virtualization";
-class VirtualizationAPIError extends Error {
-  constructor(code, message, details) {
-    super(message);
-    this.code = code;
-    this.details = details;
-    this.name = "VirtualizationAPIError";
-    this.userMessage = mapVMError({ code, message });
-  }
-}
-function getAuthToken() {
-  const token = localStorage.getItem("jwt_token") || localStorage.getItem("auth_token");
-  if (!token) {
-    throw new VirtualizationAPIError("AUTH_ERROR", "No authentication token found");
-  }
-  return token;
-}
-async function apiRequest(endpoint, options = {}) {
-  const token = getAuthToken();
-  const config = {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`,
-      ...options.headers
-    }
-  };
-  try {
-    const url = getApiUrl(`${API_BASE}${endpoint}`);
-    const response = await fetch(url, config);
-    const status = response.status;
-    if (!response.ok) {
-      const errorBody = await response.json().catch(() => ({
-        status: "error",
-        error: { code: "API_ERROR", message: response.statusText }
-      }));
-      if (isVirtualizationDisabled(status, errorBody)) {
-        $virtualizationEnabled.set(false);
-        $virtualizationDisabledMessage.set(
-          errorBody.error?.details || errorBody.error?.message || "Virtualization is disabled on this host."
-        );
-        throw new VirtualizationDisabledError(
-          errorBody.error?.message || "Virtualization is disabled on this host.",
-          errorBody.error?.details,
-          status
-        );
-      }
-      const apiBody = errorBody;
-      if (apiBody.status === "error" && apiBody.error) {
-        throw new VirtualizationAPIError(
-          apiBody.error.code || "API_ERROR",
-          apiBody.error.message || `Request failed: ${status}`,
-          apiBody.error.details
-        );
-      }
-      throw new VirtualizationAPIError(
-        apiBody.code || "API_ERROR",
-        apiBody.message || `Request failed: ${status}`,
-        apiBody.details
-      );
-    }
-    if (response.status === 204) {
-      if ($virtualizationEnabled.get() !== true) {
-        $virtualizationEnabled.set(true);
-        $virtualizationDisabledMessage.set(null);
-      }
-      return {};
-    }
-    if ($virtualizationEnabled.get() !== true) {
-      $virtualizationEnabled.set(true);
-      $virtualizationDisabledMessage.set(null);
-    }
-    return await response.json();
-  } catch (error) {
-    if (error instanceof VirtualizationAPIError || error instanceof VirtualizationDisabledError) {
-      throw error;
-    }
-    throw new VirtualizationAPIError(
-      "NETWORK_ERROR",
-      error instanceof Error ? error.message : "Network request failed"
-    );
-  }
-}
-class VirtualizationAPI {
-  // ============ Virtual Machines ============
-  /**
-   * List all virtual machines
-   */
-  async listVMs(params) {
-    const queryParams = new URLSearchParams();
-    if (params?.page) queryParams.append("page", params.page.toString());
-    if (params?.pageSize) queryParams.append("pageSize", params.pageSize.toString());
-    if (params?.filter) queryParams.append("filter", params.filter);
-    if (params?.sort) queryParams.append("sort", params.sort);
-    const query = queryParams.toString();
-    return apiRequest(
-      `/computes${query ? `?${query}` : ""}`
-    );
-  }
-  /**
-   * Get a specific virtual machine
-   */
-  async getVM(id) {
-    return apiRequest(`/computes/${id}`);
-  }
-  /**
-   * Create a new virtual machine (basic)
-   */
-  async createVM(config) {
-    return apiRequest("/computes", {
-      method: "POST",
-      body: JSON.stringify(config)
-    });
-  }
-  /**
-   * Create a new virtual machine (enhanced with wizard data)
-   */
-  async createVMEnhanced(config) {
-    return apiRequest("/computes", {
-      method: "POST",
-      body: JSON.stringify(config)
-    });
-  }
-  /**
-   * Update a virtual machine
-   */
-  async updateVM(id, updates) {
-    return apiRequest(`/computes/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(updates)
-    });
-  }
-  /**
-   * Delete a virtual machine
-   */
-  async deleteVM(id, force = false) {
-    return apiRequest(
-      `/computes/${id}${force ? "?force=true" : ""}`,
-      { method: "DELETE" }
-    );
-  }
-  /**
-   * Clone a virtual machine
-   */
-  async cloneVM(id, name) {
-    return apiRequest(`/computes/${id}/clone`, {
-      method: "POST",
-      body: JSON.stringify({ name })
-    });
-  }
-  // ============ VM Power Management ============
-  /**
-   * Start a virtual machine
-   */
-  async startVM(id) {
-    return apiRequest(`/computes/${id}/start`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Stop a virtual machine
-   */
-  async stopVM(id, force = false) {
-    return apiRequest(`/computes/${id}/stop`, {
-      method: "POST",
-      body: JSON.stringify({ force })
-    });
-  }
-  /**
-   * Restart a virtual machine
-   */
-  async restartVM(id, force = false) {
-    return apiRequest(`/computes/${id}/restart`, {
-      method: "POST",
-      body: JSON.stringify({ force })
-    });
-  }
-  /**
-   * Pause a virtual machine
-   */
-  async pauseVM(id) {
-    return apiRequest(`/computes/${id}/pause`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Resume a paused virtual machine
-   */
-  async resumeVM(id) {
-    return apiRequest(`/computes/${id}/resume`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Reset a virtual machine
-   */
-  async resetVM(id) {
-    return apiRequest(`/computes/${id}/reset`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Execute a VM action
-   */
-  async executeVMAction(id, action) {
-    return apiRequest(`/computes/${id}/action`, {
-      method: "POST",
-      body: JSON.stringify(action)
-    });
-  }
-  // ============ Console Access ============
-  /**
-   * Get console connection information
-   */
-  async getConsoleInfo(id) {
-    return apiRequest(`/computes/${id}/console`);
-  }
-  /**
-   * Create a console session
-   */
-  async createConsoleSession(id) {
-    return apiRequest(`/computes/${id}/console/session`, {
-      method: "POST"
-    });
-  }
-  // ============ Templates ============
-  /**
-   * List VM templates
-   */
-  async listTemplates() {
-    return apiRequest("/computes/templates");
-  }
-  /**
-   * Get a specific template
-   */
-  async getTemplate(id) {
-    return apiRequest(`/computes/templates/${id}`);
-  }
-  /**
-   * Create a VM from template
-   */
-  async createFromTemplate(templateId, config) {
-    return apiRequest("/computes/from-template", {
-      method: "POST",
-      body: JSON.stringify({ templateId, ...config })
-    });
-  }
-  /**
-   * Create a template from existing VM
-   */
-  async createTemplate(vmId, name, description) {
-    return apiRequest(`/computes/${vmId}/template`, {
-      method: "POST",
-      body: JSON.stringify({ name, description })
-    });
-  }
-  // ============ Snapshots ============
-  /**
-   * List VM snapshots
-   */
-  async listSnapshots(vmId) {
-    return apiRequest(`/computes/${vmId}/snapshots`);
-  }
-  /**
-   * Create a snapshot
-   */
-  async createSnapshot(vmId, name, description) {
-    return apiRequest(`/computes/${vmId}/snapshots`, {
-      method: "POST",
-      body: JSON.stringify({ name, description })
-    });
-  }
-  /**
-   * Revert to snapshot
-   */
-  async revertToSnapshot(vmId, snapshotId) {
-    return apiRequest(
-      `/computes/${vmId}/snapshots/${snapshotId}/revert`,
-      { method: "POST" }
-    );
-  }
-  /**
-   * Delete a snapshot
-   */
-  async deleteSnapshot(vmId, snapshotId) {
-    return apiRequest(
-      `/computes/${vmId}/snapshots/${snapshotId}`,
-      { method: "DELETE" }
-    );
-  }
-  // ============ Backups ============
-  /**
-   * List VM backups
-   */
-  async listBackups(vmId) {
-    return apiRequest(`/computes/${vmId}/backups`);
-  }
-  /**
-   * Create a backup
-   */
-  async createBackup(vmId, name, type) {
-    return apiRequest(`/computes/${vmId}/backups`, {
-      method: "POST",
-      body: JSON.stringify({ name, type })
-    });
-  }
-  /**
-   * Restore from backup
-   */
-  async restoreFromBackup(vmId, backupId) {
-    return apiRequest(
-      `/computes/${vmId}/backups/${backupId}/restore`,
-      { method: "POST" }
-    );
-  }
-  // ============ Storage Pools ============
-  /**
-   * List storage pools
-   */
-  async listStoragePools() {
-    return apiRequest("/storages/pools");
-  }
-  /**
-   * Get a specific storage pool
-   */
-  async getStoragePool(name) {
-    return apiRequest(`/storages/pools/${name}`);
-  }
-  /**
-   * Create a storage pool
-   */
-  async createStoragePool(config) {
-    return apiRequest("/storages/pools", {
-      method: "POST",
-      body: JSON.stringify(config)
-    });
-  }
-  /**
-   * Delete a storage pool
-   */
-  async deleteStoragePool(name, deleteVolumes = false) {
-    const params = deleteVolumes ? "?delete_volumes=true" : "";
-    return apiRequest(`/storages/pools/${name}${params}`, {
-      method: "DELETE"
-    });
-  }
-  /**
-   * Update a storage pool (currently supports autostart only)
-   */
-  async updateStoragePool(name, config) {
-    return apiRequest(`/storages/pools/${name}`, {
-      method: "PUT",
-      body: JSON.stringify(config)
-    });
-  }
-  /**
-   * Start a storage pool
-   */
-  async startStoragePool(name) {
-    return apiRequest(`/storages/pools/${name}/start`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Stop a storage pool
-   */
-  async stopStoragePool(name) {
-    return apiRequest(`/storages/pools/${name}/stop`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Set storage pool autostart
-   */
-  async setStoragePoolAutostart(name, autostart) {
-    return apiRequest(`/storages/pools/${name}/autostart`, {
-      method: "PUT",
-      body: JSON.stringify({ autostart })
-    });
-  }
-  /**
-   * Refresh storage pool
-   */
-  async refreshStoragePool(name) {
-    return apiRequest(`/storages/pools/${name}/refresh`, {
-      method: "POST"
-    });
-  }
-  /**
-   * List volumes in a storage pool
-   * Returns { volumes, count } from the envelope
-   */
-  async listVolumes(poolName) {
-    const response = await apiRequest(
-      `/storages/pools/${poolName}/volumes`
-    );
-    if (response.status === "success" && response.data) {
-      return { volumes: response.data.volumes || [], count: response.data.count || 0 };
-    }
-    return { volumes: [], count: 0 };
-  }
-  /**
-   * Get volume details
-   */
-  async getVolume(poolName, volumeName) {
-    const response = await apiRequest(
-      `/storages/pools/${poolName}/volumes/${volumeName}`
-    );
-    if (response.status === "success" && response.data?.volume) {
-      return response.data.volume;
-    }
-    throw new VirtualizationAPIError("INVALID_RESPONSE", "Invalid response format from getVolume");
-  }
-  /**
-   * Create a volume in a storage pool
-   */
-  async createVolume(poolName, config) {
-    const response = await apiRequest(
-      `/storages/pools/${poolName}/volumes`,
-      {
-        method: "POST",
-        body: JSON.stringify(config)
-      }
-    );
-    if (response.status === "success" && response.data) {
-      return response.data;
-    }
-    throw new VirtualizationAPIError("INVALID_RESPONSE", "Invalid response format from createVolume");
-  }
-  /**
-   * Resize a volume
-   */
-  async resizeVolume(poolName, volumeName, capacity) {
-    const response = await apiRequest(
-      `/storages/pools/${poolName}/volumes/${volumeName}/resize`,
-      {
-        method: "POST",
-        body: JSON.stringify({ capacity })
-      }
-    );
-    if (response.status === "success" && response.data) {
-      return response.data;
-    }
-    throw new VirtualizationAPIError("INVALID_RESPONSE", "Invalid response format from resizeVolume");
-  }
-  /**
-   * Clone a volume
-   */
-  async cloneVolume(poolName, volumeName, payload) {
-    const response = await apiRequest(
-      `/storages/pools/${poolName}/volumes/${volumeName}/clone`,
-      {
-        method: "POST",
-        body: JSON.stringify(payload)
-      }
-    );
-    if (response.status === "success" && response.data) {
-      return response.data;
-    }
-    throw new VirtualizationAPIError("INVALID_RESPONSE", "Invalid response format from cloneVolume");
-  }
-  /**
-   * Delete a volume
-   */
-  async deleteVolume(poolName, volumeName, force = false) {
-    const suffix = force ? "?force=true" : "";
-    await apiRequest(`/storages/pools/${poolName}/volumes/${volumeName}${suffix}`, {
-      method: "DELETE"
-    });
-  }
-  // ============ ISO Management ============
-  /**
-   * List ISO images
-   */
-  async listISOs() {
-    return apiRequest("/isos");
-  }
-  /**
-   * Get ISO details
-   */
-  async getISO(id) {
-    return apiRequest(`/isos/${id}`);
-  }
-  /**
-   * Upload an ISO (returns upload URL for TUS)
-   * This creates a TUS upload session following the TUS protocol v1.0.0
-   */
-  async initiateISOUpload(metadata) {
-    const tusMetadata = {};
-    if (metadata.filename) {
-      tusMetadata.filename = btoa(metadata.filename);
-    }
-    if (metadata.os_type) {
-      tusMetadata.os_type = btoa(metadata.os_type);
-    }
-    if (metadata.os_variant) {
-      tusMetadata.os_variant = btoa(metadata.os_variant);
-    }
-    if (metadata.description) {
-      tusMetadata.description = btoa(metadata.description);
-    }
-    if (metadata.architecture) {
-      tusMetadata.architecture = btoa(metadata.architecture);
-    }
-    if (metadata.pool_name) {
-      tusMetadata.pool_name = btoa(metadata.pool_name);
-    }
-    const uploadMetadata = Object.entries(tusMetadata).map(([key, value]) => `${key} ${value}`).join(",");
-    const token = getAuthToken();
-    const url = getApiUrl("/virtualization/isos/upload");
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "Upload-Length": metadata.size.toString(),
-        "Upload-Metadata": uploadMetadata,
-        "Tus-Resumable": "1.0.0"
-      }
-    });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        code: "API_ERROR",
-        message: response.statusText
-      }));
-      throw new VirtualizationAPIError(
-        error.code || "API_ERROR",
-        error.message || `Request failed: ${response.status}`,
-        error.details
-      );
-    }
-    const location = response.headers.get("Location");
-    const responseData = await response.json();
-    console.log("[TUS] Session created:", {
-      location,
-      responseData,
-      originalUrl: url
-    });
-    let tusUploadUrl = location || responseData.upload_url;
-    if (tusUploadUrl && !tusUploadUrl.startsWith("http")) {
-      const fullUploadPath = tusUploadUrl.startsWith("/api/") ? tusUploadUrl : `/api/v1/virtualization/isos/upload/${responseData.upload_id}`;
-      const baseUrl = url.substring(0, url.indexOf("/api/"));
-      tusUploadUrl = baseUrl + fullUploadPath;
-    }
-    console.log("[TUS] Final upload URL:", tusUploadUrl);
-    return {
-      uploadUrl: tusUploadUrl,
-      uploadId: responseData.upload_id
-    };
-  }
-  /**
-   * Complete ISO upload
-   */
-  async completeISOUpload(uploadId) {
-    return apiRequest(`/isos/upload/${uploadId}/complete`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Get ISO upload progress
-   */
-  async getISOUploadProgress(uploadId) {
-    return apiRequest(`/isos/upload/${uploadId}/progress`);
-  }
-  /**
-   * Delete an ISO
-   */
-  async deleteISO(id) {
-    return apiRequest(`/isos/${id}`, {
-      method: "DELETE"
-    });
-  }
-  // ============ Virtual Networks ============
-  /**
-   * List virtual networks
-   * Returns networks and total count using the standard API envelope.
-   */
-  async listNetworks() {
-    const response = await apiRequest("/networks");
-    if (response.status === "success" && response.data) {
-      return {
-        networks: response.data.networks || [],
-        count: response.data.count ?? (response.data.networks?.length || 0)
-      };
-    }
-    const anyResponse = response;
-    if (Array.isArray(anyResponse)) {
-      return { networks: anyResponse, count: anyResponse.length };
-    }
-    if (anyResponse.networks && Array.isArray(anyResponse.networks)) {
-      return { networks: anyResponse.networks, count: anyResponse.count || anyResponse.networks.length };
-    }
-    return { networks: [], count: 0 };
-  }
-  /**
-   * Get a specific network
-   * Be tolerant of both enveloped and plain responses.
-   */
-  async getNetwork(name) {
-    const response = await apiRequest(`/networks/${name}`);
-    if (response && typeof response === "object") {
-      if (response.status === "success") {
-        if (response.data?.network) {
-          return response.data.network;
-        }
-        if (response.data && !Array.isArray(response.data)) {
-          return response.data;
-        }
-      }
-      if (!("status" in response)) {
-        return response;
-      }
-    }
-    throw new VirtualizationAPIError("INVALID_RESPONSE", "Invalid response format from getNetwork");
-  }
-  /**
-   * Create a virtual network
-   */
-  async createNetwork(config) {
-    const response = await apiRequest("/networks", {
-      method: "POST",
-      body: JSON.stringify(config)
-    });
-    if (response.status === "success" && response.data?.network) {
-      return response.data.network;
-    }
-    throw new VirtualizationAPIError("INVALID_RESPONSE", "Invalid response format from createNetwork");
-  }
-  /**
-   * Update a virtual network
-   */
-  async updateNetwork(name, config) {
-    const response = await apiRequest(`/networks/${name}`, {
-      method: "PUT",
-      body: JSON.stringify(config)
-    });
-    if (response.status === "success" && response.data?.network) {
-      return response.data.network;
-    }
-    throw new VirtualizationAPIError("INVALID_RESPONSE", "Invalid response format from updateNetwork");
-  }
-  /**
-   * Get DHCP leases for a virtual network
-   */
-  async getNetworkDHCPLeases(name) {
-    const response = await apiRequest(`/networks/${name}/dhcp-leases`);
-    if (response.status === "success" && response.data) {
-      return {
-        network_name: response.data.network_name || name,
-        leases: response.data.leases || [],
-        count: response.data.count ?? (response.data.leases?.length || 0)
-      };
-    }
-    throw new VirtualizationAPIError("INVALID_RESPONSE", "Invalid response format from getNetworkDHCPLeases");
-  }
-  /**
-   * Get ports for a virtual network
-   */
-  async getNetworkPorts(name) {
-    const response = await apiRequest(`/networks/${name}/ports`);
-    if (response.status === "success" && response.data) {
-      return {
-        network_name: response.data.network_name || name,
-        ports: response.data.ports || [],
-        count: response.data.count ?? (response.data.ports?.length || 0)
-      };
-    }
-    throw new VirtualizationAPIError("INVALID_RESPONSE", "Invalid response format from getNetworkPorts");
-  }
-  /**
-   * Delete a virtual network
-   */
-  async deleteNetwork(name) {
-    await apiRequest(`/networks/${name}`, {
-      method: "DELETE"
-    });
-  }
-  /**
-   * Start a network
-   */
-  async startNetwork(name) {
-    return apiRequest(`/networks/${name}/start`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Stop a network
-   */
-  async stopNetwork(name) {
-    return apiRequest(`/networks/${name}/stop`, {
-      method: "POST"
-    });
-  }
-  // ============ Metrics \u0026 Monitoring ============
-  /**
-   * Get VM metrics
-   */
-  async getVMMetrics(vmId, duration = "1h") {
-    return apiRequest(`/computes/${vmId}/metrics?duration=${duration}`);
-  }
-  /**
-   * Get host resource usage
-   */
-  async getHostResources() {
-    return apiRequest("/host/resources");
-  }
-  /**
-   * Get real-time VM metrics (WebSocket endpoint info)
-   */
-  getMetricsWebSocketUrl(vmId) {
-    const token = getAuthToken();
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    return `${protocol}//${window.location.host}${API_BASE}/computes/${vmId}/metrics/ws?token=${token}`;
-  }
-  // ============ Disk Management ============
-  /**
-   * Attach a disk to VM
-   */
-  async attachDisk(vmId, disk) {
-    return apiRequest(`/computes/${vmId}/disks/attach`, {
-      method: "POST",
-      body: JSON.stringify(disk)
-    });
-  }
-  /**
-   * Detach a disk from VM
-   */
-  async detachDisk(vmId, device) {
-    return apiRequest(`/computes/${vmId}/disks/${device}/detach`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Resize a VM disk
-   */
-  async resizeDisk(vmId, device, newSize) {
-    return apiRequest(`/computes/${vmId}/disks/${device}/resize`, {
-      method: "POST",
-      body: JSON.stringify({ size: newSize })
-    });
-  }
-  // ============ Migration ============
-  /**
-   * Migrate a VM to another host
-   */
-  async migrateVM(vmId, targetHost, live = true) {
-    return apiRequest(`/computes/${vmId}/migrate`, {
-      method: "POST",
-      body: JSON.stringify({ targetHost, live })
-    });
-  }
-  /**
-   * Get migration status
-   */
-  async getMigrationStatus(vmId) {
-    return apiRequest(`/computes/${vmId}/migrate/status`);
-  }
-  // ============ Enhanced API Methods with Full Types ============
-  /**
-   * Get VM snapshots with full type support
-   */
-  async getSnapshots(vmId) {
-    return apiRequest(`/computes/${vmId}/snapshots`);
-  }
-  /**
-   * Create a VM snapshot
-   */
-  async createSnapshotTyped(vmId, request) {
-    return apiRequest(`/computes/${vmId}/snapshots`, {
-      method: "POST",
-      body: JSON.stringify(request)
-    });
-  }
-  /**
-   * Revert VM to a snapshot
-   */
-  async revertSnapshot(vmId, snapshotName) {
-    return apiRequest(`/computes/${vmId}/snapshots/${snapshotName}/revert`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Delete a VM snapshot
-   */
-  async deleteSnapshotTyped(vmId, snapshotName) {
-    return apiRequest(`/computes/${vmId}/snapshots/${snapshotName}`, {
-      method: "DELETE"
-    });
-  }
-  /**
-   * Get snapshot capabilities for a VM
-   */
-  async getSnapshotCapabilities(vmId) {
-    return apiRequest(`/computes/${vmId}/snapshots/capabilities`);
-  }
-  /**
-   * Get VM backups with full type support
-   */
-  async getBackups(vmId) {
-    return apiRequest(`/computes/${vmId}/backups`);
-  }
-  /**
-   * Create a VM backup
-   */
-  async createBackupTyped(vmId, request) {
-    return apiRequest(`/computes/${vmId}/backups`, {
-      method: "POST",
-      body: JSON.stringify(request)
-    });
-  }
-  /**
-   * Clone a VM
-   */
-  async cloneVMTyped(vmId, request) {
-    return apiRequest(`/computes/${vmId}/clone`, {
-      method: "POST",
-      body: JSON.stringify(request)
-    });
-  }
-  /**
-   * Hot-plug device to a running VM
-   */
-  async hotplug(vmId, request) {
-    return apiRequest(`/computes/${vmId}/hotplug`, {
-      method: "POST",
-      body: JSON.stringify(request)
-    });
-  }
-  /**
-   * Hot-unplug device from a running VM
-   */
-  async hotunplug(vmId, request) {
-    return apiRequest(`/computes/${vmId}/hotunplug`, {
-      method: "POST",
-      body: JSON.stringify(request)
-    });
-  }
-  /**
-   * Migrate VM to another host with full type support
-   */
-  async migrateVMTyped(vmId, request) {
-    return apiRequest(`/computes/${vmId}/migrate`, {
-      method: "POST",
-      body: JSON.stringify(request)
-    });
-  }
-  /**
-   * Get migration status with full type
-   */
-  async getMigrationStatusTyped(vmId) {
-    return apiRequest(`/computes/${vmId}/migrate/status`);
-  }
-  /**
-   * Cancel ongoing migration
-   */
-  async cancelMigration(vmId) {
-    return apiRequest(`/computes/${vmId}/migrate/cancel`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Get available consoles for a VM
-   */
-  async getConsoles(vmId) {
-    return apiRequest(`/computes/${vmId}/consoles`);
-  }
-  /**
-   * Connect to a specific console type
-   */
-  async connectConsole(vmId, consoleType) {
-    return apiRequest(`/computes/${vmId}/consoles/${consoleType}/connect`, {
-      method: "POST"
-    });
-  }
-  /**
-   * Get enhanced VM metrics
-   */
-  async getVMMetricsEnhanced(vmId, duration = "1h") {
-    return apiRequest(`/computes/${vmId}/metrics?duration=${duration}&enhanced=true`);
-  }
-}
-const virtualizationAPI = new VirtualizationAPI();
-var __defProp$j = Object.defineProperty;
-var __getOwnPropDesc$h = Object.getOwnPropertyDescriptor;
-var __decorateClass$j = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$h(target, key) : target;
+var __defProp$k = Object.defineProperty;
+var __getOwnPropDesc$i = Object.getOwnPropertyDescriptor;
+var __decorateClass$k = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$i(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$j(target, key, result);
+  if (kind && result) __defProp$k(target, key, result);
   return result;
 };
 let VirtualizationVMsEnhanced = class extends i$2 {
@@ -64141,6 +66147,48 @@ let VirtualizationVMsEnhanced = class extends i$2 {
     this.stateFilter = "all";
     this.templates = [];
     this.selectedVMForDetails = null;
+    this.vmEventsLive = false;
+    this.unsubscribeVmEvents = null;
+    this.vmPollingTimer = null;
+    this.vmRefetchTimer = null;
+    this.vmStaleCheckTimer = null;
+    this.vmLastEventAt = 0;
+    this.vmDropNotified = false;
+    this.vmHasConnectedOnce = false;
+    this.showTemplateDrawer = false;
+    this.templateDrawerMode = "create";
+    this.editingTemplateId = null;
+    this.isSavingTemplate = false;
+    this.templateForm = {
+      name: "",
+      description: "",
+      os_type: "linux",
+      os_variant: "",
+      min_memory: "1024",
+      recommended_memory: "",
+      min_vcpus: "1",
+      recommended_vcpus: "",
+      min_disk: "10",
+      recommended_disk: "",
+      disk_format: "",
+      network_model: "",
+      graphics_type: "",
+      cloud_init: false,
+      uefi_boot: false,
+      secure_boot: false,
+      tpm: false,
+      default_user: "",
+      metadata_json: ""
+    };
+    this.templateFormErrors = {};
+    this.showTemplateDeleteModal = false;
+    this.templateToDelete = null;
+    this.isDeletingTemplate = false;
+    this.showCreateTemplateFromVmModal = false;
+    this.vmForTemplateCreation = null;
+    this.templateFromVmName = "";
+    this.templateFromVmDescription = "";
+    this.isCreatingTemplateFromVm = false;
     this.tabs = [
       { id: "vms", label: "Virtual Machines" },
       { id: "templates", label: "Templates" }
@@ -64196,6 +66244,11 @@ let VirtualizationVMsEnhanced = class extends i$2 {
   async connectedCallback() {
     super.connectedCallback();
     await this.initializeData();
+    this.startVmEventStream();
+  }
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.stopVmEventStream();
   }
   firstUpdated(_changedProperties) {
     this.notificationContainer = this.renderRoot.querySelector("notification-container");
@@ -64235,12 +66288,12 @@ let VirtualizationVMsEnhanced = class extends i$2 {
     if (this.activeMainTab === "templates") {
       return [
         { key: "name", label: "Name", type: "link" },
-        { key: "description", label: "Description" },
-        { key: "os_type", label: "OS Type" },
-        { key: "vcpus", label: "vCPUs" },
+        { key: "os", label: "OS" },
         { key: "memory", label: "Memory (MB)" },
-        { key: "disk_size", label: "Disk (GB)" },
-        { key: "created_at", label: "Created" }
+        { key: "vcpus", label: "vCPUs" },
+        { key: "disk", label: "Disk (GB)" },
+        { key: "flags", label: "Flags" },
+        { key: "updated", label: "Updated" }
       ];
     }
     return [
@@ -64311,7 +66364,8 @@ let VirtualizationVMsEnhanced = class extends i$2 {
         break;
     }
     actions.push(
-      { label: "Snapshot", action: "snapshot", icon: "📸" }
+      { label: "Snapshot", action: "snapshot", icon: "📸" },
+      { label: "Create Template", action: "create-template", icon: "📄" }
     );
     return actions;
   }
@@ -64319,7 +66373,7 @@ let VirtualizationVMsEnhanced = class extends i$2 {
     const tabId = event.detail.tabId;
     this.activeMainTab = tabId;
     if (tabId === "templates") {
-      await templateStore.fetch();
+      await templateActions.fetchAll();
     } else {
       await vmActions.fetchAll();
     }
@@ -64337,12 +66391,19 @@ let VirtualizationVMsEnhanced = class extends i$2 {
   }
   handleCellClick(event) {
     const { column, item } = event.detail;
-    if (column.key === "name" && this.activeMainTab === "vms") {
+    if (column.key !== "name") return;
+    if (this.activeMainTab === "vms") {
       this.showVMDetails(item);
+      return;
     }
+    this.openEditTemplateDrawer(item);
   }
   async handleAction(event) {
     const { action, item } = event.detail;
+    if (this.activeMainTab === "templates") {
+      await this.handleTemplateAction(action, item);
+      return;
+    }
     const vm = item;
     try {
       switch (action) {
@@ -64380,6 +66441,9 @@ let VirtualizationVMsEnhanced = class extends i$2 {
           break;
         case "snapshot":
           await this.createSnapshot(vm);
+          break;
+        case "create-template":
+          this.openCreateTemplateFromVmModal(vm);
           break;
         case "delete":
           this.confirmDeleteVM(vm);
@@ -64426,8 +66490,15 @@ let VirtualizationVMsEnhanced = class extends i$2 {
     wizardActions.openWizardForEdit(vm);
   }
   async cloneVM(vm) {
-    console.log("Clone VM:", vm.name);
-    this.showNotification("Clone functionality coming soon", "info");
+    this.selectedVMForDetails = vm;
+    this.showDetailsDrawer = true;
+    await this.updateComplete;
+    const drawer = this.renderRoot.querySelector("vm-detail-drawer");
+    if (drawer && typeof drawer.openCloneModal === "function") {
+      drawer.openCloneModal();
+    } else {
+      this.showNotification("Unable to open clone dialog", "error");
+    }
   }
   async createSnapshot(vm) {
     console.log("Create snapshot for:", vm.name);
@@ -64462,12 +66533,16 @@ let VirtualizationVMsEnhanced = class extends i$2 {
     }
   }
   handleCreateNew() {
+    if (this.activeMainTab === "templates") {
+      this.openCreateTemplateDrawer();
+      return;
+    }
     wizardActions.openWizard();
   }
   async handleRefresh() {
     try {
       if (this.activeMainTab === "templates") {
-        await templateStore.fetch();
+        await templateActions.fetchAll();
         this.showNotification("Templates refreshed", "success");
       } else {
         await vmActions.fetchAll();
@@ -64485,6 +66560,127 @@ let VirtualizationVMsEnhanced = class extends i$2 {
       bubbles: true,
       composed: true
     }));
+  }
+  startVmEventStream() {
+    if (this.unsubscribeVmEvents) return;
+    this.unsubscribeVmEvents = subscribeToEventsChannel({
+      channel: "vm-events",
+      routeId: "virtualization:vm-events",
+      onEvent: (payload) => this.handleVmEvent(payload),
+      onConnectionChange: (connected) => this.handleVmEventsConnectionChange(connected)
+    });
+    this.vmLastEventAt = Date.now();
+    if (this.vmStaleCheckTimer) window.clearInterval(this.vmStaleCheckTimer);
+    this.vmStaleCheckTimer = window.setInterval(() => {
+      if (!this.vmEventsLive) return;
+      if (!this.virtualizationEnabledController.value) return;
+      const elapsed = Date.now() - (this.vmLastEventAt || 0);
+      if (elapsed > 6e4) {
+        this.scheduleVmRefetch("stale");
+      }
+    }, 15e3);
+  }
+  stopVmEventStream() {
+    if (this.unsubscribeVmEvents) {
+      this.unsubscribeVmEvents();
+      this.unsubscribeVmEvents = null;
+    }
+    if (this.vmPollingTimer) {
+      window.clearInterval(this.vmPollingTimer);
+      this.vmPollingTimer = null;
+    }
+    if (this.vmRefetchTimer) {
+      window.clearTimeout(this.vmRefetchTimer);
+      this.vmRefetchTimer = null;
+    }
+    if (this.vmStaleCheckTimer) {
+      window.clearInterval(this.vmStaleCheckTimer);
+      this.vmStaleCheckTimer = null;
+    }
+    this.vmEventsLive = false;
+    this.vmDropNotified = false;
+  }
+  handleVmEventsConnectionChange(connected) {
+    this.vmEventsLive = connected;
+    if (!connected) {
+      if (this.vmHasConnectedOnce && !this.vmDropNotified) {
+        this.showNotification("Live VM updates disconnected — falling back to polling", "warning");
+        this.vmDropNotified = true;
+      }
+      this.ensureVmPolling();
+      return;
+    }
+    this.vmHasConnectedOnce = true;
+    this.vmDropNotified = false;
+    if (this.vmPollingTimer) {
+      window.clearInterval(this.vmPollingTimer);
+      this.vmPollingTimer = null;
+    }
+    this.scheduleVmRefetch("reconnected");
+  }
+  ensureVmPolling() {
+    if (this.vmPollingTimer) return;
+    this.vmPollingTimer = window.setInterval(() => {
+      if (!this.virtualizationEnabledController.value) return;
+      if (this.activeMainTab !== "vms") return;
+      void vmActions.fetchAll();
+    }, 3e4);
+  }
+  scheduleVmRefetch(_reason) {
+    if (this.vmRefetchTimer) return;
+    this.vmRefetchTimer = window.setTimeout(async () => {
+      this.vmRefetchTimer = null;
+      if (!this.virtualizationEnabledController.value) return;
+      if (this.activeMainTab !== "vms") return;
+      try {
+        await vmActions.fetchAll();
+        this.vmLastEventAt = Date.now();
+      } catch (e3) {
+      }
+    }, 800);
+  }
+  mapVmLifecycleEventToState(eventCode) {
+    switch (eventCode) {
+      case 2:
+      case 4:
+        return "running";
+      case 3:
+        return "paused";
+      case 7:
+        return "suspended";
+      case 0:
+      case 5:
+      case 6:
+      case 8:
+      case 1:
+        return "stopped";
+      default:
+        return "unknown";
+    }
+  }
+  vmExists(vmId) {
+    const currentItems = vmStore.$items.get();
+    if (currentItems instanceof Map) return currentItems.has(vmId);
+    if (currentItems && typeof currentItems === "object") return vmId in currentItems;
+    return false;
+  }
+  handleVmEvent(payload) {
+    if (!payload || payload.kind !== "vm") return;
+    if (!payload.id) return;
+    this.vmLastEventAt = Date.now();
+    const vmId = String(payload.id);
+    const state2 = this.mapVmLifecycleEventToState(Number(payload.event));
+    if (!this.vmExists(vmId)) {
+      this.scheduleVmRefetch("vm-missing");
+      return;
+    }
+    vmActions.updateLocalState(vmId, state2);
+    if (this.selectedVMForDetails?.id === vmId) {
+      this.selectedVMForDetails = { ...this.selectedVMForDetails, state: state2 };
+    }
+    if (Number(payload.event) === 1) {
+      this.scheduleVmRefetch("vm-undefined");
+    }
   }
   async handleVMPowerAction(event) {
     const { action, vm, success } = event.detail;
@@ -64544,6 +66740,631 @@ let VirtualizationVMsEnhanced = class extends i$2 {
     const { vm } = event.detail;
     await this.openConsole(vm);
   }
+  async handleVMCloned(event) {
+    try {
+      const clonedName = event.detail?.cloned?.name;
+      await vmActions.fetchAll();
+      if (clonedName) {
+        const items = vmStore.$items.get();
+        let vms = [];
+        if (items instanceof Map) {
+          vms = Array.from(items.values());
+        } else if (Array.isArray(items)) {
+          vms = items;
+        } else if (items && typeof items === "object") {
+          vms = Object.values(items);
+        }
+        const found = vms.find((v2) => v2?.name === clonedName);
+        if (found) {
+          this.showVMDetails(found);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to refresh VMs after clone:", error);
+    }
+  }
+  async handleWizardVmCreated(event) {
+    const vm = event.detail?.vm;
+    if (!vm) return;
+    this.activeMainTab = "vms";
+    try {
+      await vmActions.fetchAll();
+    } catch {
+    }
+    this.showVMDetails(vm);
+  }
+  // ============ Templates helpers ============
+  getTemplateActions(_template) {
+    return [
+      { label: "Create VM", action: "create-vm", icon: "🖥️" },
+      { label: "Edit", action: "edit", icon: "✏️" },
+      { label: "Delete", action: "delete", icon: "🗑️", danger: true }
+    ];
+  }
+  renderTemplateFlags(template) {
+    const flags = [
+      { label: "Cloud-Init", on: template.cloud_init },
+      { label: "UEFI", on: template.uefi_boot },
+      { label: "Secure Boot", on: template.secure_boot },
+      { label: "TPM", on: template.tpm }
+    ];
+    return x`
+      <div class="flag-badges">
+        ${flags.map((f2) => x`
+          <span class="flag-badge ${f2.on ? "on" : "off"}">
+            ${f2.on ? "✓" : "—"} ${f2.label}
+          </span>
+        `)}
+      </div>
+    `;
+  }
+  async handleTemplateAction(action, template) {
+    switch (action) {
+      case "create-vm":
+        wizardActions.openWizardFromTemplate(template);
+        break;
+      case "view":
+      case "edit":
+        this.openEditTemplateDrawer(template);
+        break;
+      case "delete":
+        this.confirmDeleteTemplate(template);
+        break;
+      default:
+        console.warn(`Unknown template action: ${action}`);
+    }
+  }
+  openCreateTemplateDrawer() {
+    this.templateDrawerMode = "create";
+    this.editingTemplateId = null;
+    this.templateFormErrors = {};
+    this.templateForm = {
+      name: "",
+      description: "",
+      os_type: "linux",
+      os_variant: "",
+      min_memory: "1024",
+      recommended_memory: "",
+      min_vcpus: "1",
+      recommended_vcpus: "",
+      min_disk: "10",
+      recommended_disk: "",
+      disk_format: "",
+      network_model: "",
+      graphics_type: "",
+      cloud_init: false,
+      uefi_boot: false,
+      secure_boot: false,
+      tpm: false,
+      default_user: "",
+      metadata_json: ""
+    };
+    this.showTemplateDrawer = true;
+  }
+  openEditTemplateDrawer(template) {
+    this.templateDrawerMode = "edit";
+    this.editingTemplateId = template.id;
+    this.templateFormErrors = {};
+    this.templateForm = {
+      name: template.name || "",
+      description: template.description || "",
+      os_type: template.os_type || "linux",
+      os_variant: template.os_variant || "",
+      min_memory: String(template.min_memory ?? ""),
+      recommended_memory: template.recommended_memory !== void 0 && template.recommended_memory !== null ? String(template.recommended_memory) : "",
+      min_vcpus: String(template.min_vcpus ?? ""),
+      recommended_vcpus: template.recommended_vcpus !== void 0 && template.recommended_vcpus !== null ? String(template.recommended_vcpus) : "",
+      min_disk: String(template.min_disk ?? ""),
+      recommended_disk: template.recommended_disk !== void 0 && template.recommended_disk !== null ? String(template.recommended_disk) : "",
+      disk_format: template.disk_format || "",
+      network_model: template.network_model || "",
+      graphics_type: template.graphics_type || "",
+      cloud_init: !!template.cloud_init,
+      uefi_boot: !!template.uefi_boot,
+      secure_boot: !!template.secure_boot,
+      tpm: !!template.tpm,
+      default_user: template.default_user || "",
+      metadata_json: template.metadata ? JSON.stringify(template.metadata, null, 2) : ""
+    };
+    this.showTemplateDrawer = true;
+  }
+  closeTemplateDrawer() {
+    this.showTemplateDrawer = false;
+    this.templateFormErrors = {};
+  }
+  async saveTemplate() {
+    const errors = {};
+    const name = this.templateForm.name.trim();
+    if (this.templateDrawerMode === "create" && !name) {
+      errors.name = "Name is required";
+    }
+    const min_memory = Number(this.templateForm.min_memory);
+    if (!Number.isFinite(min_memory) || min_memory <= 0) {
+      errors.min_memory = "Min memory must be a positive number";
+    }
+    const min_vcpus = Number(this.templateForm.min_vcpus);
+    if (!Number.isFinite(min_vcpus) || min_vcpus <= 0) {
+      errors.min_vcpus = "Min vCPUs must be a positive number";
+    }
+    const min_disk = Number(this.templateForm.min_disk);
+    if (!Number.isFinite(min_disk) || min_disk <= 0) {
+      errors.min_disk = "Min disk must be a positive number";
+    }
+    const parseOptional = (value) => {
+      const v2 = value.trim();
+      if (!v2) return void 0;
+      const n3 = Number(v2);
+      if (!Number.isFinite(n3)) return void 0;
+      return n3;
+    };
+    const recommended_memory = parseOptional(this.templateForm.recommended_memory);
+    if (recommended_memory !== void 0 && Number.isFinite(min_memory) && recommended_memory < min_memory) {
+      errors.recommended_memory = "Recommended memory must be >= min memory";
+    }
+    const recommended_vcpus = parseOptional(this.templateForm.recommended_vcpus);
+    if (recommended_vcpus !== void 0 && Number.isFinite(min_vcpus) && recommended_vcpus < min_vcpus) {
+      errors.recommended_vcpus = "Recommended vCPUs must be >= min vCPUs";
+    }
+    const recommended_disk = parseOptional(this.templateForm.recommended_disk);
+    if (recommended_disk !== void 0 && Number.isFinite(min_disk) && recommended_disk < min_disk) {
+      errors.recommended_disk = "Recommended disk must be >= min disk";
+    }
+    let metadata;
+    const metaText = this.templateForm.metadata_json.trim();
+    if (metaText) {
+      try {
+        const parsed = JSON.parse(metaText);
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          errors.metadata_json = "Metadata must be a JSON object (key/value)";
+        } else {
+          const out = {};
+          for (const [k2, v2] of Object.entries(parsed)) {
+            if (v2 === null || v2 === void 0) continue;
+            if (typeof v2 === "string" || typeof v2 === "number" || typeof v2 === "boolean") {
+              out[String(k2)] = String(v2);
+            } else {
+              errors.metadata_json = "Metadata values must be strings/numbers/booleans";
+              break;
+            }
+          }
+          if (!errors.metadata_json) {
+            metadata = out;
+          }
+        }
+      } catch {
+        errors.metadata_json = "Metadata must be valid JSON";
+      }
+    }
+    if (Object.keys(errors).length > 0) {
+      this.templateFormErrors = errors;
+      return;
+    }
+    const common = {
+      description: this.templateForm.description.trim() || void 0,
+      os_type: this.templateForm.os_type,
+      os_variant: this.templateForm.os_variant.trim() || void 0,
+      min_memory,
+      recommended_memory,
+      min_vcpus,
+      recommended_vcpus,
+      min_disk,
+      recommended_disk,
+      disk_format: this.templateForm.disk_format || void 0,
+      network_model: this.templateForm.network_model || void 0,
+      graphics_type: this.templateForm.graphics_type || void 0,
+      cloud_init: this.templateForm.cloud_init,
+      uefi_boot: this.templateForm.uefi_boot,
+      secure_boot: this.templateForm.secure_boot,
+      tpm: this.templateForm.tpm,
+      default_user: this.templateForm.default_user.trim() || void 0,
+      metadata
+    };
+    this.isSavingTemplate = true;
+    try {
+      if (this.templateDrawerMode === "create") {
+        const created = await templateActions.create({
+          name: this.templateForm.name.trim(),
+          ...common
+        });
+        this.showNotification(`Template "${created.name}" created`, "success");
+      } else if (this.editingTemplateId) {
+        const updated = await templateActions.update(this.editingTemplateId, common);
+        this.showNotification(`Template "${updated.name}" updated`, "success");
+      }
+      this.closeTemplateDrawer();
+    } catch (error) {
+      const err = error;
+      const code = err?.code ? ` (${err.code})` : "";
+      const details = err?.details ? ` - ${err.details}` : "";
+      this.showNotification(`Failed to save template: ${err instanceof Error ? err.message : "Unknown error"}${details}${code}`, "error");
+    } finally {
+      this.isSavingTemplate = false;
+    }
+  }
+  confirmDeleteTemplate(template) {
+    this.templateToDelete = template;
+    this.showTemplateDeleteModal = true;
+    this.requestUpdate();
+  }
+  async handleDeleteTemplate() {
+    if (!this.templateToDelete) return;
+    this.isDeletingTemplate = true;
+    try {
+      await templateActions.delete(this.templateToDelete.id);
+      this.showNotification(`Template "${this.templateToDelete.name}" deleted successfully`, "success");
+      this.showTemplateDeleteModal = false;
+      this.templateToDelete = null;
+    } catch (error) {
+      const err = error;
+      const code = err?.code ? ` (${err.code})` : "";
+      const details = err?.details ? ` - ${err.details}` : "";
+      this.showNotification(`Failed to delete template: ${err instanceof Error ? err.message : "Unknown error"}${details}${code}`, "error");
+    } finally {
+      this.isDeletingTemplate = false;
+    }
+  }
+  openCreateTemplateFromVmModal(vm) {
+    this.vmForTemplateCreation = vm;
+    this.templateFromVmName = `${vm.name}-template`;
+    this.templateFromVmDescription = "";
+    this.showCreateTemplateFromVmModal = true;
+  }
+  closeCreateTemplateFromVmModal() {
+    this.showCreateTemplateFromVmModal = false;
+    this.vmForTemplateCreation = null;
+    this.templateFromVmName = "";
+    this.templateFromVmDescription = "";
+    this.isCreatingTemplateFromVm = false;
+  }
+  async submitCreateTemplateFromVm() {
+    if (!this.vmForTemplateCreation) return;
+    const name = this.templateFromVmName.trim();
+    if (!name) {
+      this.showNotification("Template name is required", "error");
+      return;
+    }
+    this.isCreatingTemplateFromVm = true;
+    try {
+      const created = await templateActions.createFromVM(
+        this.vmForTemplateCreation.id,
+        name,
+        this.templateFromVmDescription.trim() || void 0
+      );
+      this.showNotification(`Template "${created.name}" created from VM "${this.vmForTemplateCreation.name}"`, "success");
+      this.activeMainTab = "templates";
+      this.closeCreateTemplateFromVmModal();
+    } catch (error) {
+      const err = error;
+      const code = err?.code ? ` (${err.code})` : "";
+      const details = err?.details ? ` - ${err.details}` : "";
+      this.showNotification(`Failed to create template: ${err instanceof Error ? err.message : "Unknown error"}${details}${code}`, "error");
+      this.isCreatingTemplateFromVm = false;
+    }
+  }
+  renderCreateTemplateFromVmModal() {
+    return x`
+      <modal-dialog
+        .open=${this.showCreateTemplateFromVmModal}
+        .title=${this.vmForTemplateCreation ? `Create Template from ${this.vmForTemplateCreation.name}` : "Create Template from VM"}
+        size="small"
+        @modal-close=${this.closeCreateTemplateFromVmModal}
+      >
+        <div class="form-group">
+          <label>Template Name</label>
+          <input
+            type="text"
+            .value=${this.templateFromVmName}
+            @input=${(e3) => {
+      this.templateFromVmName = e3.target.value;
+    }}
+          />
+        </div>
+        <div class="form-group">
+          <label>Description (optional)</label>
+          <input
+            type="text"
+            .value=${this.templateFromVmDescription}
+            @input=${(e3) => {
+      this.templateFromVmDescription = e3.target.value;
+    }}
+          />
+        </div>
+
+        <div slot="footer" class="modal-footer-actions">
+          <button class="btn btn-secondary" @click=${this.closeCreateTemplateFromVmModal}>
+            Cancel
+          </button>
+          <button
+            class="btn btn-primary"
+            @click=${this.submitCreateTemplateFromVm}
+            ?disabled=${this.isCreatingTemplateFromVm || !this.templateFromVmName.trim()}
+          >
+            ${this.isCreatingTemplateFromVm ? "Creating…" : "Create Template"}
+          </button>
+        </div>
+      </modal-dialog>
+    `;
+  }
+  renderTemplateDrawer() {
+    if (!this.showTemplateDrawer) return x``;
+    const isEdit = this.templateDrawerMode === "edit";
+    return x`
+      <div class="drawer-overlay" @click=${this.closeTemplateDrawer}></div>
+      <div class="drawer">
+        <div class="drawer-header">
+          <h2 class="drawer-title">${isEdit ? "Edit Template" : "Create Template"}</h2>
+          <button class="drawer-close" @click=${this.closeTemplateDrawer} aria-label="Close">✕</button>
+        </div>
+
+        <div class="drawer-content">
+          <div class="form-group">
+            <label>Name${isEdit ? "" : " *"}</label>
+            <input
+              type="text"
+              .value=${this.templateForm.name}
+              ?disabled=${isEdit}
+              @input=${(e3) => {
+      this.templateForm = { ...this.templateForm, name: e3.target.value };
+    }}
+            />
+            ${this.templateFormErrors.name ? x`<div class="error-text">${this.templateFormErrors.name}</div>` : ""}
+            ${isEdit ? x`<div class="help-text">Template name cannot be changed.</div>` : ""}
+          </div>
+
+          <div class="form-group">
+            <label>Description</label>
+            <input
+              type="text"
+              .value=${this.templateForm.description}
+              @input=${(e3) => {
+      this.templateForm = { ...this.templateForm, description: e3.target.value };
+    }}
+            />
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label>OS Type *</label>
+              <select
+                .value=${this.templateForm.os_type}
+                @change=${(e3) => {
+      this.templateForm = { ...this.templateForm, os_type: e3.target.value };
+    }}
+              >
+                <option value="linux">linux</option>
+                <option value="windows">windows</option>
+                <option value="bsd">bsd</option>
+                <option value="other">other</option>
+                <option value="hvm">hvm</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>OS Variant</label>
+              <os-variant-autocomplete
+                .value=${this.templateForm.os_variant}
+                .family=${this.templateForm.os_type}
+                placeholder="ubuntu22.04"
+                @os-variant-change=${(e3) => {
+      this.templateForm = { ...this.templateForm, os_variant: e3.detail.value };
+    }}
+              ></os-variant-autocomplete>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Min Memory (MB) *</label>
+              <input
+                type="number"
+                min="1"
+                .value=${this.templateForm.min_memory}
+                @input=${(e3) => {
+      this.templateForm = { ...this.templateForm, min_memory: e3.target.value };
+    }}
+              />
+              ${this.templateFormErrors.min_memory ? x`<div class="error-text">${this.templateFormErrors.min_memory}</div>` : ""}
+            </div>
+
+            <div class="form-group">
+              <label>Recommended Memory (MB)</label>
+              <input
+                type="number"
+                min="1"
+                .value=${this.templateForm.recommended_memory}
+                @input=${(e3) => {
+      this.templateForm = { ...this.templateForm, recommended_memory: e3.target.value };
+    }}
+              />
+              ${this.templateFormErrors.recommended_memory ? x`<div class="error-text">${this.templateFormErrors.recommended_memory}</div>` : ""}
+            </div>
+
+            <div class="form-group">
+              <label>Min vCPUs *</label>
+              <input
+                type="number"
+                min="1"
+                .value=${this.templateForm.min_vcpus}
+                @input=${(e3) => {
+      this.templateForm = { ...this.templateForm, min_vcpus: e3.target.value };
+    }}
+              />
+              ${this.templateFormErrors.min_vcpus ? x`<div class="error-text">${this.templateFormErrors.min_vcpus}</div>` : ""}
+            </div>
+
+            <div class="form-group">
+              <label>Recommended vCPUs</label>
+              <input
+                type="number"
+                min="1"
+                .value=${this.templateForm.recommended_vcpus}
+                @input=${(e3) => {
+      this.templateForm = { ...this.templateForm, recommended_vcpus: e3.target.value };
+    }}
+              />
+              ${this.templateFormErrors.recommended_vcpus ? x`<div class="error-text">${this.templateFormErrors.recommended_vcpus}</div>` : ""}
+            </div>
+
+            <div class="form-group">
+              <label>Min Disk (GB) *</label>
+              <input
+                type="number"
+                min="1"
+                .value=${this.templateForm.min_disk}
+                @input=${(e3) => {
+      this.templateForm = { ...this.templateForm, min_disk: e3.target.value };
+    }}
+              />
+              ${this.templateFormErrors.min_disk ? x`<div class="error-text">${this.templateFormErrors.min_disk}</div>` : ""}
+            </div>
+
+            <div class="form-group">
+              <label>Recommended Disk (GB)</label>
+              <input
+                type="number"
+                min="1"
+                .value=${this.templateForm.recommended_disk}
+                @input=${(e3) => {
+      this.templateForm = { ...this.templateForm, recommended_disk: e3.target.value };
+    }}
+              />
+              ${this.templateFormErrors.recommended_disk ? x`<div class="error-text">${this.templateFormErrors.recommended_disk}</div>` : ""}
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Disk Format</label>
+              <select
+                .value=${this.templateForm.disk_format}
+                @change=${(e3) => {
+      this.templateForm = { ...this.templateForm, disk_format: e3.target.value };
+    }}
+              >
+                <option value="">Default</option>
+                <option value="qcow2">qcow2</option>
+                <option value="raw">raw</option>
+                <option value="vmdk">vmdk</option>
+                <option value="qed">qed</option>
+                <option value="vdi">vdi</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Network Model</label>
+              <select
+                .value=${this.templateForm.network_model}
+                @change=${(e3) => {
+      this.templateForm = { ...this.templateForm, network_model: e3.target.value };
+    }}
+              >
+                <option value="">Default</option>
+                <option value="virtio">virtio</option>
+                <option value="e1000">e1000</option>
+                <option value="rtl8139">rtl8139</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Graphics Type</label>
+              <select
+                .value=${this.templateForm.graphics_type}
+                @change=${(e3) => {
+      this.templateForm = { ...this.templateForm, graphics_type: e3.target.value };
+    }}
+              >
+                <option value="">Default</option>
+                <option value="vnc">vnc</option>
+                <option value="spice">spice</option>
+                <option value="none">none</option>
+                <option value="egl-headless">egl-headless</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Default User</label>
+              <input
+                type="text"
+                .value=${this.templateForm.default_user}
+                @input=${(e3) => {
+      this.templateForm = { ...this.templateForm, default_user: e3.target.value };
+    }}
+              />
+            </div>
+          </div>
+
+          <div class="toggle-row">
+            <label class="toggle">
+              <input
+                type="checkbox"
+                .checked=${this.templateForm.cloud_init}
+                @change=${(e3) => {
+      this.templateForm = { ...this.templateForm, cloud_init: e3.target.checked };
+    }}
+              />
+              Cloud-Init
+            </label>
+            <label class="toggle">
+              <input
+                type="checkbox"
+                .checked=${this.templateForm.uefi_boot}
+                @change=${(e3) => {
+      this.templateForm = { ...this.templateForm, uefi_boot: e3.target.checked };
+    }}
+              />
+              UEFI Boot
+            </label>
+            <label class="toggle">
+              <input
+                type="checkbox"
+                .checked=${this.templateForm.secure_boot}
+                @change=${(e3) => {
+      this.templateForm = { ...this.templateForm, secure_boot: e3.target.checked };
+    }}
+              />
+              Secure Boot
+            </label>
+            <label class="toggle">
+              <input
+                type="checkbox"
+                .checked=${this.templateForm.tpm}
+                @change=${(e3) => {
+      this.templateForm = { ...this.templateForm, tpm: e3.target.checked };
+    }}
+              />
+              TPM
+            </label>
+          </div>
+
+          <div class="form-group">
+            <label>Metadata (JSON)</label>
+            <textarea
+              .value=${this.templateForm.metadata_json}
+              placeholder="{\n  \"key\": \"value\"\n}"
+              @input=${(e3) => {
+      this.templateForm = { ...this.templateForm, metadata_json: e3.target.value };
+    }}
+            ></textarea>
+            ${this.templateFormErrors.metadata_json ? x`<div class="error-text">${this.templateFormErrors.metadata_json}</div>` : ""}
+            <div class="help-text">Must be a JSON object with scalar values (strings/numbers/booleans).</div>
+          </div>
+        </div>
+
+        <div class="drawer-footer">
+          <button class="btn btn-secondary" @click=${this.closeTemplateDrawer} ?disabled=${this.isSavingTemplate}>
+            Cancel
+          </button>
+          <button
+            class="btn btn-primary"
+            @click=${this.saveTemplate}
+            ?disabled=${this.isSavingTemplate}
+          >
+            ${this.isSavingTemplate ? "Saving…" : isEdit ? "Save Changes" : "Create Template"}
+          </button>
+        </div>
+      </div>
+    `;
+  }
   renderVirtualizationDisabledBanner(details) {
     return x`
       <div class="virtualization-disabled-banner">
@@ -64583,11 +67404,20 @@ let VirtualizationVMsEnhanced = class extends i$2 {
     if (this.stateFilter !== "all") {
       displayVMs = filteredVMs.filter((vm) => vm.state === this.stateFilter);
     }
-    const tableData = this.activeMainTab === "templates" ? this.templates.map((template) => ({
+    const query = (searchQuery || "").toLowerCase().trim();
+    const displayTemplates = query ? this.templates.filter((t2) => {
+      const hay = `${t2.name} ${t2.description || ""} ${t2.os_type} ${t2.os_variant || ""}`.toLowerCase();
+      return hay.includes(query);
+    }) : this.templates;
+    const formatMinRec = (min, rec) => rec !== void 0 && rec !== null ? `${min} / ${rec}` : `${min}`;
+    const tableData = this.activeMainTab === "templates" ? displayTemplates.map((template) => ({
       ...template,
-      memory_formatted: this.formatMemory(template.memory),
-      disk_formatted: this.formatDiskSize(template.disk_size),
-      created_formatted: new Date(template.created_at).toLocaleDateString()
+      os: template.os_variant ? `${template.os_type} / ${template.os_variant}` : template.os_type,
+      memory: formatMinRec(template.min_memory, template.recommended_memory),
+      vcpus: formatMinRec(template.min_vcpus, template.recommended_vcpus),
+      disk: formatMinRec(template.min_disk, template.recommended_disk),
+      flags: template,
+      updated: new Date(template.updated_at || template.created_at).toLocaleDateString()
     })) : displayVMs.map((vm) => ({
       ...vm,
       state_rendered: this.renderStateCell(vm.state),
@@ -64687,11 +67517,17 @@ let VirtualizationVMsEnhanced = class extends i$2 {
             ></search-input>
           </div>
           <div class="actions-section">
+            ${this.activeMainTab === "vms" ? x`
+              <span class="live-indicator ${this.vmEventsLive ? "on" : "off"}" title="${this.vmEventsLive ? "Live updates connected" : "Live updates disconnected"}">
+                <span class="dot"></span>
+                Live
+              </span>
+            ` : ""}
             <button class="btn-refresh" @click=${this.handleRefresh} title="Refresh">
               🔄
             </button>
             <button class="btn-create" @click=${this.handleCreateNew}>
-              <span>+ New VM</span>
+              <span>+ New ${this.activeMainTab === "templates" ? "Template" : "VM"}</span>
             </button>
           </div>
         </div>
@@ -64716,7 +67552,8 @@ let VirtualizationVMsEnhanced = class extends i$2 {
             <resource-table
               .columns=${this.getColumns()}
               .data=${tableData}
-              .getActions=${(item) => this.activeMainTab === "templates" ? [] : this.getActions(item)}
+              .getActions=${(item) => this.activeMainTab === "templates" ? this.getTemplateActions(item) : this.getActions(item)}
+              .customRenderers=${this.activeMainTab === "templates" ? { flags: (tpl) => this.renderTemplateFlags(tpl) } : {}}
               @cell-click=${this.handleCellClick}
               @action=${this.handleAction}
             ></resource-table>
@@ -64733,6 +67570,7 @@ let VirtualizationVMsEnhanced = class extends i$2 {
     }}
           @power-action=${this.handleVMPowerAction}
           @console-connect=${this.handleVMConsoleConnect}
+          @vm-cloned=${this.handleVMCloned}
         ></vm-detail-drawer>
 
         <!-- Delete Confirmation Modal -->
@@ -64751,9 +67589,28 @@ let VirtualizationVMsEnhanced = class extends i$2 {
     }}
         ></delete-modal>
 
+        <!-- Template Delete Confirmation Modal -->
+        <delete-modal
+          .show=${this.showTemplateDeleteModal}
+          .item=${this.templateToDelete ? {
+      name: this.templateToDelete.name,
+      type: "Template"
+    } : null}
+          .loading=${this.isDeletingTemplate}
+          @confirm-delete=${this.handleDeleteTemplate}
+          @cancel-delete=${() => {
+      this.showTemplateDeleteModal = false;
+      this.templateToDelete = null;
+      this.requestUpdate();
+    }}
+        ></delete-modal>
+
+        ${this.renderTemplateDrawer()}
+        ${this.renderCreateTemplateFromVmModal()}
+
         <!-- VM Creation Wizard -->
         ${this.useEnhancedWizard ? x`
-          <create-vm-wizard-enhanced></create-vm-wizard-enhanced>
+          <create-vm-wizard-enhanced @vm-created=${this.handleWizardVmCreated}></create-vm-wizard-enhanced>
         ` : x`
           <create-vm-wizard></create-vm-wizard>
         `}
@@ -64937,6 +67794,38 @@ VirtualizationVMsEnhanced.styles = i$5`
       gap: 8px;
     }
 
+    .live-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      font-size: 11px;
+      color: var(--vscode-descriptionForeground);
+      user-select: none;
+    }
+
+    .live-indicator .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(204, 204, 204, 0.5);
+    }
+
+    .live-indicator.on {
+      border-color: rgba(137, 209, 133, 0.6);
+      color: rgba(137, 209, 133, 1);
+    }
+
+    .live-indicator.on .dot {
+      background: rgba(137, 209, 133, 1);
+    }
+
+    .live-indicator.off {
+      opacity: 0.75;
+    }
+
     search-input {
       flex: 1;
       max-width: 400px;
@@ -65035,46 +67924,352 @@ VirtualizationVMsEnhanced.styles = i$5`
       font-size: 13px;
       color: var(--vscode-descriptionForeground);
     }
+    /* Templates drawer + form */
+    .drawer-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+    }
+
+    .drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 520px;
+      max-width: calc(100vw - 40px);
+      height: 100vh;
+      background: var(--vscode-editor-background, var(--vscode-bg-light));
+      border-left: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      box-shadow: -2px 0 12px rgba(0, 0, 0, 0.25);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .drawer-header {
+      padding: 16px 20px;
+      background: var(--vscode-bg-lighter, #2c2f3a);
+      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .drawer-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--vscode-foreground);
+    }
+
+    .drawer-close {
+      background: none;
+      border: none;
+      color: var(--vscode-descriptionForeground);
+      cursor: pointer;
+      padding: 6px 8px;
+      border-radius: 4px;
+    }
+
+    .drawer-close:hover {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--vscode-foreground);
+    }
+
+    .drawer-content {
+      padding: 16px 20px;
+      overflow: auto;
+      flex: 1;
+    }
+
+    .drawer-footer {
+      padding: 14px 20px;
+      border-top: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      background: var(--vscode-bg);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    /* Buttons (match create-vm-wizard-enhanced) */
+    .btn {
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+      font-family: inherit;
+    }
+
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: var(--vscode-button-background, #0e639c);
+      color: var(--vscode-button-foreground, #ffffff);
+      border: 1px solid var(--vscode-button-background, #0e639c);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--vscode-button-hoverBackground, #1177bb);
+      border-color: var(--vscode-button-hoverBackground, #1177bb);
+    }
+
+    .btn-secondary {
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      color: var(--vscode-button-secondaryForeground, #cccccc);
+      border: 1px solid var(--vscode-button-border, #5a5a5a);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--vscode-button-secondaryHoverBackground, rgba(90, 93, 94, 0.25));
+    }
+
+    .modal-footer-actions {
+      width: 100%;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    /* Form elements (match create-vm-wizard-enhanced) */
+    .form-group {
+      margin-bottom: 20px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--vscode-foreground, #cccccc);
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      max-width: 100%;
+      padding: 8px 12px;
+      background: var(--vscode-input-background, #3c3c3c);
+      color: var(--vscode-input-foreground, #cccccc);
+      border: 1px solid var(--vscode-input-border, #858585);
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: inherit;
+      transition: all 0.2s;
+      box-sizing: border-box;
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+      color: var(--vscode-input-placeholderForeground, rgba(204, 204, 204, 0.6));
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: var(--vscode-focusBorder, #007acc);
+      box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc);
+    }
+
+    input:disabled,
+    select:disabled,
+    textarea:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    input[type="checkbox"] {
+      width: auto;
+      max-width: none;
+      padding: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    textarea {
+      min-height: 90px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    }
+
+    .help-text {
+      font-size: 11px;
+      color: var(--vscode-descriptionForeground);
+      opacity: 0.8;
+    }
+
+    .error-text {
+      color: var(--vscode-inputValidation-errorForeground, #f48771);
+      font-size: 12px;
+    }
+
+    .toggle-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 10px 0 6px;
+    }
+
+    .toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .toggle input {
+      width: 14px;
+      height: 14px;
+    }
+
+    .flag-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .flag-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .flag-badge.on {
+      border-color: rgba(137, 209, 133, 0.6);
+      color: rgba(137, 209, 133, 1);
+    }
+
+    .flag-badge.off {
+      opacity: 0.6;
+    }
+
+    @media (max-width: 820px) {
+      .drawer {
+        width: 100%;
+        max-width: 100%;
+      }
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+      .toggle-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
 
   `;
-__decorateClass$j([
+__decorateClass$k([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "showDeleteModal", 2);
-__decorateClass$j([
+__decorateClass$k([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "vmToDelete", 2);
-__decorateClass$j([
+__decorateClass$k([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "isDeleting", 2);
-__decorateClass$j([
+__decorateClass$k([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "showDetailsDrawer", 2);
-__decorateClass$j([
+__decorateClass$k([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "useEnhancedWizard", 2);
-__decorateClass$j([
+__decorateClass$k([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "activeMainTab", 2);
-__decorateClass$j([
+__decorateClass$k([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "stateFilter", 2);
-__decorateClass$j([
+__decorateClass$k([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "templates", 2);
-__decorateClass$j([
+__decorateClass$k([
   r$1()
 ], VirtualizationVMsEnhanced.prototype, "selectedVMForDetails", 2);
-VirtualizationVMsEnhanced = __decorateClass$j([
+__decorateClass$k([
+  r$1()
+], VirtualizationVMsEnhanced.prototype, "vmEventsLive", 2);
+__decorateClass$k([
+  r$1()
+], VirtualizationVMsEnhanced.prototype, "showTemplateDrawer", 2);
+__decorateClass$k([
+  r$1()
+], VirtualizationVMsEnhanced.prototype, "templateDrawerMode", 2);
+__decorateClass$k([
+  r$1()
+], VirtualizationVMsEnhanced.prototype, "editingTemplateId", 2);
+__decorateClass$k([
+  r$1()
+], VirtualizationVMsEnhanced.prototype, "isSavingTemplate", 2);
+__decorateClass$k([
+  r$1()
+], VirtualizationVMsEnhanced.prototype, "templateForm", 2);
+__decorateClass$k([
+  r$1()
+], VirtualizationVMsEnhanced.prototype, "templateFormErrors", 2);
+__decorateClass$k([
+  r$1()
+], VirtualizationVMsEnhanced.prototype, "showTemplateDeleteModal", 2);
+__decorateClass$k([
+  r$1()
+], VirtualizationVMsEnhanced.prototype, "templateToDelete", 2);
+__decorateClass$k([
+  r$1()
+], VirtualizationVMsEnhanced.prototype, "isDeletingTemplate", 2);
+__decorateClass$k([
+  r$1()
+], VirtualizationVMsEnhanced.prototype, "showCreateTemplateFromVmModal", 2);
+__decorateClass$k([
+  r$1()
+], VirtualizationVMsEnhanced.prototype, "vmForTemplateCreation", 2);
+__decorateClass$k([
+  r$1()
+], VirtualizationVMsEnhanced.prototype, "templateFromVmName", 2);
+__decorateClass$k([
+  r$1()
+], VirtualizationVMsEnhanced.prototype, "templateFromVmDescription", 2);
+__decorateClass$k([
+  r$1()
+], VirtualizationVMsEnhanced.prototype, "isCreatingTemplateFromVm", 2);
+VirtualizationVMsEnhanced = __decorateClass$k([
   t$2("virtualization-vms-enhanced")
 ], VirtualizationVMsEnhanced);
-var __defProp$i = Object.defineProperty;
-var __getOwnPropDesc$g = Object.getOwnPropertyDescriptor;
-var __decorateClass$i = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$g(target, key) : target;
+var __defProp$j = Object.defineProperty;
+var __getOwnPropDesc$h = Object.getOwnPropertyDescriptor;
+var __decorateClass$j = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$h(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$i(target, key, result);
+  if (kind && result) __defProp$j(target, key, result);
   return result;
 };
 let StoragePoolFormDrawer = class extends i$2 {
@@ -65588,35 +68783,35 @@ StoragePoolFormDrawer.styles = i$5`
       cursor: not-allowed;
     }
   `;
-__decorateClass$i([
+__decorateClass$j([
   n2({ type: Boolean, reflect: true })
 ], StoragePoolFormDrawer.prototype, "show", 2);
-__decorateClass$i([
+__decorateClass$j([
   n2({ type: Boolean })
 ], StoragePoolFormDrawer.prototype, "loading", 2);
-__decorateClass$i([
+__decorateClass$j([
   n2({ type: Boolean })
 ], StoragePoolFormDrawer.prototype, "editMode", 2);
-__decorateClass$i([
+__decorateClass$j([
   n2({ type: Object })
 ], StoragePoolFormDrawer.prototype, "poolData", 2);
-__decorateClass$i([
+__decorateClass$j([
   r$1()
 ], StoragePoolFormDrawer.prototype, "formData", 2);
-__decorateClass$i([
+__decorateClass$j([
   r$1()
 ], StoragePoolFormDrawer.prototype, "errors", 2);
-StoragePoolFormDrawer = __decorateClass$i([
+StoragePoolFormDrawer = __decorateClass$j([
   t$2("storage-pool-form-drawer")
 ], StoragePoolFormDrawer);
-var __defProp$h = Object.defineProperty;
-var __getOwnPropDesc$f = Object.getOwnPropertyDescriptor;
-var __decorateClass$h = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$f(target, key) : target;
+var __defProp$i = Object.defineProperty;
+var __getOwnPropDesc$g = Object.getOwnPropertyDescriptor;
+var __decorateClass$i = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$g(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$h(target, key, result);
+  if (kind && result) __defProp$i(target, key, result);
   return result;
 };
 let VirtualizationStoragePools = class extends i$2 {
@@ -66194,50 +69389,50 @@ VirtualizationStoragePools.styles = i$5`
       color: var(--vscode-descriptionForeground);
     }
   `;
-__decorateClass$h([
+__decorateClass$i([
   r$1()
 ], VirtualizationStoragePools.prototype, "showDetails", 2);
-__decorateClass$h([
+__decorateClass$i([
   r$1()
 ], VirtualizationStoragePools.prototype, "showDeleteModal", 2);
-__decorateClass$h([
+__decorateClass$i([
   r$1()
 ], VirtualizationStoragePools.prototype, "itemToDelete", 2);
-__decorateClass$h([
+__decorateClass$i([
   r$1()
 ], VirtualizationStoragePools.prototype, "isDeleting", 2);
-__decorateClass$h([
+__decorateClass$i([
   r$1()
 ], VirtualizationStoragePools.prototype, "showFormDrawer", 2);
-__decorateClass$h([
+__decorateClass$i([
   r$1()
 ], VirtualizationStoragePools.prototype, "showEditDrawer", 2);
-__decorateClass$h([
+__decorateClass$i([
   r$1()
 ], VirtualizationStoragePools.prototype, "editingPool", 2);
-__decorateClass$h([
+__decorateClass$i([
   r$1()
 ], VirtualizationStoragePools.prototype, "isCreating", 2);
-__decorateClass$h([
+__decorateClass$i([
   r$1()
 ], VirtualizationStoragePools.prototype, "isUpdating", 2);
-__decorateClass$h([
+__decorateClass$i([
   r$1()
 ], VirtualizationStoragePools.prototype, "hasVolumes", 2);
-__decorateClass$h([
+__decorateClass$i([
   r$1()
 ], VirtualizationStoragePools.prototype, "volumeCount", 2);
-VirtualizationStoragePools = __decorateClass$h([
+VirtualizationStoragePools = __decorateClass$i([
   t$2("virtualization-storage-pools")
 ], VirtualizationStoragePools);
-var __defProp$g = Object.defineProperty;
-var __getOwnPropDesc$e = Object.getOwnPropertyDescriptor;
-var __decorateClass$g = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$e(target, key) : target;
+var __defProp$h = Object.defineProperty;
+var __getOwnPropDesc$f = Object.getOwnPropertyDescriptor;
+var __decorateClass$h = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$f(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$g(target, key, result);
+  if (kind && result) __defProp$h(target, key, result);
   return result;
 };
 let NetworkFormDrawer = class extends i$2 {
@@ -66373,6 +69568,16 @@ let NetworkFormDrawer = class extends i$2 {
     }
     const hasIpAddress = !!this.formData.ipAddress.trim();
     const hasNetmask = !!this.formData.netmask.trim();
+    if (this.formData.mode === "nat" || this.formData.mode === "route") {
+      if (!hasIpAddress || !hasNetmask) {
+        this.errors = {
+          ...this.errors,
+          ipAddress: !hasIpAddress ? "IP address is required for NAT/Route networks" : this.errors.ipAddress || "",
+          netmask: !hasNetmask ? "Netmask is required for NAT/Route networks" : this.errors.netmask || ""
+        };
+        isValid2 = false;
+      }
+    }
     if (hasIpAddress || hasNetmask) {
       if (!hasIpAddress || !hasNetmask) {
         this.errors = {
@@ -66543,7 +69748,7 @@ let NetworkFormDrawer = class extends i$2 {
             </div>
 
             <div class="section">
-              <h3 class="section-title">IP Range (optional)</h3>
+              <h3 class="section-title">IP Range</h3>
               <div class="field-row">
                 <div class="field">
                   <label for="ip-address">Address</label>
@@ -66570,7 +69775,7 @@ let NetworkFormDrawer = class extends i$2 {
                   ${this.errors.netmask ? x`<div class="error-text">${this.errors.netmask}</div>` : x`<div class="hint">Netmask, e.g. 255.255.255.0</div>`}
                 </div>
               </div>
-              <div class="hint">Leave empty to let libvirt manage addressing implicitly.</div>
+              <div class="hint">Required for NAT/Route networks. Optional for Bridge/Private.</div>
             </div>
 
             ${this.showDhcpSection ? x`<div class="section">
@@ -66954,28 +70159,28 @@ NetworkFormDrawer.styles = i$5`
       background: rgba(244, 135, 113, 0.16);
     }
   `;
-__decorateClass$g([
+__decorateClass$h([
   n2({ type: Boolean, reflect: true })
 ], NetworkFormDrawer.prototype, "show", 2);
-__decorateClass$g([
+__decorateClass$h([
   n2({ type: Boolean })
 ], NetworkFormDrawer.prototype, "loading", 2);
-__decorateClass$g([
+__decorateClass$h([
   n2({ type: Boolean })
 ], NetworkFormDrawer.prototype, "editMode", 2);
-__decorateClass$g([
+__decorateClass$h([
   n2({ type: Object })
 ], NetworkFormDrawer.prototype, "networkData", 2);
-__decorateClass$g([
+__decorateClass$h([
   r$1()
 ], NetworkFormDrawer.prototype, "formData", 2);
-__decorateClass$g([
+__decorateClass$h([
   r$1()
 ], NetworkFormDrawer.prototype, "errors", 2);
-__decorateClass$g([
+__decorateClass$h([
   r$1()
 ], NetworkFormDrawer.prototype, "isClosing", 2);
-NetworkFormDrawer = __decorateClass$g([
+NetworkFormDrawer = __decorateClass$h([
   t$2("network-form-drawer")
 ], NetworkFormDrawer);
 const $notifications = map$3({});
@@ -67008,14 +70213,14 @@ const notificationActions = {
     $notifications.set({});
   }
 };
-var __defProp$f = Object.defineProperty;
-var __getOwnPropDesc$d = Object.getOwnPropertyDescriptor;
-var __decorateClass$f = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$d(target, key) : target;
+var __defProp$g = Object.defineProperty;
+var __getOwnPropDesc$e = Object.getOwnPropertyDescriptor;
+var __decorateClass$g = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$e(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$f(target, key, result);
+  if (kind && result) __defProp$g(target, key, result);
   return result;
 };
 let VirtualizationNetworks = class extends i$2 {
@@ -67108,7 +70313,10 @@ let VirtualizationNetworks = class extends i$2 {
     const actions = [
       { label: "View Details", action: "view" }
     ];
-    if (network.state !== "active") {
+    if (network.state === "active") {
+      actions.push({ label: "Stop", action: "stop" });
+      actions.push({ label: "Restart", action: "restart" });
+    } else {
       actions.push({ label: "Start", action: "start" });
     }
     actions.push(
@@ -67359,7 +70567,6 @@ let VirtualizationNetworks = class extends i$2 {
         return;
       }
       const message = this.mapNetworkErrorToMessage(error, `Failed to ${action} network`);
-      this.error = message;
       notificationActions.addNotification({
         type: "error",
         title: `Failed to ${action} network`,
@@ -67403,7 +70610,6 @@ let VirtualizationNetworks = class extends i$2 {
         this.error = error.message;
       } else {
         const message = this.mapNetworkErrorToMessage(error, "Failed to load network for editing");
-        this.error = message;
         notificationActions.addNotification({
           type: "error",
           title: "Failed to load network for editing",
@@ -67451,7 +70657,6 @@ let VirtualizationNetworks = class extends i$2 {
         return;
       }
       const message = this.mapNetworkErrorToMessage(error, "Failed to delete network");
-      this.error = message;
       notificationActions.addNotification({
         type: "error",
         title: "Failed to delete network",
@@ -67568,7 +70773,6 @@ let VirtualizationNetworks = class extends i$2 {
         return;
       }
       const message = this.mapNetworkErrorToMessage(error, "Failed to create network");
-      this.error = message;
       notificationActions.addNotification({
         type: "error",
         title: "Failed to create network",
@@ -67601,7 +70805,6 @@ let VirtualizationNetworks = class extends i$2 {
         return;
       }
       const message = this.mapNetworkErrorToMessage(error, "Failed to update network");
-      this.error = message;
       notificationActions.addNotification({
         type: "error",
         title: "Failed to update network",
@@ -68606,88 +71809,88 @@ VirtualizationNetworks.styles = i$5`
       color: var(--vscode-descriptionForeground);
     }
   `;
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationNetworks.prototype, "networks", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationNetworks.prototype, "searchQuery", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationNetworks.prototype, "loading", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationNetworks.prototype, "error", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationNetworks.prototype, "activeTab", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationNetworks.prototype, "showDetailDrawer", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationNetworks.prototype, "selectedNetwork", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationNetworks.prototype, "isLoadingDetail", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationNetworks.prototype, "isClosingDetailDrawer", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationNetworks.prototype, "detailActiveTab", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationNetworks.prototype, "dhcpLeases", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationNetworks.prototype, "dhcpLeasesCount", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationNetworks.prototype, "dhcpLeasesLoading", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationNetworks.prototype, "dhcpLeasesError", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationNetworks.prototype, "networkPorts", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationNetworks.prototype, "networkPortsCount", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationNetworks.prototype, "networkPortsLoading", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationNetworks.prototype, "networkPortsError", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationNetworks.prototype, "showDeleteModal", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationNetworks.prototype, "itemToDelete", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationNetworks.prototype, "isDeleting", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationNetworks.prototype, "showCreateDrawer", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationNetworks.prototype, "showEditDrawer", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationNetworks.prototype, "isCreating", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationNetworks.prototype, "isUpdating", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationNetworks.prototype, "editingNetworkForm", 2);
-__decorateClass$f([
+__decorateClass$g([
   r$1()
 ], VirtualizationNetworks.prototype, "editingNetworkName", 2);
-VirtualizationNetworks = __decorateClass$f([
+VirtualizationNetworks = __decorateClass$g([
   t$2("virtualization-networks")
 ], VirtualizationNetworks);
 const version = "3.7.8";
@@ -71632,14 +74835,14 @@ var Upload = /* @__PURE__ */ function(_BaseUpload) {
   }]);
   return Upload2;
 }(BaseUpload);
-var __defProp$e = Object.defineProperty;
-var __getOwnPropDesc$c = Object.getOwnPropertyDescriptor;
-var __decorateClass$e = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$c(target, key) : target;
+var __defProp$f = Object.defineProperty;
+var __getOwnPropDesc$d = Object.getOwnPropertyDescriptor;
+var __decorateClass$f = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$d(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$e(target, key, result);
+  if (kind && result) __defProp$f(target, key, result);
   return result;
 };
 let ISOManagement = class extends i$2 {
@@ -72297,13 +75500,13 @@ let ISOManagement = class extends i$2 {
             
             <div class="form-group">
               <label>OS Variant (Optional)</label>
-              <input
-                type="text"
-                placeholder="e.g., ubuntu-22.04, windows-11, etc."
+              <os-variant-autocomplete
                 .value=${this.uploadMetadata.os_variant}
-                @input=${(e3) => this.uploadMetadata.os_variant = e3.target.value}
+                .family=${this.uploadMetadata.os_type}
+                placeholder="e.g. ubuntu22.04"
                 ?disabled=${isUploading}
-              />
+                @os-variant-change=${(e3) => this.uploadMetadata.os_variant = e3.detail.value}
+              ></os-variant-autocomplete>
               <div class="help-text">
                 Specify the exact OS version or distribution
               </div>
@@ -72949,77 +76152,77 @@ ISOManagement.styles = i$5`
       font-size: 12px;
     }
   `;
-__decorateClass$e([
+__decorateClass$f([
   r$1()
 ], ISOManagement.prototype, "searchQuery", 2);
-__decorateClass$e([
+__decorateClass$f([
   r$1()
 ], ISOManagement.prototype, "showUploadDrawer", 2);
-__decorateClass$e([
+__decorateClass$f([
   r$1()
 ], ISOManagement.prototype, "isClosingUploadDrawer", 2);
-__decorateClass$e([
+__decorateClass$f([
   r$1()
 ], ISOManagement.prototype, "showDeleteModal", 2);
-__decorateClass$e([
+__decorateClass$f([
   r$1()
 ], ISOManagement.prototype, "showDetailDrawer", 2);
-__decorateClass$e([
+__decorateClass$f([
   r$1()
 ], ISOManagement.prototype, "isClosingDetailDrawer", 2);
-__decorateClass$e([
+__decorateClass$f([
   r$1()
 ], ISOManagement.prototype, "isoToDelete", 2);
-__decorateClass$e([
+__decorateClass$f([
   r$1()
 ], ISOManagement.prototype, "selectedISO", 2);
-__decorateClass$e([
+__decorateClass$f([
   r$1()
 ], ISOManagement.prototype, "isLoadingDetail", 2);
-__decorateClass$e([
+__decorateClass$f([
   r$1()
 ], ISOManagement.prototype, "isDeleting", 2);
-__decorateClass$e([
+__decorateClass$f([
   r$1()
 ], ISOManagement.prototype, "selectedFile", 2);
-__decorateClass$e([
+__decorateClass$f([
   r$1()
 ], ISOManagement.prototype, "uploadMetadata", 2);
-__decorateClass$e([
+__decorateClass$f([
   r$1()
 ], ISOManagement.prototype, "currentUpload", 2);
-__decorateClass$e([
+__decorateClass$f([
   r$1()
 ], ISOManagement.prototype, "dragOver", 2);
-__decorateClass$e([
+__decorateClass$f([
   r$1()
 ], ISOManagement.prototype, "isPaused", 2);
-__decorateClass$e([
+__decorateClass$f([
   r$1()
 ], ISOManagement.prototype, "uploadUrl", 2);
-__decorateClass$e([
+__decorateClass$f([
   r$1()
 ], ISOManagement.prototype, "uploadId", 2);
-__decorateClass$e([
+__decorateClass$f([
   r$1()
 ], ISOManagement.prototype, "selectedPoolName", 2);
-__decorateClass$e([
+__decorateClass$f([
   r$1()
 ], ISOManagement.prototype, "poolsLoading", 2);
-__decorateClass$e([
+__decorateClass$f([
   r$1()
 ], ISOManagement.prototype, "poolsError", 2);
-ISOManagement = __decorateClass$e([
+ISOManagement = __decorateClass$f([
   t$2("iso-management")
 ], ISOManagement);
-var __defProp$d = Object.defineProperty;
-var __getOwnPropDesc$b = Object.getOwnPropertyDescriptor;
-var __decorateClass$d = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$b(target, key) : target;
+var __defProp$e = Object.defineProperty;
+var __getOwnPropDesc$c = Object.getOwnPropertyDescriptor;
+var __decorateClass$e = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$c(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$d(target, key, result);
+  if (kind && result) __defProp$e(target, key, result);
   return result;
 };
 let VolumeDialog = class extends i$2 {
@@ -73731,38 +76934,38 @@ VolumeDialog.styles = i$5`
       margin-bottom: 12px;
     }
   `;
-__decorateClass$d([
+__decorateClass$e([
   n2({ type: Boolean, reflect: true })
 ], VolumeDialog.prototype, "show", 2);
-__decorateClass$d([
+__decorateClass$e([
   n2({ type: String })
 ], VolumeDialog.prototype, "mode", 2);
-__decorateClass$d([
+__decorateClass$e([
   n2({ type: Object })
 ], VolumeDialog.prototype, "pool", 2);
-__decorateClass$d([
+__decorateClass$e([
   n2({ type: Object })
 ], VolumeDialog.prototype, "volume", 2);
-__decorateClass$d([
+__decorateClass$e([
   r$1()
 ], VolumeDialog.prototype, "formData", 2);
-__decorateClass$d([
+__decorateClass$e([
   r$1()
 ], VolumeDialog.prototype, "isSubmitting", 2);
-__decorateClass$d([
+__decorateClass$e([
   r$1()
 ], VolumeDialog.prototype, "errors", 2);
-VolumeDialog = __decorateClass$d([
+VolumeDialog = __decorateClass$e([
   t$2("volume-dialog")
 ], VolumeDialog);
-var __defProp$c = Object.defineProperty;
-var __getOwnPropDesc$a = Object.getOwnPropertyDescriptor;
-var __decorateClass$c = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$a(target, key) : target;
+var __defProp$d = Object.defineProperty;
+var __getOwnPropDesc$b = Object.getOwnPropertyDescriptor;
+var __decorateClass$d = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$b(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$c(target, key, result);
+  if (kind && result) __defProp$d(target, key, result);
   return result;
 };
 let VolumeCloneDialog = class extends i$2 {
@@ -74157,31 +77360,31 @@ VolumeCloneDialog.styles = i$5`
       cursor: not-allowed;
     }
   `;
-__decorateClass$c([
+__decorateClass$d([
   n2({ type: Boolean, reflect: true })
 ], VolumeCloneDialog.prototype, "show", 2);
-__decorateClass$c([
+__decorateClass$d([
   n2({ type: Object })
 ], VolumeCloneDialog.prototype, "pool", 2);
-__decorateClass$c([
+__decorateClass$d([
   n2({ type: Object })
 ], VolumeCloneDialog.prototype, "volume", 2);
-__decorateClass$c([
+__decorateClass$d([
   n2({ type: Array })
 ], VolumeCloneDialog.prototype, "poolNames", 2);
-__decorateClass$c([
+__decorateClass$d([
   r$1()
 ], VolumeCloneDialog.prototype, "newName", 2);
-__decorateClass$c([
+__decorateClass$d([
   r$1()
 ], VolumeCloneDialog.prototype, "targetPool", 2);
-__decorateClass$c([
+__decorateClass$d([
   r$1()
 ], VolumeCloneDialog.prototype, "isCloning", 2);
-__decorateClass$c([
+__decorateClass$d([
   r$1()
 ], VolumeCloneDialog.prototype, "errors", 2);
-VolumeCloneDialog = __decorateClass$c([
+VolumeCloneDialog = __decorateClass$d([
   t$2("volume-clone-dialog")
 ], VolumeCloneDialog);
 function formatBytes(bytes) {
@@ -74201,19 +77404,20 @@ function formatDate(date) {
     minute: "2-digit"
   });
 }
-var __defProp$b = Object.defineProperty;
-var __getOwnPropDesc$9 = Object.getOwnPropertyDescriptor;
-var __decorateClass$b = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$9(target, key) : target;
+var __defProp$c = Object.defineProperty;
+var __getOwnPropDesc$a = Object.getOwnPropertyDescriptor;
+var __decorateClass$c = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$a(target, key) : target;
   for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
     if (decorator = decorators[i4])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$b(target, key, result);
+  if (kind && result) __defProp$c(target, key, result);
   return result;
 };
 let VirtualizationVolumes = class extends i$2 {
   constructor() {
     super(...arguments);
+    this.notificationContainer = null;
     this.poolFilter = "all";
     this.showDetails = false;
     this.selectedVolume = null;
@@ -74242,6 +77446,19 @@ let VirtualizationVolumes = class extends i$2 {
       { id: "iso-files", label: "ISO Files" },
       { id: "directories", label: "Directories" }
     ];
+    this.handleShowNotification = (event) => {
+      const detail = event.detail;
+      if (!detail) return;
+      const nc = this.notificationContainer;
+      if (nc && typeof nc.addNotification === "function") {
+        nc.addNotification({
+          type: detail.type,
+          message: detail.message,
+          // Errors should stay until dismissed
+          duration: detail.duration ?? (detail.type === "error" ? 0 : void 0)
+        });
+      }
+    };
   }
   // Table columns configuration
   getColumns() {
@@ -74300,7 +77517,6 @@ let VirtualizationVolumes = class extends i$2 {
             <span class="volume-icon ${iconClass}">${icon}</span>
             <div class="volume-details">
               <div class="volume-title">${volume.name}</div>
-              <div class="volume-path">${volume.path}</div>
             </div>
           </div>
         `;
@@ -74363,6 +77579,14 @@ let VirtualizationVolumes = class extends i$2 {
     super.connectedCallback();
     await this.loadData();
   }
+  firstUpdated(_changedProperties) {
+    this.notificationContainer = this.renderRoot.querySelector("notification-container");
+    this.addEventListener("show-notification", this.handleShowNotification);
+  }
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.removeEventListener("show-notification", this.handleShowNotification);
+  }
   async loadData() {
     try {
       await Promise.all([
@@ -74380,9 +77604,9 @@ let VirtualizationVolumes = class extends i$2 {
       );
     }
   }
-  showNotification(message, type = "info") {
+  showNotification(message, type = "info", duration) {
     this.dispatchEvent(new CustomEvent("show-notification", {
-      detail: { message, type },
+      detail: { message, type, duration },
       bubbles: true,
       composed: true
     }));
@@ -74494,22 +77718,19 @@ let VirtualizationVolumes = class extends i$2 {
       this.deleteItem = null;
       this.deletingVolume = null;
     } catch (error) {
-      let message = "Unknown error";
+      let apiMessage = "Unknown error";
+      let codeSuffix = "";
       if (error instanceof VirtualizationAPIError) {
-        switch (error.code) {
-          case "VOLUME_NOT_FOUND":
-            message = "Volume not found. It may have already been deleted.";
-            break;
-          case "VOLUME_IN_USE":
-            message = "This volume is currently attached to one or more virtual machines.";
-            break;
-          default:
-            message = error.message;
-        }
+        const parts = [
+          error.message,
+          typeof error.details === "string" ? error.details : ""
+        ].map((s2) => (s2 || "").trim()).filter(Boolean);
+        apiMessage = parts.length ? parts.join(" — ") : error.message;
+        codeSuffix = error.code ? ` (${error.code})` : "";
       } else if (error instanceof Error) {
-        message = error.message;
+        apiMessage = error.message;
       }
-      this.showNotification(`Failed to delete volume: ${message}`, "error");
+      this.showNotification(`Failed to delete volume "${volume.name}": ${apiMessage}${codeSuffix}`, "error", 0);
     } finally {
       this.isDeleting = false;
     }
@@ -75370,54 +78591,693 @@ VirtualizationVolumes.styles = i$5`
       color: var(--vscode-descriptionForeground);
     }
   `;
-__decorateClass$b([
+__decorateClass$c([
   r$1()
 ], VirtualizationVolumes.prototype, "poolFilter", 2);
-__decorateClass$b([
+__decorateClass$c([
   r$1()
 ], VirtualizationVolumes.prototype, "showDetails", 2);
-__decorateClass$b([
+__decorateClass$c([
   r$1()
 ], VirtualizationVolumes.prototype, "selectedVolume", 2);
-__decorateClass$b([
+__decorateClass$c([
   r$1()
 ], VirtualizationVolumes.prototype, "detailsLoading", 2);
-__decorateClass$b([
+__decorateClass$c([
   r$1()
 ], VirtualizationVolumes.prototype, "showVolumeDialog", 2);
-__decorateClass$b([
+__decorateClass$c([
   r$1()
 ], VirtualizationVolumes.prototype, "volumeDialogMode", 2);
-__decorateClass$b([
+__decorateClass$c([
   r$1()
 ], VirtualizationVolumes.prototype, "dialogPool", 2);
-__decorateClass$b([
+__decorateClass$c([
   r$1()
 ], VirtualizationVolumes.prototype, "dialogVolume", 2);
-__decorateClass$b([
+__decorateClass$c([
   r$1()
 ], VirtualizationVolumes.prototype, "showCloneDialog", 2);
-__decorateClass$b([
+__decorateClass$c([
   r$1()
 ], VirtualizationVolumes.prototype, "clonePool", 2);
-__decorateClass$b([
+__decorateClass$c([
   r$1()
 ], VirtualizationVolumes.prototype, "cloneVolume", 2);
-__decorateClass$b([
+__decorateClass$c([
   r$1()
 ], VirtualizationVolumes.prototype, "showDeleteModal", 2);
-__decorateClass$b([
+__decorateClass$c([
   r$1()
 ], VirtualizationVolumes.prototype, "deleteItem", 2);
-__decorateClass$b([
+__decorateClass$c([
   r$1()
 ], VirtualizationVolumes.prototype, "deletingVolume", 2);
-__decorateClass$b([
+__decorateClass$c([
   r$1()
 ], VirtualizationVolumes.prototype, "isDeleting", 2);
-VirtualizationVolumes = __decorateClass$b([
+VirtualizationVolumes = __decorateClass$c([
   t$2("virtualization-volumes")
 ], VirtualizationVolumes);
+var __defProp$b = Object.defineProperty;
+var __getOwnPropDesc$9 = Object.getOwnPropertyDescriptor;
+var __decorateClass$b = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$9(target, key) : target;
+  for (var i4 = decorators.length - 1, decorator; i4 >= 0; i4--)
+    if (decorator = decorators[i4])
+      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
+  if (kind && result) __defProp$b(target, key, result);
+  return result;
+};
+let VirtualizationBackupsView = class extends i$2 {
+  constructor() {
+    super(...arguments);
+    this.backups = [];
+    this.loading = false;
+    this.error = null;
+    this.search = "";
+    this.status = "all";
+    this.type = "all";
+    this.toast = null;
+    this.showImportDrawer = false;
+    this.showCreateDrawer = false;
+    this.showRestore = false;
+    this.restoreTarget = null;
+    this.restoreNewName = "";
+    this.restoreOverwrite = false;
+    this.restoreKey = "";
+    this.deletingId = null;
+    this.downloadingId = null;
+    this.missingFiles = /* @__PURE__ */ new Set();
+    this.importForm = {
+      path: "",
+      vm_name: "",
+      vm_uuid: "",
+      backup_id: "",
+      type: "full",
+      compression: "none",
+      encryption: "none",
+      retention_days: 7,
+      description: ""
+    };
+    this.createForm = {
+      vm_id: "",
+      backup_type: "full",
+      destination_path: "",
+      compression: "none",
+      encryption: "none",
+      include_memory: false,
+      retention_days: 7,
+      description: ""
+    };
+    this.getActions = (item) => {
+      const id = item.backup_id || item.id || null;
+      const isDeleting = !!id && this.deletingId === id;
+      const isDownloading = !!id && this.downloadingId === id;
+      const busy = isDeleting || isDownloading;
+      const missing = !!id && this.missingFiles.has(id);
+      return [
+        { label: "Restore", action: "restore", disabled: busy },
+        {
+          label: isDownloading ? "Downloading…" : missing ? "Download (missing)" : "Download",
+          action: "download",
+          disabled: busy || missing
+        },
+        { label: isDeleting ? "Deleting…" : "Delete", action: "delete", danger: true, disabled: busy }
+      ];
+    };
+  }
+  connectedCallback() {
+    super.connectedCallback();
+    this.backupsUnsub = $backups.subscribe(() => this.sync());
+    this.loadVMs();
+    this.loadBackups();
+  }
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.backupsUnsub?.();
+  }
+  async loadVMs() {
+    try {
+      await vmStore.fetch();
+    } catch (err) {
+      console.warn("VM fetch failed", err);
+    }
+  }
+  vmMap() {
+    const items = vmStore.$items.get();
+    if (items instanceof Map) return items;
+    if (items && typeof items === "object") return new Map(Object.entries(items));
+    return /* @__PURE__ */ new Map();
+  }
+  vmExists(backup) {
+    const map2 = this.vmMap();
+    const key = backup.vm_uuid || backup.vm_id;
+    return key ? map2.has(key) : false;
+  }
+  async loadBackups() {
+    this.loading = true;
+    this.error = null;
+    try {
+      await backupActions.fetchGlobal({
+        search: this.search.trim() || void 0,
+        status: this.status !== "all" ? this.status : void 0,
+        type: this.type !== "all" ? this.type : void 0
+      });
+      this.sync();
+    } catch (err) {
+      this.error = err?.message || "Failed to load backups";
+    } finally {
+      this.loading = false;
+    }
+  }
+  sync() {
+    const list = $backups.get();
+    this.backups = [...list].sort((a2, b2) => (b2.started_at || b2.created_at || "").localeCompare(a2.started_at || a2.created_at || ""));
+  }
+  filteredBackups() {
+    return this.backups.filter((b2) => {
+      if (this.status !== "all" && (b2.status || "").toLowerCase() !== this.status) return false;
+      if (this.type !== "all" && b2.type !== this.type) return false;
+      if (this.search) {
+        const q = this.search.toLowerCase();
+        const hay = `${b2.vm_name || ""} ${b2.vm_uuid || ""} ${b2.backup_id || ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }
+  columns() {
+    return [
+      { key: "vm_display", label: "VM" },
+      { key: "status_display", label: "Status", type: "status" },
+      { key: "type", label: "Type" },
+      { key: "created_display", label: "Created" },
+      { key: "size_display", label: "Size" },
+      { key: "destination_display", label: "Destination" },
+      { key: "encryption_display", label: "Encryption" }
+    ];
+  }
+  tableData() {
+    return this.filteredBackups().map((b2) => ({
+      ...b2,
+      vm_display: x`${b2.vm_name || b2.vm_uuid || "—"}${!this.vmExists(b2) ? x` <span class="chip warn">VM deleted</span>` : ""}`,
+      status_display: b2.status || "unknown",
+      created_display: this.formatDate(b2.started_at || b2.created_at),
+      size_display: this.formatSize(b2.size_bytes || b2.size),
+      destination_display: b2.destination_path || "—",
+      encryption_display: b2.encryption && b2.encryption !== "none" ? b2.encryption : "None"
+    }));
+  }
+  handleAction(event) {
+    const { action, item } = event.detail;
+    const backup = item;
+    switch (action) {
+      case "restore":
+        this.openRestore(backup);
+        break;
+      case "download":
+        this.handleDownload(backup);
+        break;
+      case "delete":
+        this.handleDelete(backup);
+        break;
+    }
+  }
+  setToast(text, type = "info") {
+    this.toast = { text, type };
+    setTimeout(() => this.toast = null, 3e3);
+  }
+  async handleDelete(b2) {
+    if (!b2.backup_id) return;
+    const ok = window.confirm(`Delete backup ${b2.backup_id}?`);
+    if (!ok) return;
+    this.deletingId = b2.backup_id;
+    try {
+      await backupActions.delete(b2.backup_id);
+      this.setToast("Backup deleted", "success");
+      this.loadBackups();
+    } catch (err) {
+      this.setToast(err?.message || "Failed to delete", "error");
+    } finally {
+      this.deletingId = null;
+    }
+  }
+  async handleDownload(b2) {
+    if (!b2.backup_id) return;
+    this.downloadingId = b2.backup_id;
+    try {
+      const blob = await virtualizationAPI.downloadBackup(b2.backup_id);
+      const url = URL.createObjectURL(blob);
+      const a2 = document.createElement("a");
+      a2.href = url;
+      a2.download = `${b2.vm_name || b2.vm_uuid || "vm"}-${b2.backup_id}.qcow2`;
+      a2.click();
+      URL.revokeObjectURL(url);
+      this.setToast("Download started", "info");
+    } catch (err) {
+      const code = err instanceof VirtualizationAPIError ? err.code : "";
+      if (code === "BACKUP_FILE_NOT_FOUND") {
+        const next = new Set(this.missingFiles);
+        next.add(b2.backup_id);
+        this.missingFiles = next;
+      }
+      this.setToast(err?.message || "Failed to download", "error");
+    } finally {
+      this.downloadingId = null;
+    }
+  }
+  openRestore(b2) {
+    this.restoreTarget = b2;
+    this.restoreNewName = `${b2.vm_name || b2.vm_uuid || "vm"}-restored`;
+    this.restoreOverwrite = false;
+    this.restoreKey = "";
+    this.showRestore = true;
+  }
+  async confirmRestore() {
+    if (!this.restoreTarget) return;
+    try {
+      await backupActions.restore({
+        backup_id: this.restoreTarget.backup_id,
+        overwrite: this.restoreOverwrite,
+        new_vm_name: this.restoreOverwrite ? void 0 : this.restoreNewName || `${this.restoreTarget.vm_name || "vm"}-restored`,
+        decryption_key: this.restoreKey || void 0
+      });
+      this.setToast("Restore started", "success");
+      this.showRestore = false;
+    } catch (err) {
+      this.setToast(err?.message || "Restore failed", "error");
+    }
+  }
+  async handleImport() {
+    try {
+      await backupActions.import({
+        path: this.importForm.path,
+        vm_name: this.importForm.vm_name,
+        vm_uuid: this.importForm.vm_uuid || void 0,
+        backup_id: this.importForm.backup_id || void 0,
+        type: this.importForm.type,
+        compression: this.importForm.compression,
+        encryption: this.importForm.encryption,
+        retention_days: this.importForm.retention_days,
+        description: this.importForm.description
+      });
+      this.setToast("Backup imported", "success");
+      this.showImportDrawer = false;
+      this.loadBackups();
+    } catch (err) {
+      this.setToast(err?.message || "Import failed", "error");
+    }
+  }
+  async handleCreate() {
+    if (!this.createForm.vm_id) {
+      this.setToast("Select a VM", "error");
+      return;
+    }
+    try {
+      const payload = { ...this.createForm };
+      delete payload.vm_id;
+      await backupActions.create(this.createForm.vm_id, payload);
+      this.setToast("Backup started", "success");
+      this.showCreateDrawer = false;
+      this.loadBackups();
+    } catch (err) {
+      this.setToast(err?.message || "Create failed", "error");
+    }
+  }
+  formatDate(val) {
+    if (!val) return "—";
+    const d2 = new Date(val);
+    if (Number.isNaN(d2.getTime())) return val;
+    return d2.toLocaleString();
+  }
+  formatSize(bytes) {
+    if (!bytes) return "—";
+    const units = ["B", "KB", "MB", "GB", "TB"];
+    let value = bytes;
+    let idx = 0;
+    while (value >= 1024 && idx < units.length - 1) {
+      value /= 1024;
+      idx++;
+    }
+    return `${value.toFixed(1)} ${units[idx]}`;
+  }
+  renderTable() {
+    const data = this.tableData();
+    if (this.loading) return x`<loading-state message="Loading backups..."></loading-state>`;
+    if (data.length === 0) {
+      return x`
+        <empty-state
+          icon="💾"
+          title="No backups found."
+          description="Import an existing backup or create a new one."
+        >
+          <div slot="actions" style="display:flex; gap:8px; justify-content:center;">
+            <button class="btn" @click=${() => this.showImportDrawer = true}>Import backup</button>
+            <button class="btn-primary" @click=${() => this.showCreateDrawer = true}>Create backup</button>
+          </div>
+        </empty-state>
+      `;
+    }
+    const customRenderers = {
+      vm_display: (v2) => v2,
+      destination_display: (v2) => v2,
+      encryption_display: (v2) => v2,
+      size_display: (v2) => v2
+    };
+    return x`
+      <resource-table
+        .columns=${this.columns()}
+        .data=${data}
+        .getActions=${this.getActions}
+        .customRenderers=${customRenderers}
+        @action=${(e3) => this.handleAction(e3)}
+      ></resource-table>
+    `;
+  }
+  render() {
+    return x`
+      <div class="page">
+        <div class="header">
+          <h2 class="title">Backups</h2>
+          <div class="actions">
+            <button class="btn" @click=${() => this.loadBackups()} ?disabled=${this.loading}>Refresh</button>
+            <button class="btn" @click=${() => this.showImportDrawer = true}>Import backup</button>
+            <button class="btn-create" @click=${() => this.showCreateDrawer = true}>Create backup</button>
+          </div>
+        </div>
+
+        <div class="controls">
+          <search-input
+            .placeholder=${"Search VM name/UUID"}
+            .value=${this.search}
+            @search-change=${(e3) => {
+      this.search = e3.detail.value;
+      this.loadBackups();
+    }}
+          ></search-input>
+          <div class="filters">
+            <select .value=${this.status} @change=${(e3) => {
+      this.status = e3.target.value;
+      this.loadBackups();
+    }}>
+              <option value="all">All status</option>
+              <option value="pending">Pending</option>
+              <option value="running">Running</option>
+              <option value="completed">Completed</option>
+              <option value="failed">Failed</option>
+            </select>
+            <select .value=${this.type} @change=${(e3) => {
+      this.type = e3.target.value;
+      this.loadBackups();
+    }}>
+              <option value="all">All types</option>
+              <option value="full">Full</option>
+              <option value="incremental">Incremental</option>
+              <option value="differential">Differential</option>
+            </select>
+          </div>
+        </div>
+
+        ${this.toast ? x`<div class="toast ${this.toast.type}">${this.toast.text}</div>` : ""}
+        ${this.error ? x`<div class="toast error">${this.error}</div>` : ""}
+
+        ${this.renderTable()}
+      </div>
+
+      ${this.renderImportDrawer()}
+      ${this.renderCreateDrawer()}
+      ${this.renderRestoreModal()}
+    `;
+  }
+  renderImportDrawer() {
+    return x`
+      <detail-drawer
+        .title=${"Import backup"}
+        .show=${this.showImportDrawer}
+        @close=${() => this.showImportDrawer = false}
+      >
+        <div class="drawer-content">
+          <div class="field">
+            <label>Path</label>
+            <input type="text" .value=${this.importForm.path} @input=${(e3) => this.importForm.path = e3.target.value} />
+          </div>
+          <div class="field">
+            <label>VM name</label>
+            <input type="text" .value=${this.importForm.vm_name} @input=${(e3) => this.importForm.vm_name = e3.target.value} />
+          </div>
+          <div class="field">
+            <label>VM UUID (optional)</label>
+            <input type="text" .value=${this.importForm.vm_uuid} @input=${(e3) => this.importForm.vm_uuid = e3.target.value} />
+          </div>
+          <div class="field">
+            <label>Backup ID (optional)</label>
+            <input type="text" .value=${this.importForm.backup_id} @input=${(e3) => this.importForm.backup_id = e3.target.value} />
+          </div>
+          <div class="field">
+            <label>Type</label>
+            <select .value=${this.importForm.type} @change=${(e3) => this.importForm.type = e3.target.value}>
+              <option value="full">Full</option>
+              <option value="incremental">Incremental</option>
+              <option value="differential">Differential</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Compression</label>
+            <select .value=${this.importForm.compression} @change=${(e3) => this.importForm.compression = e3.target.value}>
+              <option value="none">None</option>
+              <option value="gzip">gzip</option>
+              <option value="zstd">zstd</option>
+              <option value="xz">xz</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Encryption</label>
+            <select .value=${this.importForm.encryption} @change=${(e3) => this.importForm.encryption = e3.target.value}>
+              <option value="none">None</option>
+              <option value="aes-256">AES-256</option>
+              <option value="aes-128">AES-128</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Retention days</label>
+            <input type="number" min="1" .value=${String(this.importForm.retention_days)} @input=${(e3) => this.importForm.retention_days = Number(e3.target.value)} />
+          </div>
+          <div class="field">
+            <label>Description</label>
+            <textarea .value=${this.importForm.description} @input=${(e3) => this.importForm.description = e3.target.value}></textarea>
+          </div>
+          <div class="field" style="color: var(--vscode-descriptionForeground, #9ca3af); font-size: 12px;">Import does not move files; path must exist on host.</div>
+        </div>
+        <div class="drawer-footer">
+          <button class="btn" @click=${() => this.showImportDrawer = false}>Cancel</button>
+          <button class="btn-primary" @click=${() => this.handleImport()}>Import</button>
+        </div>
+      </detail-drawer>
+    `;
+  }
+  renderCreateDrawer() {
+    const vmOptions = (() => {
+      const items = vmStore.$items.get();
+      if (items instanceof Map) return Array.from(items.values());
+      if (items && typeof items === "object") return Object.values(items);
+      return [];
+    })();
+    return x`
+      <detail-drawer
+        .title=${"Create backup"}
+        .show=${this.showCreateDrawer}
+        @close=${() => this.showCreateDrawer = false}
+      >
+        <div class="drawer-content">
+          <div class="field">
+            <label>Virtual machine</label>
+            <select .value=${this.createForm.vm_id || ""} @change=${(e3) => this.createForm.vm_id = e3.target.value}>
+              <option value="">Select VM</option>
+              ${vmOptions.map((vm) => x`<option value=${vm.id}>${vm.name || vm.id}</option>`)}
+            </select>
+          </div>
+          <div class="field">
+            <label>Type</label>
+            <select .value=${this.createForm.backup_type} @change=${(e3) => this.createForm.backup_type = e3.target.value}>
+              <option value="full">Full</option>
+              <option value="incremental">Incremental</option>
+              <option value="differential">Differential</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Destination path</label>
+            <input type="text" .value=${this.createForm.destination_path || ""} @input=${(e3) => this.createForm.destination_path = e3.target.value} />
+          </div>
+          <div class="field">
+            <label>Compression</label>
+            <select .value=${this.createForm.compression} @change=${(e3) => this.createForm.compression = e3.target.value}>
+              <option value="none">None</option>
+              <option value="gzip">gzip</option>
+              <option value="zstd">zstd</option>
+              <option value="xz">xz</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Encryption</label>
+            <select .value=${this.createForm.encryption} @change=${(e3) => this.createForm.encryption = e3.target.value}>
+              <option value="none">None</option>
+              <option value="aes-256">AES-256</option>
+              <option value="aes-128">AES-128</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Include memory</label>
+            <input type="checkbox" .checked=${this.createForm.include_memory || false} @change=${(e3) => this.createForm.include_memory = e3.target.checked} />
+          </div>
+          <div class="field">
+            <label>Retention days</label>
+            <input type="number" min="1" .value=${String(this.createForm.retention_days ?? "")} @input=${(e3) => this.createForm.retention_days = Number(e3.target.value)} />
+          </div>
+          <div class="field">
+            <label>Description</label>
+            <textarea .value=${this.createForm.description || ""} @input=${(e3) => this.createForm.description = e3.target.value}></textarea>
+          </div>
+        </div>
+        <div class="drawer-footer">
+          <button class="btn" @click=${() => this.showCreateDrawer = false}>Cancel</button>
+          <button class="btn-primary" @click=${() => this.handleCreate()}>Create</button>
+        </div>
+      </detail-drawer>
+    `;
+  }
+  renderRestoreModal() {
+    if (!this.restoreTarget) return x``;
+    const missingVm = !this.vmExists(this.restoreTarget);
+    return x`
+      <modal-dialog
+        .open=${this.showRestore}
+        .title=${"Restore backup"}
+        size="medium"
+        @modal-close=${() => this.showRestore = false}
+      >
+        ${missingVm ? x`<div class="chip warn">Source VM not found; restore will create a new VM.</div>` : x`<div class="field">
+              <label>Overwrite existing VM</label>
+              <input
+                type="checkbox"
+                .checked=${this.restoreOverwrite}
+                @change=${(e3) => this.restoreOverwrite = e3.target.checked}
+              />
+            </div>`}
+        <div class="field">
+          <label>New VM name</label>
+          <input
+            type="text"
+            .value=${this.restoreNewName}
+            @input=${(e3) => this.restoreNewName = e3.target.value}
+            ?disabled=${!missingVm && this.restoreOverwrite}
+          />
+        </div>
+        ${this.restoreTarget.encryption && this.restoreTarget.encryption !== "none" ? x`<div class="field">
+              <label>Decryption key</label>
+              <input
+                type="password"
+                .value=${this.restoreKey}
+                @input=${(e3) => this.restoreKey = e3.target.value}
+              />
+            </div>` : ""}
+        <div slot="footer" style="display:flex; gap:8px; justify-content:flex-end;">
+          <button class="btn" @click=${() => this.showRestore = false}>Cancel</button>
+          <button class="btn-primary" @click=${() => this.confirmRestore()}>Restore</button>
+        </div>
+      </modal-dialog>
+    `;
+  }
+};
+VirtualizationBackupsView.styles = i$5`
+    :host { display: block; height: 100%; }
+    .page { padding: 16px; color: var(--vscode-foreground, #e5e7eb); }
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .title { font-size: 20px; margin: 0; }
+    .controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+    .filters { display: flex; gap: 8px; align-items: center; }
+    .filters select { height: 36px; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--vscode-input-border, #858585); background: var(--vscode-input-background, #3c3c3c); color: var(--vscode-input-foreground, #cccccc); font-size: 13px; }
+    .filters select:focus { outline: none; border-color: var(--vscode-focusBorder, #007acc); box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc); }
+    .actions { display: flex; gap: 8px; align-items: center; }
+    .btn { height: 36px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--vscode-button-border, #5a5a5a); background: var(--vscode-button-secondaryBackground, #3c3c3c); color: var(--vscode-button-foreground, #ffffff); cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-primary { background: var(--vscode-button-background, #0e639c); color: var(--vscode-button-foreground, #ffffff); border: 1px solid var(--vscode-button-border, #5a5a5a); }
+    .btn-danger { background: #a4262c; border-color: #a4262c; color: #ffffff; }
+    .btn[disabled] { opacity: 0.6; cursor: not-allowed; }
+    .btn-create { display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--vscode-button-background, #007acc); color: var(--vscode-button-foreground, white); border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; }
+    .btn-create:hover { background: var(--vscode-button-hoverBackground, #005a9e); }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px 10px; border-bottom: 1px solid var(--vscode-widget-border, #2a2f3a); text-align: left; font-size: 13px; }
+    th { color: var(--vscode-descriptionForeground, #9ca3af); font-weight: 600; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+    .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; background: #1f2937; color: #e5e7eb; font-size: 12px; }
+    .chip.warn { background: #92400e; }
+    .chip.missing { background: #78350f; }
+    .empty { text-align: center; padding: 48px 0; color: var(--vscode-descriptionForeground, #9ca3af); }
+    dialog, detail-drawer { color: var(--vscode-foreground, #e5e7eb); }
+    .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+    .field label { color: var(--vscode-foreground, #cbd5e1); font-size: 13px; }
+    .field input, .field select, .field textarea { padding: 8px 12px; border-radius: 4px; border: 1px solid var(--vscode-input-border, #858585); background: var(--vscode-input-background, #3c3c3c); color: var(--vscode-input-foreground, #cccccc); font-size: 13px; }
+    .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--vscode-focusBorder, #007acc); box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc); }
+    .drawer-content { padding: 16px; }
+    .drawer-footer { display:flex; gap:8px; justify-content:flex-end; padding:12px 16px; border-top:1px solid #1f2937; }
+    .toast { margin-bottom: 10px; padding: 10px; border-radius: 8px; }
+    .toast.success { background: #0f172a; color: #bbf7d0; border: 1px solid #14532d; }
+    .toast.error { background: #1f0f0f; color: #fecdd3; border: 1px solid #7f1d1d; }
+  `;
+__decorateClass$b([
+  r$1()
+], VirtualizationBackupsView.prototype, "backups", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationBackupsView.prototype, "loading", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationBackupsView.prototype, "error", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationBackupsView.prototype, "search", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationBackupsView.prototype, "status", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationBackupsView.prototype, "type", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationBackupsView.prototype, "toast", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationBackupsView.prototype, "showImportDrawer", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationBackupsView.prototype, "showCreateDrawer", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationBackupsView.prototype, "showRestore", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationBackupsView.prototype, "restoreTarget", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationBackupsView.prototype, "restoreNewName", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationBackupsView.prototype, "restoreOverwrite", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationBackupsView.prototype, "restoreKey", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationBackupsView.prototype, "deletingId", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationBackupsView.prototype, "downloadingId", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationBackupsView.prototype, "missingFiles", 2);
+VirtualizationBackupsView = __decorateClass$b([
+  t$2("virtualization-backups")
+], VirtualizationBackupsView);
 var __defProp$a = Object.defineProperty;
 var __getOwnPropDesc$8 = Object.getOwnPropertyDescriptor;
 var __decorateClass$a = (decorators, target, key, kind) => {
@@ -75446,7 +79306,7 @@ let VirtualizationTab = class extends i$2 {
   }
   updateActiveView() {
     if (this.subRoute) {
-      const validViews = ["vms", "storage-pools", "networks", "iso-images", "volumes"];
+      const validViews = ["vms", "storage-pools", "networks", "iso-images", "volumes", "backups"];
       if (validViews.includes(this.subRoute)) {
         this.activeView = this.subRoute;
       }
@@ -75454,7 +79314,7 @@ let VirtualizationTab = class extends i$2 {
       const path = window.location.pathname;
       if (path.includes("/virtualization/")) {
         const view = path.split("/virtualization/")[1]?.split("/")[0];
-        if (view && ["vms", "storage-pools", "networks", "iso-images", "volumes"].includes(view)) {
+        if (view && ["vms", "storage-pools", "networks", "iso-images", "volumes", "backups"].includes(view)) {
           this.activeView = view;
         }
       }
@@ -75481,6 +79341,8 @@ let VirtualizationTab = class extends i$2 {
         return x`<iso-management></iso-management>`;
       case "volumes":
         return x`<virtualization-volumes></virtualization-volumes>`;
+      case "backups":
+        return x`<virtualization-backups></virtualization-backups>`;
       default:
         return x`
           <div class="error-message">
@@ -80571,6 +84433,12 @@ class SidebarTree extends I18nLitElement {
             label: "virtualization.volumes",
             icon: "volumes",
             route: "virtualization/volumes"
+          },
+          {
+            id: "virtualization-backups",
+            label: "virtualization.backups",
+            icon: "volumes",
+            route: "virtualization/backups"
           }
         ]
       },

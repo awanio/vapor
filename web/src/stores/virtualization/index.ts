@@ -26,6 +26,8 @@ import type {
   SnapshotCapabilities
 } from '../../types/virtualization';
 
+export * from './backups';
+
 // ============ Virtualization Global State ============
 export const $virtualizationEnabled = atom<boolean | null>(null);
 export const $virtualizationDisabledMessage = atom<string | null>(null);
