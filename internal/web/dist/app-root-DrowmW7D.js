@@ -1,4 +1,7 @@
-import { g as getApiUrl, i as i18n, r as registerPerfGauge, a as getWsUrl, b as auth, p as perfIncrement, t as t$5, c as theme } from "./index-yDJN8gco.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-CCzeLH0h.js";
+function perfIncrement(name, delta = 1) {
+  return;
+}
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -16945,17 +16948,6 @@ computed(
   (health) => health.filter((h3) => h3.status === "connected").length
 );
 computed($connectionHealth, (health) => health.length);
-registerPerfGauge(() => {
-  const gauges = {};
-  try {
-    const health = $connectionHealth.get();
-    gauges["ws_connections"] = health.length;
-    gauges["ws_reconnecting"] = health.filter((h3) => h3.status === "reconnecting").length;
-    gauges["ws_errors"] = health.filter((h3) => h3.lastError).length;
-  } catch {
-  }
-  return gauges;
-});
 const EVENTS_CONNECTION_ID = "shared:events";
 function subscribeToEventsChannel(options) {
   const sendSubscribe = () => {
@@ -17396,7 +17388,7 @@ const $metricsAlerts = computed(
     return alerts;
   }
 );
-const $metricsState = computed(
+computed(
   [
     $systemSummary,
     $cpuInfo,
@@ -17471,7 +17463,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-yDJN8gco.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-CCzeLH0h.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17516,7 +17508,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-yDJN8gco.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-CCzeLH0h.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17664,7 +17656,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-yDJN8gco.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-CCzeLH0h.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17708,18 +17700,6 @@ function formatUptime(seconds) {
 if (typeof window !== "undefined") {
   window.addEventListener("beforeunload", cleanupMetrics);
 }
-registerPerfGauge(() => {
-  const gauges = {};
-  try {
-    const state = $metricsState.get();
-    gauges["metrics_cpuHistory"] = state.cpuHistory.length;
-    gauges["metrics_memoryHistory"] = state.memoryHistory.length;
-    gauges["metrics_diskHistory"] = state.diskHistory.length;
-    gauges["metrics_networkHistory"] = state.networkHistory.length;
-  } catch {
-  }
-  return gauges;
-});
 const metrics = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   $cpuHistory,
@@ -17739,7 +17719,6 @@ const metrics = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePrope
   $metricsAlerts,
   $metricsConnected,
   $metricsError,
-  $metricsState,
   $networkHistory,
   $systemSummary,
   calculateAverage,
@@ -17790,7 +17769,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-yDJN8gco.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-CCzeLH0h.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -36937,7 +36916,7 @@ class KubernetesApi {
       if (contentType === "json") {
         parsedResource = JSON.parse(content);
       } else {
-        const yaml = await import("./index-zTJ6x03j.js");
+        const yaml = await import("./index-CtWl3gaO.js");
         parsedResource = yaml.parse(content);
       }
     } catch (error) {
@@ -52859,7 +52838,7 @@ let KubernetesCRDs = class extends i$2 {
         unwrapped = JSON.parse(JSON.stringify(unwrapped));
         delete unwrapped.metadata.managedFields;
       }
-      const yaml = await import("./index-zTJ6x03j.js");
+      const yaml = await import("./index-CtWl3gaO.js");
       this.createResourceValue = yaml.stringify(unwrapped);
       this.isCreating = false;
     } catch (error) {
@@ -56438,43 +56417,8 @@ const $volumeStats = computed(
     };
   }
 );
-registerPerfGauge(() => {
-  const gauges = {};
-  try {
-    const items = vmStore.$items.get();
-    gauges["virt_vms"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
-  } catch {
-  }
-  try {
-    const items = storagePoolStore.$items.get();
-    gauges["virt_storage_pools"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
-  } catch {
-  }
-  try {
-    const items = isoStore.$items.get();
-    gauges["virt_isos"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
-  } catch {
-  }
-  try {
-    const items = templateStore.$items.get();
-    gauges["virt_templates"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
-  } catch {
-  }
-  try {
-    const items = networkStore.$items.get();
-    gauges["virt_networks"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
-  } catch {
-  }
-  try {
-    const items = volumeStore.$items.get();
-    gauges["virt_volumes"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
-  } catch {
-  }
-  return gauges;
-});
 const vmActions = {
   async fetchAll() {
-    perfIncrement("virt_vm_fetchAll");
     await vmStore.fetch();
   },
   /**
@@ -56603,7 +56547,6 @@ const vmActions = {
 };
 const templateActions = {
   async fetchAll() {
-    perfIncrement("virt_template_fetchAll");
     await templateStore.fetch();
   },
   async create(templateData) {
@@ -56869,7 +56812,6 @@ const wizardActions = {
 };
 const storagePoolActions = {
   async fetchAll() {
-    perfIncrement("virt_storagePool_fetchAll");
     await storagePoolStore.fetch();
   },
   async refresh(poolName) {
@@ -56942,7 +56884,6 @@ const storagePoolActions = {
 };
 const volumeActions = {
   async fetchAll() {
-    perfIncrement("virt_volume_fetchAll");
     await volumeStore.fetch();
   },
   async delete(volumeId) {

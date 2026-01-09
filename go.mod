@@ -25,7 +25,7 @@ require (
 	k8s.io/apimachinery v0.33.3
 	k8s.io/client-go v0.33.3
 	k8s.io/cri-api v0.31.4
-	libvirt.org/go/libvirt v1.10006.0
+	libvirt.org/go/libvirt v1.8000.0
 	sigs.k8s.io/yaml v1.4.0
 )
 
