@@ -177,7 +177,7 @@ export class NamespaceDropdown extends LitElement {
   `;
 
   @property({ type: Array }) namespaces: Array<{name: string, count?: number}> = [];
-  @property({ type: String }) selectedNamespace = 'All Namespaces';
+  @property({ type: String }) selectedNamespace = 'default';
   @property({ type: Boolean }) loading = false;
   @property({ type: String }) placeholder = 'Select namespace';
   @property({ type: Boolean }) showCounts = false;

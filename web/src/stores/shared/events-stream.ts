@@ -68,6 +68,17 @@ export function subscribeToEventsChannel<TPayload = any>(
   window.addEventListener('websocket:event', handleWsEvent as EventListener);
 
   return () => {
+    // Send unsubscribe message to server to stop receiving events for this channel
+    try {
+      wsManager.send(EVENTS_CONNECTION_ID, {
+        type: 'unsubscribe',
+        payload: { channel: options.channel }
+      });
+    } catch (e) {
+      // Ignore errors if connection is closed or manager is not available
+      console.warn('Failed to send unsubscribe:', e);
+    }
+
     window.removeEventListener('websocket:event', handleWsEvent as EventListener);
     unsubscribeFromWs();
   };

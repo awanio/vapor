@@ -2,6 +2,7 @@ package kubernetes
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/awanio/vapor/internal/websocket"
@@ -49,6 +50,9 @@ func StartEventForwarder(ctx context.Context, svc *Service, hub *websocket.Hub) 
 				msg := websocket.Message{Type: websocket.MessageTypeEvent, Payload: payload}
 				if b, err := websocket.MarshalMessage(msg); err == nil {
 					hub.BroadcastToChannel("k8s-events", b)
+					if ns := obj.GetNamespace(); ns != "" {
+						hub.BroadcastToChannel(fmt.Sprintf("k8s-events:%s", ns), b)
+					}
 				}
 			}
 		}

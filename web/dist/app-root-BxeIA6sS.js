@@ -1,4 +1,4 @@
-import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-CCzeLH0h.js";
+import { g as getApiUrl, i as i18n, a as getWsUrl, b as auth, t as t$5, c as theme } from "./index-BdRhFYzN.js";
 function perfIncrement(name, delta = 1) {
   return;
 }
@@ -16979,6 +16979,14 @@ function subscribeToEventsChannel(options) {
   };
   window.addEventListener("websocket:event", handleWsEvent);
   return () => {
+    try {
+      wsManager.send(EVENTS_CONNECTION_ID, {
+        type: "unsubscribe",
+        payload: { channel: options.channel }
+      });
+    } catch (e3) {
+      console.warn("Failed to send unsubscribe:", e3);
+    }
     window.removeEventListener("websocket:event", handleWsEvent);
     unsubscribeFromWs();
   };
@@ -17463,7 +17471,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-CCzeLH0h.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-BdRhFYzN.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -17508,7 +17516,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-CCzeLH0h.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-BdRhFYzN.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -17656,7 +17664,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-CCzeLH0h.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-BdRhFYzN.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -17769,7 +17777,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-CCzeLH0h.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-BdRhFYzN.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -36916,7 +36924,7 @@ class KubernetesApi {
       if (contentType === "json") {
         parsedResource = JSON.parse(content);
       } else {
-        const yaml = await import("./index-CtWl3gaO.js");
+        const yaml = await import("./index-Bou33y74.js");
         parsedResource = yaml.parse(content);
       }
     } catch (error) {
@@ -37325,7 +37333,7 @@ let NamespaceDropdown = class extends i$2 {
   constructor() {
     super(...arguments);
     this.namespaces = [];
-    this.selectedNamespace = "All Namespaces";
+    this.selectedNamespace = "default";
     this.loading = false;
     this.placeholder = "Select namespace";
     this.showCounts = false;
@@ -47473,7 +47481,7 @@ let KubernetesWorkloads = class extends i$2 {
     super(...arguments);
     this.workloads = [];
     this.namespaces = [];
-    this.selectedNamespace = "All Namespaces";
+    this.selectedNamespace = "default";
     this.searchQuery = "";
     this.loading = false;
     this.error = null;
@@ -47511,6 +47519,7 @@ let KubernetesWorkloads = class extends i$2 {
     this.k8sPollingTimer = null;
     this.k8sRefetchTimer = null;
     this.k8sDropNotified = false;
+    this.isSwitchingNamespace = false;
     this.k8sHasConnectedOnce = false;
     this.tabs = [
       { id: "pods", label: "Pods" },
@@ -47587,8 +47596,15 @@ let KubernetesWorkloads = class extends i$2 {
     this.searchQuery = event.detail.value;
   }
   async handleNamespaceChange(event) {
+    this.isSwitchingNamespace = true;
+    this.stopK8sEventStream();
     this.selectedNamespace = event.detail.namespace;
-    await this.fetchData();
+    try {
+      await this.fetchData();
+    } finally {
+      this.startK8sEventStream();
+      this.isSwitchingNamespace = false;
+    }
   }
   handleCellClick(event) {
     const item = event.detail.item;
@@ -48191,7 +48207,7 @@ spec:
   startK8sEventStream() {
     if (this.unsubscribeK8sEvents) return;
     this.unsubscribeK8sEvents = subscribeToEventsChannel({
-      channel: "k8s-events",
+      channel: this.selectedNamespace === "All Namespaces" ? "k8s-events" : "k8s-events:" + this.selectedNamespace,
       routeId: "kubernetes:k8s-events",
       onEvent: (payload) => this.handleK8sEvent(payload),
       onConnectionChange: (connected) => this.handleK8sEventsConnectionChange(connected)
@@ -48216,7 +48232,7 @@ spec:
   handleK8sEventsConnectionChange(connected) {
     this.k8sEventsLive = connected;
     if (!connected) {
-      if (this.k8sHasConnectedOnce && !this.k8sDropNotified) {
+      if (this.k8sHasConnectedOnce && !this.k8sDropNotified && !this.isSwitchingNamespace) {
         this.showToast("Live Kubernetes updates disconnected — falling back to polling", "warning");
         this.k8sDropNotified = true;
       }
@@ -48256,6 +48272,9 @@ spec:
     const name = String(payload.name || "");
     const namespace = String(payload.namespace || "");
     if (!name || !namespace) return;
+    if (this.selectedNamespace !== "All Namespaces" && namespace !== this.selectedNamespace) {
+      return;
+    }
     if (action === "DELETED") {
       this.workloads = this.workloads.filter((w) => !(w.type === "Pod" && w.name === name && w.namespace === namespace));
       return;
@@ -52838,7 +52857,7 @@ let KubernetesCRDs = class extends i$2 {
         unwrapped = JSON.parse(JSON.stringify(unwrapped));
         delete unwrapped.metadata.managedFields;
       }
-      const yaml = await import("./index-CtWl3gaO.js");
+      const yaml = await import("./index-Bou33y74.js");
       this.createResourceValue = yaml.stringify(unwrapped);
       this.isCreating = false;
     } catch (error) {

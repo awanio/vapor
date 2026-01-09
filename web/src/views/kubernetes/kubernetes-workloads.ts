@@ -38,7 +38,7 @@ type WorkloadResource = KubernetesPod | KubernetesDeployment | KubernetesStatefu
 export class KubernetesWorkloads extends LitElement {
   @property({ type: Array }) workloads: WorkloadResource[] = [];
   @property({ type: Array }) namespaces: KubernetesNamespace[] = [];
-  @property({ type: String }) selectedNamespace = 'All Namespaces';
+  @property({ type: String }) selectedNamespace = 'default';
   @property({ type: String }) searchQuery = '';
   @property({ type: Boolean }) loading = false;
   @property({ type: String }) error: string | null = null;
@@ -79,6 +79,7 @@ export class KubernetesWorkloads extends LitElement {
   private k8sPollingTimer: number | null = null;
   private k8sRefetchTimer: number | null = null;
   private k8sDropNotified = false;
+  private isSwitchingNamespace = false;
   private k8sHasConnectedOnce = false;
 
   static override styles = css`
@@ -273,8 +274,15 @@ export class KubernetesWorkloads extends LitElement {
   }
 
   private async handleNamespaceChange(event: CustomEvent) {
+    this.isSwitchingNamespace = true;
+    this.stopK8sEventStream();
     this.selectedNamespace = event.detail.namespace;
-    await this.fetchData();
+    try {
+      await this.fetchData();
+    } finally {
+      this.startK8sEventStream();
+      this.isSwitchingNamespace = false;
+    }
   }
 
   private handleCellClick(event: CustomEvent) {
@@ -880,7 +888,7 @@ export class KubernetesWorkloads extends LitElement {
   private startK8sEventStream() {
     if (this.unsubscribeK8sEvents) return;
     this.unsubscribeK8sEvents = subscribeToEventsChannel({
-      channel: 'k8s-events',
+      channel: this.selectedNamespace === 'All Namespaces' ? 'k8s-events' : 'k8s-events:' + this.selectedNamespace,
       routeId: 'kubernetes:k8s-events',
       onEvent: (payload: any) => this.handleK8sEvent(payload),
       onConnectionChange: (connected) => this.handleK8sEventsConnectionChange(connected),
@@ -907,7 +915,7 @@ export class KubernetesWorkloads extends LitElement {
   private handleK8sEventsConnectionChange(connected: boolean) {
     this.k8sEventsLive = connected;
     if (!connected) {
-      if (this.k8sHasConnectedOnce && !this.k8sDropNotified) {
+      if (this.k8sHasConnectedOnce && !this.k8sDropNotified && !this.isSwitchingNamespace) {
         this.showToast('Live Kubernetes updates disconnected — falling back to polling', 'warning');
         this.k8sDropNotified = true;
       }
@@ -953,6 +961,11 @@ export class KubernetesWorkloads extends LitElement {
     const name = String(payload.name || '');
     const namespace = String(payload.namespace || '');
     if (!name || !namespace) return;
+
+    // Filter out events that do not match the selected namespace
+    if (this.selectedNamespace !== 'All Namespaces' && namespace !== this.selectedNamespace) {
+      return;
+    }
 
     if (action === 'DELETED') {
       this.workloads = this.workloads.filter((w) => !(w.type === 'Pod' && w.name === name && w.namespace === namespace));
