@@ -5,6 +5,7 @@ import { FitAddon } from 'xterm-addon-fit';
 import { WebLinksAddon } from 'xterm-addon-web-links';
 import xtermStyles from 'xterm/css/xterm.css?inline';
 import { $token } from '../../stores/auth';
+import { getWsUrl } from '../../config';
 
 @customElement('pod-terminal')
 export class PodTerminal extends LitElement {
@@ -103,11 +104,8 @@ export class PodTerminal extends LitElement {
 
   private connect() {
     if (!this.pod || !this.namespace) return;
-
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
-    // Query params for Pod Exec
-    const url = `${protocol}//${host}/ws/kubernetes/pods/exec?pod=${this.pod}&namespace=${this.namespace}&container=${this.container || ''}`;
+    const queryParams = `?pod=${this.pod}&namespace=${this.namespace}&container=${this.container || ''}`;
+    const url = getWsUrl(`/ws/kubernetes/pods/exec${queryParams}`);
 
     this.socket = new WebSocket(url);
 
