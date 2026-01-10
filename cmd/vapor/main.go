@@ -213,6 +213,7 @@ func main() {
 
 	// WebSocket routes
 	router.GET("/ws/terminal", websocket.ServeTerminalWebSocket(terminalHub, cfg.GetJWTSecret()))
+	router.GET("/ws/kubernetes/pods/exec", websocket.ServePodExecWebSocket(terminalHub, cfg.GetJWTSecret()))
 	router.GET("/ws/events", websocket.ServeEventsWebSocket(eventsHub, cfg.GetJWTSecret()))
 
 	// Serve embedded web UI

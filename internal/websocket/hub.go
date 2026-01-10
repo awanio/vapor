@@ -14,22 +14,23 @@ import (
 
 // Client represents a WebSocket client
 type Client struct {
-	eventsHub      *Hub
-	hub            *Hub
-	conn           *websocket.Conn
-	send           chan []byte
-	id             string
-	authenticated  bool
-	username       string
-	subscriptions  map[string]bool
-	mu             sync.RWMutex
-	jwtSecret      string
-	handlerType    string
-	logService     *logs.Service
-	pseudoTerminal *PseudoTerminal
-	ctx            context.Context
-	cancel         context.CancelFunc
-	closed         bool
+	eventsHub       *Hub
+	hub             *Hub
+	conn            *websocket.Conn
+	send            chan []byte
+	id              string
+	authenticated   bool
+	username        string
+	subscriptions   map[string]bool
+	mu              sync.RWMutex
+	jwtSecret       string
+	handlerType     string
+	logService      *logs.Service
+	pseudoTerminal  *PseudoTerminal
+	podExecTerminal *PodExecTerminal
+	ctx             context.Context
+	cancel          context.CancelFunc
+	closed          bool
 }
 
 // Hub maintains the set of active clients and broadcasts messages to the clients
@@ -236,6 +237,10 @@ func (c *Client) processMessage(data []byte) {
 		case "logs":
 			// Start tailing logs with filters from the message
 			go tailLogs(c, c.logService, msg)
+		case "pod-exec":
+			if c.podExecTerminal != nil {
+				go c.podExecTerminal.Start()
+			}
 		case "terminal":
 			// Start terminal session
 			if c.pseudoTerminal == nil {
@@ -290,6 +295,16 @@ func (c *Client) processMessage(data []byte) {
 			c.sendError("Not authenticated")
 			return
 		}
+		if c.handlerType == "pod-exec" {
+			if payload, ok := msg.Payload.(map[string]interface{}); ok {
+				if data, ok := payload["data"].(string); ok {
+					if c.podExecTerminal != nil {
+						c.podExecTerminal.WriteInput(data)
+					}
+				}
+			}
+			return
+		}
 		c.mu.RLock()
 		handlerType := c.handlerType
 		c.mu.RUnlock()
@@ -314,6 +329,28 @@ func (c *Client) processMessage(data []byte) {
 	case MessageTypeResize:
 		if !c.authenticated {
 			c.sendError("Not authenticated")
+			return
+		}
+		if c.handlerType == "pod-exec" {
+			if payload, ok := msg.Payload.(map[string]interface{}); ok {
+				rows, _ := payload["rows"].(float64)
+				cols, _ := payload["cols"].(float64)
+
+				if rows > 0 && cols > 0 {
+					if c.podExecTerminal != nil {
+						c.podExecTerminal.Resize(uint16(rows), uint16(cols))
+
+						c.sendMessage(Message{
+							Type: "resize",
+							Payload: map[string]interface{}{
+								"success": true,
+								"rows":    int(rows),
+								"cols":    int(cols),
+							},
+						})
+					}
+				}
+			}
 			return
 		}
 		c.mu.RLock()

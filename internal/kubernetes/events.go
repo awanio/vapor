@@ -2,16 +2,20 @@ package kubernetes
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
-	"github.com/awanio/vapor/internal/websocket"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type EventBroadcaster interface {
+	BroadcastToChannel(channel string, message []byte)
+}
+
 // StartEventForwarder watches Kubernetes pod events cluster-wide and broadcasts them.
 // Non-fatal: exits quietly if hub is nil or watch cannot be established.
-func StartEventForwarder(ctx context.Context, svc *Service, hub *websocket.Hub) {
+func StartEventForwarder(ctx context.Context, svc *Service, hub EventBroadcaster) {
 	if svc == nil || hub == nil || svc.client == nil {
 		return
 	}
@@ -47,8 +51,15 @@ func StartEventForwarder(ctx context.Context, svc *Service, hub *websocket.Hub) 
 					"timestamp":       time.Now().UTC(),
 				}
 
-				msg := websocket.Message{Type: websocket.MessageTypeEvent, Payload: payload}
-				if b, err := websocket.MarshalMessage(msg); err == nil {
+				msg := struct {
+					Type    string      `json:"type"`
+					Payload interface{} `json:"payload"`
+				}{
+					Type:    "event",
+					Payload: payload,
+				}
+
+				if b, err := json.Marshal(msg); err == nil {
 					hub.BroadcastToChannel("k8s-events", b)
 					if ns := obj.GetNamespace(); ns != "" {
 						hub.BroadcastToChannel(fmt.Sprintf("k8s-events:%s", ns), b)

@@ -1,3 +1,4 @@
+import './components/kubernetes/pod-terminal.js';
 import { LitElement, html, css } from 'lit';
 import { state } from 'lit/decorators.js';
 import { auth } from './auth';
@@ -400,7 +401,18 @@ export class AppRoot extends LitElement {
     }
     
     // Show main app if authenticated
-    return html`
+    
+    // Check for standalone terminal
+    if (this.activeView === 'kubernetes' && this.subRoute === 'terminal') {
+       const urlParams = new URLSearchParams(window.location.search);
+       const pod = urlParams.get('pod') || '';
+       const namespace = urlParams.get('namespace') || '';
+       const container = urlParams.get('container') || '';
+       return html`
+         <pod-terminal .pod="${pod}" .namespace="${namespace}" .container="${container}"></pod-terminal>
+       `;
+    }
+return html`
       <!-- App Header -->
       <header class="app-header">
         <div class="header-title">Vapor</div>

@@ -23,6 +23,7 @@ import '../../components/drawers/detail-drawer.js';
 import '../../components/drawers/logs-drawer.js';
 import '../../components/modals/delete-modal.js';
 import '../../components/modals/set-image-modal.js';
+import '../../components/modals/terminal-modal.js';
 import '../../components/kubernetes/resource-detail-view.js';
 import '../../components/drawers/create-resource-drawer';
 import '../../components/ui/notification-container';
@@ -72,6 +73,12 @@ export class KubernetesWorkloads extends LitElement {
   @state() private workloadForSetImage: WorkloadResource | null = null;
   @state() private containerImages: ContainerImage[] = [];
   @state() private isPerformingAction = false;
+
+  @state() private showTerminalModal = false;
+  @state() private terminalPod = '';
+  @state() private terminalNamespace = '';
+  @state() private terminalContainer = '';
+
 
   // Live events stream (Kubernetes pods)
   @state() private k8sEventsLive = false;
@@ -219,6 +226,7 @@ export class KubernetesWorkloads extends LitElement {
 
     if ('status' in item && item.type === 'Pod') {
       actions.push({ label: 'View Logs', action: 'logs' });
+      actions.push({ label: 'Terminal', action: 'terminal' });
       // Add Set Image action for Pods (no restart/rollback for pods)
       actions.push({ label: 'Set Image', action: 'set-image' });
     }
@@ -299,6 +307,9 @@ export class KubernetesWorkloads extends LitElement {
         break;
       case 'logs':
         this.viewLogs(item);
+        break;
+      case 'terminal':
+        this.openTerminal(item);
         break;
       case 'edit':
         this.editItem(item);
@@ -976,6 +987,15 @@ export class KubernetesWorkloads extends LitElement {
     this.scheduleK8sRefetch(action);
   }
 
+  
+  private openTerminal(item: WorkloadResource) {
+    if (item.type !== 'Pod') return;
+    this.terminalPod = item.name;
+    this.terminalNamespace = item.namespace;
+    this.terminalContainer = ''; 
+    this.showTerminalModal = true;
+  }
+
   override connectedCallback() {
     super.connectedCallback();
     this.startK8sEventStream();
@@ -1150,6 +1170,15 @@ export class KubernetesWorkloads extends LitElement {
           @close="${this.handleLogsClose}"
           @refresh="${this.handleLogsRefresh}"
         ></logs-drawer>
+
+        
+        <terminal-modal
+            .show="${this.showTerminalModal}"
+            .pod="${this.terminalPod}"
+            .namespace="${this.terminalNamespace}"
+            .container="${this.terminalContainer}"
+            @close="${() => { this.showTerminalModal = false; }}"
+        ></terminal-modal>
 
         <notification-container></notification-container>
       </div>
