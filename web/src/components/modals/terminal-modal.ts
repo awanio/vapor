@@ -1,5 +1,6 @@
-import { LitElement, html, css } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { LitElement, html, css, PropertyValues } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
+import { KubernetesApi } from '../../services/kubernetes-api.js';
 import '../kubernetes/pod-terminal.js';
 
 @customElement('terminal-modal')
@@ -8,6 +9,10 @@ export class TerminalModal extends LitElement {
   @property({ type: String }) pod = '';
   @property({ type: String }) namespace = '';
   @property({ type: String }) container = '';
+
+  @state() private containers: string[] = [];
+  @state() private selectedContainer = '';
+  @state() private loading = false;
 
   static override styles = css`
     .modal-overlay {
@@ -43,6 +48,11 @@ export class TerminalModal extends LitElement {
       font-size: 14px;
       font-weight: 500;
     }
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
     .modal-body {
       flex: 1;
       overflow: hidden;
@@ -71,16 +81,70 @@ export class TerminalModal extends LitElement {
     .btn-close:hover {
         background: #e63333;
     }
+    select {
+        background: #3c3c3c;
+        border: 1px solid #3c3c3c;
+        color: #cccccc;
+        padding: 4px;
+        border-radius: 2px;
+        outline: none;
+    }
   `;
+
+  override updated(changedProperties: PropertyValues) {
+    if (changedProperties.has('show') && this.show) {
+      this.fetchContainers();
+    }
+    if (changedProperties.has('pod') || changedProperties.has('namespace')) {
+      if (this.show) {
+         this.fetchContainers();
+      }
+    }
+  }
+
+  private async fetchContainers() {
+    if (!this.pod || !this.namespace) return;
+    
+    this.loading = true;
+    this.containers = [];
+    this.selectedContainer = this.container; // Preserve prop if set
+
+    try {
+        const containers = await KubernetesApi.getPodContainers(this.namespace, this.pod);
+        this.containers = containers.map(c => c.name);
+        
+        // If selectedContainer is empty or not in list, default to first
+        if (!this.selectedContainer && this.containers.length > 0) {
+            this.selectedContainer = this.containers[0] || "";
+        } else if (this.selectedContainer && !this.containers.includes(this.selectedContainer)) {
+             this.selectedContainer = this.containers[0] || '';
+        }
+    } catch (e) {
+        console.error('Failed to fetch containers', e);
+        // Fallback: assume the pod has at least one container and proceed
+        if (!this.selectedContainer) {
+             // We don't have a name, but backend might handle empty.
+             // But for UI clarity let's leave it empty or user provided prop.
+        }
+    } finally {
+        this.loading = false;
+    }
+  }
 
   private handleClose() {
     this.dispatchEvent(new CustomEvent('close'));
   }
 
   private handleNewTab() {
-    const url = `/kubernetes/terminal?pod=${this.pod}&namespace=${this.namespace}&container=${this.container}`;
+    const containerParam = this.selectedContainer ? `&container=${this.selectedContainer}` : '';
+    const url = `/kubernetes/terminal?pod=${this.pod}&namespace=${this.namespace}${containerParam}`;
     window.open(url, '_blank');
     this.handleClose();
+  }
+
+  private handleContainerChange(e: Event) {
+      const target = e.target as HTMLSelectElement;
+      this.selectedContainer = target.value;
   }
 
   override render() {
@@ -90,14 +154,27 @@ export class TerminalModal extends LitElement {
       <div class="modal-overlay" @click="${(e: Event) => e.target === this.shadowRoot?.querySelector('.modal-overlay') && this.handleClose()}">
         <div class="modal-content">
           <div class="modal-header">
-            <span>Terminal: ${this.pod}</span>
+            <div class="header-left">
+                <span>Terminal: ${this.pod}</span>
+                ${this.containers.length > 1 ? html`
+                    <select @change="${this.handleContainerChange}" .value="${this.selectedContainer}">
+                        ${this.containers.map(c => html`<option value="${c}">${c}</option>`)}
+                    </select>
+                ` : this.selectedContainer ? html`<span style="color: #888; font-size: 12px;">(${this.selectedContainer})</span>` : ''}
+            </div>
             <div class="btn-group">
                 <button class="btn" @click="${this.handleNewTab}">Open in New Tab</button>
                 <button class="btn btn-close" @click="${this.handleClose}">Close</button>
             </div>
           </div>
           <div class="modal-body">
-            <pod-terminal .pod="${this.pod}" .namespace="${this.namespace}" .container="${this.container}"></pod-terminal>
+            ${!this.loading ? html`
+                <pod-terminal 
+                    .pod="${this.pod}" 
+                    .namespace="${this.namespace}" 
+                    .container="${this.selectedContainer}"
+                ></pod-terminal>
+            ` : html`<div style="padding: 20px; color: #ccc;">Loading container details...</div>`}
           </div>
         </div>
       </div>
