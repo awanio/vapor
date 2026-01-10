@@ -1,330 +1,192 @@
 # Vapor
 
-Vapor is a comprehensive Linux system management platform inspired by [Cockpit](https://cockpit-project.org/) designed to simplify server administration through a modern web interface. With its clean and intuitive design, Vapor brings together traditional system administration tools with container orchestration and Kubernetes management capabilities.
+Vapor is a comprehensive Linux OS management system, inspired by Cockpit, designed to provide a modern web interface for server administration, container orchestration, and Kubernetes management.
 
-## Key Features
+## Features
 
-1. System Management
-    * User management (Linux system users)
-    * Network configuration (interfaces, bridges, bonds, VLANs)
-    * Storage management:
-      * disks
-      * LVM (upcoming)
-      * iSCSI (upcoming)
-      * BTRFS (upcoming)
-      * multipath (upcoming)
-    * System monitoring and metrics
-2. Container Orchestration
-    * Docker container management
-    * CRI-compatible runtime support (containerd, CRI-O)
-    * Container images management
-    * Resumable image uploads
-3. Virtualization (KVM/Libvirt) (upcoming)
-    * VM creation with enhanced API
-    * PCI device passthrough support
-    * Storage pool management
-    * Template-based VM creation
-    * VNC/SPICE console access
-    * Backup and snapshot management
-4. Kubernetes Integration
-    * Cluster management
-    * Workload deployment
-    * Helm chart management (upcoming)
-    * Node and storage management
-5. Ansible Automation (upcoming)
-    * Playbook execution with parameter support
-    * Ad-hoc commands
-    * Dynamic inventory generation
-    * Real-time output streaming
-    * Execution history tracking in SQLite
-6. Advanced Features
-    * WebSocket-based terminal access (per-user sessions)
-    * Real-time log streaming
-    * Resumable file uploads (TUS protocol)
-    * JWT authentication with refresh tokens
-    * SSH key authentication support
+- **System Management**: Monitor CPU, memory, disk, network usage, and system logs.
+- **Container Management**: Manage Docker containers and images (CRI support included).
+- **Kubernetes Management**: View and manage Pods, Deployments, Services, and more.
+- **Virtualization**: Manage KVM/Libvirt virtual machines.
+- **Web Terminal**: Access server terminal directly from the browser.
+- **File Manager**: Browse and manage files on the server.
+- **Authentication**: Secure JWT-based authentication using Linux system users.
 
 ## Prerequisites
 
-- Go 1.21 or higher
-- Linux operating system (primary target)
-- Root privileges for system operations
-- systemd for log management
-
-### Required Linux Packages
-
-The application requires the following system utilities to be installed on Linux:
-
-- **Core utilities** (usually pre-installed):
-  - `mount`, `umount` - For filesystem mounting operations
-  - `lsblk` - For listing block devices
-  - `useradd`, `usermod`, `userdel` - For user management
-  - `ansible` - For otomation tasks
-
-- **Filesystem tools** (install based on your needs):
-  - `e2fsprogs` - For ext2/ext3/ext4 filesystem support (provides mkfs.ext2, mkfs.ext3, mkfs.ext4)
-  - `xfsprogs` - For XFS filesystem support (provides mkfs.xfs)
-  - `btrfs-progs` - For Btrfs filesystem support (provides mkfs.btrfs)
-
-- **System logging**:
-  - `systemd` - For journalctl log management
-
-- **Advanced storage management** (optional):
-  - `lvm2` - For LVM (Logical Volume Manager) support
-  - `open-iscsi` or `iscsi-initiator-utils` - For iSCSI support
-  - `multipath-tools` or `device-mapper-multipath` - For multipath support
-
-#### Installing Required Packages
-
-**Ubuntu/Debian:**
-```bash
-sudo apt-get update
-sudo apt-get install -y util-linux e2fsprogs xfsprogs btrfs-progs systemd lvm2 open-iscsi multipath-tools
-```
-
-**RHEL/CentOS/Fedora:**
-```bash
-sudo yum install -y util-linux e2fsprogs xfsprogs btrfs-progs systemd lvm2 iscsi-initiator-utils device-mapper-multipath
-# or for newer versions:
-sudo dnf install -y util-linux e2fsprogs xfsprogs btrfs-progs systemd lvm2 iscsi-initiator-utils device-mapper-multipath
-```
-
-**Arch Linux:**
-```bash
-sudo pacman -S util-linux e2fsprogs xfsprogs btrfs-progs systemd lvm2 open-iscsi multipath-tools
-```
-
-**Alpine Linux:**
-```bash
-sudo apk add util-linux e2fsprogs xfsprogs btrfs-progs lvm2 open-iscsi multipath-tools
-```
+- Linux OS (Ubuntu, Debian, CentOS, Fedora, Arch Linux supported)
+- Systemd
+- Root privileges
 
 ## Platform Requirements
 
-### Supported Platforms
-- **Linux x86_64**: Primary platform with full functionality
-
-### Operating System
-This application is **Linux-only** and will not run on macOS, Windows, or other operating systems. The application enforces this requirement at startup and will exit with an error if run on non-Linux systems.
-
-### Build Requirements
-The application must be built on a Linux system or cross-compiled for Linux:
-```bash
-# Build for Linux x86_64 (native or cross-compilation)
-make build-linux
-```
+- **OS**: Linux
+- **Architecture**: x86_64 (amd64)
 
 ## Installation
 
-### From Script
+### Quick Install (Script)
+
+The easiest way to install Vapor is using the installation script.
+
+**Standard Installation (Interactive):**
+```bash
+# Download and run the script interactively
+curl -fsSL https://raw.githubusercontent.com/awanio/vapor/main/scripts/install.sh -o install.sh
+chmod +x install.sh
+sudo ./install.sh
+```
+
+**Non-Interactive / CI Installation:**
+You can pre-configure installation options using environment variables. This is useful for automated deployments or when piping to bash.
 
 ```bash
-# One-command installation
+# Install with default options (no optional components)
 curl -fsSL https://raw.githubusercontent.com/awanio/vapor/main/scripts/install.sh | sudo bash
 
-# Install specific version
-VAPOR_VERSION=v0.0.1-rc.0 sudo ./scripts/install.sh
-
-# Upgrade (preserves config)
-sudo ./scripts/install.sh
+# Install with specific components enabled
+curl -fsSL https://raw.githubusercontent.com/awanio/vapor/main/scripts/install.sh | \
+  INSTALL_DOCKER=true \
+  INSTALL_K8S_TOOLS=true \
+  INSTALL_LIBVIRT=true \
+  sudo -E bash
 ```
+
+**Available Environment Variables:**
+- `INSTALL_LIBVIRT_CLIENT`: Install libvirt client libraries (Default: prompt or no)
+- `INSTALL_DOCKER`: Install Docker engine (Default: prompt or no)
+- `INSTALL_K8S_TOOLS`: Install kubectl (Default: prompt or no)
+- `INSTALL_LIBVIRT`: Install/Enable KVM & Libvirt (Default: prompt or no)
 
 ### From Source
 
-```bash
-# Clone the repository
-git clone https://github.com/awanio/vapor.git
-cd vapor
+If you prefer to build from source:
 
-# Install dependencies
-make install-deps
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/awanio/vapor.git
+    cd vapor
+    ```
 
-# Build production binary
-make build
+2.  **Build the project:**
+    ```bash
+    make build
+    ```
 
-# Build development binary
-make build-dev
+3.  **Run:**
+    ```bash
+    ./bin/vapor
+    ```
 
-# Build specifically for Linux x86_64 (cross-compilation)
-make build-linux
+## Development Environment
 
-# Run tests
-make test
-```
+For development, we provide a Docker Compose environment that simulates a full Linux system with systemd, Docker-in-Docker, and K3s.
 
-### Development Environment
+1.  **Start the environment:**
+    ```bash
+    cd development
+    ./compose.sh up -d
+    ```
 
-For a complete development environment with all dependencies, use the provided Docker Compose setup:
+2.  **Access the shell:**
+    ```bash
+    ./compose.sh shell
+    ```
 
-```bash
-# Quick start using Make commands
-make dev-up       # Start development environment
-make dev-ps       # Check container status
-make dev-exec     # Access container shell
-make dev-logs     # View logs
-make dev-down     # Stop environment
-make dev-help     # Show all dev commands
+3.  **Run Vapor inside the container:**
+    ```bash
+    # Inside the container shell
+    cd /app
+    make dev
+    ```
 
-# Or navigate to development folder for direct control
-cd development
-./compose.sh up -d
-```
+## Deployment on Linux
 
-The development environment includes:
-- Full Linux system with systemd
-- Docker-in-Docker for container management
-- K3s for Kubernetes testing
-- iSCSI target for storage testing
-- All required system utilities pre-installed
-
-See [development/README.md](development/README.md) for detailed setup instructions.
-
-### Deployment on Linux
-
-```bash
-# Build for Linux x86_64
-make build-linux
-
-# Copy binary and deploy script to Linux server
-scp bin/system-api-linux-amd64 deploy.sh user@server:/tmp/
-
-# On the Linux server, run deployment script
-sudo bash /tmp/deploy.sh
-```
+Vapor is designed to be deployed as a systemd service.
 
 ### Using systemd
 
-```bash
-# Copy binary to system location
-sudo cp bin/system-api /usr/local/bin/
+1.  **Copy binary to /usr/local/bin:**
+    ```bash
+    sudo cp bin/vapor /usr/local/bin/
+    ```
 
-# Copy systemd unit file
-sudo cp system-api.service /etc/systemd/system/
+2.  **Create configuration directory:**
+    ```bash
+    sudo mkdir -p /etc/vapor
+    ```
 
-# Reload systemd and start service
-sudo systemctl daemon-reload
-sudo systemctl enable system-api
-sudo systemctl start system-api
-```
+3.  **Install systemd service:**
+    The installation script automatically handles this. If installing manually, refer to the service file creation in `scripts/install.sh`.
+
+4.  **Start the service:**
+    ```bash
+    sudo systemctl enable --now vapor
+    ```
 
 ## Configuration
 
-The application can be configured using environment variables:
+Configuration is located at `/etc/vapor/vapor.conf`.
 
-- `VAPOR_JWT_SECRET`: Secret key for JWT token signing (required for production)
-- `VAPOR_PORT`: Server address and port (default: `:7770`)
+```yaml
+server:
+  port: 7770
+  tls:
+    enabled: true
+    cert_file: "" # Auto-generated if empty
+    key_file: ""
+
+jwt:
+  secret: "CHANGE_ME"
+```
 
 ## API Documentation
 
-The complete OpenAPI 3.1.0 specification is available in `openapi.yaml`. 
+The API documentation is available at `/docs` endpoint when running the server (e.g., `https://localhost:7770/docs`).
 
-### Authentication
-
-The API uses **Linux system user authentication**:
-- Any valid Linux user can authenticate with their system credentials
-- The API uses the system's authentication mechanism (via `su` command)
-- User must exist in `/etc/passwd`
-- All authenticated users receive the "admin" role by default
+OpenAPI spec is located at `api/openapi.yaml`.
 
 ## Web UI
 
-The application includes an embedded web UI that is served from the root path (`/`). When you build the binary, any files in the `web/dist` directory are automatically embedded into the executable, creating a single self-contained binary.
+The Web UI is built with Lit (Web Components) and Vite. It is embedded into the Go binary during build.
 
-### Building with Web UI
-
-1. Place your web UI build artifacts in the `web/dist` directory
-2. Run `make build` - this will automatically embed the web assets
-3. The resulting binary will serve both the API and web UI
-
-### Web UI Features
-
-- Single Page Application (SPA) support with client-side routing
-- Automatically serves `index.html` for unknown routes (SPA fallback)
-- Static assets are served from the embedded filesystem
-- No external web server required
-
-### Accessing the Web UI
-
-Once the server is running, you can access:
-- Web UI: `http://localhost:8080/`
-- API endpoints: `http://localhost:8080/api/v1/*`
-- WebSocket endpoints: `ws://localhost:8080/api/v1/ws/*`
-- OpenAPI docs: `http://localhost:8080/docs`
+- **Source**: `web/`
+- **Development**: Run `cd web && npm run dev` for frontend-only dev.
 
 ## WebSocket Features
 
-### Terminal Access
-
-The API provides WebSocket-based terminal access at `/api/v1/ws/terminal`. Key features:
-
-- **User-based sessions**: Terminal sessions run as the authenticated Linux user
-- **Security**: Requires valid JWT authentication before establishing terminal session
-- **Audit logging**: All terminal sessions are logged with username and session details
-- **User permissions**: Each user operates within their own Linux permissions
+Vapor uses WebSockets for real-time features:
+- **Terminal**: `/ws/terminal` - Full TTY access
+- **Events**: `/ws/events` - System events and metrics push
+- **Logs**: `/ws/logs` - Real-time log streaming
 
 ## Development
 
-### Running in Development Mode
+- **Backend**: Go 1.24+
+- **Frontend**: Node.js 20+
+- **Database**: SQLite (embedded)
 
-```bash
-make dev
-```
-
-### Running Tests
-
-```bash
-# Run all tests
-make test
-
-# Run tests with coverage
-make test-coverage
-```
-
-### Code Formatting
-
-```bash
-make fmt
-```
-
-### Linting
-
-```bash
-make lint
-```
-
-## Security Considerations
-
-1. **Authentication**: Uses Linux system authentication - ensure strong user passwords.
-2. **Privileges**: The service requires root privileges for system operations.
-3. **JWT Secret**: Always use a strong, randomly generated secret in production.
-4. **HTTPS**: Use HTTPS in production environments.
-5. **Network**: Bind to localhost only or use proper firewall rules.
-6. **Terminal Access**: The WebSocket terminal feature provides full shell access as the authenticated user:
-   - Users get their own shell sessions with their Linux permissions
-   - All terminal sessions are logged for audit purposes
-   - Ensure proper authentication and network security when exposing this feature
-
-
-## Contributing
-
-Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on setting up your environment, coding standards, commit sign-off (DCO), and the PR process.
-
-## Code of Conduct
-
-Participation in this project is governed by our [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+See `CONTRIBUTING.md` for more details.
 
 ## Security
 
-Please report vulnerabilities privately as described in our [SECURITY.md](SECURITY.md).
+Vapor runs with root privileges to manage the system. Ensure:
+- It is not exposed to the public internet without a VPN/Firewall.
+- Use strong passwords for system users.
+- Keep the `JWT_SECRET` secure.
+
+## Contributing
+
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+
+## Code of Conduct
+
+Please note that this project is released with a Contributor Code of Conduct. By participating in this project you agree to abide by its terms.
 
 ## License
 
-This project is licensed under the Apache License 2.0 — see the [LICENSE](LICENSE) file for details. Where required, third-party attributions are listed in the [NOTICE](NOTICE) file.
+[MIT](LICENSE)
 
 ## Acknowledgments
 
-- Inspired by the Cockpit Project
-- Built with Gin Web Framework
-- Uses gopsutil for system metrics
-- netlink for network management
-- Ansible for automation tasks
+- [Cockpit Project](https://cockpit-project.org/) - Major inspiration for this project.
