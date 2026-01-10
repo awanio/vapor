@@ -9,7 +9,7 @@ export class TerminalModal extends LitElement {
   @property({ type: String }) namespace = '';
   @property({ type: String }) container = '';
 
-  static styles = css`
+  static override styles = css`
     .modal-overlay {
       position: fixed;
       top: 0;
@@ -83,7 +83,7 @@ export class TerminalModal extends LitElement {
     this.handleClose();
   }
 
-  render() {
+  override render() {
     if (!this.show) return null;
 
     return html`

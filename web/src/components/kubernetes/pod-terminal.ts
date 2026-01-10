@@ -1,10 +1,10 @@
 import { LitElement, html, css, unsafeCSS, PropertyValues } from 'lit';
-import { customElement, property, state, query } from 'lit/decorators.js';
+import { customElement, property, query } from 'lit/decorators.js';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import { WebLinksAddon } from 'xterm-addon-web-links';
 import xtermStyles from 'xterm/css/xterm.css?inline';
-import {  } from '../../stores/auth';
+import { $token } from '../../stores/auth';
 
 @customElement('pod-terminal')
 export class PodTerminal extends LitElement {
@@ -19,7 +19,7 @@ export class PodTerminal extends LitElement {
   private socket: WebSocket | null = null;
   private resizeObserver: ResizeObserver | null = null;
 
-  static styles = [
+  static override styles = [
     css`${unsafeCSS(xtermStyles)}`,
     css`
       :host {
@@ -38,11 +38,11 @@ export class PodTerminal extends LitElement {
     `
   ];
 
-  firstUpdated() {
+  override firstUpdated() {
     this.initTerminal();
   }
 
-  updated(changedProperties: PropertyValues) {
+  override updated(changedProperties: PropertyValues) {
     if (changedProperties.has('pod') || changedProperties.has('namespace') || changedProperties.has('container')) {
       if (this.pod && this.namespace) {
         // If terminal is already initialized, just connect
@@ -56,7 +56,7 @@ export class PodTerminal extends LitElement {
     }
   }
 
-  disconnectedCallback() {
+  override disconnectedCallback() {
     super.disconnectedCallback();
     this.disconnect();
     this.terminal?.dispose();
@@ -115,7 +115,7 @@ export class PodTerminal extends LitElement {
       this.terminal?.writeln('\r\nConnecting to pod...\r\n');
       
       // 1. Send Auth
-      const token = .get();
+      const token = $token.get();
       this.sendMessage('auth', { token });
 
       // 2. Send Subscribe to trigger Start
@@ -141,7 +141,7 @@ export class PodTerminal extends LitElement {
       }
     };
 
-    this.socket.onclose = (event) => {
+    this.socket.onclose = () => {
       this.terminal?.writeln('\r\nConnection closed.\r\n');
     };
 
@@ -191,7 +191,7 @@ export class PodTerminal extends LitElement {
     }
   }
 
-  render() {
+  override render() {
     return html`<div id="terminal-container"></div>`;
   }
 }
