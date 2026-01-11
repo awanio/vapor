@@ -237,10 +237,12 @@ export class ModalDialog extends I18nLitElement {
         document.body.appendChild(this.portalContainer);
         const shadow = this.portalContainer.attachShadow({ mode: 'open' });
         
-        // Adopt styles
+        // Manual style injection
         const styles = (this.constructor as typeof LitElement).elementStyles;
         if (styles) {
-             shadow.adoptedStyleSheets = styles.map(s => (s instanceof CSSStyleSheet) ? s : s.styleSheet!);
+             const styleEl = document.createElement('style');
+             styleEl.textContent = styles.map(s => (s as any).cssText || String(s)).join('\n');
+             shadow.appendChild(styleEl);
         }
       }
       
