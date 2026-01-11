@@ -28,7 +28,7 @@ export class VirtualizationBackupsView extends LitElement {
     .btn-primary { background: var(--vscode-button-background, #0e639c); color: var(--vscode-button-foreground, #ffffff); border: 1px solid var(--vscode-button-border, #5a5a5a); }
     .btn-danger { background: #a4262c; border-color: #a4262c; color: #ffffff; }
     .btn[disabled] { opacity: 0.6; cursor: not-allowed; }
-    .btn-create { display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--vscode-button-background, #007acc); color: var(--vscode-button-foreground, white); border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; }
+    .btn-create { display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--vscode-button-background, #007acc); color: var(--vscode-button-foreground, white); border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; }
     .btn-create:hover { background: var(--vscode-button-hoverBackground, #005a9e); }
     table { width: 100%; border-collapse: collapse; }
     th, td { padding: 12px 10px; border-bottom: 1px solid var(--vscode-widget-border, #2a2f3a); text-align: left; font-size: 13px; }
@@ -40,6 +40,7 @@ export class VirtualizationBackupsView extends LitElement {
     .empty { text-align: center; padding: 48px 0; color: var(--vscode-descriptionForeground, #9ca3af); }
     dialog, detail-drawer { color: var(--vscode-foreground, #e5e7eb); }
     .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+    .field.checkbox { flex-direction: row; align-items: center; }
     .field label { color: var(--vscode-foreground, #cbd5e1); font-size: 13px; }
     .field input, .field select, .field textarea { padding: 8px 12px; border-radius: 4px; border: 1px solid var(--vscode-input-border, #858585); background: var(--vscode-input-background, #3c3c3c); color: var(--vscode-input-foreground, #cccccc); font-size: 13px; }
     .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--vscode-focusBorder, #007acc); box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc); }
@@ -69,6 +70,7 @@ export class VirtualizationBackupsView extends LitElement {
   @state() private missingFiles = new Set<string>();
 
   private backupsUnsub?: () => void;
+  private vmsUnsub?: () => void;
 
   private importForm = {
     path: '',
@@ -96,6 +98,7 @@ export class VirtualizationBackupsView extends LitElement {
   override connectedCallback(): void {
     super.connectedCallback();
     this.backupsUnsub = $backups.subscribe(() => this.sync());
+    this.vmsUnsub = vmStore.$items.subscribe(() => this.requestUpdate());
     this.loadVMs();
     this.loadBackups();
   }
@@ -103,6 +106,7 @@ export class VirtualizationBackupsView extends LitElement {
   override disconnectedCallback(): void {
     super.disconnectedCallback();
     this.backupsUnsub?.();
+    this.vmsUnsub?.();
   }
 
   private async loadVMs() {
@@ -397,11 +401,6 @@ export class VirtualizationBackupsView extends LitElement {
         </div>
 
         <div class="controls">
-          <search-input
-            .placeholder=${'Search VM name/UUID'}
-            .value=${this.search}
-            @search-change=${(e: CustomEvent) => { this.search = e.detail.value; this.loadBackups(); }}
-          ></search-input>
           <div class="filters">
             <select .value=${this.status} @change=${(e: Event) => { this.status = (e.target as HTMLSelectElement).value; this.loadBackups(); }}>
               <option value="all">All status</option>
@@ -417,6 +416,11 @@ export class VirtualizationBackupsView extends LitElement {
               <option value="differential">Differential</option>
             </select>
           </div>
+          <search-input
+            .placeholder=${'Search VM name/UUID'}
+            .value=${this.search}
+            @search-change=${(e: CustomEvent) => { this.search = e.detail.value; this.loadBackups(); }}
+          ></search-input>
         </div>
 
         ${this.toast ? html`<div class="toast ${this.toast.type}">${this.toast.text}</div>` : ''}
@@ -468,6 +472,7 @@ export class VirtualizationBackupsView extends LitElement {
             <select .value=${this.importForm.compression} @change=${(e: Event) => (this.importForm.compression = (e.target as HTMLSelectElement).value)}>
               <option value="none">None</option>
               <option value="gzip">gzip</option>
+              <option value="bzip2">bzip2</option>
               <option value="zstd">zstd</option>
               <option value="xz">xz</option>
             </select>
@@ -537,6 +542,7 @@ export class VirtualizationBackupsView extends LitElement {
             <select .value=${this.createForm.compression as string} @change=${(e: Event) => (this.createForm.compression = (e.target as HTMLSelectElement).value)}>
               <option value="none">None</option>
               <option value="gzip">gzip</option>
+              <option value="bzip2">bzip2</option>
               <option value="zstd">zstd</option>
               <option value="xz">xz</option>
             </select>
@@ -549,9 +555,9 @@ export class VirtualizationBackupsView extends LitElement {
               <option value="aes-128">AES-128</option>
             </select>
           </div>
-          <div class="field">
-            <label>Include memory</label>
+          <div class="field checkbox">
             <input type="checkbox" .checked=${this.createForm.include_memory || false} @change=${(e: Event) => (this.createForm.include_memory = (e.target as HTMLInputElement).checked)} />
+            <label>Include memory</label>
           </div>
           <div class="field">
             <label>Retention days</label>

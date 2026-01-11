@@ -70,6 +70,8 @@ export class VMBackupsTab extends LitElement {
 
     /* Form controls aligned with snapshot modals */
     .form-group { margin-bottom: 14px; width: 100%; box-sizing: border-box; }
+    .form-group.checkbox { display: flex; align-items: flex-start; gap: 12px; }
+    .form-group.checkbox input[type="checkbox"] { width: auto; margin-top: 2px; }
     .form-group label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: var(--vscode-foreground, #cccccc); }
     .form-hint { margin-top: 6px; font-size: 12px; color: var(--vscode-descriptionForeground, #8b8b8b); }
     .form-error { margin-top: 6px; color: var(--vscode-errorForeground, #f48771); font-size: 12px; }
