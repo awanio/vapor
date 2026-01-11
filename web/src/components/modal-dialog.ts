@@ -228,7 +228,11 @@ export class ModalDialog extends I18nLitElement {
       if (!this.portalContainer) {
         this.portalContainer = document.createElement('div');
         this.portalContainer.id = 'modal-portal-container';
-        this.portalContainer.style.position = 'relative';
+        this.portalContainer.style.position = 'fixed';
+        this.portalContainer.style.top = '0';
+        this.portalContainer.style.left = '0';
+        this.portalContainer.style.width = '100%';
+        this.portalContainer.style.height = '100%';
         this.portalContainer.style.zIndex = '9999';
         document.body.appendChild(this.portalContainer);
         const shadow = this.portalContainer.attachShadow({ mode: 'open' });
