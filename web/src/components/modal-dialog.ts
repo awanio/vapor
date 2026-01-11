@@ -1,9 +1,10 @@
-import { html, css } from 'lit';
+import { LitElement, html, css, render as renderLit } from 'lit';
 import { property } from 'lit/decorators.js';
 import { t } from '../i18n';
 import { I18nLitElement } from '../i18n-mixin';
 
 export class ModalDialog extends I18nLitElement {
+  private portalContainer: HTMLElement | null = null;
   @property({ type: Boolean, reflect: true }) open = false;
   @property({ type: String }) override title = '';
   @property({ type: String }) size: 'small' | 'medium' | 'large' = 'medium';
@@ -153,7 +154,11 @@ export class ModalDialog extends I18nLitElement {
 
   override disconnectedCallback() {
     super.disconnectedCallback();
-    document.removeEventListener('keydown', this.handleKeydown);
+    window.removeEventListener('keydown', this.handleKeydown);
+    if (this.portalContainer) {
+      document.body.removeChild(this.portalContainer);
+      this.portalContainer = null;
+    }
   }
 
   private handleKeydown = (event: KeyboardEvent) => {
@@ -176,11 +181,8 @@ export class ModalDialog extends I18nLitElement {
     }));
   }
 
-  override render() {
-    if (!this.open) {
-      return html``;
-    }
-
+  
+  private renderContent() {
     return html`
       <div class="overlay ${this.center ? 'centered' : ''}" @click=${this.handleOverlayClick}>
         <div class="modal ${this.size}">
@@ -207,6 +209,38 @@ export class ModalDialog extends I18nLitElement {
         </div>
       </div>
     `;
+  }
+
+  override render() {
+
+    if (!this.open) {
+      if (this.portalContainer) {
+        document.body.removeChild(this.portalContainer);
+        this.portalContainer = null;
+      }
+      return html``;
+    }
+
+    if (this.center) {
+      // Portal rendering
+      if (!this.portalContainer) {
+        this.portalContainer = document.createElement('div');
+        document.body.appendChild(this.portalContainer);
+        const shadow = this.portalContainer.attachShadow({ mode: 'open' });
+        
+        // Adopt styles
+        const styles = (this.constructor as typeof LitElement).elementStyles;
+        if (styles) {
+             shadow.adoptedStyleSheets = styles.map(s => (s instanceof CSSStyleSheet) ? s : s.styleSheet!);
+        }
+      }
+      
+      const shadow = this.portalContainer.shadowRoot!;
+      renderLit(this.renderContent(), shadow, { host: this });
+      return html``;
+    }
+
+    return this.renderContent();
   }
 }
 
