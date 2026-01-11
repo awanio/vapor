@@ -8,6 +8,7 @@ export class ModalDialog extends I18nLitElement {
   @property({ type: String }) override title = '';
   @property({ type: String }) size: 'small' | 'medium' | 'large' = 'medium';
   @property({ type: Boolean }) showFooter = true;
+  @property({ type: Boolean }) center = false;
 
   static override styles = css`
     :host {
@@ -25,6 +26,8 @@ export class ModalDialog extends I18nLitElement {
       display: block;
     }
 
+    .overlay.centered { display: flex; align-items: center; justify-content: center; }
+    .overlay.centered .modal { margin: 0; }
     .overlay {
       position: fixed;
       top: 0;
@@ -179,7 +182,7 @@ export class ModalDialog extends I18nLitElement {
     }
 
     return html`
-      <div class="overlay" @click=${this.handleOverlayClick}>
+      <div class="overlay ${this.center ? 'centered' : ''}" @click=${this.handleOverlayClick}>
         <div class="modal ${this.size}">
           <div class="modal-header">
             <h2 class="modal-title">${this.title}</h2>

@@ -391,6 +391,7 @@ export class VMBackupsTab extends LitElement {
   private renderCreateModal() {
     return html`
       <modal-dialog
+        .center=${true}
         .open=${this.showCreateModal}
         .title=${'Create backup'}
         size="medium"
@@ -450,14 +451,14 @@ export class VMBackupsTab extends LitElement {
               />
             </div>`
           : ''}
-        <div class="checkbox-group">
+        <div class="form-group checkbox">
           <input
             type="checkbox"
             .checked=${this.createForm.include_memory || false}
             @change=${(e: Event) => (this.createForm.include_memory = (e.target as HTMLInputElement).checked)}
           />
           <div>
-            <div>Include memory</div>
+            <label>Include memory</label>
             <div class="form-hint">Capture RAM state if supported.</div>
           </div>
         </div>
@@ -491,6 +492,7 @@ export class VMBackupsTab extends LitElement {
     if (!this.restoreTarget) return html``;
     return html`
       <modal-dialog
+        .center=${true}
         .open=${this.showRestoreModal}
         .title=${'Restore backup'}
         size="medium"
