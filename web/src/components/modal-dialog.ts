@@ -212,6 +212,7 @@ export class ModalDialog extends I18nLitElement {
   }
 
   override render() {
+    console.log("Modal render called", { open: this.open, center: this.center });
 
     if (!this.open) {
       if (this.portalContainer) {
@@ -222,9 +223,13 @@ export class ModalDialog extends I18nLitElement {
     }
 
     if (this.center) {
+      console.log("Rendering via portal");
       // Portal rendering
       if (!this.portalContainer) {
         this.portalContainer = document.createElement('div');
+        this.portalContainer.id = 'modal-portal-container';
+        this.portalContainer.style.position = 'relative';
+        this.portalContainer.style.zIndex = '9999';
         document.body.appendChild(this.portalContainer);
         const shadow = this.portalContainer.attachShadow({ mode: 'open' });
         
