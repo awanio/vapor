@@ -9,6 +9,7 @@ export class DetailDrawer extends LitElement {
   @property({ type: Number }) width = 600;
   
   @state() private isClosing = false;
+  @state() private animationFinished = false;
 
   private handleKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'Escape' && this.show) {
@@ -51,6 +52,7 @@ export class DetailDrawer extends LitElement {
       }
     }
 
+    .drawer.animation-finished { animation: none !important; transform: none !important; }
     .drawer.closing {
       animation: slideOut 0.3s ease-in forwards;
     }
@@ -96,6 +98,16 @@ export class DetailDrawer extends LitElement {
     }
   `;
 
+  
+  override updated(changedProperties: Map<string, any>) {
+    if (changedProperties.has('show') && this.show) {
+      this.animationFinished = false;
+      setTimeout(() => {
+        this.animationFinished = true;
+      }, 300);
+    }
+  }
+
   private handleClose(event?: Event) {
     // Stop propagation if this was triggered by a UI event
     if (event) {
@@ -133,7 +145,7 @@ export class DetailDrawer extends LitElement {
     }
 
     return html`
-      <div class="drawer ${this.isClosing ? 'closing' : ''}" style="width: ${this.width}px">
+      <div class="drawer ${this.isClosing ? 'closing' : ''} ${this.animationFinished ? 'animation-finished' : ''}" style="width: ${this.width}px">
         <div class="drawer-header">
           <button class="close-button" @click=${(e: Event) => this.handleClose(e)}>×</button>
           <h2>${this.title}</h2>
