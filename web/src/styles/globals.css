@@ -154,3 +154,137 @@ body {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
+
+/* ============================================
+   Form element styles (for modal content)
+   ============================================ */
+
+/* Additional VSCode-like variables for form elements */
+:root {
+  --vscode-input-background: #3c3c3c;
+  --vscode-input-foreground: #cccccc;
+  --vscode-input-border: #3c3c3c;
+  --vscode-focusBorder: #007acc;
+  --vscode-foreground: #cccccc;
+}
+
+:root.light {
+  --vscode-input-background: #ffffff;
+  --vscode-input-foreground: #1e1e1e;
+  --vscode-input-border: #cecece;
+  --vscode-focusBorder: #0066cc;
+  --vscode-foreground: #1e1e1e;
+}
+
+/* Global form styles for modals moved to body */
+modal-dialog .form-group {
+  margin-bottom: 14px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+modal-dialog .form-group.checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+modal-dialog .form-group.checkbox input[type="checkbox"] {
+  width: auto;
+  margin-top: 2px;
+}
+
+modal-dialog .form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--vscode-foreground, #cccccc);
+}
+
+modal-dialog .form-hint {
+  font-size: 11px;
+  color: var(--vscode-text-dim, #9d9d9d);
+  margin-top: 4px;
+}
+
+modal-dialog input,
+modal-dialog select,
+modal-dialog textarea {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--vscode-input-background, #3c3c3c);
+  color: var(--vscode-input-foreground, #cccccc);
+  border: 1px solid var(--vscode-input-border, #3c3c3c);
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: inherit;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+modal-dialog input:focus,
+modal-dialog select:focus,
+modal-dialog textarea:focus {
+  outline: none;
+  border-color: var(--vscode-focusBorder, #007acc);
+  box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc);
+}
+
+modal-dialog input[type="checkbox"] {
+  width: auto;
+  padding: 0;
+}
+
+modal-dialog textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+modal-dialog select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23cccccc' d='M2 4l4 4 4-4z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+
+/* Button styles for modal footers */
+modal-dialog .btn {
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+modal-dialog .btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+modal-dialog .btn.primary,
+modal-dialog .btn-primary {
+  background: var(--vscode-accent, #007acc);
+  color: white;
+  border-color: var(--vscode-accent, #007acc);
+}
+
+modal-dialog .btn.primary:hover:not(:disabled),
+modal-dialog .btn-primary:hover:not(:disabled) {
+  background: var(--vscode-accent-hover, #1a86d9);
+  border-color: var(--vscode-accent-hover, #1a86d9);
+}
+
+modal-dialog .btn:not(.primary):not(.btn-primary) {
+  background: var(--vscode-bg-lighter, #2d2d30);
+  color: var(--vscode-text, #cccccc);
+  border-color: var(--vscode-border, #464647);
+}
+
+modal-dialog .btn:not(.primary):not(.btn-primary):hover:not(:disabled) {
+  background: var(--surface-3, #3e3e42);
+}

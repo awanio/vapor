@@ -21,15 +21,29 @@ export class VirtualizationBackupsView extends LitElement {
     .title { font-size: 20px; margin: 0; }
     .controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
     .filters { display: flex; gap: 8px; align-items: center; }
-    .filters select { height: 36px; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--vscode-input-border, #858585); background: var(--vscode-input-background, #3c3c3c); color: var(--vscode-input-foreground, #cccccc); font-size: 13px; }
+    .filters select { 
+      height: 36px; 
+      padding: 8px 32px 8px 12px; 
+      border-radius: 4px; 
+      border: 1px solid var(--vscode-input-border, #3c3c3c); 
+      background: var(--vscode-input-background, #3c3c3c); 
+      color: var(--vscode-input-foreground, #cccccc); 
+      font-size: 13px;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23cccccc' d='M2 4l4 4 4-4z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+    }
     .filters select:focus { outline: none; border-color: var(--vscode-focusBorder, #007acc); box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc); }
     .actions { display: flex; gap: 8px; align-items: center; }
-    .btn { height: 36px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--vscode-button-border, #5a5a5a); background: var(--vscode-button-secondaryBackground, #3c3c3c); color: var(--vscode-button-foreground, #ffffff); cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
-    .btn-primary { background: var(--vscode-button-background, #0e639c); color: var(--vscode-button-foreground, #ffffff); border: 1px solid var(--vscode-button-border, #5a5a5a); }
+    .btn { height: 36px; padding: 0 16px; border-radius: 4px; border: 1px solid var(--vscode-border, #464647); background: var(--vscode-bg-lighter, #2d2d30); color: var(--vscode-text, #cccccc); cursor: pointer; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; }
+    .btn:hover:not([disabled]) { background: var(--surface-3, #3e3e42); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: var(--vscode-accent, #007acc); color: #ffffff; border-color: var(--vscode-accent, #007acc); }
+    .btn-primary:hover:not([disabled]) { background: var(--vscode-accent-hover, #1a86d9); border-color: var(--vscode-accent-hover, #1a86d9); }
     .btn-danger { background: #a4262c; border-color: #a4262c; color: #ffffff; }
-    .btn[disabled] { opacity: 0.6; cursor: not-allowed; }
-    .btn-create { display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--vscode-button-background, #007acc); color: var(--vscode-button-foreground, white); border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; }
-    .btn-create:hover { background: var(--vscode-button-hoverBackground, #005a9e); }
+    .btn-danger:hover:not([disabled]) { background: #c42b32; border-color: #c42b32; }
     table { width: 100%; border-collapse: collapse; }
     th, td { padding: 12px 10px; border-bottom: 1px solid var(--vscode-widget-border, #2a2f3a); text-align: left; font-size: 13px; }
     th { color: var(--vscode-descriptionForeground, #9ca3af); font-weight: 600; }
@@ -39,13 +53,16 @@ export class VirtualizationBackupsView extends LitElement {
     .chip.missing { background: #78350f; }
     .empty { text-align: center; padding: 48px 0; color: var(--vscode-descriptionForeground, #9ca3af); }
     dialog, detail-drawer { color: var(--vscode-foreground, #e5e7eb); }
-    .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
-    .field.checkbox { flex-direction: row; align-items: center; }
-    .field label { color: var(--vscode-foreground, #cbd5e1); font-size: 13px; }
-    .field input, .field select, .field textarea { padding: 8px 12px; border-radius: 4px; border: 1px solid var(--vscode-input-border, #858585); background: var(--vscode-input-background, #3c3c3c); color: var(--vscode-input-foreground, #cccccc); font-size: 13px; }
+    .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .field.checkbox { flex-direction: row; align-items: center; gap: 12px; }
+    .field.checkbox input[type="checkbox"] { width: auto; margin: 0; }
+    .field label { color: var(--vscode-foreground, #cccccc); font-size: 13px; font-weight: 500; }
+    .field input, .field select, .field textarea { width: 100%; padding: 8px 12px; border-radius: 4px; border: 1px solid var(--vscode-input-border, #3c3c3c); background: var(--vscode-input-background, #3c3c3c); color: var(--vscode-input-foreground, #cccccc); font-size: 13px; font-family: inherit; box-sizing: border-box; transition: all 0.2s; }
     .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--vscode-focusBorder, #007acc); box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc); }
+    .field select { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23cccccc' d='M2 4l4 4 4-4z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; }
+    .field textarea { resize: vertical; min-height: 60px; }
     .drawer-content { padding: 16px; }
-    .drawer-footer { display:flex; gap:8px; justify-content:flex-end; padding:12px 16px; border-top:1px solid #1f2937; }
+    .drawer-footer { display: flex; gap: 8px; justify-content: flex-end; padding: 12px 16px; border-top: 1px solid var(--vscode-border, #464647); }
     .toast { margin-bottom: 10px; padding: 10px; border-radius: 8px; }
     .toast.success { background: #0f172a; color: #bbf7d0; border: 1px solid #14532d; }
     .toast.error { background: #1f0f0f; color: #fecdd3; border: 1px solid #7f1d1d; }
@@ -364,7 +381,7 @@ export class VirtualizationBackupsView extends LitElement {
         >
           <div slot="actions" style="display:flex; gap:8px; justify-content:center;">
             <button class="btn" @click=${() => (this.showImportDrawer = true)}>Import backup</button>
-            <button class="btn-primary" @click=${() => (this.showCreateDrawer = true)}>Create backup</button>
+            <button class="btn btn-primary" @click=${() => (this.showCreateDrawer = true)}>Create backup</button>
           </div>
         </empty-state>
       `;
@@ -396,7 +413,7 @@ export class VirtualizationBackupsView extends LitElement {
           <div class="actions">
             <button class="btn" @click=${() => this.loadBackups()} ?disabled=${this.loading}>Refresh</button>
             <button class="btn" @click=${() => (this.showImportDrawer = true)}>Import backup</button>
-            <button class="btn-create" @click=${() => (this.showCreateDrawer = true)}>Create backup</button>
+            <button class="btn btn-primary" @click=${() => (this.showCreateDrawer = true)}>Create backup</button>
           </div>
         </div>
 
@@ -497,7 +514,7 @@ export class VirtualizationBackupsView extends LitElement {
         </div>
         <div class="drawer-footer">
           <button class="btn" @click=${() => (this.showImportDrawer = false)}>Cancel</button>
-          <button class="btn-primary" @click=${() => this.handleImport()}>Import</button>
+          <button class="btn btn-primary" @click=${() => this.handleImport()}>Import</button>
         </div>
       </detail-drawer>
     `;
@@ -570,7 +587,7 @@ export class VirtualizationBackupsView extends LitElement {
         </div>
         <div class="drawer-footer">
           <button class="btn" @click=${() => (this.showCreateDrawer = false)}>Cancel</button>
-          <button class="btn-primary" @click=${() => this.handleCreate()}>Create</button>
+          <button class="btn btn-primary" @click=${() => this.handleCreate()}>Create</button>
         </div>
       </detail-drawer>
     `;
@@ -617,7 +634,7 @@ export class VirtualizationBackupsView extends LitElement {
           : ''}
         <div slot="footer" style="display:flex; gap:8px; justify-content:flex-end;">
           <button class="btn" @click=${() => (this.showRestore = false)}>Cancel</button>
-          <button class="btn-primary" @click=${() => this.confirmRestore()}>Restore</button>
+          <button class="btn btn-primary" @click=${() => this.confirmRestore()}>Restore</button>
         </div>
       </modal-dialog>
     `;

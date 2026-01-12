@@ -1,10 +1,12 @@
-import { LitElement, html, css, render as renderLit } from 'lit';
+import { LitElement, html, css } from 'lit';
 import { property } from 'lit/decorators.js';
 import { t } from '../i18n';
 import { I18nLitElement } from '../i18n-mixin';
 
 export class ModalDialog extends I18nLitElement {
-  private portalContainer: HTMLElement | null = null;
+  private originalParent: Element | null = null;
+  private originalNextSibling: Node | null = null;
+  
   @property({ type: Boolean, reflect: true }) open = false;
   @property({ type: String }) override title = '';
   @property({ type: String }) size: 'small' | 'medium' | 'large' = 'medium';
@@ -19,7 +21,7 @@ export class ModalDialog extends I18nLitElement {
       left: 0;
       width: 100%;
       height: 100%;
-      z-index: 1000;
+      z-index: 10000;
       overflow: auto;
     }
 
@@ -41,10 +43,10 @@ export class ModalDialog extends I18nLitElement {
 
     .modal {
       position: relative;
-      background-color: var(--vscode-bg-light);
-      color: var(--vscode-text);
+      background-color: var(--vscode-bg-light, #252526);
+      color: var(--vscode-text, #cccccc);
       margin: 40px auto;
-      border: 1px solid var(--vscode-border);
+      border: 1px solid var(--vscode-border, #464647);
       border-radius: 6px;
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
       animation: slideIn 0.2s ease-out;
@@ -73,8 +75,8 @@ export class ModalDialog extends I18nLitElement {
       justify-content: space-between;
       align-items: center;
       padding: 16px 20px;
-      border-bottom: 1px solid var(--vscode-border);
-      background-color: var(--vscode-bg-lighter);
+      border-bottom: 1px solid var(--vscode-border, #464647);
+      background-color: var(--vscode-bg-lighter, #2d2d30);
     }
 
     .modal-title {
@@ -92,14 +94,14 @@ export class ModalDialog extends I18nLitElement {
       cursor: pointer;
       border: none;
       background: none;
-      color: var(--vscode-text-dim);
+      color: var(--vscode-text-dim, #9d9d9d);
       border-radius: 4px;
       transition: all 0.2s;
     }
 
     .modal-close:hover {
-      background-color: var(--vscode-bg-light);
-      color: var(--vscode-text);
+      background-color: var(--vscode-bg-light, #252526);
+      color: var(--vscode-text, #cccccc);
     }
 
     .modal-content {
@@ -113,8 +115,8 @@ export class ModalDialog extends I18nLitElement {
       justify-content: flex-end;
       gap: 8px;
       padding: 16px 20px;
-      border-top: 1px solid var(--vscode-border);
-      background-color: var(--vscode-bg);
+      border-top: 1px solid var(--vscode-border, #464647);
+      background-color: var(--vscode-bg, #1e1e1e);
     }
 
     @keyframes fadeIn {
@@ -145,6 +147,37 @@ export class ModalDialog extends I18nLitElement {
         max-width: none;
       }
     }
+
+    /* ============================================
+       Form styles for slotted content
+       ============================================ */
+    
+    /* Form groups */
+    ::slotted(.form-group) {
+      margin-bottom: 14px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    
+    ::slotted(.form-group.checkbox) {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    /* Form hint text */
+    ::slotted(.form-hint) {
+      font-size: 11px;
+      color: var(--vscode-text-dim, #9d9d9d);
+      margin-top: 4px;
+    }
+
+    /* Footer actions container */
+    ::slotted([slot="footer"]) {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
   `;
 
   override connectedCallback() {
@@ -153,13 +186,15 @@ export class ModalDialog extends I18nLitElement {
   }
 
   override disconnectedCallback() {
-    super.disconnectedCallback();
-    window.removeEventListener('keydown', this.handleKeydown);
-    if (this.portalContainer) {
-      document.body.removeChild(this.portalContainer);
-      this.portalContainer = null;
+    // Only run cleanup if we're not in the process of moving to body
+    if (!this._isMovingToBody) {
+      window.removeEventListener('keydown', this.handleKeydown);
+      this.returnToOriginalPosition();
     }
+    super.disconnectedCallback();
   }
+
+  private _isMovingToBody = false;
 
   private handleKeydown = (event: KeyboardEvent) => {
     if (event.key === 'Escape' && this.open) {
@@ -181,8 +216,55 @@ export class ModalDialog extends I18nLitElement {
     }));
   }
 
-  
-  private renderContent() {
+  private moveToBody() {
+    // Store original position to restore later
+    if (!this.originalParent && this.parentNode) {
+      // Get the shadow root host if we're in a shadow DOM
+      const rootNode = this.getRootNode();
+      if (rootNode instanceof ShadowRoot) {
+        this.originalParent = rootNode.host;
+      } else {
+        this.originalParent = this.parentNode as Element;
+      }
+      this.originalNextSibling = this.nextSibling;
+      
+      this._isMovingToBody = true;
+      document.body.appendChild(this);
+      this._isMovingToBody = false;
+    }
+  }
+
+  private returnToOriginalPosition() {
+    if (this.originalParent && this.parentNode === document.body) {
+      // Return to original shadow root position
+      const rootNode = this.originalParent.shadowRoot || this.originalParent;
+      if (this.originalNextSibling) {
+        rootNode.insertBefore(this, this.originalNextSibling);
+      } else {
+        rootNode.appendChild(this);
+      }
+      this.originalParent = null;
+      this.originalNextSibling = null;
+    }
+  }
+
+  override updated(changedProperties: Map<string, unknown>) {
+    super.updated(changedProperties);
+    
+    if (changedProperties.has('open') || changedProperties.has('center')) {
+      if (this.open && this.center) {
+        this.moveToBody();
+      } else if (!this.open && this.originalParent) {
+        this.returnToOriginalPosition();
+      }
+    }
+  }
+
+  override render() {
+    if (!this.open) {
+      return html``;
+    }
+
     return html`
       <div class="overlay ${this.center ? 'centered' : ''}" @click=${this.handleOverlayClick}>
         <div class="modal ${this.size}">
@@ -209,49 +291,6 @@ export class ModalDialog extends I18nLitElement {
         </div>
       </div>
     `;
-  }
-
-  override render() {
-    console.log("Modal render called", { open: this.open, center: this.center });
-
-    if (!this.open) {
-      if (this.portalContainer) {
-        document.body.removeChild(this.portalContainer);
-        this.portalContainer = null;
-      }
-      return html``;
-    }
-
-    if (this.center) {
-      console.log("Rendering via portal");
-      // Portal rendering
-      if (!this.portalContainer) {
-        this.portalContainer = document.createElement('div');
-        this.portalContainer.id = 'modal-portal-container';
-        this.portalContainer.style.position = 'fixed';
-        this.portalContainer.style.top = '0';
-        this.portalContainer.style.left = '0';
-        this.portalContainer.style.width = '100%';
-        this.portalContainer.style.height = '100%';
-        this.portalContainer.style.zIndex = '9999';
-        document.body.appendChild(this.portalContainer);
-        const shadow = this.portalContainer.attachShadow({ mode: 'open' });
-        
-        // Manual style injection
-        const styles = (this.constructor as typeof LitElement).elementStyles;
-        if (styles) {
-             const styleEl = document.createElement('style');
-             styleEl.textContent = styles.map(s => (s as any).cssText || String(s)).join('\n');
-             shadow.appendChild(styleEl);
-        }
-      }
-      
-      const shadow = this.portalContainer.shadowRoot!;
-      renderLit(this.renderContent(), shadow, { host: this });
-      return html``;
-    }
-
-    return this.renderContent();
   }
 }
 
