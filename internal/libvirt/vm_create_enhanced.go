@@ -845,19 +845,73 @@ func (s *Service) UpdateVMEnhanced(ctx context.Context, nameOrUUID string, req *
 
 	// Handle storage updates if specified.
 	//
-	// We support adding disks (create/attach/clone) by attaching new <disk/> devices.
-	// If the VM is running, we attempt a live+config attach; otherwise config-only.
+	// We reconcile disks: detach disks not in the desired config, attach new disks.
+	// If the VM is running, we attempt live+config changes; otherwise config-only.
 	if req.Storage != nil {
-		log.Printf("UpdateVMEnhanced: Processing storage updates")
+		log.Printf("UpdateVMEnhanced: Processing storage updates (reconciliation)")
+
+		xmlDesc, err := domain.GetXMLDesc(0)
+		if err != nil {
+			log.Printf("UpdateVMEnhanced error getting domain XML: %v\n", err)
+			return nil, fmt.Errorf("failed to get VM XML: %w", err)
+		}
+
+		// Parse existing disks for reconciliation
+		existingDisks, err := parseDomainDiskDetails(xmlDesc)
+		if err != nil {
+			log.Printf("UpdateVMEnhanced warning: failed to parse existing disks: %v\n", err)
+			existingDisks = []existingDiskInfo{}
+		}
+
+		// Build sets of desired targets and sources from request
+		desiredTargets := map[string]bool{}
+		desiredSources := map[string]bool{}
+		for _, d := range req.Storage.Disks {
+			if d.Target != "" {
+				desiredTargets[d.Target] = true
+			}
+			if d.Path != "" {
+				desiredSources[d.Path] = true
+			}
+		}
+
+		deviceFlags := libvirt.DOMAIN_DEVICE_MODIFY_CONFIG
+		if isRunning {
+			deviceFlags = deviceFlags | libvirt.DOMAIN_DEVICE_MODIFY_LIVE
+		}
+
+		// Detach disks that are not in the desired configuration
+		for _, existDisk := range existingDisks {
+			if existDisk.Target == "" {
+				continue
+			}
+
+			// Keep disk if its target OR source is in the desired set
+			if desiredTargets[existDisk.Target] || desiredSources[existDisk.Source] {
+				log.Printf("UpdateVMEnhanced: keeping disk target=%s source=%s", existDisk.Target, existDisk.Source)
+				continue
+			}
+
+			// Detach this disk
+			log.Printf("UpdateVMEnhanced: detaching disk target=%s source=%s", existDisk.Target, existDisk.Source)
+			detachXML := buildDetachDiskXML(existDisk)
+			if err := domain.DetachDeviceFlags(detachXML, deviceFlags); err != nil {
+				log.Printf("UpdateVMEnhanced error detaching disk target=%s: %v", existDisk.Target, err)
+				return nil, fmt.Errorf("failed to detach disk %s: %w", existDisk.Target, err)
+			}
+		}
+
+		// Prepare new disks to attach
 		diskConfigs, err := s.prepareEnhancedStorageConfig(ctx, req)
 		if err != nil {
 			log.Printf("UpdateVMEnhanced error preparing storage: %v\n", err)
 			return nil, fmt.Errorf("failed to prepare storage: %w", err)
 		}
 
-		xmlDesc, err := domain.GetXMLDesc(0)
+		// Refresh XML after detachments to get current state
+		xmlDesc, err = domain.GetXMLDesc(0)
 		if err != nil {
-			log.Printf("UpdateVMEnhanced error getting domain XML: %v\n", err)
+			log.Printf("UpdateVMEnhanced error getting domain XML after detach: %v\n", err)
 			return nil, fmt.Errorf("failed to get VM XML: %w", err)
 		}
 
@@ -868,18 +922,14 @@ func (s *Service) UpdateVMEnhanced(ctx context.Context, nameOrUUID string, req *
 			existingSources = map[string]bool{}
 		}
 
-		attachFlags := libvirt.DOMAIN_DEVICE_MODIFY_CONFIG
-		if isRunning {
-			attachFlags = attachFlags | libvirt.DOMAIN_DEVICE_MODIFY_LIVE
-		}
-
+		// Attach new disks
 		createdButNotAttached := map[string]bool{}
 		for _, d := range diskConfigs {
 			if d.Path == "" || d.Config.Target == "" {
 				continue
 			}
 
-			// Skip if already attached by path or by target.
+			// Skip if already attached by path or by target
 			if existingSources[d.Path] || existingTargets[d.Config.Target] {
 				log.Printf("UpdateVMEnhanced: skipping already-attached disk path=%s target=%s", d.Path, d.Config.Target)
 				continue
@@ -890,7 +940,7 @@ func (s *Service) UpdateVMEnhanced(ctx context.Context, nameOrUUID string, req *
 			}
 
 			diskXML := s.buildEnhancedAttachDiskXML(d)
-			if err := domain.AttachDeviceFlags(diskXML, attachFlags); err != nil {
+			if err := domain.AttachDeviceFlags(diskXML, deviceFlags); err != nil {
 				log.Printf("UpdateVMEnhanced error attaching disk: %v\n", err)
 				// Best-effort cleanup for newly created disks that were not attached.
 				for p := range createdButNotAttached {
@@ -904,7 +954,6 @@ func (s *Service) UpdateVMEnhanced(ctx context.Context, nameOrUUID string, req *
 			existingTargets[d.Config.Target] = true
 		}
 	}
-
 	// Handle network updates (sync) if specified.
 	//
 	// If the VM is stopped, we sync the VM's interfaces to match req.Networks:
@@ -1070,24 +1119,198 @@ func (s *Service) UpdateVMEnhanced(ctx context.Context, nameOrUUID string, req *
 		}
 	}
 
-	// Handle PCI device updates if specified
-	if len(req.PCIDevices) > 0 {
+	// Handle PCI device updates if specified (reconciliation)
+	// Note: PCI changes always require VM to be stopped
+	if len(req.PCIDevices) > 0 || req.PCIDevices != nil {
 		if isRunning {
 			log.Printf("UpdateVMEnhanced error: PCI device changes require VM to be stopped")
 			return nil, fmt.Errorf("PCI device changes require VM to be stopped")
 		}
-		log.Printf("UpdateVMEnhanced: Processing PCI device updates - %d devices", len(req.PCIDevices))
-	}
 
-	// Handle graphics configuration updates if specified
-	if len(req.Graphics) > 0 {
-		log.Printf("UpdateVMEnhanced: Processing graphics updates")
-		if isRunning {
-			log.Printf("UpdateVMEnhanced warning: Graphics changes will take effect after restart")
-			requiresRestart = true
+		log.Printf("UpdateVMEnhanced: Processing PCI device updates (reconciliation)")
+
+		xmlDesc, err := domain.GetXMLDesc(0)
+		if err != nil {
+			log.Printf("UpdateVMEnhanced error getting domain XML for PCI: %v\n", err)
+			return nil, fmt.Errorf("failed to get VM XML: %w", err)
+		}
+
+		existingPCIs, err := parseDomainPCIDevices(xmlDesc)
+		if err != nil {
+			log.Printf("UpdateVMEnhanced warning: failed to parse existing PCI devices: %v\n", err)
+			existingPCIs = []existingPCIDeviceInfo{}
+		}
+
+		// Build set of desired PCI host addresses
+		desiredPCIAddresses := map[string]bool{}
+		for _, p := range req.PCIDevices {
+			if p.HostAddress != "" {
+				desiredPCIAddresses[p.HostAddress] = true
+			}
+		}
+
+		// Detach PCI devices not in desired configuration
+		for _, existPCI := range existingPCIs {
+			if existPCI.HostAddress == "" {
+				continue
+			}
+
+			if desiredPCIAddresses[existPCI.HostAddress] {
+				log.Printf("UpdateVMEnhanced: keeping PCI device host=%s", existPCI.HostAddress)
+				continue
+			}
+
+			log.Printf("UpdateVMEnhanced: detaching PCI device host=%s", existPCI.HostAddress)
+			detachXML := buildDetachPCIDeviceXML(existPCI)
+			if detachXML == "" {
+				log.Printf("UpdateVMEnhanced warning: failed to build detach XML for PCI %s", existPCI.HostAddress)
+				continue
+			}
+			if err := domain.DetachDeviceFlags(detachXML, libvirt.DOMAIN_DEVICE_MODIFY_CONFIG); err != nil {
+				log.Printf("UpdateVMEnhanced error detaching PCI device %s: %v", existPCI.HostAddress, err)
+				return nil, fmt.Errorf("failed to detach PCI device %s: %w", existPCI.HostAddress, err)
+			}
+		}
+
+		// Refresh existing PCI devices after detach
+		xmlDesc, err = domain.GetXMLDesc(0)
+		if err != nil {
+			log.Printf("UpdateVMEnhanced error getting domain XML after PCI detach: %v\n", err)
+			return nil, fmt.Errorf("failed to get VM XML: %w", err)
+		}
+
+		existingPCIs, _ = parseDomainPCIDevices(xmlDesc)
+		existingPCIAddrs := map[string]bool{}
+		for _, p := range existingPCIs {
+			if p.HostAddress != "" {
+				existingPCIAddrs[p.HostAddress] = true
+			}
+		}
+
+		// Attach new PCI devices
+		for _, pci := range req.PCIDevices {
+			if pci.HostAddress == "" {
+				continue
+			}
+
+			if existingPCIAddrs[pci.HostAddress] {
+				log.Printf("UpdateVMEnhanced: skipping already-attached PCI device host=%s", pci.HostAddress)
+				continue
+			}
+
+			log.Printf("UpdateVMEnhanced: attaching PCI device host=%s", pci.HostAddress)
+			attachXML := buildAttachPCIDeviceXML(pci.HostAddress, pci.GuestAddress, pci.ROMFile, pci.Multifunction)
+			if attachXML == "" {
+				log.Printf("UpdateVMEnhanced warning: failed to build attach XML for PCI %s", pci.HostAddress)
+				continue
+			}
+			if err := domain.AttachDeviceFlags(attachXML, libvirt.DOMAIN_DEVICE_MODIFY_CONFIG); err != nil {
+				log.Printf("UpdateVMEnhanced error attaching PCI device %s: %v", pci.HostAddress, err)
+				return nil, fmt.Errorf("failed to attach PCI device %s: %w", pci.HostAddress, err)
+			}
+
+			existingPCIAddrs[pci.HostAddress] = true
 		}
 	}
 
+	// Handle graphics configuration updates if specified (reconciliation)
+	if len(req.Graphics) > 0 || req.Graphics != nil {
+		log.Printf("UpdateVMEnhanced: Processing graphics updates (reconciliation)")
+
+		graphicsFlags := libvirt.DOMAIN_DEVICE_MODIFY_CONFIG
+		if isRunning {
+			log.Printf("UpdateVMEnhanced warning: Graphics changes will take effect after restart")
+			requiresRestart = true
+			// Don't apply live changes for graphics; config-only
+		}
+
+		xmlDesc, err := domain.GetXMLDesc(0)
+		if err != nil {
+			log.Printf("UpdateVMEnhanced error getting domain XML for graphics: %v\n", err)
+			return nil, fmt.Errorf("failed to get VM XML: %w", err)
+		}
+
+		existingGraphics, err := parseDomainGraphics(xmlDesc)
+		if err != nil {
+			log.Printf("UpdateVMEnhanced warning: failed to parse existing graphics: %v\n", err)
+			existingGraphics = []existingGraphicsInfo{}
+		}
+
+		// Build set of desired graphics types
+		desiredGraphicsTypes := map[string]bool{}
+		for _, g := range req.Graphics {
+			gType := strings.ToLower(strings.TrimSpace(g.Type))
+			if gType != "" && gType != "none" {
+				desiredGraphicsTypes[gType] = true
+			}
+		}
+
+		// Detach graphics devices not in desired configuration
+		for _, existG := range existingGraphics {
+			gType := strings.ToLower(strings.TrimSpace(existG.Type))
+			if gType == "" {
+				continue
+			}
+
+			if desiredGraphicsTypes[gType] {
+				log.Printf("UpdateVMEnhanced: keeping graphics type=%s", gType)
+				continue
+			}
+
+			log.Printf("UpdateVMEnhanced: detaching graphics type=%s", gType)
+			detachXML := buildDetachGraphicsXML(existG)
+			if detachXML == "" {
+				log.Printf("UpdateVMEnhanced warning: failed to build detach XML for graphics %s", gType)
+				continue
+			}
+			if err := domain.DetachDeviceFlags(detachXML, graphicsFlags); err != nil {
+				log.Printf("UpdateVMEnhanced warning: failed to detach graphics %s: %v (may not be supported)", gType, err)
+				// Don't fail on graphics detach errors; some graphics types can't be detached live
+			}
+		}
+
+		// Refresh existing graphics after detach
+		xmlDesc, err = domain.GetXMLDesc(0)
+		if err != nil {
+			log.Printf("UpdateVMEnhanced error getting domain XML after graphics detach: %v\n", err)
+			return nil, fmt.Errorf("failed to get VM XML: %w", err)
+		}
+
+		existingGraphics, _ = parseDomainGraphics(xmlDesc)
+		existingGraphicsTypes := map[string]bool{}
+		for _, g := range existingGraphics {
+			gType := strings.ToLower(strings.TrimSpace(g.Type))
+			if gType != "" {
+				existingGraphicsTypes[gType] = true
+			}
+		}
+
+		// Attach new graphics devices
+		for _, graphics := range req.Graphics {
+			gType := strings.ToLower(strings.TrimSpace(graphics.Type))
+			if gType == "" || gType == "none" {
+				continue
+			}
+
+			if existingGraphicsTypes[gType] {
+				log.Printf("UpdateVMEnhanced: skipping already-attached graphics type=%s", gType)
+				continue
+			}
+
+			log.Printf("UpdateVMEnhanced: attaching graphics type=%s", gType)
+			attachXML := buildAttachGraphicsXML(gType, graphics.Port, graphics.AutoPort, graphics.Listen, graphics.Password)
+			if attachXML == "" {
+				log.Printf("UpdateVMEnhanced warning: failed to build attach XML for graphics %s", gType)
+				continue
+			}
+			if err := domain.AttachDeviceFlags(attachXML, graphicsFlags); err != nil {
+				log.Printf("UpdateVMEnhanced warning: failed to attach graphics %s: %v (may not be supported)", gType, err)
+				// Don't fail on graphics attach errors
+			} else {
+				existingGraphicsTypes[gType] = true
+			}
+		}
+	}
 	// Handle cloud-init updates if specified
 	if req.CloudInit != nil {
 		log.Printf("UpdateVMEnhanced: Cloud-init updates requested")

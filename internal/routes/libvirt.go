@@ -575,14 +575,20 @@ func getSnapshotCapabilities(service *libvirt.Service) gin.HandlerFunc {
 			})
 		}
 
+		supportsSnapshots := capabilities.OverallCapabilities.InternalSnapshots ||
+			capabilities.OverallCapabilities.ExternalSnapshots
+
 		apiCaps := gin.H{
-			"supports_snapshots": true,
+			"supports_snapshots": supportsSnapshots,
 			"supports_internal":  capabilities.OverallCapabilities.InternalSnapshots,
 			"supports_external":  capabilities.OverallCapabilities.ExternalSnapshots,
 			"supports_memory":    capabilities.OverallCapabilities.MemorySnapshots,
 			"disk_formats":       diskFormats,
 		}
-		if len(capabilities.OverallCapabilities.Limitations) > 0 {
+		if !supportsSnapshots {
+			apiCaps["warnings"] = append(capabilities.OverallCapabilities.Limitations,
+				"Snapshots are not supported for this VM configuration")
+		} else if len(capabilities.OverallCapabilities.Limitations) > 0 {
 			apiCaps["warnings"] = capabilities.OverallCapabilities.Limitations
 		}
 		if len(capabilities.Recommendations) > 0 {

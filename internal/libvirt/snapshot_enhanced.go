@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/xml"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -120,6 +121,7 @@ func (s *Service) GetSnapshotCapabilities(ctx context.Context, nameOrUUID string
 	hasLVM := false
 	hasRBD := false
 	hasMixedFormats := false
+	hasNonFileDisk := false
 	formats := make(map[DiskFormat]bool)
 
 	for _, disk := range domainXML.Devices.Disks {
@@ -130,6 +132,10 @@ func (s *Service) GetSnapshotCapabilities(ctx context.Context, nameOrUUID string
 		diskInfo := DiskInfo{
 			Device: disk.Target.Dev,
 			Type:   disk.Type,
+		}
+
+		if disk.Type != "file" {
+			hasNonFileDisk = true
 		}
 
 		// Determine format
@@ -189,7 +195,7 @@ func (s *Service) GetSnapshotCapabilities(ctx context.Context, nameOrUUID string
 	// Determine overall capabilities
 	overall := SnapshotCapability{
 		InternalSnapshots: allQCOW2,
-		ExternalSnapshots: true, // Always supported
+		ExternalSnapshots: !hasNonFileDisk,
 		MemorySnapshots:   allQCOW2,
 		LiveSnapshots:     true,
 		Limitations:       []string{},
@@ -206,6 +212,10 @@ func (s *Service) GetSnapshotCapabilities(ctx context.Context, nameOrUUID string
 			capabilities.Recommendations = append(capabilities.Recommendations,
 				"Consider converting RAW disks to qcow2 for better snapshot support")
 		}
+	}
+
+	if hasNonFileDisk {
+		overall.Limitations = append(overall.Limitations, "External snapshots are only supported for file-backed disks")
 	}
 
 	if hasMixedFormats {
@@ -336,6 +346,10 @@ func (s *Service) CreateSnapshotEnhanced(ctx context.Context, nameOrUUID string,
 				strings.Join(capabilities.OverallCapabilities.Limitations, "; "))
 		}
 
+		if !capabilities.OverallCapabilities.ExternalSnapshots {
+			return nil, fmt.Errorf("external snapshots not supported: %v", strings.Join(capabilities.OverallCapabilities.Limitations, "; "))
+		}
+
 		flags = uint32(libvirt.DOMAIN_SNAPSHOT_CREATE_DISK_ONLY)
 		snapshotType = "external"
 		warnings = append(warnings, "Using external snapshot due to disk format limitations")
@@ -361,6 +375,29 @@ func (s *Service) CreateSnapshotEnhanced(ctx context.Context, nameOrUUID string,
 		warnings = append(warnings, "Quiesce requested - requires guest agent")
 	}
 
+	// Build per-disk overlay definitions when doing external snapshots to avoid libvirt auto-naming collisions.
+	disksXML := ""
+	if snapshotType == "external" {
+		var b strings.Builder
+		b.WriteString("\t\t<disks>\n")
+		for _, disk := range capabilities.Disks {
+			if disk.Path == "" || disk.Type != "file" {
+				continue // block/RBD disks handled by libvirt defaults
+			}
+			dir := filepath.Dir(disk.Path)
+			overlayName := fmt.Sprintf("%s-%s-%d.qcow2", vmName, disk.Device, time.Now().UnixNano())
+			overlayPath := filepath.Join(dir, overlayName)
+			b.WriteString(fmt.Sprintf("\t\t\t<disk name=\"%s\" snapshot=\"external\">\n", disk.Device))
+			b.WriteString(fmt.Sprintf("\t\t\t\t<source file=\"%s\"/>\n", overlayPath))
+			b.WriteString("\t\t\t\t<driver type=\"qcow2\"/>\n")
+			b.WriteString("\t\t\t</disk>\n")
+		}
+		b.WriteString("\t\t</disks>\n")
+		if b.Len() > len("\t\t<disks>\n\t\t</disks>\n") {
+			disksXML = b.String()
+		}
+	}
+
 	// Generate snapshot XML with enhanced metadata
 	snapshotXML := fmt.Sprintf(`
 		<domainsnapshot>
@@ -374,12 +411,13 @@ func (s *Service) CreateSnapshotEnhanced(ctx context.Context, nameOrUUID string,
 					<vapor:created_by>API</vapor:created_by>
 				</vapor:snapshot>
 			</metadata>
-		</domainsnapshot>`,
+%s		</domainsnapshot>`,
 		req.Name,
 		req.Description,
 		map[bool]string{true: "internal", false: "no"}[req.Memory && capabilities.OverallCapabilities.MemorySnapshots],
 		snapshotType,
-		formatListToString(capabilities.Disks))
+		formatListToString(capabilities.Disks),
+		disksXML)
 
 	// Create the snapshot
 	snapshot, err := domain.CreateSnapshotXML(snapshotXML, libvirt.DomainSnapshotCreateFlags(flags|quiesceFlag))
