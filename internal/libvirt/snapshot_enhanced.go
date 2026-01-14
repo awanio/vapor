@@ -334,13 +334,28 @@ func (s *Service) CreateSnapshotEnhanced(ctx context.Context, nameOrUUID string,
 	vmUUID, _ := domain.GetUUIDString()
 	vmName, _ := domain.GetName()
 
+	// Check if VM is running
+	state, _, err := domain.GetState()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get VM state: %w", err)
+	}
+	isRunning := state == libvirt.DOMAIN_RUNNING
+
+	fmt.Printf("DEBUG CreateSnapshotEnhanced: VM=%s, Memory=%v, isRunning=%v\n", vmName, req.Memory, isRunning)
+
 	// Determine snapshot type and flags
 	snapshotType := "internal"
 	flags := uint32(0)
 	warnings := []string{}
 
-	// Check if we need to force external snapshot
-	if !capabilities.OverallCapabilities.InternalSnapshots {
+	// For running VMs without memory: cannot revert without restart
+	// Libvirt limitation: external snapshots cannot be reverted, internal snapshots require memory for running VMs
+	if !req.Memory && isRunning {
+		return nil, fmt.Errorf("cannot create revertible disk-only snapshot of a running VM. " +
+			"Options: (1) include memory in snapshot (recommended), " +
+			"(2) stop VM before taking snapshot, " +
+			"(3) take external snapshot (non-revertible)")
+	} else if !capabilities.OverallCapabilities.InternalSnapshots {
 		if req.Memory && !capabilities.OverallCapabilities.MemorySnapshots {
 			return nil, fmt.Errorf("memory snapshots not supported: %v",
 				strings.Join(capabilities.OverallCapabilities.Limitations, "; "))

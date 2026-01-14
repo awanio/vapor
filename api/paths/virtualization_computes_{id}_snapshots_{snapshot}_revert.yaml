@@ -8,8 +8,12 @@ post:
     - Restore the VM to the exact state when the snapshot was created
     - Cannot be undone without another snapshot
 
-    **Note:** If the snapshot includes memory state, the VM will resume
-    from the exact running state. Otherwise, the VM will be in a stopped state.
+    **Revert Behavior:**
+    By default (flags=1), running VMs will stay running after revert. This is a live revert
+    that only works for disk-only snapshots. If the snapshot includes memory state,
+    libvirt must restore that memory, which effectively restarts the VM.
+
+    You can control the revert behavior using the `flags` parameter in the request body.
   tags:
     - Virtualization Compute
   security:
@@ -27,6 +31,26 @@ post:
       schema:
         type: string
       description: Snapshot name to revert to
+  requestBody:
+    description: Optional revert configuration
+    required: false
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/VMSnapshotRevertRequest.yaml
+        examples:
+          default:
+            summary: Default - Keep running VMs running
+            value:
+              flags: 1
+          force_stop:
+            summary: Default libvirt behavior (may restart VM)
+            value:
+              flags: 0
+          paused:
+            summary: Leave VM paused after revert
+            value:
+              flags: 2
   responses:
     '200':
       description: VM reverted to snapshot successfully

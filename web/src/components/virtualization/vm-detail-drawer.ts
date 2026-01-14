@@ -151,6 +151,7 @@ export class VMDetailDrawer extends LitElement {
   @state() private showSnapshotActionModal = false;
   @state() private snapshotActionMode: 'revert' | 'delete' = 'delete';
   @state() private snapshotActionName = '';
+  @state() private snapshotRevertFlags = 1; // Default: DOMAIN_SNAPSHOT_REVERT_RUNNING
   @state() private isSnapshotActionLoading = false;
   @state() private showStopDropdown = false;
   
@@ -2631,6 +2632,7 @@ export class VMDetailDrawer extends LitElement {
   private requestSnapshotAction(mode: 'revert' | 'delete', snapshotName: string) {
     this.snapshotActionMode = mode;
     this.snapshotActionName = snapshotName;
+    this.snapshotRevertFlags = 1; // Reset to default: keep running VMs running
     this.showSnapshotActionModal = true;
     this.isSnapshotActionLoading = false;
   }
@@ -2652,7 +2654,7 @@ export class VMDetailDrawer extends LitElement {
 
     try {
       if (mode === 'revert') {
-        await snapshotActions.revert(this.vm.id, snapshotName);
+        await snapshotActions.revert(this.vm.id, snapshotName, this.snapshotRevertFlags);
         this.showNotification(`Reverted to snapshot "${snapshotName}"`, 'success');
         // Refresh VM details
         this.loadVMDetails();
@@ -2725,6 +2727,30 @@ export class VMDetailDrawer extends LitElement {
                   : html`Reverting will overwrite the current VM state.`}
               </div>
             </div>
+
+            ${mode === 'revert'
+              ? html`
+                  <div class="form-group" style="margin-top: 16px;">
+                    <label for="revert-behavior">Revert Behavior</label>
+                    <select
+                      id="revert-behavior"
+                      .value=${String(this.snapshotRevertFlags)}
+                      @change=${(e: Event) =>
+                        (this.snapshotRevertFlags = Number(
+                          (e.target as HTMLSelectElement).value
+                        ))}
+                      ?disabled=${this.isSnapshotActionLoading}
+                    >
+                      <option value="1">Keep running (default) - Running VMs stay running</option>
+                      <option value="0">Default libvirt behavior - May restart the VM</option>
+                      <option value="2">Paused - VM paused after revert</option>
+                    </select>
+                    <div class="form-hint">
+                      Choose how the VM should behave after reverting to the snapshot.
+                    </div>
+                  </div>
+                `
+              : ''}
           </div>
 
           <div class="modal-footer">

@@ -1053,20 +1053,49 @@ func (s *Service) CreateSnapshot(ctx context.Context, nameOrUUID string, req *VM
 	vmUUID, _ := domain.GetUUIDString()
 	vmName, _ := domain.GetName()
 
+	// Check if VM is running
+	state, _, err := domain.GetState()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get VM state: %w", err)
+	}
+	isRunning := state == libvirt.DOMAIN_RUNNING
+
+	fmt.Printf("DEBUG CreateSnapshot: VM=%s, Memory=%v, isRunning=%v, state=%d\n", vmName, req.Memory, isRunning, state)
+
 	// Generate snapshot XML
-	snapshotXML := fmt.Sprintf(`
+	// For running VMs without memory, we need external snapshots
+	var snapshotXML string
+	if !req.Memory && isRunning {
+		// External snapshot for running VM (disk-only)
+		// Use empty <disks/> to let libvirt auto-discover and snapshot all disks as external
+		snapshotXML = fmt.Sprintf(`
+		<domainsnapshot>
+			<name>%s</name>
+			<description>%s</description>
+			<memory snapshot='no'/>
+		</domainsnapshot>`,
+			req.Name, req.Description)
+		fmt.Printf("DEBUG: Creating EXTERNAL snapshot (disk-only)\n")
+	} else {
+		// Internal snapshot (with or without memory) or stopped VM
+		snapshotXML = fmt.Sprintf(`
 		<domainsnapshot>
 			<name>%s</name>
 			<description>%s</description>
 			<memory snapshot='%s'/>
 		</domainsnapshot>`,
-		req.Name, req.Description,
-		map[bool]string{true: "internal", false: "no"}[req.Memory])
+			req.Name, req.Description,
+			map[bool]string{true: "internal", false: "no"}[req.Memory])
+		fmt.Printf("DEBUG: Creating INTERNAL snapshot\n")
+	}
+
+	fmt.Printf("DEBUG: Snapshot XML:\n%s\n", snapshotXML)
 
 	flags := libvirt.DomainSnapshotCreateFlags(0)
 	if !req.Memory {
 		flags = libvirt.DOMAIN_SNAPSHOT_CREATE_DISK_ONLY
 	}
+	fmt.Printf("DEBUG: Flags=%d (DISK_ONLY=%d)\n", flags, libvirt.DOMAIN_SNAPSHOT_CREATE_DISK_ONLY)
 
 	snapshot, err := domain.CreateSnapshotXML(snapshotXML, flags)
 	if err != nil {
@@ -1126,8 +1155,23 @@ func (s *Service) ListSnapshots(ctx context.Context, nameOrUUID string) ([]VMSna
 	return vmSnapshots, nil
 }
 
-// RevertSnapshot reverts VM to a snapshot
-func (s *Service) RevertSnapshot(ctx context.Context, nameOrUUID string, snapshotName string) error {
+// RevertSnapshot reverts a VM to a snapshot with the specified flags.
+// Default flags: DOMAIN_SNAPSHOT_REVERT_RUNNING (1) to keep running VMs running.
+// Available flags:
+//   - 0: Default libvirt behavior (may restart VM)
+//   - 1: DOMAIN_SNAPSHOT_REVERT_RUNNING (keep domain running after revert)
+//   - 2: DOMAIN_SNAPSHOT_REVERT_PAUSED (leave domain paused after revert)
+//   - 4: DOMAIN_SNAPSHOT_REVERT_FORCE (force revert even if risky)
+// Flags can be combined using bitwise OR.
+func (s *Service) RevertSnapshot(ctx context.Context, nameOrUUID string, snapshotName string, flags libvirt.DomainSnapshotRevertFlags) error {
+	// Default to DOMAIN_SNAPSHOT_REVERT_RUNNING if no flags specified
+	// This keeps running VMs running instead of restarting them
+	if flags == 0 {
+		flags = libvirt.DOMAIN_SNAPSHOT_REVERT_RUNNING
+	}
+
+	fmt.Printf("DEBUG Service: Reverting snapshot '%s' for VM '%s' with flags: %d\n", snapshotName, nameOrUUID, flags)
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -1143,7 +1187,21 @@ func (s *Service) RevertSnapshot(ctx context.Context, nameOrUUID string, snapsho
 	}
 	defer snapshot.Free()
 
-	return snapshot.RevertToSnapshot(0)
+	// Try to revert using the standard API
+	err = snapshot.RevertToSnapshot(flags)
+	if err != nil {
+		// Check if this is an external snapshot revert error
+		if strings.Contains(err.Error(), "revert to external snapshot not supported") {
+			fmt.Printf("DEBUG: External snapshot detected, using custom revert\n")
+			return fmt.Errorf("reverting to external snapshots is not supported by libvirt. " +
+				"For running VMs, please use internal snapshots with memory. " +
+				"Alternatively, stop the VM, revert using blockcommit, then restart. " +
+				"Original error: %w", err)
+		}
+		return err
+	}
+
+	return nil
 }
 
 // DeleteSnapshot deletes a VM snapshot
@@ -1163,7 +1221,14 @@ func (s *Service) DeleteSnapshot(ctx context.Context, nameOrUUID string, snapsho
 	}
 	defer snapshot.Free()
 
-	return snapshot.Delete(0)
+	err = snapshot.Delete(0)
+	if err != nil && strings.Contains(err.Error(), "deletion of") && strings.Contains(err.Error(), "external disk snapshots not supported") {
+		return fmt.Errorf("cannot delete external snapshot using standard API. " +
+			"External snapshots must be deleted manually using blockcommit or by removing overlay files. " +
+			"To avoid this issue, use internal snapshots with memory for running VMs. " +
+			"Original error: %w", err)
+	}
+	return err
 }
 
 // CloneVM clones a virtual machine.

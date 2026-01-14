@@ -1,0 +1,20 @@
+type: object
+description: Request body for reverting to a VM snapshot
+properties:
+  flags:
+    type: integer
+    format: uint32
+    description: |
+      Libvirt snapshot revert flags to control revert behavior.
+      
+      Available flags:
+      - `0`: Default libvirt behavior (may restart the VM)
+      - `1`: DOMAIN_SNAPSHOT_REVERT_RUNNING (keep domain running after revert - default)
+      - `2`: DOMAIN_SNAPSHOT_REVERT_PAUSED (leave domain paused after revert)
+      - `4`: DOMAIN_SNAPSHOT_REVERT_FORCE (force revert even if risky)
+      
+      Flags can be combined using bitwise OR.
+      
+      **Default:** 1 (DOMAIN_SNAPSHOT_REVERT_RUNNING) - keeps running VMs running.
+    default: 1
+    example: 1

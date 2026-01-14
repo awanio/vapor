@@ -14,6 +14,7 @@ import (
 	"github.com/awanio/vapor/internal/libvirt"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	libvirtgo "libvirt.org/go/libvirt"
 )
 
 // LibvirtRoutes sets up libvirt VM management routes
@@ -726,7 +727,23 @@ func revertSnapshot(service *libvirt.Service) gin.HandlerFunc {
 		id := c.Param("id")
 		snapshotName := c.Param("snapshot")
 
-		if err := service.RevertSnapshot(c.Request.Context(), id, snapshotName); err != nil {
+		// Parse optional request body for flags
+		var req struct {
+			Flags *uint32 `json:"flags"`
+		}
+		// Ignore binding errors since body is optional
+		_ = c.ShouldBindJSON(&req)
+
+		// Default to DOMAIN_SNAPSHOT_REVERT_RUNNING if not specified
+		flags := libvirtgo.DOMAIN_SNAPSHOT_REVERT_RUNNING
+		if req.Flags != nil {
+			flags = libvirtgo.DomainSnapshotRevertFlags(*req.Flags)
+		}
+
+		// Log the flags being used for debugging
+		fmt.Printf("DEBUG: Reverting snapshot '%s' for VM '%s' with flags: %d\n", snapshotName, id, flags)
+
+		if err := service.RevertSnapshot(c.Request.Context(), id, snapshotName, flags); err != nil {
 			msg := err.Error()
 			if strings.Contains(msg, "domain not found") {
 				sendComputeError(c, "VM_NOT_FOUND", "Virtual machine not found", err, http.StatusNotFound)

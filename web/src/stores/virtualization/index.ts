@@ -2549,10 +2549,12 @@ export const snapshotActions = {
   /**
    * Revert VM to a snapshot
    */
-  async revert(vmId: string, snapshotName: string) {
+  async revert(vmId: string, snapshotName: string, flags?: number) {
     const safeName = encodeURIComponent(snapshotName);
+    const body = flags !== undefined ? { flags } : undefined;
     return apiRequest(`/computes/${vmId}/snapshots/${safeName}/revert`, {
       method: 'POST',
+      body: body ? JSON.stringify(body) : undefined,
     });
   },
 
