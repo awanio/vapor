@@ -1962,9 +1962,31 @@ export class VMDetailDrawer extends LitElement {
     // Jump to the Snapshots tab and open the create modal
     this.activeTab = 'snapshots';
     this.ensureSnapshotsLoaded();
-    this.showCreateSnapshotModal = true;
+    this.openSnapshotModal();
   }
   
+  private openSnapshotModal() {
+    // Check if VM is running
+    const currentState = this.vm?.state || this.vmDetails?.state;
+    const isRunning = currentState?.toLowerCase() === 'running';
+
+    // Check snapshot capabilities
+    const supportsSnapshots = this.snapshotCapabilities?.supports_snapshots ?? false;
+    const supportsMemory = this.snapshotCapabilities?.supports_memory ?? false;
+    const supportsInternal = this.snapshotCapabilities?.supports_internal ?? false;
+
+    // Auto-check "Include memory" if:
+    // - VM is running
+    // - Supports snapshots
+    // - Supports memory
+    // - Supports internal snapshots
+    const shouldIncludeMemory = isRunning && supportsSnapshots && supportsMemory && supportsInternal;
+
+    this.createIncludeMemory = shouldIncludeMemory;
+    this.showCreateSnapshotModal = true;
+  }
+
+
   private handleDeleteVM() {
     // Check if VM is running
     const currentState = this.vm?.state || this.vmDetails?.state;
@@ -3067,7 +3089,7 @@ export class VMDetailDrawer extends LitElement {
             </button>
             <button
               class="btn btn-primary btn-sm"
-              @click=${() => (this.showCreateSnapshotModal = true)}
+              @click=${this.openSnapshotModal}
               ?disabled=${this.isLoadingSnapshots || supportsSnapshots === false}
             >
               + Create Snapshot
