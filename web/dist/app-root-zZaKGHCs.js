@@ -1,4 +1,7 @@
-import { g as getApiUrl, a as getWsUrl, i as i18n, r as registerPerfGauge, b as auth, p as perfIncrement, t as t$5, c as theme } from "./index-Cm682acG.js";
+import { g as getApiUrl, a as getWsUrl, i as i18n, b as auth, t as t$5, c as theme } from "./index-BxgytysS.js";
+function perfIncrement(name, delta = 1) {
+  return;
+}
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -23262,17 +23265,6 @@ computed(
   (health) => health.filter((h3) => h3.status === "connected").length
 );
 computed($connectionHealth, (health) => health.length);
-registerPerfGauge(() => {
-  const gauges = {};
-  try {
-    const health = $connectionHealth.get();
-    gauges["ws_connections"] = health.length;
-    gauges["ws_reconnecting"] = health.filter((h3) => h3.status === "reconnecting").length;
-    gauges["ws_errors"] = health.filter((h3) => h3.lastError).length;
-  } catch {
-  }
-  return gauges;
-});
 const EVENTS_CONNECTION_ID = "shared:events";
 function subscribeToEventsChannel(options) {
   const sendSubscribe = () => {
@@ -23721,7 +23713,7 @@ const $metricsAlerts = computed(
     return alerts;
   }
 );
-const $metricsState = computed(
+computed(
   [
     $systemSummary,
     $cpuInfo,
@@ -23796,7 +23788,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-Cm682acG.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-BxgytysS.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -23841,7 +23833,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-Cm682acG.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-BxgytysS.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -23989,7 +23981,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-Cm682acG.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-BxgytysS.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -24033,18 +24025,6 @@ function formatUptime(seconds) {
 if (typeof window !== "undefined") {
   window.addEventListener("beforeunload", cleanupMetrics);
 }
-registerPerfGauge(() => {
-  const gauges = {};
-  try {
-    const state = $metricsState.get();
-    gauges["metrics_cpuHistory"] = state.cpuHistory.length;
-    gauges["metrics_memoryHistory"] = state.memoryHistory.length;
-    gauges["metrics_diskHistory"] = state.diskHistory.length;
-    gauges["metrics_networkHistory"] = state.networkHistory.length;
-  } catch {
-  }
-  return gauges;
-});
 const metrics = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   $cpuHistory,
@@ -24064,7 +24044,6 @@ const metrics = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePrope
   $metricsAlerts,
   $metricsConnected,
   $metricsError,
-  $metricsState,
   $networkHistory,
   $systemSummary,
   calculateAverage,
@@ -24115,7 +24094,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-Cm682acG.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-BxgytysS.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -37219,7 +37198,7 @@ class KubernetesApi {
       if (contentType === "json") {
         parsedResource = JSON.parse(content);
       } else {
-        const yaml = await import("./index-CsknrG--.js");
+        const yaml = await import("./index-wXMGtVdx.js");
         parsedResource = yaml.parse(content);
       }
     } catch (error) {
@@ -53400,7 +53379,7 @@ let KubernetesCRDs = class extends i$2 {
         unwrapped = JSON.parse(JSON.stringify(unwrapped));
         delete unwrapped.metadata.managedFields;
       }
-      const yaml = await import("./index-CsknrG--.js");
+      const yaml = await import("./index-wXMGtVdx.js");
       this.createResourceValue = yaml.stringify(unwrapped);
       this.isCreating = false;
     } catch (error) {
@@ -56989,43 +56968,8 @@ const $volumeStats = computed(
     };
   }
 );
-registerPerfGauge(() => {
-  const gauges = {};
-  try {
-    const items = vmStore.$items.get();
-    gauges["virt_vms"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
-  } catch {
-  }
-  try {
-    const items = storagePoolStore.$items.get();
-    gauges["virt_storage_pools"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
-  } catch {
-  }
-  try {
-    const items = isoStore.$items.get();
-    gauges["virt_isos"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
-  } catch {
-  }
-  try {
-    const items = templateStore.$items.get();
-    gauges["virt_templates"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
-  } catch {
-  }
-  try {
-    const items = networkStore.$items.get();
-    gauges["virt_networks"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
-  } catch {
-  }
-  try {
-    const items = volumeStore.$items.get();
-    gauges["virt_volumes"] = items instanceof Map ? items.size : items ? Object.keys(items).length : 0;
-  } catch {
-  }
-  return gauges;
-});
 const vmActions = {
   async fetchAll() {
-    perfIncrement("virt_vm_fetchAll");
     await vmStore.fetch();
   },
   /**
@@ -57154,7 +57098,6 @@ const vmActions = {
 };
 const templateActions = {
   async fetchAll() {
-    perfIncrement("virt_template_fetchAll");
     await templateStore.fetch();
   },
   async create(templateData) {
@@ -57420,7 +57363,6 @@ const wizardActions = {
 };
 const storagePoolActions = {
   async fetchAll() {
-    perfIncrement("virt_storagePool_fetchAll");
     await storagePoolStore.fetch();
   },
   async refresh(poolName) {
@@ -57493,7 +57435,6 @@ const storagePoolActions = {
 };
 const volumeActions = {
   async fetchAll() {
-    perfIncrement("virt_volume_fetchAll");
     await volumeStore.fetch();
   },
   async delete(volumeId) {
@@ -58376,13 +58317,10 @@ let VMBackupsTab = class extends i$2 {
     this.restoreKey = "";
     this.isCreating = false;
     this.isRestoring = false;
-    this.deletingId = null;
-    this.downloadingId = null;
     this.showDeleteModal = false;
     this.deleteTarget = null;
     this.isDeleting = false;
     this.missingFiles = /* @__PURE__ */ new Set();
-    this.openDropdownId = null;
     this.pollingHandle = null;
     this.createForm = {
       backup_type: "full",
@@ -58467,21 +58405,45 @@ let VMBackupsTab = class extends i$2 {
       this.isCreating = false;
     }
   }
-  toggleDropdown(e3, backupId) {
-    e3.stopPropagation();
-    if (this.openDropdownId === backupId) {
-      this.openDropdownId = null;
-    } else {
-      this.openDropdownId = backupId;
-      const closeHandler = () => {
-        this.openDropdownId = null;
-        document.removeEventListener("click", closeHandler);
-      };
-      setTimeout(() => document.addEventListener("click", closeHandler), 0);
-    }
+  getActions(backup) {
+    const id = backup.backup_id;
+    const isBusy = this.isRestoring || this.isDeleting;
+    const isMissing = !!id && this.missingFiles.has(id);
+    return [
+      {
+        label: "Restore",
+        action: "restore",
+        icon: "🔄",
+        disabled: this.isRestoring
+      },
+      {
+        label: "Download",
+        action: "download",
+        icon: "⬇️",
+        disabled: isMissing
+      },
+      {
+        label: "Delete",
+        action: "delete",
+        icon: "🗑️",
+        danger: true,
+        disabled: isBusy
+      }
+    ];
   }
-  closeDropdown() {
-    this.openDropdownId = null;
+  handleAction(e3, backup) {
+    const action = e3.detail.action;
+    switch (action) {
+      case "restore":
+        this.openRestore(backup);
+        break;
+      case "download":
+        this.handleDownload(backup);
+        break;
+      case "delete":
+        this.handleDelete(backup);
+        break;
+    }
   }
   handleDelete(backup) {
     this.deleteTarget = backup;
@@ -58549,7 +58511,6 @@ let VMBackupsTab = class extends i$2 {
       console.error("[Download] Error generating link:", err);
       this.toast = { text: err?.message || "Failed to start download", type: "error" };
     }
-    this.downloadingId = null;
   }
   formatDate(val) {
     if (!val) return "—";
@@ -58612,48 +58573,11 @@ let VMBackupsTab = class extends i$2 {
                 <td>${b2.encryption && b2.encryption !== "none" ? b2.encryption : "None"}</td>
                 <td>
                   <div style="display:flex; justify-content:flex-end;">
-                    <div class="actions-dropdown">
-                      <button 
-                        class="dropdown-trigger" 
-                        @click=${(e3) => this.toggleDropdown(e3, b2.backup_id || "")}
-                        title="Actions"
-                      >
-                        ⋮
-                      </button>
-                      <div class="dropdown-menu ${this.openDropdownId === b2.backup_id ? "show" : ""}">
-                        <button 
-                          class="dropdown-item" 
-                          @click=${() => {
-        this.closeDropdown();
-        this.openRestore(b2);
-      }}
-                          ?disabled=${this.isRestoring}
-                        >
-                          🔄 Restore
-                        </button>
-                        <button 
-                          class="dropdown-item" 
-                          @click=${() => {
-        this.closeDropdown();
-        this.handleDownload(b2);
-      }}
-                          ?disabled=${this.downloadingId === b2.backup_id || this.missingFiles.has(b2.backup_id || "")}
-                        >
-                          ${this.downloadingId === b2.backup_id ? "⏳ Downloading..." : "⬇️ Download"}
-                        </button>
-                        <div class="dropdown-divider"></div>
-                        <button 
-                          class="dropdown-item danger" 
-                          @click=${() => {
-        this.closeDropdown();
-        this.handleDelete(b2);
-      }}
-                          ?disabled=${this.deletingId === b2.backup_id}
-                        >
-                          🗑️ Delete
-                        </button>
-                      </div>
-                    </div>
+                    <action-dropdown
+                      .actions=${this.getActions(b2)}
+                      .menuId=${`menu-${b2.backup_id}`}
+                      @action-click=${(e3) => this.handleAction(e3, b2)}
+                    ></action-dropdown>
                   </div>
                   ${this.missingFiles.has(b2.backup_id || "") ? x`<div class="small" style="color:#fbbf24;">File missing on disk</div>` : ""}
                   ${b2.error_message ? x`<div class="small" style="color:#fca5a5;">${b2.error_message}</div>` : ""}
@@ -59072,79 +58996,7 @@ VMBackupsTab.styles = i$5`
       to { transform: rotate(360deg); }
     }
 
-    /* Dropdown menu styles */
-    .actions-dropdown {
-      position: relative;
-      display: inline-block;
-    }
-    .dropdown-trigger {
-      background: transparent;
-      border: 1px solid var(--vscode-widget-border, #454545);
-      border-radius: 4px;
-      padding: 6px 10px;
-      cursor: pointer;
-      color: var(--vscode-foreground, #cccccc);
-      font-size: 16px;
-      line-height: 1;
-      transition: all 0.2s;
-    }
-    .dropdown-trigger:hover {
-      background: var(--vscode-button-secondaryBackground, #3c3c3c);
-    }
-    .dropdown-menu {
-      display: none;
-      position: absolute;
-      right: 0;
-      top: 100%;
-      margin-top: 4px;
-      min-width: 140px;
-      background: var(--vscode-editor-background, #1e1e1e);
-      border: 1px solid var(--vscode-widget-border, #454545);
-      border-radius: 6px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-      z-index: 1000;
-      overflow: hidden;
-    }
-    .dropdown-menu.show {
-      display: block;
-      animation: dropdownFadeIn 0.15s ease-out;
-    }
-    @keyframes dropdownFadeIn {
-      from { opacity: 0; transform: translateY(-4px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .dropdown-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      width: 100%;
-      padding: 10px 14px;
-      border: none;
-      background: transparent;
-      color: var(--vscode-foreground, #cccccc);
-      font-size: 13px;
-      cursor: pointer;
-      text-align: left;
-      transition: background 0.15s;
-    }
-    .dropdown-item:hover:not(:disabled) {
-      background: var(--vscode-list-hoverBackground, #2a2d2e);
-    }
-    .dropdown-item:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    .dropdown-item.danger {
-      color: #f87171;
-    }
-    .dropdown-item.danger:hover:not(:disabled) {
-      background: rgba(248, 113, 113, 0.1);
-    }
-    .dropdown-divider {
-      height: 1px;
-      background: var(--vscode-widget-border, #454545);
-      margin: 4px 0;
-    }
+
   `;
 __decorateClass$p([
   n2({ type: Object })
@@ -59187,12 +59039,6 @@ __decorateClass$p([
 ], VMBackupsTab.prototype, "isRestoring", 2);
 __decorateClass$p([
   r$1()
-], VMBackupsTab.prototype, "deletingId", 2);
-__decorateClass$p([
-  r$1()
-], VMBackupsTab.prototype, "downloadingId", 2);
-__decorateClass$p([
-  r$1()
 ], VMBackupsTab.prototype, "showDeleteModal", 2);
 __decorateClass$p([
   r$1()
@@ -59203,9 +59049,6 @@ __decorateClass$p([
 __decorateClass$p([
   r$1()
 ], VMBackupsTab.prototype, "missingFiles", 2);
-__decorateClass$p([
-  r$1()
-], VMBackupsTab.prototype, "openDropdownId", 2);
 VMBackupsTab = __decorateClass$p([
   t$2("vm-backups-tab")
 ], VMBackupsTab);
@@ -79587,6 +79430,8 @@ let VirtualizationBackupsView = class extends i$2 {
     this.deletingId = null;
     this.downloadingId = null;
     this.missingFiles = /* @__PURE__ */ new Set();
+    this.showDeleteModal = false;
+    this.deleteTarget = null;
     this.importForm = {
       path: "",
       vm_name: "",
@@ -79728,14 +79573,21 @@ let VirtualizationBackupsView = class extends i$2 {
     this.toast = { text, type };
     setTimeout(() => this.toast = null, 3e3);
   }
-  async handleDelete(b2) {
+  handleDelete(b2) {
     if (!b2.backup_id) return;
-    const ok = window.confirm(`Delete backup ${b2.backup_id}?`);
-    if (!ok) return;
-    this.deletingId = b2.backup_id;
+    this.deleteTarget = b2;
+    this.showDeleteModal = true;
+  }
+  async confirmDelete() {
+    if (!this.deleteTarget?.backup_id) return;
+    const id = this.deleteTarget.backup_id;
+    this.deletingId = id;
     try {
-      await backupActions.delete(b2.backup_id);
+      await backupActions.delete(id);
       this.setToast("Backup deleted", "success");
+      this.showDeleteModal = false;
+      await this.updateComplete;
+      this.deleteTarget = null;
       this.loadBackups();
     } catch (err) {
       this.setToast(err?.message || "Failed to delete", "error");
@@ -79743,29 +79595,21 @@ let VirtualizationBackupsView = class extends i$2 {
       this.deletingId = null;
     }
   }
-  async handleDownload(b2) {
+  handleDownload(b2) {
     if (!b2.backup_id) return;
-    this.downloadingId = b2.backup_id;
     try {
-      const blob = await virtualizationAPI.downloadBackup(b2.backup_id);
-      const url = URL.createObjectURL(blob);
+      const url = virtualizationAPI.getBackupDownloadUrl(b2.backup_id);
       const a2 = document.createElement("a");
       a2.href = url;
       a2.download = `${b2.vm_name || b2.vm_uuid || "vm"}-${b2.backup_id}.qcow2`;
+      document.body.appendChild(a2);
       a2.click();
-      URL.revokeObjectURL(url);
+      document.body.removeChild(a2);
       this.setToast("Download started", "info");
     } catch (err) {
-      const code = err instanceof VirtualizationAPIError ? err.code : "";
-      if (code === "BACKUP_FILE_NOT_FOUND") {
-        const next = new Set(this.missingFiles);
-        next.add(b2.backup_id);
-        this.missingFiles = next;
-      }
-      this.setToast(err?.message || "Failed to download", "error");
-    } finally {
-      this.downloadingId = null;
+      this.setToast(err?.message || "Failed to start download", "error");
     }
+    this.downloadingId = null;
   }
   openRestore(b2) {
     this.restoreTarget = b2;
@@ -79928,6 +79772,7 @@ let VirtualizationBackupsView = class extends i$2 {
       ${this.renderImportDrawer()}
       ${this.renderCreateDrawer()}
       ${this.renderRestoreModal()}
+      ${this.renderDeleteModal()}
     `;
   }
   renderImportDrawer() {
@@ -80110,6 +79955,34 @@ let VirtualizationBackupsView = class extends i$2 {
       </modal-dialog>
     `;
   }
+  renderDeleteModal() {
+    return x`
+      <modal-dialog
+        .open=${this.showDeleteModal}
+        .title=${"Delete Backup"}
+        size="small"
+        @modal-close=${() => this.showDeleteModal = false}
+      >
+        <div style="padding: 8px 0;">
+          <p style="margin-top: 0">Are you sure you want to delete this backup?</p>
+          ${this.deleteTarget ? x`
+            <div style="font-family: monospace; background: var(--vscode-textCodeBlock-background, rgba(255,255,255,0.05)); padding: 8px; border-radius: 4px; margin: 12px 0;">
+              ${this.deleteTarget.backup_id} 
+              ${this.deleteTarget.vm_name ? x`<br><span style="opacity:0.7">VM: ${this.deleteTarget.vm_name}</span>` : ""}
+              ${this.deleteTarget.started_at ? x`<br><span style="opacity:0.7">Created: ${this.formatDate(this.deleteTarget.started_at)}</span>` : ""}
+            </div>
+          ` : ""}
+          <p style="margin-bottom: 0; color: var(--vscode-errorForeground, #f48771);">This action cannot be undone.</p>
+        </div>
+        <div slot="footer" style="display: flex; gap: 8px; justify-content: flex-end;">
+          <button class="btn" @click=${() => this.showDeleteModal = false} ?disabled=${!!this.deletingId}>Cancel</button>
+          <button class="btn btn-danger" @click=${() => this.confirmDelete()} ?disabled=${!!this.deletingId}>
+            ${this.deletingId ? "Deleting..." : "Delete"}
+          </button>
+        </div>
+      </modal-dialog>
+    `;
+  }
 };
 VirtualizationBackupsView.styles = i$5`
     :host { display: block; height: 100%; }
@@ -80215,6 +80088,12 @@ __decorateClass$b([
 __decorateClass$b([
   r$1()
 ], VirtualizationBackupsView.prototype, "missingFiles", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationBackupsView.prototype, "showDeleteModal", 2);
+__decorateClass$b([
+  r$1()
+], VirtualizationBackupsView.prototype, "deleteTarget", 2);
 VirtualizationBackupsView = __decorateClass$b([
   t$2("virtualization-backups")
 ], VirtualizationBackupsView);

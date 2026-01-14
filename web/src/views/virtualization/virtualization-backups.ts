@@ -1,7 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import type { VMBackup, BackupCreateRequest, BackupType } from '../../types/virtualization';
-import virtualizationAPI, { VirtualizationAPIError } from '../../services/virtualization-api';
+import virtualizationAPI from '../../services/virtualization-api';
 import { $backups, backupActions } from '../../stores/virtualization/backups';
 import { vmStore } from '../../stores/virtualization';
 import '../../components/tables/resource-table';
@@ -85,6 +85,8 @@ export class VirtualizationBackupsView extends LitElement {
   @state() private deletingId: string | null = null;
   @state() private downloadingId: string | null = null;
   @state() private missingFiles = new Set<string>();
+  @state() private showDeleteModal = false;
+  @state() private deleteTarget: VMBackup | null = null;
 
   private backupsUnsub?: () => void;
   private vmsUnsub?: () => void;
@@ -247,14 +249,22 @@ export class VirtualizationBackupsView extends LitElement {
     setTimeout(() => (this.toast = null), 3000);
   }
 
-  private async handleDelete(b: VMBackup) {
+  private handleDelete(b: VMBackup) {
     if (!b.backup_id) return;
-    const ok = window.confirm(`Delete backup ${b.backup_id}?`);
-    if (!ok) return;
-    this.deletingId = b.backup_id;
+    this.deleteTarget = b;
+    this.showDeleteModal = true;
+  }
+
+  private async confirmDelete() {
+    if (!this.deleteTarget?.backup_id) return;
+    const id = this.deleteTarget.backup_id;
+    this.deletingId = id;
     try {
-      await backupActions.delete(b.backup_id);
+      await backupActions.delete(id);
       this.setToast('Backup deleted', 'success');
+      this.showDeleteModal = false;
+      await this.updateComplete;
+      this.deleteTarget = null;
       this.loadBackups();
     } catch (err: any) {
       this.setToast(err?.message || 'Failed to delete', 'error');
@@ -263,29 +273,25 @@ export class VirtualizationBackupsView extends LitElement {
     }
   }
 
-  private async handleDownload(b: VMBackup) {
+  private handleDownload(b: VMBackup) {
     if (!b.backup_id) return;
-    this.downloadingId = b.backup_id;
+
     try {
-      const blob = await virtualizationAPI.downloadBackup(b.backup_id);
-      const url = URL.createObjectURL(blob);
+      const url = virtualizationAPI.getBackupDownloadUrl(b.backup_id);
+
       const a = document.createElement('a');
       a.href = url;
       a.download = `${b.vm_name || b.vm_uuid || 'vm'}-${b.backup_id}.qcow2`;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
       this.setToast('Download started', 'info');
     } catch (err: any) {
-      const code = err instanceof VirtualizationAPIError ? err.code : '';
-      if (code === 'BACKUP_FILE_NOT_FOUND') {
-        const next = new Set(this.missingFiles);
-        next.add(b.backup_id);
-        this.missingFiles = next;
-      }
-      this.setToast(err?.message || 'Failed to download', 'error');
-    } finally {
-      this.downloadingId = null;
+      this.setToast(err?.message || 'Failed to start download', 'error');
     }
+    // No need to set downloading state as it's a direct link
+    this.downloadingId = null;
   }
 
   private openRestore(b: VMBackup) {
@@ -449,6 +455,7 @@ export class VirtualizationBackupsView extends LitElement {
       ${this.renderImportDrawer()}
       ${this.renderCreateDrawer()}
       ${this.renderRestoreModal()}
+      ${this.renderDeleteModal()}
     `;
   }
 
@@ -604,8 +611,8 @@ export class VirtualizationBackupsView extends LitElement {
         @modal-close=${() => (this.showRestore = false)}
       >
         ${missingVm
-          ? html`<div class="chip warn">Source VM not found; restore will create a new VM.</div>`
-          : html`<div class="field">
+        ? html`<div class="chip warn">Source VM not found; restore will create a new VM.</div>`
+        : html`<div class="field">
               <label>Overwrite existing VM</label>
               <input
                 type="checkbox"
@@ -623,7 +630,7 @@ export class VirtualizationBackupsView extends LitElement {
           />
         </div>
         ${this.restoreTarget.encryption && this.restoreTarget.encryption !== 'none'
-          ? html`<div class="field">
+        ? html`<div class="field">
               <label>Decryption key</label>
               <input
                 type="password"
@@ -631,10 +638,39 @@ export class VirtualizationBackupsView extends LitElement {
                 @input=${(e: Event) => (this.restoreKey = (e.target as HTMLInputElement).value)}
               />
             </div>`
-          : ''}
+        : ''}
         <div slot="footer" style="display:flex; gap:8px; justify-content:flex-end;">
           <button class="btn" @click=${() => (this.showRestore = false)}>Cancel</button>
           <button class="btn btn-primary" @click=${() => this.confirmRestore()}>Restore</button>
+        </div>
+      </modal-dialog>
+    `;
+  }
+
+  private renderDeleteModal() {
+    return html`
+      <modal-dialog
+        .open=${this.showDeleteModal}
+        .title=${'Delete Backup'}
+        size="small"
+        @modal-close=${() => (this.showDeleteModal = false)}
+      >
+        <div style="padding: 8px 0;">
+          <p style="margin-top: 0">Are you sure you want to delete this backup?</p>
+          ${this.deleteTarget ? html`
+            <div style="font-family: monospace; background: var(--vscode-textCodeBlock-background, rgba(255,255,255,0.05)); padding: 8px; border-radius: 4px; margin: 12px 0;">
+              ${this.deleteTarget.backup_id} 
+              ${this.deleteTarget.vm_name ? html`<br><span style="opacity:0.7">VM: ${this.deleteTarget.vm_name}</span>` : ''}
+              ${this.deleteTarget.started_at ? html`<br><span style="opacity:0.7">Created: ${this.formatDate(this.deleteTarget.started_at)}</span>` : ''}
+            </div>
+          ` : ''}
+          <p style="margin-bottom: 0; color: var(--vscode-errorForeground, #f48771);">This action cannot be undone.</p>
+        </div>
+        <div slot="footer" style="display: flex; gap: 8px; justify-content: flex-end;">
+          <button class="btn" @click=${() => (this.showDeleteModal = false)} ?disabled=${!!this.deletingId}>Cancel</button>
+          <button class="btn btn-danger" @click=${() => this.confirmDelete()} ?disabled=${!!this.deletingId}>
+            ${this.deletingId ? 'Deleting...' : 'Delete'}
+          </button>
         </div>
       </modal-dialog>
     `;

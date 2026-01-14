@@ -155,14 +155,23 @@ const i18n = new I18n();
 function t(key, params) {
   return i18n.t(key, params);
 }
+function getSameOriginUrl(protocol) {
+  const { protocol: currentProtocol, host } = window.location;
+  const isSecure = currentProtocol === "https:";
+  if (protocol === "http") {
+    return `${currentProtocol}//${host}`;
+  } else {
+    return `${isSecure ? "wss" : "ws"}://${host}`;
+  }
+}
 const getEnvConfig = () => {
-  const apiBaseUrl = "https://103.179.254.248:7770";
-  const wsBaseUrl = "wss://103.179.254.248:7770";
+  const apiBaseUrl = getSameOriginUrl("http");
+  const wsBaseUrl = getSameOriginUrl("ws");
   return {
     API_BASE_URL: apiBaseUrl,
     WS_BASE_URL: wsBaseUrl,
     API_VERSION: "/api/v1",
-    ENABLE_DEBUG: true,
+    ENABLE_DEBUG: false,
     ENABLE_MOCK_DATA: false
   };
 };
@@ -333,67 +342,11 @@ class ThemeManager {
   }
 }
 const theme = ThemeManager.getInstance();
-const __vite_import_meta_env__ = {};
-const ENABLED = typeof import.meta !== "undefined" && typeof __vite_import_meta_env__ !== "undefined" && true;
-const counters = {};
-const gauges = [];
-function perfIncrement(name, delta = 1) {
-  if (!ENABLED) return;
-  counters[name] = (counters[name] ?? 0) + delta;
-}
-function registerPerfGauge(provider) {
-  if (!ENABLED) return () => {
-  };
-  gauges.push(provider);
-  return () => {
-    const idx = gauges.indexOf(provider);
-    if (idx >= 0) gauges.splice(idx, 1);
-  };
-}
-function collectGauges() {
-  const result = {};
-  for (const g of gauges) {
-    try {
-      Object.assign(result, g());
-    } catch (err) {
-      console.warn("[PerfDebug] gauge error", err);
-    }
-  }
-  return result;
-}
-function getMemoryInfo() {
-  try {
-    const anyPerf = typeof performance !== "undefined" ? performance : null;
-    if (anyPerf && anyPerf.memory) {
-      const { usedJSHeapSize, totalJSHeapSize, jsHeapSizeLimit } = anyPerf.memory;
-      return { usedJSHeapSize, totalJSHeapSize, jsHeapSizeLimit };
-    }
-  } catch {
-  }
-  return void 0;
-}
-if (ENABLED && typeof window !== "undefined") {
-  const start = Date.now();
-  const intervalMs = 3e4;
-  window.setInterval(() => {
-    const elapsedSec = Math.round((Date.now() - start) / 1e3);
-    const snapshotCounters = { ...counters };
-    const gaugeValues = collectGauges();
-    const memory = getMemoryInfo();
-    console.log("[PerfDebug]", {
-      ts: (/* @__PURE__ */ new Date()).toISOString(),
-      elapsedSec,
-      counters: snapshotCounters,
-      gauges: gaugeValues,
-      memory
-    });
-  }, intervalMs);
-}
 theme.getTheme();
 auth.isAuthenticated();
 i18n.init().then(() => {
   console.log("i18n initialized, loading app...");
-  import("./app-root-C2IotqKS.js").then((n) => n.x);
+  import("./app-root-zZaKGHCs.js").then((n) => n.x);
   console.log("Vapor Web UI initialized");
 }).catch((error) => {
   console.error("Failed to initialize i18n:", error);
@@ -405,7 +358,5 @@ export {
   auth$1 as d,
   getApiUrl as g,
   i18n as i,
-  perfIncrement as p,
-  registerPerfGauge as r,
   t
 };

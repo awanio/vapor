@@ -8,6 +8,8 @@ import {
   makeVmBackupsStore,
 } from '../../stores/virtualization/backups';
 import '../modal-dialog';
+import '../ui/action-dropdown';
+import type { ActionItem } from '../ui/action-dropdown';
 
 @customElement('vm-backups-tab')
 export class VMBackupsTab extends LitElement {
@@ -205,79 +207,7 @@ export class VMBackupsTab extends LitElement {
       to { transform: rotate(360deg); }
     }
 
-    /* Dropdown menu styles */
-    .actions-dropdown {
-      position: relative;
-      display: inline-block;
-    }
-    .dropdown-trigger {
-      background: transparent;
-      border: 1px solid var(--vscode-widget-border, #454545);
-      border-radius: 4px;
-      padding: 6px 10px;
-      cursor: pointer;
-      color: var(--vscode-foreground, #cccccc);
-      font-size: 16px;
-      line-height: 1;
-      transition: all 0.2s;
-    }
-    .dropdown-trigger:hover {
-      background: var(--vscode-button-secondaryBackground, #3c3c3c);
-    }
-    .dropdown-menu {
-      display: none;
-      position: absolute;
-      right: 0;
-      top: 100%;
-      margin-top: 4px;
-      min-width: 140px;
-      background: var(--vscode-editor-background, #1e1e1e);
-      border: 1px solid var(--vscode-widget-border, #454545);
-      border-radius: 6px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-      z-index: 1000;
-      overflow: hidden;
-    }
-    .dropdown-menu.show {
-      display: block;
-      animation: dropdownFadeIn 0.15s ease-out;
-    }
-    @keyframes dropdownFadeIn {
-      from { opacity: 0; transform: translateY(-4px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .dropdown-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      width: 100%;
-      padding: 10px 14px;
-      border: none;
-      background: transparent;
-      color: var(--vscode-foreground, #cccccc);
-      font-size: 13px;
-      cursor: pointer;
-      text-align: left;
-      transition: background 0.15s;
-    }
-    .dropdown-item:hover:not(:disabled) {
-      background: var(--vscode-list-hoverBackground, #2a2d2e);
-    }
-    .dropdown-item:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    .dropdown-item.danger {
-      color: #f87171;
-    }
-    .dropdown-item.danger:hover:not(:disabled) {
-      background: rgba(248, 113, 113, 0.1);
-    }
-    .dropdown-divider {
-      height: 1px;
-      background: var(--vscode-widget-border, #454545);
-      margin: 4px 0;
-    }
+
   `;
 
   @property({ type: Object }) vm: VirtualMachine | null = null;
@@ -294,13 +224,11 @@ export class VMBackupsTab extends LitElement {
   @state() private restoreKey = "";
   @state() private isCreating = false;
   @state() private isRestoring = false;
-  @state() private deletingId: string | null = null;
-  @state() private downloadingId: string | null = null;
   @state() private showDeleteModal = false;
   @state() private deleteTarget: VMBackup | null = null;
   @state() private isDeleting = false;
   @state() private missingFiles = new Set<string>();
-  @state() private openDropdownId: string | null = null;
+
 
   private backupWatcher?: () => void;
   private pollingHandle: number | null = null;
@@ -399,23 +327,47 @@ export class VMBackupsTab extends LitElement {
     }
   }
 
-  private toggleDropdown(e: Event, backupId: string) {
-    e.stopPropagation();
-    if (this.openDropdownId === backupId) {
-      this.openDropdownId = null;
-    } else {
-      this.openDropdownId = backupId;
-      // Close dropdown when clicking outside
-      const closeHandler = () => {
-        this.openDropdownId = null;
-        document.removeEventListener('click', closeHandler);
-      };
-      setTimeout(() => document.addEventListener('click', closeHandler), 0);
-    }
+  private getActions(backup: VMBackup): ActionItem[] {
+    const id = backup.backup_id;
+    const isBusy = this.isRestoring || this.isDeleting;
+    const isMissing = !!id && this.missingFiles.has(id);
+
+    return [
+      {
+        label: 'Restore',
+        action: 'restore',
+        icon: '🔄',
+        disabled: this.isRestoring
+      },
+      {
+        label: 'Download',
+        action: 'download',
+        icon: '⬇️',
+        disabled: isMissing
+      },
+      {
+        label: 'Delete',
+        action: 'delete',
+        icon: '🗑️',
+        danger: true,
+        disabled: isBusy
+      }
+    ];
   }
 
-  private closeDropdown() {
-    this.openDropdownId = null;
+  private handleAction(e: CustomEvent, backup: VMBackup) {
+    const action = e.detail.action;
+    switch (action) {
+      case 'restore':
+        this.openRestore(backup);
+        break;
+      case 'download':
+        this.handleDownload(backup);
+        break;
+      case 'delete':
+        this.handleDelete(backup);
+        break;
+    }
   }
 
   private handleDelete(backup: VMBackup) {
@@ -497,8 +449,6 @@ export class VMBackupsTab extends LitElement {
       console.error('[Download] Error generating link:', err);
       this.toast = { text: err?.message || 'Failed to start download', type: 'error' };
     }
-    // No need to set downloading state as it's a direct link
-    this.downloadingId = null;
   }
 
   private formatDate(val?: string | null) {
@@ -573,39 +523,11 @@ export class VMBackupsTab extends LitElement {
                 <td>${b.encryption && b.encryption !== 'none' ? b.encryption : 'None'}</td>
                 <td>
                   <div style="display:flex; justify-content:flex-end;">
-                    <div class="actions-dropdown">
-                      <button 
-                        class="dropdown-trigger" 
-                        @click=${(e: Event) => this.toggleDropdown(e, b.backup_id || '')}
-                        title="Actions"
-                      >
-                        ⋮
-                      </button>
-                      <div class="dropdown-menu ${this.openDropdownId === b.backup_id ? 'show' : ''}">
-                        <button 
-                          class="dropdown-item" 
-                          @click=${() => { this.closeDropdown(); this.openRestore(b); }}
-                          ?disabled=${this.isRestoring}
-                        >
-                          🔄 Restore
-                        </button>
-                        <button 
-                          class="dropdown-item" 
-                          @click=${() => { this.closeDropdown(); this.handleDownload(b); }}
-                          ?disabled=${this.downloadingId === b.backup_id || this.missingFiles.has(b.backup_id || '')}
-                        >
-                          ${this.downloadingId === b.backup_id ? '⏳ Downloading...' : '⬇️ Download'}
-                        </button>
-                        <div class="dropdown-divider"></div>
-                        <button 
-                          class="dropdown-item danger" 
-                          @click=${() => { this.closeDropdown(); this.handleDelete(b); }}
-                          ?disabled=${this.deletingId === b.backup_id}
-                        >
-                          🗑️ Delete
-                        </button>
-                      </div>
-                    </div>
+                    <action-dropdown
+                      .actions=${this.getActions(b)}
+                      .menuId=${`menu-${b.backup_id}`}
+                      @action-click=${(e: CustomEvent) => this.handleAction(e, b)}
+                    ></action-dropdown>
                   </div>
                   ${this.missingFiles.has(b.backup_id || '')
           ? html`<div class="small" style="color:#fbbf24;">File missing on disk</div>`
