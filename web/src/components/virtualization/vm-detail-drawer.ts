@@ -1345,6 +1345,15 @@ export class VMDetailDrawer extends LitElement {
       if (response) {
         this.vmDetails = response;
         
+        // Update the vm property with fresh state from API
+        // This ensures the UI shows the correct state after operations like snapshot revert
+        if (this.vm && response.state) {
+          this.vm = {
+            ...this.vm,
+            state: response.state as VMState,
+          };
+        }
+        
         // Process disks information from storage object
         if (response.storage?.disks && response.storage.disks.length > 0) {
           this.disks = response.storage.disks.map((disk, index) => ({
@@ -2679,7 +2688,21 @@ export class VMDetailDrawer extends LitElement {
         await snapshotActions.revert(this.vm.id, snapshotName, this.snapshotRevertFlags);
         this.showNotification(`Reverted to snapshot "${snapshotName}"`, 'success');
         // Refresh VM details
-        this.loadVMDetails();
+        await this.loadVMDetails();
+        
+        // Notify parent component about state change
+        // This ensures the VM list updates with the correct state
+        if (this.vm) {
+          this.dispatchEvent(new CustomEvent('power-action', {
+            detail: { 
+              action: 'revert', 
+              vm: this.vm, 
+              success: true 
+            },
+            bubbles: true,
+            composed: true
+          }));
+        }
       } else {
         await snapshotActions.delete(this.vm.id, snapshotName);
 
