@@ -1,7 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { VirtualMachine, VMBackup, BackupCreateRequest, BackupType } from '../../types/virtualization';
-import virtualizationAPI, { VirtualizationAPIError } from '../../services/virtualization-api';
+import virtualizationAPI from '../../services/virtualization-api';
 import {
   $backups,
   backupActions,
@@ -80,6 +80,204 @@ export class VMBackupsTab extends LitElement {
     .checkbox-group { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; }
     .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; background: #1f2937; color: #e5e7eb; font-size: 12px; }
     .small { font-size: 12px; color: #9ca3af; }
+
+    /* Modal overlay styles */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.show {
+      display: flex;
+      animation: fadeIn 0.2s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .modal {
+      background: var(--vscode-editor-background, #1e1e1e);
+      border: 1px solid var(--vscode-widget-border, #454545);
+      border-radius: 8px;
+      min-width: 400px;
+      max-width: 600px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 20px;
+      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+    }
+    .modal-icon { font-size: 24px; }
+    .modal-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--vscode-foreground, #cccccc);
+    }
+    .modal-body { padding: 20px; }
+    .modal-message {
+      margin: 0 0 16px 0;
+      color: var(--vscode-foreground, #cccccc);
+      line-height: 1.5;
+    }
+    .vm-info-box {
+      background: var(--vscode-input-background, #3c3c3c);
+      border: 1px solid var(--vscode-widget-border, #454545);
+      border-radius: 6px;
+      padding: 12px;
+      margin: 16px 0;
+    }
+    .vm-info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+    }
+    .vm-info-label {
+      color: var(--vscode-descriptionForeground, #9ca3af);
+      font-size: 13px;
+    }
+    .vm-info-value {
+      color: var(--vscode-foreground, #cccccc);
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .vm-info-value.monospace {
+      font-family: monospace;
+      font-size: 12px;
+    }
+    .warning-box {
+      display: flex;
+      gap: 12px;
+      background: rgba(234, 179, 8, 0.1);
+      border: 1px solid rgba(234, 179, 8, 0.3);
+      border-radius: 6px;
+      padding: 12px;
+      margin-top: 16px;
+    }
+    .warning-icon { font-size: 20px; flex-shrink: 0; }
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 16px 20px;
+      border-top: 1px solid var(--vscode-widget-border, #454545);
+    }
+    .modal-btn {
+      padding: 8px 16px;
+      border-radius: 4px;
+      border: 1px solid var(--vscode-button-border, #5a5a5a);
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .modal-btn.cancel {
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      color: var(--vscode-button-foreground, #ffffff);
+    }
+    .modal-btn.delete {
+      background: #a4262c;
+      border-color: #a4262c;
+      color: #ffffff;
+    }
+    .modal-btn:hover:not(:disabled) { filter: brightness(1.1); }
+    .modal-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .spinner-small {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Dropdown menu styles */
+    .actions-dropdown {
+      position: relative;
+      display: inline-block;
+    }
+    .dropdown-trigger {
+      background: transparent;
+      border: 1px solid var(--vscode-widget-border, #454545);
+      border-radius: 4px;
+      padding: 6px 10px;
+      cursor: pointer;
+      color: var(--vscode-foreground, #cccccc);
+      font-size: 16px;
+      line-height: 1;
+      transition: all 0.2s;
+    }
+    .dropdown-trigger:hover {
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+    }
+    .dropdown-menu {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: 100%;
+      margin-top: 4px;
+      min-width: 140px;
+      background: var(--vscode-editor-background, #1e1e1e);
+      border: 1px solid var(--vscode-widget-border, #454545);
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+      overflow: hidden;
+    }
+    .dropdown-menu.show {
+      display: block;
+      animation: dropdownFadeIn 0.15s ease-out;
+    }
+    @keyframes dropdownFadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 10px 14px;
+      border: none;
+      background: transparent;
+      color: var(--vscode-foreground, #cccccc);
+      font-size: 13px;
+      cursor: pointer;
+      text-align: left;
+      transition: background 0.15s;
+    }
+    .dropdown-item:hover:not(:disabled) {
+      background: var(--vscode-list-hoverBackground, #2a2d2e);
+    }
+    .dropdown-item:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .dropdown-item.danger {
+      color: #f87171;
+    }
+    .dropdown-item.danger:hover:not(:disabled) {
+      background: rgba(248, 113, 113, 0.1);
+    }
+    .dropdown-divider {
+      height: 1px;
+      background: var(--vscode-widget-border, #454545);
+      margin: 4px 0;
+    }
   `;
 
   @property({ type: Object }) vm: VirtualMachine | null = null;
@@ -98,7 +296,11 @@ export class VMBackupsTab extends LitElement {
   @state() private isRestoring = false;
   @state() private deletingId: string | null = null;
   @state() private downloadingId: string | null = null;
+  @state() private showDeleteModal = false;
+  @state() private deleteTarget: VMBackup | null = null;
+  @state() private isDeleting = false;
   @state() private missingFiles = new Set<string>();
+  @state() private openDropdownId: string | null = null;
 
   private backupWatcher?: () => void;
   private pollingHandle: number | null = null;
@@ -197,18 +399,53 @@ export class VMBackupsTab extends LitElement {
     }
   }
 
-  private async handleDelete(backup: VMBackup) {
-    const confirmed = window.confirm(`Delete backup ${backup.backup_id || backup.id}?`);
-    if (!confirmed || !backup.backup_id) return;
-    this.deletingId = backup.backup_id;
+  private toggleDropdown(e: Event, backupId: string) {
+    e.stopPropagation();
+    if (this.openDropdownId === backupId) {
+      this.openDropdownId = null;
+    } else {
+      this.openDropdownId = backupId;
+      // Close dropdown when clicking outside
+      const closeHandler = () => {
+        this.openDropdownId = null;
+        document.removeEventListener('click', closeHandler);
+      };
+      setTimeout(() => document.addEventListener('click', closeHandler), 0);
+    }
+  }
+
+  private closeDropdown() {
+    this.openDropdownId = null;
+  }
+
+  private handleDelete(backup: VMBackup) {
+    this.deleteTarget = backup;
+    this.showDeleteModal = true;
+  }
+
+  private async cancelDelete() {
+    this.showDeleteModal = false;
+    await this.updateComplete;
+    this.deleteTarget = null;
+  }
+
+  private async confirmDelete() {
+    if (!this.deleteTarget?.backup_id) return;
+
+    this.isDeleting = true;
+    const backupId = this.deleteTarget.backup_id;
+
     try {
-      await backupActions.delete(backup.backup_id);
+      await backupActions.delete(backupId);
       this.toast = { text: 'Backup deleted', type: 'success' };
+      this.showDeleteModal = false;
+      await this.updateComplete;
+      this.deleteTarget = null;
       this.loadBackups();
     } catch (err: any) {
       this.toast = { text: err?.message || 'Failed to delete backup', type: 'error' };
     } finally {
-      this.deletingId = null;
+      this.isDeleting = false;
     }
   }
 
@@ -239,29 +476,29 @@ export class VMBackupsTab extends LitElement {
     }
   }
 
-  private async handleDownload(backup: VMBackup) {
+  private handleDownload(backup: VMBackup) {
     if (!backup.backup_id) return;
-    this.downloadingId = backup.backup_id;
+
     try {
-      const blob = await virtualizationAPI.downloadBackup(backup.backup_id);
-      const url = URL.createObjectURL(blob);
+      const url = virtualizationAPI.getBackupDownloadUrl(backup.backup_id);
+
+      // Create hidden link and click it
       const a = document.createElement('a');
       a.href = url;
+      // Note: 'download' attribute only works for same-origin URLs or blob: URLs
+      // but the server sends Content-Disposition header which should force download
       a.download = `${backup.vm_name || backup.vm_uuid || 'vm'}-${backup.backup_id}.qcow2`;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
       this.toast = { text: 'Download started', type: 'info' };
     } catch (err: any) {
-      const code = err instanceof VirtualizationAPIError ? err.code : '';
-      if (code === 'BACKUP_FILE_NOT_FOUND') {
-        const next = new Set(this.missingFiles);
-        next.add(backup.backup_id);
-        this.missingFiles = next;
-      }
-      this.toast = { text: err?.message || 'Failed to download backup', type: 'error' };
-    } finally {
-      this.downloadingId = null;
+      console.error('[Download] Error generating link:', err);
+      this.toast = { text: err?.message || 'Failed to start download', type: 'error' };
     }
+    // No need to set downloading state as it's a direct link
+    this.downloadingId = null;
   }
 
   private formatDate(val?: string | null) {
@@ -324,7 +561,7 @@ export class VMBackupsTab extends LitElement {
         </thead>
         <tbody>
           ${this.backups.map(
-            (b) => html`
+      (b) => html`
               <tr>
                 <td>${this.renderStatus(b.status)}</td>
                 <td>${b.type}</td>
@@ -335,33 +572,49 @@ export class VMBackupsTab extends LitElement {
                 <td>${b.include_memory ? 'Yes' : 'No'}</td>
                 <td>${b.encryption && b.encryption !== 'none' ? b.encryption : 'None'}</td>
                 <td>
-                  <div style="display:flex; gap:6px; justify-content:flex-end;">
-                    <button class="btn" @click=${() => this.openRestore(b)} ?disabled=${this.isRestoring}>
-                      Restore
-                    </button>
-                    <button
-                      class="btn"
-                      @click=${() => this.handleDownload(b)}
-                      ?disabled=${this.downloadingId === b.backup_id || this.missingFiles.has(b.backup_id || '')}
-                    >
-                      ${this.downloadingId === b.backup_id ? '…' : 'Download'}
-                    </button>
-                    <button
-                      class="btn danger"
-                      @click=${() => this.handleDelete(b)}
-                      ?disabled=${this.deletingId === b.backup_id}
-                    >
-                      Delete
-                    </button>
+                  <div style="display:flex; justify-content:flex-end;">
+                    <div class="actions-dropdown">
+                      <button 
+                        class="dropdown-trigger" 
+                        @click=${(e: Event) => this.toggleDropdown(e, b.backup_id || '')}
+                        title="Actions"
+                      >
+                        ⋮
+                      </button>
+                      <div class="dropdown-menu ${this.openDropdownId === b.backup_id ? 'show' : ''}">
+                        <button 
+                          class="dropdown-item" 
+                          @click=${() => { this.closeDropdown(); this.openRestore(b); }}
+                          ?disabled=${this.isRestoring}
+                        >
+                          🔄 Restore
+                        </button>
+                        <button 
+                          class="dropdown-item" 
+                          @click=${() => { this.closeDropdown(); this.handleDownload(b); }}
+                          ?disabled=${this.downloadingId === b.backup_id || this.missingFiles.has(b.backup_id || '')}
+                        >
+                          ${this.downloadingId === b.backup_id ? '⏳ Downloading...' : '⬇️ Download'}
+                        </button>
+                        <div class="dropdown-divider"></div>
+                        <button 
+                          class="dropdown-item danger" 
+                          @click=${() => { this.closeDropdown(); this.handleDelete(b); }}
+                          ?disabled=${this.deletingId === b.backup_id}
+                        >
+                          🗑️ Delete
+                        </button>
+                      </div>
+                    </div>
                   </div>
                   ${this.missingFiles.has(b.backup_id || '')
-                    ? html`<div class="small" style="color:#fbbf24;">File missing on disk</div>`
-                    : ''}
+          ? html`<div class="small" style="color:#fbbf24;">File missing on disk</div>`
+          : ''}
                   ${b.error_message ? html`<div class="small" style="color:#fca5a5;">${b.error_message}</div>` : ''}
                 </td>
               </tr>
             `,
-          )}
+    )}
         </tbody>
       </table>
     `;
@@ -378,13 +631,14 @@ export class VMBackupsTab extends LitElement {
           </div>
         </div>
         ${this.toast
-          ? html`<div class="toast ${this.toast.type}">${this.toast.text}</div>`
-          : ''}
+        ? html`<div class="toast ${this.toast.type}">${this.toast.text}</div>`
+        : ''}
         ${this.renderTable()}
       </div>
 
       ${this.renderCreateModal()}
       ${this.renderRestoreModal()}
+      ${this.renderDeleteModal()}
     `;
   }
 
@@ -442,7 +696,7 @@ export class VMBackupsTab extends LitElement {
           </select>
         </div>
         ${this.createForm.encryption && this.createForm.encryption !== 'none'
-          ? html`<div class="form-group">
+        ? html`<div class="form-group">
               <label>Encryption key</label>
               <input
                 type="password"
@@ -450,7 +704,7 @@ export class VMBackupsTab extends LitElement {
                 @input=${(e: Event) => ((this.createForm as any).encryption_key = (e.target as HTMLInputElement).value)}
               />
             </div>`
-          : ''}
+        : ''}
         <div class="form-group checkbox">
           <input
             type="checkbox"
@@ -488,6 +742,55 @@ export class VMBackupsTab extends LitElement {
       </modal-dialog>
     `;
   }
+  private renderDeleteModal() {
+    if (!this.deleteTarget) return html``;
+
+    return html`
+      <modal-dialog
+        .center=${true}
+        .open=${this.showDeleteModal}
+        .title=${'Delete Backup'}
+        size="medium"
+        @modal-close=${this.cancelDelete}
+      >
+        <p style="margin: 0 0 16px 0; line-height: 1.5;">
+          Are you sure you want to delete this backup? This action cannot be undone.
+        </p>
+
+        <div style="background: var(--vscode-input-background, #3c3c3c); border: 1px solid var(--vscode-widget-border, #454545); border-radius: 6px; padding: 12px; margin: 16px 0;">
+          <div style="display: flex; justify-content: space-between; padding: 6px 0;">
+            <span style="color: var(--vscode-descriptionForeground, #9ca3af); font-size: 13px;">VM:</span>
+            <span style="color: var(--vscode-foreground, #cccccc); font-size: 13px; font-weight: 500;">${this.deleteTarget.vm_name}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding: 6px 0;">
+            <span style="color: var(--vscode-descriptionForeground, #9ca3af); font-size: 13px;">Backup ID:</span>
+            <span style="color: var(--vscode-foreground, #cccccc); font-size: 13px; font-weight: 500; font-family: monospace;">${this.deleteTarget.backup_id}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding: 6px 0;">
+            <span style="color: var(--vscode-descriptionForeground, #9ca3af); font-size: 13px;">Type:</span>
+            <span style="color: var(--vscode-foreground, #cccccc); font-size: 13px; font-weight: 500;">${this.deleteTarget.type}</span>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 12px; background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.3); border-radius: 6px; padding: 12px; margin-top: 16px;">
+          <span style="font-size: 20px; flex-shrink: 0;">⚠️</span>
+          <div>
+            <strong>Warning:</strong> Deleting a backup is permanent and cannot be undone.
+          </div>
+        </div>
+
+        <div slot="footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button class="btn" @click=${() => this.cancelDelete()} ?disabled=${this.isDeleting}>
+            Cancel
+          </button>
+          <button class="btn danger" @click=${() => this.confirmDelete()} ?disabled=${this.isDeleting}>
+            ${this.isDeleting ? 'Deleting…' : 'Delete'}
+          </button>
+        </div>
+      </modal-dialog>
+    `;
+  }
+
   private renderRestoreModal() {
     if (!this.restoreTarget) return html``;
     return html`
@@ -520,7 +823,7 @@ export class VMBackupsTab extends LitElement {
           </div>
         </div>
         ${this.restoreTarget.encryption && this.restoreTarget.encryption !== 'none'
-          ? html`<div class="form-group">
+        ? html`<div class="form-group">
               <label>Decryption key</label>
               <input
                 type="password"
@@ -528,7 +831,7 @@ export class VMBackupsTab extends LitElement {
                 @input=${(e: Event) => (this.restoreKey = (e.target as HTMLInputElement).value)}
               />
             </div>`
-          : ''}
+        : ''}
         <div slot="footer" style="display:flex; justify-content:flex-end; gap:8px;">
           <button class="btn" @click=${() => (this.showRestoreModal = false)} ?disabled=${this.isRestoring}>Cancel</button>
           <button class="btn primary" @click=${() => this.confirmRestore()} ?disabled=${this.isRestoring}>

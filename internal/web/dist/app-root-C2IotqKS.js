@@ -1,4 +1,4 @@
-import { g as getApiUrl, a as getWsUrl, i as i18n, r as registerPerfGauge, b as auth, p as perfIncrement, t as t$5, c as theme } from "./index-DAO4f9wB.js";
+import { g as getApiUrl, a as getWsUrl, i as i18n, r as registerPerfGauge, b as auth, p as perfIncrement, t as t$5, c as theme } from "./index-Cm682acG.js";
 /**
  * @license
  * Copyright 2019 Google LLC
@@ -23796,7 +23796,7 @@ function updateNetworkMetrics(data) {
   $lastMetricUpdate.set(Date.now());
 }
 async function fetchSystemInfo() {
-  const { auth: auth2 } = await import("./index-DAO4f9wB.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-Cm682acG.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping system info fetch");
     return;
@@ -23841,7 +23841,7 @@ function calculateAverage(metric, periodMs = 6e4) {
 }
 let unsubscribeMetrics = null;
 async function connectMetrics() {
-  const { auth: auth2 } = await import("./index-DAO4f9wB.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-Cm682acG.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     return;
   }
@@ -23989,7 +23989,7 @@ function disconnectMetrics() {
   }
 }
 async function initializeMetrics() {
-  const { auth: auth2 } = await import("./index-DAO4f9wB.js").then((n3) => n3.d);
+  const { auth: auth2 } = await import("./index-Cm682acG.js").then((n3) => n3.d);
   if (!auth2.isAuthenticated()) {
     console.log("[MetricsStore] User not authenticated, skipping initialization");
     return;
@@ -24115,7 +24115,7 @@ let DashboardTabV2 = class extends StoreMixin(I18nLitElement) {
   }
   async connectedCallback() {
     super.connectedCallback();
-    const { auth: auth2 } = await import("./index-DAO4f9wB.js").then((n3) => n3.d);
+    const { auth: auth2 } = await import("./index-Cm682acG.js").then((n3) => n3.d);
     if (auth2.isAuthenticated()) {
       await new Promise((resolve2) => setTimeout(resolve2, 500));
       try {
@@ -37219,7 +37219,7 @@ class KubernetesApi {
       if (contentType === "json") {
         parsedResource = JSON.parse(content);
       } else {
-        const yaml = await import("./index-CJ4aZVY6.js");
+        const yaml = await import("./index-CsknrG--.js");
         parsedResource = yaml.parse(content);
       }
     } catch (error) {
@@ -53400,7 +53400,7 @@ let KubernetesCRDs = class extends i$2 {
         unwrapped = JSON.parse(JSON.stringify(unwrapped));
         delete unwrapped.metadata.managedFields;
       }
-      const yaml = await import("./index-CJ4aZVY6.js");
+      const yaml = await import("./index-CsknrG--.js");
       this.createResourceValue = yaml.stringify(unwrapped);
       this.isCreating = false;
     } catch (error) {
@@ -55076,7 +55076,7 @@ class VirtualizationAPI {
    */
   async deleteBackup(backupId) {
     const result = await apiRequest$1(`/computes/backups/${backupId}`, { method: "DELETE" });
-    if (result?.status === "error") {
+    if (result && typeof result === "object" && result?.status === "error") {
       throw new VirtualizationAPIError(
         result.error?.code || "BACKUP_DELETE_FAILED",
         result.error?.message || "Failed to delete backup",
@@ -55085,7 +55085,17 @@ class VirtualizationAPI {
     }
   }
   /**
+   * Get backup download URL
+   */
+  getBackupDownloadUrl(backupId) {
+    const token = getAuthToken();
+    const url = getApiUrl(`${API_BASE$1}/computes/backups/${backupId}/download`);
+    const separator = url.includes("?") ? "&" : "?";
+    return `${url}${separator}token=${encodeURIComponent(token)}`;
+  }
+  /**
    * Download a backup qcow2 file
+   * @deprecated Use getBackupDownloadUrl instead for large files
    */
   async downloadBackup(backupId) {
     const token = getAuthToken();
@@ -57609,10 +57619,12 @@ const snapshotActions = {
   /**
    * Revert VM to a snapshot
    */
-  async revert(vmId, snapshotName) {
+  async revert(vmId, snapshotName, flags) {
     const safeName = encodeURIComponent(snapshotName);
+    const body = flags !== void 0 ? { flags } : void 0;
     return apiRequest(`/computes/${vmId}/snapshots/${safeName}/revert`, {
-      method: "POST"
+      method: "POST",
+      body: body ? JSON.stringify(body) : void 0
     });
   },
   /**
@@ -58366,7 +58378,11 @@ let VMBackupsTab = class extends i$2 {
     this.isRestoring = false;
     this.deletingId = null;
     this.downloadingId = null;
+    this.showDeleteModal = false;
+    this.deleteTarget = null;
+    this.isDeleting = false;
     this.missingFiles = /* @__PURE__ */ new Set();
+    this.openDropdownId = null;
     this.pollingHandle = null;
     this.createForm = {
       backup_type: "full",
@@ -58451,18 +58467,46 @@ let VMBackupsTab = class extends i$2 {
       this.isCreating = false;
     }
   }
-  async handleDelete(backup) {
-    const confirmed = window.confirm(`Delete backup ${backup.backup_id || backup.id}?`);
-    if (!confirmed || !backup.backup_id) return;
-    this.deletingId = backup.backup_id;
+  toggleDropdown(e3, backupId) {
+    e3.stopPropagation();
+    if (this.openDropdownId === backupId) {
+      this.openDropdownId = null;
+    } else {
+      this.openDropdownId = backupId;
+      const closeHandler = () => {
+        this.openDropdownId = null;
+        document.removeEventListener("click", closeHandler);
+      };
+      setTimeout(() => document.addEventListener("click", closeHandler), 0);
+    }
+  }
+  closeDropdown() {
+    this.openDropdownId = null;
+  }
+  handleDelete(backup) {
+    this.deleteTarget = backup;
+    this.showDeleteModal = true;
+  }
+  async cancelDelete() {
+    this.showDeleteModal = false;
+    await this.updateComplete;
+    this.deleteTarget = null;
+  }
+  async confirmDelete() {
+    if (!this.deleteTarget?.backup_id) return;
+    this.isDeleting = true;
+    const backupId = this.deleteTarget.backup_id;
     try {
-      await backupActions.delete(backup.backup_id);
+      await backupActions.delete(backupId);
       this.toast = { text: "Backup deleted", type: "success" };
+      this.showDeleteModal = false;
+      await this.updateComplete;
+      this.deleteTarget = null;
       this.loadBackups();
     } catch (err) {
       this.toast = { text: err?.message || "Failed to delete backup", type: "error" };
     } finally {
-      this.deletingId = null;
+      this.isDeleting = false;
     }
   }
   openRestore(backup) {
@@ -58490,29 +58534,22 @@ let VMBackupsTab = class extends i$2 {
       this.isRestoring = false;
     }
   }
-  async handleDownload(backup) {
+  handleDownload(backup) {
     if (!backup.backup_id) return;
-    this.downloadingId = backup.backup_id;
     try {
-      const blob = await virtualizationAPI.downloadBackup(backup.backup_id);
-      const url = URL.createObjectURL(blob);
+      const url = virtualizationAPI.getBackupDownloadUrl(backup.backup_id);
       const a2 = document.createElement("a");
       a2.href = url;
       a2.download = `${backup.vm_name || backup.vm_uuid || "vm"}-${backup.backup_id}.qcow2`;
+      document.body.appendChild(a2);
       a2.click();
-      URL.revokeObjectURL(url);
+      document.body.removeChild(a2);
       this.toast = { text: "Download started", type: "info" };
     } catch (err) {
-      const code = err instanceof VirtualizationAPIError ? err.code : "";
-      if (code === "BACKUP_FILE_NOT_FOUND") {
-        const next = new Set(this.missingFiles);
-        next.add(backup.backup_id);
-        this.missingFiles = next;
-      }
-      this.toast = { text: err?.message || "Failed to download backup", type: "error" };
-    } finally {
-      this.downloadingId = null;
+      console.error("[Download] Error generating link:", err);
+      this.toast = { text: err?.message || "Failed to start download", type: "error" };
     }
+    this.downloadingId = null;
   }
   formatDate(val) {
     if (!val) return "—";
@@ -58574,24 +58611,49 @@ let VMBackupsTab = class extends i$2 {
                 <td>${b2.include_memory ? "Yes" : "No"}</td>
                 <td>${b2.encryption && b2.encryption !== "none" ? b2.encryption : "None"}</td>
                 <td>
-                  <div style="display:flex; gap:6px; justify-content:flex-end;">
-                    <button class="btn" @click=${() => this.openRestore(b2)} ?disabled=${this.isRestoring}>
-                      Restore
-                    </button>
-                    <button
-                      class="btn"
-                      @click=${() => this.handleDownload(b2)}
-                      ?disabled=${this.downloadingId === b2.backup_id || this.missingFiles.has(b2.backup_id || "")}
-                    >
-                      ${this.downloadingId === b2.backup_id ? "…" : "Download"}
-                    </button>
-                    <button
-                      class="btn danger"
-                      @click=${() => this.handleDelete(b2)}
-                      ?disabled=${this.deletingId === b2.backup_id}
-                    >
-                      Delete
-                    </button>
+                  <div style="display:flex; justify-content:flex-end;">
+                    <div class="actions-dropdown">
+                      <button 
+                        class="dropdown-trigger" 
+                        @click=${(e3) => this.toggleDropdown(e3, b2.backup_id || "")}
+                        title="Actions"
+                      >
+                        ⋮
+                      </button>
+                      <div class="dropdown-menu ${this.openDropdownId === b2.backup_id ? "show" : ""}">
+                        <button 
+                          class="dropdown-item" 
+                          @click=${() => {
+        this.closeDropdown();
+        this.openRestore(b2);
+      }}
+                          ?disabled=${this.isRestoring}
+                        >
+                          🔄 Restore
+                        </button>
+                        <button 
+                          class="dropdown-item" 
+                          @click=${() => {
+        this.closeDropdown();
+        this.handleDownload(b2);
+      }}
+                          ?disabled=${this.downloadingId === b2.backup_id || this.missingFiles.has(b2.backup_id || "")}
+                        >
+                          ${this.downloadingId === b2.backup_id ? "⏳ Downloading..." : "⬇️ Download"}
+                        </button>
+                        <div class="dropdown-divider"></div>
+                        <button 
+                          class="dropdown-item danger" 
+                          @click=${() => {
+        this.closeDropdown();
+        this.handleDelete(b2);
+      }}
+                          ?disabled=${this.deletingId === b2.backup_id}
+                        >
+                          🗑️ Delete
+                        </button>
+                      </div>
+                    </div>
                   </div>
                   ${this.missingFiles.has(b2.backup_id || "") ? x`<div class="small" style="color:#fbbf24;">File missing on disk</div>` : ""}
                   ${b2.error_message ? x`<div class="small" style="color:#fca5a5;">${b2.error_message}</div>` : ""}
@@ -58619,6 +58681,7 @@ let VMBackupsTab = class extends i$2 {
 
       ${this.renderCreateModal()}
       ${this.renderRestoreModal()}
+      ${this.renderDeleteModal()}
     `;
   }
   renderCreateModal() {
@@ -58714,6 +58777,53 @@ let VMBackupsTab = class extends i$2 {
           <button class="btn" @click=${() => this.showCreateModal = false} ?disabled=${this.isCreating}>Cancel</button>
           <button class="btn primary" @click=${() => this.handleCreate()} ?disabled=${this.isCreating}>
             ${this.isCreating ? "Creating…" : "Create backup"}
+          </button>
+        </div>
+      </modal-dialog>
+    `;
+  }
+  renderDeleteModal() {
+    if (!this.deleteTarget) return x``;
+    return x`
+      <modal-dialog
+        .center=${true}
+        .open=${this.showDeleteModal}
+        .title=${"Delete Backup"}
+        size="medium"
+        @modal-close=${this.cancelDelete}
+      >
+        <p style="margin: 0 0 16px 0; line-height: 1.5;">
+          Are you sure you want to delete this backup? This action cannot be undone.
+        </p>
+
+        <div style="background: var(--vscode-input-background, #3c3c3c); border: 1px solid var(--vscode-widget-border, #454545); border-radius: 6px; padding: 12px; margin: 16px 0;">
+          <div style="display: flex; justify-content: space-between; padding: 6px 0;">
+            <span style="color: var(--vscode-descriptionForeground, #9ca3af); font-size: 13px;">VM:</span>
+            <span style="color: var(--vscode-foreground, #cccccc); font-size: 13px; font-weight: 500;">${this.deleteTarget.vm_name}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding: 6px 0;">
+            <span style="color: var(--vscode-descriptionForeground, #9ca3af); font-size: 13px;">Backup ID:</span>
+            <span style="color: var(--vscode-foreground, #cccccc); font-size: 13px; font-weight: 500; font-family: monospace;">${this.deleteTarget.backup_id}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding: 6px 0;">
+            <span style="color: var(--vscode-descriptionForeground, #9ca3af); font-size: 13px;">Type:</span>
+            <span style="color: var(--vscode-foreground, #cccccc); font-size: 13px; font-weight: 500;">${this.deleteTarget.type}</span>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 12px; background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.3); border-radius: 6px; padding: 12px; margin-top: 16px;">
+          <span style="font-size: 20px; flex-shrink: 0;">⚠️</span>
+          <div>
+            <strong>Warning:</strong> Deleting a backup is permanent and cannot be undone.
+          </div>
+        </div>
+
+        <div slot="footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button class="btn" @click=${() => this.cancelDelete()} ?disabled=${this.isDeleting}>
+            Cancel
+          </button>
+          <button class="btn danger" @click=${() => this.confirmDelete()} ?disabled=${this.isDeleting}>
+            ${this.isDeleting ? "Deleting…" : "Delete"}
           </button>
         </div>
       </modal-dialog>
@@ -58837,6 +58947,204 @@ VMBackupsTab.styles = i$5`
     .checkbox-group { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; }
     .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; background: #1f2937; color: #e5e7eb; font-size: 12px; }
     .small { font-size: 12px; color: #9ca3af; }
+
+    /* Modal overlay styles */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.show {
+      display: flex;
+      animation: fadeIn 0.2s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .modal {
+      background: var(--vscode-editor-background, #1e1e1e);
+      border: 1px solid var(--vscode-widget-border, #454545);
+      border-radius: 8px;
+      min-width: 400px;
+      max-width: 600px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 20px;
+      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+    }
+    .modal-icon { font-size: 24px; }
+    .modal-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--vscode-foreground, #cccccc);
+    }
+    .modal-body { padding: 20px; }
+    .modal-message {
+      margin: 0 0 16px 0;
+      color: var(--vscode-foreground, #cccccc);
+      line-height: 1.5;
+    }
+    .vm-info-box {
+      background: var(--vscode-input-background, #3c3c3c);
+      border: 1px solid var(--vscode-widget-border, #454545);
+      border-radius: 6px;
+      padding: 12px;
+      margin: 16px 0;
+    }
+    .vm-info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+    }
+    .vm-info-label {
+      color: var(--vscode-descriptionForeground, #9ca3af);
+      font-size: 13px;
+    }
+    .vm-info-value {
+      color: var(--vscode-foreground, #cccccc);
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .vm-info-value.monospace {
+      font-family: monospace;
+      font-size: 12px;
+    }
+    .warning-box {
+      display: flex;
+      gap: 12px;
+      background: rgba(234, 179, 8, 0.1);
+      border: 1px solid rgba(234, 179, 8, 0.3);
+      border-radius: 6px;
+      padding: 12px;
+      margin-top: 16px;
+    }
+    .warning-icon { font-size: 20px; flex-shrink: 0; }
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 16px 20px;
+      border-top: 1px solid var(--vscode-widget-border, #454545);
+    }
+    .modal-btn {
+      padding: 8px 16px;
+      border-radius: 4px;
+      border: 1px solid var(--vscode-button-border, #5a5a5a);
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .modal-btn.cancel {
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      color: var(--vscode-button-foreground, #ffffff);
+    }
+    .modal-btn.delete {
+      background: #a4262c;
+      border-color: #a4262c;
+      color: #ffffff;
+    }
+    .modal-btn:hover:not(:disabled) { filter: brightness(1.1); }
+    .modal-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .spinner-small {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Dropdown menu styles */
+    .actions-dropdown {
+      position: relative;
+      display: inline-block;
+    }
+    .dropdown-trigger {
+      background: transparent;
+      border: 1px solid var(--vscode-widget-border, #454545);
+      border-radius: 4px;
+      padding: 6px 10px;
+      cursor: pointer;
+      color: var(--vscode-foreground, #cccccc);
+      font-size: 16px;
+      line-height: 1;
+      transition: all 0.2s;
+    }
+    .dropdown-trigger:hover {
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+    }
+    .dropdown-menu {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: 100%;
+      margin-top: 4px;
+      min-width: 140px;
+      background: var(--vscode-editor-background, #1e1e1e);
+      border: 1px solid var(--vscode-widget-border, #454545);
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+      overflow: hidden;
+    }
+    .dropdown-menu.show {
+      display: block;
+      animation: dropdownFadeIn 0.15s ease-out;
+    }
+    @keyframes dropdownFadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 10px 14px;
+      border: none;
+      background: transparent;
+      color: var(--vscode-foreground, #cccccc);
+      font-size: 13px;
+      cursor: pointer;
+      text-align: left;
+      transition: background 0.15s;
+    }
+    .dropdown-item:hover:not(:disabled) {
+      background: var(--vscode-list-hoverBackground, #2a2d2e);
+    }
+    .dropdown-item:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .dropdown-item.danger {
+      color: #f87171;
+    }
+    .dropdown-item.danger:hover:not(:disabled) {
+      background: rgba(248, 113, 113, 0.1);
+    }
+    .dropdown-divider {
+      height: 1px;
+      background: var(--vscode-widget-border, #454545);
+      margin: 4px 0;
+    }
   `;
 __decorateClass$p([
   n2({ type: Object })
@@ -58885,7 +59193,19 @@ __decorateClass$p([
 ], VMBackupsTab.prototype, "downloadingId", 2);
 __decorateClass$p([
   r$1()
+], VMBackupsTab.prototype, "showDeleteModal", 2);
+__decorateClass$p([
+  r$1()
+], VMBackupsTab.prototype, "deleteTarget", 2);
+__decorateClass$p([
+  r$1()
+], VMBackupsTab.prototype, "isDeleting", 2);
+__decorateClass$p([
+  r$1()
 ], VMBackupsTab.prototype, "missingFiles", 2);
+__decorateClass$p([
+  r$1()
+], VMBackupsTab.prototype, "openDropdownId", 2);
 VMBackupsTab = __decorateClass$p([
   t$2("vm-backups-tab")
 ], VMBackupsTab);
@@ -58939,6 +59259,7 @@ let VMDetailDrawer = class extends i$2 {
     this.showSnapshotActionModal = false;
     this.snapshotActionMode = "delete";
     this.snapshotActionName = "";
+    this.snapshotRevertFlags = 1;
     this.isSnapshotActionLoading = false;
     this.showStopDropdown = false;
     this.metricsRefreshInterval = null;
@@ -59059,6 +59380,12 @@ let VMDetailDrawer = class extends i$2 {
       const response = await this.fetchVMEnhancedDetails(this.vm.id);
       if (response) {
         this.vmDetails = response;
+        if (this.vm && response.state) {
+          this.vm = {
+            ...this.vm,
+            state: response.state
+          };
+        }
         if (response.storage?.disks && response.storage.disks.length > 0) {
           this.disks = response.storage.disks.map((disk, index2) => ({
             name: disk.target || `disk${index2}`,
@@ -59514,6 +59841,16 @@ let VMDetailDrawer = class extends i$2 {
   handleSnapshot() {
     this.activeTab = "snapshots";
     this.ensureSnapshotsLoaded();
+    this.openSnapshotModal();
+  }
+  openSnapshotModal() {
+    const currentState = this.vm?.state || this.vmDetails?.state;
+    const isRunning = currentState?.toLowerCase() === "running";
+    const supportsSnapshots = this.snapshotCapabilities?.supports_snapshots ?? false;
+    const supportsMemory = this.snapshotCapabilities?.supports_memory ?? false;
+    const supportsInternal = this.snapshotCapabilities?.supports_internal ?? false;
+    const shouldIncludeMemory = isRunning && supportsSnapshots && supportsMemory && supportsInternal;
+    this.createIncludeMemory = shouldIncludeMemory;
     this.showCreateSnapshotModal = true;
   }
   handleDeleteVM() {
@@ -60116,6 +60453,7 @@ let VMDetailDrawer = class extends i$2 {
   requestSnapshotAction(mode, snapshotName) {
     this.snapshotActionMode = mode;
     this.snapshotActionName = snapshotName;
+    this.snapshotRevertFlags = 1;
     this.showSnapshotActionModal = true;
     this.isSnapshotActionLoading = false;
   }
@@ -60133,9 +60471,20 @@ let VMDetailDrawer = class extends i$2 {
     const mode = this.snapshotActionMode;
     try {
       if (mode === "revert") {
-        await snapshotActions.revert(this.vm.id, snapshotName);
+        await snapshotActions.revert(this.vm.id, snapshotName, this.snapshotRevertFlags);
         this.showNotification(`Reverted to snapshot "${snapshotName}"`, "success");
-        this.loadVMDetails();
+        await this.loadVMDetails();
+        if (this.vm) {
+          this.dispatchEvent(new CustomEvent("power-action", {
+            detail: {
+              action: "revert",
+              vm: this.vm,
+              success: true
+            },
+            bubbles: true,
+            composed: true
+          }));
+        }
       } else {
         await snapshotActions.delete(this.vm.id, snapshotName);
         this.snapshotsLoadedForVmId = null;
@@ -60192,6 +60541,27 @@ let VMDetailDrawer = class extends i$2 {
                 ${mode === "delete" ? x`Deleting a snapshot is permanent.` : x`Reverting will overwrite the current VM state.`}
               </div>
             </div>
+
+            ${mode === "revert" ? x`
+                  <div class="form-group" style="margin-top: 16px;">
+                    <label for="revert-behavior">Revert Behavior</label>
+                    <select
+                      id="revert-behavior"
+                      .value=${String(this.snapshotRevertFlags)}
+                      @change=${(e3) => this.snapshotRevertFlags = Number(
+      e3.target.value
+    )}
+                      ?disabled=${this.isSnapshotActionLoading}
+                    >
+                      <option value="1">Keep running (default) - Running VMs stay running</option>
+                      <option value="0">Default libvirt behavior - May restart the VM</option>
+                      <option value="2">Paused - VM paused after revert</option>
+                    </select>
+                    <div class="form-hint">
+                      Choose how the VM should behave after reverting to the snapshot.
+                    </div>
+                  </div>
+                ` : ""}
           </div>
 
           <div class="modal-footer">
@@ -60467,7 +60837,7 @@ let VMDetailDrawer = class extends i$2 {
             </button>
             <button
               class="btn btn-primary btn-sm"
-              @click=${() => this.showCreateSnapshotModal = true}
+              @click=${this.openSnapshotModal}
               ?disabled=${this.isLoadingSnapshots || supportsSnapshots === false}
             >
               + Create Snapshot
@@ -61959,6 +62329,9 @@ __decorateClass$o([
 __decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "snapshotActionName", 2);
+__decorateClass$o([
+  r$1()
+], VMDetailDrawer.prototype, "snapshotRevertFlags", 2);
 __decorateClass$o([
   r$1()
 ], VMDetailDrawer.prototype, "isSnapshotActionLoading", 2);

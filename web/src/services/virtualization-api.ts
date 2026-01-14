@@ -57,7 +57,7 @@ const API_BASE = '/virtualization';
  */
 export class VirtualizationAPIError extends Error {
   public userMessage: string;
-  
+
   constructor(
     public code: string,
     message: string,
@@ -90,12 +90,12 @@ async function apiRequest<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const token = getAuthToken();
-  
+
   const config: RequestInit = {
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}` ,
+      'Authorization': `Bearer ${token}`,
       ...options.headers,
     },
   };
@@ -105,7 +105,7 @@ async function apiRequest<T>(
     const url = getApiUrl(`${API_BASE}${endpoint}`);
     const response = await fetch(url, config);
     const status = response.status;
-    
+
     if (!response.ok) {
       const errorBody: ApiErrorBody | { code?: string; message?: string; details?: string } = await response
         .json()
@@ -118,8 +118,8 @@ async function apiRequest<T>(
         $virtualizationEnabled.set(false);
         $virtualizationDisabledMessage.set(
           (errorBody as ApiErrorBody).error?.details ||
-            (errorBody as ApiErrorBody).error?.message ||
-            'Virtualization is disabled on this host.',
+          (errorBody as ApiErrorBody).error?.message ||
+          'Virtualization is disabled on this host.',
         );
         throw new VirtualizationDisabledError(
           (errorBody as ApiErrorBody).error?.message || 'Virtualization is disabled on this host.',
@@ -132,18 +132,18 @@ async function apiRequest<T>(
       if (apiBody.status === 'error' && apiBody.error) {
         throw new VirtualizationAPIError(
           apiBody.error.code || 'API_ERROR',
-          apiBody.error.message || `Request failed: ${status}` ,
+          apiBody.error.message || `Request failed: ${status}`,
           apiBody.error.details,
         );
       }
 
       throw new VirtualizationAPIError(
         apiBody.code || 'API_ERROR',
-        apiBody.message || `Request failed: ${status}` ,
+        apiBody.message || `Request failed: ${status}`,
         apiBody.details,
       );
     }
-    
+
     // Handle empty responses
     if (response.status === 204) {
       if ($virtualizationEnabled.get() !== true) {
@@ -157,7 +157,7 @@ async function apiRequest<T>(
       $virtualizationEnabled.set(true);
       $virtualizationDisabledMessage.set(null);
     }
-    
+
     return await response.json();
   } catch (error) {
     if (error instanceof VirtualizationAPIError || error instanceof VirtualizationDisabledError) {
@@ -175,7 +175,7 @@ async function apiRequest<T>(
  */
 export class VirtualizationAPI {
   // ============ Virtual Machines ============
-  
+
   /**
    * List all virtual machines
    */
@@ -190,20 +190,20 @@ export class VirtualizationAPI {
     if (params?.pageSize) queryParams.append('pageSize', params.pageSize.toString());
     if (params?.filter) queryParams.append('filter', params.filter);
     if (params?.sort) queryParams.append('sort', params.sort);
-    
+
     const query = queryParams.toString();
     return apiRequest<ListResponse<VirtualMachine>>(
       `/computes${query ? `?${query}` : ''}`
     );
   }
-  
+
   /**
    * Get a specific virtual machine
    */
   async getVM(id: string): Promise<VirtualMachine> {
     return apiRequest<VirtualMachine>(`/computes/${id}`);
   }
-  
+
   /**
    * Create a new virtual machine (basic)
    */
@@ -213,7 +213,7 @@ export class VirtualizationAPI {
       body: JSON.stringify(config),
     });
   }
-  
+
   /**
    * Create a new virtual machine (enhanced with wizard data)
    */
@@ -223,7 +223,7 @@ export class VirtualizationAPI {
       body: JSON.stringify(config),
     });
   }
-  
+
   /**
    * Update a virtual machine
    */
@@ -233,7 +233,7 @@ export class VirtualizationAPI {
       body: JSON.stringify(updates),
     });
   }
-  
+
   /**
    * Delete a virtual machine
    */
@@ -243,7 +243,7 @@ export class VirtualizationAPI {
       { method: 'DELETE' }
     );
   }
-  
+
   /**
    * Clone a virtual machine
    */
@@ -253,9 +253,9 @@ export class VirtualizationAPI {
       body: JSON.stringify({ name }),
     });
   }
-  
+
   // ============ VM Power Management ============
-  
+
   /**
    * Start a virtual machine
    */
@@ -264,7 +264,7 @@ export class VirtualizationAPI {
       method: 'POST',
     });
   }
-  
+
   /**
    * Stop a virtual machine
    */
@@ -274,7 +274,7 @@ export class VirtualizationAPI {
       body: JSON.stringify({ force }),
     });
   }
-  
+
   /**
    * Restart a virtual machine
    */
@@ -284,7 +284,7 @@ export class VirtualizationAPI {
       body: JSON.stringify({ force }),
     });
   }
-  
+
   /**
    * Pause a virtual machine
    */
@@ -293,7 +293,7 @@ export class VirtualizationAPI {
       method: 'POST',
     });
   }
-  
+
   /**
    * Resume a paused virtual machine
    */
@@ -302,7 +302,7 @@ export class VirtualizationAPI {
       method: 'POST',
     });
   }
-  
+
   /**
    * Reset a virtual machine
    */
@@ -311,7 +311,7 @@ export class VirtualizationAPI {
       method: 'POST',
     });
   }
-  
+
   /**
    * Execute a VM action
    */
@@ -321,16 +321,16 @@ export class VirtualizationAPI {
       body: JSON.stringify(action),
     });
   }
-  
+
   // ============ Console Access ============
-  
+
   /**
    * Get console connection information
    */
   async getConsoleInfo(id: string): Promise<ConsoleInfo> {
     return apiRequest<ConsoleInfo>(`/computes/${id}/console`);
   }
-  
+
   /**
    * Create a console session
    */
@@ -339,23 +339,23 @@ export class VirtualizationAPI {
       method: 'POST',
     });
   }
-  
+
   // ============ Templates ============
-  
+
   /**
    * List VM templates
    */
   async listTemplates(): Promise<VMTemplate[]> {
     return apiRequest<VMTemplate[]>('/computes/templates');
   }
-  
+
   /**
    * Get a specific template
    */
   async getTemplate(id: string): Promise<VMTemplate> {
     return apiRequest<VMTemplate>(`/computes/templates/${id}`);
   }
-  
+
   /**
    * Create a VM from template
    */
@@ -368,7 +368,7 @@ export class VirtualizationAPI {
       body: JSON.stringify({ templateId, ...config }),
     });
   }
-  
+
   /**
    * Create a template from existing VM
    */
@@ -378,16 +378,16 @@ export class VirtualizationAPI {
       body: JSON.stringify({ name, description }),
     });
   }
-  
+
   // ============ Snapshots ============
-  
+
   /**
    * List VM snapshots
    */
   async listSnapshots(vmId: string): Promise<VMSnapshot[]> {
     return apiRequest<VMSnapshot[]>(`/computes/${vmId}/snapshots`);
   }
-  
+
   /**
    * Create a snapshot
    */
@@ -401,7 +401,7 @@ export class VirtualizationAPI {
       body: JSON.stringify({ name, description }),
     });
   }
-  
+
   /**
    * Revert to snapshot
    */
@@ -411,7 +411,7 @@ export class VirtualizationAPI {
       { method: 'POST' }
     );
   }
-  
+
   /**
    * Delete a snapshot
    */
@@ -421,9 +421,9 @@ export class VirtualizationAPI {
       { method: 'DELETE' }
     );
   }
-  
+
   // ============ Backups ============
-  
+
   /**
    * List backups for a specific VM
    */
@@ -444,7 +444,7 @@ export class VirtualizationAPI {
     const response = await apiRequest<any>(`/computes/backups${suffix}`);
     return this.normalizeBackups(response);
   }
-  
+
   /**
    * Create a backup for a VM
    */
@@ -490,7 +490,7 @@ export class VirtualizationAPI {
    */
   async deleteBackup(backupId: string): Promise<void> {
     const result = await apiRequest<any>(`/computes/backups/${backupId}`, { method: 'DELETE' });
-    if (result?.status === 'error') {
+    if (result && typeof result === 'object' && result?.status === 'error') {
       throw new VirtualizationAPIError(
         result.error?.code || 'BACKUP_DELETE_FAILED',
         result.error?.message || 'Failed to delete backup',
@@ -500,7 +500,18 @@ export class VirtualizationAPI {
   }
 
   /**
+   * Get backup download URL
+   */
+  getBackupDownloadUrl(backupId: string): string {
+    const token = getAuthToken();
+    const url = getApiUrl(`${API_BASE}/computes/backups/${backupId}/download`);
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}token=${encodeURIComponent(token)}`;
+  }
+
+  /**
    * Download a backup qcow2 file
+   * @deprecated Use getBackupDownloadUrl instead for large files
    */
   async downloadBackup(backupId: string): Promise<Blob> {
     const token = getAuthToken();
@@ -532,23 +543,23 @@ export class VirtualizationAPI {
     if (response.data?.backups?.items) return response.data.backups.items;
     return [];
   }
-  
+
   // ============ Storage Pools ============
-  
+
   /**
    * List storage pools
    */
   async listStoragePools(): Promise<StoragePool[]> {
     return apiRequest<StoragePool[]>('/storages/pools');
   }
-  
+
   /**
    * Get a specific storage pool
    */
   async getStoragePool(name: string): Promise<StoragePool> {
     return apiRequest<StoragePool>(`/storages/pools/${name}`);
   }
-  
+
   /**
    * Create a storage pool
    */
@@ -558,7 +569,7 @@ export class VirtualizationAPI {
       body: JSON.stringify(config),
     });
   }
-  
+
   /**
    * Delete a storage pool
    */
@@ -578,7 +589,7 @@ export class VirtualizationAPI {
       body: JSON.stringify(config),
     });
   }
-  
+
   /**
    * Start a storage pool
    */
@@ -587,7 +598,7 @@ export class VirtualizationAPI {
       method: 'POST',
     });
   }
-  
+
   /**
    * Stop a storage pool
    */
@@ -596,7 +607,7 @@ export class VirtualizationAPI {
       method: 'POST',
     });
   }
-  
+
   /**
    * Set storage pool autostart
    */
@@ -606,7 +617,7 @@ export class VirtualizationAPI {
       body: JSON.stringify({ autostart }),
     });
   }
-  
+
   /**
    * Refresh storage pool
    */
@@ -615,7 +626,7 @@ export class VirtualizationAPI {
       method: 'POST',
     });
   }
-  
+
   /**
    * List volumes in a storage pool
    * Returns { volumes, count } from the envelope
@@ -630,7 +641,7 @@ export class VirtualizationAPI {
     }
     return { volumes: [], count: 0 };
   }
-  
+
   /**
    * Get volume details
    */
@@ -644,7 +655,7 @@ export class VirtualizationAPI {
     }
     throw new VirtualizationAPIError('INVALID_RESPONSE', 'Invalid response format from getVolume');
   }
-  
+
   /**
    * Create a volume in a storage pool
    */
@@ -665,7 +676,7 @@ export class VirtualizationAPI {
     }
     throw new VirtualizationAPIError('INVALID_RESPONSE', 'Invalid response format from createVolume');
   }
-  
+
   /**
    * Resize a volume
    */
@@ -683,7 +694,7 @@ export class VirtualizationAPI {
     }
     throw new VirtualizationAPIError('INVALID_RESPONSE', 'Invalid response format from resizeVolume');
   }
-  
+
   /**
    * Clone a volume
    */
@@ -705,7 +716,7 @@ export class VirtualizationAPI {
     }
     throw new VirtualizationAPIError('INVALID_RESPONSE', 'Invalid response format from cloneVolume');
   }
-  
+
   /**
    * Delete a volume
    */
@@ -725,23 +736,23 @@ export class VirtualizationAPI {
       );
     }
   }
-  
+
   // ============ ISO Management ============
-  
+
   /**
    * List ISO images
    */
   async listISOs(): Promise<ISOImage[]> {
     return apiRequest<ISOImage[]>('/isos');
   }
-  
+
   /**
    * Get ISO details
    */
   async getISO(id: string): Promise<ISOImage> {
     return apiRequest<ISOImage>(`/isos/${id}`);
   }
-  
+
   /**
    * Upload an ISO (returns upload URL for TUS)
    * This creates a TUS upload session following the TUS protocol v1.0.0
@@ -757,7 +768,7 @@ export class VirtualizationAPI {
   }): Promise<{ uploadUrl: string; uploadId: string }> {
     // Prepare TUS metadata in base64 format as per TUS protocol
     const tusMetadata: Record<string, string> = {};
-    
+
     // Encode each metadata field to base64
     if (metadata.filename) {
       tusMetadata.filename = btoa(metadata.filename);
@@ -777,15 +788,15 @@ export class VirtualizationAPI {
     if (metadata.pool_name) {
       tusMetadata.pool_name = btoa(metadata.pool_name);
     }
-    
+
     // Build Upload-Metadata header value
     const uploadMetadata = Object.entries(tusMetadata)
       .map(([key, value]) => `${key} ${value}`)
       .join(',');
-    
+
     const token = getAuthToken();
     const url = getApiUrl('/virtualization/isos/upload');
-    
+
     // Make TUS-compliant POST request with proper headers
     const response = await fetch(url, {
       method: 'POST',
@@ -796,7 +807,7 @@ export class VirtualizationAPI {
         'Tus-Resumable': '1.0.0',
       },
     });
-    
+
     if (!response.ok) {
       const error = await response.json().catch(() => ({
         code: 'API_ERROR',
@@ -808,43 +819,43 @@ export class VirtualizationAPI {
         error.details
       );
     }
-    
-  // Extract upload URL from Location header and response body
-  const location = response.headers.get('Location');
-  const responseData = await response.json();
-  
-  console.log('[TUS] Session created:', {
-    location,
-    responseData,
-    originalUrl: url
-  });
-  
-  // Ensure we have a full URL for the TUS client
-  let tusUploadUrl = location || responseData.upload_url;
-  
-  // If the URL is relative, make it absolute
-  if (tusUploadUrl && !tusUploadUrl.startsWith('http')) {
-    // The upload URL should include the full path with upload ID
-    // Expected format: /api/v1/virtualization/isos/upload/{upload_id}
-    const fullUploadPath = tusUploadUrl.startsWith('/api/') 
-      ? tusUploadUrl 
-      : `/api/v1/virtualization/isos/upload/${responseData.upload_id}`;
-    
-    // Get the base URL from the config
-    const baseUrl = url.substring(0, url.indexOf('/api/'));
-    
-    // Construct the full URL
-    tusUploadUrl = baseUrl + fullUploadPath;
+
+    // Extract upload URL from Location header and response body
+    const location = response.headers.get('Location');
+    const responseData = await response.json();
+
+    console.log('[TUS] Session created:', {
+      location,
+      responseData,
+      originalUrl: url
+    });
+
+    // Ensure we have a full URL for the TUS client
+    let tusUploadUrl = location || responseData.upload_url;
+
+    // If the URL is relative, make it absolute
+    if (tusUploadUrl && !tusUploadUrl.startsWith('http')) {
+      // The upload URL should include the full path with upload ID
+      // Expected format: /api/v1/virtualization/isos/upload/{upload_id}
+      const fullUploadPath = tusUploadUrl.startsWith('/api/')
+        ? tusUploadUrl
+        : `/api/v1/virtualization/isos/upload/${responseData.upload_id}`;
+
+      // Get the base URL from the config
+      const baseUrl = url.substring(0, url.indexOf('/api/'));
+
+      // Construct the full URL
+      tusUploadUrl = baseUrl + fullUploadPath;
+    }
+
+    console.log('[TUS] Final upload URL:', tusUploadUrl);
+
+    return {
+      uploadUrl: tusUploadUrl,
+      uploadId: responseData.upload_id,
+    };
   }
-  
-  console.log('[TUS] Final upload URL:', tusUploadUrl);
-  
-  return {
-    uploadUrl: tusUploadUrl,
-    uploadId: responseData.upload_id,
-  };
-  }
-  
+
   /**
    * Complete ISO upload
    */
@@ -853,14 +864,14 @@ export class VirtualizationAPI {
       method: 'POST',
     });
   }
-  
+
   /**
    * Get ISO upload progress
    */
   async getISOUploadProgress(uploadId: string): Promise<ISOUploadProgress> {
     return apiRequest<ISOUploadProgress>(`/isos/upload/${uploadId}/progress`);
   }
-  
+
   /**
    * Delete an ISO
    */
@@ -869,7 +880,7 @@ export class VirtualizationAPI {
       method: 'DELETE',
     });
   }
-  
+
 
   // ============ OS Variants ============
 
@@ -914,7 +925,7 @@ export class VirtualizationAPI {
   }
 
   // ============ Virtual Networks ============
-  
+
   /**
    * List virtual networks
    * Returns networks and total count using the standard API envelope.
@@ -943,7 +954,7 @@ export class VirtualizationAPI {
 
     return { networks: [], count: 0 };
   }
-  
+
   /**
    * Get a specific network
    * Be tolerant of both enveloped and plain responses.
@@ -970,7 +981,7 @@ export class VirtualizationAPI {
 
     throw new VirtualizationAPIError('INVALID_RESPONSE', 'Invalid response format from getNetwork');
   }
-  
+
   /**
    * Create a virtual network
    */
@@ -989,7 +1000,7 @@ export class VirtualizationAPI {
 
     throw new VirtualizationAPIError('INVALID_RESPONSE', 'Invalid response format from createNetwork');
   }
-  
+
   /**
    * Update a virtual network
    */
@@ -1008,7 +1019,7 @@ export class VirtualizationAPI {
 
     throw new VirtualizationAPIError('INVALID_RESPONSE', 'Invalid response format from updateNetwork');
   }
-  
+
   /**
    * Get DHCP leases for a virtual network
    */
@@ -1030,7 +1041,7 @@ export class VirtualizationAPI {
 
     throw new VirtualizationAPIError('INVALID_RESPONSE', 'Invalid response format from getNetworkDHCPLeases');
   }
-  
+
   /**
    * Get ports for a virtual network
    */
@@ -1052,7 +1063,7 @@ export class VirtualizationAPI {
 
     throw new VirtualizationAPIError('INVALID_RESPONSE', 'Invalid response format from getNetworkPorts');
   }
-  
+
   /**
    * Delete a virtual network
    */
@@ -1061,7 +1072,7 @@ export class VirtualizationAPI {
       method: 'DELETE',
     });
   }
-  
+
   /**
    * Start a network
    */
@@ -1070,7 +1081,7 @@ export class VirtualizationAPI {
       method: 'POST',
     });
   }
-  
+
   /**
    * Stop a network
    */
@@ -1079,23 +1090,23 @@ export class VirtualizationAPI {
       method: 'POST',
     });
   }
-  
+
   // ============ Metrics \u0026 Monitoring ============
-  
+
   /**
    * Get VM metrics
    */
   async getVMMetrics(vmId: string, duration = '1h'): Promise<VMMetrics[]> {
     return apiRequest<VMMetrics[]>(`/computes/${vmId}/metrics?duration=${duration}`);
   }
-  
+
   /**
    * Get host resource usage
    */
   async getHostResources(): Promise<HostResources> {
     return apiRequest<HostResources>('/host/resources');
   }
-  
+
   /**
    * Get real-time VM metrics (WebSocket endpoint info)
    */
@@ -1104,9 +1115,9 @@ export class VirtualizationAPI {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     return `${protocol}//${window.location.host}${API_BASE}/computes/${vmId}/metrics/ws?token=${token}`;
   }
-  
+
   // ============ Disk Management ============
-  
+
   /**
    * Attach a disk to VM
    */
@@ -1116,7 +1127,7 @@ export class VirtualizationAPI {
       body: JSON.stringify(disk),
     });
   }
-  
+
   /**
    * Detach a disk from VM
    */
@@ -1125,7 +1136,7 @@ export class VirtualizationAPI {
       method: 'POST',
     });
   }
-  
+
   /**
    * Resize a VM disk
    */
@@ -1135,9 +1146,9 @@ export class VirtualizationAPI {
       body: JSON.stringify({ size: newSize }),
     });
   }
-  
+
   // ============ Migration ============
-  
+
   /**
    * Migrate a VM to another host
    */
@@ -1151,7 +1162,7 @@ export class VirtualizationAPI {
       body: JSON.stringify({ targetHost, live }),
     });
   }
-  
+
   /**
    * Get migration status
    */
@@ -1162,16 +1173,16 @@ export class VirtualizationAPI {
   }> {
     return apiRequest(`/computes/${vmId}/migrate/status`);
   }
-  
+
   // ============ Enhanced API Methods with Full Types ============
-  
+
   /**
    * Get VM snapshots with full type support
    */
   async getSnapshots(vmId: string): Promise<VMSnapshotListResponse> {
     return apiRequest<VMSnapshotListResponse>(`/computes/${vmId}/snapshots`);
   }
-  
+
   /**
    * Create a VM snapshot
    */
@@ -1181,7 +1192,7 @@ export class VirtualizationAPI {
       body: JSON.stringify(request),
     });
   }
-  
+
   /**
    * Revert VM to a snapshot
    */
@@ -1190,7 +1201,7 @@ export class VirtualizationAPI {
       method: 'POST',
     });
   }
-  
+
   /**
    * Delete a VM snapshot
    */
@@ -1199,28 +1210,28 @@ export class VirtualizationAPI {
       method: 'DELETE',
     });
   }
-  
+
   /**
    * Get snapshot capabilities for a VM
    */
   async getSnapshotCapabilities(vmId: string): Promise<SnapshotCapabilitiesResponse> {
     return apiRequest<SnapshotCapabilitiesResponse>(`/computes/${vmId}/snapshots/capabilities`);
   }
-  
+
   /**
    * Get VM backups with full type support
    */
   async getBackups(vmId: string): Promise<VMBackup[]> {
     return this.listBackups(vmId);
   }
-  
+
   /**
    * Create a VM backup
    */
   async createBackupTyped(vmId: string, request: BackupCreateRequest): Promise<VMBackup> {
     return this.createBackup(vmId, request);
   }
-  
+
   /**
    * Clone a VM
    */
@@ -1230,7 +1241,7 @@ export class VirtualizationAPI {
       body: JSON.stringify(request),
     });
   }
-  
+
   /**
    * Hot-plug device to a running VM
    */
@@ -1240,7 +1251,7 @@ export class VirtualizationAPI {
       body: JSON.stringify(request),
     });
   }
-  
+
   /**
    * Hot-unplug device from a running VM
    */
@@ -1250,7 +1261,7 @@ export class VirtualizationAPI {
       body: JSON.stringify(request),
     });
   }
-  
+
   /**
    * Migrate VM to another host with full type support
    */
@@ -1260,14 +1271,14 @@ export class VirtualizationAPI {
       body: JSON.stringify(request),
     });
   }
-  
+
   /**
    * Get migration status with full type
    */
   async getMigrationStatusTyped(vmId: string): Promise<MigrationStatus> {
     return apiRequest<MigrationStatus>(`/computes/${vmId}/migrate/status`);
   }
-  
+
   /**
    * Cancel ongoing migration
    */
@@ -1276,14 +1287,14 @@ export class VirtualizationAPI {
       method: 'POST',
     });
   }
-  
+
   /**
    * Get available consoles for a VM
    */
   async getConsoles(vmId: string): Promise<ConsolesResponse> {
     return apiRequest<ConsolesResponse>(`/computes/${vmId}/consoles`);
   }
-  
+
   /**
    * Connect to a specific console type
    */
@@ -1292,7 +1303,7 @@ export class VirtualizationAPI {
       method: 'POST',
     });
   }
-  
+
   /**
    * Get enhanced VM metrics
    */

@@ -1093,7 +1093,10 @@ func deleteBackup(service *libvirt.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.Status(http.StatusNoContent)
+		c.JSON(http.StatusOK, gin.H{
+			"status":  "success",
+			"message": "Backup deleted successfully",
+		})
 	}
 }
 
@@ -1111,14 +1114,29 @@ func downloadBackup(service *libvirt.Service) gin.HandlerFunc {
 			return
 		}
 
-		primaryPath := filepath.Join(backup.DestinationPath, fmt.Sprintf("%s-%s.qcow2", backup.VMName, backup.ID))
-		altPath := filepath.Join(backup.DestinationPath, backup.ID+".qcow2")
+		// Try multiple file path patterns:
+		// 1. New format with disk device name: {vmname}-{disk}-{backupid}.qcow2 (e.g., vm02-vda-abc123.qcow2)
+		// 2. Legacy format: {vmname}-{backupid}.qcow2
+		// 3. Simple format: {backupid}.qcow2
+		candidatePaths := []string{}
+		
+		// New format - try common disk device names
+		for _, disk := range []string{"vda", "sda", "hda"} {
+			candidatePaths = append(candidatePaths, 
+				filepath.Join(backup.DestinationPath, fmt.Sprintf("%s-%s-%s.qcow2", backup.VMName, disk, backup.ID)))
+		}
+		
+		// Legacy formats
+		candidatePaths = append(candidatePaths,
+			filepath.Join(backup.DestinationPath, fmt.Sprintf("%s-%s.qcow2", backup.VMName, backup.ID)),
+			filepath.Join(backup.DestinationPath, backup.ID+".qcow2"))
 
 		filePath := ""
-		if stat, err := os.Stat(primaryPath); err == nil && !stat.IsDir() {
-			filePath = primaryPath
-		} else if stat, err := os.Stat(altPath); err == nil && !stat.IsDir() {
-			filePath = altPath
+		for _, path := range candidatePaths {
+			if stat, err := os.Stat(path); err == nil && !stat.IsDir() {
+				filePath = path
+				break
+			}
 		}
 
 		if filePath == "" {

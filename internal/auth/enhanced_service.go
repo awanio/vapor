@@ -281,23 +281,29 @@ func (s *EnhancedService) GetUserKeys(c *gin.Context) {
 // AuthMiddleware validates JWT tokens
 func (s *EnhancedService) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		var tokenString string
+
 		// Get token from header
 		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			common.SendError(c, http.StatusUnauthorized, common.ErrCodeUnauthorized, "Missing authorization header")
+		if authHeader != "" {
+			// Extract token from Bearer header
+			parts := strings.Split(authHeader, " ")
+			if len(parts) == 2 && parts[0] == "Bearer" {
+				tokenString = parts[1]
+			}
+		}
+
+		// If no header token, check query parameter (useful for downloads)
+		if tokenString == "" {
+			tokenString = c.Query("token")
+		}
+
+		// If still no token, error
+		if tokenString == "" {
+			common.SendError(c, http.StatusUnauthorized, common.ErrCodeUnauthorized, "Missing authorization token")
 			c.Abort()
 			return
 		}
-
-		// Extract token
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			common.SendError(c, http.StatusUnauthorized, common.ErrCodeUnauthorized, "Invalid authorization header format")
-			c.Abort()
-			return
-		}
-
-		tokenString := parts[1]
 
 		// Parse and validate token
 		claims := &Claims{}

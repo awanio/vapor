@@ -271,7 +271,8 @@ func (s *Service) CreateBackup(ctx context.Context, nameOrUUID string, req *VMBa
 	}
 
 	// Run backup asynchronously
-	go s.runBackupJob(domain, backup, req)
+	// Pass nameOrUUID instead of domain pointer since domain will be freed
+	go s.runBackupJob(nameOrUUID, backup, req)
 
 	return backup, nil
 }
@@ -282,7 +283,8 @@ func (s *Service) ListAllBackups(ctx context.Context) ([]VMBackup, error) {
 		return nil, fmt.Errorf("database is not configured")
 	}
 
-	rows, err := s.db.QueryContext(ctx, "SELECT id, vm_uuid, vm_name, type, status, destination_path, size_bytes, compression, encryption, parent_backup_id, started_at, completed_at, error_message, retention_days, metadata FROM vm_backups ORDER BY started_at DESC")
+	// Filter out deleted backups
+	rows, err := s.db.QueryContext(ctx, "SELECT id, vm_uuid, vm_name, type, status, destination_path, size_bytes, compression, encryption, parent_backup_id, started_at, completed_at, error_message, retention_days, metadata FROM vm_backups WHERE status != ? ORDER BY started_at DESC", BackupStatusDeleted)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query backups: %w", err)
 	}
@@ -365,7 +367,8 @@ func (s *Service) ListBackups(ctx context.Context, nameOrUUID string) ([]VMBacku
 		return nil, err
 	}
 
-	rows, err := s.db.QueryContext(ctx, "SELECT id, vm_uuid, vm_name, type, status, destination_path, size_bytes, compression, encryption, parent_backup_id, started_at, completed_at, error_message, retention_days, metadata FROM vm_backups WHERE vm_uuid = ? ORDER BY started_at DESC", vm.UUID)
+	// Filter out deleted backups
+	rows, err := s.db.QueryContext(ctx, "SELECT id, vm_uuid, vm_name, type, status, destination_path, size_bytes, compression, encryption, parent_backup_id, started_at, completed_at, error_message, retention_days, metadata FROM vm_backups WHERE vm_uuid = ? AND status != ? ORDER BY started_at DESC", vm.UUID, BackupStatusDeleted)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query backups: %w", err)
 	}
@@ -402,7 +405,28 @@ func (s *Service) ListBackups(ctx context.Context, nameOrUUID string) ([]VMBacku
 	return backups, nil
 }
 
-func (s *Service) runBackupJob(domain *libvirt.Domain, backup *VMBackup, req *VMBackupRequest) {
+func (s *Service) runBackupJob(nameOrUUID string, backup *VMBackup, req *VMBackupRequest) {
+	// Lock and lookup domain in the goroutine context
+	s.mu.Lock()
+	domain, err := s.lookupDomain(nameOrUUID)
+	if err != nil {
+		s.mu.Unlock()
+		backup.Status = BackupStatusFailed
+		backup.ErrorMessage = fmt.Sprintf("failed to lookup domain: %v", err)
+		s.saveBackupRecord(backup)
+		return
+	}
+	defer domain.Free()
+	defer s.mu.Unlock()
+
+	// Ensure destination directory exists
+	if err := os.MkdirAll(backup.DestinationPath, 0755); err != nil {
+		backup.Status = BackupStatusFailed
+		backup.ErrorMessage = fmt.Sprintf("failed to create backup directory: %v", err)
+		s.saveBackupRecord(backup)
+		return
+	}
+
 	backupXML, err := s.generateBackupXML(domain, backup, req)
 	if err != nil {
 		backup.Status = BackupStatusFailed
@@ -706,21 +730,75 @@ func (s *Service) generateBackupXML(domain *libvirt.Domain, backup *VMBackup, re
 		return "", fmt.Errorf("failed to get domain name: %w", err)
 	}
 
-	// Build backup XML
-	backupXML := fmt.Sprintf(`
-		<domainbackup mode='push'>
-			<incremental>%s</incremental>
-			<server transport='unix' socket='/var/run/libvirt/backup-%s.sock'/>
-			<disks>
-				<disk name='vda' backup='yes' type='file'>
-					<target file='%s/%s-%s.qcow2'/>
-					<driver type='qcow2'/>
-				</disk>
-			</disks>
-		</domainbackup>
-	`, backup.ParentBackupID, backup.ID, backup.DestinationPath, name, backup.ID)
+	// Get the domain XML to discover disk devices
+	xmlDoc, err := domain.GetXMLDesc(0)
+	if err != nil {
+		return "", fmt.Errorf("failed to get domain XML: %w", err)
+	}
 
-	return backupXML, nil
+	// Parse domain XML to find disk devices
+	type DiskTarget struct {
+		Dev string `xml:"dev,attr"`
+	}
+	type DiskSource struct {
+		File string `xml:"file,attr"`
+	}
+	type DiskDevice struct {
+		Device string     `xml:"device,attr"`
+		Target DiskTarget `xml:"target"`
+		Source DiskSource `xml:"source"`
+	}
+	type Devices struct {
+		Disks []DiskDevice `xml:"disk"`
+	}
+	type DomainXML struct {
+		Devices Devices `xml:"devices"`
+	}
+
+	var domXML DomainXML
+	if err := xml.Unmarshal([]byte(xmlDoc), &domXML); err != nil {
+		return "", fmt.Errorf("failed to parse domain XML: %w", err)
+	}
+
+	// Find disk devices (type="disk", not cdrom or floppy)
+	var diskElements strings.Builder
+	diskCount := 0
+	for _, disk := range domXML.Devices.Disks {
+		if disk.Device != "disk" {
+			continue // Skip cdrom, floppy, etc.
+		}
+		if disk.Target.Dev == "" {
+			continue
+		}
+		
+		targetFile := fmt.Sprintf("%s/%s-%s-%s.qcow2", backup.DestinationPath, name, disk.Target.Dev, backup.ID)
+		diskElements.WriteString(fmt.Sprintf(`
+			<disk name='%s' backup='yes' type='file'>
+				<target file='%s'/>
+				<driver type='qcow2'/>
+			</disk>`, disk.Target.Dev, targetFile))
+		diskCount++
+	}
+
+	if diskCount == 0 {
+		return "", fmt.Errorf("no disk devices found in VM to backup")
+	}
+
+	// Build backup XML - for push mode, we don't use <server> element
+	var backupXML strings.Builder
+	backupXML.WriteString("<domainbackup mode='push'>")
+	
+	// Only include incremental element if there's a parent backup
+	if backup.ParentBackupID != "" {
+		backupXML.WriteString(fmt.Sprintf("<incremental>%s</incremental>", backup.ParentBackupID))
+	}
+	
+	backupXML.WriteString("<disks>")
+	backupXML.WriteString(diskElements.String())
+	backupXML.WriteString("</disks>")
+	backupXML.WriteString("</domainbackup>")
+
+	return backupXML.String(), nil
 }
 
 // RestoreVMBackup restores a VM from a backup
