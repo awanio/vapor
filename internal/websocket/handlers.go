@@ -147,6 +147,7 @@ func handleAuth(client *Client, msg Message, jwtSecret string) {
 
 // sendMetrics continuously sends system metrics to the client
 func sendMetrics(client *Client) {
+	log.Printf("[sendMetrics] Started for client %s", client.id)
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 
@@ -155,6 +156,7 @@ func sendMetrics(client *Client) {
 	for {
 		select {
 		case <-client.ctx.Done():
+			log.Printf("[sendMetrics] Context done for client %s", client.id)
 			return
 		case <-ticker.C:
 			client.mu.RLock()

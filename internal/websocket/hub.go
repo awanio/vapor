@@ -218,7 +218,11 @@ func (c *Client) processMessage(data []byte) {
 					c.mu.Unlock()
 					log.Printf("Client %s subscribed to %s", c.id, payload.Channel)
 				}
+			} else {
+				log.Printf("Client %s subscribe - payload unmarshaling failed: %v", c.id, err)
 			}
+		} else {
+			log.Printf("Client %s subscribe - payload marshaling failed: %v", c.id, err)
 		}
 
 		c.mu.RLock()
@@ -233,6 +237,7 @@ func (c *Client) processMessage(data []byte) {
 			case "log-events":
 				go tailLogs(c, c.logService, msg)
 			case "metrics":
+				log.Printf("Starting sendMetrics goroutine for client %s", c.id)
 				go sendMetrics(c)
 			}
 		case "metrics":

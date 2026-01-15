@@ -506,6 +506,10 @@ export async function connectMetrics(): Promise<void> {
     },
     onEvent: (payload: any) => {
       // Expected payload (from /ws/events): { kind: 'metrics', data: { cpu, memory, disk, network, timestamp } }
+      // Filter: only process events with kind === 'metrics' (ignore other event types)
+      const kind = payload?.kind;
+      if (kind && kind !== 'metrics') return;
+      
       // Be tolerant of variations: payload may be the data directly.
       const data = payload?.data ?? payload;
       if (!data) return;
