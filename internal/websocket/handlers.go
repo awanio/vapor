@@ -148,47 +148,31 @@ func handleAuth(client *Client, msg Message, jwtSecret string) {
 
 // sendMetrics continuously sends system metrics to the client
 func sendMetrics(client *Client) {
-	log.Printf("[sendMetrics] Started for client %s", client.id)
-	
-	// Check if context is nil
-	if client.ctx == nil {
-		log.Printf("[sendMetrics] ERROR: client.ctx is nil for client %s", client.id)
-		return
-	}
-	
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 
 	_ = system.NewService() // TODO: Use this for more advanced metrics
 	
-	log.Printf("[sendMetrics] Entering main loop for client %s", client.id)
-
 	for {
 		select {
 		case <-client.ctx.Done():
-			log.Printf("[sendMetrics] Context done for client %s", client.id)
 			return
 		case <-ticker.C:
-			log.Printf("[sendMetrics] Ticker fired for client %s", client.id)
 			client.mu.RLock()
 			authenticated := client.authenticated
 			client.mu.RUnlock()
 
 			if !authenticated {
-				log.Printf("[sendMetrics] Client %s not authenticated, returning", client.id)
 				return
 			}
 
-			log.Printf("[sendMetrics] Collecting metrics for client %s", client.id)
 			// Get system metrics
 			loadAvg, _ := load.Avg()
 			virtualMem, _ := mem.VirtualMemory()
 			diskPartitions, _ := disk.Partitions(true)
 
 			// Get CPU usage percentage
-			log.Printf("[sendMetrics] Getting CPU percent for client %s", client.id)
 			cpuPercent, _ := cpu.Percent(time.Second, false)
-			log.Printf("[sendMetrics] CPU percent done for client %s", client.id)
 			cpuUsage := float64(0)
 			if len(cpuPercent) > 0 {
 				cpuUsage = cpuPercent[0]
