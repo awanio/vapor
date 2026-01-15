@@ -341,7 +341,10 @@
   "virtualization": {
     "vms": "Mesin Virtual",
     "storage-pools": "Pool Penyimpanan",
-    "networks": "Jaringan"
+    "networks": "Jaringan",
+    "iso-images": "Image ISO",
+    "volumes": "Volume",
+    "backups": "Cadangan"
   },
   "users": {
     "title": "Manajemen Pengguna",
