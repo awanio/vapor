@@ -28,7 +28,7 @@ import '../components/ui/operation-warning';
 export class NetworkTab extends I18nLitElement {
   @property({ type: String })
   subRoute: string | null = null;
-  
+
   // Store controllers
   private interfacesController = new StoreController(this, $filteredInterfaces);
   private bridgesController = new StoreController(this, $filteredBridges);
@@ -40,7 +40,7 @@ export class NetworkTab extends I18nLitElement {
   private bridgeSearchController = new StoreController(this, $bridgeSearchQuery);
   private bondSearchController = new StoreController(this, $bondSearchQuery);
   private vlanSearchController = new StoreController(this, $vlanSearchQuery);
-  
+
   static override styles = css`
     :host {
       display: block;
@@ -55,7 +55,7 @@ export class NetworkTab extends I18nLitElement {
 
     .tab-header {
       display: flex;
-      border-bottom: 2px solid var(--border-color);
+      border-bottom: 2px solid var(--vscode-border);
       margin-bottom: 1rem;
     }
 
@@ -90,7 +90,7 @@ export class NetworkTab extends I18nLitElement {
       padding: 16px;
       border-radius: 6px;
       margin-bottom: 12px;
-      border: 1px solid var(--border-color);
+      border: 1px solid var(--vscode-border);
     }
 
     .interface-header {
@@ -154,7 +154,7 @@ export class NetworkTab extends I18nLitElement {
       padding: 0.5rem 1rem;
       background-color: var(--surface-2);
       color: var(--text-primary);
-      border: 1px solid var(--border-color);
+      border: 1px solid var(--vscode-border);
       border-radius: 4px;
       cursor: pointer;
       font-size: 0.875rem;
@@ -186,7 +186,7 @@ export class NetworkTab extends I18nLitElement {
       background-color: var(--surface-1);
       padding: 1.5rem;
       border-radius: 6px;
-      border: 1px solid var(--border-color);
+      border: 1px solid var(--vscode-border);
       margin-bottom: 1rem;
     }
 
@@ -206,7 +206,7 @@ export class NetworkTab extends I18nLitElement {
       width: 100%;
       padding: 0.5rem;
       background-color: var(--surface-0);
-      border: 1px solid var(--border-color);
+      border: 1px solid var(--vscode-border);
       border-radius: 4px;
       color: var(--text-primary);
       font-size: 0.875rem;
@@ -246,32 +246,35 @@ export class NetworkTab extends I18nLitElement {
 
     .network-table {
       width: 100%;
-      border-collapse: collapse;
-      background-color: var(--surface-1);
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      overflow: hidden;
+      border-collapse: separate;
+      border-spacing: 0;
+      background-color: var(--vscode-bg-light);
+      border: 1px solid var(--vscode-border);
+      border-radius: 1px;
+      overflow: visible;
       margin-bottom: 1rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
     .network-table thead {
-      background-color: var(--surface-2);
+      background-color: var(--vscode-bg-lighter);
     }
 
     .network-table th {
+      background: var(--vscode-bg-dark);
+      color: var(--vscode-text);
+      font-weight: 600;
       text-align: left;
       padding: 12px 16px;
       font-size: 0.875rem;
-      font-weight: 500;
-      color: var(--text-secondary);
-      border-bottom: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--vscode-border);
     }
 
     .network-table td {
       padding: 12px 16px;
       font-size: 0.875rem;
-      color: var(--text-primary);
-      border-bottom: 1px solid var(--border-color);
+      color: var(--vscode-text);
+      border-bottom: 1px solid var(--vscode-border);
     }
 
     .network-table tbody tr:last-child td {
@@ -447,7 +450,7 @@ export class NetworkTab extends I18nLitElement {
       max-width: 90%;
       height: 100%;
       background: var(--vscode-bg-light);
-      border-left: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-left: 1px solid var(--vscode-border);
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
       z-index: 1001;
       overflow-y: auto;
@@ -877,11 +880,11 @@ export class NetworkTab extends I18nLitElement {
 
 
   @state()
-  private operationWarning: { 
-    type: 'warning' | 'partial-success' | 'persistence'; 
-    message: string; 
-    failures?: any[]; 
-    successItems?: string[] 
+  private operationWarning: {
+    type: 'warning' | 'partial-success' | 'persistence';
+    message: string;
+    failures?: any[];
+    successItems?: string[]
   } | null = null;
   @state()
   private configureNetworkInterface: NetworkInterface | null = null;
@@ -1016,11 +1019,11 @@ export class NetworkTab extends I18nLitElement {
   override firstUpdated() {
     // Initialize the network store
     initializeNetworkStore();
-    
+
     document.addEventListener('click', this.handleDocumentClick.bind(this));
     document.addEventListener('keydown', this.handleKeyDown.bind(this));
     window.addEventListener('popstate', this.handlePopState);
-    
+
     // Fetch interface types when component is connected
     this.fetchInterfaceTypes();
 
@@ -1033,16 +1036,16 @@ export class NetworkTab extends I18nLitElement {
       this.handleSubRoute();
     }
   }
-  
+
   override updated(changedProperties: Map<string | number | symbol, unknown>) {
     super.updated(changedProperties);
-    
+
     // Handle sub-route changes
     if (changedProperties.has('subRoute')) {
       this.handleSubRoute();
     }
   }
-  
+
   private handleSubRoute() {
     if (this.subRoute && ['interfaces', 'bridges', 'bonds', 'vlans'].includes(this.subRoute)) {
       this.activeTab = this.subRoute;
@@ -1084,11 +1087,11 @@ export class NetworkTab extends I18nLitElement {
     const input = e.target as HTMLInputElement;
     const value = input.value;
     this.bridgeInterfaceInputValue = value;
-    
+
     // Get the current word being typed (after the last comma)
     const parts = value.split(',').map(p => p.trim());
     const currentWord = (parts[parts.length - 1] || '').toLowerCase();
-    
+
     // Show suggestions if there's text to search
     this.showBridgeInterfacesSuggestions = currentWord.length > 0;
     this.selectedSuggestionIndex = -1;
@@ -1096,9 +1099,9 @@ export class NetworkTab extends I18nLitElement {
 
   handleBridgeInterfaceKeyDown(e: KeyboardEvent) {
     if (!this.showBridgeInterfacesSuggestions) return;
-    
+
     const filteredSuggestions = this.getFilteredSuggestions();
-    
+
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       this.selectedSuggestionIndex = Math.min(
@@ -1121,7 +1124,7 @@ export class NetworkTab extends I18nLitElement {
     const parts = this.bridgeInterfaceInputValue.split(',').map(p => p.trim());
     const currentWord = (parts[parts.length - 1] || '').toLowerCase();
     const alreadySelected = parts.slice(0, -1).map(p => p.toLowerCase());
-    
+
     return this.availableInterfacesForBridge.filter(name => {
       const nameLower = name.toLowerCase();
       return nameLower.includes(currentWord) && !alreadySelected.includes(nameLower);
@@ -1135,7 +1138,7 @@ export class NetworkTab extends I18nLitElement {
     this.bridgeFormData.interfaces = this.bridgeInterfaceInputValue;
     this.showBridgeInterfacesSuggestions = false;
     this.selectedSuggestionIndex = -1;
-    
+
     // Focus back on input
     const input = document.getElementById('bridge-interfaces') as HTMLInputElement;
     if (input) input.focus();
@@ -1152,20 +1155,20 @@ export class NetworkTab extends I18nLitElement {
   handleBondInterfaceInput(e: Event) {
     const value = (e.target as HTMLInputElement).value;
     this.bondInterfaceInputValue = value;
-    
+
     // Get current word being typed
     const parts = value.split(',').map(p => p.trim());
     const currentWord = parts[parts.length - 1] || '';
-    
+
     this.showBondInterfacesSuggestions = currentWord.length > 0;
     this.selectedBondSuggestionIndex = -1;
   }
 
   handleBondInterfaceKeyDown(e: KeyboardEvent) {
     if (!this.showBondInterfacesSuggestions) return;
-    
+
     const filteredSuggestions = this.getFilteredBondSuggestions();
-    
+
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       this.selectedBondSuggestionIndex = Math.min(
@@ -1188,9 +1191,9 @@ export class NetworkTab extends I18nLitElement {
     const parts = this.bondInterfaceInputValue.split(',').map(p => p.trim());
     const currentWord = parts[parts.length - 1] || '';
     const alreadySelected = parts.slice(0, -1).map(p => p.toLowerCase());
-    
+
     return this.availableInterfacesForBridge
-      .filter(name => 
+      .filter(name =>
         name.toLowerCase().includes(currentWord.toLowerCase()) &&
         !alreadySelected.includes(name.toLowerCase())
       )
@@ -1204,7 +1207,7 @@ export class NetworkTab extends I18nLitElement {
     this.bondFormData.interfaces = this.bondInterfaceInputValue;
     this.showBondInterfacesSuggestions = false;
     this.selectedBondSuggestionIndex = -1;
-    
+
     const input = this.shadowRoot?.querySelector('#bond-interfaces') as HTMLInputElement;
     if (input) input.focus();
   }
@@ -1220,7 +1223,7 @@ export class NetworkTab extends I18nLitElement {
   handleVlanInterfaceInput(e: Event) {
     const value = (e.target as HTMLInputElement).value;
     this.vlanInterfaceInputValue = value;
-    
+
     // Show suggestions if there's input
     this.showVlanInterfacesSuggestions = value.length > 0;
     this.selectedVlanSuggestionIndex = -1;
@@ -1228,9 +1231,9 @@ export class NetworkTab extends I18nLitElement {
 
   handleVlanInterfaceKeyDown(e: KeyboardEvent) {
     if (!this.showVlanInterfacesSuggestions) return;
-    
+
     const filteredSuggestions = this.getFilteredVlanSuggestions();
-    
+
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       this.selectedVlanSuggestionIndex = Math.min(
@@ -1251,7 +1254,7 @@ export class NetworkTab extends I18nLitElement {
 
   getFilteredVlanSuggestions(): string[] {
     const currentValue = this.vlanInterfaceInputValue.trim().toLowerCase();
-    
+
     return this.availableInterfacesForBridge
       .filter(name => name.toLowerCase().includes(currentValue))
       .slice(0, 10);
@@ -1262,7 +1265,7 @@ export class NetworkTab extends I18nLitElement {
     this.vlanFormData.interface = interfaceName;
     this.showVlanInterfacesSuggestions = false;
     this.selectedVlanSuggestionIndex = -1;
-    
+
     const input = this.shadowRoot?.querySelector('#vlan-interface') as HTMLInputElement;
     if (input) input.focus();
   }
@@ -1285,7 +1288,7 @@ export class NetworkTab extends I18nLitElement {
     if (e.key === 'Escape') {
       // Close action dropdowns first
       this.closeAllMenus();
-      
+
       // Then close drawers if they're open
       if (this.showDetailsDrawer) {
         this.closeDetailsDrawer();
@@ -1302,7 +1305,7 @@ export class NetworkTab extends I18nLitElement {
       if (this.showVLANDrawer) {
         this.closeVLANDrawer();
       }
-      
+
       // Close modal if it's open
       if (this.showConfirmModal) {
         this.handleCancel();
@@ -1533,13 +1536,13 @@ export class NetworkTab extends I18nLitElement {
   openEditIpModal(index: number, currentIp: string) {
     this.editingIpIndex = index;
     this.originalIpAddress = currentIp;
-    
+
     // Parse the IP address and netmask
     const [ip, netmaskStr] = currentIp.split('/');
     this.editIpAddress = ip || currentIp;
     this.editIpNetmask = netmaskStr ? parseInt(netmaskStr) : 24;
     this.editIpGateway = ''; // Gateway is not stored with the IP, so leave empty
-    
+
     this.showEditIpModal = true;
   }
 
@@ -1567,12 +1570,12 @@ export class NetworkTab extends I18nLitElement {
         netmask: this.editIpNetmask,
         gateway: this.editIpGateway || undefined
       };
-      
+
       const response = await networkActions.updateInterfaceAddress(
         this.selectedInterface.name,
         request
       );
-      
+
       // Handle response warnings if present
       if (response.warning) {
         this.showOperationWarning('warning', response.warning);
@@ -1581,19 +1584,19 @@ export class NetworkTab extends I18nLitElement {
         this.showOperationWarning('persistence', response.persistence_warning);
       }
       if (response.failed && response.failed.length > 0) {
-        this.showOperationWarning('partial-success', 
-          response.warning || 'Some operations failed', 
-          response.failed, 
+        this.showOperationWarning('partial-success',
+          response.warning || 'Some operations failed',
+          response.failed,
           response.successfully_added);
       }
-      
+
       // Refresh interfaces and update selected interface
       await this.fetchInterfaces();
       const updatedInterface = this.interfaces.find(i => i.name === this.selectedInterface?.name);
       if (updatedInterface) {
         this.selectedInterface = updatedInterface;
       }
-      
+
       // Close the modal
       this.closeEditIpModal();
     } catch (error) {
@@ -1610,7 +1613,7 @@ export class NetworkTab extends I18nLitElement {
       async () => {
         try {
           await api.delete(`/network/interfaces/${this.selectedInterface!.name}/address?address=${encodeURIComponent(address)}`);
-          
+
           // Refresh interfaces and update selected interface
           await this.fetchInterfaces();
           const updatedInterface = this.interfaces.find(i => i.name === this.selectedInterface?.name);
@@ -1651,8 +1654,8 @@ export class NetworkTab extends I18nLitElement {
 
     try {
       const response: any = await api.post(`/network/interfaces/${this.selectedInterface.name}/address`, request);
-      
-      
+
+
       // Handle warnings if present
       if (response?.warning) {
         this.showOperationWarning('warning', response.warning);
@@ -1666,7 +1669,7 @@ export class NetworkTab extends I18nLitElement {
       if (updatedInterface) {
         this.selectedInterface = updatedInterface;
       }
-      
+
       // Reset form and close modal
       this.closeAddIpModal();
     } catch (error) {
@@ -1780,9 +1783,9 @@ export class NetworkTab extends I18nLitElement {
     if (this.isEditingBridge) {
       response = await networkActions.updateBridge(this.editingBridgeName!, { interfaces: request.interfaces });
     } else {
-    response = await networkActions.createBridge(request);
+      response = await networkActions.createBridge(request);
     }
-    
+
     // Handle warnings
     if (response?.warning) {
       this.showOperationWarning('warning', response.warning);
@@ -1813,9 +1816,9 @@ export class NetworkTab extends I18nLitElement {
     if (this.isEditingBond) {
       response = await networkActions.updateBond(this.editingBondName!, { mode: request.mode, interfaces: request.interfaces });
     } else {
-    response = await networkActions.createBond(request);
+      response = await networkActions.createBond(request);
     }
-    
+
     // Handle warnings
     if (response?.warning) {
       this.showOperationWarning('warning', response.warning);
@@ -1846,9 +1849,9 @@ export class NetworkTab extends I18nLitElement {
     if (this.isEditingVlan) {
       response = await networkActions.updateVlan(this.editingVlanName!, { vlan_id: request.vlan_id });
     } else {
-    response = await networkActions.createVlan(request);
+      response = await networkActions.createVlan(request);
     }
-    
+
     // Handle warnings
     if (response?.warning) {
       this.showOperationWarning('warning', response.warning);
@@ -1915,19 +1918,19 @@ export class NetworkTab extends I18nLitElement {
 
   private filterInterfaces() {
     let filtered = this.interfaces;
-    
+
     // Apply type filter
     if (this.selectedType !== 'all') {
       filtered = filtered.filter(iface => iface.type === this.selectedType);
     }
-    
+
     // Apply search filter
     if (this.searchQuery) {
-      filtered = filtered.filter(iface => 
+      filtered = filtered.filter(iface =>
         iface.name.toLowerCase().includes(this.searchQuery.toLowerCase())
       );
     }
-    
+
     return filtered;
   }
 
@@ -1952,9 +1955,9 @@ export class NetworkTab extends I18nLitElement {
                 class="type-filter-select"
                 .value=${this.selectedType}
                 @change=${async (e: Event) => {
-                  this.selectedType = (e.target as HTMLSelectElement).value;
-                  await this.fetchInterfaces();
-                }}
+          this.selectedType = (e.target as HTMLSelectElement).value;
+          await this.fetchInterfaces();
+        }}
               >
                 <option value="all">All Types</option>
                 ${this.interfaceTypes.map(type => html`
@@ -2002,16 +2005,16 @@ ${this.interfaces.length > 0 ? html`
                         </div>
                       </td>
                       <td class="ip-addresses-cell">
-                        ${iface.addresses && iface.addresses.length > 0 
-                          ? iface.addresses.length <= 3
-                            ? html`
+                        ${iface.addresses && iface.addresses.length > 0
+            ? iface.addresses.length <= 3
+              ? html`
                                 <div class="ip-list">
                                   ${iface.addresses.map(addr => html`
                                     <div class="ip-address">${addr}</div>
                                   `)}
                                 </div>
                               `
-                            : html`
+              : html`
                                 <div class="ip-list-collapsed">
                                   ${iface.addresses.slice(0, 2).map(addr => html`
                                     <div class="ip-address">${addr}</div>
@@ -2024,8 +2027,8 @@ ${this.interfaces.length > 0 ? html`
                                   `)}
                                 </div>
                               `
-                          : html`<span style="color: var(--text-secondary); font-size: 0.85rem;">-</span>`
-                        }
+            : html`<span style="color: var(--text-secondary); font-size: 0.85rem;">-</span>`
+          }
                       </td>
                       <td>${iface.statistics.rx_bytes}</td>
                       <td>${iface.statistics.tx_bytes}</td>
@@ -2351,9 +2354,9 @@ ${this.interfaces.length > 0 ? html`
                     placeholder="eth0, eth1"
                     .value=${this.bridgeInterfaceInputValue}
                     @input=${(e: Event) => {
-                      this.bridgeFormData.interfaces = (e.target as HTMLInputElement).value;
-                      this.handleBridgeInterfaceInput(e);
-                    }}
+          this.bridgeFormData.interfaces = (e.target as HTMLInputElement).value;
+          this.handleBridgeInterfaceInput(e);
+        }}
                     @keydown=${(e: KeyboardEvent) => this.handleBridgeInterfaceKeyDown(e)}
                     @blur=${() => this.closeBridgeInterfacesSuggestions()}
                     autocomplete="off"
@@ -2365,9 +2368,9 @@ ${this.interfaces.length > 0 ? html`
                         <div 
                           class="autocomplete-suggestion ${index === this.selectedSuggestionIndex ? 'selected' : ''}"
                           @mousedown=${(e: Event) => {
-                            e.preventDefault();
-                            this.selectSuggestion(name);
-                          }}
+            e.preventDefault();
+            this.selectSuggestion(name);
+          }}
                         >
                           ${name}
                         </div>
@@ -2442,9 +2445,9 @@ ${this.interfaces.length > 0 ? html`
                     placeholder="eth2, eth3"
                     .value=${this.bondInterfaceInputValue}
                     @input=${(e: Event) => {
-                      this.bondFormData.interfaces = (e.target as HTMLInputElement).value;
-                      this.handleBondInterfaceInput(e);
-                    }}
+          this.bondFormData.interfaces = (e.target as HTMLInputElement).value;
+          this.handleBondInterfaceInput(e);
+        }}
                     @keydown=${(e: KeyboardEvent) => this.handleBondInterfaceKeyDown(e)}
                     @blur=${() => this.closeBondInterfacesSuggestions()}
                     autocomplete="off"
@@ -2456,9 +2459,9 @@ ${this.interfaces.length > 0 ? html`
                         <div 
                           class="autocomplete-suggestion ${index === this.selectedBondSuggestionIndex ? 'selected' : ''}"
                           @mousedown=${(e: Event) => {
-                            e.preventDefault();
-                            this.selectBondSuggestion(name);
-                          }}
+            e.preventDefault();
+            this.selectBondSuggestion(name);
+          }}
                         >
                           ${name}
                         </div>
@@ -2502,9 +2505,9 @@ ${this.interfaces.length > 0 ? html`
                     .value=${this.vlanInterfaceInputValue}
                     ?disabled=${this.isEditingVlan}
                     @input=${(e: Event) => {
-                      this.vlanFormData.interface = (e.target as HTMLInputElement).value;
-                      this.handleVlanInterfaceInput(e);
-                    }}
+          this.vlanFormData.interface = (e.target as HTMLInputElement).value;
+          this.handleVlanInterfaceInput(e);
+        }}
                     @keydown=${(e: KeyboardEvent) => this.handleVlanInterfaceKeyDown(e)}
                     @blur=${() => this.closeVlanInterfacesSuggestions()}
                     autocomplete="off"
@@ -2516,9 +2519,9 @@ ${this.interfaces.length > 0 ? html`
                         <div 
                           class="autocomplete-suggestion ${index === this.selectedVlanSuggestionIndex ? 'selected' : ''}"
                           @mousedown=${(e: Event) => {
-                            e.preventDefault();
-                            this.selectVlanSuggestion(name);
-                          }}
+            e.preventDefault();
+            this.selectVlanSuggestion(name);
+          }}
                         >
                           ${name}
                         </div>

@@ -164,7 +164,7 @@ export class VirtualizationNetworks extends LitElement {
       width: 50%;
       height: 100%;
       background: var(--vscode-editor-background, var(--vscode-bg-light));
-      border-left: 1px solid var(--vscode-widget-border, #454545);
+      border-left: 1px solid var(--vscode-border);
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
       z-index: 1001;
       overflow-y: auto;
@@ -207,7 +207,7 @@ export class VirtualizationNetworks extends LitElement {
 
     .drawer-header {
       padding: 20px 24px;
-      border-bottom: 1px solid var(--vscode-editorWidget-border, #464647);
+      border-bottom: 1px solid var(--vscode-border);
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -231,7 +231,7 @@ export class VirtualizationNetworks extends LitElement {
 
     .drawer-footer {
       padding: 16px 24px;
-      border-top: 1px solid var(--vscode-editorWidget-border, #464647);
+      border-top: 1px solid var(--vscode-border);
       display: flex;
       justify-content: flex-end;
       gap: 12px;
@@ -277,7 +277,7 @@ export class VirtualizationNetworks extends LitElement {
       color: var(--vscode-foreground, #cccccc);
       margin: 0 0 12px 0;
       padding-bottom: 8px;
-      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+      border-bottom: 1px solid var(--vscode-border);
     }
 
     .detail-item {
@@ -289,7 +289,7 @@ export class VirtualizationNetworks extends LitElement {
     }
 
     .detail-item:not(:last-child) {
-      border-bottom: 1px solid var(--vscode-widget-border, rgba(0, 0, 0, 0.1));
+      border-bottom: 1px solid var(--vscode-border);
     }
 
     .detail-key {
@@ -317,7 +317,7 @@ export class VirtualizationNetworks extends LitElement {
       margin-top: 8px;
       margin-left: 180px;
       padding-left: 12px;
-      border-left: 2px solid var(--vscode-widget-border, #454545);
+      border-left: 2px solid var(--vscode-border);
     }
 
     .badge-inline {
@@ -366,7 +366,7 @@ export class VirtualizationNetworks extends LitElement {
       display: flex;
       gap: 20px;
       font-size: 12px;
-      border-bottom: 1px solid var(--vscode-widget-border, rgba(0, 0, 0, 0.05));
+      border-bottom: 1px solid var(--vscode-border);
     }
 
     .dhcp-host-item:last-child {
@@ -377,7 +377,7 @@ export class VirtualizationNetworks extends LitElement {
       display: flex;
       gap: 8px;
       margin-bottom: 16px;
-      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+      border-bottom: 1px solid var(--vscode-border);
     }
 
     .detail-tab {
@@ -405,7 +405,7 @@ export class VirtualizationNetworks extends LitElement {
 
     .detail-table th,
     .detail-table td {
-      border: 1px solid var(--vscode-widget-border, #454545);
+      border: 1px solid var(--vscode-border);
       padding: 4px 6px;
       text-align: left;
     }
@@ -428,7 +428,7 @@ export class VirtualizationNetworks extends LitElement {
 
     .raw-data {
       background: var(--vscode-editor-background, var(--vscode-bg-light));
-      border: 1px solid var(--vscode-editorWidget-border, #464647);
+      border: 1px solid var(--vscode-border);
       border-radius: 4px;
       padding: 12px;
       font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
@@ -924,10 +924,10 @@ export class VirtualizationNetworks extends LitElement {
         autostart: detailedNetwork.autostart ?? network.autostart,
         hosts: Array.isArray(dhcp.hosts)
           ? dhcp.hosts.map((host: any) => ({
-              mac: host.mac || '',
-              ip: host.ip || '',
-              name: host.name || '',
-            }))
+            mac: host.mac || '',
+            ip: host.ip || '',
+            name: host.name || '',
+          }))
           : [],
       };
 
@@ -1221,7 +1221,7 @@ export class VirtualizationNetworks extends LitElement {
               </div>
 
               ${this.detailActiveTab === 'overview'
-                ? html`<div class="detail-sections">
+          ? html`<div class="detail-sections">
                     <!-- Basic Information -->
                     <div class="detail-section">
                       <h3>Basic Information</h3>
@@ -1437,9 +1437,9 @@ export class VirtualizationNetworks extends LitElement {
                       </div>
                     ` : ''}
                   </div>`
-                : this.detailActiveTab === 'dhcp'
-                  ? this.renderDhcpLeasesTab()
-                  : this.renderPortsTab()}
+          : this.detailActiveTab === 'dhcp'
+            ? this.renderDhcpLeasesTab()
+            : this.renderPortsTab()}
             </div>
           `}
         </div>
@@ -1729,8 +1729,8 @@ export class VirtualizationNetworks extends LitElement {
           .networkData=${null}
           @save=${this.handleCreateSave}
           @close=${() => {
-            this.showCreateDrawer = false;
-          }}
+        this.showCreateDrawer = false;
+      }}
         ></network-form-drawer>
 
         <network-form-drawer
@@ -1740,10 +1740,10 @@ export class VirtualizationNetworks extends LitElement {
           .networkData=${this.editingNetworkForm}
           @save=${this.handleEditSave}
           @close=${() => {
-            this.showEditDrawer = false;
-            this.editingNetworkForm = null;
-            this.editingNetworkName = null;
-          }}
+        this.showEditDrawer = false;
+        this.editingNetworkForm = null;
+        this.editingNetworkName = null;
+      }}
         ></network-form-drawer>
       </div>
     `;

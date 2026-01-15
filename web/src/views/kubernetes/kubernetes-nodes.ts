@@ -68,7 +68,7 @@ export class KubernetesNodes extends LitElement {
     /* Raw Data Section */
     .raw-data {
       background: var(--vscode-editor-background, #1e1e1e);
-      border: 1px solid var(--vscode-widget-border, #303031);
+      border: 1px solid var(--vscode-border);
       border-radius: 4px;
       padding: 1rem;
       font-family: var(--vscode-editor-font-family, 'Courier New', monospace);
@@ -130,7 +130,7 @@ export class KubernetesNodes extends LitElement {
 
     .condition-item {
       background: var(--vscode-editor-background, #1e1e1e);
-      border: 1px solid var(--vscode-widget-border, #303031);
+      border: 1px solid var(--vscode-border);
       border-radius: 4px;
       padding: 0.75rem;
       margin-bottom: 0.5rem;
@@ -181,7 +181,7 @@ export class KubernetesNodes extends LitElement {
     .address-item {
       padding: 0.5rem;
       background: var(--vscode-editor-background, #1e1e1e);
-      border: 1px solid var(--vscode-widget-border, #303031);
+      border: 1px solid var(--vscode-border);
       border-radius: 4px;
     }
 
@@ -610,28 +610,28 @@ export class KubernetesNodes extends LitElement {
   }
 
 
-//   private renderActionButtons() {
-//     if (!this.selectedNode || !this.nodeDetails) return html``;
-// 
-//     const isUnschedulable = this.nodeDetails.spec?.unschedulable;
-// 
-//     return html`
-//       <div class="action-buttons">
-//         ${isUnschedulable ? html`
-//           <button class="action-button primary" @click=${() => this.uncordonNode(this.selectedNode!)}>
-//             Uncordon Node
-//           </button>
-//         ` : html`
-//           <button class="action-button primary" @click=${() => this.cordonNode(this.selectedNode!)}>
-//             Cordon Node
-//           </button>
-//         `}
-//         <button class="action-button danger" @click=${() => this.drainNode(this.selectedNode!)}>
-//           Drain Node
-//         </button>
-//       </div>
-//     `;
-//   }
+  //   private renderActionButtons() {
+  //     if (!this.selectedNode || !this.nodeDetails) return html``;
+  // 
+  //     const isUnschedulable = this.nodeDetails.spec?.unschedulable;
+  // 
+  //     return html`
+  //       <div class="action-buttons">
+  //         ${isUnschedulable ? html`
+  //           <button class="action-button primary" @click=${() => this.uncordonNode(this.selectedNode!)}>
+  //             Uncordon Node
+  //           </button>
+  //         ` : html`
+  //           <button class="action-button primary" @click=${() => this.cordonNode(this.selectedNode!)}>
+  //             Cordon Node
+  //           </button>
+  //         `}
+  //         <button class="action-button danger" @click=${() => this.drainNode(this.selectedNode!)}>
+  //           Drain Node
+  //         </button>
+  //       </div>
+  //     `;
+  //   }
 
   private formatMemory(memory?: string): string {
     if (!memory) return 'N/A';

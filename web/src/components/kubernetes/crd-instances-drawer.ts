@@ -39,7 +39,7 @@ export class CRDInstancesDrawer extends LitElement {
   @property({ type: Boolean }) loading = false;
   @property({ type: String }) width = '80%';
   @property({ type: Object }) crdDefinition: any = null;
-  
+
   @state() private searchQuery = '';
   @state() private selectedNamespace = 'All Namespaces';
   @state() private instances: CRDInstance[] = [];
@@ -70,7 +70,7 @@ export class CRDInstancesDrawer extends LitElement {
       bottom: 0;
       width: var(--drawer-width, 60%);
       background: var(--vscode-sideBar-background, #252526);
-      border-left: 1px solid var(--vscode-widget-border, #303031);
+      border-left: 1px solid var(--vscode-border);
       transform: translateX(100%);
       transition: transform 0.3s ease;
       z-index: 1000;
@@ -88,8 +88,8 @@ export class CRDInstancesDrawer extends LitElement {
       align-items: center;
       justify-content: space-between;
       padding: 1rem;
-      border-bottom: 1px solid var(--vscode-widget-border, #303031);
-      background: var(--vscode-editor-background, #1e1e1e);
+      border-bottom: 1px solid var(--vscode-border);
+      background: var(--vscode-bg-lighter, #252526);
     }
 
     .btn-create {
@@ -124,7 +124,7 @@ export class CRDInstancesDrawer extends LitElement {
       font-size: 1.2rem;
       font-weight: 600;
       margin: 0;
-      color: var(--vscode-foreground, #cccccc);
+      color: var(--vscode-foreground);
     }
 
     .subtitle {
@@ -164,7 +164,7 @@ export class CRDInstancesDrawer extends LitElement {
       display: flex;
       gap: 1rem;
       align-items: center;
-      border-bottom: 1px solid var(--vscode-widget-border, #303031);
+      border-bottom: 1px solid var(--vscode-border);
     }
 
     search-input {
@@ -267,13 +267,13 @@ export class CRDInstancesDrawer extends LitElement {
   private async fetchInstances() {
     this.loading = true;
     this.error = null;
-    
+
     try {
       const response = await KubernetesApi.getCRDInstances(this.crdName);
-      
+
       // Handle different possible response formats
       let instancesArray: any[] = [];
-      
+
       if (Array.isArray(response)) {
         instancesArray = response;
       } else if (response && typeof response === 'object') {
@@ -289,7 +289,7 @@ export class CRDInstancesDrawer extends LitElement {
           instancesArray = [];
         }
       }
-      
+
       // Transform the API response to match our CRDInstance interface
       this.instances = instancesArray.map((item: any) => {
         const instance: any = {
@@ -311,27 +311,27 @@ export class CRDInstancesDrawer extends LitElement {
             if (col.name === 'Age' || col.name === 'AGE') {
               continue;
             }
-            
+
             // Evaluate JSONPath expression and format value
             const value = evaluateJSONPath(item, col.jsonPath);
             instance[`_dynamic_${col.name}`] = formatColumnValue(value, col.type || 'string');
           }
         }
-          // Debug log for first instance
-          if (item.metadata?.name && item.metadata.name === instancesArray[0]?.metadata?.name) {
-            console.log("[CRD Debug] Processing first instance:", item.metadata.name);
-            console.log("[CRD Debug] Item structure:", item);
-            console.log("[CRD Debug] Printer columns:", printerColumns);
-            printerColumns?.forEach(col => {
-              const val = evaluateJSONPath(item, col.jsonPath);
-              console.log(`[CRD Debug] Column "${col.name}" jsonPath="${col.jsonPath}" value=`, val);
-            });
-          }
+        // Debug log for first instance
+        if (item.metadata?.name && item.metadata.name === instancesArray[0]?.metadata?.name) {
+          console.log("[CRD Debug] Processing first instance:", item.metadata.name);
+          console.log("[CRD Debug] Item structure:", item);
+          console.log("[CRD Debug] Printer columns:", printerColumns);
+          printerColumns?.forEach(col => {
+            const val = evaluateJSONPath(item, col.jsonPath);
+            console.log(`[CRD Debug] Column "${col.name}" jsonPath="${col.jsonPath}" value=`, val);
+          });
+        }
 
         return instance;
       });
     } catch (err: any) {
-        
+
       this.error = `Failed to fetch instances: ${err?.message || 'Unknown error'}`;
       this.instances = [];
     } finally {
@@ -341,7 +341,7 @@ export class CRDInstancesDrawer extends LitElement {
 
   private async fetchInstanceDetails(instance: CRDInstance) {
     this.loadingDetails = true;
-    
+
     try {
       const isNamespaced = this.crdScope === 'Namespaced';
       const response = await KubernetesApi.getCRDInstanceDetails(
@@ -349,7 +349,7 @@ export class CRDInstancesDrawer extends LitElement {
         instance.name,
         isNamespaced ? instance.namespace : undefined
       );
-      
+
       // Unwrap the { object: { ... } } structure to make it consistent with other Kubernetes resources
       this.instanceDetailsData = response?.object ? response.object : response;
     } catch (err: any) {
@@ -373,16 +373,16 @@ export class CRDInstancesDrawer extends LitElement {
 
   private calculateAge(timestamp: string): string {
     if (!timestamp) return 'Unknown';
-    
+
     const created = new Date(timestamp);
     const now = new Date();
     const diffMs = now.getTime() - created.getTime();
-    
+
     const seconds = Math.floor(diffMs / 1000);
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
-    
+
     if (days > 0) {
       return `${days}d ${hours % 24}h`;
     } else if (hours > 0) {
@@ -421,7 +421,7 @@ export class CRDInstancesDrawer extends LitElement {
     const columns: Column[] = [
       { key: 'name', label: 'Name', type: 'link' }
     ];
-    
+
     // Only show namespace column for namespaced resources
     if (this.crdScope === 'Namespaced') {
       columns.push({ key: 'namespace', label: 'Namespace' });
@@ -429,7 +429,7 @@ export class CRDInstancesDrawer extends LitElement {
 
     // Try to get additionalPrinterColumns from CRD definition
     const printerColumns = this.getAdditionalPrinterColumns();
-    
+
     if (printerColumns && printerColumns.length > 0) {
       // Use dynamic columns from CRD definition
       for (const col of printerColumns) {
@@ -437,7 +437,7 @@ export class CRDInstancesDrawer extends LitElement {
         if (col.name === 'Age' || col.name === 'AGE') {
           continue;
         }
-        
+
         columns.push({
           key: `_dynamic_${col.name}`,
           label: col.name
@@ -447,10 +447,10 @@ export class CRDInstancesDrawer extends LitElement {
       // Fallback to default Status column if no printer columns defined
       columns.push({ key: 'status', label: 'Status' });
     }
-    
+
     // Always add Age column at the end
     columns.push({ key: 'age', label: 'Age' });
-    
+
     return columns;
   }
 
@@ -497,7 +497,7 @@ export class CRDInstancesDrawer extends LitElement {
 
   private async handleAction(event: CustomEvent) {
     const { action, item } = event.detail;
-    
+
     switch (action) {
       case 'view':
         await this.viewInstanceDetails(item);
@@ -522,20 +522,20 @@ export class CRDInstancesDrawer extends LitElement {
 
   private async handleConfirmDelete(event: CustomEvent) {
     const { item } = event.detail;
-    
+
     // Find the instance to delete
-    const instance = this.instances.find(i => 
-      i.name === item.name && 
+    const instance = this.instances.find(i =>
+      i.name === item.name &&
       (item.namespace ? i.namespace === item.namespace : true)
     );
-    
+
     if (!instance) {
       console.error('Instance not found for deletion');
       return;
     }
-    
+
     this.deleting = true;
-    
+
     try {
       const isNamespaced = this.crdScope === 'Namespaced';
       await KubernetesApi.deleteCRDInstance(
@@ -543,14 +543,14 @@ export class CRDInstancesDrawer extends LitElement {
         instance.name,
         isNamespaced ? instance.namespace : undefined
       );
-      
+
       // Close the delete modal
       this.showDeleteModal = false;
       this.deleteItem = null;
-      
+
       // Refresh the instances list
       await this.fetchInstances();
-      
+
       // Show success notification
       this.dispatchEvent(new CustomEvent('notification', {
         detail: {
@@ -562,7 +562,7 @@ export class CRDInstancesDrawer extends LitElement {
       }));
     } catch (err: any) {
       console.error('Failed to delete instance:', err);
-      
+
       // Keep the modal open to show error state
       this.dispatchEvent(new CustomEvent('notification', {
         detail: {
@@ -593,7 +593,7 @@ export class CRDInstancesDrawer extends LitElement {
   private openCreateDrawer() {
     this.createResourceFormat = 'yaml';
     this.showCreateDrawer = true;
-    
+
     // Generate a basic template for the CRD instance
     const template = {
       apiVersion: `${this.crdGroup}/${this.crdVersion}`,
@@ -606,7 +606,7 @@ export class CRDInstancesDrawer extends LitElement {
         // Add your spec fields here
       }
     };
-    
+
     try {
       this.createResourceValue = YAML.stringify(template);
     } catch (error) {
@@ -622,10 +622,10 @@ export class CRDInstancesDrawer extends LitElement {
     try {
       content = format === 'json' ? JSON.stringify(resource) : (resource.yaml as string);
       this.isCreating = true;
-      
+
       // Determine the endpoint based on scope
       let endpoint = `/kubernetes/customresourcedefinitions/${this.crdName}/instances`;
-      
+
       // For namespaced resources, add the namespace to the endpoint
       if (this.crdScope === 'Namespaced') {
         // Try to extract namespace from the resource
@@ -636,15 +636,15 @@ export class CRDInstancesDrawer extends LitElement {
         // For cluster-scoped resources, use '-' as namespace placeholder
         endpoint = `${endpoint}/-`;
       }
-      
+
       // Create the resource
       await Api.postResource(endpoint, content, format === 'json' ? 'application/json' : 'application/yaml');
-      
+
       const nc = this.shadowRoot?.querySelector('notification-container') as any;
       if (nc && typeof nc.addNotification === 'function') {
         nc.addNotification({ type: 'success', message: `${this.crdKind} created successfully` });
       }
-      
+
       await this.fetchInstances();
       this.showCreateDrawer = false;
       this.createResourceValue = '';
@@ -662,7 +662,7 @@ export class CRDInstancesDrawer extends LitElement {
     this.selectedInstance = instance;
     this.loadingEdit = true;
     this.showEditDrawer = true;
-    
+
     try {
       // Fetch the full resource manifest
       const isNamespaced = this.crdScope === 'Namespaced';
@@ -671,18 +671,18 @@ export class CRDInstancesDrawer extends LitElement {
         instance.name,
         isNamespaced ? instance.namespace : undefined
       );
-      
-      
+
+
       // Unwrap the { object: { ... } } structure to make it consistent with other Kubernetes resources
       const unwrappedResponse = response?.object ? response.object : response;
-      
+
       // Filter out managedFields from metadata as it's internal Kubernetes data
       const filteredResource = { ...unwrappedResponse };
       if (filteredResource.metadata?.managedFields) {
         filteredResource.metadata = { ...filteredResource.metadata };
         delete filteredResource.metadata.managedFields;
       }
-      
+
       // Try to get the resource in YAML format by default
       try {
         // Convert the response to YAML format
@@ -714,7 +714,7 @@ export class CRDInstancesDrawer extends LitElement {
     if (event) {
       event.stopPropagation();
     }
-    
+
     this.showEditDrawer = false;
     this.selectedInstance = null;
     this.editResourceContent = '';
@@ -723,15 +723,15 @@ export class CRDInstancesDrawer extends LitElement {
 
   private async handleUpdateResource(event: CustomEvent) {
     const { resource, format } = event.detail;
-    
+
     if (!this.selectedInstance) {
       console.error('No instance selected for update');
       return;
     }
-    
+
     try {
       const isNamespaced = this.crdScope === 'Namespaced';
-      
+
       // Prepare the content for the API
       let content: string;
       if (format === 'json') {
@@ -741,21 +741,21 @@ export class CRDInstancesDrawer extends LitElement {
         // For YAML, it should already be a string or we need to convert
         content = resource.yaml || resource;
       }
-      
+
       // Build the endpoint for updating CRD instance
       const endpoint = isNamespaced
         ? `/kubernetes/customresourcedefinitions/${this.crdName}/instances/${this.selectedInstance.namespace}/${this.selectedInstance.name}`
         : `/kubernetes/customresourcedefinitions/${this.crdName}/instances/-/${this.selectedInstance.name}`;
-      
+
       // Update the resource
       await Api.putResource(endpoint, content, format === 'json' ? 'application/json' : 'application/yaml');
-      
+
       // Close the edit drawer
       this.handleEditDrawerClose();
-      
+
       // Refresh the instances list
       await this.fetchInstances();
-      
+
       // Show success notification
       this.dispatchEvent(new CustomEvent('notification', {
         detail: {
@@ -783,7 +783,7 @@ export class CRDInstancesDrawer extends LitElement {
     if (event) {
       event.stopPropagation();
     }
-    
+
     this.showInstanceDetails = false;
     this.selectedInstance = null;
     this.instanceDetailsData = null;
@@ -829,7 +829,7 @@ export class CRDInstancesDrawer extends LitElement {
       this.selectedNamespace = 'All Namespaces';
       this.error = null;
     }
-    
+
     // Update CSS variable when width property changes
     if (changedProperties.has('width')) {
       this.style.setProperty('--drawer-width', this.width);
@@ -934,9 +934,9 @@ export class CRDInstancesDrawer extends LitElement {
           <loading-state message="Loading instances..."></loading-state>
         ` : this.error ? '' : filteredInstances.length === 0 ? html`
           <empty-state 
-            message="${this.searchQuery || this.selectedNamespace !== 'All Namespaces' 
-              ? 'No instances found matching your filters' 
-              : `No ${this.crdKind} instances found`}"
+            message="${this.searchQuery || this.selectedNamespace !== 'All Namespaces'
+          ? 'No instances found matching your filters'
+          : `No ${this.crdKind} instances found`}"
             icon="📦"
           ></empty-state>
         ` : html`
@@ -945,15 +945,16 @@ export class CRDInstancesDrawer extends LitElement {
               .columns=${this.getColumns()}
               .data=${filteredInstances}
               .getActions=${(item: CRDInstance) => this.getActions(item)}
-              .customRenderers=${{                status: (value: string) => {
-                  const statusClass = value?.toLowerCase() || 'unknown';
-                  return html`
+              .customRenderers=${{
+          status: (value: string) => {
+            const statusClass = value?.toLowerCase() || 'unknown';
+            return html`
                     <span class="status-badge ${statusClass}">
                       ${value || 'Unknown'}
                     </span>
                   `;
-                }
-              }}
+          }
+        }}
               @cell-click=${this.handleCellClick}
               @action=${this.handleAction}
             ></resource-table>

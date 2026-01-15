@@ -120,7 +120,7 @@ export class UsersTab extends LitElement {
       border-collapse: collapse;
       background: var(--vscode-bg-light);
       border-radius: 1px;
-      border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border: 1px solid var(--vscode-border);
     }
 
     .users-table thead {

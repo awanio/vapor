@@ -444,7 +444,7 @@ export class ContainersTab extends LitElement {
       border-radius: 1px;
       overflow: visible;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border: 1px solid var(--vscode-border);
     }
 
     .table thead {
@@ -458,14 +458,14 @@ export class ContainersTab extends LitElement {
       text-align: left;
       padding: 12px 16px;
       font-size: 0.875rem;
-      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-bottom: 1px solid var(--vscode-border);
     }
 
     .table td {
       padding: 12px 16px;
       color: var(--vscode-text);
       font-size: 0.875rem;
-      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-bottom: 1px solid var(--vscode-border);
       position: relative;
     }
 
@@ -713,8 +713,8 @@ export class ContainersTab extends LitElement {
       right: 0;
       width: 50%;
       height: 100%;
-      background: var(--vscode-editor-background, #1e1e1e);
-      border-left: 1px solid var(--vscode-widget-border, #454545);
+      background: var(--vscode-editor-background, var(--vscode-bg));
+      border-left: 1px solid var(--vscode-border);
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
       z-index: 1001;
       overflow-y: auto;
@@ -741,11 +741,11 @@ export class ContainersTab extends LitElement {
 
     .create-drawer-header {
       padding: 20px 24px;
-      border-bottom: 1px solid var(--vscode-editorWidget-border, #464647);
+      border-bottom: 1px solid var(--vscode-border);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      background: var(--vscode-bg-lighter, #252526);
       position: sticky;
       top: 0;
       z-index: 10;
@@ -754,7 +754,7 @@ export class ContainersTab extends LitElement {
     .create-drawer-title {
       font-size: 18px;
       font-weight: 500;
-      color: var(--vscode-foreground, #cccccc);
+      color: var(--vscode-foreground);
       margin: 0;
     }
 
@@ -766,11 +766,11 @@ export class ContainersTab extends LitElement {
 
     .create-drawer-footer {
       padding: 16px 24px;
-      border-top: 1px solid var(--vscode-editorWidget-border, #464647);
+      border-top: 1px solid var(--vscode-border);
       display: flex;
       justify-content: flex-end;
       gap: 12px;
-      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      background: var(--vscode-bg-lighter, #252526);
       position: sticky;
       bottom: 0;
       z-index: 10;
@@ -1397,7 +1397,7 @@ export class ContainersTab extends LitElement {
       if (this.activeTab !== 'containers') return;
       try {
         await this.fetchContainers();
-      } catch {}
+      } catch { }
     }, 600);
   }
 
@@ -1428,7 +1428,7 @@ export class ContainersTab extends LitElement {
       this.detailError = null;
       const response = await api.get<any>(`/containers/${id}`);
       console.log('Full container details response:', response);
-      
+
       // Try different response structures
       let container = null;
       if (response?.data?.container) {
@@ -1439,7 +1439,7 @@ export class ContainersTab extends LitElement {
         // Response might be the container object directly
         container = response;
       }
-      
+
       console.log('Extracted container:', container);
       this.selectedContainer = container;
       this.selectedImage = null;
@@ -1453,12 +1453,12 @@ export class ContainersTab extends LitElement {
     }
   }
 
-async fetchImageDetails(id: string) {
+  async fetchImageDetails(id: string) {
     try {
       this.detailError = null;
       const response = await api.get<any>(`/containers/images/${id}`);
       console.log('Full image details response:', response);
-      
+
       // Try different response structures
       let image = null;
       if (response?.data?.image) {
@@ -1469,7 +1469,7 @@ async fetchImageDetails(id: string) {
         // Response might be the image object directly
         image = response;
       }
-      
+
       console.log('Extracted image:', image);
       this.selectedImage = image;
       this.selectedContainer = null;
@@ -1528,7 +1528,7 @@ async fetchImageDetails(id: string) {
     this.confirmMessage = message;
     this.confirmAction = action;
     this.showConfirmModal = true;
-    
+
     // Focus on the modal after it opens
     this.updateComplete.then(() => {
       // Find the cancel button in the slot content
@@ -1619,10 +1619,10 @@ async fetchImageDetails(id: string) {
       this.containerLogs = 'Loading logs...';
       this.logsSearchTerm = ''; // Clear search term when opening logs
       this.showLogsDrawer = true;
-      
+
       const response = await api.get<any>(`/containers/${id}/logs`);
       console.log('Logs response:', response);
-      
+
       if (response?.data?.logs) {
         this.containerLogs = response.data.logs;
       } else if (response?.logs) {
@@ -1779,9 +1779,9 @@ async fetchImageDetails(id: string) {
       const parsedMemory = memoryMB ? Number.parseInt(memoryMB, 10) : undefined;
       const resources = (parsedCpu && !Number.isNaN(parsedCpu)) || (parsedMemory && !Number.isNaN(parsedMemory))
         ? {
-            cpuCores: Number.isNaN(parsedCpu as number) ? undefined : parsedCpu,
-            memoryMB: Number.isNaN(parsedMemory as number) ? undefined : parsedMemory,
-          }
+          cpuCores: Number.isNaN(parsedCpu as number) ? undefined : parsedCpu,
+          memoryMB: Number.isNaN(parsedMemory as number) ? undefined : parsedMemory,
+        }
         : undefined;
 
       const payload: Record<string, unknown> = {
@@ -1916,11 +1916,11 @@ async fetchImageDetails(id: string) {
                   placeholder="Container port"
                   .value=${mapping.containerPort}
                   @input=${(e: any) => {
-                    const ports = [...this.createPorts];
-                    const current = ports[index] ?? { containerPort: '', hostPort: '', protocol: 'tcp' };
-                    ports[index] = { ...current, containerPort: e.target.value };
-                    this.createPorts = ports;
-                  }}
+        const ports = [...this.createPorts];
+        const current = ports[index] ?? { containerPort: '', hostPort: '', protocol: 'tcp' };
+        ports[index] = { ...current, containerPort: e.target.value };
+        this.createPorts = ports;
+      }}
                 />
                 <input
                   class="form-input"
@@ -1929,21 +1929,21 @@ async fetchImageDetails(id: string) {
                   placeholder="Host port"
                   .value=${mapping.hostPort}
                   @input=${(e: any) => {
-                    const ports = [...this.createPorts];
-                    const current = ports[index] ?? { containerPort: '', hostPort: '', protocol: 'tcp' };
-                    ports[index] = { ...current, hostPort: e.target.value };
-                    this.createPorts = ports;
-                  }}
+        const ports = [...this.createPorts];
+        const current = ports[index] ?? { containerPort: '', hostPort: '', protocol: 'tcp' };
+        ports[index] = { ...current, hostPort: e.target.value };
+        this.createPorts = ports;
+      }}
                 />
                 <select
                   class="form-select"
                   .value=${mapping.protocol}
                   @change=${(e: any) => {
-                    const ports = [...this.createPorts];
-                    const current = ports[index] ?? { containerPort: '', hostPort: '', protocol: 'tcp' };
-                    ports[index] = { ...current, protocol: e.target.value };
-                    this.createPorts = ports;
-                  }}
+        const ports = [...this.createPorts];
+        const current = ports[index] ?? { containerPort: '', hostPort: '', protocol: 'tcp' };
+        ports[index] = { ...current, protocol: e.target.value };
+        this.createPorts = ports;
+      }}
                 >
                   <option value="tcp">tcp</option>
                   <option value="udp">udp</option>
@@ -1965,11 +1965,11 @@ async fetchImageDetails(id: string) {
                   placeholder="/host/path"
                   .value=${volume.source}
                   @input=${(e: any) => {
-                    const volumes = [...this.createVolumes];
-                    const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
-                    volumes[index] = { ...current, source: e.target.value };
-                    this.createVolumes = volumes;
-                  }}
+          const volumes = [...this.createVolumes];
+          const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
+          volumes[index] = { ...current, source: e.target.value };
+          this.createVolumes = volumes;
+        }}
                 />
                 <input
                   class="form-input"
@@ -1977,21 +1977,21 @@ async fetchImageDetails(id: string) {
                   placeholder="/container/path"
                   .value=${volume.target}
                   @input=${(e: any) => {
-                    const volumes = [...this.createVolumes];
-                    const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
-                    volumes[index] = { ...current, target: e.target.value };
-                    this.createVolumes = volumes;
-                  }}
+          const volumes = [...this.createVolumes];
+          const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
+          volumes[index] = { ...current, target: e.target.value };
+          this.createVolumes = volumes;
+        }}
                 />
                 <select
                   class="form-select"
                   .value=${volume.type}
                   @change=${(e: any) => {
-                    const volumes = [...this.createVolumes];
-                    const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
-                    volumes[index] = { ...current, type: e.target.value };
-                    this.createVolumes = volumes;
-                  }}
+          const volumes = [...this.createVolumes];
+          const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
+          volumes[index] = { ...current, type: e.target.value };
+          this.createVolumes = volumes;
+        }}
                 >
                   <option value="bind">bind</option>
                   <option value="volume">volume</option>
@@ -2001,11 +2001,11 @@ async fetchImageDetails(id: string) {
                   class="form-select"
                   .value=${volume.propagation}
                   @change=${(e: any) => {
-                    const volumes = [...this.createVolumes];
-                    const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
-                    volumes[index] = { ...current, propagation: e.target.value };
-                    this.createVolumes = volumes;
-                  }}
+          const volumes = [...this.createVolumes];
+          const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
+          volumes[index] = { ...current, propagation: e.target.value };
+          this.createVolumes = volumes;
+        }}
                 >
                   <option value="">propagation</option>
                   <option value="rprivate">rprivate</option>
@@ -2017,11 +2017,11 @@ async fetchImageDetails(id: string) {
                     type="checkbox"
                     .checked=${volume.readOnly}
                     @change=${(e: any) => {
-                      const volumes = [...this.createVolumes];
-                      const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
-                      volumes[index] = { ...current, readOnly: e.target.checked };
-                      this.createVolumes = volumes;
-                    }}
+          const volumes = [...this.createVolumes];
+          const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
+          volumes[index] = { ...current, readOnly: e.target.checked };
+          this.createVolumes = volumes;
+        }}
                   />
                   Read-only
                 </label>
@@ -2087,7 +2087,7 @@ async fetchImageDetails(id: string) {
     `;
   }
 
-renderContainersTable() {
+  renderContainersTable() {
     const filteredContainers = this.containers.filter(container =>
       container.name?.toLowerCase().includes(this.searchTerm.toLowerCase())
     );
@@ -2124,12 +2124,12 @@ renderContainersTable() {
         </thead>
         <tbody>
           ${filteredContainers.map((container, index) => {
-            const shortId = container.id?.substring(0, 12) || 'Unknown';
-            const createdDate = container.created_at ? new Date(container.created_at).toLocaleString() : 'Unknown';
-            const imageName = container.image || 'Unknown';
-            const truncatedImage = imageName.length > 20 ? imageName.substring(0, 20) + '...' : imageName;
-            
-            return html`
+      const shortId = container.id?.substring(0, 12) || 'Unknown';
+      const createdDate = container.created_at ? new Date(container.created_at).toLocaleString() : 'Unknown';
+      const imageName = container.image || 'Unknown';
+      const truncatedImage = imageName.length > 20 ? imageName.substring(0, 20) + '...' : imageName;
+
+      return html`
               <tr>
 <td>
 <button class="link-button" @click=${() => this.fetchContainerDetails(container.id)}>
@@ -2153,21 +2153,21 @@ renderContainersTable() {
                       <button @click=${() => { this.closeAllMenus(); this.fetchContainerLogs(container.id, container.name); }}>Logs</button>
                       <button @click=${() => { this.closeAllMenus(); this.openContainerTerminal(container); }}>${t('terminal.title')}</button>
                       ${container.state === 'CONTAINER_RUNNING'
-                        ? html`<button @click=${() => { this.closeAllMenus(); this.stopContainer(container.id, container.name); }}>${t('containers.stop')}</button>`
-                        : html`<button @click=${() => { this.closeAllMenus(); this.startContainer(container.id, container.name); }}>${t('containers.start')}</button>`}
+          ? html`<button @click=${() => { this.closeAllMenus(); this.stopContainer(container.id, container.name); }}>${t('containers.stop')}</button>`
+          : html`<button @click=${() => { this.closeAllMenus(); this.startContainer(container.id, container.name); }}>${t('containers.start')}</button>`}
                       <button class="danger" @click=${() => { this.closeAllMenus(); this.removeContainer(container.id, container.name); }}>${t('common.delete')}</button>
                     </div>
                   </div>
                 </td>
               </tr>
             `;
-          })}
+    })}
         </tbody>
       </table>
     `;
   }
 
-renderImagesTable() {
+  renderImagesTable() {
     const filteredImages = this.images.filter(image =>
       image.repo_tags?.some(tag => tag.toLowerCase().includes(this.searchTerm.toLowerCase()))
     );
@@ -2208,12 +2208,12 @@ renderImagesTable() {
         </thead>
         <tbody>
           ${filteredImages.map((image, index) => {
-            const shortId = image.id?.substring(0, 12) || 'Unknown';
-            const tags = image.repo_tags && image.repo_tags.length > 0 
-              ? image.repo_tags.join(', ') 
-              : 'No tags';
-            const createdDate = image.created_at ? new Date(image.created_at).toLocaleString() : 'Unknown';
-            return html`
+      const shortId = image.id?.substring(0, 12) || 'Unknown';
+      const tags = image.repo_tags && image.repo_tags.length > 0
+        ? image.repo_tags.join(', ')
+        : 'No tags';
+      const createdDate = image.created_at ? new Date(image.created_at).toLocaleString() : 'Unknown';
+      return html`
               <tr>
 <td>
 <button class="link-button" @click=${() => this.fetchImageDetails(image.id)}>
@@ -2234,7 +2234,7 @@ renderImagesTable() {
                 </td>
               </tr>
             `;
-          })}
+    })}
         </tbody>
       </table>
     `;
@@ -2331,7 +2331,7 @@ renderImagesTable() {
         </a>
       </div>
     `;
-}
+  }
 
   renderError() {
     return html`
@@ -2345,7 +2345,7 @@ renderImagesTable() {
   renderContainerDetails() {
     if (!this.selectedContainer) return;
     const container = this.selectedContainer;
-    
+
     return html`
       <div class="drawer-content">
         <div class="detail-section">
@@ -2387,8 +2387,8 @@ renderImagesTable() {
             <h3>Labels</h3>
             <div class="tag-list">
               ${Object.entries(container.labels).map(
-                ([key, value]) => html`<div class="tag">${key}: ${value}</div>`
-              )}
+      ([key, value]) => html`<div class="tag">${key}: ${value}</div>`
+    )}
             </div>
           </div>
         ` : ''}
@@ -2399,7 +2399,7 @@ renderImagesTable() {
   renderImageDetails() {
     if (!this.selectedImage) return;
     const image = this.selectedImage;
-    
+
     return html`
       <div class="drawer-content">
         <div class="detail-section">
@@ -2411,10 +2411,10 @@ renderImagesTable() {
           <div class="detail-item">
             <span class="detail-label">Tags</span>
             ${image.repo_tags && image.repo_tags.length > 0
-              ? html`<div class="tag-list">${image.repo_tags.map(
-                  (tag) => html`<div class="tag">${tag}</div>`
-                )}</div>`
-              : html`<span class="detail-value">No tags</span>`}
+        ? html`<div class="tag-list">${image.repo_tags.map(
+          (tag) => html`<div class="tag">${tag}</div>`
+        )}</div>`
+        : html`<span class="detail-value">No tags</span>`}
           </div>
           ${image.repo_digests && image.repo_digests.length > 0 ? html`
             <div class="detail-item">
@@ -2459,29 +2459,29 @@ renderImagesTable() {
           ${this.error ? html`
             <div class="error-state">
               <h3>${this.error.includes('No container runtime found') ? 'Container Runtime Not Available' : 'Error'}</h3>
-              <p>${this.error.includes('No container runtime found') 
-                ? 'Container management features are not available. Please install Docker or a CRI-compatible container runtime (containerd, CRI-O) to use this feature.'
-                : this.error}</p>
+              <p>${this.error.includes('No container runtime found')
+          ? 'Container management features are not available. Please install Docker or a CRI-compatible container runtime (containerd, CRI-O) to use this feature.'
+          : this.error}</p>
             </div>
           ` : ''}
 
 
           ${this.activeTab === 'containers' && !this.error ? html`
-            ${this.containers.length > 0 
-              ? this.renderContainersTable()
-              : html`
+            ${this.containers.length > 0
+          ? this.renderContainersTable()
+          : html`
                 <div class="empty-state">No containers found.</div>
               `
-            }
+        }
           ` : ''}
 
           ${this.activeTab === 'images' && !this.error ? html`
-            ${this.images.length > 0 
-              ? this.renderImagesTable()
-              : html`
+            ${this.images.length > 0
+          ? this.renderImagesTable()
+          : html`
                 <div class="empty-state">No images found.</div>
               `
-            }
+        }
           ` : ''}
         </div>
       </div>
@@ -2531,10 +2531,10 @@ renderImagesTable() {
             .value=${this.imageName}
             @input=${(e: any) => this.imageName = e.target.value}
             @keydown=${(e: KeyboardEvent) => {
-              if (e.key === 'Enter') {
-                this.handleConfirmPullImage();
-              }
-            }}
+        if (e.key === 'Enter') {
+          this.handleConfirmPullImage();
+        }
+      }}
             style="width: 100%; padding-left: 12px;"
           />
         </div>
@@ -2552,20 +2552,20 @@ renderImagesTable() {
         <div class="drawer">
           <button class="close-btn" @click=${() => { this.showDrawer = false; this.detailError = null; }}>✕</button>
           
-          ${this.detailError ? this.renderError() : 
-            (this.selectedContainer ? this.renderContainerDetails() : 
-             this.selectedImage ? this.renderImageDetails() : '')}
+          ${this.detailError ? this.renderError() :
+          (this.selectedContainer ? this.renderContainerDetails() :
+            this.selectedImage ? this.renderImageDetails() : '')}
         </div>
       ` : ''}
 
       ${this.showLogsDrawer ? html`
         <div class="drawer">
-          <button class="close-btn" @click=${() => { 
-            this.showLogsDrawer = false; 
-            this.logsError = null;
-            this.containerLogs = '';
-            this.logsSearchTerm = '';
-          }}>✕</button>
+          <button class="close-btn" @click=${() => {
+          this.showLogsDrawer = false;
+          this.logsError = null;
+          this.containerLogs = '';
+          this.logsSearchTerm = '';
+        }}>✕</button>
           
           <div class="drawer-content">
             <div class="logs-header">
@@ -2646,11 +2646,11 @@ renderImagesTable() {
 
   handleImageActionSelect(action: string) {
     this.showImageActionsDropdown = false;
-    
+
     if (action === 'pull') {
       this.showPullImageModal = true;
       this.imageName = '';
-      
+
       // Focus on the modal input field after it opens
       this.updateComplete.then(() => {
         const inputField = this.shadowRoot?.querySelector('.modal-input') as HTMLInputElement;
@@ -2669,7 +2669,7 @@ renderImagesTable() {
     fileInput.type = 'file';
     fileInput.accept = '.tar,.tar.gz,.tgz';
     fileInput.style.display = 'none';
-    
+
     fileInput.addEventListener('change', (event) => {
       const files = (event.target as HTMLInputElement).files;
       if (files && files.length > 0 && files[0]) {
@@ -2679,33 +2679,33 @@ renderImagesTable() {
       // Clean up the temporary input
       document.body.removeChild(fileInput);
     });
-    
+
     document.body.appendChild(fileInput);
     fileInput.click();
   }
 
   async handleFileUpload() {
     if (!this.selectedFile) return;
-    
+
     try {
       const formData = new FormData();
       formData.append('image', this.selectedFile);
-      
+
       // Note: This is a placeholder for the actual upload API call
       // Replace with the correct API endpoint when available
       console.log('Uploading image file:', this.selectedFile.name);
-      
+
       // TODO: Implement actual file upload to the backend
       // await api.post('/images/upload', formData, {
       //   headers: {
       //     'Content-Type': 'multipart/form-data'
       //   }
       // });
-      
+
       // Refresh images list after successful upload
       this.fetchImages();
       this.selectedFile = null;
-      
+
     } catch (error) {
       console.error('Error uploading image file:', error);
       // TODO: Show error message to user
@@ -2714,7 +2714,7 @@ renderImagesTable() {
 
   handleConfirmPullImage() {
     if (!this.imageName.trim()) return;
-    
+
     this.pullImage(this.imageName.trim());
     this.showPullImageModal = false;
     this.imageName = '';
@@ -2728,14 +2728,14 @@ renderImagesTable() {
   async pullImage(imageName: string) {
     try {
       console.log('Pulling image:', imageName);
-      
+
       // Note: This is a placeholder for the actual pull API call
       // Replace with the correct API endpoint when available
       // await api.post('/images/pull', { imageName });
-      
+
       // Refresh images list after successful pull
       this.fetchImages();
-      
+
     } catch (error) {
       console.error('Error pulling image:', error);
       // TODO: Show error message to user
@@ -2788,7 +2788,7 @@ renderImagesTable() {
     event.stopPropagation();
     const uploadZone = event.currentTarget as HTMLElement;
     uploadZone.classList.remove('dragover');
-    
+
     const files = Array.from(event.dataTransfer?.files || []);
     if (files.length > 0) {
       this.addFilesToQueue(files);
@@ -2817,14 +2817,14 @@ renderImagesTable() {
 
   async startUploads() {
     if (this.isUploading) return;
-    
+
     this.isUploading = true;
     const pendingItems = this.uploadQueue.filter(item => item.status === 'pending');
-    
+
     for (const item of pendingItems) {
       await this.uploadSingleFile(item);
     }
-    
+
     this.isUploading = false;
     // Refresh images list after all uploads complete
     this.fetchImages();
@@ -2866,14 +2866,14 @@ renderImagesTable() {
 
     } catch (error) {
       console.error('Error uploading file:', error);
-      
+
       // Update status to error
       const errorIndex = this.uploadQueue.findIndex(i => i.id === item.id);
       if (errorIndex !== -1 && this.uploadQueue[errorIndex]) {
         const existingItem = this.uploadQueue[errorIndex];
-        this.uploadQueue[errorIndex] = { 
-          ...existingItem, 
-          status: 'error', 
+        this.uploadQueue[errorIndex] = {
+          ...existingItem,
+          status: 'error',
           error: error instanceof Error ? error.message : 'Upload failed'
         };
         this.requestUpdate();
@@ -2984,8 +2984,8 @@ renderImagesTable() {
           </div>
           <div class="progress-text">
             <span>${item.progress}%</span>
-            <span>${item.status === 'completed' ? 'Complete' : 
-                     item.status === 'error' ? 'Failed' : 'Uploading...'}</span>
+            <span>${item.status === 'completed' ? 'Complete' :
+          item.status === 'error' ? 'Failed' : 'Uploading...'}</span>
           </div>
         ` : ''}
         

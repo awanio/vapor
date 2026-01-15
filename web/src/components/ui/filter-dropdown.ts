@@ -26,9 +26,9 @@ export class FilterDropdown extends LitElement {
     }
 
     .dropdown-toggle {
-      background: var(--vscode-button-secondaryBackground, #3a3a3a);
-      color: var(--vscode-button-secondaryForeground, #cccccc);
-      border: 1px solid var(--vscode-button-border, #555555);
+      background: var(--vscode-button-secondaryBackground, var(--vscode-bg-lighter, #eff1f3));
+      color: var(--vscode-button-secondaryForeground, var(--vscode-foreground, #3b3b3b));
+      border: 1px solid var(--vscode-button-border, var(--vscode-border, #cecece));
       padding: 6px 12px;
       border-radius: 4px;
       cursor: pointer;
@@ -41,12 +41,12 @@ export class FilterDropdown extends LitElement {
     }
 
     .dropdown-toggle:hover {
-      background: var(--vscode-button-secondaryHoverBackground, #45494e);
+      background: var(--vscode-button-secondaryHoverBackground, var(--vscode-bg, #e5e5e5));
     }
 
     .dropdown-toggle.open {
-      background: var(--vscode-button-background, #0e639c);
-      color: var(--vscode-button-foreground, #ffffff);
+      background: var(--vscode-button-secondaryBackground, var(--vscode-bg-lighter, #eff1f3));
+      color: var(--vscode-button-secondaryForeground, var(--vscode-foreground, #3b3b3b));
       border-color: var(--vscode-focusBorder, #007acc);
     }
 
@@ -79,8 +79,8 @@ export class FilterDropdown extends LitElement {
       top: 100%;
       left: 0;
       margin-top: 4px;
-      background: var(--vscode-dropdown-background, #252526);
-      border: 1px solid var(--vscode-dropdown-border, #454545);
+      background: var(--vscode-dropdown-background, var(--vscode-editor-background, #ffffff));
+      border: 1px solid var(--vscode-border);
       border-radius: 4px;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
       z-index: 1000;
@@ -97,15 +97,16 @@ export class FilterDropdown extends LitElement {
       gap: 8px;
       transition: background-color 0.2s;
       font-size: 13px;
+      color: var(--vscode-foreground);
       white-space: nowrap;
     }
 
     .filter-option:hover {
-      background: var(--vscode-list-hoverBackground, #2a2d2e);
+      background: var(--vscode-list-hoverBackground, rgba(0, 0, 0, 0.04));
     }
 
     .filter-option.selected {
-      background: var(--vscode-list-activeSelectionBackground, #094771);
+      background: var(--vscode-list-activeSelectionBackground, #007acc);
       color: var(--vscode-list-activeSelectionForeground, #ffffff);
     }
 
@@ -176,7 +177,7 @@ export class FilterDropdown extends LitElement {
     }
   `;
 
-  @property({ type: Array }) 
+  @property({ type: Array })
   options: Array<{
     value: string;
     label: string;

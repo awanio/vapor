@@ -48,6 +48,15 @@
   --vscode-accent-hover: var(--primary-hover);
   --vscode-error: var(--error);
   --vscode-font: var(--font-family);
+  --vscode-editor-background: #1e1e1e;
+  --vscode-editor-foreground: #cccccc;
+  --vscode-tab: #2d2d30;
+  --vscode-tab-active: #1e1e1e;
+  --vscode-text-bright: #ffffff;
+  --vscode-success: #4ec9b0;
+  --vscode-warning: #dcdcaa;
+  --vscode-info: #3794ff;
+  --vscode-statusbar: #007acc;
   
   /* Success/Error background colors for dark theme */
   --success-bg: rgba(115, 201, 145, 0.15);
@@ -56,28 +65,28 @@
 
 /* Light theme */
 :root.light {
-  /* Surface colors */
+  /* Surface colors - Softened for professional look */
   --surface-0: #ffffff;
-  --surface-1: #f3f3f3;
-  --surface-2: #ededed;
-  --surface-3: #e8e8e8;
+  --surface-1: #f8f9fa; /* Lighter sidebar relative to main content */
+  --surface-2: #f3f4f6;
+  --surface-3: #e5e7eb;
   
   /* Text colors */
-  --text-primary: #1e1e1e;
-  --text-secondary: #6e6e6e;
-  --text-disabled: #a8a8a8;
+  --text-primary: #24292f; /* GitHub-like dark gray, not pure black */
+  --text-secondary: #57606a;
+  --text-disabled: #8c959f;
   
   /* Border colors */
-  --border-color: #e5e5e5;
+  --border-color: #d0d7de; /* GitHub-like border */
   
   /* Primary colors */
-  --primary: #0066cc;
-  --primary-hover: #0052a3;
+  --primary: #0969da;
+  --primary-hover: #0a53be;
   
   /* Error/Success/Warning colors */
-  --error: #d73a49;
-  --success: #28a745;
-  --warning: #ffc107;
+  --error: #cf222e;
+  --success: #1a7f37;
+  --warning: #9a6700;
   
   /* VSCode compatibility mappings */
   --vscode-bg: var(--surface-0);
@@ -85,20 +94,36 @@
   --vscode-bg-lighter: var(--surface-2);
   --vscode-sidebar: var(--surface-1);
   --vscode-sidebar-hover: rgba(0, 0, 0, 0.04);
-  --vscode-sidebar-active: rgba(0, 0, 0, 0.08);
+  --vscode-sidebar-active: #eef2fa; /* Light blue tint for active items */
   --vscode-sidebar-active-border: var(--primary);
   --vscode-titlebar: var(--surface-1);
   --vscode-text: var(--text-primary);
   --vscode-text-dim: var(--text-secondary);
+  --vscode-text-bright: #000000;
   --vscode-border: var(--border-color);
   --vscode-accent: var(--primary);
   --vscode-accent-hover: var(--primary-hover);
   --vscode-error: var(--error);
+  --vscode-success: var(--success);
+  --vscode-warning: var(--warning);
+  --vscode-info: #0969da;
   --vscode-font: var(--font-family);
+  --vscode-editor-background: #ffffff;
+  --vscode-editor-foreground: #24292f;
+  --vscode-tab: #f3f4f6;
+  --vscode-tab-active: #ffffff;
+  --vscode-statusbar: #0969da;
   
   /* Success/Error background colors for light theme */
-  --success-bg: #d4edda;
-  --error-bg: #f8d7da;
+  --success-bg: #dafbe1;
+  --error-bg: #ffebe9;
+
+  /* Form elements override */
+  --vscode-input-background: #ffffff;
+  --vscode-input-foreground: #24292f;
+  --vscode-input-border: #d0d7de;
+  --vscode-focusBorder: #0969da;
+  --vscode-foreground: #24292f;
 }
 
 /* Reset and base styles */

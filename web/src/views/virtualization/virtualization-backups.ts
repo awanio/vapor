@@ -45,7 +45,7 @@ export class VirtualizationBackupsView extends LitElement {
     .btn-danger { background: #a4262c; border-color: #a4262c; color: #ffffff; }
     .btn-danger:hover:not([disabled]) { background: #c42b32; border-color: #c42b32; }
     table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 12px 10px; border-bottom: 1px solid var(--vscode-widget-border, #2a2f3a); text-align: left; font-size: 13px; }
+    th, td { padding: 12px 10px; border-bottom: 1px solid var(--vscode-border); text-align: left; font-size: 13px; }
     th { color: var(--vscode-descriptionForeground, #9ca3af); font-weight: 600; }
     tr:hover td { background: rgba(255,255,255,0.02); }
     .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; background: #1f2937; color: #e5e7eb; font-size: 12px; }

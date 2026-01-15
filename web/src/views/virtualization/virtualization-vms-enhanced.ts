@@ -60,16 +60,16 @@ export class VirtualizationVMsEnhanced extends LitElement {
   private mapEnhancedVmToFormData(enhanced: any): any {
     const storageDisks = Array.isArray(enhanced.storage?.disks)
       ? enhanced.storage.disks.map((d: any) => ({
-          action: 'attach' as const,
-          size: d.size,
-          format: (d.format === 'vmdk' ? 'qcow2' : d.format) as 'qcow2' | 'raw',
-          storage_pool: d.storage_pool,
-          path: d.source_path || d.path,
-          bus: d.bus,
-          device: d.device,
-          target: d.target,
-          readonly: !!d.readonly,
-        }))
+        action: 'attach' as const,
+        size: d.size,
+        format: (d.format === 'vmdk' ? 'qcow2' : d.format) as 'qcow2' | 'raw',
+        storage_pool: d.storage_pool,
+        path: d.source_path || d.path,
+        bus: d.bus,
+        device: d.device,
+        target: d.target,
+        readonly: !!d.readonly,
+      }))
       : [];
 
     const primaryNetwork = Array.isArray(enhanced.networks) && enhanced.networks.length > 0
@@ -78,20 +78,20 @@ export class VirtualizationVMsEnhanced extends LitElement {
 
     const network = primaryNetwork
       ? {
-          type: primaryNetwork.type,
-          source:
-            (primaryNetwork.source &&
-              (primaryNetwork.source.network ||
-               primaryNetwork.source.bridge ||
-               primaryNetwork.source.dev)) ||
-            primaryNetwork.source ||
-            '',
-          model:
-            (primaryNetwork.model && primaryNetwork.model.type) ||
-            primaryNetwork.model ||
-            'virtio',
-          mac: primaryNetwork.mac,
-        }
+        type: primaryNetwork.type,
+        source:
+          (primaryNetwork.source &&
+            (primaryNetwork.source.network ||
+              primaryNetwork.source.bridge ||
+              primaryNetwork.source.dev)) ||
+          primaryNetwork.source ||
+          '',
+        model:
+          (primaryNetwork.model && primaryNetwork.model.type) ||
+          primaryNetwork.model ||
+          'virtio',
+        mac: primaryNetwork.mac,
+      }
       : undefined;
 
     const primaryGraphics = Array.isArray(enhanced.graphics) && enhanced.graphics.length > 0
@@ -100,12 +100,12 @@ export class VirtualizationVMsEnhanced extends LitElement {
 
     const graphics = primaryGraphics
       ? {
-          type: primaryGraphics.type,
-          port: primaryGraphics.port,
-          password: primaryGraphics.password,
-          autoport: primaryGraphics.autoport ?? true,
-          listen: primaryGraphics.listen || '0.0.0.0',
-        }
+        type: primaryGraphics.type,
+        port: primaryGraphics.port,
+        password: primaryGraphics.password,
+        autoport: primaryGraphics.autoport ?? true,
+        listen: primaryGraphics.listen || '0.0.0.0',
+      }
       : undefined;
 
     return {
@@ -212,26 +212,26 @@ export class VirtualizationVMsEnhanced extends LitElement {
     default_user: string;
     metadata_json: string;
   } = {
-    name: '',
-    description: '',
-    os_type: 'linux',
-    os_variant: '',
-    min_memory: '1024',
-    recommended_memory: '',
-    min_vcpus: '1',
-    recommended_vcpus: '',
-    min_disk: '10',
-    recommended_disk: '',
-    disk_format: '',
-    network_model: '',
-    graphics_type: '',
-    cloud_init: false,
-    uefi_boot: false,
-    secure_boot: false,
-    tpm: false,
-    default_user: '',
-    metadata_json: '',
-  };
+      name: '',
+      description: '',
+      os_type: 'linux',
+      os_variant: '',
+      min_memory: '1024',
+      recommended_memory: '',
+      min_vcpus: '1',
+      recommended_vcpus: '',
+      min_disk: '10',
+      recommended_disk: '',
+      disk_format: '',
+      network_model: '',
+      graphics_type: '',
+      cloud_init: false,
+      uefi_boot: false,
+      secure_boot: false,
+      tpm: false,
+      default_user: '',
+      metadata_json: '',
+    };
 
   @state() private templateFormErrors: Record<string, string> = {};
 
@@ -274,7 +274,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
       flex-direction: column;
       padding: 14px;
       background: var(--vscode-editor-background);
-      border: 1px solid var(--vscode-widget-border, var(--vscode-input-border, var(--vscode-panel-border, #454545)));
+      border: 1px solid var(--vscode-border);
       border-radius: 8px;
       transition: all 0.2s ease;
       position: relative;
@@ -425,7 +425,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
       gap: 6px;
       padding: 4px 10px;
       border-radius: 999px;
-      border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border: 1px solid var(--vscode-border);
       font-size: 11px;
       color: var(--vscode-descriptionForeground);
       user-select: none;
@@ -568,7 +568,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
       max-width: calc(100vw - 40px);
       height: 100vh;
       background: var(--vscode-editor-background, var(--vscode-bg-light));
-      border-left: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-left: 1px solid var(--vscode-border);
       box-shadow: -2px 0 12px rgba(0, 0, 0, 0.25);
       z-index: 1000;
       display: flex;
@@ -578,7 +578,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
     .drawer-header {
       padding: 16px 20px;
       background: var(--vscode-bg-lighter, #2c2f3a);
-      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-bottom: 1px solid var(--vscode-border);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -614,7 +614,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
 
     .drawer-footer {
       padding: 14px 20px;
-      border-top: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-top: 1px solid var(--vscode-border);
       background: var(--vscode-bg);
       display: flex;
       justify-content: flex-end;
@@ -761,7 +761,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
       align-items: center;
       gap: 8px;
       padding: 8px 10px;
-      border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border: 1px solid var(--vscode-border);
       border-radius: 6px;
       background: rgba(255, 255, 255, 0.02);
     }
@@ -784,7 +784,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
       padding: 2px 8px;
       border-radius: 999px;
       font-size: 11px;
-      border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border: 1px solid var(--vscode-border);
       background: rgba(255, 255, 255, 0.02);
     }
 
@@ -1096,7 +1096,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
 
       // Build WebSocket URL for VNC console
       const wsUrl = consoleActions.getVNCWebSocketUrl(vm.id, vncInfo.token);
-      
+
       // Open in new tab with the VNC console page
       const vncUrl = `/vnc-console.html?url=${encodeURIComponent(wsUrl)}&fullscreen=true&vmName=${encodeURIComponent(vm.name || vm.id)}`;
       window.open(vncUrl, '_blank');
@@ -1373,7 +1373,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
       if (this.selectedVMForDetails && vm) {
         this.selectedVMForDetails = { ...vm };
       }
-      
+
       // Update the store's local state immediately so the table reflects the change
       if (vm?.id && vm?.state) {
         vmActions.updateLocalState(vm.id, vm.state);
@@ -1458,7 +1458,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
   }
 
 
-  
+
   private async handleWizardVmCreated(event: CustomEvent) {
     const vm = (event.detail as any)?.vm;
     if (!vm) return;
@@ -1467,11 +1467,11 @@ export class VirtualizationVMsEnhanced extends LitElement {
     // Ensure list is fresh, then open details
     try {
       await vmActions.fetchAll();
-    } catch {}
+    } catch { }
     this.showVMDetails(vm);
   }
 
-// ============ Templates helpers ============
+  // ============ Templates helpers ============
 
   private getTemplateActions(_template: VMTemplate): ActionItem[] {
     return [
@@ -1783,8 +1783,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
       <modal-dialog
         .open=${this.showCreateTemplateFromVmModal}
         .title=${this.vmForTemplateCreation
-          ? `Create Template from ${this.vmForTemplateCreation.name}`
-          : 'Create Template from VM'}
+        ? `Create Template from ${this.vmForTemplateCreation.name}`
+        : 'Create Template from VM'}
         size="small"
         @modal-close=${this.closeCreateTemplateFromVmModal}
       >
@@ -1794,8 +1794,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
             type="text"
             .value=${this.templateFromVmName}
             @input=${(e: InputEvent) => {
-              this.templateFromVmName = (e.target as HTMLInputElement).value;
-            }}
+        this.templateFromVmName = (e.target as HTMLInputElement).value;
+      }}
           />
         </div>
         <div class="form-group">
@@ -1804,8 +1804,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
             type="text"
             .value=${this.templateFromVmDescription}
             @input=${(e: InputEvent) => {
-              this.templateFromVmDescription = (e.target as HTMLInputElement).value;
-            }}
+        this.templateFromVmDescription = (e.target as HTMLInputElement).value;
+      }}
           />
         </div>
 
@@ -1846,8 +1846,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
               .value=${this.templateForm.name}
               ?disabled=${isEdit}
               @input=${(e: InputEvent) => {
-                this.templateForm = { ...this.templateForm, name: (e.target as HTMLInputElement).value };
-              }}
+        this.templateForm = { ...this.templateForm, name: (e.target as HTMLInputElement).value };
+      }}
             />
             ${this.templateFormErrors.name ? html`<div class="error-text">${this.templateFormErrors.name}</div>` : ''}
             ${isEdit ? html`<div class="help-text">Template name cannot be changed.</div>` : ''}
@@ -1859,8 +1859,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
               type="text"
               .value=${this.templateForm.description}
               @input=${(e: InputEvent) => {
-                this.templateForm = { ...this.templateForm, description: (e.target as HTMLInputElement).value };
-              }}
+        this.templateForm = { ...this.templateForm, description: (e.target as HTMLInputElement).value };
+      }}
             />
           </div>
 
@@ -1870,8 +1870,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
               <select
                 .value=${this.templateForm.os_type}
                 @change=${(e: Event) => {
-                  this.templateForm = { ...this.templateForm, os_type: (e.target as HTMLSelectElement).value as VMTemplateOsType };
-                }}
+        this.templateForm = { ...this.templateForm, os_type: (e.target as HTMLSelectElement).value as VMTemplateOsType };
+      }}
               >
                 <option value="linux">linux</option>
                 <option value="windows">windows</option>
@@ -1888,8 +1888,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
                 .family=${this.templateForm.os_type}
                 placeholder="ubuntu22.04"
                 @os-variant-change=${(e: CustomEvent<{ value: string }>) => {
-                  this.templateForm = { ...this.templateForm, os_variant: e.detail.value };
-                }}
+        this.templateForm = { ...this.templateForm, os_variant: e.detail.value };
+      }}
               ></os-variant-autocomplete>
             </div>
           </div>
@@ -1902,8 +1902,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
                 min="1"
                 .value=${this.templateForm.min_memory}
                 @input=${(e: InputEvent) => {
-                  this.templateForm = { ...this.templateForm, min_memory: (e.target as HTMLInputElement).value };
-                }}
+        this.templateForm = { ...this.templateForm, min_memory: (e.target as HTMLInputElement).value };
+      }}
               />
               ${this.templateFormErrors.min_memory ? html`<div class="error-text">${this.templateFormErrors.min_memory}</div>` : ''}
             </div>
@@ -1915,8 +1915,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
                 min="1"
                 .value=${this.templateForm.recommended_memory}
                 @input=${(e: InputEvent) => {
-                  this.templateForm = { ...this.templateForm, recommended_memory: (e.target as HTMLInputElement).value };
-                }}
+        this.templateForm = { ...this.templateForm, recommended_memory: (e.target as HTMLInputElement).value };
+      }}
               />
               ${this.templateFormErrors.recommended_memory ? html`<div class="error-text">${this.templateFormErrors.recommended_memory}</div>` : ''}
             </div>
@@ -1928,8 +1928,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
                 min="1"
                 .value=${this.templateForm.min_vcpus}
                 @input=${(e: InputEvent) => {
-                  this.templateForm = { ...this.templateForm, min_vcpus: (e.target as HTMLInputElement).value };
-                }}
+        this.templateForm = { ...this.templateForm, min_vcpus: (e.target as HTMLInputElement).value };
+      }}
               />
               ${this.templateFormErrors.min_vcpus ? html`<div class="error-text">${this.templateFormErrors.min_vcpus}</div>` : ''}
             </div>
@@ -1941,8 +1941,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
                 min="1"
                 .value=${this.templateForm.recommended_vcpus}
                 @input=${(e: InputEvent) => {
-                  this.templateForm = { ...this.templateForm, recommended_vcpus: (e.target as HTMLInputElement).value };
-                }}
+        this.templateForm = { ...this.templateForm, recommended_vcpus: (e.target as HTMLInputElement).value };
+      }}
               />
               ${this.templateFormErrors.recommended_vcpus ? html`<div class="error-text">${this.templateFormErrors.recommended_vcpus}</div>` : ''}
             </div>
@@ -1954,8 +1954,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
                 min="1"
                 .value=${this.templateForm.min_disk}
                 @input=${(e: InputEvent) => {
-                  this.templateForm = { ...this.templateForm, min_disk: (e.target as HTMLInputElement).value };
-                }}
+        this.templateForm = { ...this.templateForm, min_disk: (e.target as HTMLInputElement).value };
+      }}
               />
               ${this.templateFormErrors.min_disk ? html`<div class="error-text">${this.templateFormErrors.min_disk}</div>` : ''}
             </div>
@@ -1967,8 +1967,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
                 min="1"
                 .value=${this.templateForm.recommended_disk}
                 @input=${(e: InputEvent) => {
-                  this.templateForm = { ...this.templateForm, recommended_disk: (e.target as HTMLInputElement).value };
-                }}
+        this.templateForm = { ...this.templateForm, recommended_disk: (e.target as HTMLInputElement).value };
+      }}
               />
               ${this.templateFormErrors.recommended_disk ? html`<div class="error-text">${this.templateFormErrors.recommended_disk}</div>` : ''}
             </div>
@@ -1980,8 +1980,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
               <select
                 .value=${this.templateForm.disk_format}
                 @change=${(e: Event) => {
-                  this.templateForm = { ...this.templateForm, disk_format: (e.target as HTMLSelectElement).value as ('' | VMTemplateDiskFormat) };
-                }}
+        this.templateForm = { ...this.templateForm, disk_format: (e.target as HTMLSelectElement).value as ('' | VMTemplateDiskFormat) };
+      }}
               >
                 <option value="">Default</option>
                 <option value="qcow2">qcow2</option>
@@ -1997,8 +1997,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
               <select
                 .value=${this.templateForm.network_model}
                 @change=${(e: Event) => {
-                  this.templateForm = { ...this.templateForm, network_model: (e.target as HTMLSelectElement).value as ('' | VMTemplateNetworkModel) };
-                }}
+        this.templateForm = { ...this.templateForm, network_model: (e.target as HTMLSelectElement).value as ('' | VMTemplateNetworkModel) };
+      }}
               >
                 <option value="">Default</option>
                 <option value="virtio">virtio</option>
@@ -2012,8 +2012,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
               <select
                 .value=${this.templateForm.graphics_type}
                 @change=${(e: Event) => {
-                  this.templateForm = { ...this.templateForm, graphics_type: (e.target as HTMLSelectElement).value as ('' | VMTemplateGraphicsType) };
-                }}
+        this.templateForm = { ...this.templateForm, graphics_type: (e.target as HTMLSelectElement).value as ('' | VMTemplateGraphicsType) };
+      }}
               >
                 <option value="">Default</option>
                 <option value="vnc">vnc</option>
@@ -2029,8 +2029,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
                 type="text"
                 .value=${this.templateForm.default_user}
                 @input=${(e: InputEvent) => {
-                  this.templateForm = { ...this.templateForm, default_user: (e.target as HTMLInputElement).value };
-                }}
+        this.templateForm = { ...this.templateForm, default_user: (e.target as HTMLInputElement).value };
+      }}
               />
             </div>
           </div>
@@ -2041,8 +2041,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
                 type="checkbox"
                 .checked=${this.templateForm.cloud_init}
                 @change=${(e: Event) => {
-                  this.templateForm = { ...this.templateForm, cloud_init: (e.target as HTMLInputElement).checked };
-                }}
+        this.templateForm = { ...this.templateForm, cloud_init: (e.target as HTMLInputElement).checked };
+      }}
               />
               Cloud-Init
             </label>
@@ -2051,8 +2051,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
                 type="checkbox"
                 .checked=${this.templateForm.uefi_boot}
                 @change=${(e: Event) => {
-                  this.templateForm = { ...this.templateForm, uefi_boot: (e.target as HTMLInputElement).checked };
-                }}
+        this.templateForm = { ...this.templateForm, uefi_boot: (e.target as HTMLInputElement).checked };
+      }}
               />
               UEFI Boot
             </label>
@@ -2061,8 +2061,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
                 type="checkbox"
                 .checked=${this.templateForm.secure_boot}
                 @change=${(e: Event) => {
-                  this.templateForm = { ...this.templateForm, secure_boot: (e.target as HTMLInputElement).checked };
-                }}
+        this.templateForm = { ...this.templateForm, secure_boot: (e.target as HTMLInputElement).checked };
+      }}
               />
               Secure Boot
             </label>
@@ -2071,8 +2071,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
                 type="checkbox"
                 .checked=${this.templateForm.tpm}
                 @change=${(e: Event) => {
-                  this.templateForm = { ...this.templateForm, tpm: (e.target as HTMLInputElement).checked };
-                }}
+        this.templateForm = { ...this.templateForm, tpm: (e.target as HTMLInputElement).checked };
+      }}
               />
               TPM
             </label>
@@ -2084,8 +2084,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
               .value=${this.templateForm.metadata_json}
               placeholder="{\n  \"key\": \"value\"\n}"
               @input=${(e: InputEvent) => {
-                this.templateForm = { ...this.templateForm, metadata_json: (e.target as HTMLTextAreaElement).value };
-              }}
+        this.templateForm = { ...this.templateForm, metadata_json: (e.target as HTMLTextAreaElement).value };
+      }}
             ></textarea>
             ${this.templateFormErrors.metadata_json ? html`<div class="error-text">${this.templateFormErrors.metadata_json}</div>` : ''}
             <div class="help-text">Must be a JSON object with scalar values (strings/numbers/booleans).</div>
@@ -2173,9 +2173,9 @@ export class VirtualizationVMsEnhanced extends LitElement {
 
     const displayTemplates = query
       ? this.templates.filter(t => {
-          const hay = `${t.name} ${t.description || ''} ${t.os_type} ${t.os_variant || ''}`.toLowerCase();
-          return hay.includes(query);
-        })
+        const hay = `${t.name} ${t.description || ''} ${t.os_type} ${t.os_variant || ''}`.toLowerCase();
+        return hay.includes(query);
+      })
       : this.templates;
 
     const formatMinRec = (min: number, rec?: number) =>
@@ -2183,21 +2183,21 @@ export class VirtualizationVMsEnhanced extends LitElement {
 
     const tableData = this.activeMainTab === 'templates'
       ? displayTemplates.map(template => ({
-          ...template,
-          os: template.os_variant ? `${template.os_type} / ${template.os_variant}` : template.os_type,
-          memory: formatMinRec(template.min_memory, template.recommended_memory),
-          vcpus: formatMinRec(template.min_vcpus, template.recommended_vcpus),
-          disk: formatMinRec(template.min_disk, template.recommended_disk),
-          flags: template,
-          updated: new Date(template.updated_at || template.created_at).toLocaleDateString(),
-        }))
+        ...template,
+        os: template.os_variant ? `${template.os_type} / ${template.os_variant}` : template.os_type,
+        memory: formatMinRec(template.min_memory, template.recommended_memory),
+        vcpus: formatMinRec(template.min_vcpus, template.recommended_vcpus),
+        disk: formatMinRec(template.min_disk, template.recommended_disk),
+        flags: template,
+        updated: new Date(template.updated_at || template.created_at).toLocaleDateString(),
+      }))
       : displayVMs.map(vm => ({
-          ...vm,
-          state_rendered: this.renderStateCell(vm.state),
-          memory_formatted: this.formatMemory(vm.memory),
-          disk_formatted: this.formatDiskSize(vm.disk_size),
-          created_formatted: new Date(vm.created_at).toLocaleDateString()
-        }));
+        ...vm,
+        state_rendered: this.renderStateCell(vm.state),
+        memory_formatted: this.formatMemory(vm.memory),
+        disk_formatted: this.formatDiskSize(vm.disk_size),
+        created_formatted: new Date(vm.created_at).toLocaleDateString()
+      }));
 
     return html`
       <div class="container">
@@ -2331,13 +2331,13 @@ export class VirtualizationVMsEnhanced extends LitElement {
               .columns=${this.getColumns()}
               .data=${tableData}
               .getActions=${(item: any) =>
-                this.activeMainTab === 'templates'
-                  ? this.getTemplateActions(item as VMTemplate)
-                  : this.getActions(item as VirtualMachine)
-              }
+          this.activeMainTab === 'templates'
+            ? this.getTemplateActions(item as VMTemplate)
+            : this.getActions(item as VirtualMachine)
+        }
               .customRenderers=${this.activeMainTab === 'templates'
-                ? { flags: (tpl: any) => this.renderTemplateFlags(tpl as VMTemplate) }
-                : {}}
+          ? { flags: (tpl: any) => this.renderTemplateFlags(tpl as VMTemplate) }
+          : {}}
               @cell-click=${this.handleCellClick}
               @action=${this.handleAction}
             ></resource-table>

@@ -185,7 +185,7 @@ export class CreateVMWizardEnhanced extends LitElement {
       flex-direction: column;
       transform: translateX(100%);
       transition: transform 0.3s ease-out;
-      border-left: 1px solid var(--vscode-widget-border, #454545);
+      border-left: 1px solid var(--vscode-border);
     }
 
     :host([show]) .drawer {
@@ -234,7 +234,7 @@ export class CreateVMWizardEnhanced extends LitElement {
     .drawer-header {
       padding: 20px;
       background: var(--vscode-bg-lighter, #2c2f3a);
-      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+      border-bottom: 1px solid var(--vscode-border);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -244,7 +244,7 @@ export class CreateVMWizardEnhanced extends LitElement {
     .header-title {
       font-size: 18px;
       font-weight: 500;
-      color: var(--title-color, #e0e0e0);
+      color: var(--vscode-foreground);
       display: flex;
       align-items: center;
       gap: 12px;
@@ -254,7 +254,7 @@ export class CreateVMWizardEnhanced extends LitElement {
       display: flex;
       gap: 16px;
       padding: 16px 20px;
-      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+      border-bottom: 1px solid var(--vscode-border);
       background: var(--vscode-bg-lighter, #2c2f3a);
       flex-shrink: 0;
       overflow-x: auto;
@@ -328,7 +328,7 @@ export class CreateVMWizardEnhanced extends LitElement {
 
     .controls {
       padding: 20px;
-      border-top: 1px solid var(--vscode-widget-border, #454545);
+      border-top: 1px solid var(--vscode-border);
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -804,7 +804,7 @@ export class CreateVMWizardEnhanced extends LitElement {
           'Authorization': token ? `Bearer ${token}` : '',
         },
       });
-      
+
       if (response.ok) {
         const result = await response.json();
         // Handle the response structure
@@ -1180,17 +1180,17 @@ export class CreateVMWizardEnhanced extends LitElement {
             <select
               .value=${disk.action || 'create'}
               @change=${(e: Event) => {
-                disk.action = (e.target as HTMLSelectElement).value as any;
-                if (disk.action === 'create') {
-                  disk.clone_from = '';
-                  disk.path = '';
-                } else if (disk.action === 'clone') {
-                  disk.path = '';
-                } else if (disk.action === 'attach') {
-                  disk.clone_from = '';
-                }
-                this.requestUpdate();
-              }}
+          disk.action = (e.target as HTMLSelectElement).value as any;
+          if (disk.action === 'create') {
+            disk.clone_from = '';
+            disk.path = '';
+          } else if (disk.action === 'clone') {
+            disk.path = '';
+          } else if (disk.action === 'attach') {
+            disk.clone_from = '';
+          }
+          this.requestUpdate();
+        }}
             >
               <option value="create">Create New</option>
               <option value="clone">Clone From</option>
@@ -1203,11 +1203,11 @@ export class CreateVMWizardEnhanced extends LitElement {
             <select
               .value=${disk.storage_pool || ''}
               @change=${(e: Event) => {
-                disk.storage_pool = (e.target as HTMLSelectElement).value;
-                disk.clone_from = '';
-                disk.path = '';
-                this.requestUpdate();
-              }}
+          disk.storage_pool = (e.target as HTMLSelectElement).value;
+          disk.clone_from = '';
+          disk.path = '';
+          this.requestUpdate();
+        }}
             >
               <option value="">Select a storage pool</option>
               ${storagePools.map((pool: any) => html`
@@ -1225,9 +1225,9 @@ export class CreateVMWizardEnhanced extends LitElement {
                   min="1"
                   .value=${String(disk.size || 20)}
                   @input=${(e: InputEvent) => {
-                    disk.size = Number((e.target as HTMLInputElement).value);
-                    this.requestUpdate();
-                  }}
+            disk.size = Number((e.target as HTMLInputElement).value);
+            this.requestUpdate();
+          }}
                 />
               </div>
 
@@ -1236,9 +1236,9 @@ export class CreateVMWizardEnhanced extends LitElement {
                 <select
                   .value=${disk.format || 'qcow2'}
                   @change=${(e: Event) => {
-                    disk.format = (e.target as HTMLSelectElement).value as any;
-                    this.requestUpdate();
-                  }}
+            disk.format = (e.target as HTMLSelectElement).value as any;
+            this.requestUpdate();
+          }}
                 >
                   <option value="qcow2">QCOW2</option>
                   <option value="raw">RAW</option>
@@ -1252,9 +1252,9 @@ export class CreateVMWizardEnhanced extends LitElement {
                 <select
                   .value=${disk.bus || 'virtio'}
                   @change=${(e: Event) => {
-                    disk.bus = (e.target as HTMLSelectElement).value as any;
-                    this.requestUpdate();
-                  }}
+            disk.bus = (e.target as HTMLSelectElement).value as any;
+            this.requestUpdate();
+          }}
                 >
                   <option value="virtio">VirtIO</option>
                   <option value="scsi">SCSI</option>
@@ -1269,9 +1269,9 @@ export class CreateVMWizardEnhanced extends LitElement {
               <select
                 .value=${disk.clone_from || ''}
                 @change=${(e: Event) => {
-                  disk.clone_from = (e.target as HTMLSelectElement).value;
-                  this.requestUpdate();
-                }}
+            disk.clone_from = (e.target as HTMLSelectElement).value;
+            this.requestUpdate();
+          }}
                 ?disabled=${!disk.storage_pool}
               >
                 <option value="">${disk.storage_pool ? 'Select volume to clone...' : 'Select pool first...'}</option>
@@ -1288,9 +1288,9 @@ export class CreateVMWizardEnhanced extends LitElement {
               <select
                 .value=${disk.path || ''}
                 @change=${(e: Event) => {
-                  disk.path = (e.target as HTMLSelectElement).value;
-                  this.requestUpdate();
-                }}
+            disk.path = (e.target as HTMLSelectElement).value;
+            this.requestUpdate();
+          }}
                 ?disabled=${!disk.storage_pool}
               >
                 <option value="">${disk.storage_pool ? 'Select volume to attach...' : 'Select pool first...'}</option>
@@ -1311,9 +1311,9 @@ export class CreateVMWizardEnhanced extends LitElement {
                 placeholder="e.g. vda"
                 .value=${disk.target || ''}
                 @input=${(e: InputEvent) => {
-                  disk.target = (e.target as HTMLInputElement).value;
-                  this.requestUpdate();
-                }}
+          disk.target = (e.target as HTMLInputElement).value;
+          this.requestUpdate();
+        }}
               />
             </div>
 
@@ -1324,10 +1324,10 @@ export class CreateVMWizardEnhanced extends LitElement {
                 min="1"
                 .value=${String(disk.boot_order || '')}
                 @input=${(e: InputEvent) => {
-                  const v = (e.target as HTMLInputElement).value;
-                  disk.boot_order = v ? Number(v) : undefined;
-                  this.requestUpdate();
-                }}
+          const v = (e.target as HTMLInputElement).value;
+          disk.boot_order = v ? Number(v) : undefined;
+          this.requestUpdate();
+        }}
               />
             </div>
 
@@ -1339,9 +1339,9 @@ export class CreateVMWizardEnhanced extends LitElement {
                   id="disk-readonly"
                   ?checked=${disk.readonly}
                   @change=${(e: Event) => {
-                    disk.readonly = (e.target as HTMLInputElement).checked;
-                    this.requestUpdate();
-                  }}
+          disk.readonly = (e.target as HTMLInputElement).checked;
+          this.requestUpdate();
+        }}
                 />
                 <label for="disk-readonly">Read-only</label>
               </div>
@@ -1353,17 +1353,17 @@ export class CreateVMWizardEnhanced extends LitElement {
             <select
               .value=${disk.path || ''}
               @change=${(e: Event) => {
-                const isoPath = (e.target as HTMLSelectElement).value;
-                const list: any[] = isos || [];
-                const iso = list.find(item => item.path === isoPath);
-                if (iso) {
-                  disk.path = iso.path;
-                  disk.storage_pool = iso.storage_pool || disk.storage_pool || 'default';
-                } else {
-                  disk.path = '';
-                }
-                this.requestUpdate();
-              }}
+          const isoPath = (e.target as HTMLSelectElement).value;
+          const list: any[] = isos || [];
+          const iso = list.find(item => item.path === isoPath);
+          if (iso) {
+            disk.path = iso.path;
+            disk.storage_pool = iso.storage_pool || disk.storage_pool || 'default';
+          } else {
+            disk.path = '';
+          }
+          this.requestUpdate();
+        }}
             >
               <option value="">Select ISO image...</option>
               ${isos.map((iso: any) => html`
@@ -1380,9 +1380,9 @@ export class CreateVMWizardEnhanced extends LitElement {
               <select
                 .value=${disk.bus || 'ide'}
                 @change=${(e: Event) => {
-                  disk.bus = (e.target as HTMLSelectElement).value as any;
-                  this.requestUpdate();
-                }}
+          disk.bus = (e.target as HTMLSelectElement).value as any;
+          this.requestUpdate();
+        }}
               >
                 <option value="ide">IDE</option>
                 <option value="virtio">VirtIO</option>
@@ -1398,10 +1398,10 @@ export class CreateVMWizardEnhanced extends LitElement {
                 min="1"
                 .value=${String(disk.boot_order || 1)}
                 @input=${(e: InputEvent) => {
-                  const v = (e.target as HTMLInputElement).value;
-                  disk.boot_order = v ? Number(v) : 1;
-                  this.requestUpdate();
-                }}
+          const v = (e.target as HTMLInputElement).value;
+          disk.boot_order = v ? Number(v) : 1;
+          this.requestUpdate();
+        }}
               />
             </div>
           </div>
@@ -1445,11 +1445,11 @@ export class CreateVMWizardEnhanced extends LitElement {
             <select
               .value=${nic.type}
               @change=${(e: Event) => {
-                nic.type = (e.target as HTMLSelectElement).value as any;
-                if (nic.type === 'network') nic.source = 'default';
-                else nic.source = '';
-                this.requestUpdate();
-              }}
+        nic.type = (e.target as HTMLSelectElement).value as any;
+        if (nic.type === 'network') nic.source = 'default';
+        else nic.source = '';
+        this.requestUpdate();
+      }}
             >
               <option value="network">Network</option>
               <option value="bridge">Bridge</option>
@@ -1464,14 +1464,14 @@ export class CreateVMWizardEnhanced extends LitElement {
               <select
                 .value=${nic.source || 'default'}
                 @change=${(e: Event) => {
-                  nic.source = (e.target as HTMLSelectElement).value;
-                  this.requestUpdate();
-                }}
+          nic.source = (e.target as HTMLSelectElement).value;
+          this.requestUpdate();
+        }}
               >
                 <option value="default">default</option>
                 ${networksArray
-                  .filter(vn => vn.name !== 'default')
-                  .map(vn => html`
+          .filter(vn => vn.name !== 'default')
+          .map(vn => html`
                     <option value=${vn.name}>
                       ${vn.name} ${vn.state === 'active' ? '(Active)' : '(Inactive)'}
                     </option>
@@ -1481,9 +1481,9 @@ export class CreateVMWizardEnhanced extends LitElement {
               <select
                 .value=${nic.source || ''}
                 @change=${(e: Event) => {
-                  nic.source = (e.target as HTMLSelectElement).value;
-                  this.requestUpdate();
-                }}
+          nic.source = (e.target as HTMLSelectElement).value;
+          this.requestUpdate();
+        }}
               >
                 <option value="">Select a bridge</option>
                 ${bridgeInterfaces.map(br => html`
@@ -1498,9 +1498,9 @@ export class CreateVMWizardEnhanced extends LitElement {
                 placeholder="Interface (e.g. eth0)"
                 .value=${nic.source || ''}
                 @input=${(e: InputEvent) => {
-                  nic.source = (e.target as HTMLInputElement).value;
-                  this.requestUpdate();
-                }}
+          nic.source = (e.target as HTMLInputElement).value;
+          this.requestUpdate();
+        }}
               />
             ` : html`
               <input
@@ -1508,9 +1508,9 @@ export class CreateVMWizardEnhanced extends LitElement {
                 placeholder="(not required)"
                 .value=${nic.source || ''}
                 @input=${(e: InputEvent) => {
-                  nic.source = (e.target as HTMLInputElement).value;
-                  this.requestUpdate();
-                }}
+          nic.source = (e.target as HTMLInputElement).value;
+          this.requestUpdate();
+        }}
               />
             `}
           </div>
@@ -1520,9 +1520,9 @@ export class CreateVMWizardEnhanced extends LitElement {
             <select
               .value=${nic.model || 'virtio'}
               @change=${(e: Event) => {
-                nic.model = (e.target as HTMLSelectElement).value as any;
-                this.requestUpdate();
-              }}
+        nic.model = (e.target as HTMLSelectElement).value as any;
+        this.requestUpdate();
+      }}
             >
               <option value="virtio">VirtIO</option>
               <option value="e1000">Intel E1000</option>
@@ -1539,9 +1539,9 @@ export class CreateVMWizardEnhanced extends LitElement {
             placeholder="52:54:00:xx:xx:xx (auto-generated if empty)"
             .value=${nic.mac || ''}
             @input=${(e: InputEvent) => {
-              nic.mac = (e.target as HTMLInputElement).value;
-              this.requestUpdate();
-            }}
+        nic.mac = (e.target as HTMLInputElement).value;
+        this.requestUpdate();
+      }}
           />
           <div class="help-text">Leave empty to auto-generate a MAC address</div>
         </div>
@@ -1575,14 +1575,14 @@ export class CreateVMWizardEnhanced extends LitElement {
             <select
               .value=${g.type}
               @change=${(e: Event) => {
-                g.type = (e.target as HTMLSelectElement).value as any;
-                // Set reasonable defaults when switching types
-                if (g.type === 'vnc' || g.type === 'spice') {
-                  g.listen = g.listen || '0.0.0.0';
-                  if (g.autoport === undefined) g.autoport = true;
-                }
-                this.requestUpdate();
-              }}
+        g.type = (e.target as HTMLSelectElement).value as any;
+        // Set reasonable defaults when switching types
+        if (g.type === 'vnc' || g.type === 'spice') {
+          g.listen = g.listen || '0.0.0.0';
+          if (g.autoport === undefined) g.autoport = true;
+        }
+        this.requestUpdate();
+      }}
             >
               <option value="vnc">VNC</option>
               <option value="spice">SPICE</option>
@@ -1599,10 +1599,10 @@ export class CreateVMWizardEnhanced extends LitElement {
                 placeholder="(auto if empty)"
                 .value=${String(g.port || '')}
                 @input=${(e: InputEvent) => {
-                  const v = (e.target as HTMLInputElement).value;
-                  g.port = v ? Number(v) : undefined;
-                  this.requestUpdate();
-                }}
+          const v = (e.target as HTMLInputElement).value;
+          g.port = v ? Number(v) : undefined;
+          this.requestUpdate();
+        }}
               />
             </div>
 
@@ -1613,9 +1613,9 @@ export class CreateVMWizardEnhanced extends LitElement {
                 placeholder="0.0.0.0"
                 .value=${g.listen || '0.0.0.0'}
                 @input=${(e: InputEvent) => {
-                  g.listen = (e.target as HTMLInputElement).value;
-                  this.requestUpdate();
-                }}
+          g.listen = (e.target as HTMLInputElement).value;
+          this.requestUpdate();
+        }}
               />
             </div>
           ` : ''}
@@ -1628,9 +1628,9 @@ export class CreateVMWizardEnhanced extends LitElement {
               placeholder="Password (optional)"
               .value=${g.password || ''}
               @input=${(e: InputEvent) => {
-                g.password = (e.target as HTMLInputElement).value;
-                this.requestUpdate();
-              }}
+          g.password = (e.target as HTMLInputElement).value;
+          this.requestUpdate();
+        }}
             />
 
             <div class="checkbox-group">
@@ -1639,9 +1639,9 @@ export class CreateVMWizardEnhanced extends LitElement {
                 id="graphics-autoport"
                 ?checked=${!!g.autoport}
                 @change=${(e: Event) => {
-                  g.autoport = (e.target as HTMLInputElement).checked;
-                  this.requestUpdate();
-                }}
+          g.autoport = (e.target as HTMLInputElement).checked;
+          this.requestUpdate();
+        }}
               />
               <label for="graphics-autoport">Auto-assign port</label>
             </div>
@@ -1679,19 +1679,19 @@ export class CreateVMWizardEnhanced extends LitElement {
               <select
                 .value=${this.pciHostSelection}
                 @change=${(e: Event) => {
-                  const value = (e.target as HTMLSelectElement).value;
-                  this.pciHostSelection = value;
-                  if (value === 'custom') {
-                    d.host_address = '';
-                  } else {
-                    d.host_address = value;
-                  }
-                  this.requestUpdate();
-                }}
+          const value = (e.target as HTMLSelectElement).value;
+          this.pciHostSelection = value;
+          if (value === 'custom') {
+            d.host_address = '';
+          } else {
+            d.host_address = value;
+          }
+          this.requestUpdate();
+        }}
               >
                 <option value="">Select a PCI device</option>
                 ${this.availablePCIDevices
-                  .map(x => html`
+          .map(x => html`
                     <option
                       value=${x.pci_address}
                       ?disabled=${!x.is_available && x.pci_address !== d.host_address}
@@ -1712,9 +1712,9 @@ export class CreateVMWizardEnhanced extends LitElement {
                   style="margin-top: 8px;"
                   .value=${d.host_address || ''}
                   @input=${(e: InputEvent) => {
-                    d.host_address = (e.target as HTMLInputElement).value;
-                    this.requestUpdate();
-                  }}
+            d.host_address = (e.target as HTMLInputElement).value;
+            this.requestUpdate();
+          }}
                 />
               ` : ''}
             ` : html`
@@ -1723,9 +1723,9 @@ export class CreateVMWizardEnhanced extends LitElement {
                 placeholder="0000:01:00.0"
                 .value=${d.host_address || ''}
                 @input=${(e: InputEvent) => {
-                  d.host_address = (e.target as HTMLInputElement).value;
-                  this.requestUpdate();
-                }}
+          d.host_address = (e.target as HTMLInputElement).value;
+          this.requestUpdate();
+        }}
               />
             `}
 
@@ -1742,9 +1742,9 @@ export class CreateVMWizardEnhanced extends LitElement {
               placeholder="0000:05:00.0 (auto if empty)"
               .value=${d.guest_address || ''}
               @input=${(e: InputEvent) => {
-                d.guest_address = (e.target as HTMLInputElement).value;
-                this.requestUpdate();
-              }}
+        d.guest_address = (e.target as HTMLInputElement).value;
+        this.requestUpdate();
+      }}
             />
             <div class="help-text">PCI address in the guest VM</div>
           </div>
@@ -1757,9 +1757,9 @@ export class CreateVMWizardEnhanced extends LitElement {
             placeholder="/usr/share/vgabios/nvidia.rom"
             .value=${d.rom_file || ''}
             @input=${(e: InputEvent) => {
-              d.rom_file = (e.target as HTMLInputElement).value;
-              this.requestUpdate();
-            }}
+        d.rom_file = (e.target as HTMLInputElement).value;
+        this.requestUpdate();
+      }}
           />
           <div class="help-text">Path to option ROM file (required for some GPUs to work properly)</div>
         </div>
@@ -1771,9 +1771,9 @@ export class CreateVMWizardEnhanced extends LitElement {
               id="pci-multifunction"
               ?checked=${!!d.multifunction}
               @change=${(e: Event) => {
-                d.multifunction = (e.target as HTMLInputElement).checked;
-                this.requestUpdate();
-              }}
+        d.multifunction = (e.target as HTMLInputElement).checked;
+        this.requestUpdate();
+      }}
             />
             <label for="pci-multifunction">Multi-function device</label>
             <div class="help-text" style="margin-left: 24px;">Enable for devices with multiple functions (e.g., GPU with audio)</div>
@@ -1785,9 +1785,9 @@ export class CreateVMWizardEnhanced extends LitElement {
               id="pci-primary-gpu"
               ?checked=${!!d.primary_gpu}
               @change=${(e: Event) => {
-                d.primary_gpu = (e.target as HTMLInputElement).checked;
-                this.requestUpdate();
-              }}
+        d.primary_gpu = (e.target as HTMLInputElement).checked;
+        this.requestUpdate();
+      }}
             />
             <label for="pci-primary-gpu">Primary GPU</label>
             <div class="help-text" style="margin-left: 24px;">Set as the primary display adapter</div>
@@ -1925,7 +1925,7 @@ export class CreateVMWizardEnhanced extends LitElement {
   private updateFormData(path: string, value: any) {
     const keys = path.split('.');
     let obj: any = this.formData;
-    
+
     for (let i = 0; i < keys.length - 1; i++) {
       const key = keys[i];
       if (key && !obj[key]) {
@@ -1935,7 +1935,7 @@ export class CreateVMWizardEnhanced extends LitElement {
         obj = obj[key];
       }
     }
-    
+
     const lastKey = keys[keys.length - 1];
     if (lastKey) {
       obj[lastKey] = value;
@@ -1943,7 +1943,7 @@ export class CreateVMWizardEnhanced extends LitElement {
     this.requestUpdate();
   }
 
-  
+
 
   private removeDisk(index: number) {
     if (this.formData.storage?.disks) {
@@ -2269,9 +2269,9 @@ export class CreateVMWizardEnhanced extends LitElement {
               type="text"
               placeholder="my-virtual-machine"
               .value=${this.formData.name || ''}
-              @input=${(e: InputEvent) => 
-                this.updateFormData('name', (e.target as HTMLInputElement).value)
-              }
+              @input=${(e: InputEvent) =>
+        this.updateFormData('name', (e.target as HTMLInputElement).value)
+      }
             />
             ${this.validationErrors.name ? html`
               <div class="error-message">${this.validationErrors.name}</div>
@@ -2290,9 +2290,9 @@ export class CreateVMWizardEnhanced extends LitElement {
                   max="524288"
                   step="512"
                   .value=${String(this.formData.memory || 2048)}
-                  @input=${(e: InputEvent) => 
-                    this.updateFormData('memory', Number((e.target as HTMLInputElement).value))
-                  }
+                  @input=${(e: InputEvent) =>
+        this.updateFormData('memory', Number((e.target as HTMLInputElement).value))
+      }
                 />
                 <span class="unit">MB</span>
               </div>
@@ -2308,9 +2308,9 @@ export class CreateVMWizardEnhanced extends LitElement {
                 min="1"
                 max="128"
                 .value=${String(this.formData.vcpus || 2)}
-                @input=${(e: InputEvent) => 
-                  this.updateFormData('vcpus', Number((e.target as HTMLInputElement).value))
-                }
+                @input=${(e: InputEvent) =>
+        this.updateFormData('vcpus', Number((e.target as HTMLInputElement).value))
+      }
               />
               ${this.validationErrors.vcpus ? html`
                 <div class="error-message">${this.validationErrors.vcpus}</div>
@@ -2324,9 +2324,9 @@ export class CreateVMWizardEnhanced extends LitElement {
               <select
                 .value=${this.formData.os_type || 'linux'}
                 ?disabled=${this.templateMode}
-                @change=${(e: Event) => 
-                  this.updateFormData('os_type', (e.target as HTMLSelectElement).value)
-                }
+                @change=${(e: Event) =>
+        this.updateFormData('os_type', (e.target as HTMLSelectElement).value)
+      }
               >
                 <option value="linux">Linux</option>
                 <option value="windows">Windows</option>
@@ -2343,8 +2343,8 @@ export class CreateVMWizardEnhanced extends LitElement {
                 placeholder="ubuntu22.04"
                 ?disabled=${this.templateMode}
                 @os-variant-change=${(e: CustomEvent<{ value: string }>) =>
-                  this.updateFormData('os_variant', e.detail.value)
-                }
+        this.updateFormData('os_variant', e.detail.value)
+      }
               ></os-variant-autocomplete>
               <div class="help-text">e.g., ubuntu22.04, win11, rhel9</div>
             </div>
@@ -2354,9 +2354,9 @@ export class CreateVMWizardEnhanced extends LitElement {
               <select
                 .value=${this.formData.architecture || 'x86_64'}
                 ?disabled=${this.templateMode}
-                @change=${(e: Event) => 
-                  this.updateFormData('architecture', (e.target as HTMLSelectElement).value)
-                }
+                @change=${(e: Event) =>
+        this.updateFormData('architecture', (e.target as HTMLSelectElement).value)
+      }
               >
                 <option value="x86_64">x86_64</option>
                 <option value="aarch64">ARM64</option>
@@ -2373,9 +2373,9 @@ export class CreateVMWizardEnhanced extends LitElement {
                 id="uefi"
                 ?checked=${this.formData.uefi}
                 ?disabled=${this.templateMode}
-                @change=${(e: Event) => 
-                  this.updateFormData('uefi', (e.target as HTMLInputElement).checked)
-                }
+                @change=${(e: Event) =>
+        this.updateFormData('uefi', (e.target as HTMLInputElement).checked)
+      }
               />
               <label for="uefi">Enable UEFI</label>
             </div>
@@ -2386,9 +2386,9 @@ export class CreateVMWizardEnhanced extends LitElement {
                 id="secure_boot"
                 ?checked=${this.formData.secure_boot}
                 ?disabled=${this.templateMode}
-                @change=${(e: Event) => 
-                  this.updateFormData('secure_boot', (e.target as HTMLInputElement).checked)
-                }
+                @change=${(e: Event) =>
+        this.updateFormData('secure_boot', (e.target as HTMLInputElement).checked)
+      }
               />
               <label for="secure_boot">Secure Boot</label>
             </div>
@@ -2399,9 +2399,9 @@ export class CreateVMWizardEnhanced extends LitElement {
                 id="tpm"
                 ?checked=${this.formData.tpm}
                 ?disabled=${this.templateMode}
-                @change=${(e: Event) => 
-                  this.updateFormData('tpm', (e.target as HTMLInputElement).checked)
-                }
+                @change=${(e: Event) =>
+        this.updateFormData('tpm', (e.target as HTMLInputElement).checked)
+      }
               />
               <label for="tpm">Enable TPM</label>
             </div>
@@ -2413,9 +2413,9 @@ export class CreateVMWizardEnhanced extends LitElement {
               id="autostart"
               ?checked=${this.formData.autostart}
                 ?disabled=${this.templateMode}
-              @change=${(e: Event) => 
-                this.updateFormData('autostart', (e.target as HTMLInputElement).checked)
-              }
+              @change=${(e: Event) =>
+        this.updateFormData('autostart', (e.target as HTMLInputElement).checked)
+      }
             />
             <label for="autostart">Autostart VM with host</label>
           </div>
@@ -2454,9 +2454,9 @@ export class CreateVMWizardEnhanced extends LitElement {
                 step="1"
                 .value=${String(diskValue)}
                 @input=${(e: InputEvent) => {
-                  const n = Number((e.target as HTMLInputElement).value);
-                  this.templateDiskSizeGB = Number.isFinite(n) ? n : null;
-                }}
+          const n = Number((e.target as HTMLInputElement).value);
+          this.templateDiskSizeGB = Number.isFinite(n) ? n : null;
+        }}
               />
               <div class="help-text" style="margin-top: 6px;">
                 Template min: ${t.min_disk} GB • Recommended: ${t.recommended_disk ?? '-'} GB
@@ -2513,11 +2513,11 @@ export class CreateVMWizardEnhanced extends LitElement {
                         <td>
                           <span class="monospace storage-path">
                             ${disk.path
-                              || (disk.action === 'create'
-                                ? 'New disk'
-                                : disk.action === 'clone'
-                                  ? (disk.clone_from || '-')
-                                  : '-')}
+      || (disk.action === 'create'
+        ? 'New disk'
+        : disk.action === 'clone'
+          ? (disk.clone_from || '-')
+          : '-')}
                           </span>
                         </td>
                         <td>${(disk.format || 'qcow2').toUpperCase()}</td>
@@ -2630,8 +2630,8 @@ export class CreateVMWizardEnhanced extends LitElement {
                   </thead>
                   <tbody>
                     ${this.formData.networks.map((nic, index) => {
-                      const status = getStatus(nic);
-                      return html`
+      const status = getStatus(nic);
+      return html`
                         <tr>
                           <td>
                             <span class="storage-badge">${(nic.type || 'network').toUpperCase()}</span>
@@ -2662,7 +2662,7 @@ export class CreateVMWizardEnhanced extends LitElement {
                           </td>
                         </tr>
                       `;
-                    })}
+    })}
                   </tbody>
                 </table>
               </div>
@@ -2693,17 +2693,17 @@ export class CreateVMWizardEnhanced extends LitElement {
                   </thead>
                   <tbody>
                     ${this.formData.graphics.map((g, index) => {
-                      const portLabel = (g.type === 'none' || g.type === 'egl-headless')
-                        ? '-'
-                        : (g.autoport ? 'Auto' : (g.port ? String(g.port) : '-'));
-                      const autoLabel = (g.type === 'none' || g.type === 'egl-headless')
-                        ? '-'
-                        : (g.autoport ? 'Yes' : 'No');
-                      const pwLabel = (g.type === 'none' || g.type === 'egl-headless')
-                        ? '-'
-                        : (g.password ? 'Set' : 'None');
+      const portLabel = (g.type === 'none' || g.type === 'egl-headless')
+        ? '-'
+        : (g.autoport ? 'Auto' : (g.port ? String(g.port) : '-'));
+      const autoLabel = (g.type === 'none' || g.type === 'egl-headless')
+        ? '-'
+        : (g.autoport ? 'Yes' : 'No');
+      const pwLabel = (g.type === 'none' || g.type === 'egl-headless')
+        ? '-'
+        : (g.password ? 'Set' : 'None');
 
-                      return html`
+      return html`
                         <tr>
                           <td><span class="storage-badge">${(g.type || 'vnc').toUpperCase()}</span></td>
                           <td><span class="monospace">${g.listen || '-'}</span></td>
@@ -2732,7 +2732,7 @@ export class CreateVMWizardEnhanced extends LitElement {
                           </td>
                         </tr>
                       `;
-                    })}
+    })}
                   </tbody>
                 </table>
               </div>
@@ -2809,17 +2809,17 @@ export class CreateVMWizardEnhanced extends LitElement {
                     </thead>
                     <tbody>
                       ${this.formData.pci_devices.map((dev, index) => {
-                        const info = getDeviceInfo(dev.host_address);
-                        const typeLabel = info?.device_type ? String(info.device_type).toUpperCase() : '-';
-                        const status = info
-                          ? (info.is_available ? { label: 'Available', cls: 'success' } : { label: 'In Use', cls: 'warning' })
-                          : { label: 'Unknown', cls: 'warning' };
+      const info = getDeviceInfo(dev.host_address);
+      const typeLabel = info?.device_type ? String(info.device_type).toUpperCase() : '-';
+      const status = info
+        ? (info.is_available ? { label: 'Available', cls: 'success' } : { label: 'In Use', cls: 'warning' })
+        : { label: 'Unknown', cls: 'warning' };
 
-                        const flags: string[] = [];
-                        if (dev.primary_gpu) flags.push('Primary GPU');
-                        if (dev.multifunction) flags.push('Multi');
+      const flags: string[] = [];
+      if (dev.primary_gpu) flags.push('Primary GPU');
+      if (dev.multifunction) flags.push('Multi');
 
-                        return html`
+      return html`
                           <tr>
                             <td><span class="monospace">${dev.host_address}</span></td>
                             <td>
@@ -2853,7 +2853,7 @@ export class CreateVMWizardEnhanced extends LitElement {
                             </td>
                           </tr>
                         `;
-                      })}
+    })}
                     </tbody>
                   </table>
                 </div>
@@ -2916,12 +2916,12 @@ export class CreateVMWizardEnhanced extends LitElement {
                 placeholder="#cloud-config&#10;hostname: my-vm&#10;..."
                 .value=${this.formData.cloud_init?.user_data || ''}
                 @input=${(e: InputEvent) => {
-                  if (!this.formData.cloud_init) {
-                    this.formData.cloud_init = {};
-                  }
-                  this.formData.cloud_init.user_data = (e.target as HTMLTextAreaElement).value;
-                  this.requestUpdate();
-                }}
+        if (!this.formData.cloud_init) {
+          this.formData.cloud_init = {};
+        }
+        this.formData.cloud_init.user_data = (e.target as HTMLTextAreaElement).value;
+        this.requestUpdate();
+      }}
               ></textarea>
             </div>
           </div>
@@ -2935,12 +2935,12 @@ export class CreateVMWizardEnhanced extends LitElement {
                 placeholder="instance-id: i-123456&#10;local-hostname: my-vm&#10;..."
                 .value=${this.formData.cloud_init?.meta_data || ''}
                 @input=${(e: InputEvent) => {
-                  if (!this.formData.cloud_init) {
-                    this.formData.cloud_init = {};
-                  }
-                  this.formData.cloud_init.meta_data = (e.target as HTMLTextAreaElement).value;
-                  this.requestUpdate();
-                }}
+        if (!this.formData.cloud_init) {
+          this.formData.cloud_init = {};
+        }
+        this.formData.cloud_init.meta_data = (e.target as HTMLTextAreaElement).value;
+        this.requestUpdate();
+      }}
               ></textarea>
             </div>
           </div>
@@ -2954,12 +2954,12 @@ export class CreateVMWizardEnhanced extends LitElement {
                 placeholder="version: 2&#10;ethernets:&#10;  eth0:&#10;    dhcp4: true"
                 .value=${this.formData.cloud_init?.network_data || ''}
                 @input=${(e: InputEvent) => {
-                  if (!this.formData.cloud_init) {
-                    this.formData.cloud_init = {};
-                  }
-                  this.formData.cloud_init.network_data = (e.target as HTMLTextAreaElement).value;
-                  this.requestUpdate();
-                }}
+        if (!this.formData.cloud_init) {
+          this.formData.cloud_init = {};
+        }
+        this.formData.cloud_init.network_data = (e.target as HTMLTextAreaElement).value;
+        this.requestUpdate();
+      }}
               ></textarea>
             </div>
           </div>
@@ -2972,13 +2972,13 @@ export class CreateVMWizardEnhanced extends LitElement {
                 placeholder="One SSH public key per line"
                 .value=${this.formData.cloud_init?.ssh_keys?.join('\n') || ''}
                 @input=${(e: InputEvent) => {
-                  if (!this.formData.cloud_init) {
-                    this.formData.cloud_init = {};
-                  }
-                  const value = (e.target as HTMLTextAreaElement).value;
-                  this.formData.cloud_init.ssh_keys = value ? value.split('\n').filter(k => k.trim()) : [];
-                  this.requestUpdate();
-                }}
+        if (!this.formData.cloud_init) {
+          this.formData.cloud_init = {};
+        }
+        const value = (e.target as HTMLTextAreaElement).value;
+        this.formData.cloud_init.ssh_keys = value ? value.split('\n').filter(k => k.trim()) : [];
+        this.requestUpdate();
+      }}
               ></textarea>
             </div>
           </div>
@@ -2991,13 +2991,13 @@ export class CreateVMWizardEnhanced extends LitElement {
                 placeholder="One package name per line"
                 .value=${this.formData.cloud_init?.packages?.join('\n') || ''}
                 @input=${(e: InputEvent) => {
-                  if (!this.formData.cloud_init) {
-                    this.formData.cloud_init = {};
-                  }
-                  const value = (e.target as HTMLTextAreaElement).value;
-                  this.formData.cloud_init.packages = value ? value.split('\n').filter(p => p.trim()) : [];
-                  this.requestUpdate();
-                }}
+        if (!this.formData.cloud_init) {
+          this.formData.cloud_init = {};
+        }
+        const value = (e.target as HTMLTextAreaElement).value;
+        this.formData.cloud_init.packages = value ? value.split('\n').filter(p => p.trim()) : [];
+        this.requestUpdate();
+      }}
               ></textarea>
             </div>
           </div>
@@ -3152,17 +3152,17 @@ export class CreateVMWizardEnhanced extends LitElement {
                     </thead>
                     <tbody>
                       ${graphics.map(g => {
-                        const portLabel = (g.type === 'none' || g.type === 'egl-headless')
-                          ? '-'
-                          : (g.autoport ? 'Auto' : (g.port ? String(g.port) : '-'));
-                        const autoLabel = (g.type === 'none' || g.type === 'egl-headless')
-                          ? '-'
-                          : (g.autoport ? 'Yes' : 'No');
-                        const pwLabel = (g.type === 'none' || g.type === 'egl-headless')
-                          ? '-'
-                          : (g.password ? 'Set' : 'None');
+      const portLabel = (g.type === 'none' || g.type === 'egl-headless')
+        ? '-'
+        : (g.autoport ? 'Auto' : (g.port ? String(g.port) : '-'));
+      const autoLabel = (g.type === 'none' || g.type === 'egl-headless')
+        ? '-'
+        : (g.autoport ? 'Yes' : 'No');
+      const pwLabel = (g.type === 'none' || g.type === 'egl-headless')
+        ? '-'
+        : (g.password ? 'Set' : 'None');
 
-                        return html`
+      return html`
                           <tr>
                             <td><span class="storage-badge">${(g.type || 'vnc').toUpperCase()}</span></td>
                             <td><span class="monospace">${g.listen || '-'}</span></td>
@@ -3171,7 +3171,7 @@ export class CreateVMWizardEnhanced extends LitElement {
                             <td>${pwLabel}</td>
                           </tr>
                         `;
-                      })}
+    })}
                     </tbody>
                   </table>
                 </div>
@@ -3193,10 +3193,10 @@ export class CreateVMWizardEnhanced extends LitElement {
                     </thead>
                     <tbody>
                       ${pci.map(d => {
-                        const flags: string[] = [];
-                        if (d.primary_gpu) flags.push('Primary GPU');
-                        if (d.multifunction) flags.push('Multi');
-                        return html`
+      const flags: string[] = [];
+      if (d.primary_gpu) flags.push('Primary GPU');
+      if (d.multifunction) flags.push('Multi');
+      return html`
                           <tr>
                             <td><span class="monospace">${d.host_address}</span></td>
                             <td><span class="monospace">${d.guest_address || '-'}</span></td>
@@ -3204,7 +3204,7 @@ export class CreateVMWizardEnhanced extends LitElement {
                             <td>${flags.length ? flags.join(', ') : '-'}</td>
                           </tr>
                         `;
-                      })}
+    })}
                     </tbody>
                   </table>
                 </div>
@@ -3335,7 +3335,7 @@ export class CreateVMWizardEnhanced extends LitElement {
     } else {
       this.removeAttribute('show');
     }
-    
+
     if (!wizardState.isOpen) {
       return html``;
     }
@@ -3353,15 +3353,15 @@ export class CreateVMWizardEnhanced extends LitElement {
     setTimeout(() => {
       const tabs = this.shadowRoot?.querySelectorAll('.tab');
       const contents = this.shadowRoot?.querySelectorAll('.tab-content');
-      
+
       tabs?.forEach(tab => {
         tab.addEventListener('click', (e) => {
           const target = e.currentTarget as HTMLElement;
           const tabName = target.dataset.tab;
-          
+
           tabs.forEach(t => t.classList.remove('active'));
           contents?.forEach(c => c.classList.remove('active'));
-          
+
           target.classList.add('active');
           this.shadowRoot?.querySelector(`[data-content="${tabName}"]`)?.classList.add('active');
         });
@@ -3404,13 +3404,13 @@ export class CreateVMWizardEnhanced extends LitElement {
         <div class="content">
           <div class="wizard-body">
             ${this.currentStep === 1 ? this.renderBasicConfig() :
-              this.currentStep === 2 ? this.renderStorageConfig() :
-              this.currentStep === 3 ? this.renderNetworkConfig() :
-              this.currentStep === 4 ? this.renderAdvancedConfig() :
+        this.currentStep === 2 ? this.renderStorageConfig() :
+          this.currentStep === 3 ? this.renderNetworkConfig() :
+            this.currentStep === 4 ? this.renderAdvancedConfig() :
               this.currentStep === 5 ? this.renderCloudInitConfig() :
-              this.currentStep === 6 ? this.renderReview() :
-              html`<div>Invalid step</div>`
-            }
+                this.currentStep === 6 ? this.renderReview() :
+                  html`<div>Invalid step</div>`
+      }
           </div>
         </div>
 

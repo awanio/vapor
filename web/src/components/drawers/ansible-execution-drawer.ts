@@ -39,7 +39,7 @@ export class AnsibleExecutionDrawer extends LitElement {
       width: 600px;
       height: 100vh;
       background: var(--vscode-editor-background, #1e1e1e);
-      border-left: 1px solid var(--vscode-panel-border, #2d2d30);
+      border-left: 1px solid var(--vscode-border);
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.2);
       transition: right 0.3s ease-in-out;
       z-index: 1000;
@@ -56,7 +56,7 @@ export class AnsibleExecutionDrawer extends LitElement {
       align-items: center;
       justify-content: space-between;
       padding: 16px;
-      border-bottom: 1px solid var(--vscode-panel-border, #2d2d30);
+      border-bottom: 1px solid var(--vscode-border);
       background: var(--vscode-titleBar-activeBackground, #3c3c3c);
       flex-shrink: 0;
     }
@@ -89,7 +89,7 @@ export class AnsibleExecutionDrawer extends LitElement {
 
     .metadata {
       padding: 16px;
-      border-bottom: 1px solid var(--vscode-panel-border, #2d2d30);
+      border-bottom: 1px solid var(--vscode-border);
       flex-shrink: 0;
     }
 
@@ -169,7 +169,7 @@ export class AnsibleExecutionDrawer extends LitElement {
       color: var(--vscode-terminal-ansiBrightMagenta, #ff6eff);
       font-weight: bold;
       margin-top: 12px;
-      border-top: 1px solid var(--vscode-panel-border, #2d2d30);
+      border-top: 1px solid var(--vscode-border);
       padding-top: 8px;
     }
 
@@ -224,7 +224,7 @@ export class AnsibleExecutionDrawer extends LitElement {
 
     .actions {
       padding: 16px;
-      border-top: 1px solid var(--vscode-panel-border, #2d2d30);
+      border-top: 1px solid var(--vscode-border);
       display: flex;
       gap: 8px;
       flex-shrink: 0;
@@ -454,7 +454,7 @@ export class AnsibleExecutionDrawer extends LitElement {
 
   private getOutputLineClass(line: string): string {
     const lowerLine = line.toLowerCase();
-    
+
     if (line.startsWith('PLAY [') || line.startsWith('PLAY RECAP')) {
       return 'play';
     } else if (line.startsWith('TASK [') || line.startsWith('GATHERING FACTS')) {
@@ -470,7 +470,7 @@ export class AnsibleExecutionDrawer extends LitElement {
     } else if (lowerLine.includes('unreachable:')) {
       return 'unreachable';
     }
-    
+
     return '';
   }
 

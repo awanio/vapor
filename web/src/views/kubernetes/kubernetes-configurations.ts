@@ -33,7 +33,7 @@ export class KubernetesConfigurations extends LitElement {
   @property({ type: String }) searchQuery = '';
   @property({ type: Boolean }) loading = false;
   @property({ type: String }) error: string | null = null;
-  
+
   @state() private activeTab = 'configmaps';
   @state() private showDetails = false;
   @state() private selectedItem: ConfigResource | null = null;
@@ -188,7 +188,7 @@ export class KubernetesConfigurations extends LitElement {
     .data-item {
       padding: 0.5rem;
       background: var(--vscode-editor-background, #1e1e1e);
-      border: 1px solid var(--vscode-widget-border, #303031);
+      border: 1px solid var(--vscode-border);
       border-radius: 4px;
     }
   `;
@@ -229,7 +229,7 @@ export class KubernetesConfigurations extends LitElement {
     let data = this.resources;
 
     if (this.searchQuery) {
-      data = data.filter(item => 
+      data = data.filter(item =>
         JSON.stringify(item).toLowerCase().includes(this.searchQuery.toLowerCase())
       );
     }
@@ -257,7 +257,7 @@ export class KubernetesConfigurations extends LitElement {
 
   private handleCellClick(event: CustomEvent) {
     const { column, item } = event.detail;
-    
+
     if (column.type === 'link') {
       this.viewDetails(item);
     }
@@ -285,7 +285,7 @@ export class KubernetesConfigurations extends LitElement {
 
   private handleAction(event: CustomEvent) {
     const { action, item } = event.detail;
-    
+
     switch (action) {
       case 'view':
         this.viewDetails(item);
@@ -303,7 +303,7 @@ export class KubernetesConfigurations extends LitElement {
     this.selectedItem = item;
     this.showDetails = true;
     this.loadingDetails = true;
-    
+
     try {
       const resourceType = this.getResourceType();
       this.detailsData = await KubernetesApi.getResourceDetails(resourceType, item.name, item.namespace);
@@ -323,7 +323,7 @@ export class KubernetesConfigurations extends LitElement {
     this.resourceFormat = 'yaml';
     this.showCreateDrawer = true;
     this.isCreating = true;
-    
+
     try {
       // Fetch the resource in YAML format by default
       const resourceType = this.getResourceType();
@@ -333,19 +333,19 @@ export class KubernetesConfigurations extends LitElement {
         item.namespace,
         'yaml'  // Always fetch as YAML initially
       );
-      
+
       this.createResourceValue = resourceContent;
       this.isCreating = false;
     } catch (error: any) {
       console.error('Failed to fetch resource for editing:', error);
       this.isCreating = false;
       this.showCreateDrawer = false;
-      
+
       const nc = this.shadowRoot?.querySelector('notification-container') as any;
       if (nc && typeof nc.addNotification === 'function') {
-        nc.addNotification({ 
-          type: 'error', 
-          message: `Failed to fetch resource: ${error.message || 'Unknown error'}` 
+        nc.addNotification({
+          type: 'error',
+          message: `Failed to fetch resource: ${error.message || 'Unknown error'}`
         });
       }
     }
@@ -365,13 +365,13 @@ export class KubernetesConfigurations extends LitElement {
     if (!this.itemToDelete) return;
 
     this.isDeleting = true;
-    
+
     try {
       await KubernetesApi.deleteResource(this.itemToDelete.type, this.itemToDelete.name, this.itemToDelete.namespace);
-      
+
       // Refresh data
       await this.fetchData();
-      
+
       // Close modal
       this.showDeleteModal = false;
       this.itemToDelete = null;
@@ -393,7 +393,7 @@ export class KubernetesConfigurations extends LitElement {
     // Reset to YAML format for new resources
     this.resourceFormat = 'yaml';
     const ns = this.selectedNamespace === 'All Namespaces' ? 'default' : this.selectedNamespace;
-    
+
     if (this.activeTab === 'configmaps') {
       this.createDrawerTitle = 'Create ConfigMap';
       this.createResourceValue = `apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: my-config\n  namespace: ${ns}\ndata:\n  config.yaml: |\n    server:\n      port: 8080\n      host: localhost\n    database:\n      host: db.example.com\n      port: 5432\n  app.properties: |\n    app.name=MyApp\n    app.version=1.0.0\n    debug=true`;
@@ -414,7 +414,7 @@ export class KubernetesConfigurations extends LitElement {
         content = resource.yaml as string;
       }
       this.isCreating = true;
-      
+
       if (this.isEditMode && this.editingResource) {
         // Update existing resource
         const resourceType = this.getResourceType();
@@ -429,30 +429,30 @@ export class KubernetesConfigurations extends LitElement {
         // Create new resource
         await KubernetesApi.createResource(content, format);
       }
-      
+
       // Refresh data
       await this.fetchData();
-      
+
       // Close drawer and reset
       this.showCreateDrawer = false;
       this.createResourceValue = '';
       this.isEditMode = false;
       this.editingResource = null;
-      
+
       const nc = this.shadowRoot?.querySelector('notification-container') as any;
       if (nc && typeof nc.addNotification === 'function') {
         const resourceType = this.getResourceType();
-        nc.addNotification({ 
-          type: 'success', 
+        nc.addNotification({
+          type: 'success',
           message: this.isEditMode ? `${resourceType} updated successfully` : `${resourceType} created successfully`
         });
       }
     } catch (err: any) {
       const nc = this.shadowRoot?.querySelector('notification-container') as any;
       if (nc && typeof nc.addNotification === 'function') {
-        nc.addNotification({ 
-          type: 'error', 
-          message: `Failed to ${this.isEditMode ? 'update' : 'create'} resource: ${err?.message || 'Unknown error'}` 
+        nc.addNotification({
+          type: 'error',
+          message: `Failed to ${this.isEditMode ? 'update' : 'create'} resource: ${err?.message || 'Unknown error'}`
         });
       }
     } finally {
@@ -469,16 +469,16 @@ export class KubernetesConfigurations extends LitElement {
   async fetchData() {
     this.loading = true;
     this.error = null;
-    
+
     try {
       // Fetch namespaces first if not already loaded
       if (this.namespaces.length === 0) {
         this.namespaces = await KubernetesApi.getNamespaces();
       }
-      
+
       // Fetch resources based on active tab
       const namespace = this.selectedNamespace === 'All Namespaces' ? undefined : this.selectedNamespace;
-      
+
       if (this.activeTab === 'configmaps') {
         const configMaps = await KubernetesApi.getConfigMaps(namespace);
         this.resources = configMaps;
@@ -548,12 +548,12 @@ export class KubernetesConfigurations extends LitElement {
               .data="${this.getFilteredData()}"
               .getActions="${(item: ConfigResource) => this.getActions(item)}"
               .customRenderers="${this.activeTab === 'secrets' ? {
-                type: (value: string) => html`
+          type: (value: string) => html`
                   <span class="type-badge ${this.getSecretTypeClass(value)}">
                     ${this.getSecretTypeLabel(value)}
                   </span>
                 `
-              } : {}}"
+        } : {}}"
               emptyMessage="No ${this.activeTab} found"
               @cell-click="${this.handleCellClick}"
               @action="${this.handleAction}"
@@ -588,12 +588,12 @@ export class KubernetesConfigurations extends LitElement {
           .submitLabel="${this.isEditMode ? 'Update' : 'Apply'}"
           .loading="${this.isCreating}"
           .format="${this.resourceFormat}"
-          @close="${() => { 
-            this.showCreateDrawer = false; 
-            this.isEditMode = false;
-            this.editingResource = null;
-            this.resourceFormat = 'yaml';  // Reset format
-          }}"
+          @close="${() => {
+        this.showCreateDrawer = false;
+        this.isEditMode = false;
+        this.editingResource = null;
+        this.resourceFormat = 'yaml';  // Reset format
+      }}"
           @create="${this.handleCreateResource}"
         ></create-resource-drawer>
 

@@ -5,6 +5,7 @@
 
 import { html, css } from 'lit';
 import { customElement } from 'lit/decorators.js';
+import { theme } from '../theme'; // Import theme service
 import { t } from '../i18n';
 import { I18nLitElement } from '../i18n-mixin';
 import Chart from 'chart.js/auto';
@@ -340,17 +341,22 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
   private memoryTrend = this.subscribeToStore($memoryTrend);
   private metricsAlerts = this.subscribeToStore($metricsAlerts);
 
+  // Theme listener for chart updates
+  private handleThemeChange = (e: CustomEvent) => {
+    this.updateChartTheme(e.detail.theme);
+  };
+
   override async connectedCallback() {
     super.connectedCallback();
-    
+
     // Import auth to check authentication status
     const { auth } = await import('../auth');
-    
+
     // Only connect if authenticated
     if (auth.isAuthenticated()) {
       // Small delay to ensure auth token is properly set
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       // Ensure metrics connection is active
       try {
         await connectMetrics();
@@ -358,12 +364,16 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
         console.error('[DashboardTabV2] Failed to connect metrics:', error);
       }
     }
+
+    // Listen for theme changes to update charts
+    window.addEventListener('theme-changed', this.handleThemeChange as EventListener);
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback();
     this.cleanup();
     // Note: We don't disconnect metrics here to keep data flowing for other components
+    window.removeEventListener('theme-changed', this.handleThemeChange as EventListener);
   }
 
   override firstUpdated() {
@@ -374,7 +384,7 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
 
   override updated(changedProperties: Map<string, any>) {
     super.updated(changedProperties);
-    
+
     // Throttle chart updates to prevent excessive re-renders
     // Only update charts every CHART_UPDATE_INTERVAL milliseconds
     if (this.cpuChart && this.memoryChart) {
@@ -399,13 +409,13 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
       clearTimeout(this.updateThrottle);
       this.updateThrottle = null;
     }
-    
+
     // Destroy charts and clear references
     if (this.cpuChart) {
       this.cpuChart.destroy();
       this.cpuChart = null;
     }
-    
+
     if (this.memoryChart) {
       this.memoryChart.destroy();
       this.memoryChart = null;
@@ -420,6 +430,12 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
 
     // Initialize CPU chart with history
     const cpuHistoryData = this.cpuHistory.value || [];
+
+    // Get current theme colors
+    const isDark = theme.getTheme() === 'dark';
+    const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    const textColor = isDark ? '#cccccc' : '#666666';
+
     this.cpuChart = new Chart(cpuCtx, {
       type: 'line',
       data: {
@@ -440,9 +456,13 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
           legend: { display: false },
         },
         scales: {
-          x: { 
+          x: {
             display: true,
+            grid: {
+              color: gridColor,
+            },
             ticks: {
+              color: textColor,
               maxTicksLimit: 10,
               autoSkip: true,
             }
@@ -450,7 +470,11 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
           y: {
             beginAtZero: true,
             max: 100,
+            grid: {
+              color: gridColor,
+            },
             ticks: {
+              color: textColor,
               callback: (value) => `${value}%`,
             }
           },
@@ -480,9 +504,13 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
           legend: { display: false },
         },
         scales: {
-          x: { 
+          x: {
             display: true,
+            grid: {
+              color: gridColor,
+            },
             ticks: {
+              color: textColor,
               maxTicksLimit: 10,
               autoSkip: true,
             }
@@ -490,13 +518,59 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
           y: {
             beginAtZero: true,
             max: 100,
+            grid: {
+              color: gridColor,
+            },
             ticks: {
+              color: textColor,
               callback: (value) => `${value}%`,
             }
           },
         },
       },
     });
+  }
+
+  private updateChartTheme(currentTheme: string) {
+    if (!this.cpuChart && !this.memoryChart) return;
+
+    const isDark = currentTheme === 'dark';
+    const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    const textColor = isDark ? '#cccccc' : '#666666';
+
+    const updateChartOptions = (chart: Chart | null) => {
+      if (!chart) return;
+
+      if (chart.options.scales && chart.options.scales.x) {
+        chart.options.scales.x.grid = {
+          ...chart.options.scales.x.grid,
+          color: gridColor,
+        };
+
+        chart.options.scales.x.ticks = {
+          ...chart.options.scales.x.ticks,
+          color: textColor
+        };
+      }
+
+      if (chart.options.scales && chart.options.scales.y) {
+        chart.options.scales.y.grid = {
+          ...chart.options.scales.y.grid,
+          color: gridColor,
+        };
+
+        chart.options.scales.y.ticks = {
+          ...chart.options.scales.y.ticks,
+          color: textColor,
+          callback: (value) => `${value}%` // Re-add callback 
+        };
+      }
+
+      chart.update('none');
+    };
+
+    updateChartOptions(this.cpuChart);
+    updateChartOptions(this.memoryChart);
   }
 
   private updateChartsFromHistory() {
@@ -527,7 +601,7 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
       decreasing: '↓',
       stable: '→',
     };
-    
+
     const labels = {
       increasing: 'Increasing',
       decreasing: 'Decreasing',

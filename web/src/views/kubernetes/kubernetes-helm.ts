@@ -26,7 +26,7 @@ export class KubernetesHelm extends LitElement {
   @property({ type: String }) searchQuery = '';
   @property({ type: Boolean }) loading = false;
   @property({ type: String }) error: string | null = null;
-  
+
   @state() private activeTab = 'releases';
   @state() private showDetails = false;
   @state() private selectedItem: HelmRelease | null = null;
@@ -101,7 +101,7 @@ export class KubernetesHelm extends LitElement {
       padding: 6px 10px;
       background: var(--vscode-dropdown-background, #3c3c3c);
       color: var(--vscode-dropdown-foreground, #cccccc);
-      border: 1px solid var(--vscode-dropdown-border, #3c3c3c);
+      border-bottom: 1px solid var(--vscode-border);
       border-radius: 4px;
       font-size: 13px;
       cursor: pointer;
@@ -181,7 +181,7 @@ export class KubernetesHelm extends LitElement {
 
     .values-content {
       background: var(--vscode-editor-background, #1e1e1e);
-      border: 1px solid var(--vscode-widget-border, #303031);
+      border: 1px solid var(--vscode-border);
       border-radius: 4px;
       padding: 1rem;
       font-family: var(--vscode-editor-font-family, monospace);
@@ -245,7 +245,7 @@ export class KubernetesHelm extends LitElement {
     }
 
     if (this.searchQuery) {
-      data = data.filter(item => 
+      data = data.filter(item =>
         JSON.stringify(item).toLowerCase().includes(this.searchQuery.toLowerCase())
       );
     }
@@ -270,7 +270,7 @@ export class KubernetesHelm extends LitElement {
 
   private handleCellClick(event: CustomEvent) {
     const { column, item } = event.detail;
-    
+
     if (column.type === 'link') {
       this.viewDetails(item);
     }
@@ -287,7 +287,7 @@ export class KubernetesHelm extends LitElement {
 
   private handleAction(event: CustomEvent) {
     const { action, item } = event.detail;
-    
+
     switch (action) {
       case 'view':
         this.viewDetails(item);
@@ -311,7 +311,7 @@ export class KubernetesHelm extends LitElement {
     this.selectedItem = item;
     this.showDetails = true;
     this.loadingDetails = true;
-    
+
     try {
       // For Helm releases, we might need to fetch additional details
       // For now, we'll use the existing data
@@ -352,13 +352,13 @@ export class KubernetesHelm extends LitElement {
     if (!this.itemToDelete) return;
 
     this.isDeleting = true;
-    
+
     try {
       await KubernetesApi.deleteResource('Release', this.itemToDelete.name, this.itemToDelete.namespace);
-      
+
       // Refresh data
       await this.fetchData();
-      
+
       // Close modal
       this.showDeleteModal = false;
       this.itemToDelete = null;
@@ -388,13 +388,13 @@ export class KubernetesHelm extends LitElement {
   async fetchData() {
     this.loading = true;
     this.error = null;
-    
+
     try {
       // Fetch namespaces first if not already loaded
       if (this.namespaces.length === 0) {
         this.namespaces = await KubernetesApi.getNamespaces();
       }
-      
+
       // Fetch Helm releases
       if (this.activeTab === 'releases') {
         const namespace = this.selectedNamespace === 'all' ? undefined : this.selectedNamespace;
@@ -530,19 +530,18 @@ export class KubernetesHelm extends LitElement {
               .columns="${this.getColumns()}"
               .data="${this.getFilteredData()}"
               .getActions="${(item: HelmRelease) => this.getActions(item)}"
-              .customRenderers="${
-                {
-                  status: (value: string) => html`
+              .customRenderers="${{
+          status: (value: string) => html`
                     <span class="${this.getStatusClass(value)}">${value}</span>
                   `,
-                  chart: (value: string) => html`
+          chart: (value: string) => html`
                     <span class="chart-badge">${value}</span>
                   `,
-                  revision: (value: string) => html`
+          revision: (value: string) => html`
                     <span class="revision-badge">${value}</span>
                   `
-                }
-              }"
+        }
+        }"
               emptyMessage="No ${this.activeTab} found"
               @cell-click="${this.handleCellClick}"
               @action="${this.handleAction}"

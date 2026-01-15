@@ -41,7 +41,7 @@ export class LogsDrawer extends LitElement {
       flex-direction: column;
       transform: translateX(100%);
       transition: transform 0.3s ease;
-      border-left: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-left: 1px solid var(--vscode-border);
     }
 
     :host([show]) .drawer {
@@ -51,7 +51,7 @@ export class LogsDrawer extends LitElement {
     .drawer-header {
       padding: 20px;
       background: var(--vscode-sideBar-background, var(--vscode-bg-light, #252526));
-      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-bottom: 1px solid var(--vscode-border);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -91,7 +91,7 @@ export class LogsDrawer extends LitElement {
     .controls {
       padding: 12px 20px;
       background: var(--vscode-sideBar-background, var(--vscode-bg-light, #252526));
-      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-bottom: 1px solid var(--vscode-border);
       display: flex;
       gap: 8px;
       align-items: center;
@@ -403,7 +403,7 @@ export class LogsDrawer extends LitElement {
   }
 
   private renderLogLine(line: string) {
-    const isHighlighted = this.searchQuery && 
+    const isHighlighted = this.searchQuery &&
       line.toLowerCase().includes(this.searchQuery.toLowerCase());
 
     if (!this.colorize) {
@@ -425,12 +425,12 @@ export class LogsDrawer extends LitElement {
     if (levelMatch && levelMatch[1]) {
       const level = levelMatch[1].toLowerCase();
       const levelClass = level.includes('error') ? 'error' :
-                        level.includes('warn') ? 'warn' :
-                        level.includes('info') ? 'info' : 'debug';
-      
+        level.includes('warn') ? 'warn' :
+          level.includes('info') ? 'info' : 'debug';
+
       const beforeLevel = content.substring(0, content.indexOf(levelMatch[0]));
       const afterLevel = content.substring(content.indexOf(levelMatch[0]) + levelMatch[0].length);
-      
+
       return html`
         <div class="log-line ${isHighlighted ? 'highlighted' : ''}">
           ${parts}
@@ -484,7 +484,7 @@ export class LogsDrawer extends LitElement {
   private handleScroll(e: Event) {
     const container = e.target as HTMLElement;
     const isAtBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 10;
-    
+
     if (!isAtBottom && this.isFollowing) {
       this.isFollowing = false;
     }
@@ -499,7 +499,7 @@ export class LogsDrawer extends LitElement {
 
   override updated(changedProperties: Map<string, any>) {
     super.updated(changedProperties);
-    
+
     if (changedProperties.has('logs') && this.isFollowing && this.autoScroll) {
       // Scroll to bottom when new logs are added
       setTimeout(() => this.scrollToBottom(), 0);

@@ -66,7 +66,7 @@ export class NetworkFormDrawer extends LitElement {
       width: 480px;
       max-width: 100%;
       background: var(--vscode-editor-background, var(--vscode-bg-light));
-      border-left: 1px solid var(--vscode-widget-border, #454545);
+      border-left: 1px solid var(--vscode-border);
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.3);
       display: flex;
       flex-direction: column;
@@ -98,7 +98,7 @@ export class NetworkFormDrawer extends LitElement {
 
     .drawer-header {
       padding: 16px 20px;
-      border-bottom: 1px solid var(--vscode-editorWidget-border, #464647);
+      border-bottom: 1px solid var(--vscode-border);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -135,7 +135,7 @@ export class NetworkFormDrawer extends LitElement {
 
     .drawer-footer {
       padding: 12px 20px;
-      border-top: 1px solid var(--vscode-editorWidget-border, #464647);
+      border-top: 1px solid var(--vscode-border);
       display: flex;
       justify-content: flex-end;
       gap: 8px;
@@ -150,7 +150,7 @@ export class NetworkFormDrawer extends LitElement {
 
     .section {
       border-radius: 4px;
-      border: 1px solid var(--vscode-widget-border, #454545);
+      border: 1px solid var(--vscode-border);
       padding: 12px 12px 8px;
       background: var(--vscode-editorWidget-background, rgba(0, 0, 0, 0.03));
     }
@@ -245,7 +245,7 @@ export class NetworkFormDrawer extends LitElement {
 
     .hosts-table th,
     .hosts-table td {
-      border: 1px solid var(--vscode-widget-border, #454545);
+      border: 1px solid var(--vscode-border);
       padding: 4px 6px;
     }
 

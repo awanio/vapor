@@ -43,7 +43,7 @@ export class KubernetesWorkloads extends LitElement {
   @property({ type: String }) searchQuery = '';
   @property({ type: Boolean }) loading = false;
   @property({ type: String }) error: string | null = null;
-  
+
   @state() private activeTab = 'pods';
   @state() private showDetails = false;
   @state() private selectedItem: WorkloadResource | null = null;
@@ -148,7 +148,7 @@ export class KubernetesWorkloads extends LitElement {
       gap: 6px;
       padding: 4px 10px;
       border-radius: 999px;
-      border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border: 1px solid var(--vscode-border);
       font-size: 11px;
       color: var(--vscode-descriptionForeground);
       user-select: none;
@@ -252,7 +252,7 @@ export class KubernetesWorkloads extends LitElement {
     let data = this.workloads;
 
     if (this.searchQuery) {
-      data = data.filter(item => 
+      data = data.filter(item =>
         JSON.stringify(item).toLowerCase().includes(this.searchQuery.toLowerCase())
       );
     }
@@ -300,7 +300,7 @@ export class KubernetesWorkloads extends LitElement {
 
   private handleAction(event: CustomEvent) {
     const { action, item } = event.detail;
-    
+
     switch (action) {
       case 'view':
         this.viewDetails(item);
@@ -333,7 +333,7 @@ export class KubernetesWorkloads extends LitElement {
     this.selectedItem = item;
     this.showDetails = true;
     this.loadingDetails = true;
-    
+
     try {
       const resourceType = this.getResourceType();
       this.detailsData = await KubernetesApi.getResourceDetails(resourceType, item.name, item.namespace);
@@ -348,13 +348,13 @@ export class KubernetesWorkloads extends LitElement {
 
   private async viewLogs(item: WorkloadResource) {
     if (item.type !== 'Pod') return;
-    
+
     this.logsPodName = item.name;
     this.logsNamespace = item.namespace;
     this.showLogsDrawer = true;
     this.logsLoading = true;
     this.logsError = '';
-    
+
     try {
       const logs = await KubernetesApi.getPodLogs(item.name, item.namespace);
       this.logsData = logs;
@@ -374,7 +374,7 @@ export class KubernetesWorkloads extends LitElement {
     this.resourceFormat = 'yaml';
     this.showCreateDrawer = true;
     this.isCreating = true;
-    
+
     try {
       // Fetch the resource in YAML format by default
       const resourceType = this.getResourceType();
@@ -384,19 +384,19 @@ export class KubernetesWorkloads extends LitElement {
         item.namespace,
         'yaml'  // Always fetch as YAML initially
       );
-      
+
       this.createResourceValue = resourceContent;
       this.isCreating = false;
     } catch (error: any) {
       console.error('Failed to fetch resource for editing:', error);
       this.isCreating = false;
       this.showCreateDrawer = false;
-      
+
       const nc = this.shadowRoot?.querySelector('notification-container') as any;
       if (nc && typeof nc.addNotification === 'function') {
-        nc.addNotification({ 
-          type: 'error', 
-          message: `Failed to fetch resource: ${error.message || 'Unknown error'}` 
+        nc.addNotification({
+          type: 'error',
+          message: `Failed to fetch resource: ${error.message || 'Unknown error'}`
         });
       }
     }
@@ -416,13 +416,13 @@ export class KubernetesWorkloads extends LitElement {
     if (!this.itemToDelete) return;
 
     this.isDeleting = true;
-    
+
     try {
       await KubernetesApi.deleteResource(this.itemToDelete.type, this.itemToDelete.name, this.itemToDelete.namespace);
-      
+
       // Refresh data
       await this.fetchData();
-      
+
       // Close modal
       this.showDeleteModal = false;
       this.itemToDelete = null;
@@ -491,7 +491,7 @@ export class KubernetesWorkloads extends LitElement {
         content = resource.yaml as string;
       }
       this.isCreating = true;
-      
+
       if (this.isEditMode && this.editingResource) {
         // Update existing resource
         const resourceType = this.getResourceType();
@@ -506,29 +506,29 @@ export class KubernetesWorkloads extends LitElement {
         // Create new resource
         await KubernetesApi.createResource(content, format);
       }
-      
+
       // Refresh data
       await this.fetchData();
-      
+
       // Close drawer and reset
       this.showCreateDrawer = false;
       this.createResourceValue = '';
       this.isEditMode = false;
       this.editingResource = null;
-      
+
       const nc = this.shadowRoot?.querySelector('notification-container') as any;
       if (nc && typeof nc.addNotification === 'function') {
-        nc.addNotification({ 
-          type: 'success', 
-          message: this.isEditMode ? 'Resource updated successfully' : 'Resource created successfully' 
+        nc.addNotification({
+          type: 'success',
+          message: this.isEditMode ? 'Resource updated successfully' : 'Resource created successfully'
         });
       }
     } catch (err: any) {
       const nc = this.shadowRoot?.querySelector('notification-container') as any;
       if (nc && typeof nc.addNotification === 'function') {
-        nc.addNotification({ 
-          type: 'error', 
-          message: `Failed to ${this.isEditMode ? 'update' : 'create'} resource: ${err?.message || 'Unknown error'}` 
+        nc.addNotification({
+          type: 'error',
+          message: `Failed to ${this.isEditMode ? 'update' : 'create'} resource: ${err?.message || 'Unknown error'}`
         });
       }
     } finally {
@@ -552,7 +552,7 @@ export class KubernetesWorkloads extends LitElement {
   private restartWorkload(workload: WorkloadResource) {
     this.workloadToRestart = workload;
     this.showRestartModal = true;
-    
+
     // Force update modal properties via direct query
     this.updateComplete.then(() => {
       const modal = this.shadowRoot?.querySelector('#restart-modal') as any;
@@ -570,7 +570,7 @@ export class KubernetesWorkloads extends LitElement {
     if (!this.workloadToRestart) return;
 
     this.isPerformingAction = true;
-    
+
     try {
       // Call the appropriate API method based on workload type
       if (this.workloadToRestart.type === 'Deployment') {
@@ -589,31 +589,31 @@ export class KubernetesWorkloads extends LitElement {
           this.workloadToRestart.name
         );
       }
-      
+
       // Refresh data
       await this.fetchData();
-      
+
       // Show success notification
       const workloadName = this.workloadToRestart.name;
       const workloadType = this.workloadToRestart.type;
-      
+
       // Close modal
       this.showRestartModal = false;
       this.workloadToRestart = null;
       const nc = this.shadowRoot?.querySelector('notification-container') as any;
       if (nc && typeof nc.addNotification === 'function') {
-        nc.addNotification({ 
-          type: 'success', 
-          message: `${workloadType} ${workloadName} restarted successfully` 
+        nc.addNotification({
+          type: 'success',
+          message: `${workloadType} ${workloadName} restarted successfully`
         });
       }
     } catch (error: any) {
       console.error('Failed to restart workload:', error);
       const nc = this.shadowRoot?.querySelector('notification-container') as any;
       if (nc && typeof nc.addNotification === 'function') {
-        nc.addNotification({ 
-          type: 'error', 
-          message: `Failed to restart ${this.workloadToRestart?.type?.toLowerCase() || 'workload'}: ${error.message || 'Unknown error'}` 
+        nc.addNotification({
+          type: 'error',
+          message: `Failed to restart ${this.workloadToRestart?.type?.toLowerCase() || 'workload'}: ${error.message || 'Unknown error'}`
         });
       }
     } finally {
@@ -631,7 +631,7 @@ export class KubernetesWorkloads extends LitElement {
   private rollbackWorkload(workload: WorkloadResource) {
     this.workloadToRollback = workload;
     this.showRollbackModal = true;
-    
+
     // Force update modal properties via direct query
     this.updateComplete.then(() => {
       const modal = this.shadowRoot?.querySelector('#rollback-modal') as any;
@@ -649,7 +649,7 @@ export class KubernetesWorkloads extends LitElement {
     if (!this.workloadToRollback) return;
 
     this.isPerformingAction = true;
-    
+
     try {
       // Call the appropriate API method based on workload type
       if (this.workloadToRollback.type === 'Deployment') {
@@ -668,31 +668,31 @@ export class KubernetesWorkloads extends LitElement {
           this.workloadToRollback.name
         );
       }
-      
+
       // Refresh data
       await this.fetchData();
-      
+
       // Show success notification
       const workloadName = this.workloadToRollback.name;
       const workloadType = this.workloadToRollback.type;
-      
+
       // Close modal
       this.showRollbackModal = false;
       this.workloadToRollback = null;
       const nc = this.shadowRoot?.querySelector('notification-container') as any;
       if (nc && typeof nc.addNotification === 'function') {
-        nc.addNotification({ 
-          type: 'success', 
-          message: `${workloadType} ${workloadName} rolled back successfully` 
+        nc.addNotification({
+          type: 'success',
+          message: `${workloadType} ${workloadName} rolled back successfully`
         });
       }
     } catch (error: any) {
       console.error('Failed to rollback workload:', error);
       const nc = this.shadowRoot?.querySelector('notification-container') as any;
       if (nc && typeof nc.addNotification === 'function') {
-        nc.addNotification({ 
-          type: 'error', 
-          message: `Failed to rollback ${this.workloadToRollback?.type?.toLowerCase() || 'workload'}: ${error.message || 'Unknown error'}` 
+        nc.addNotification({
+          type: 'error',
+          message: `Failed to rollback ${this.workloadToRollback?.type?.toLowerCase() || 'workload'}: ${error.message || 'Unknown error'}`
         });
       }
     } finally {
@@ -710,11 +710,11 @@ export class KubernetesWorkloads extends LitElement {
   private async setWorkloadImage(workload: WorkloadResource) {
     console.log('Setting workload image for:', workload);
     this.workloadForSetImage = workload;
-    
+
     try {
       // Fetch container information based on workload type
-      let containers: Array<{name: string, image: string}> = [];
-      
+      let containers: Array<{ name: string, image: string }> = [];
+
       if (workload.type === 'Pod') {
         containers = await KubernetesApi.getPodContainers(
           workload.namespace,
@@ -736,7 +736,7 @@ export class KubernetesWorkloads extends LitElement {
           workload.name
         );
       }
-      
+
       console.log('Fetched containers:', containers);
       this.containerImages = containers;
       this.showSetImageModal = true;
@@ -745,9 +745,9 @@ export class KubernetesWorkloads extends LitElement {
       console.error('Failed to fetch workload containers:', error);
       const nc = this.shadowRoot?.querySelector('notification-container') as any;
       if (nc && typeof nc.addNotification === 'function') {
-        nc.addNotification({ 
-          type: 'error', 
-          message: `Failed to fetch ${workload.type?.toLowerCase()} containers: ${error.message || 'Unknown error'}` 
+        nc.addNotification({
+          type: 'error',
+          message: `Failed to fetch ${workload.type?.toLowerCase()} containers: ${error.message || 'Unknown error'}`
         });
       }
     }
@@ -758,7 +758,7 @@ export class KubernetesWorkloads extends LitElement {
 
     const { images } = event.detail;
     this.isPerformingAction = true;
-    
+
     try {
       // Call the appropriate API method based on workload type
       if (this.workloadForSetImage.type === 'Pod') {
@@ -786,20 +786,20 @@ export class KubernetesWorkloads extends LitElement {
           images
         );
       }
-      
+
       // Refresh data
       await this.fetchData();
-      
+
       // Show success notification
       const workloadType = this.workloadForSetImage?.type || 'Workload';
       const nc = this.shadowRoot?.querySelector('notification-container') as any;
       if (nc && typeof nc.addNotification === 'function') {
-        nc.addNotification({ 
-          type: 'success', 
-          message: `${workloadType} images updated successfully` 
+        nc.addNotification({
+          type: 'success',
+          message: `${workloadType} images updated successfully`
         });
       }
-      
+
       // Close modal
       this.showSetImageModal = false;
       this.workloadForSetImage = null;
@@ -808,9 +808,9 @@ export class KubernetesWorkloads extends LitElement {
       console.error('Failed to set workload images:', error);
       const nc = this.shadowRoot?.querySelector('notification-container') as any;
       if (nc && typeof nc.addNotification === 'function') {
-        nc.addNotification({ 
-          type: 'error', 
-          message: `Failed to update ${this.workloadForSetImage?.type?.toLowerCase() || 'workload'} images: ${error.message || 'Unknown error'}` 
+        nc.addNotification({
+          type: 'error',
+          message: `Failed to update ${this.workloadForSetImage?.type?.toLowerCase() || 'workload'} images: ${error.message || 'Unknown error'}`
         });
       }
     } finally {
@@ -826,10 +826,10 @@ export class KubernetesWorkloads extends LitElement {
 
   private async handleLogsRefresh() {
     if (!this.logsPodName || !this.logsNamespace) return;
-    
+
     this.logsLoading = true;
     this.logsError = '';
-    
+
     try {
       const logs = await KubernetesApi.getPodLogs(this.logsPodName, this.logsNamespace);
       this.logsData = logs;
@@ -844,15 +844,15 @@ export class KubernetesWorkloads extends LitElement {
   async fetchData() {
     this.loading = true;
     this.error = null;
-    
+
     try {
       // Fetch namespaces first
       this.namespaces = await KubernetesApi.getNamespaces();
-      
+
       // Fetch workloads based on active tab
       const namespace = this.selectedNamespace === 'All Namespaces' ? undefined : this.selectedNamespace;
       let data: WorkloadResource[] = [];
-      
+
       switch (this.activeTab) {
         case 'pods':
           const pods = await KubernetesApi.getPods(namespace);
@@ -879,7 +879,7 @@ export class KubernetesWorkloads extends LitElement {
           data = cronjobs.map(cj => ({ ...cj, type: 'CronJob' as const, replicas: cj.schedule }));
           break;
       }
-      
+
       this.workloads = data;
     } catch (error: any) {
       console.error('Failed to fetch workloads:', error);
@@ -955,7 +955,7 @@ export class KubernetesWorkloads extends LitElement {
       this.k8sRefetchTimer = null;
       try {
         await this.fetchData();
-      } catch {}
+      } catch { }
     }, 700);
   }
 
@@ -987,12 +987,12 @@ export class KubernetesWorkloads extends LitElement {
     this.scheduleK8sRefetch(action);
   }
 
-  
+
   private openTerminal(item: WorkloadResource) {
     if (item.type !== 'Pod') return;
     this.terminalPod = item.name;
     this.terminalNamespace = item.namespace;
-    this.terminalContainer = ''; 
+    this.terminalContainer = '';
     this.showTerminalModal = true;
   }
 
@@ -1094,13 +1094,12 @@ export class KubernetesWorkloads extends LitElement {
           <delete-modal
             id="restart-modal"
             .show="${this.showRestartModal}"
-          .item="${
-            this.workloadToRestart ? {
-              type: this.workloadToRestart.type || 'Workload',
-              name: this.workloadToRestart.name,
-              namespace: this.workloadToRestart.namespace
-            } : null
-          }"
+          .item="${this.workloadToRestart ? {
+        type: this.workloadToRestart.type || 'Workload',
+        name: this.workloadToRestart.name,
+        namespace: this.workloadToRestart.namespace
+      } : null
+      }"
           .loading="${this.isPerformingAction}"
           .confirmLabel="Restart"
           .confirmButtonClass="confirm"
@@ -1116,13 +1115,12 @@ export class KubernetesWorkloads extends LitElement {
           <delete-modal
             id="rollback-modal"
             .show="${this.showRollbackModal}"
-          .item="${
-            this.workloadToRollback ? {
-              type: this.workloadToRollback.type || 'Workload',
-              name: this.workloadToRollback.name,
-              namespace: this.workloadToRollback.namespace
-            } : null
-          }"
+          .item="${this.workloadToRollback ? {
+          type: this.workloadToRollback.type || 'Workload',
+          name: this.workloadToRollback.name,
+          namespace: this.workloadToRollback.namespace
+        } : null
+        }"
           .loading="${this.isPerformingAction}"
           .confirmLabel="Rollback"
           .confirmButtonClass="confirm"
@@ -1151,12 +1149,12 @@ export class KubernetesWorkloads extends LitElement {
           .submitLabel="${this.isEditMode ? 'Update' : 'Apply'}"
           .loading="${this.isCreating}"
           .format="${this.resourceFormat}"
-          @close="${() => { 
-            this.showCreateDrawer = false; 
-            this.isEditMode = false;
-            this.editingResource = null;
-            this.resourceFormat = 'yaml';  // Reset format
-          }}"
+          @close="${() => {
+        this.showCreateDrawer = false;
+        this.isEditMode = false;
+        this.editingResource = null;
+        this.resourceFormat = 'yaml';  // Reset format
+      }}"
           @create="${this.handleCreateResource}"
         ></create-resource-drawer>
 

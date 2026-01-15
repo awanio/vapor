@@ -1,8 +1,8 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { AnsibleService } from '../../services/ansible';
-import type { 
-  GitSyncRequest, 
+import type {
+  GitSyncRequest,
   GalaxyInstallRequest,
   CreateFromTemplateRequest,
   PlaybookTemplate,
@@ -70,7 +70,7 @@ export class PlaybookImportDrawer extends LitElement {
       flex-direction: column;
       transform: translateX(100%);
       transition: transform 0.3s ease;
-      border-left: 1px solid var(--vscode-widget-border, #454545);
+      border-left: 1px solid var(--vscode-border);
     }
 
     :host([show]) .drawer {
@@ -80,7 +80,7 @@ export class PlaybookImportDrawer extends LitElement {
     .drawer-header {
       padding: 20px;
       background: var(--vscode-sideBarSectionHeader-background, #252526);
-      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+      border-bottom: 1px solid var(--vscode-border);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -211,7 +211,7 @@ export class PlaybookImportDrawer extends LitElement {
     .template-card {
       padding: 12px;
       background: var(--vscode-editor-background, #1e1e1e);
-      border: 1px solid var(--vscode-widget-border, #454545);
+      border: 1px solid var(--vscode-border);
       border-radius: 4px;
       cursor: pointer;
       transition: all 0.2s;
@@ -241,7 +241,7 @@ export class PlaybookImportDrawer extends LitElement {
       margin-top: 20px;
       padding: 16px;
       background: var(--vscode-editor-background, #1e1e1e);
-      border: 1px solid var(--vscode-widget-border, #454545);
+      border: 1px solid var(--vscode-border);
       border-radius: 4px;
     }
 
@@ -257,7 +257,7 @@ export class PlaybookImportDrawer extends LitElement {
     .drawer-footer {
       padding: 20px;
       background: var(--vscode-sideBarSectionHeader-background, #252526);
-      border-top: 1px solid var(--vscode-widget-border, #454545);
+      border-top: 1px solid var(--vscode-border);
       display: flex;
       justify-content: flex-end;
       gap: 12px;
@@ -341,21 +341,21 @@ export class PlaybookImportDrawer extends LitElement {
     this.uploadFile = undefined;
     this.uploadName = '';
     this.uploadOverwrite = false;
-    
+
     this.templateName = '';
     this.templateVariables = {};
     this.selectedTemplate = undefined;
-    
+
     this.gitUrl = '';
     this.gitBranch = 'main';
     this.gitPath = '';
     this.gitAuthToken = '';
     this.gitSshKey = '';
     this.gitSyncAsSymlink = false;
-    
+
     this.urlSource = '';
     this.urlName = '';
-    
+
     this.galaxyType = 'collection';
     this.galaxyName = '';
     this.galaxyVersion = '';
@@ -550,9 +550,9 @@ export class PlaybookImportDrawer extends LitElement {
             <div
               class="template-card ${this.selectedTemplate?.id === template.id ? 'selected' : ''}"
               @click=${() => {
-                this.selectedTemplate = template;
-                this.templateVariables = {};
-              }}
+        this.selectedTemplate = template;
+        this.templateVariables = {};
+      }}
             >
               <div class="template-name">${template.name}</div>
               <div class="template-description">${template.description}</div>
@@ -586,11 +586,11 @@ export class PlaybookImportDrawer extends LitElement {
                   class="form-input"
                   .value=${this.templateVariables[variable.name] || variable.default || ''}
                   @input=${(e: Event) => {
-                    this.templateVariables = {
-                      ...this.templateVariables,
-                      [variable.name]: (e.target as HTMLInputElement).value
-                    };
-                  }}
+          this.templateVariables = {
+            ...this.templateVariables,
+            [variable.name]: (e.target as HTMLInputElement).value
+          };
+        }}
                   placeholder=${variable.default || ''}
                 />
               </div>

@@ -64,11 +64,11 @@ export class ISOManagement extends LitElement {
     description: string;
     pool_name: string;
   } = {
-    os_type: 'linux',
-    os_variant: '',
-    description: '',
-    pool_name: '',
-  };
+      os_type: 'linux',
+      os_variant: '',
+      description: '',
+      pool_name: '',
+    };
   @state() private currentUpload: tus.Upload | null = null;
   @state() private dragOver = false;
   @state() private isPaused = false;
@@ -129,7 +129,7 @@ export class ISOManagement extends LitElement {
       width: 50%;
       height: 100%;
       background: var(--vscode-editor-background, #1e1e1e);
-      border-left: 1px solid var(--vscode-widget-border, #454545);
+      border-left: 1px solid var(--vscode-border);
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
       z-index: 1001;
       overflow-y: auto;
@@ -172,11 +172,11 @@ export class ISOManagement extends LitElement {
 
     .drawer-header {
       padding: 20px 24px;
-      border-bottom: 1px solid var(--vscode-editorWidget-border, #464647);
+      border-bottom: 1px solid var(--vscode-border);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      background: var(--vscode-bg-lighter, #252526);
       position: sticky;
       top: 0;
       z-index: 10;
@@ -196,11 +196,11 @@ export class ISOManagement extends LitElement {
 
     .drawer-footer {
       padding: 16px 24px;
-      border-top: 1px solid var(--vscode-editorWidget-border, #464647);
+      border-top: 1px solid var(--vscode-border);
       display: flex;
       justify-content: flex-end;
       gap: 12px;
-      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      background: var(--vscode-bg-lighter, #252526);
       position: sticky;
       bottom: 0;
       z-index: 10;
@@ -728,10 +728,10 @@ export class ISOManagement extends LitElement {
 
   private closeDetailDrawer() {
     if (this.isClosingDetailDrawer) return; // Prevent double-close
-    
+
     // Start close animation
     this.isClosingDetailDrawer = true;
-    
+
     // Wait for animation to complete before fully closing
     setTimeout(() => {
       this.showDetailDrawer = false;
@@ -780,11 +780,11 @@ export class ISOManagement extends LitElement {
       description: '',
       pool_name: '',
     };
-    
+
     // Load storage pools for the dropdown
     await this.loadPoolsForUpload();
   }
-  
+
   private async loadPoolsForUpload() {
     this.poolsLoading = true;
     this.poolsError = null;
@@ -804,11 +804,11 @@ export class ISOManagement extends LitElement {
       this.poolsLoading = false;
     }
   }
-  
+
   private getAvailablePools(): (StoragePool & { id: string })[] {
     const poolsMap = this.storagePoolStoreController.value;
     if (!poolsMap) return [];
-    
+
     let poolsArray: (StoragePool & { id: string })[];
     if (poolsMap instanceof Map) {
       poolsArray = Array.from(poolsMap.values());
@@ -817,11 +817,11 @@ export class ISOManagement extends LitElement {
     } else {
       return [];
     }
-    
+
     // Filter to only active pools
     return poolsArray.filter(pool => pool.state === 'running' || pool.state === 'active');
   }
-  
+
   private handlePoolChange(poolName: string) {
     this.selectedPoolName = poolName || null;
     this.uploadMetadata = { ...this.uploadMetadata, pool_name: poolName };
@@ -829,10 +829,10 @@ export class ISOManagement extends LitElement {
 
   private closeUploadDrawer() {
     if (this.isClosingUploadDrawer) return; // Prevent double-close
-    
+
     // Start close animation
     this.isClosingUploadDrawer = true;
-    
+
     // Wait for animation to complete before fully closing
     setTimeout(() => {
       if (this.currentUpload) {

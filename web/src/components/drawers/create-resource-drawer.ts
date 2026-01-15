@@ -43,7 +43,7 @@ export class CreateResourceDrawer extends LitElement {
       flex-direction: column;
       transform: translateX(100%);
       transition: transform 0.3s ease;
-      border-left: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-left: 1px solid var(--vscode-border);
     }
 
     :host([show]) .drawer {
@@ -53,7 +53,7 @@ export class CreateResourceDrawer extends LitElement {
 .drawer-header {
       padding: 20px;
       background: var(--vscode-bg-lighter, #2c2f3a);
-      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-bottom: 1px solid var(--vscode-border);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -63,7 +63,7 @@ export class CreateResourceDrawer extends LitElement {
     .header-title {
       font-size: 18px;
       font-weight: 500;
-      color: var(--title-color, #e0e0e0);
+      color: var(--vscode-foreground);
       display: flex;
       align-items: center;
       gap: 12px;
@@ -87,7 +87,7 @@ export class CreateResourceDrawer extends LitElement {
 .format-toggle {
       padding: 12px 20px;
       background: var(--vscode-bg-lighter, #2c2f3a);
-      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-bottom: 1px solid var(--vscode-border);
       display: flex;
       gap: 8px;
       align-items: center;
@@ -165,7 +165,7 @@ export class CreateResourceDrawer extends LitElement {
       padding: 16px;
       background: var(--vscode-editor-background, #1e1e1e);
       color: var(--vscode-editor-foreground, #d4d4d4);
-      border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border: 1px solid var(--vscode-border);
       border-radius: 4px;
       font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
       font-size: 14px;
@@ -245,7 +245,7 @@ export class CreateResourceDrawer extends LitElement {
 .controls {
       padding: 20px;
       background: var(--vscode-bg-lighter, #2c2f3a);
-      border-top: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-top: 1px solid var(--vscode-border);
       display: flex;
       justify-content: flex-end;
       gap: 12px;
@@ -339,7 +339,7 @@ spec:
         image: nginx:latest
         ports:
         - containerPort: 80`,
-    
+
     service: `apiVersion: v1
 kind: Service
 metadata:
@@ -353,7 +353,7 @@ spec:
     port: 80
     targetPort: 80
   type: ClusterIP`,
-    
+
     configmap: `apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -363,7 +363,7 @@ data:
   config.yaml: |
     key1: value1
     key2: value2`,
-    
+
     secret: `apiVersion: v1
 kind: Secret
 metadata:
@@ -593,7 +593,7 @@ data:
     if (!resource.metadata.name) {
       throw new Error('Missing required field: metadata.name');
     }
-    
+
     this.validationMessage = `Valid ${resource.kind} resource`;
     this.validationStatus = 'success';
   }

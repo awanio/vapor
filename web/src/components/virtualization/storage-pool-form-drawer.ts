@@ -76,7 +76,7 @@ export class StoragePoolFormDrawer extends LitElement {
       flex-direction: column;
       transform: translateX(100%);
       transition: transform 0.3s ease;
-      border-left: 1px solid var(--vscode-widget-border, #454545);
+      border-left: 1px solid var(--vscode-border);
     }
 
     :host([show]) .drawer {
@@ -85,8 +85,8 @@ export class StoragePoolFormDrawer extends LitElement {
 
     .drawer-header {
       padding: 20px;
-      background: var(--vscode-sideBar-background, #252526);
-      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+      background: var(--vscode-bg-lighter, #252526);
+      border-bottom: 1px solid var(--vscode-border);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -199,8 +199,8 @@ export class StoragePoolFormDrawer extends LitElement {
 
     .drawer-footer {
       padding: 16px 20px;
-      background: var(--vscode-sideBar-background, #252526);
-      border-top: 1px solid var(--vscode-widget-border, #454545);
+      background: var(--vscode-bg-lighter, #252526);
+      border-top: 1px solid var(--vscode-border);
       display: flex;
       justify-content: flex-end;
       gap: 12px;
@@ -340,7 +340,7 @@ export class StoragePoolFormDrawer extends LitElement {
 
   private validateForm(): boolean {
     const fields: Array<keyof StoragePoolFormData> = ['name'];
-    
+
     if (this.formData.type === 'dir') {
       fields.push('path');
     } else if (this.formData.type === 'netfs') {

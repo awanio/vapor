@@ -315,7 +315,7 @@ export class DockerTab extends LitElement {
       border-radius: 1px;
       overflow: visible;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border: 1px solid var(--vscode-border);
     }
 
     .table thead {
@@ -329,14 +329,14 @@ export class DockerTab extends LitElement {
       text-align: left;
       padding: 12px 16px;
       font-size: 0.875rem;
-      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-bottom: 1px solid var(--vscode-border);
     }
 
     .table td {
       padding: 12px 16px;
       color: var(--vscode-text);
       font-size: 0.875rem;
-      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-bottom: 1px solid var(--vscode-border);
       position: relative;
     }
 
@@ -651,7 +651,7 @@ export class DockerTab extends LitElement {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      background: var(--vscode-bg-lighter, #252526);
       position: sticky;
       top: 0;
       z-index: 10;
@@ -676,7 +676,7 @@ export class DockerTab extends LitElement {
       display: flex;
       justify-content: flex-end;
       gap: 12px;
-      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      background: var(--vscode-bg-lighter, #252526);
       position: sticky;
       bottom: 0;
       z-index: 10;
@@ -1307,37 +1307,37 @@ export class DockerTab extends LitElement {
           ${this.error ? html`
             <div class="error-state">
               <h3>${this.error.includes('No container runtime found') ? 'Container Runtime Not Available' : 'Error'}</h3>
-              <p>${this.error.includes('No container runtime found') 
-                ? 'Container management features are not available. Please install Docker or a CRI-compatible container runtime (containerd, CRI-O) to use this feature.'
-                : this.error}</p>
+              <p>${this.error.includes('No container runtime found')
+          ? 'Container management features are not available. Please install Docker or a CRI-compatible container runtime (containerd, CRI-O) to use this feature.'
+          : this.error}</p>
             </div>` : ''}
           ${this.activeTab === 'processes' && !this.error ? html`
-            ${this.containers.length > 0 
-              ? this.renderContainersTable()
-              : html`
+            ${this.containers.length > 0
+          ? this.renderContainersTable()
+          : html`
                 <div class="empty-state">No containers found.</div>`
-            }
+        }
           ` : ''}
           ${this.activeTab === 'images' && !this.error ? html`
-            ${this.images.length > 0 
-              ? this.renderImagesTable()
-              : html`
+            ${this.images.length > 0
+          ? this.renderImagesTable()
+          : html`
                 <div class="empty-state">No images found.</div>`
-            }
+        }
           ` : ''}
           ${this.activeTab === 'volumes' && !this.error ? html`
-            ${this.volumes.length > 0 
-              ? this.renderVolumesTable()
-              : html`
+            ${this.volumes.length > 0
+          ? this.renderVolumesTable()
+          : html`
                 <div class="empty-state">No volumes found.</div>`
-            }
+        }
           ` : ''}
           ${this.activeTab === 'networks' && !this.error ? html`
-            ${this.networks.length > 0 
-              ? this.renderNetworksTable()
-              : html`
+            ${this.networks.length > 0
+          ? this.renderNetworksTable()
+          : html`
                 <div class="empty-state">No networks found.</div>`
-            }
+        }
           ` : ''}
         </div>
       </div>
@@ -1372,19 +1372,19 @@ export class DockerTab extends LitElement {
       ${this.showDrawer ? html`
         <div class="drawer">
           <button class="close-btn" @click=${() => { this.showDrawer = false; this.detailError = null; }}>✕</button>
-          ${this.detailError ? this.renderError() : 
-            (this.selectedContainer ? this.renderContainerDetails() : 
-             this.selectedImage ? this.renderImageDetails() : '')}
+          ${this.detailError ? this.renderError() :
+          (this.selectedContainer ? this.renderContainerDetails() :
+            this.selectedImage ? this.renderImageDetails() : '')}
         </div>` : ''}
 
       ${this.showLogsDrawer ? html`
         <div class="drawer">
-          <button class="close-btn" @click=${() => { 
-            this.showLogsDrawer = false; 
-            this.logsError = null;
-            this.containerLogs = '';
-            this.logsSearchTerm = '';
-          }}>✕</button>
+          <button class="close-btn" @click=${() => {
+          this.showLogsDrawer = false;
+          this.logsError = null;
+          this.containerLogs = '';
+          this.logsSearchTerm = '';
+        }}>✕</button>
           <div class="drawer-content">
             <div class="logs-header">
               <h2 class="logs-title">Container Logs</h2>
@@ -1413,11 +1413,11 @@ export class DockerTab extends LitElement {
 
       ${this.showUploadDrawer ? html`
         <div class="drawer">
-          <button class="close-btn" @click=${() => { 
-            this.showUploadDrawer = false; 
-            this.uploadQueue = [];
-            this.isUploading = false;
-          }}>✕</button>
+          <button class="close-btn" @click=${() => {
+          this.showUploadDrawer = false;
+          this.uploadQueue = [];
+          this.isUploading = false;
+        }}>✕</button>
           <div class="drawer-content">
             <div class="upload-header">
               <h2 class="upload-title">Upload Docker Image</h2>
@@ -1682,9 +1682,9 @@ export class DockerTab extends LitElement {
       const parsedMemory = memoryMB ? Number.parseInt(memoryMB, 10) : undefined;
       const resources = (parsedCpu && !Number.isNaN(parsedCpu)) || (parsedMemory && !Number.isNaN(parsedMemory))
         ? {
-            cpuCores: Number.isNaN(parsedCpu as number) ? undefined : parsedCpu,
-            memoryMB: Number.isNaN(parsedMemory as number) ? undefined : parsedMemory,
-          }
+          cpuCores: Number.isNaN(parsedCpu as number) ? undefined : parsedCpu,
+          memoryMB: Number.isNaN(parsedMemory as number) ? undefined : parsedMemory,
+        }
         : undefined;
 
       const payload: Record<string, unknown> = {
@@ -1820,11 +1820,11 @@ export class DockerTab extends LitElement {
                   placeholder="Container port"
                   .value=${mapping.containerPort}
                   @input=${(e: any) => {
-                    const ports = [...this.createPorts];
-                    const current = ports[index] ?? { containerPort: '', hostPort: '', protocol: 'tcp' };
-                    ports[index] = { ...current, containerPort: e.target.value };
-                    this.createPorts = ports;
-                  }}
+        const ports = [...this.createPorts];
+        const current = ports[index] ?? { containerPort: '', hostPort: '', protocol: 'tcp' };
+        ports[index] = { ...current, containerPort: e.target.value };
+        this.createPorts = ports;
+      }}
                 />
                 <input
                   class="form-input"
@@ -1833,21 +1833,21 @@ export class DockerTab extends LitElement {
                   placeholder="Host port"
                   .value=${mapping.hostPort}
                   @input=${(e: any) => {
-                    const ports = [...this.createPorts];
-                    const current = ports[index] ?? { containerPort: '', hostPort: '', protocol: 'tcp' };
-                    ports[index] = { ...current, hostPort: e.target.value };
-                    this.createPorts = ports;
-                  }}
+        const ports = [...this.createPorts];
+        const current = ports[index] ?? { containerPort: '', hostPort: '', protocol: 'tcp' };
+        ports[index] = { ...current, hostPort: e.target.value };
+        this.createPorts = ports;
+      }}
                 />
                 <select
                   class="form-select"
                   .value=${mapping.protocol}
                   @change=${(e: any) => {
-                    const ports = [...this.createPorts];
-                    const current = ports[index] ?? { containerPort: '', hostPort: '', protocol: 'tcp' };
-                    ports[index] = { ...current, protocol: e.target.value };
-                    this.createPorts = ports;
-                  }}
+        const ports = [...this.createPorts];
+        const current = ports[index] ?? { containerPort: '', hostPort: '', protocol: 'tcp' };
+        ports[index] = { ...current, protocol: e.target.value };
+        this.createPorts = ports;
+      }}
                 >
                   <option value="tcp">tcp</option>
                   <option value="udp">udp</option>
@@ -1869,11 +1869,11 @@ export class DockerTab extends LitElement {
                   placeholder="/host/path"
                   .value=${volume.source}
                   @input=${(e: any) => {
-                    const volumes = [...this.createVolumes];
-                    const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
-                    volumes[index] = { ...current, source: e.target.value };
-                    this.createVolumes = volumes;
-                  }}
+          const volumes = [...this.createVolumes];
+          const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
+          volumes[index] = { ...current, source: e.target.value };
+          this.createVolumes = volumes;
+        }}
                 />
                 <input
                   class="form-input"
@@ -1881,21 +1881,21 @@ export class DockerTab extends LitElement {
                   placeholder="/container/path"
                   .value=${volume.target}
                   @input=${(e: any) => {
-                    const volumes = [...this.createVolumes];
-                    const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
-                    volumes[index] = { ...current, target: e.target.value };
-                    this.createVolumes = volumes;
-                  }}
+          const volumes = [...this.createVolumes];
+          const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
+          volumes[index] = { ...current, target: e.target.value };
+          this.createVolumes = volumes;
+        }}
                 />
                 <select
                   class="form-select"
                   .value=${volume.type}
                   @change=${(e: any) => {
-                    const volumes = [...this.createVolumes];
-                    const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
-                    volumes[index] = { ...current, type: e.target.value };
-                    this.createVolumes = volumes;
-                  }}
+          const volumes = [...this.createVolumes];
+          const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
+          volumes[index] = { ...current, type: e.target.value };
+          this.createVolumes = volumes;
+        }}
                 >
                   <option value="bind">bind</option>
                   <option value="volume">volume</option>
@@ -1905,11 +1905,11 @@ export class DockerTab extends LitElement {
                   class="form-select"
                   .value=${volume.propagation}
                   @change=${(e: any) => {
-                    const volumes = [...this.createVolumes];
-                    const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
-                    volumes[index] = { ...current, propagation: e.target.value };
-                    this.createVolumes = volumes;
-                  }}
+          const volumes = [...this.createVolumes];
+          const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
+          volumes[index] = { ...current, propagation: e.target.value };
+          this.createVolumes = volumes;
+        }}
                 >
                   <option value="">propagation</option>
                   <option value="rprivate">rprivate</option>
@@ -1921,11 +1921,11 @@ export class DockerTab extends LitElement {
                     type="checkbox"
                     .checked=${volume.readOnly}
                     @change=${(e: any) => {
-                      const volumes = [...this.createVolumes];
-                      const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
-                      volumes[index] = { ...current, readOnly: e.target.checked };
-                      this.createVolumes = volumes;
-                    }}
+          const volumes = [...this.createVolumes];
+          const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
+          volumes[index] = { ...current, readOnly: e.target.checked };
+          this.createVolumes = volumes;
+        }}
                   />
                   Read-only
                 </label>
@@ -2052,12 +2052,12 @@ export class DockerTab extends LitElement {
         </thead>
         <tbody>
           ${filteredContainers.map((container, index) => {
-            const isRunning = container.state.toLowerCase().includes('running');
-            const isPaused = container.state.toLowerCase().includes('paused');
-            const shortId = container.id?.substring(0, 12) || 'Unknown';
-            const containerName = container.names.join(', ');
-            
-            return html`
+      const isRunning = container.state.toLowerCase().includes('running');
+      const isPaused = container.state.toLowerCase().includes('paused');
+      const shortId = container.id?.substring(0, 12) || 'Unknown';
+      const containerName = container.names.join(', ');
+
+      return html`
             <tr>
               <td>${shortId}</td>
               <td>
@@ -2099,7 +2099,7 @@ export class DockerTab extends LitElement {
               </td>
             </tr>
             `;
-          })}
+    })}
         </tbody>
       </table>
     `;
@@ -2144,13 +2144,13 @@ export class DockerTab extends LitElement {
         </thead>
         <tbody>
           ${filteredImages.map((image, index) => {
-            const shortId = image.id?.substring(0, 12) || 'Unknown';
-            const tags = image.repoTags && image.repoTags.length > 0 
-              ? image.repoTags.join(', ') 
-              : 'No tags';
-            const size = typeof image.size === 'number' ? this.formatBytes(image.size) : 'Unknown';
-            
-            return html`
+      const shortId = image.id?.substring(0, 12) || 'Unknown';
+      const tags = image.repoTags && image.repoTags.length > 0
+        ? image.repoTags.join(', ')
+        : 'No tags';
+      const size = typeof image.size === 'number' ? this.formatBytes(image.size) : 'Unknown';
+
+      return html`
             <tr>
               <td>${shortId}</td>
               <td>${tags}</td>
@@ -2167,7 +2167,7 @@ export class DockerTab extends LitElement {
               </td>
             </tr>
             `;
-          })}
+    })}
         </tbody>
       </table>
     `;
@@ -2265,7 +2265,7 @@ export class DockerTab extends LitElement {
       </table>
     `;
   }
-  
+
   private renderNetworksTable() {
     const filteredNetworks = this.networks.filter(network =>
       network.name.toLowerCase().includes(this.searchTerm.toLowerCase())
@@ -2501,7 +2501,7 @@ export class DockerTab extends LitElement {
       this.logsError = null;
       this.containerLogs = 'Loading logs...';
       this.showLogsDrawer = true;
-      
+
       const response = await api.get(`/docker/containers/${container.id}/logs`);
       this.containerLogs = response.logs || 'No logs available';
     } catch (error) {
@@ -2558,10 +2558,10 @@ export class DockerTab extends LitElement {
     return text.substring(0, maxLength) + '...';
   }
 
-  private renderContainerDetails() { 
+  private renderContainerDetails() {
     if (!this.selectedContainer) return html``;
     const container = this.selectedContainer;
-    
+
     return html`
       <div class="drawer-content">
         <div class="detail-section">
@@ -2620,9 +2620,9 @@ export class DockerTab extends LitElement {
       </div>
     `;
   }
-  
+
   private renderImageDetails() { return html``; }
-  
+
   private highlightSearchTerm(text: string, term: string): string {
     if (!term || !text) return text;
     const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
@@ -2691,7 +2691,7 @@ export class DockerTab extends LitElement {
     event.preventDefault();
     const zone = event.currentTarget as HTMLElement;
     zone.classList.remove('dragover');
-    
+
     if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
       const file = event.dataTransfer.files[0];
       if (file) {
@@ -2707,7 +2707,7 @@ export class DockerTab extends LitElement {
       progress: 0,
       status: 'pending'
     };
-    
+
     this.uploadQueue = [...this.uploadQueue, uploadItem];
   }
 
@@ -2720,11 +2720,11 @@ export class DockerTab extends LitElement {
     if (pendingItems.length === 0) return;
 
     this.isUploading = true;
-    
+
     for (const item of pendingItems) {
       await this.uploadFile(item);
     }
-    
+
     this.isUploading = false;
   }
 
@@ -2732,10 +2732,10 @@ export class DockerTab extends LitElement {
     try {
       // Update status to uploading
       this.updateUploadItem(item.id, { status: 'uploading', progress: 0 });
-      
+
       const formData = new FormData();
       formData.append('file', item.file);
-      
+
       // Mock progress for now - in real implementation, you'd track actual upload progress
       const progressInterval = setInterval(() => {
         const currentItem = this.uploadQueue.find(i => i.id === item.id);
@@ -2743,32 +2743,32 @@ export class DockerTab extends LitElement {
           this.updateUploadItem(item.id, { progress: currentItem.progress + 10 });
         }
       }, 200);
-      
+
       await api.post('/docker/images/upload', formData);
-      
+
       clearInterval(progressInterval);
       this.updateUploadItem(item.id, { status: 'completed', progress: 100 });
-      
+
       // Refresh images list
       this.fetchImages();
-      
+
     } catch (error) {
       console.error('Error uploading file:', error);
-      this.updateUploadItem(item.id, { 
-        status: 'error', 
-        error: error instanceof ApiError ? error.message : 'Upload failed' 
+      this.updateUploadItem(item.id, {
+        status: 'error',
+        error: error instanceof ApiError ? error.message : 'Upload failed'
       });
     }
   }
 
   private updateUploadItem(id: string, updates: Partial<UploadItem>) {
-    this.uploadQueue = this.uploadQueue.map(item => 
+    this.uploadQueue = this.uploadQueue.map(item =>
       item.id === id ? { ...item, ...updates } : item
     );
   }
 
   private clearCompletedUploads() {
-    this.uploadQueue = this.uploadQueue.filter(item => 
+    this.uploadQueue = this.uploadQueue.filter(item =>
       item.status !== 'completed' && item.status !== 'error'
     );
   }
@@ -2784,19 +2784,19 @@ export class DockerTab extends LitElement {
   // Pull image method
   private async handlePullImage() {
     if (!this.imageName.trim()) return;
-    
+
     try {
       await api.post('/docker/images/pull', {
         image: this.imageName.trim()
       });
-      
+
       // Close modal and reset form
       this.showPullImageModal = false;
       this.imageName = '';
-      
+
       // Refresh images list
       this.fetchImages();
-      
+
     } catch (error) {
       console.error('Error pulling image:', error);
       // TODO: Add error handling UI - could show a toast notification or update modal with error

@@ -27,9 +27,9 @@ export class NamespaceDropdown extends LitElement {
     }
 
     .dropdown-toggle {
-      background: var(--dropdown-bg, #2c2f3a);
-      color: var(--dropdown-color, #e0e0e0);
-      border: 1px solid var(--dropdown-border, #3a3d4a);
+      background: var(--vscode-button-secondaryBackground, var(--vscode-bg-lighter, #eff1f3));
+      color: var(--vscode-button-secondaryForeground, var(--vscode-foreground, #3b3b3b));
+      border: 1px solid var(--vscode-button-border, var(--vscode-border, #cecece));
       padding: 8px 16px;
       border-radius: 4px;
       cursor: pointer;
@@ -42,13 +42,14 @@ export class NamespaceDropdown extends LitElement {
     }
 
     .dropdown-toggle:hover {
-      background: var(--dropdown-hover-bg, #3a3d4a);
-      border-color: var(--dropdown-hover-border, #4a4d5a);
+      background: var(--vscode-button-secondaryHoverBackground, var(--vscode-bg, #e5e5e5));
+      border-color: var(--vscode-button-border, var(--vscode-border, #cecece));
     }
 
     .dropdown-toggle.open {
-      background: var(--dropdown-active-bg, #3a3d4a);
-      border-color: var(--dropdown-active-border, var(--vscode-focusBorder, #007acc));
+      background: var(--vscode-button-secondaryBackground, var(--vscode-bg-lighter, #eff1f3));
+      color: var(--vscode-button-secondaryForeground, var(--vscode-foreground, #3b3b3b));
+      border-color: var(--vscode-focusBorder, #007acc);
     }
 
     .dropdown-label {
@@ -70,10 +71,11 @@ export class NamespaceDropdown extends LitElement {
       left: 0;
       right: 0;
       margin-top: 4px;
-      background: var(--menu-bg, #2c2f3a);
-      border: 1px solid var(--menu-border, #3a3d4a);
+      margin-top: 4px;
+      background: var(--vscode-dropdown-background, var(--vscode-editor-background, #ffffff));
+      border: 1px solid var(--vscode-border);
       border-radius: 4px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
       z-index: 1000;
       max-height: 400px;
       overflow: hidden;
@@ -88,12 +90,12 @@ export class NamespaceDropdown extends LitElement {
 
     .search-input {
       width: 100%;
-      padding: 4px 0 4px 4px;
-      background: var(--input-bg, #1a1d23);
-      color: var(--input-color, #e0e0e0);
-      border: 1px solid var(--input-border, #3a3d4a);
+      padding: 6px 8px;
+      background: var(--vscode-input-background, #ffffff);
+      color: var(--vscode-input-foreground, #3b3b3b);
+      border: 1px solid var(--vscode-input-border, #cecece);
       border-radius: 4px;
-      font-size: 14px;
+      font-size: 13px;
       outline: none;
     }
 
@@ -121,12 +123,12 @@ export class NamespaceDropdown extends LitElement {
     }
 
     .namespace-option:hover {
-      background: var(--option-hover-bg, #3a3d4a);
+      background: var(--vscode-list-hoverBackground, rgba(0, 0, 0, 0.04));
     }
 
     .namespace-option.selected {
-      background: var(--option-selected-bg, var(--vscode-list-activeSelectionBackground, #094771));
-      color: var(--option-selected-color, var(--vscode-list-activeSelectionForeground, #fff));
+      background: var(--vscode-list-activeSelectionBackground, #007acc);
+      color: var(--vscode-list-activeSelectionForeground, #ffffff);
     }
 
     .namespace-icon {
@@ -176,7 +178,7 @@ export class NamespaceDropdown extends LitElement {
     }
   `;
 
-  @property({ type: Array }) namespaces: Array<{name: string, count?: number}> = [];
+  @property({ type: Array }) namespaces: Array<{ name: string, count?: number }> = [];
   @property({ type: String }) selectedNamespace = 'default';
   @property({ type: Boolean }) loading = false;
   @property({ type: String }) placeholder = 'Select namespace';
@@ -270,7 +272,7 @@ export class NamespaceDropdown extends LitElement {
     }
 
     const query = this.searchQuery.toLowerCase();
-    return this.namespaces.filter(ns => 
+    return this.namespaces.filter(ns =>
       ns.name.toLowerCase().includes(query)
     );
   }

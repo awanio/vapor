@@ -29,12 +29,13 @@ export class ResourceTable extends LitElement {
   static override styles = css`
     .table {
       width: 100%;
-      border-collapse: collapse;
+      border-collapse: separate;
+      border-spacing: 0;
       background: var(--vscode-bg-light);
       border-radius: 1px;
-      overflow: hidden;
+      overflow: visible;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border: 1px solid var(--vscode-border);
     }
 
     .table thead {
@@ -48,14 +49,14 @@ export class ResourceTable extends LitElement {
       text-align: left;
       padding: 12px 16px;
       font-size: 0.875rem;
-      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-bottom: 1px solid var(--vscode-border);
     }
 
     .table td {
       padding: 12px 16px;
       color: var(--vscode-text);
       font-size: 0.875rem;
-      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-bottom: 1px solid var(--vscode-border);
       position: relative;
     }
 
@@ -111,7 +112,7 @@ export class ResourceTable extends LitElement {
 
   private renderCell(item: ResourceData, column: Column) {
     const value = item[column.key];
-    
+
     // Check for custom renderer first
     const customRenderer = this.customRenderers?.[column.key];
     if (customRenderer) {
@@ -121,17 +122,17 @@ export class ResourceTable extends LitElement {
     switch (column.type) {
       case 'status':
         return html`<status-badge status="${value?.toLowerCase() || 'unknown'}"></status-badge>`;
-      
+
       case 'link':
         return html`
           <span class="link" @click="${(e: Event) => this.handleCellClick(e, item, column)}">
             ${value || '-'}
           </span>
         `;
-      
+
       case 'custom':
         return html`<slot name="cell-${column.key}" .data="${item}"></slot>`;
-      
+
       default:
         return html`${value || '-'}`;
     }

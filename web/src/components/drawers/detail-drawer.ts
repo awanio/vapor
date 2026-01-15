@@ -7,7 +7,7 @@ export class DetailDrawer extends LitElement {
   @property({ type: Boolean }) show = false;
   @property({ type: Boolean }) loading = false;
   @property({ type: Number }) width = 600;
-  
+
   @state() private isClosing = false;
   @state() private animationFinished = false;
 
@@ -26,7 +26,7 @@ export class DetailDrawer extends LitElement {
       right: 0;
       height: 100vh;
       background: var(--vscode-editor-background, var(--vscode-bg-light));
-      border-left: 0.5px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-left: 1px solid var(--vscode-border);
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
       z-index: 2000;
       display: flex;
@@ -77,7 +77,7 @@ export class DetailDrawer extends LitElement {
 
     .drawer-header {
       padding: 20px;
-      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-bottom: 1px solid var(--vscode-border);
       flex-shrink: 0;
     }
 
@@ -98,7 +98,7 @@ export class DetailDrawer extends LitElement {
     }
   `;
 
-  
+
   override updated(changedProperties: Map<string, any>) {
     if (changedProperties.has('show') && this.show) {
       this.animationFinished = false;
@@ -113,12 +113,12 @@ export class DetailDrawer extends LitElement {
     if (event) {
       event.stopPropagation();
     }
-    
+
     if (this.isClosing) return; // Prevent double-close
-    
+
     // Start close animation
     this.isClosing = true;
-    
+
     // Wait for animation to complete before dispatching close event
     setTimeout(() => {
       this.isClosing = false;

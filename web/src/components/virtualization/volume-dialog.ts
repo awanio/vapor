@@ -28,7 +28,7 @@ export class VolumeDialog extends LitElement {
   // Context
   @property({ type: Object }) pool!: StoragePool;
   @property({ type: Object }) volume?: Volume;
-  
+
   @state() private formData: VolumeFormData = {
     name: '',
     capacity: 10,
@@ -37,7 +37,7 @@ export class VolumeDialog extends LitElement {
     allocationUnit: 'GB',
     format: 'qcow2',
   };
-  
+
   @state() private isSubmitting = false;
   @state() private errors: Map<string, string> = new Map();
 
@@ -72,7 +72,7 @@ export class VolumeDialog extends LitElement {
       flex-direction: column;
       transform: translateX(100%);
       transition: transform 0.3s ease;
-      border-left: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-left: 1px solid var(--vscode-border);
     }
 
     :host([show]) .drawer {
@@ -81,8 +81,8 @@ export class VolumeDialog extends LitElement {
 
     .drawer-header {
       padding: 20px;
-      background: var(--vscode-sideBar-background, #252526);
-      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+      background: var(--vscode-bg-lighter, #252526);
+      border-bottom: 1px solid var(--vscode-border);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -127,8 +127,8 @@ export class VolumeDialog extends LitElement {
 
     .drawer-footer {
       padding: 16px 20px;
-      background: var(--vscode-sideBar-background, #252526);
-      border-top: 1px solid var(--vscode-widget-border, #454545);
+      background: var(--vscode-bg-lighter, #252526);
+      border-top: 1px solid var(--vscode-border);
       display: flex;
       justify-content: flex-end;
       gap: 12px;
@@ -439,19 +439,19 @@ export class VolumeDialog extends LitElement {
         this.errors.set('name', 'Volume name can only contain letters, numbers, hyphens, and underscores');
       }
     }
-    
+
     if (this.formData.capacity <= 0) {
       this.errors.set('capacity', 'Capacity must be greater than 0');
     }
-    
+
     if (this.formData.allocation < 0) {
       this.errors.set('allocation', 'Allocation cannot be negative');
     }
-    
+
     const capacityBytes = this.convertToBytes(this.formData.capacity, this.formData.capacityUnit);
     const allocationBytes = this.convertToBytes(this.formData.allocation, this.formData.allocationUnit);
     const currentCapacity = this.volume?.capacity || 0;
-    
+
     if (allocationBytes > capacityBytes) {
       this.errors.set('allocation', 'Allocation cannot exceed capacity');
     }
@@ -469,7 +469,7 @@ export class VolumeDialog extends LitElement {
         this.errors.set('capacity', `Capacity exceeds available space (${this.formatSize(maxCapacity)})`);
       }
     }
-    
+
     this.requestUpdate();
     return this.errors.size === 0;
   }
@@ -478,9 +478,9 @@ export class VolumeDialog extends LitElement {
     if (!this.validateForm() || !this.pool) {
       return;
     }
-    
+
     this.isSubmitting = true;
-    
+
     try {
       const capacityBytes = this.convertToBytes(this.formData.capacity, this.formData.capacityUnit);
       const allocationBytes = this.convertToBytes(this.formData.allocation, this.formData.allocationUnit);
@@ -507,7 +507,7 @@ export class VolumeDialog extends LitElement {
           composed: true,
         }));
       }
-      
+
       this.handleClose();
     } catch (error) {
       let message = 'Unknown error';
@@ -549,7 +549,7 @@ export class VolumeDialog extends LitElement {
       ...this.formData,
       [field]: value,
     };
-    
+
     if (this.errors.has(field)) {
       this.errors.delete(field);
       this.requestUpdate();
@@ -584,31 +584,31 @@ export class VolumeDialog extends LitElement {
         description: 'VirtualBox disk format',
       },
     ];
-    
+
     return html`
       <div class="format-options">
         ${formats.map(format => {
-          const selected = this.formData.format === format.value;
-          const classes = [
-            'format-option',
-            selected ? 'selected' : '',
-            isResize ? 'disabled' : '',
-          ].filter(Boolean).join(' ');
+      const selected = this.formData.format === format.value;
+      const classes = [
+        'format-option',
+        selected ? 'selected' : '',
+        isResize ? 'disabled' : '',
+      ].filter(Boolean).join(' ');
 
-          return html`
+      return html`
             <div 
               class="${classes}"
               @click=${() => {
-                if (!isResize) {
-                  this.handleInputChange('format', format.value);
-                }
-              }}
+          if (!isResize) {
+            this.handleInputChange('format', format.value);
+          }
+        }}
             >
               <div class="format-name">${format.name}</div>
               <div class="format-description">${format.description}</div>
             </div>
           `;
-        })}
+    })}
       </div>
     `;
   }
@@ -665,8 +665,8 @@ export class VolumeDialog extends LitElement {
                 placeholder="my-volume"
                 .value=${this.formData.name}
                 @input=${(e: Event) => {
-                  this.handleInputChange('name', (e.target as HTMLInputElement).value);
-                }}
+        this.handleInputChange('name', (e.target as HTMLInputElement).value);
+      }}
                 ?disabled=${disableName}
               />
               ${this.errors.has('name') ? html`
@@ -688,16 +688,16 @@ export class VolumeDialog extends LitElement {
                   step="1"
                   .value=${this.formData.capacity}
                   @input=${(e: Event) => {
-                    this.handleInputChange('capacity', Number((e.target as HTMLInputElement).value));
-                  }}
+        this.handleInputChange('capacity', Number((e.target as HTMLInputElement).value));
+      }}
                   ?disabled=${disableCapacity}
                 />
                 <select
                   class="form-select unit-select"
                   .value=${this.formData.capacityUnit}
                   @change=${(e: Event) => {
-                    this.handleInputChange('capacityUnit', (e.target as HTMLSelectElement).value);
-                  }}
+        this.handleInputChange('capacityUnit', (e.target as HTMLSelectElement).value);
+      }}
                   ?disabled=${disableCapacity}
                 >
                   <option value="GB">GB</option>
@@ -727,16 +727,16 @@ export class VolumeDialog extends LitElement {
                   step="1"
                   .value=${this.formData.allocation}
                   @input=${(e: Event) => {
-                    this.handleInputChange('allocation', Number((e.target as HTMLInputElement).value));
-                  }}
+        this.handleInputChange('allocation', Number((e.target as HTMLInputElement).value));
+      }}
                   ?disabled=${disableAllocation}
                 />
                 <select
                   class="form-select unit-select"
                   .value=${this.formData.allocationUnit}
                   @change=${(e: Event) => {
-                    this.handleInputChange('allocationUnit', (e.target as HTMLSelectElement).value);
-                  }}
+        this.handleInputChange('allocationUnit', (e.target as HTMLSelectElement).value);
+      }}
                   ?disabled=${disableAllocation}
                 >
                   <option value="GB">GB</option>
@@ -773,8 +773,8 @@ export class VolumeDialog extends LitElement {
             ?disabled=${this.isSubmitting}
           >
             ${this.isSubmitting
-              ? (this.mode === 'resize' ? 'Resizing...' : 'Creating...')
-              : (this.mode === 'resize' ? 'Resize' : 'Create Volume')}
+        ? (this.mode === 'resize' ? 'Resizing...' : 'Creating...')
+        : (this.mode === 'resize' ? 'Resize' : 'Create Volume')}
           </button>
         </div>
       </div>
