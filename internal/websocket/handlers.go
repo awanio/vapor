@@ -148,10 +148,19 @@ func handleAuth(client *Client, msg Message, jwtSecret string) {
 // sendMetrics continuously sends system metrics to the client
 func sendMetrics(client *Client) {
 	log.Printf("[sendMetrics] Started for client %s", client.id)
+	
+	// Check if context is nil
+	if client.ctx == nil {
+		log.Printf("[sendMetrics] ERROR: client.ctx is nil for client %s", client.id)
+		return
+	}
+	
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 
 	_ = system.NewService() // TODO: Use this for more advanced metrics
+	
+	log.Printf("[sendMetrics] Entering main loop for client %s", client.id)
 
 	for {
 		select {
