@@ -455,6 +455,8 @@ paths:
     $ref: paths/virtualization_isos_{id}.yaml
   /ws/terminal:
     $ref: paths/ws_terminal.yaml
+  /ws/containers/exec:
+    $ref: paths/ws_containers_exec.yaml
   /kubernetes/customresourcedefinitions:
     $ref: paths/kubernetes_customresourcedefinitions.yaml
   /kubernetes/customresourcedefinitions/{name}:

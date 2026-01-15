@@ -31,6 +31,9 @@ type Client interface {
 	KillContainer(ctx context.Context, containerID string) error
 	RemoveContainer(ctx context.Context, containerID string) error
 	ContainerLogs(ctx context.Context, containerID string) (string, error)
+	ContainerExecCreate(ctx context.Context, containerID string, cmd []string) (string, error)
+	ContainerExecAttach(ctx context.Context, execID string) (types.HijackedResponse, error)
+	ContainerExecResize(ctx context.Context, execID string, height, width uint) error
 	RemoveImage(ctx context.Context, imageID string) error
 	RemoveVolume(ctx context.Context, volumeID string) error
 	RemoveNetwork(ctx context.Context, networkID string) error
@@ -144,6 +147,39 @@ func (c *dockerClient) ContainerLogs(ctx context.Context, containerID string) (s
 	}
 
 	return string(logs), nil
+}
+
+// ContainerExecCreate creates an exec session in a container
+func (c *dockerClient) ContainerExecCreate(ctx context.Context, containerID string, cmd []string) (string, error) {
+	execConfig := types.ExecConfig{
+		AttachStdout: true,
+		AttachStderr: true,
+		AttachStdin:  true,
+		Tty:          true,
+		Cmd:          cmd,
+	}
+	resp, err := c.client.ContainerExecCreate(ctx, containerID, execConfig)
+	if err != nil {
+		return "", fmt.Errorf("failed to create exec: %w", err)
+	}
+	return resp.ID, nil
+}
+
+// ContainerExecAttach attaches to an exec session
+func (c *dockerClient) ContainerExecAttach(ctx context.Context, execID string) (types.HijackedResponse, error) {
+	resp, err := c.client.ContainerExecAttach(ctx, execID, types.ExecStartCheck{Tty: true})
+	if err != nil {
+		return types.HijackedResponse{}, fmt.Errorf("failed to attach exec: %w", err)
+	}
+	return resp, nil
+}
+
+// ContainerExecResize resizes the exec session terminal
+func (c *dockerClient) ContainerExecResize(ctx context.Context, execID string, height, width uint) error {
+	if err := c.client.ContainerExecResize(ctx, execID, container.ResizeOptions{Height: height, Width: width}); err != nil {
+		return fmt.Errorf("failed to resize exec: %w", err)
+	}
+	return nil
 }
 
 // RemoveImage removes a Docker image

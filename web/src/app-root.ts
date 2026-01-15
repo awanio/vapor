@@ -1,4 +1,5 @@
 import './components/kubernetes/pod-terminal.js';
+import './components/containers/container-terminal.js';
 import { LitElement, html, css } from 'lit';
 import { state } from 'lit/decorators.js';
 import { auth } from './auth';
@@ -403,6 +404,16 @@ export class AppRoot extends LitElement {
     // Show main app if authenticated
     
     // Check for standalone terminal
+    if (this.activeView === 'containers' && this.subRoute === 'terminal') {
+       const urlParams = new URLSearchParams(window.location.search);
+       const container = urlParams.get('container') || '';
+       const runtime = urlParams.get('runtime') || 'docker';
+       const name = urlParams.get('name') || '';
+       return html`
+         <container-terminal .containerId="${container}" .containerName="${name}" .runtime="${runtime}"></container-terminal>
+       `;
+    }
+
     if (this.activeView === 'kubernetes' && this.subRoute === 'terminal') {
        const urlParams = new URLSearchParams(window.location.search);
        const pod = urlParams.get('pod') || '';

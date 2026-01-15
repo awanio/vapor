@@ -5,6 +5,7 @@ import { t } from '../i18n';
 import { api, ApiError } from '../api';
 import type { Container, Image, ContainersResponse, ImagesResponse } from '../types/api';
 import '../components/modal-dialog';
+import '../components/modals/container-terminal-modal.js';
 import '../components/ui/notification-container.js';
 import { subscribeToEventsChannel } from '../stores/shared/events-stream';
 
@@ -37,6 +38,15 @@ export class ContainersTab extends LitElement {
 
   @state()
   private containerEventsLive = false;
+
+  @state()
+  private showTerminalModal = false;
+
+  @state()
+  private terminalContainerId = '';
+
+  @state()
+  private terminalContainerName = '';
 
   private unsubscribeContainerEvents: (() => void) | null = null;
   private containerPollingTimer: number | null = null;
@@ -1363,6 +1373,12 @@ async fetchImageDetails(id: string) {
     }
   }
 
+  private openContainerTerminal(container: Container) {
+    this.terminalContainerId = container.id;
+    this.terminalContainerName = container.name || container.id;
+    this.showTerminalModal = true;
+  }
+
 renderContainersTable() {
     const filteredContainers = this.containers.filter(container =>
       container.name?.toLowerCase().includes(this.searchTerm.toLowerCase())
@@ -1424,6 +1440,7 @@ renderContainersTable() {
                     <button class="action-dots" @click=${(e: Event) => this.toggleActionMenu(e, `container-${index}`)}>⋮</button>
                     <div class="action-dropdown" id="container-${index}">
                       <button @click=${() => { this.closeAllMenus(); this.fetchContainerLogs(container.id, container.name); }}>Logs</button>
+                      <button @click=${() => { this.closeAllMenus(); this.openContainerTerminal(container); }}>${t('terminal.title')}</button>
                       ${container.state === 'CONTAINER_RUNNING'
                         ? html`<button @click=${() => { this.closeAllMenus(); this.stopContainer(container.id, container.name); }}>${t('containers.stop')}</button>`
                         : html`<button @click=${() => { this.closeAllMenus(); this.startContainer(container.id, container.name); }}>${t('containers.start')}</button>`}
@@ -1776,6 +1793,14 @@ renderImagesTable() {
           </button>
         </div>
       </modal-dialog>
+
+      <container-terminal-modal
+        .show=${this.showTerminalModal}
+        .containerId=${this.terminalContainerId}
+        .containerName=${this.terminalContainerName}
+        .runtime=${'cri'}
+        @close=${() => { this.showTerminalModal = false; }}
+      ></container-terminal-modal>
 
       <modal-dialog
         ?open=${this.showPullImageModal}

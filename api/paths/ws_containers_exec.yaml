@@ -1,0 +1,71 @@
+get:
+  summary: WebSocket Container Exec
+  description: |
+    Establish a WebSocket connection for an interactive container exec session.
+
+    **WebSocket URL**: `ws://localhost:8080/ws/containers/exec?container=<id>&runtime=<docker|cri>`
+
+    **Query Parameters**:
+    - `container` (required): container ID
+    - `runtime` (optional): `docker` or `cri` (defaults to auto-detect)
+
+    **Authentication**: Send JWT token in the first message after connection:
+    ```json
+    {
+      "type": "auth",
+      "payload": {
+        "token": "your-jwt-token"
+      }
+    }
+    ```
+
+    **Start exec session**:
+    ```json
+    {
+      "type": "subscribe",
+      "payload": {
+        "channel": "container-exec"
+      }
+    }
+    ```
+
+    **Send input**:
+    ```json
+    {
+      "type": "input",
+      "payload": {
+        "data": "ls -la
+"
+      }
+    }
+    ```
+
+    **Resize terminal**:
+    ```json
+    {
+      "type": "resize",
+      "payload": {
+        "cols": 120,
+        "rows": 40
+      }
+    }
+    ```
+
+    **Server messages** will be in the format:
+    ```json
+    {
+      "type": "output",
+      "payload": {
+        "data": "terminal output..."
+      }
+    }
+    ```
+  tags:
+    - WebSocket
+  security:
+    - bearerAuth: []
+  responses:
+    '101':
+      description: Switching Protocols - WebSocket connection established
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml

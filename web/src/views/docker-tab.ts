@@ -5,6 +5,7 @@ import { t } from '../i18n';
 import { api, ApiError } from '../api';
 import type { DockerContainer, DockerImage, DockerVolume, DockerNetwork, DockerContainersResponse, DockerImagesResponse, DockerVolumesResponse, DockerNetworksResponse } from '../types/api';
 import '../components/modal-dialog';
+import '../components/modals/container-terminal-modal.js';
 
 interface UploadItem {
   id: string;
@@ -35,6 +36,9 @@ export class DockerTab extends LitElement {
   @state() private containerLogs = '';
   @state() private logsError: string | null = null;
   @state() private logsSearchTerm = '';
+  @state() private showTerminalModal = false;
+  @state() private terminalContainerId = '';
+  @state() private terminalContainerName = '';
   @state() private showImageActionsDropdown: boolean = false;
   @state() private showPullImageModal: boolean = false;
   @state() private imageName: string = '';
@@ -1142,6 +1146,14 @@ export class DockerTab extends LitElement {
         </div>
       </modal-dialog>
 
+      <container-terminal-modal
+        .show=${this.showTerminalModal}
+        .containerId=${this.terminalContainerId}
+        .containerName=${this.terminalContainerName}
+        .runtime=${'docker'}
+        @close=${() => { this.showTerminalModal = false; }}
+      ></container-terminal-modal>
+
       ${this.showDrawer ? html`
         <div class="drawer">
           <button class="close-btn" @click=${() => { this.showDrawer = false; this.detailError = null; }}>✕</button>
@@ -1366,6 +1378,7 @@ export class DockerTab extends LitElement {
                   <button class="action-dots" @click=${(e: Event) => this.toggleActionMenu(e, `docker-container-${index}`)}>⋮</button>
                   <div class="action-dropdown" id="docker-container-${index}">
                     <button @click=${() => { this.closeAllMenus(); this.showContainerLogs(container); }}>View Logs</button>
+                    <button @click=${() => { this.closeAllMenus(); this.openContainerTerminal(container); }}>${t('terminal.title')}</button>
                     ${!isRunning ? html`
                       <button @click=${() => { this.closeAllMenus(); this.confirmStartContainer(container); }}>${t('containers.start')}</button>
                     ` : ''}
@@ -1795,6 +1808,14 @@ export class DockerTab extends LitElement {
       this.logsError = error instanceof ApiError ? error.message : 'Failed to fetch logs';
     }
   }
+
+  private openContainerTerminal(container: DockerContainer) {
+    this.terminalContainerId = container.id;
+    this.terminalContainerName = container.names?.join(', ') || container.id;
+    this.showTerminalModal = true;
+  }
+
+
 
   private async fetchContainerDetails(containerId: string) {
     try {
