@@ -215,8 +215,12 @@ func sendMetrics(client *Client) {
 				},
 			}
 
+			log.Printf("[sendMetrics] Building metricsData for client %s", client.id)
+			
 			// Add disk metrics
-			for _, partition := range diskPartitions {
+			log.Printf("[sendMetrics] Processing %d disk partitions for client %s", len(diskPartitions), client.id)
+			for i, partition := range diskPartitions {
+				log.Printf("[sendMetrics] Processing partition %d: %s for client %s", i, partition.Mountpoint, client.id)
 				usage, _ := disk.Usage(partition.Mountpoint)
 				if usage != nil {
 					metricsData.Disk = append(metricsData.Disk, DiskMetrics{
