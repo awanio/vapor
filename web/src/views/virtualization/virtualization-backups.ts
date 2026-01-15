@@ -612,13 +612,13 @@ export class VirtualizationBackupsView extends LitElement {
       >
         ${missingVm
         ? html`<div class="chip warn">Source VM not found; restore will create a new VM.</div>`
-        : html`<div class="field">
-              <label>Overwrite existing VM</label>
+        : html`<div class="field checkbox">
               <input
                 type="checkbox"
                 .checked=${this.restoreOverwrite}
                 @change=${(e: Event) => (this.restoreOverwrite = (e.target as HTMLInputElement).checked)}
               />
+              <label>Overwrite existing VM</label>
             </div>`}
         <div class="field">
           <label>New VM name</label>
