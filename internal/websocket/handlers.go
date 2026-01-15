@@ -248,7 +248,7 @@ func sendMetrics(client *Client) {
 				})
 			}
 
-			log.Printf("[sendMetrics] Sending metrics to client %s (handlerType=%s)", client.id, client.handlerType)
+			// log.Printf("[sendMetrics] Sending metrics to client %s (handlerType=%s)", client.id, client.handlerType)
 			// For the consolidated /ws/events endpoint, emit metrics as event payloads
 			// to keep the envelope consistent with logs and other event kinds.
 			if client.handlerType == "events" {
