@@ -79,7 +79,8 @@ export class VMBackupsTab extends LitElement {
     .form-error { margin-top: 6px; color: var(--vscode-errorForeground, #f48771); font-size: 12px; }
     input, select, textarea { width: 100%; padding: 8px 12px; background: var(--vscode-input-background, #3c3c3c); color: var(--vscode-input-foreground, #cccccc); border: 1px solid var(--vscode-input-border, #858585); border-radius: 4px; font-size: 13px; font-family: inherit; transition: all 0.2s; box-sizing: border-box; }
     input:focus, select:focus, textarea:focus { outline: none; border-color: var(--vscode-focusBorder, #007acc); box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc); }
-    .checkbox-group { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; }
+    .checkbox-group { display: flex; flex-direction: row; gap: 10px; align-items: center; margin-bottom: 10px; }
+    .checkbox-group input[type="checkbox"] { width: auto; flex-shrink: 0; }
     .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; background: #1f2937; color: #e5e7eb; font-size: 12px; }
     .small { font-size: 12px; color: #9ca3af; }
 
@@ -377,8 +378,6 @@ export class VMBackupsTab extends LitElement {
 
   private async cancelDelete() {
     this.showDeleteModal = false;
-    await this.updateComplete;
-    this.deleteTarget = null;
   }
 
   private async confirmDelete() {
@@ -391,8 +390,6 @@ export class VMBackupsTab extends LitElement {
       await backupActions.delete(backupId);
       this.toast = { text: 'Backup deleted', type: 'success' };
       this.showDeleteModal = false;
-      await this.updateComplete;
-      this.deleteTarget = null;
       this.loadBackups();
     } catch (err: any) {
       this.toast = { text: err?.message || 'Failed to delete backup', type: 'error' };

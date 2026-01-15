@@ -361,7 +361,7 @@ export class UsersTab extends LitElement {
   override connectedCallback() {
     super.connectedCallback();
     this.fetchUsers();
-    
+
     // Add click outside listener to close dropdown menus
     this.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
@@ -369,10 +369,10 @@ export class UsersTab extends LitElement {
         this.closeAllMenus();
       }
     });
-    
+
     // Add document click listener for clicks outside the component
     document.addEventListener('click', this.handleDocumentClick);
-    
+
     // Add keyboard event listener for escape key
     document.addEventListener('keydown', this.handleKeyDown);
   }
@@ -393,7 +393,7 @@ export class UsersTab extends LitElement {
     if (e.key === 'Escape') {
       // Close action dropdowns first
       this.closeAllMenus();
-      
+
       // Then close drawers if they're open
       if (this.showCreateForm) {
         this.closeCreateDrawer();
@@ -472,19 +472,19 @@ export class UsersTab extends LitElement {
 
   async resetPassword() {
     if (!this.resetPasswordUsername) return;
-    
+
     if (this.newPassword !== this.confirmPassword) {
       alert(t('users.passwordMismatch'));
       return;
     }
-    
+
     if (!this.newPassword) {
       alert(t('users.passwordRequired', { default: 'Password is required' }));
       return;
     }
-    
+
     try {
-      await api.put(`/users/${this.resetPasswordUsername}/password`, {
+      await api.post(`/users/${this.resetPasswordUsername}/reset-password`, {
         password: this.newPassword
       });
       this.closeResetPasswordDrawer();
@@ -510,7 +510,7 @@ export class UsersTab extends LitElement {
 
   async updateUser() {
     if (!this.editingUser) return;
-    
+
     try {
       await api.put(`/users/${this.editingUser.username}`, {
         groups: this.editingUser.groups.join(',')
@@ -525,10 +525,10 @@ export class UsersTab extends LitElement {
 
   updateEditingUser(field: keyof User, value: any) {
     if (!this.editingUser) return;
-    
+
     if (field === 'groups') {
-      this.editingUser = { 
-        ...this.editingUser, 
+      this.editingUser = {
+        ...this.editingUser,
         groups: value.split(',').map((g: string) => g.trim()).filter(Boolean)
       };
     } else {
@@ -579,9 +579,9 @@ export class UsersTab extends LitElement {
     if (!this.searchQuery.trim()) {
       return this.users;
     }
-    
+
     const query = this.searchQuery.toLowerCase();
-    return this.users.filter(user => 
+    return this.users.filter(user =>
       user.username.toLowerCase().includes(query) ||
       user.uid.toString().includes(query) ||
       user.gid.toString().includes(query) ||
@@ -594,7 +594,7 @@ export class UsersTab extends LitElement {
 
   override render() {
     const filteredUsers = this.filteredUsers;
-    
+
     return html`
       <div class="header">
         <h1>${t('users.title')}</h1>
@@ -669,12 +669,12 @@ export class UsersTab extends LitElement {
         @modal-close=${this.closeDeleteModal}
       >
         <p>
-          ${this.userToDelete 
-            ? t('users.confirmDeleteMessage', { 
-                username: this.userToDelete, 
-                default: `Are you sure you want to delete user "${this.userToDelete}"? This action cannot be undone.`
-              }) 
-            : ''}
+          ${this.userToDelete
+        ? t('users.confirmDeleteMessage', {
+          username: this.userToDelete,
+          default: `Are you sure you want to delete user "${this.userToDelete}"? This action cannot be undone.`
+        })
+        : ''}
         </p>
         <div slot="footer">
           <button class="btn-secondary" @click=${this.closeDeleteModal}>
