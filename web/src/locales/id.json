@@ -361,12 +361,18 @@
     "passwordMismatch": "Kata sandi tidak cocok",
     "deleteConfirm": "Apakah Anda yakin ingin menghapus pengguna {{username}}?",
     "confirmDelete": "Hapus Pengguna",
-    "confirmDeleteMessage": "Apakah Anda yakin ingin menghapus pengguna \"{username}}\"? Tindakan ini tidak dapat dibatalkan.",
+    "confirmDeleteMessage": "Apakah Anda yakin ingin menghapus pengguna \"{{username}}\"? Tindakan ini tidak dapat dibatalkan.",
     "locked": "Terkunci",
     "unlocked": "Tidak Terkunci",
     "toggleLock": "Kunci/Buka Kunci",
     "resetPassword": "Atur Ulang Kata Sandi",
-    "resetPasswordSuccess": "Kata sandi berhasil diatur ulang untuk {{username}}"
+    "resetPasswordSuccess": "Kata sandi berhasil diatur ulang untuk {{username}}",
+    "createSuccess": "Pengguna {{username}} berhasil dibuat",
+    "createError": "Gagal membuat pengguna",
+    "updateSuccess": "Pengguna {{username}} berhasil diperbarui",
+    "updateError": "Gagal memperbarui pengguna",
+    "deleteSuccess": "Pengguna {{username}} berhasil dihapus",
+    "deleteError": "Gagal menghapus pengguna"
   },
   "logs": {
     "title": "Log Sistem",

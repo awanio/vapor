@@ -1,8 +1,9 @@
 import { LitElement, html, css } from 'lit';
 import { property } from 'lit/decorators.js';
 import { t } from '../i18n';
-import { api } from '../api';
+import { api, ApiError } from '../api';
 import '../components/modal-dialog';
+import '../components/ui/notification-container';
 
 interface User {
   username: string;
@@ -17,6 +18,7 @@ interface NewUser {
   username: string;
   password: string;
   groups: string;
+  shell: string;
 }
 
 export class UsersTab extends LitElement {
@@ -24,7 +26,7 @@ export class UsersTab extends LitElement {
   @property({ type: Boolean }) showCreateForm = false;
   @property({ type: Boolean }) showEditForm = false;
   @property({ type: Boolean }) showResetPasswordForm = false;
-  @property({ type: Object }) newUser: NewUser = { username: '', password: '', groups: '' };
+  @property({ type: Object }) newUser: NewUser = { username: '', password: '', groups: '', shell: '' };
   @property({ type: Object }) editingUser: User | null = null;
   @property({ type: String }) userToDelete: string | null = null;
   @property({ type: String }) resetPasswordUsername: string | null = null;
@@ -417,26 +419,35 @@ export class UsersTab extends LitElement {
   }
 
   async createUser() {
+    const username = this.newUser.username;
     try {
       await api.post('/users', this.newUser);
       this.showCreateForm = false;
-      this.newUser = { username: '', password: '', groups: '' };
+      this.newUser = { username: '', password: '', groups: '', shell: '' };
       this.fetchUsers();
+      this.showToast(t('users.createSuccess', { username }), 'success');
     } catch (error) {
       console.error('Error creating user:', error);
+      this.showToast(t('users.createError'), 'error');
     }
   }
 
   async deleteUser() {
-    if (this.userToDelete) {
-      try {
-        await api.delete(`/users/${this.userToDelete}`);
-        this.userToDelete = null;
-        this.fetchUsers();
-        this.closeDeleteModal();
-      } catch (error) {
-        console.error('Error deleting user:', error);
-      }
+    if (!this.userToDelete) return;
+
+    const username = this.userToDelete;
+
+    try {
+      await api.delete(`/users/${username}`);
+      this.userToDelete = null;
+      this.fetchUsers();
+      this.closeDeleteModal();
+      this.showToast(t('users.deleteSuccess', { username }), 'success');
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      const details = error instanceof ApiError ? (error.details || error.message) : '';
+      const message = details ? `${t('users.deleteError')}: ${details}` : t('users.deleteError');
+      this.showToast(message, 'error');
     }
   }
 
@@ -470,16 +481,23 @@ export class UsersTab extends LitElement {
     this.confirmPassword = '';
   }
 
+  private showToast(message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') {
+    const container = this.renderRoot?.querySelector('notification-container') as any;
+    if (container && typeof container.addNotification === 'function') {
+      container.addNotification({ message, type });
+    }
+  }
+
   async resetPassword() {
     if (!this.resetPasswordUsername) return;
 
     if (this.newPassword !== this.confirmPassword) {
-      alert(t('users.passwordMismatch'));
+      this.showToast(t('users.passwordMismatch'), 'error');
       return;
     }
 
     if (!this.newPassword) {
-      alert(t('users.passwordRequired', { default: 'Password is required' }));
+      this.showToast(t('users.passwordRequired', { default: 'Password is required' }), 'error');
       return;
     }
 
@@ -487,11 +505,12 @@ export class UsersTab extends LitElement {
       await api.post(`/users/${this.resetPasswordUsername}/reset-password`, {
         password: this.newPassword
       });
+      const username = this.resetPasswordUsername;
       this.closeResetPasswordDrawer();
-      alert(t('users.resetPasswordSuccess', { username: this.resetPasswordUsername }));
+      this.showToast(t('users.resetPasswordSuccess', { username }), 'success');
     } catch (error) {
       console.error('Error resetting password:', error);
-      alert(t('users.resetPasswordError', { default: 'Failed to reset password' }));
+      this.showToast(t('users.resetPasswordError', { default: 'Failed to reset password' }), 'error');
     }
   }
 
@@ -511,15 +530,28 @@ export class UsersTab extends LitElement {
   async updateUser() {
     if (!this.editingUser) return;
 
+    const groupsValue = Array.isArray(this.editingUser.groups)
+      ? this.editingUser.groups.join(',')
+      : '';
+
+    const payload: { groups?: string; shell?: string } = {};
+    if (groupsValue) {
+      payload.groups = groupsValue;
+    }
+    if (this.editingUser.shell) {
+      payload.shell = this.editingUser.shell;
+    }
+
     try {
-      await api.put(`/users/${this.editingUser.username}`, {
-        groups: this.editingUser.groups.join(',')
-      });
+      await api.put(`/users/${this.editingUser.username}`, payload);
+      const username = this.editingUser.username;
       this.showEditForm = false;
       this.editingUser = null;
       this.fetchUsers();
+      this.showToast(t('users.updateSuccess', { username }), 'success');
     } catch (error) {
       console.error('Error updating user:', error);
+      this.showToast(t('users.updateError'), 'error');
     }
   }
 
@@ -564,7 +596,7 @@ export class UsersTab extends LitElement {
 
   closeCreateDrawer() {
     this.showCreateForm = false;
-    this.newUser = { username: '', password: '', groups: '' };
+    this.newUser = { username: '', password: '', groups: '', shell: '' };
   }
 
   handleSearch(event: Event) {
@@ -712,6 +744,16 @@ export class UsersTab extends LitElement {
               />
             </div>
             <div class="form-group">
+              <label for="shell">${t('users.shell')}</label>
+              <input
+                id="shell"
+                type="text"
+                .value=${this.newUser.shell}
+                @input=${(e: Event) => this.updateNewUser('shell', (e.target as HTMLInputElement).value)}
+                placeholder="/bin/bash"
+              />
+            </div>
+            <div class="form-group">
               <label for="groups">${t('users.groups')}</label>
               <input
                 id="groups"
@@ -747,6 +789,16 @@ export class UsersTab extends LitElement {
                 @input=${(e: Event) => this.updateEditingUser('username', (e.target as HTMLInputElement).value)}
                 placeholder="${t('users.username')}"
                 disabled
+              />
+            </div>
+            <div class="form-group">
+              <label for="shell">${t('users.shell')}</label>
+              <input
+                id="shell"
+                type="text"
+                .value=${this.editingUser?.shell || ''}
+                @input=${(e: Event) => this.updateEditingUser('shell', (e.target as HTMLInputElement).value)}
+                placeholder="/bin/bash"
               />
             </div>
             <div class="form-group">
@@ -807,6 +859,8 @@ export class UsersTab extends LitElement {
           </div>
         </div>
       ` : ''}
+
+      <notification-container></notification-container>
     `;
   }
 }

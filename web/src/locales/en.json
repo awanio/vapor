@@ -378,12 +378,18 @@
     "passwordMismatch": "Passwords do not match",
     "deleteConfirm": "Are you sure you want to delete user {{username}}?",
     "confirmDelete": "Delete User",
-    "confirmDeleteMessage": "Are you sure you want to delete user \"{username}}\"? This action cannot be undone.",
+    "confirmDeleteMessage": "Are you sure you want to delete user \"{{username}}\"? This action cannot be undone.",
     "locked": "Locked",
     "unlocked": "Unlocked",
     "toggleLock": "Toggle Lock",
     "resetPassword": "Reset Password",
-    "resetPasswordSuccess": "Password reset successfully for {{username}}"
+    "resetPasswordSuccess": "Password reset successfully for {{username}}",
+    "createSuccess": "User {{username}} created",
+    "createError": "Failed to create user",
+    "updateSuccess": "User {{username}} updated",
+    "updateError": "Failed to update user",
+    "deleteSuccess": "User {{username}} deleted",
+    "deleteError": "Failed to delete user"
   },
   "logs": {
     "title": "System Logs",

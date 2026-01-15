@@ -8,8 +8,8 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/awanio/vapor/internal/common"
+	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -35,6 +35,14 @@ type UserRequest struct {
 	Username string `json:"username" binding:"required"`
 	Password string `json:"password"`
 	Groups   string `json:"groups"`
+	Shell    string `json:"shell"`
+}
+
+// UpdateUserRequest represents user update request
+type UpdateUserRequest struct {
+	Password string `json:"password"`
+	Groups   string `json:"groups"`
+	Shell    string `json:"shell"`
 }
 
 // PasswordResetRequest represents password reset request
@@ -56,7 +64,7 @@ func (s *Service) GetUsers(c *gin.Context) {
 func (s *Service) CreateUser(c *gin.Context) {
 	// Check if user commands are available
 	if !isUserCommandsAvailable() {
-		common.SendError(c, http.StatusNotImplemented, common.ErrCodeNotImplemented, 
+		common.SendError(c, http.StatusNotImplemented, common.ErrCodeNotImplemented,
 			"User management commands are only available on Linux systems")
 		return
 	}
@@ -75,10 +83,14 @@ func (s *Service) CreateUser(c *gin.Context) {
 	}
 
 	// useradd command
-	cmdArgs := []string{"-m", "-p", string(hash), req.Username}
+	cmdArgs := []string{"-m", "-p", string(hash)}
+	if req.Shell != "" {
+		cmdArgs = append(cmdArgs, "-s", req.Shell)
+	}
 	if req.Groups != "" {
 		cmdArgs = append(cmdArgs, "-G", req.Groups)
 	}
+	cmdArgs = append(cmdArgs, req.Username)
 	cmd := exec.Command("useradd", cmdArgs...)
 	if output, err := cmd.CombinedOutput(); err != nil {
 		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to create user", string(output))
@@ -91,7 +103,7 @@ func (s *Service) CreateUser(c *gin.Context) {
 // UpdateUser modifies an existing user
 func (s *Service) UpdateUser(c *gin.Context) {
 	username := c.Param("username")
-	var req UserRequest
+	var req UpdateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Invalid request", err.Error())
 		return
@@ -119,6 +131,14 @@ func (s *Service) UpdateUser(c *gin.Context) {
 		}
 	}
 
+	if req.Shell != "" {
+		cmd := exec.Command("usermod", "-s", req.Shell, username)
+		if output, err := cmd.CombinedOutput(); err != nil {
+			common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to update user shell", string(output))
+			return
+		}
+	}
+
 	common.SendSuccess(c, gin.H{"message": fmt.Sprintf("User %s updated", username)})
 }
 
@@ -138,7 +158,7 @@ func (s *Service) DeleteUser(c *gin.Context) {
 func (s *Service) ResetPassword(c *gin.Context) {
 	// Check if user commands are available
 	if !isUserCommandsAvailable() {
-		common.SendError(c, http.StatusNotImplemented, common.ErrCodeNotImplemented, 
+		common.SendError(c, http.StatusNotImplemented, common.ErrCodeNotImplemented,
 			"User management commands are only available on Linux systems")
 		return
 	}
@@ -184,7 +204,7 @@ func (s *Service) ResetPassword(c *gin.Context) {
 
 		cmd := exec.Command("usermod", "-p", string(hash), username)
 		if output2, err2 := cmd.CombinedOutput(); err2 != nil {
-			common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, 
+			common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal,
 				fmt.Sprintf("Failed to reset password. chpasswd error: %s, usermod error: %s", string(output), string(output2)))
 			return
 		}
