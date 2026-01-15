@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/awanio/vapor/internal/logs"
@@ -215,24 +216,52 @@ func sendMetrics(client *Client) {
 				},
 			}
 
-			log.Printf("[sendMetrics] Building metricsData for client %s", client.id)
-			
-			// Add disk metrics
-			log.Printf("[sendMetrics] Processing %d disk partitions for client %s", len(diskPartitions), client.id)
-			for i, partition := range diskPartitions {
-				log.Printf("[sendMetrics] Processing partition %d: %s for client %s", i, partition.Mountpoint, client.id)
-				usage, _ := disk.Usage(partition.Mountpoint)
-				if usage != nil {
-					metricsData.Disk = append(metricsData.Disk, DiskMetrics{
-						Device:      partition.Device,
-						Mountpoint:  partition.Mountpoint,
-						Fstype:      partition.Fstype,
-						Total:       usage.Total,
-						Used:        usage.Used,
-						Free:        usage.Free,
-						UsedPercent: usage.UsedPercent,
-					})
+			// Add disk metrics - only real filesystems, skip virtual/network mounts
+			for _, partition := range diskPartitions {
+				// Skip virtual filesystems and problematic mount types
+				fstype := partition.Fstype
+				mountpoint := partition.Mountpoint
+				
+				// Skip virtual filesystems
+				if fstype == "sysfs" || fstype == "proc" || fstype == "devtmpfs" || 
+				   fstype == "devpts" || fstype == "tmpfs" || fstype == "securityfs" ||
+				   fstype == "cgroup" || fstype == "cgroup2" || fstype == "pstore" ||
+				   fstype == "debugfs" || fstype == "tracefs" || fstype == "configfs" ||
+				   fstype == "fusectl" || fstype == "mqueue" || fstype == "hugetlbfs" ||
+				   fstype == "binfmt_misc" || fstype == "autofs" || fstype == "bpf" ||
+				   fstype == "efivarfs" || fstype == "nsfs" || fstype == "squashfs" ||
+				   fstype == "overlay" || fstype == "fuse.lxcfs" {
+					continue
 				}
+				
+				// Skip Kubernetes and container mounts
+				if strings.Contains(mountpoint, "/kubelet/") ||
+				   strings.Contains(mountpoint, "/containerd/") ||
+				   strings.Contains(mountpoint, "/docker/") ||
+				   strings.Contains(mountpoint, "/snap/") ||
+				   strings.Contains(mountpoint, "/run/snapd/") ||
+				   strings.Contains(mountpoint, "/sys/") ||
+				   strings.Contains(mountpoint, "/proc/") ||
+				   strings.Contains(mountpoint, "/dev/") ||
+				   strings.Contains(mountpoint, "/run/netns/") ||
+				   strings.Contains(mountpoint, "/var/snap/") {
+					continue
+				}
+				
+				usage, err := disk.Usage(mountpoint)
+				if err != nil || usage == nil {
+					continue
+				}
+				
+				metricsData.Disk = append(metricsData.Disk, DiskMetrics{
+					Device:      partition.Device,
+					Mountpoint:  mountpoint,
+					Fstype:      fstype,
+					Total:       usage.Total,
+					Used:        usage.Used,
+					Free:        usage.Free,
+					UsedPercent: usage.UsedPercent,
+				})
 			}
 
 			log.Printf("[sendMetrics] Sending metrics to client %s (handlerType=%s)", client.id, client.handlerType)
