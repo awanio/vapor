@@ -3,6 +3,10 @@ package container
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/awanio/vapor/internal/common"
@@ -109,11 +113,11 @@ func (c *CRIClient) ListImages() ([]common.Image, error) {
 			Size:        int64(img.Size_),
 			Runtime:     c.runtimeName,
 		}
-		
+
 		// CRI doesn't provide creation time directly, so we'll use current time as placeholder
 		// In production, you might want to inspect the image for this information
 		image.CreatedAt = time.Now()
-		
+
 		images = append(images, image)
 	}
 
@@ -207,11 +211,11 @@ func (c *CRIClient) GetContainer(id string) (*common.ContainerDetail, error) {
 
 	// Set resource limits and usage
 	detail.Resources = common.Resources{}
-	
+
 	// Get resource usage from stats if available
 	if statsResp != nil && statsResp.Stats != nil {
 		stats := statsResp.Stats
-		
+
 		// CPU usage
 		if stats.Cpu != nil {
 			if stats.Cpu.UsageCoreNanoSeconds != nil {
@@ -220,7 +224,7 @@ func (c *CRIClient) GetContainer(id string) (*common.ContainerDetail, error) {
 				detail.Resources.CPUUsagePercent = float64(stats.Cpu.UsageCoreNanoSeconds.Value) / 1e9
 			}
 		}
-		
+
 		// Memory usage
 		if stats.Memory != nil {
 			if stats.Memory.WorkingSetBytes != nil {
@@ -230,10 +234,10 @@ func (c *CRIClient) GetContainer(id string) (*common.ContainerDetail, error) {
 				detail.Resources.MemoryMaxUsage = int64(stats.Memory.UsageBytes.Value)
 			}
 		}
-		
+
 		// Note: CRI v1 stats don't include network stats in the standard API
 		// Network monitoring would need to be implemented separately
-		
+
 		// Disk I/O stats
 		if stats.WritableLayer != nil {
 			if stats.WritableLayer.UsedBytes != nil {
@@ -290,10 +294,10 @@ func (c *CRIClient) GetImage(id string) (*common.ImageDetail, error) {
 			Runtime:     c.runtimeName,
 		},
 	}
-	
+
 	// CRI doesn't provide creation time in ImageStatus, use current time as placeholder
 	detail.CreatedAt = time.Now()
-	
+
 	// Extract additional info from verbose output if available
 	if statusResp.Info != nil {
 		// The info map contains runtime-specific information
@@ -304,14 +308,14 @@ func (c *CRIClient) GetImage(id string) (*common.ImageDetail, error) {
 				"imageSpec": val,
 			}
 		}
-		
+
 		// CRI's Info field is map[string]string, so we can't extract structured config
 		// Just store the raw config string if available
 		if _, ok := statusResp.Info["config"]; ok {
 			detail.Config = common.ImageConfig{}
 			// For CRI, we'll have limited config information
 		}
-		
+
 		// Try to extract architecture and OS info
 		if arch, ok := statusResp.Info["architecture"]; ok {
 			detail.Architecture = arch
@@ -323,12 +327,284 @@ func (c *CRIClient) GetImage(id string) (*common.ImageDetail, error) {
 			detail.Variant = variant
 		}
 	}
-	
+
 	// CRI doesn't provide layer information directly
 	// We would need to implement runtime-specific logic to get this
 	detail.Layers = []common.Layer{}
 
 	return detail, nil
+}
+
+// CreateContainer creates and starts a container using the CRI runtime
+func (c *CRIClient) CreateContainer(req ContainerCreateRequest) (string, string, error) {
+	if strings.TrimSpace(req.Name) == "" || strings.TrimSpace(req.Image) == "" {
+		return "", "", fmt.Errorf("name and image are required")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	namespace := strings.TrimSpace(req.Namespace)
+	if namespace == "" {
+		namespace = "default"
+	}
+
+	sandboxName := fmt.Sprintf("%s-sandbox", req.Name)
+	logDir := filepath.Join(os.TempDir(), "vapor", "cri", fmt.Sprintf("%s_%s", namespace, sandboxName))
+	if err := os.MkdirAll(logDir, 0o755); err != nil {
+		return "", "", fmt.Errorf("failed to create log directory: %w", err)
+	}
+
+	portMappings, err := buildCRIPortMappings(req)
+	if err != nil {
+		return "", "", err
+	}
+
+	namespaceOptions, err := buildCRINamespaceOptions(req.NetworkMode)
+	if err != nil {
+		return "", "", err
+	}
+
+	linuxPodConfig := &criapi.LinuxPodSandboxConfig{}
+	if namespaceOptions != nil {
+		linuxPodConfig.SecurityContext = &criapi.LinuxSandboxSecurityContext{NamespaceOptions: namespaceOptions}
+	}
+
+	if cgroupParent := resolveCRICgroupParent(req.CgroupParent); cgroupParent != "" {
+		linuxPodConfig.CgroupParent = cgroupParent
+	}
+
+	podConfig := &criapi.PodSandboxConfig{
+		Metadata: &criapi.PodSandboxMetadata{
+			Name:      sandboxName,
+			Namespace: namespace,
+			Uid:       sandboxName,
+		},
+		LogDirectory: logDir,
+		PortMappings: portMappings,
+		Linux:        linuxPodConfig,
+	}
+
+	runResp, err := c.runtimeClient.RunPodSandbox(ctx, &criapi.RunPodSandboxRequest{Config: podConfig})
+	if err != nil {
+		return "", "", fmt.Errorf("failed to run pod sandbox: %w", err)
+	}
+	sandboxID := runResp.PodSandboxId
+
+	envs := buildCRIEnvs(req.Env)
+	mounts, err := buildCRIMounts(req.Volumes)
+	if err != nil {
+		return "", sandboxID, err
+	}
+
+	linuxResources := buildCRIResources(req.Resources)
+
+	containerConfig := &criapi.ContainerConfig{
+		Metadata:   &criapi.ContainerMetadata{Name: req.Name},
+		Image:      &criapi.ImageSpec{Image: req.Image},
+		Envs:       envs,
+		Labels:     req.Labels,
+		Mounts:     mounts,
+		WorkingDir: req.WorkingDir,
+		LogPath:    fmt.Sprintf("%s.log", req.Name),
+		Linux:      &criapi.LinuxContainerConfig{Resources: linuxResources},
+	}
+
+	if len(req.Entrypoint) > 0 {
+		containerConfig.Command = req.Entrypoint
+	}
+	if len(req.Cmd) > 0 {
+		containerConfig.Args = req.Cmd
+	}
+
+	createResp, err := c.runtimeClient.CreateContainer(ctx, &criapi.CreateContainerRequest{
+		PodSandboxId:  sandboxID,
+		Config:        containerConfig,
+		SandboxConfig: podConfig,
+	})
+	if err != nil {
+		return "", sandboxID, fmt.Errorf("failed to create container: %w", err)
+	}
+
+	containerID := createResp.ContainerId
+	if _, err := c.runtimeClient.StartContainer(ctx, &criapi.StartContainerRequest{ContainerId: containerID}); err != nil {
+		return containerID, sandboxID, fmt.Errorf("failed to start container: %w", err)
+	}
+
+	return containerID, sandboxID, nil
+}
+
+func buildCRIPortMappings(req ContainerCreateRequest) ([]*criapi.PortMapping, error) {
+	mappings := []*criapi.PortMapping{}
+	if len(req.PortBindings) > 0 {
+		for portKey, bindings := range req.PortBindings {
+			containerPort, proto, err := parseCRIPortKey(portKey)
+			if err != nil {
+				return nil, err
+			}
+			for _, binding := range bindings {
+				hostPort, err := parseCRIHostPort(binding.HostPort)
+				if err != nil {
+					return nil, err
+				}
+				mappings = append(mappings, &criapi.PortMapping{
+					Protocol:      parseCRIProtocol(proto),
+					ContainerPort: containerPort,
+					HostPort:      hostPort,
+					HostIp:        binding.HostIP,
+				})
+			}
+		}
+		return mappings, nil
+	}
+
+	for portKey := range req.ExposedPorts {
+		containerPort, proto, err := parseCRIPortKey(portKey)
+		if err != nil {
+			return nil, err
+		}
+		mappings = append(mappings, &criapi.PortMapping{
+			Protocol:      parseCRIProtocol(proto),
+			ContainerPort: containerPort,
+		})
+	}
+
+	return mappings, nil
+}
+
+func parseCRIPortKey(key string) (int32, string, error) {
+	parts := strings.Split(key, "/")
+	port := strings.TrimSpace(parts[0])
+	if port == "" {
+		return 0, "", fmt.Errorf("invalid port: %s", key)
+	}
+	portValue, err := strconv.Atoi(port)
+	if err != nil {
+		return 0, "", fmt.Errorf("invalid port: %s", key)
+	}
+	proto := "tcp"
+	if len(parts) > 1 {
+		if candidate := strings.TrimSpace(parts[1]); candidate != "" {
+			proto = candidate
+		}
+	}
+	return int32(portValue), proto, nil
+}
+
+func parseCRIHostPort(value string) (int32, error) {
+	if strings.TrimSpace(value) == "" {
+		return 0, nil
+	}
+	portValue, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, fmt.Errorf("invalid host port: %s", value)
+	}
+	return int32(portValue), nil
+}
+
+func parseCRIProtocol(value string) criapi.Protocol {
+	switch strings.ToLower(value) {
+	case "udp":
+		return criapi.Protocol_UDP
+	case "sctp":
+		return criapi.Protocol_SCTP
+	default:
+		return criapi.Protocol_TCP
+	}
+}
+
+func buildCRIResources(resources *ContainerResources) *criapi.LinuxContainerResources {
+	if resources == nil {
+		return nil
+	}
+
+	result := &criapi.LinuxContainerResources{}
+	if resources.CpuCores > 0 {
+		result.CpuPeriod = 100000
+		result.CpuQuota = int64(resources.CpuCores * 100000)
+	}
+	if resources.MemoryMB > 0 {
+		result.MemoryLimitInBytes = resources.MemoryMB * 1024 * 1024
+	}
+
+	if result.CpuPeriod == 0 && result.CpuQuota == 0 && result.MemoryLimitInBytes == 0 {
+		return nil
+	}
+
+	return result
+}
+
+func resolveCRICgroupParent(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed != "" {
+		return trimmed
+	}
+	// Default to system.slice when systemd is present to avoid systemd cgroup path errors.
+	if _, err := os.Stat("/run/systemd/system"); err == nil {
+		return "/system.slice"
+	}
+	return ""
+}
+
+func buildCRINamespaceOptions(networkMode string) (*criapi.NamespaceOption, error) {
+	mode := strings.ToLower(strings.TrimSpace(networkMode))
+	if mode == "" || mode == "pod" {
+		return nil, nil
+	}
+	if mode == "host" || mode == "node" {
+		return &criapi.NamespaceOption{Network: criapi.NamespaceMode_NODE}, nil
+	}
+	return nil, fmt.Errorf("unsupported network mode for CRI: %s (supported: host)", networkMode)
+}
+
+func buildCRIEnvs(values []string) []*criapi.KeyValue {
+	result := []*criapi.KeyValue{}
+	for _, item := range values {
+		trimmed := strings.TrimSpace(item)
+		if trimmed == "" {
+			continue
+		}
+		parts := strings.SplitN(trimmed, "=", 2)
+		key := parts[0]
+		value := ""
+		if len(parts) == 2 {
+			value = parts[1]
+		}
+		result = append(result, &criapi.KeyValue{Key: key, Value: value})
+	}
+	return result
+}
+
+func buildCRIMounts(volumes []VolumeMount) ([]*criapi.Mount, error) {
+	mounts := []*criapi.Mount{}
+	for _, volume := range volumes {
+		if strings.TrimSpace(volume.Source) == "" || strings.TrimSpace(volume.Target) == "" {
+			return nil, fmt.Errorf("volume source and target are required")
+		}
+		mnt := &criapi.Mount{
+			HostPath:      volume.Source,
+			ContainerPath: volume.Target,
+			Readonly:      volume.ReadOnly,
+		}
+		if volume.BindOptions != nil && volume.BindOptions.Propagation != "" {
+			mnt.Propagation = parseCRIMountPropagation(volume.BindOptions.Propagation)
+		}
+		mounts = append(mounts, mnt)
+	}
+	return mounts, nil
+}
+
+func parseCRIMountPropagation(value string) criapi.MountPropagation {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "rshared", "shared":
+		return criapi.MountPropagation_PROPAGATION_BIDIRECTIONAL
+	case "rslave", "slave":
+		return criapi.MountPropagation_PROPAGATION_HOST_TO_CONTAINER
+	case "private", "rprivate":
+		fallthrough
+	default:
+		return criapi.MountPropagation_PROPAGATION_PRIVATE
+	}
 }
 
 // GetRuntimeName returns the runtime name
@@ -346,7 +622,7 @@ func (c *CRIClient) ImportImage(filePath string) (*common.ImageImportResult, err
 	// For example, for containerd, you might use ctr or nerdctl
 	_ = ctx
 	_ = filePath
-	
+
 	// Return a placeholder result indicating the operation is not supported
 	importResult := &common.ImageImportResult{
 		ImageID:    "",

@@ -94,9 +94,9 @@ type Network struct {
 
 // IPAM represents IP Address Management configuration
 type IPAM struct {
-	Driver  string       `json:"driver"`
+	Driver  string            `json:"driver"`
 	Options map[string]string `json:"options,omitempty"`
-	Config  []IPAMConfig `json:"config"`
+	Config  []IPAMConfig      `json:"config"`
 }
 
 // IPAMConfig represents IPAM configuration
@@ -121,8 +121,8 @@ type Volume struct {
 
 // VolumeUsageData represents volume usage information
 type VolumeUsageData struct {
-	Size      int64 `json:"size"`
-	RefCount  int64 `json:"refCount"`
+	Size     int64 `json:"size"`
+	RefCount int64 `json:"refCount"`
 }
 
 // ContainerListOptions represents options for listing containers
@@ -174,17 +174,25 @@ type NetworkActionResponse struct {
 
 // ContainerCreateRequest represents a request to create a new container
 type ContainerCreateRequest struct {
-	Name        string            `json:"name,omitempty"`
-	Image       string            `json:"image"`
-	Cmd         []string          `json:"cmd,omitempty"`
-	Env         []string          `json:"env,omitempty"`
-	ExposedPorts map[string]struct{} `json:"exposedPorts,omitempty"`
-	PortBindings map[string][]PortBinding `json:"portBindings,omitempty"`
-	Labels      map[string]string `json:"labels,omitempty"`
-	WorkingDir  string            `json:"workingDir,omitempty"`
-	Volumes     []VolumeMount     `json:"volumes,omitempty"`
-	NetworkMode string            `json:"networkMode,omitempty"`
-	RestartPolicy RestartPolicy   `json:"restartPolicy,omitempty"`
+	Name          string                   `json:"name,omitempty"`
+	Image         string                   `json:"image"`
+	Cmd           []string                 `json:"cmd,omitempty"`
+	Entrypoint    []string                 `json:"entrypoint,omitempty"`
+	Env           []string                 `json:"env,omitempty"`
+	ExposedPorts  map[string]struct{}      `json:"exposedPorts,omitempty"`
+	PortBindings  map[string][]PortBinding `json:"portBindings,omitempty"`
+	Labels        map[string]string        `json:"labels,omitempty"`
+	WorkingDir    string                   `json:"workingDir,omitempty"`
+	Volumes       []VolumeMount            `json:"volumes,omitempty"`
+	NetworkMode   string                   `json:"networkMode,omitempty"`
+	RestartPolicy RestartPolicy            `json:"restartPolicy,omitempty"`
+	Resources     *ContainerResources      `json:"resources,omitempty"`
+}
+
+// ContainerResources represents container resource limits
+type ContainerResources struct {
+	CpuCores float64 `json:"cpuCores,omitempty"`
+	MemoryMB int64   `json:"memoryMB,omitempty"`
 }
 
 // PortBinding represents a port binding configuration
@@ -195,10 +203,10 @@ type PortBinding struct {
 
 // VolumeMount represents a volume mount configuration
 type VolumeMount struct {
-	Source      string `json:"source"`
-	Target      string `json:"target"`
-	Type        string `json:"type,omitempty"` // bind, volume, tmpfs
-	ReadOnly    bool   `json:"readOnly,omitempty"`
+	Source      string       `json:"source"`
+	Target      string       `json:"target"`
+	Type        string       `json:"type,omitempty"` // bind, volume, tmpfs
+	ReadOnly    bool         `json:"readOnly,omitempty"`
 	BindOptions *BindOptions `json:"bindOptions,omitempty"`
 }
 

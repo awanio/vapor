@@ -9,6 +9,15 @@ allOf:
             type: string
             description: ID of the created container
             example: 8dfafdbc3a40
+          podSandboxId:
+            type: string
+            description: CRI pod sandbox ID (if applicable)
+          message:
+            type: string
+            description: Result message
+          success:
+            type: boolean
+            description: Whether the creation succeeded
           warnings:
             type: array
             items:

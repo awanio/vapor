@@ -9,12 +9,14 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/awanio/vapor/internal/common"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
+	"github.com/docker/go-connections/nat"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
-	"github.com/awanio/vapor/internal/common"
 )
 
 // Service represents the Docker service
@@ -35,7 +37,7 @@ func NewServiceWithRuntimeClient(dockerClient Client) (*Service, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create runtime client: %w", err)
 	}
-	
+
 	return &Service{
 		client:        dockerClient,
 		runtimeClient: runtimeClient,
@@ -56,7 +58,7 @@ func (s *Service) RegisterRoutes(r *mux.Router) {
 	r.HandleFunc("/docker/images", s.listImages).Methods("GET")
 	r.HandleFunc("/docker/networks", s.listNetworks).Methods("GET")
 	r.HandleFunc("/docker/volumes", s.listVolumes).Methods("GET")
-	
+
 	// Container detail and actions
 	r.HandleFunc("/docker/containers/{id}", s.getContainerDetail).Methods("GET")
 	r.HandleFunc("/docker/containers/{id}", s.removeContainer).Methods("DELETE")
@@ -64,7 +66,7 @@ func (s *Service) RegisterRoutes(r *mux.Router) {
 	r.HandleFunc("/docker/containers/{id}/stop", s.stopContainer).Methods("POST")
 	r.HandleFunc("/docker/containers/{id}/kill", s.killContainer).Methods("POST")
 	r.HandleFunc("/docker/containers/{id}/logs", s.getContainerLogs).Methods("GET")
-	
+
 	// Resource deletion
 	r.HandleFunc("/docker/images/{id}", s.removeImage).Methods("DELETE")
 	r.HandleFunc("/docker/volumes/{id}", s.removeVolume).Methods("DELETE")
@@ -163,7 +165,7 @@ func (s *Service) getContainerLogs(w http.ResponseWriter, r *http.Request) {
 
 func (s *Service) listContainers(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	
+
 	// Parse query parameters
 	query := r.URL.Query()
 	options := ContainerListOptions{
@@ -172,26 +174,26 @@ func (s *Service) listContainers(w http.ResponseWriter, r *http.Request) {
 		Size:    query.Get("size") == "true",
 		Filters: query.Get("filters"),
 	}
-	
+
 	// Parse limit if provided
 	if limitStr := query.Get("limit"); limitStr != "" {
 		if limit, err := strconv.Atoi(limitStr); err == nil {
 			options.Limit = limit
 		}
 	}
-	
+
 	// Default to showing all containers if no specific filter is set
 	if !options.Running && query.Get("all") == "" {
 		options.All = true
 	}
-	
+
 	containers, err := s.client.ListContainers(ctx, options)
 	if err != nil {
 		logrus.Errorf("failed to list containers: %v", err)
 		common.RespondError(w, http.StatusServiceUnavailable, "DOCKER_ERROR", "Failed to list containers: "+err.Error())
 		return
 	}
-	
+
 	common.RespondSuccess(w, containers)
 }
 
@@ -203,7 +205,7 @@ func (s *Service) listImages(w http.ResponseWriter, r *http.Request) {
 		common.RespondError(w, http.StatusServiceUnavailable, "DOCKER_ERROR", "Failed to list images: "+err.Error())
 		return
 	}
-	
+
 	common.RespondSuccess(w, images)
 }
 
@@ -215,7 +217,7 @@ func (s *Service) listNetworks(w http.ResponseWriter, r *http.Request) {
 		common.RespondError(w, http.StatusServiceUnavailable, "DOCKER_ERROR", "Failed to list networks: "+err.Error())
 		return
 	}
-	
+
 	common.RespondSuccess(w, networks)
 }
 
@@ -227,7 +229,7 @@ func (s *Service) listVolumes(w http.ResponseWriter, r *http.Request) {
 		common.RespondError(w, http.StatusServiceUnavailable, "DOCKER_ERROR", "Failed to list volumes: "+err.Error())
 		return
 	}
-	
+
 	common.RespondSuccess(w, volumes)
 }
 
@@ -261,6 +263,116 @@ func (s *Service) removeVolume(w http.ResponseWriter, r *http.Request) {
 	common.RespondSuccess(w, VolumeActionResponse{VolumeID: volumeID, Action: "remove", Message: "Volume removed successfully", Success: true})
 }
 
+func buildDockerCreateConfigs(req ContainerCreateRequest) (container.Config, container.HostConfig, network.NetworkingConfig, error) {
+	config := container.Config{
+		Image:      req.Image,
+		Cmd:        req.Cmd,
+		Entrypoint: req.Entrypoint,
+		Env:        req.Env,
+		Labels:     req.Labels,
+		WorkingDir: req.WorkingDir,
+	}
+
+	exposedPorts := nat.PortSet{}
+	for portKey := range req.ExposedPorts {
+		port, err := parseDockerPortKey(portKey)
+		if err != nil {
+			return container.Config{}, container.HostConfig{}, network.NetworkingConfig{}, err
+		}
+		exposedPorts[port] = struct{}{}
+	}
+
+	portBindings := nat.PortMap{}
+	for portKey, bindings := range req.PortBindings {
+		port, err := parseDockerPortKey(portKey)
+		if err != nil {
+			return container.Config{}, container.HostConfig{}, network.NetworkingConfig{}, err
+		}
+		if _, ok := exposedPorts[port]; !ok {
+			exposedPorts[port] = struct{}{}
+		}
+		for _, binding := range bindings {
+			portBindings[port] = append(portBindings[port], nat.PortBinding{
+				HostIP:   binding.HostIP,
+				HostPort: binding.HostPort,
+			})
+		}
+	}
+
+	if len(exposedPorts) > 0 {
+		config.ExposedPorts = exposedPorts
+	}
+
+	hostConfig := container.HostConfig{
+		PortBindings: portBindings,
+	}
+
+	if req.NetworkMode != "" {
+		hostConfig.NetworkMode = container.NetworkMode(req.NetworkMode)
+	}
+
+	if req.RestartPolicy.Name != "" {
+		hostConfig.RestartPolicy = container.RestartPolicy{
+			Name:              container.RestartPolicyMode(req.RestartPolicy.Name),
+			MaximumRetryCount: req.RestartPolicy.MaximumRetryCount,
+		}
+	}
+
+	if req.Resources != nil {
+		if req.Resources.CpuCores > 0 {
+			hostConfig.Resources.NanoCPUs = int64(req.Resources.CpuCores * 1e9)
+		}
+		if req.Resources.MemoryMB > 0 {
+			hostConfig.Resources.Memory = req.Resources.MemoryMB * 1024 * 1024
+		}
+	}
+
+	if len(req.Volumes) > 0 {
+		mounts := make([]mount.Mount, 0, len(req.Volumes))
+		for _, volume := range req.Volumes {
+			mnt := mount.Mount{
+				Source:   volume.Source,
+				Target:   volume.Target,
+				ReadOnly: volume.ReadOnly,
+			}
+			switch strings.ToLower(volume.Type) {
+			case "volume":
+				mnt.Type = mount.TypeVolume
+			case "tmpfs":
+				mnt.Type = mount.TypeTmpfs
+			default:
+				mnt.Type = mount.TypeBind
+			}
+			if mnt.Type == mount.TypeBind && volume.BindOptions != nil && volume.BindOptions.Propagation != "" {
+				mnt.BindOptions = &mount.BindOptions{
+					Propagation: mount.Propagation(volume.BindOptions.Propagation),
+				}
+			}
+			mounts = append(mounts, mnt)
+		}
+		hostConfig.Mounts = mounts
+	}
+
+	networkConfig := network.NetworkingConfig{}
+
+	return config, hostConfig, networkConfig, nil
+}
+
+func parseDockerPortKey(key string) (nat.Port, error) {
+	parts := strings.Split(key, "/")
+	port := strings.TrimSpace(parts[0])
+	if port == "" {
+		return nat.Port(""), fmt.Errorf("invalid port: %s", key)
+	}
+	proto := "tcp"
+	if len(parts) > 1 {
+		if candidate := strings.TrimSpace(parts[1]); candidate != "" {
+			proto = candidate
+		}
+	}
+	return nat.NewPort(proto, port)
+}
+
 func (s *Service) createContainer(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var req ContainerCreateRequest
@@ -270,14 +382,17 @@ func (s *Service) createContainer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	containerConfig := container.Config{
-		Image: req.Image,
-		Cmd:   req.Cmd,
-		Env:   req.Env,
+	if strings.TrimSpace(req.Name) == "" || strings.TrimSpace(req.Image) == "" {
+		common.RespondError(w, http.StatusBadRequest, "INVALID_REQUEST", "Name and image are required")
+		return
 	}
 
-	hostConfig := container.HostConfig{}
-	networkConfig := network.NetworkingConfig{}
+	containerConfig, hostConfig, networkConfig, err := buildDockerCreateConfigs(req)
+	if err != nil {
+		logrus.Errorf("failed to build container config: %v", err)
+		common.RespondError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid container configuration: "+err.Error())
+		return
+	}
 
 	containerID, err := s.client.CreateContainer(ctx, containerConfig, hostConfig, networkConfig, req.Name)
 	if err != nil {
@@ -375,10 +490,10 @@ func (s *Service) StartContainerGin(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, common.SuccessResponse(ContainerActionResponse{
-		ContainerID: containerID, 
-		Action: "start", 
-		Message: "Container started successfully", 
-		Success: true,
+		ContainerID: containerID,
+		Action:      "start",
+		Message:     "Container started successfully",
+		Success:     true,
 	}))
 }
 
@@ -395,10 +510,10 @@ func (s *Service) StopContainerGin(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, common.SuccessResponse(ContainerActionResponse{
-		ContainerID: containerID, 
-		Action: "stop", 
-		Message: "Container stopped successfully", 
-		Success: true,
+		ContainerID: containerID,
+		Action:      "stop",
+		Message:     "Container stopped successfully",
+		Success:     true,
 	}))
 }
 
@@ -415,10 +530,10 @@ func (s *Service) KillContainerGin(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, common.SuccessResponse(ContainerActionResponse{
-		ContainerID: containerID, 
-		Action: "kill", 
-		Message: "Container killed successfully", 
-		Success: true,
+		ContainerID: containerID,
+		Action:      "kill",
+		Message:     "Container killed successfully",
+		Success:     true,
 	}))
 }
 
@@ -435,10 +550,10 @@ func (s *Service) RemoveContainerGin(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, common.SuccessResponse(ContainerActionResponse{
-		ContainerID: containerID, 
-		Action: "remove", 
-		Message: "Container removed successfully", 
-		Success: true,
+		ContainerID: containerID,
+		Action:      "remove",
+		Message:     "Container removed successfully",
+		Success:     true,
 	}))
 }
 
@@ -455,8 +570,8 @@ func (s *Service) GetContainerLogsGin(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, common.SuccessResponse(ContainerLogsResponse{
-		ContainerID: containerID, 
-		Logs: logs,
+		ContainerID: containerID,
+		Logs:        logs,
 	}))
 }
 
@@ -465,7 +580,7 @@ func (s *Service) GetContainerLogsGin(c *gin.Context) {
 // ListContainersGin handles container listing for Gin router
 func (s *Service) ListContainersGin(c *gin.Context) {
 	ctx := c.Request.Context()
-	
+
 	// Parse query parameters
 	options := ContainerListOptions{
 		All:     c.Query("all") == "true",
@@ -473,26 +588,26 @@ func (s *Service) ListContainersGin(c *gin.Context) {
 		Size:    c.Query("size") == "true",
 		Filters: c.Query("filters"),
 	}
-	
+
 	// Parse limit if provided
 	if limitStr := c.Query("limit"); limitStr != "" {
 		if limit, err := strconv.Atoi(limitStr); err == nil {
 			options.Limit = limit
 		}
 	}
-	
+
 	// Default to showing all containers if no specific filter is set
 	if !options.Running && c.Query("all") == "" {
 		options.All = true
 	}
-	
+
 	containers, err := s.client.ListContainers(ctx, options)
 	if err != nil {
 		logrus.Errorf("failed to list containers: %v", err)
 		c.JSON(http.StatusServiceUnavailable, common.ErrorResponse("DOCKER_ERROR", "Failed to list containers: "+err.Error()))
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, common.SuccessResponse(gin.H{
 		"containers": containers,
 		"count":      len(containers),
@@ -508,7 +623,7 @@ func (s *Service) ListImagesGin(c *gin.Context) {
 		c.JSON(http.StatusServiceUnavailable, common.ErrorResponse("DOCKER_ERROR", "Failed to list images: "+err.Error()))
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, common.SuccessResponse(gin.H{
 		"images": images,
 		"count":  len(images),
@@ -524,7 +639,7 @@ func (s *Service) ListNetworksGin(c *gin.Context) {
 		c.JSON(http.StatusServiceUnavailable, common.ErrorResponse("DOCKER_ERROR", "Failed to list networks: "+err.Error()))
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, common.SuccessResponse(gin.H{
 		"networks": networks,
 		"count":    len(networks),
@@ -540,7 +655,7 @@ func (s *Service) ListVolumesGin(c *gin.Context) {
 		c.JSON(http.StatusServiceUnavailable, common.ErrorResponse("DOCKER_ERROR", "Failed to list volumes: "+err.Error()))
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, common.SuccessResponse(gin.H{
 		"volumes": volumes,
 		"count":   len(volumes),
@@ -597,14 +712,17 @@ func (s *Service) CreateContainerGin(c *gin.Context) {
 		return
 	}
 
-	containerConfig := container.Config{
-		Image: req.Image,
-		Cmd:   req.Cmd,
-		Env:   req.Env,
+	if strings.TrimSpace(req.Name) == "" || strings.TrimSpace(req.Image) == "" {
+		c.JSON(http.StatusBadRequest, common.ErrorResponse("INVALID_REQUEST", "Name and image are required"))
+		return
 	}
 
-	hostConfig := container.HostConfig{}
-	networkConfig := network.NetworkingConfig{}
+	containerConfig, hostConfig, networkConfig, err := buildDockerCreateConfigs(req)
+	if err != nil {
+		logrus.Errorf("failed to build container config: %v", err)
+		c.JSON(http.StatusBadRequest, common.ErrorResponse("INVALID_REQUEST", "Invalid container configuration: "+err.Error()))
+		return
+	}
 
 	containerID, err := s.client.CreateContainer(ctx, containerConfig, hostConfig, networkConfig, req.Name)
 	if err != nil {
@@ -620,7 +738,6 @@ func (s *Service) CreateContainerGin(c *gin.Context) {
 	}))
 }
 
-// PullImageGin handles image pulling for Gin router
 func (s *Service) PullImageGin(c *gin.Context) {
 	ctx := c.Request.Context()
 	var req ImagePullRequest
@@ -652,7 +769,7 @@ func (s *Service) PullImageGin(c *gin.Context) {
 // ImportImageGin handles image import for Gin router
 func (s *Service) ImportImageGin(c *gin.Context) {
 	ctx := c.Request.Context()
-	
+
 	// Parse multipart form
 	file, header, err := c.Request.FormFile("image")
 	if err != nil {
@@ -724,4 +841,3 @@ func (s *Service) RemoveNetworkGin(c *gin.Context) {
 		Success:   true,
 	}))
 }
-

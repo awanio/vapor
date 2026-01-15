@@ -83,3 +83,63 @@ get:
                       /var/run/crio/crio.sock]) and Docker. Last error: Cannot
                       connect to the Docker daemon at
                       unix:///var/run/docker.sock. Is the docker daemon running?
+
+post:
+  summary: Create container
+  description: Create a new container using the CRI runtime
+  tags:
+    - Container
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/ContainerCreateRequest.yaml
+        examples:
+          createNginx:
+            summary: Create nginx container
+            value:
+              name: my-nginx
+              image: nginx:latest
+              env:
+                - ENV=production
+              portBindings:
+                80/tcp:
+                  - hostPort: '8080'
+          createUbuntu:
+            summary: Create Ubuntu container
+            value:
+              name: my-ubuntu
+              image: ubuntu:22.04
+              cmd:
+                - /bin/bash
+              env:
+                - DEBIAN_FRONTEND=noninteractive
+  responses:
+    '201':
+      description: Container created successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ContainerCreateResponse.yaml
+    '400':
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '500':
+      description: Failed to create container
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+          example:
+            status: error
+            error:
+              code: CONTAINER_CREATE_ERROR
+              message: 'Failed to create container: runtime error'

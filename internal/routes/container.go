@@ -43,6 +43,7 @@ func ContainerRoutes(r *gin.RouterGroup) {
 	{
 		// Register container routes for containerd and CRI-O
 		containersGroup.GET("", containerService.ListContainers)
+		containersGroup.POST("", containerService.CreateContainer)
 		containersGroup.GET("/:id", containerService.GetContainer)
 		containersGroup.GET("/:id/logs", containerService.GetContainerLogs)
 		containersGroup.GET("/images", containerService.ListImages)

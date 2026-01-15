@@ -4,16 +4,17 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/awanio/vapor/internal/common"
+	"github.com/gin-gonic/gin"
 )
 
 // Service manages CRI container operations
 type Service struct {
-	client common.RuntimeClient
+	client       common.RuntimeClient
 	errorMessage string
 }
 
@@ -43,7 +44,7 @@ func NewService() (*Service, error) {
 	// All CRI connections failed - return a service that will show errors
 	errorMsg := fmt.Sprintf("No CRI runtime found. Tried sockets: %v. Last error: %v", criSockets, lastError)
 	log.Printf("Warning: %s", errorMsg)
-	
+
 	// Return a service with no client but with error message
 	return &Service{
 		client:       nil,
@@ -79,6 +80,44 @@ func (s *Service) ListContainers(c *gin.Context) {
 		"runtime":    s.client.GetRuntimeName(),
 		"count":      len(containers),
 	})
+}
+
+// CreateContainer handles the POST /containers endpoint
+func (s *Service) CreateContainer(c *gin.Context) {
+	if s.client == nil {
+		common.SendError(c, 503, "NO_RUNTIME_AVAILABLE", s.errorMessage)
+		return
+	}
+
+	var req ContainerCreateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		common.SendError(c, 400, "INVALID_REQUEST", "Failed to decode request: "+err.Error())
+		return
+	}
+
+	if strings.TrimSpace(req.Name) == "" || strings.TrimSpace(req.Image) == "" {
+		common.SendError(c, 400, "INVALID_REQUEST", "Name and image are required")
+		return
+	}
+
+	criClient, ok := s.client.(*CRIClient)
+	if !ok {
+		common.SendError(c, 400, "RUNTIME_UNSUPPORTED", "Container creation is only supported for CRI runtimes")
+		return
+	}
+
+	containerID, sandboxID, err := criClient.CreateContainer(req)
+	if err != nil {
+		common.SendError(c, 500, "CONTAINER_CREATE_ERROR", err.Error())
+		return
+	}
+
+	c.JSON(http.StatusCreated, common.SuccessResponse(ContainerCreateResponse{
+		ContainerID:  containerID,
+		PodSandboxID: sandboxID,
+		Message:      "Container created successfully",
+		Success:      true,
+	}))
 }
 
 // ListImages handles the GET /images endpoint

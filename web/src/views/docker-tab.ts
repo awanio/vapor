@@ -6,6 +6,7 @@ import { api, ApiError } from '../api';
 import type { DockerContainer, DockerImage, DockerVolume, DockerNetwork, DockerContainersResponse, DockerImagesResponse, DockerVolumesResponse, DockerNetworksResponse } from '../types/api';
 import '../components/modal-dialog';
 import '../components/modals/container-terminal-modal.js';
+import '../components/containers/container-image-autocomplete.js';
 
 interface UploadItem {
   id: string;
@@ -13,6 +14,20 @@ interface UploadItem {
   progress: number;
   status: 'pending' | 'uploading' | 'completed' | 'error';
   error?: string;
+}
+
+interface CreatePortMapping {
+  containerPort: string;
+  hostPort: string;
+  protocol: string;
+}
+
+interface CreateVolumeMapping {
+  source: string;
+  target: string;
+  type: string;
+  readOnly: boolean;
+  propagation: string;
 }
 
 export class DockerTab extends LitElement {
@@ -46,6 +61,25 @@ export class DockerTab extends LitElement {
   @state() private showUploadDrawer: boolean = false;
   @state() private uploadQueue: UploadItem[] = [];
   @state() private isUploading: boolean = false;
+
+  @state() private showCreateDrawer = false;
+  @state() private isClosingCreateDrawer = false;
+  @state() private createError: string | null = null;
+  @state() private isCreating = false;
+  @state() private createName = '';
+  @state() private createImage = '';
+  @state() private createEntrypoint = '';
+  @state() private createCmd = '';
+  @state() private createEnv = '';
+  @state() private createLabels = '';
+  @state() private createWorkingDir = '';
+  @state() private createNetworkMode = '';
+  @state() private createRestartPolicy = 'no';
+  @state() private createRestartMaxRetry = '';
+  @state() private createCpuCores = '';
+  @state() private createMemoryMB = '';
+  @state() private createPorts: CreatePortMapping[] = [];
+  @state() private createVolumes: CreateVolumeMapping[] = [];
 
   static override styles = css`
     :host {
@@ -570,6 +604,104 @@ export class DockerTab extends LitElement {
       }
     }
 
+    @keyframes slideOut {
+      from {
+        transform: translateX(0);
+      }
+      to {
+        transform: translateX(100%);
+      }
+    }
+
+    .create-drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 50%;
+      height: 100%;
+      background: var(--vscode-editor-background, #1e1e1e);
+      border-left: 1px solid var(--vscode-widget-border, #454545);
+      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+      z-index: 1001;
+      overflow-y: auto;
+      animation: slideIn 0.3s ease-out;
+      display: flex;
+      flex-direction: column;
+    }
+
+    @media (max-width: 1024px) {
+      .create-drawer {
+        width: 80%;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .create-drawer {
+        width: 100%;
+      }
+    }
+
+    .create-drawer.closing {
+      animation: slideOut 0.3s ease-in forwards;
+    }
+
+    .create-drawer-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--vscode-editorWidget-border, #464647);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .create-drawer-title {
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--vscode-foreground, #cccccc);
+      margin: 0;
+    }
+
+    .create-drawer-content {
+      padding: 24px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .create-drawer-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--vscode-editorWidget-border, #464647);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      position: sticky;
+      bottom: 0;
+      z-index: 10;
+    }
+
+    .create-close-btn {
+      background: transparent;
+      border: none;
+      color: var(--vscode-foreground, #cccccc);
+      cursor: pointer;
+      padding: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      font-size: 20px;
+      line-height: 1;
+      transition: all 0.2s;
+    }
+
+    .create-close-btn:hover {
+      background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
+      color: var(--vscode-icon-foreground, #c5c5c5);
+    }
+
     .drawer h2 {
       margin-top: 0;
     }
@@ -615,6 +747,87 @@ export class DockerTab extends LitElement {
 
     .drawer-content {
       margin-top: 40px;
+      padding-bottom: 80px;
+    }
+
+    .form-section {
+      margin-bottom: 24px;
+    }
+
+    .form-section h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--text-primary);
+      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      padding-bottom: 8px;
+    }
+
+    .form-field {
+      margin-bottom: 12px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+      font-weight: 500;
+    }
+
+    .form-input,
+    .form-select,
+    .form-textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--vscode-widget-border, var(--vscode-input-border, var(--vscode-panel-border, #454545)));
+      border-radius: 4px;
+      background-color: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+      font-size: 0.875rem;
+      font-family: inherit;
+      outline: none;
+      box-sizing: border-box;
+    }
+
+    .form-input:focus,
+    .form-select:focus,
+    .form-textarea:focus {
+      border-color: var(--vscode-focusBorder, #007acc);
+    }
+
+    .form-textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .form-row .form-input,
+    .form-row .form-select {
+      flex: 1;
+    }
+
+    .form-hint {
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground, #999);
+      margin-top: 4px;
+    }
+
+    .btn-small {
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+
+    .list-item {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
     }
 
     .detail-section {
@@ -1154,6 +1367,8 @@ export class DockerTab extends LitElement {
         @close=${() => { this.showTerminalModal = false; }}
       ></container-terminal-modal>
 
+      ${this.showCreateDrawer ? this.renderCreateContainerDrawer() : ''}
+
       ${this.showDrawer ? html`
         <div class="drawer">
           <button class="close-btn" @click=${() => { this.showDrawer = false; this.detailError = null; }}>✕</button>
@@ -1318,6 +1533,489 @@ export class DockerTab extends LitElement {
       this.confirmAction();
     }
   }
+  private openCreateContainerDrawer() {
+    this.resetCreateForm();
+    this.isClosingCreateDrawer = false;
+    this.showCreateDrawer = true;
+    void this.fetchImages();
+  }
+
+  private closeCreateContainerDrawer() {
+    if (this.isClosingCreateDrawer) return;
+    this.isClosingCreateDrawer = true;
+    window.setTimeout(() => {
+      this.showCreateDrawer = false;
+      this.isClosingCreateDrawer = false;
+      this.createError = null;
+    }, 300);
+  }
+
+  private resetCreateForm() {
+    this.createName = '';
+    this.createImage = '';
+    this.createEntrypoint = '';
+    this.createCmd = '';
+    this.createEnv = '';
+    this.createLabels = '';
+    this.createWorkingDir = '';
+    this.createNetworkMode = '';
+    this.createRestartPolicy = 'no';
+    this.createRestartMaxRetry = '';
+    this.createCpuCores = '';
+    this.createMemoryMB = '';
+    this.createPorts = [];
+    this.createVolumes = [];
+  }
+
+  private addPortMapping() {
+    this.createPorts = [...this.createPorts, { containerPort: '', hostPort: '', protocol: 'tcp' }];
+  }
+
+  private removePortMapping(index: number) {
+    this.createPorts = this.createPorts.filter((_, i) => i !== index);
+  }
+
+  private addVolumeMapping() {
+    this.createVolumes = [...this.createVolumes, { source: '', target: '', type: 'bind', readOnly: false, propagation: '' }];
+  }
+
+  private removeVolumeMapping(index: number) {
+    this.createVolumes = this.createVolumes.filter((_, i) => i !== index);
+  }
+
+  private parseCommandInput(value: string): string[] {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    if (trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          return parsed.map((item) => String(item));
+        }
+      } catch {
+        // fall through to whitespace parsing
+      }
+    }
+    return trimmed.split(/\s+/).filter(Boolean);
+  }
+
+  private parseKeyValueLines(value: string): string[] {
+    return value.split('\n').map((line) => line.trim()).filter(Boolean);
+  }
+
+  private parseLabels(value: string): Record<string, string> {
+    const labels: Record<string, string> = {};
+    this.parseKeyValueLines(value).forEach((line) => {
+      const [key, ...rest] = line.split('=');
+      if (!key) return;
+      labels[key] = rest.join('=') || '';
+    });
+    return labels;
+  }
+
+  private getImageSuggestions(): string[] {
+    const suggestions = new Set<string>();
+    this.images.forEach((image) => {
+      (image.repoTags || []).forEach((tag) => {
+        if (tag && tag !== '<none>:<none>') {
+          suggestions.add(tag);
+        }
+      });
+    });
+    return Array.from(suggestions);
+  }
+
+  private async handleCreateContainer() {
+    if (!this.createName.trim() || !this.createImage.trim()) {
+      this.createError = 'Name and image are required';
+      return;
+    }
+
+    this.isCreating = true;
+    this.createError = null;
+
+    try {
+      const cmd = this.parseCommandInput(this.createCmd);
+      const entrypoint = this.parseCommandInput(this.createEntrypoint);
+      const env = this.parseKeyValueLines(this.createEnv);
+      const labels = this.parseLabels(this.createLabels);
+
+      const exposedPorts: Record<string, Record<string, never>> = {};
+      const portBindings: Record<string, { hostPort: string }[]> = {};
+
+      this.createPorts.forEach((mapping) => {
+        const containerPort = mapping.containerPort.trim();
+        if (!containerPort) return;
+        const protocol = mapping.protocol?.trim() || 'tcp';
+        const key = `${containerPort}/${protocol}`;
+        exposedPorts[key] = {};
+        if (!portBindings[key]) {
+          portBindings[key] = [];
+        }
+        portBindings[key].push({ hostPort: mapping.hostPort.trim() });
+      });
+
+      const volumes = this.createVolumes
+        .filter((volume) => volume.source.trim() && volume.target.trim())
+        .map((volume) => ({
+          source: volume.source.trim(),
+          target: volume.target.trim(),
+          type: volume.type || 'bind',
+          readOnly: volume.readOnly,
+          bindOptions: volume.propagation ? { propagation: volume.propagation } : undefined,
+        }));
+
+      const policyName = this.createRestartPolicy.trim();
+      let restartPolicy: { name: string; maximumRetryCount?: number } | undefined;
+      if (policyName && policyName !== 'no') {
+        const maxRetry = this.createRestartMaxRetry.trim();
+        const parsedMaxRetry = maxRetry ? Number.parseInt(maxRetry, 10) : undefined;
+        restartPolicy = {
+          name: policyName,
+          maximumRetryCount: Number.isNaN(parsedMaxRetry as number) ? undefined : parsedMaxRetry,
+        };
+      }
+
+      const cpuCores = this.createCpuCores.trim();
+      const memoryMB = this.createMemoryMB.trim();
+      const parsedCpu = cpuCores ? Number.parseFloat(cpuCores) : undefined;
+      const parsedMemory = memoryMB ? Number.parseInt(memoryMB, 10) : undefined;
+      const resources = (parsedCpu && !Number.isNaN(parsedCpu)) || (parsedMemory && !Number.isNaN(parsedMemory))
+        ? {
+            cpuCores: Number.isNaN(parsedCpu as number) ? undefined : parsedCpu,
+            memoryMB: Number.isNaN(parsedMemory as number) ? undefined : parsedMemory,
+          }
+        : undefined;
+
+      const payload: Record<string, unknown> = {
+        name: this.createName.trim(),
+        image: this.createImage.trim(),
+        cmd: cmd.length ? cmd : undefined,
+        entrypoint: entrypoint.length ? entrypoint : undefined,
+        env: env.length ? env : undefined,
+        labels: Object.keys(labels).length ? labels : undefined,
+        workingDir: this.createWorkingDir.trim() || undefined,
+        networkMode: this.createNetworkMode.trim() || undefined,
+        restartPolicy,
+        resources,
+        volumes: volumes.length ? volumes : undefined,
+        exposedPorts: Object.keys(exposedPorts).length ? exposedPorts : undefined,
+        portBindings: Object.keys(portBindings).length ? portBindings : undefined,
+      };
+
+      await api.post('/docker/containers', payload);
+
+      this.closeCreateContainerDrawer();
+      this.resetCreateForm();
+      this.fetchContainers();
+    } catch (error) {
+      this.createError = error instanceof ApiError ? error.message : 'Failed to create container';
+    } finally {
+      this.isCreating = false;
+    }
+  }
+
+  private renderCreateContainerDrawer() {
+    const suggestions = this.getImageSuggestions();
+    return html`
+      <div class="create-drawer ${this.isClosingCreateDrawer ? 'closing' : ''}">
+        <div class="create-drawer-header">
+          <h2 class="create-drawer-title">Create Container</h2>
+          <button class="create-close-btn" @click=${this.closeCreateContainerDrawer}>✕</button>
+        </div>
+
+        <div class="create-drawer-content">
+          ${this.createError ? html`
+            <div class="error-container">
+              <div class="error-icon">⚠️</div>
+              <p class="error-message">${this.createError}</p>
+            </div>
+          ` : ''}
+          <div class="form-section">
+            <div class="form-field">
+              <label class="form-label">Name *</label>
+              <input
+                class="form-input"
+                type="text"
+                placeholder="e.g., my-container"
+                .value=${this.createName}
+                @input=${(e: any) => { this.createName = e.target.value; }}
+              />
+            </div>
+            <div class="form-field">
+              <label class="form-label">Image *</label>
+              <container-image-autocomplete
+                .value=${this.createImage}
+                .suggestions=${suggestions}
+                placeholder="e.g., nginx:latest"
+                ?disabled=${this.isCreating}
+                @image-change=${(e: CustomEvent<{ value: string }>) => { this.createImage = e.detail.value; }}
+              ></container-image-autocomplete>
+              <div class="form-hint">Suggestions are based on existing images. You can enter any image.</div>
+            </div>
+            <div class="form-field">
+              <label class="form-label">Entrypoint</label>
+              <input
+                class="form-input"
+                type="text"
+                placeholder="/bin/sh -c"
+                .value=${this.createEntrypoint}
+                @input=${(e: any) => { this.createEntrypoint = e.target.value; }}
+              />
+              <div class="form-hint">Space-separated or JSON array.</div>
+            </div>
+            <div class="form-field">
+              <label class="form-label">Command</label>
+              <input
+                class="form-input"
+                type="text"
+                placeholder="echo hello"
+                .value=${this.createCmd}
+                @input=${(e: any) => { this.createCmd = e.target.value; }}
+              />
+              <div class="form-hint">Space-separated or JSON array.</div>
+            </div>
+            <div class="form-field">
+              <label class="form-label">Working Directory</label>
+              <input
+                class="form-input"
+                type="text"
+                placeholder="/app"
+                .value=${this.createWorkingDir}
+                @input=${(e: any) => { this.createWorkingDir = e.target.value; }}
+              />
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3>Environment</h3>
+            <div class="form-field">
+              <label class="form-label">Environment Variables</label>
+              <textarea
+                class="form-textarea"
+                placeholder="KEY=value"
+                .value=${this.createEnv}
+                @input=${(e: any) => { this.createEnv = e.target.value; }}
+              ></textarea>
+            </div>
+            <div class="form-field">
+              <label class="form-label">Labels</label>
+              <textarea
+                class="form-textarea"
+                placeholder="key=value"
+                .value=${this.createLabels}
+                @input=${(e: any) => { this.createLabels = e.target.value; }}
+              ></textarea>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3>Ports</h3>
+            ${this.createPorts.map((mapping, index) => html`
+              <div class="list-item">
+                <input
+                  class="form-input"
+                  type="number"
+                  min="1"
+                  placeholder="Container port"
+                  .value=${mapping.containerPort}
+                  @input=${(e: any) => {
+                    const ports = [...this.createPorts];
+                    const current = ports[index] ?? { containerPort: '', hostPort: '', protocol: 'tcp' };
+                    ports[index] = { ...current, containerPort: e.target.value };
+                    this.createPorts = ports;
+                  }}
+                />
+                <input
+                  class="form-input"
+                  type="number"
+                  min="1"
+                  placeholder="Host port"
+                  .value=${mapping.hostPort}
+                  @input=${(e: any) => {
+                    const ports = [...this.createPorts];
+                    const current = ports[index] ?? { containerPort: '', hostPort: '', protocol: 'tcp' };
+                    ports[index] = { ...current, hostPort: e.target.value };
+                    this.createPorts = ports;
+                  }}
+                />
+                <select
+                  class="form-select"
+                  .value=${mapping.protocol}
+                  @change=${(e: any) => {
+                    const ports = [...this.createPorts];
+                    const current = ports[index] ?? { containerPort: '', hostPort: '', protocol: 'tcp' };
+                    ports[index] = { ...current, protocol: e.target.value };
+                    this.createPorts = ports;
+                  }}
+                >
+                  <option value="tcp">tcp</option>
+                  <option value="udp">udp</option>
+                  <option value="sctp">sctp</option>
+                </select>
+                <button class="btn btn-secondary btn-small" @click=${() => this.removePortMapping(index)}>Remove</button>
+              </div>
+            `)}
+            <button class="btn btn-secondary btn-small" @click=${this.addPortMapping}>+ Add Port</button>
+          </div>
+
+          <div class="form-section">
+            <h3>Volumes</h3>
+            ${this.createVolumes.map((volume, index) => html`
+              <div class="list-item">
+                <input
+                  class="form-input"
+                  type="text"
+                  placeholder="/host/path"
+                  .value=${volume.source}
+                  @input=${(e: any) => {
+                    const volumes = [...this.createVolumes];
+                    const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
+                    volumes[index] = { ...current, source: e.target.value };
+                    this.createVolumes = volumes;
+                  }}
+                />
+                <input
+                  class="form-input"
+                  type="text"
+                  placeholder="/container/path"
+                  .value=${volume.target}
+                  @input=${(e: any) => {
+                    const volumes = [...this.createVolumes];
+                    const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
+                    volumes[index] = { ...current, target: e.target.value };
+                    this.createVolumes = volumes;
+                  }}
+                />
+                <select
+                  class="form-select"
+                  .value=${volume.type}
+                  @change=${(e: any) => {
+                    const volumes = [...this.createVolumes];
+                    const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
+                    volumes[index] = { ...current, type: e.target.value };
+                    this.createVolumes = volumes;
+                  }}
+                >
+                  <option value="bind">bind</option>
+                  <option value="volume">volume</option>
+                  <option value="tmpfs">tmpfs</option>
+                </select>
+                <select
+                  class="form-select"
+                  .value=${volume.propagation}
+                  @change=${(e: any) => {
+                    const volumes = [...this.createVolumes];
+                    const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
+                    volumes[index] = { ...current, propagation: e.target.value };
+                    this.createVolumes = volumes;
+                  }}
+                >
+                  <option value="">propagation</option>
+                  <option value="rprivate">rprivate</option>
+                  <option value="rslave">rslave</option>
+                  <option value="rshared">rshared</option>
+                </select>
+                <label style="display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-secondary);">
+                  <input
+                    type="checkbox"
+                    .checked=${volume.readOnly}
+                    @change=${(e: any) => {
+                      const volumes = [...this.createVolumes];
+                      const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
+                      volumes[index] = { ...current, readOnly: e.target.checked };
+                      this.createVolumes = volumes;
+                    }}
+                  />
+                  Read-only
+                </label>
+                <button class="btn btn-secondary btn-small" @click=${() => this.removeVolumeMapping(index)}>Remove</button>
+              </div>
+            `)}
+            <button class="btn btn-secondary btn-small" @click=${this.addVolumeMapping}>+ Add Volume</button>
+          </div>
+
+          <div class="form-section">
+            <h3>Resources</h3>
+            <div class="form-row">
+              <div class="form-field" style="flex: 1;">
+                <label class="form-label">CPU Cores</label>
+                <input
+                  class="form-input"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  placeholder="e.g., 1.5"
+                  .value=${this.createCpuCores}
+                  @input=${(e: any) => { this.createCpuCores = e.target.value; }}
+                />
+              </div>
+              <div class="form-field" style="flex: 1;">
+                <label class="form-label">Memory (MB)</label>
+                <input
+                  class="form-input"
+                  type="number"
+                  min="0"
+                  step="64"
+                  placeholder="e.g., 512"
+                  .value=${this.createMemoryMB}
+                  @input=${(e: any) => { this.createMemoryMB = e.target.value; }}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3>Runtime</h3>
+            <div class="form-row">
+              <div class="form-field" style="flex: 1;">
+                <label class="form-label">Network Mode</label>
+                <input
+                  class="form-input"
+                  type="text"
+                  placeholder="bridge"
+                  .value=${this.createNetworkMode}
+                  @input=${(e: any) => { this.createNetworkMode = e.target.value; }}
+                />
+              </div>
+              <div class="form-field" style="flex: 1;">
+                <label class="form-label">Restart Policy</label>
+                <select
+                  class="form-select"
+                  .value=${this.createRestartPolicy}
+                  @change=${(e: any) => { this.createRestartPolicy = e.target.value; }}
+                >
+                  <option value="no">no</option>
+                  <option value="always">always</option>
+                  <option value="on-failure">on-failure</option>
+                  <option value="unless-stopped">unless-stopped</option>
+                </select>
+              </div>
+              <div class="form-field" style="flex: 1;">
+                <label class="form-label">Max Retries</label>
+                <input
+                  class="form-input"
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  .value=${this.createRestartMaxRetry}
+                  @input=${(e: any) => { this.createRestartMaxRetry = e.target.value; }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="create-drawer-footer">
+          <button class="btn btn-secondary" @click=${this.closeCreateContainerDrawer}>Cancel</button>
+          <button class="btn btn-primary" ?disabled=${this.isCreating || !this.createName.trim() || !this.createImage.trim()} @click=${this.handleCreateContainer}>
+            ${this.isCreating ? 'Creating...' : 'Create Container'}
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
   private renderContainersTable() {
     const filteredContainers = this.containers.filter(container =>
       container.names.some(name => name.toLowerCase().includes(this.searchTerm.toLowerCase()))
@@ -1337,6 +2035,9 @@ export class DockerTab extends LitElement {
           .value=${this.searchTerm}
           @input=${(e: any) => this.searchTerm = e.target.value}
         />
+      </div>
+      <div class="action-menu">
+        <button class="btn btn-primary" @click=${() => this.openCreateContainerDrawer()}>+ Create Container</button>
       </div>
     </div>
       <table class="table">

@@ -12,7 +12,7 @@ export class ThemeManager {
       this.currentTheme = savedTheme;
     } else {
       // Default to dark theme or system preference
-      this.currentTheme = this.getSystemTheme();
+      this.currentTheme = 'dark'; // Force default to dark
     }
     this.applyTheme(this.currentTheme);
   }
@@ -24,9 +24,6 @@ export class ThemeManager {
     return ThemeManager.instance;
   }
 
-  private getSystemTheme(): Theme {
-    return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-  }
 
   getTheme(): Theme {
     return this.currentTheme;

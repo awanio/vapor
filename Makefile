@@ -26,6 +26,7 @@ embed-web:
 		mkdir -p $(EMBED_DIR); \
 		rm -rf $(EMBED_DIR)/*; \
 		cp -R $(DIST_DIR)/* $(EMBED_DIR) 2>/dev/null || true; \
+		cp web/public/locales/* $(EMBED_DIR)/locales/; \
 	else \
 		echo "Warning: $(DIST_DIR) not found or empty, creating placeholder for build."; \
 		mkdir -p $(EMBED_DIR); \

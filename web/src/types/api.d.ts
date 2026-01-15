@@ -414,14 +414,44 @@ export interface ContainerPort {
   hostIP: string;
 }
 
+export interface ContainerPortBinding {
+  hostIp?: string;
+  hostPort: string;
+}
+
+export interface ContainerVolumeMount {
+  source: string;
+  target: string;
+  type?: string;
+  readOnly?: boolean;
+  bindOptions?: {
+    propagation?: string;
+  };
+}
+
+export interface ContainerRestartPolicy {
+  name: string;
+  maximumRetryCount?: number;
+}
+
 export interface ContainerCreateRequest {
   name: string;
   image: string;
-  command?: string[];
+  cmd?: string[];
+  entrypoint?: string[];
   env?: string[];
-  ports?: ContainerPort[];
-  mounts?: ContainerMount[];
+  exposedPorts?: Record<string, Record<string, never>>;
+  portBindings?: Record<string, ContainerPortBinding[]>;
   labels?: Record<string, string>;
+  workingDir?: string;
+  volumes?: ContainerVolumeMount[];
+  networkMode?: string;
+  restartPolicy?: ContainerRestartPolicy;
+  resources?: {
+    cpuCores?: number;
+    memoryMB?: number;
+  };
+  namespace?: string;
 }
 
 export interface ContainerMount {

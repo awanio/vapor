@@ -17,6 +17,14 @@ properties:
       - nginx
       - '-g'
       - daemon off;
+  entrypoint:
+    type: array
+    items:
+      type: string
+    description: Override the image entrypoint
+    example:
+      - /bin/sh
+      - -c
   env:
     type: array
     items:
@@ -80,6 +88,23 @@ properties:
     type: string
     description: Which network to connect container to
     example: bridge
+  cgroupParent:
+    type: string
+    description: Optional cgroup parent for the CRI sandbox (cgroupfs style, e.g., /system.slice).
+    example: /system.slice
+  resources:
+    type: object
+    description: Resource limits for the container
+    properties:
+      cpuCores:
+        type: number
+        format: float
+        description: CPU limit in cores
+        example: 1.5
+      memoryMB:
+        type: integer
+        description: Memory limit in MB
+        example: 512
   restartPolicy:
     type: object
     properties:
