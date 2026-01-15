@@ -369,7 +369,7 @@ export class ContainersTab extends LitElement {
       border-spacing: 0;
       background: var(--vscode-bg-light);
       border-radius: 1px;
-      overflow: hidden;
+      overflow: visible;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
       border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
     }
@@ -528,6 +528,13 @@ export class ContainersTab extends LitElement {
 
     .action-dropdown.show {
       display: block;
+    }
+
+    .action-dropdown.open-up {
+      top: auto;
+      bottom: 100%;
+      margin-top: 0;
+      margin-bottom: 4px;
     }
 
     .action-dropdown button {
@@ -1550,18 +1557,31 @@ renderImagesTable() {
       this.closeAllMenus();
       if (!isOpen) {
         menu.classList.add('show');
-        // Focus on the first button in the dropdown for keyboard navigation
-        const firstButton = menu.querySelector('button') as HTMLButtonElement;
-        if (firstButton) {
-          setTimeout(() => firstButton.focus(), 10);
-        }
+        menu.classList.remove('open-up');
+        const trigger = event.currentTarget as HTMLElement | null;
+        requestAnimationFrame(() => {
+          if (trigger) {
+            const triggerRect = trigger.getBoundingClientRect();
+            const menuRect = menu.getBoundingClientRect();
+            const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+            const spaceBelow = viewportHeight - triggerRect.bottom;
+            const spaceAbove = triggerRect.top;
+            if (spaceBelow < menuRect.height && spaceAbove > spaceBelow) {
+              menu.classList.add('open-up');
+            }
+          }
+          const firstButton = menu.querySelector('button') as HTMLButtonElement;
+          if (firstButton) {
+            setTimeout(() => firstButton.focus(), 10);
+          }
+        });
       }
     }
   }
 
   closeAllMenus() {
     const menus = this.shadowRoot?.querySelectorAll('.action-dropdown');
-    menus?.forEach(menu => menu.classList.remove('show'));
+    menus?.forEach(menu => menu.classList.remove('show', 'open-up'));
   }
 
   renderTabs() {
