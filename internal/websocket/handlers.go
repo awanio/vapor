@@ -185,7 +185,9 @@ func sendMetrics(client *Client) {
 			diskPartitions, _ := disk.Partitions(true)
 
 			// Get CPU usage percentage
+			log.Printf("[sendMetrics] Getting CPU percent for client %s", client.id)
 			cpuPercent, _ := cpu.Percent(time.Second, false)
+			log.Printf("[sendMetrics] CPU percent done for client %s", client.id)
 			cpuUsage := float64(0)
 			if len(cpuPercent) > 0 {
 				cpuUsage = cpuPercent[0]
