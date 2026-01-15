@@ -159,14 +159,17 @@ func sendMetrics(client *Client) {
 			log.Printf("[sendMetrics] Context done for client %s", client.id)
 			return
 		case <-ticker.C:
+			log.Printf("[sendMetrics] Ticker fired for client %s", client.id)
 			client.mu.RLock()
 			authenticated := client.authenticated
 			client.mu.RUnlock()
 
 			if !authenticated {
+				log.Printf("[sendMetrics] Client %s not authenticated, returning", client.id)
 				return
 			}
 
+			log.Printf("[sendMetrics] Collecting metrics for client %s", client.id)
 			// Get system metrics
 			loadAvg, _ := load.Avg()
 			virtualMem, _ := mem.VirtualMemory()
@@ -217,6 +220,7 @@ func sendMetrics(client *Client) {
 				}
 			}
 
+			log.Printf("[sendMetrics] Sending metrics to client %s (handlerType=%s)", client.id, client.handlerType)
 			// For the consolidated /ws/events endpoint, emit metrics as event payloads
 			// to keep the envelope consistent with logs and other event kinds.
 			if client.handlerType == "events" {
