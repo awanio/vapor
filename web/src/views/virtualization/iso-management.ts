@@ -710,10 +710,13 @@ export class ISOManagement extends LitElement {
 
     try {
       // Fetch detailed information from API
-      const detailedISO = await virtualizationAPI.getISO(iso.id);
+      const detailedISO = await virtualizationAPI.getISO(iso.id) as any;
+
       this.selectedISO = {
         ...iso,
         ...detailedISO,
+        os_variant: detailedISO.os_variant || detailedISO.os_version || iso.os_variant,
+        architecture: detailedISO.architecture || detailedISO.arch || iso.architecture,
       };
     } catch (error) {
       console.error('Failed to fetch ISO details:', error);

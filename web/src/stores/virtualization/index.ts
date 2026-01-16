@@ -9,11 +9,11 @@ import { getApiUrl } from '../../config';
 import { StoreEventType } from '../types';
 import { isVirtualizationDisabled, VirtualizationDisabledError, ApiErrorBody } from '../../utils/api-errors';
 import { mapVMError } from '../../utils/error-mapper';
-import type { 
-  VirtualMachine, 
+import type {
+  VirtualMachine,
   StoragePool,
-  StoragePoolState, 
-  ISOImage, 
+  StoragePoolState,
+  ISOImage,
   VMTemplate,
   VMTemplateCreateRequest,
   VMTemplateUpdateRequest,
@@ -36,7 +36,7 @@ export const $virtualizationDisabledMessage = atom<string | null>(null);
 const API_BASE = '/virtualization';
 
 async function apiRequest<T>(
-  endpoint: string, 
+  endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
   // Check for jwt_token (used by auth.ts) or auth_token (legacy)
@@ -52,7 +52,7 @@ async function apiRequest<T>(
   });
 
   const status = response.status;
-  
+
   if (!response.ok) {
     const errorData: ApiErrorBody | { message?: string } = await response.json().catch(
       () => ({ message: response.statusText }),
@@ -68,8 +68,8 @@ async function apiRequest<T>(
       const errorBody = isApiErrorBody(errorData) ? errorData : null;
       $virtualizationDisabledMessage.set(
         errorBody?.error?.details ||
-          errorBody?.error?.message ||
-          'Virtualization is disabled on this host.',
+        errorBody?.error?.message ||
+        'Virtualization is disabled on this host.',
       );
       throw new VirtualizationDisabledError(
         errorBody?.error?.message || 'Virtualization is disabled on this host.',
@@ -97,14 +97,14 @@ async function apiRequest<T>(
     $virtualizationEnabled.set(true);
     $virtualizationDisabledMessage.set(null);
   }
-  
+
   // Handle empty responses
   if (response.status === 204) {
     return {} as T;
   }
 
   const jsonData = await response.json();
-  
+
   // Handle new response format with status and data fields
   if (jsonData.status === 'success' && jsonData.data !== undefined) {
     // Extract the actual data based on the endpoint
@@ -130,7 +130,7 @@ async function apiRequest<T>(
     // Fallback to returning the data directly
     return jsonData.data as T;
   }
-  
+
   // Fallback for old format or other responses
   return jsonData as T;
 }
@@ -207,13 +207,13 @@ export const vmStore = {
     try {
       baseVmStore.$loading.set(true);
       baseVmStore.$error.set(null);
-      
+
       // Make the actual API request to /computes endpoint
       const response = await apiRequest<any>('/computes');
-      
+
       // Handle the response structure from /computes
       let vms: VirtualMachine[] = [];
-      
+
       if (response && typeof response === 'object') {
         // Check for the expected structure: { data: { vms: [...], count: number } }
         if (response.data && response.data.vms && Array.isArray(response.data.vms)) {
@@ -230,20 +230,20 @@ export const vmStore = {
           console.warn('Unexpected VM list response format:', response);
         }
       }
-      
+
       // Update the store with fetched data
       const items = new Map<string, VirtualMachine>();
       vms.forEach(vm => {
         items.set(vm.id, vm);
       });
       baseVmStore.$items.set(items);
-      
+
       baseVmStore.emit({
         type: StoreEventType.BATCH_UPDATED,
         payload: vms as any,
         timestamp: Date.now(),
       });
-      
+
       console.log(`Fetched ${vms.length} VMs from /computes endpoint`);
     } catch (error) {
       const storeError = {
@@ -262,14 +262,14 @@ export const vmStore = {
       baseVmStore.$loading.set(false);
     }
   },
-  
+
   // Keep the original getById, update, delete methods from baseVmStore
   getById: baseVmStore.getById.bind(baseVmStore),
   update: baseVmStore.update.bind(baseVmStore),
   delete: baseVmStore.delete.bind(baseVmStore),
   clear: baseVmStore.clear.bind(baseVmStore),
   emit: baseVmStore.emit.bind(baseVmStore),
-  
+
   // Expose the store atoms
   $items: baseVmStore.$items,
   $loading: baseVmStore.$loading,
@@ -302,10 +302,10 @@ export const storagePoolStore = {
     try {
       baseStoragePoolStore.$loading.set(true);
       baseStoragePoolStore.$error.set(null);
-      
+
       // Make the actual API request
       const response = await apiRequest<StoragePool[]>('/storages/pools');
-      
+
       // Transform and update the store with fetched data
       const items = new Map<string, StoragePool & { id: string }>();
       response.forEach(pool => {
@@ -313,7 +313,7 @@ export const storagePoolStore = {
         items.set(pool.name, transformed);
       });
       baseStoragePoolStore.$items.set(items);
-      
+
       baseStoragePoolStore.emit({
         type: StoreEventType.BATCH_UPDATED,
         payload: Array.from(items.values()) as any,
@@ -356,8 +356,8 @@ function transformISOResponse(apiIso: any): ISOImage {
     path: apiIso.path,
     size: apiIso.size_bytes || apiIso.size || 0,
     os_type: apiIso.os_type,
-    os_variant: apiIso.os_variant,
-    architecture: apiIso.architecture,
+    os_variant: apiIso.os_variant || apiIso.os_version,
+    architecture: apiIso.architecture || apiIso.arch || apiIso.metadata?.architecture,
     uploaded_at: apiIso.created_at || apiIso.uploaded_at,
     checksum: apiIso.checksum,
     storage_pool: apiIso.storage_pool || apiIso.pool_name || apiIso.metadata?.pool_name || 'default',
@@ -371,13 +371,13 @@ export const isoStore = {
     try {
       baseIsoStore.$loading.set(true);
       baseIsoStore.$error.set(null);
-      
+
       // Make the actual API request
       const response = await apiRequest<any>('/isos');
-      
+
       // Handle different response structures
       let isos: ISOImage[] = [];
-      
+
       if (Array.isArray(response)) {
         // Direct array response
         isos = response.map(transformISOResponse);
@@ -385,7 +385,7 @@ export const isoStore = {
         // Check for nested data.isos structure (as shown in the example)
         if (response.data && response.data.isos && Array.isArray(response.data.isos)) {
           isos = response.data.isos.map(transformISOResponse);
-        } 
+        }
         // Check for data array structure
         else if (response.data && Array.isArray(response.data)) {
           isos = response.data.map(transformISOResponse);
@@ -397,14 +397,14 @@ export const isoStore = {
           console.warn('Unexpected ISO list response format:', response);
         }
       }
-      
+
       // Update the store with fetched data
       const items = new Map<string, ISOImage>();
       isos.forEach(iso => {
         items.set(iso.id, iso);
       });
       baseIsoStore.$items.set(items);
-      
+
       baseIsoStore.emit({
         type: StoreEventType.BATCH_UPDATED,
         payload: isos as any,
@@ -485,13 +485,13 @@ export const templateStore = {
     try {
       baseTemplateStore.$loading.set(true);
       baseTemplateStore.$error.set(null);
-      
+
       // Make the actual API request to /computes/templates endpoint
       const response = await apiRequest<any>('/computes/templates');
-      
+
       // Handle the response structure
       let templates: VMTemplate[] = [];
-      
+
       if (response && typeof response === 'object') {
         // Check for the expected structure: { data: { templates: [...] } }
         if (response.data && response.data.templates && Array.isArray(response.data.templates)) {
@@ -508,20 +508,20 @@ export const templateStore = {
           console.warn('Unexpected template list response format:', response);
         }
       }
-      
+
       // Update the store with fetched data
       const items = new Map<string, VMTemplate>();
       templates.forEach(template => {
         items.set(template.id, template);
       });
       baseTemplateStore.$items.set(items);
-      
+
       baseTemplateStore.emit({
         type: StoreEventType.BATCH_UPDATED,
         payload: templates as any,
         timestamp: Date.now(),
       });
-      
+
       console.log(`Fetched ${templates.length} templates from /computes/templates endpoint`);
     } catch (error) {
       const storeError = {
@@ -540,14 +540,14 @@ export const templateStore = {
       baseTemplateStore.$loading.set(false);
     }
   },
-  
+
   // Keep the original methods from baseTemplateStore
   getById: baseTemplateStore.getById.bind(baseTemplateStore),
   update: baseTemplateStore.update.bind(baseTemplateStore),
   delete: baseTemplateStore.delete.bind(baseTemplateStore),
   clear: baseTemplateStore.clear.bind(baseTemplateStore),
   emit: baseTemplateStore.emit.bind(baseTemplateStore),
-  
+
   // Expose the store atoms
   $items: baseTemplateStore.$items,
   $loading: baseTemplateStore.$loading,
@@ -591,13 +591,13 @@ export const networkStore = {
     try {
       baseNetworkStore.$loading.set(true);
       baseNetworkStore.$error.set(null);
-      
+
       // Make the actual API request to /networks endpoint
       const response = await apiRequest<any>('/networks');
-      
+
       // Handle the response structure - API now returns { status: "success", data: { networks: VirtualNetwork[], count: number } }
       let networks: (VirtualNetwork & { id: string })[] = [];
-      
+
       if (response && typeof response === 'object') {
         // New envelope format: { status: 'success', data: { networks: [...] } }
         if (
@@ -622,20 +622,20 @@ export const networkStore = {
           console.warn('Unexpected network list response format:', response);
         }
       }
-      
+
       // Update the store with fetched data
       const items = new Map<string, VirtualNetwork & { id: string }>();
       networks.forEach(network => {
         items.set(network.name, network);
       });
       baseNetworkStore.$items.set(items);
-      
+
       baseNetworkStore.emit({
         type: StoreEventType.BATCH_UPDATED,
         payload: networks as any,
         timestamp: Date.now(),
       });
-      
+
       console.log(`Fetched ${networks.length} networks from /networks endpoint`);
     } catch (error) {
       const storeError = {
@@ -654,14 +654,14 @@ export const networkStore = {
       baseNetworkStore.$loading.set(false);
     }
   },
-  
+
   // Keep the original methods from baseNetworkStore
   getById: baseNetworkStore.getById.bind(baseNetworkStore),
   update: baseNetworkStore.update.bind(baseNetworkStore),
   delete: baseNetworkStore.delete.bind(baseNetworkStore),
   clear: baseNetworkStore.clear.bind(baseNetworkStore),
   emit: baseNetworkStore.emit.bind(baseNetworkStore),
-  
+
   // Expose the store atoms
   $items: baseNetworkStore.$items,
   $loading: baseNetworkStore.$loading,
@@ -710,13 +710,13 @@ export const volumeStore = {
     try {
       baseVolumeStore.$loading.set(true);
       baseVolumeStore.$error.set(null);
-      
+
       // Make the actual API request to /volumes endpoint
       const response = await apiRequest<any>('/volumes');
-      
+
       // Handle the response structure - API now returns { status: "success", data: StorageVolumeWithPool[] }
       let volumes: StorageVolumeWithId[] = [];
-      
+
       if (response && typeof response === 'object') {
         // New envelope format: { status: "success", data: [...] }
         if (response.status === 'success' && response.data && Array.isArray(response.data)) {
@@ -737,20 +737,20 @@ export const volumeStore = {
           console.warn('Unexpected volume list response format:', response);
         }
       }
-      
+
       // Update the store with fetched data
       const items = new Map<string, StorageVolumeWithId>();
       volumes.forEach(volume => {
         items.set(volume.id, volume);
       });
       baseVolumeStore.$items.set(items);
-      
+
       baseVolumeStore.emit({
         type: StoreEventType.BATCH_UPDATED,
         payload: volumes as any,
         timestamp: Date.now(),
       });
-      
+
       console.log(`Fetched ${volumes.length} volumes from /volumes endpoint`);
     } catch (error) {
       const storeError = {
@@ -769,14 +769,14 @@ export const volumeStore = {
       baseVolumeStore.$loading.set(false);
     }
   },
-  
+
   // Keep the original methods from baseVolumeStore
   getById: baseVolumeStore.getById.bind(baseVolumeStore),
   update: baseVolumeStore.update.bind(baseVolumeStore),
   delete: baseVolumeStore.delete.bind(baseVolumeStore),
   clear: baseVolumeStore.clear.bind(baseVolumeStore),
   emit: baseVolumeStore.emit.bind(baseVolumeStore),
-  
+
   // Expose the store atoms
   $items: baseVolumeStore.$items,
   $loading: baseVolumeStore.$loading,
@@ -937,14 +937,14 @@ export const $selectedVM = computed(
   [$selectedVMId, vmStore.$items],
   (id, vms) => {
     if (!id || !vms) return null;
-    
+
     // Handle both Map and plain object cases
     if (vms instanceof Map) {
       return vms.get(id) || null;
     } else if (typeof vms === 'object') {
       return vms[id] || null;
     }
-    
+
     return null;
   }
 );
@@ -960,9 +960,9 @@ export const $vmsByState = computed(
       suspended: [],
       unknown: [],
     };
-    
+
     if (!vms) return grouped;
-    
+
     // Handle both Map and plain object cases
     let vmArray: VirtualMachine[];
     if (vms instanceof Map) {
@@ -973,7 +973,7 @@ export const $vmsByState = computed(
     } else {
       return grouped;
     }
-    
+
     vmArray.forEach(vm => {
       const state = vm.state || 'unknown';
       if (grouped[state]) {
@@ -982,7 +982,7 @@ export const $vmsByState = computed(
         grouped.unknown?.push(vm);
       }
     });
-    
+
     return grouped;
   }
 );
@@ -992,7 +992,7 @@ export const $filteredVMs = computed(
   [vmStore.$items, $vmSearchQuery, $vmFilterState, $activeVMTab],
   (vms, searchQuery, filters, activeTab) => {
     if (!vms) return [];
-    
+
     // Handle both Map and plain object cases
     let vmArray: VirtualMachine[];
     if (vms instanceof Map) {
@@ -1003,12 +1003,12 @@ export const $filteredVMs = computed(
     } else {
       return [];
     }
-    
+
     // Filter by tab
     if (activeTab !== 'all' && activeTab !== 'templates') {
       vmArray = vmArray.filter(vm => vm.state === activeTab);
     }
-    
+
     // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -1018,16 +1018,16 @@ export const $filteredVMs = computed(
         vm.state.toLowerCase().includes(query)
       );
     }
-    
+
     // Apply additional filters
     if (filters?.state && filters.state.length > 0) {
       vmArray = vmArray.filter(vm => filters.state!.includes(vm.state));
     }
-    
+
     if (filters?.os_type && filters.os_type.length > 0) {
       vmArray = vmArray.filter(vm => filters.os_type!.includes(vm.os_type));
     }
-    
+
     return vmArray;
   }
 );
@@ -1047,7 +1047,7 @@ export const $resourceStats = computed(
         totalDiskSize: 0,
       };
     }
-    
+
     // Handle both Map and plain object cases
     let vmArray: VirtualMachine[];
     if (vms instanceof Map) {
@@ -1083,7 +1083,7 @@ export const $availableStoragePools = computed(
   [storagePoolStore.$items],
   (pools) => {
     if (!pools) return [];
-    
+
     // Handle both Map and plain object cases
     let poolsArray: (StoragePool & { id: string })[];
     if (pools instanceof Map) {
@@ -1093,8 +1093,8 @@ export const $availableStoragePools = computed(
     } else {
       return [];
     }
-    
-    return poolsArray.filter(pool => 
+
+    return poolsArray.filter(pool =>
       (pool.state === 'active' || pool.state === 'running') && pool.available > 1073741824 // > 1GB
     );
   }
@@ -1105,14 +1105,14 @@ export const $selectedStoragePool = computed(
   [$selectedStoragePoolId, storagePoolStore.$items],
   (id, pools) => {
     if (!id || !pools) return null;
-    
+
     // Handle both Map and plain object cases
     if (pools instanceof Map) {
       return pools.get(id) || null;
     } else if (typeof pools === 'object') {
       return pools[id] || null;
     }
-    
+
     return null;
   }
 );
@@ -1122,7 +1122,7 @@ export const $filteredStoragePools = computed(
   [storagePoolStore.$items, $storagePoolSearchQuery, $storagePoolFilterState, $activeStoragePoolTab],
   (pools, searchQuery, filters, activeTab) => {
     if (!pools) return [];
-    
+
     // Handle both Map and plain object cases
     let poolsArray: (StoragePool & { id: string })[];
     if (pools instanceof Map) {
@@ -1132,7 +1132,7 @@ export const $filteredStoragePools = computed(
     } else {
       return [];
     }
-    
+
     // Filter by tab
     if (activeTab !== 'all') {
       switch (activeTab) {
@@ -1150,7 +1150,7 @@ export const $filteredStoragePools = computed(
           break;
       }
     }
-    
+
     // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -1161,16 +1161,16 @@ export const $filteredStoragePools = computed(
         pool.state.toLowerCase().includes(query)
       );
     }
-    
+
     // Apply additional filters
     if (filters?.state && filters.state.length > 0) {
       poolsArray = poolsArray.filter(pool => filters.state!.includes(pool.state as StoragePoolState));
     }
-    
+
     if (filters?.type && filters.type.length > 0) {
       poolsArray = poolsArray.filter(pool => filters.type!.includes(pool.type));
     }
-    
+
     return poolsArray;
   }
 );
@@ -1191,7 +1191,7 @@ export const $storagePoolStats = computed(
         networkPools: 0,
       };
     }
-    
+
     // Handle both Map and plain object cases
     let poolsArray: (StoragePool & { id: string })[];
     if (pools instanceof Map) {
@@ -1210,10 +1210,10 @@ export const $storagePoolStats = computed(
         networkPools: 0,
       };
     }
-    
+
     const localTypes = ['dir', 'fs', 'logical', 'disk'];
     const networkTypes = ['iscsi', 'nfs', 'gluster', 'ceph', 'rbd'];
-    
+
     return {
       totalPools: poolsArray.length,
       activePools: poolsArray.filter(pool => pool.state === 'running' || pool.state === 'active').length,
@@ -1232,7 +1232,7 @@ export const $availableISOs = computed(
   [isoStore.$items],
   (isos) => {
     if (!isos) return [];
-    
+
     // Handle both Map and plain object cases
     let isosArray: ISOImage[];
     if (isos instanceof Map) {
@@ -1242,8 +1242,8 @@ export const $availableISOs = computed(
     } else {
       return [];
     }
-    
-    return isosArray.sort((a, b) => 
+
+    return isosArray.sort((a, b) =>
       a.name.localeCompare(b.name)
     );
   }
@@ -1254,14 +1254,14 @@ export const $selectedNetwork = computed(
   [$selectedNetworkId, networkStore.$items],
   (id, networks) => {
     if (!id || !networks) return null;
-    
+
     // Handle both Map and plain object cases
     if (networks instanceof Map) {
       return networks.get(id) || null;
     } else if (typeof networks === 'object') {
       return networks[id] || null;
     }
-    
+
     return null;
   }
 );
@@ -1271,7 +1271,7 @@ export const $filteredNetworks = computed(
   [networkStore.$items, $networkSearchQuery, $networkFilterState, $activeNetworkTab],
   (networks, searchQuery, filters, activeTab) => {
     if (!networks) return [];
-    
+
     // Handle both Map and plain object cases
     let networksArray: (VirtualNetwork & { id: string })[];
     if (networks instanceof Map) {
@@ -1281,7 +1281,7 @@ export const $filteredNetworks = computed(
     } else {
       return [];
     }
-    
+
     // Filter by tab
     if (activeTab !== 'all') {
       switch (activeTab) {
@@ -1297,7 +1297,7 @@ export const $filteredNetworks = computed(
           break;
       }
     }
-    
+
     // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -1308,12 +1308,12 @@ export const $filteredNetworks = computed(
         net.ip?.toLowerCase().includes(query)
       );
     }
-    
+
     // Apply additional filters
     if (filters?.state && filters.state.length > 0) {
       networksArray = networksArray.filter(net => filters.state!.includes(net.state));
     }
-    
+
     return networksArray;
   }
 );
@@ -1331,7 +1331,7 @@ export const $networkStats = computed(
         autostartNetworks: 0,
       };
     }
-    
+
     // Handle both Map and plain object cases
     let networksArray: (VirtualNetwork & { id: string })[];
     if (networks instanceof Map) {
@@ -1347,7 +1347,7 @@ export const $networkStats = computed(
         autostartNetworks: 0,
       };
     }
-    
+
     return {
       totalNetworks: networksArray.length,
       activeNetworks: networksArray.filter(net => net.state === 'active').length,
@@ -1363,14 +1363,14 @@ export const $selectedISO = computed(
   [$selectedISOId, isoStore.$items],
   (id, isos) => {
     if (!id || !isos) return null;
-    
+
     // Handle both Map and plain object cases
     if (isos instanceof Map) {
       return isos.get(id) || null;
     } else if (typeof isos === 'object') {
       return isos[id] || null;
     }
-    
+
     return null;
   }
 );
@@ -1380,7 +1380,7 @@ export const $filteredISOs = computed(
   [isoStore.$items, $isoSearchQuery, $isoFilterState],
   (isos, searchQuery, filters) => {
     if (!isos) return [];
-    
+
     // Handle both Map and plain object cases
     let isosArray: ISOImage[];
     if (isos instanceof Map) {
@@ -1390,7 +1390,7 @@ export const $filteredISOs = computed(
     } else {
       return [];
     }
-    
+
     // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -1400,16 +1400,16 @@ export const $filteredISOs = computed(
         iso.os_variant?.toLowerCase().includes(query)
       );
     }
-    
+
     // Apply additional filters
     if (filters?.os_type && filters.os_type.length > 0) {
       isosArray = isosArray.filter(iso => filters.os_type!.includes(iso.os_type || ''));
     }
-    
+
     if (filters?.storage_pool && filters.storage_pool.length > 0) {
       isosArray = isosArray.filter(iso => filters.storage_pool!.includes(iso.storage_pool || ''));
     }
-    
+
     return isosArray.sort((a, b) => a.name.localeCompare(b.name));
   }
 );
@@ -1426,7 +1426,7 @@ export const $isoStats = computed(
         storagePools: [] as string[],
       };
     }
-    
+
     // Handle both Map and plain object cases
     let isosArray: ISOImage[];
     if (isos instanceof Map) {
@@ -1441,17 +1441,17 @@ export const $isoStats = computed(
         storagePools: [] as string[],
       };
     }
-    
+
     const osTypes = new Set<string>();
     const storagePools = new Set<string>();
     let totalSize = 0;
-    
+
     isosArray.forEach(iso => {
       totalSize += iso.size || 0;
       if (iso.os_type) osTypes.add(iso.os_type);
       if (iso.storage_pool) storagePools.add(iso.storage_pool);
     });
-    
+
     return {
       totalISOs: isosArray.length,
       totalSize,
@@ -1466,14 +1466,14 @@ export const $selectedVolume = computed(
   [$selectedVolumeId, volumeStore.$items],
   (id, volumes) => {
     if (!id || !volumes) return null;
-    
+
     // Handle both Map and plain object cases
     if (volumes instanceof Map) {
       return volumes.get(id) || null;
     } else if (typeof volumes === 'object') {
       return volumes[id] || null;
     }
-    
+
     return null;
   }
 );
@@ -1483,7 +1483,7 @@ export const $filteredVolumes = computed(
   [volumeStore.$items, $volumeSearchQuery, $volumeFilterState, $activeVolumeTab],
   (volumes, searchQuery, filters, activeTab) => {
     if (!volumes) return [];
-    
+
     // Handle both Map and plain object cases
     let volumesArray: StorageVolume[];
     if (volumes instanceof Map) {
@@ -1493,17 +1493,17 @@ export const $filteredVolumes = computed(
     } else {
       return [];
     }
-    
+
     // Filter by tab
     if (activeTab !== 'all') {
       switch (activeTab) {
         case 'disk-images':
-          volumesArray = volumesArray.filter(vol => 
+          volumesArray = volumesArray.filter(vol =>
             vol.type === 'file' && ['qcow2', 'raw', 'vmdk'].includes(vol.format)
           );
           break;
         case 'iso-files':
-          volumesArray = volumesArray.filter(vol => 
+          volumesArray = volumesArray.filter(vol =>
             vol.type === 'file' && vol.format === 'iso'
           );
           break;
@@ -1512,7 +1512,7 @@ export const $filteredVolumes = computed(
           break;
       }
     }
-    
+
     // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -1523,20 +1523,20 @@ export const $filteredVolumes = computed(
         vol.format.toLowerCase().includes(query)
       );
     }
-    
+
     // Apply additional filters
     if (filters?.format && filters.format.length > 0) {
       volumesArray = volumesArray.filter(vol => filters.format!.includes(vol.format));
     }
-    
+
     if (filters?.pool_name && filters.pool_name.length > 0) {
       volumesArray = volumesArray.filter(vol => filters.pool_name!.includes(vol.pool_name));
     }
-    
+
     if (filters?.type && filters.type.length > 0) {
       volumesArray = volumesArray.filter(vol => filters.type!.includes(vol.type));
     }
-    
+
     return volumesArray.sort((a, b) => a.name.localeCompare(b.name));
   }
 );
@@ -1556,7 +1556,7 @@ export const $volumeStats = computed(
         pools: [] as string[],
       };
     }
-    
+
     // Handle both Map and plain object cases
     let volumesArray: StorageVolume[];
     if (volumes instanceof Map) {
@@ -1574,19 +1574,19 @@ export const $volumeStats = computed(
         pools: [] as string[],
       };
     }
-    
+
     const pools = new Set<string>();
     let totalCapacity = 0;
     let totalAllocation = 0;
     let diskImages = 0;
     let isoFiles = 0;
     let directories = 0;
-    
+
     volumesArray.forEach(vol => {
       totalCapacity += vol.capacity || 0;
       totalAllocation += vol.allocation || 0;
       pools.add(vol.pool_name);
-      
+
       if (vol.type === 'file' && ['qcow2', 'raw', 'vmdk'].includes(vol.format)) {
         diskImages++;
       } else if (vol.type === 'file' && vol.format === 'iso') {
@@ -1595,7 +1595,7 @@ export const $volumeStats = computed(
         directories++;
       }
     });
-    
+
     return {
       totalVolumes: volumesArray.length,
       totalCapacity,
@@ -1616,27 +1616,27 @@ registerPerfGauge(() => {
   try {
     const items = vmStore.$items.get() as any;
     gauges['virt_vms'] = items instanceof Map ? items.size : (items ? Object.keys(items).length : 0);
-  } catch {}
+  } catch { }
   try {
     const items = storagePoolStore.$items.get() as any;
     gauges['virt_storage_pools'] = items instanceof Map ? items.size : (items ? Object.keys(items).length : 0);
-  } catch {}
+  } catch { }
   try {
     const items = isoStore.$items.get() as any;
     gauges['virt_isos'] = items instanceof Map ? items.size : (items ? Object.keys(items).length : 0);
-  } catch {}
+  } catch { }
   try {
     const items = templateStore.$items.get() as any;
     gauges['virt_templates'] = items instanceof Map ? items.size : (items ? Object.keys(items).length : 0);
-  } catch {}
+  } catch { }
   try {
     const items = networkStore.$items.get() as any;
     gauges['virt_networks'] = items instanceof Map ? items.size : (items ? Object.keys(items).length : 0);
-  } catch {}
+  } catch { }
   try {
     const items = volumeStore.$items.get() as any;
     gauges['virt_volumes'] = items instanceof Map ? items.size : (items ? Object.keys(items).length : 0);
-  } catch {}
+  } catch { }
   return gauges;
 });
 
@@ -1647,7 +1647,7 @@ export const vmActions = {
     perfIncrement('virt_vm_fetchAll');
     await vmStore.fetch();
   },
-  
+
   /**
    * Update a VM's state locally in the store without fetching from API
    * This is used for optimistic UI updates from components like the detail drawer.
@@ -1673,7 +1673,7 @@ export const vmActions = {
       vmStore.$items.set(items);
     }
   },
-  
+
   async create(vmData: VMCreateRequest) {
     const response = await apiRequest<VirtualMachine>(
       '/computes',
@@ -1682,15 +1682,15 @@ export const vmActions = {
         body: JSON.stringify(vmData),
       }
     );
-    
+
     // Add to store
     const items = new Map(vmStore.$items.get());
     items.set(response.id, response);
     vmStore.$items.set(items);
-    
+
     // Select the new VM
     $selectedVMId.set(response.id);
-    
+
     return { success: true, data: response };
   },
 
@@ -1730,7 +1730,7 @@ export const vmActions = {
 
     return response;
   },
-  
+
   /**
    * Execute a VM action using the unified action endpoint
    */
@@ -1740,62 +1740,62 @@ export const vmActions = {
       body: JSON.stringify({ action, force }),
     });
   },
-  
+
   async start(vmId: string) {
     await this.executeAction(vmId, 'start');
-    
+
     // Update local state
     const vm = vmStore.getById(vmId);
     if (vm) {
       await vmStore.update(vmId, { state: 'running' });
     }
   },
-  
+
   async stop(vmId: string, force = false) {
     await this.executeAction(vmId, 'stop', force);
-    
+
     const vm = vmStore.getById(vmId);
     if (vm) {
       await vmStore.update(vmId, { state: 'stopped' });
     }
   },
-  
+
   async restart(vmId: string, force = false) {
     await this.executeAction(vmId, 'restart', force);
   },
-  
+
   async pause(vmId: string) {
     await this.executeAction(vmId, 'pause');
-    
+
     const vm = vmStore.getById(vmId);
     if (vm) {
       await vmStore.update(vmId, { state: 'paused' });
     }
   },
-  
+
   async resume(vmId: string) {
     await this.executeAction(vmId, 'resume');
-    
+
     const vm = vmStore.getById(vmId);
     if (vm) {
       await vmStore.update(vmId, { state: 'running' });
     }
   },
-  
+
   async delete(vmId: string) {
     await apiRequest(`/computes/${vmId}`, { method: 'DELETE' });
     await vmStore.delete(vmId);
-    
+
     // Clear selection if deleted VM was selected
     if ($selectedVMId.get() === vmId) {
       $selectedVMId.set(null);
     }
   },
-  
+
   async getConsoleInfo(vmId: string): Promise<ConsoleInfo> {
     return apiRequest<ConsoleInfo>(`/computes/${vmId}/console`);
   },
-  
+
   async update(vmId: string, vmData: Partial<VMCreateRequest>) {
     const response = await apiRequest<VirtualMachine>(
       `/computes/${vmId}`,
@@ -1804,15 +1804,15 @@ export const vmActions = {
         body: JSON.stringify(vmData),
       }
     );
-    
+
     // Update in store
     const items = new Map(vmStore.$items.get());
     items.set(response.id, response);
     vmStore.$items.set(items);
-    
+
     return { success: true, data: response };
   },
-  
+
   selectVM(vmId: string | null) {
     $selectedVMId.set(vmId);
   },
@@ -1840,8 +1840,8 @@ export const templateActions = {
     const items = currentItems instanceof Map
       ? new Map(currentItems)
       : (currentItems && typeof currentItems === 'object'
-          ? new Map(Object.entries(currentItems as Record<string, VMTemplate>))
-          : new Map<string, VMTemplate>());
+        ? new Map(Object.entries(currentItems as Record<string, VMTemplate>))
+        : new Map<string, VMTemplate>());
 
     items.set(created.id, created);
     templateStore.$items.set(items);
@@ -1870,8 +1870,8 @@ export const templateActions = {
     const items = currentItems instanceof Map
       ? new Map(currentItems)
       : (currentItems && typeof currentItems === 'object'
-          ? new Map(Object.entries(currentItems as Record<string, VMTemplate>))
-          : new Map<string, VMTemplate>());
+        ? new Map(Object.entries(currentItems as Record<string, VMTemplate>))
+        : new Map<string, VMTemplate>());
 
     items.set(updated.id, updated);
     templateStore.$items.set(items);
@@ -1895,8 +1895,8 @@ export const templateActions = {
     const items = currentItems instanceof Map
       ? new Map(currentItems)
       : (currentItems && typeof currentItems === 'object'
-          ? new Map(Object.entries(currentItems as Record<string, VMTemplate>))
-          : new Map<string, VMTemplate>());
+        ? new Map(Object.entries(currentItems as Record<string, VMTemplate>))
+        : new Map<string, VMTemplate>());
 
     const deleted = items.get(templateId);
     items.delete(templateId);
@@ -1924,8 +1924,8 @@ export const templateActions = {
     const items = currentItems instanceof Map
       ? new Map(currentItems)
       : (currentItems && typeof currentItems === 'object'
-          ? new Map(Object.entries(currentItems as Record<string, VMTemplate>))
-          : new Map<string, VMTemplate>());
+        ? new Map(Object.entries(currentItems as Record<string, VMTemplate>))
+        : new Map<string, VMTemplate>());
 
     items.set(created.id, created);
     templateStore.$items.set(items);
@@ -2028,10 +2028,10 @@ export const wizardActions = {
       format: 'qcow2' as const,
       storage_pool: 'default',
     }];
-    
+
     const inferredDefaultPool =
       (disks[0] as any)?.storage_pool || 'default';
-    
+
     // Convert network interfaces if present
     const network = vm.network_interfaces?.[0] ? {
       type: vm.network_interfaces[0].type,
@@ -2039,7 +2039,7 @@ export const wizardActions = {
       model: vm.network_interfaces[0].model,
       mac: vm.network_interfaces[0].mac,
     } : undefined;
-    
+
     const formData: Partial<VMCreateRequest> = {
       name: vm.name,
       memory: vm.memory,
@@ -2052,7 +2052,7 @@ export const wizardActions = {
       graphics: vm.graphics,
       metadata: vm.metadata,
     };
-    
+
     $vmWizardState.set({
       isOpen: true,
       currentStep: 1,
@@ -2083,7 +2083,7 @@ export const wizardActions = {
       templateContext: undefined,
     } as any);
   },
-  
+
   closeWizard() {
     $vmWizardState.set({
       isOpen: false,
@@ -2097,21 +2097,21 @@ export const wizardActions = {
       templateContext: undefined,
     });
   },
-  
+
   nextStep() {
     const state = $vmWizardState.get();
     if (state.currentStep < 4) {
       $vmWizardState.set({ ...state, currentStep: state.currentStep + 1 });
     }
   },
-  
+
   previousStep() {
     const state = $vmWizardState.get();
     if (state.currentStep > 1) {
       $vmWizardState.set({ ...state, currentStep: state.currentStep - 1 });
     }
   },
-  
+
   updateFormData(updates: Partial<VMCreateRequest>) {
     const state = $vmWizardState.get();
     $vmWizardState.set({
@@ -2119,7 +2119,7 @@ export const wizardActions = {
       formData: { ...state.formData, ...updates },
     });
   },
-  
+
   setError(field: string, error: string) {
     const state = $vmWizardState.get();
     $vmWizardState.set({
@@ -2127,15 +2127,15 @@ export const wizardActions = {
       errors: { ...state.errors, [field]: error },
     });
   },
-  
+
   clearErrors() {
     const state = $vmWizardState.get();
     $vmWizardState.set({ ...state, errors: {} });
   },
-  
+
   validateStep(step: number): boolean {
     const { formData } = $vmWizardState.get();
-    
+
     switch (step) {
       case 1: // Basic config
         return !!(formData.name && formData.memory && formData.vcpus);
@@ -2157,7 +2157,7 @@ export const storagePoolActions = {
     perfIncrement('virt_storagePool_fetchAll');
     await storagePoolStore.fetch();
   },
-  
+
   async refresh(poolName?: string) {
     if (poolName) {
       // Refresh specific pool
@@ -2166,37 +2166,37 @@ export const storagePoolActions = {
     // Refresh all pools from API
     await storagePoolStore.fetch();
   },
-  
+
   async start(poolName: string) {
     await apiRequest(`/storages/pools/${poolName}/start`, { method: 'POST' });
-    
+
     // Update local state
     const pool = storagePoolStore.getById(poolName);
     if (pool) {
       await storagePoolStore.update(poolName, { state: 'running' as StoragePoolState });
     }
   },
-  
+
   async stop(poolName: string) {
     await apiRequest(`/storages/pools/${poolName}/stop`, { method: 'POST' });
-    
+
     const pool = storagePoolStore.getById(poolName);
     if (pool) {
       await storagePoolStore.update(poolName, { state: 'inactive' as StoragePoolState });
     }
   },
-  
+
   async delete(poolName: string, deleteVolumes: boolean = false) {
     const params = deleteVolumes ? '?delete_volumes=true' : '';
     await apiRequest(`/storages/pools/${poolName}${params}`, { method: 'DELETE' });
     await storagePoolStore.delete(poolName);
-    
+
     // Clear selection if deleted pool was selected
     if ($selectedStoragePoolId.get() === poolName) {
       $selectedStoragePoolId.set(null);
     }
   },
-  
+
   async create(poolData: any) {
     const response = await apiRequest<StoragePool & { id: string }>(
       '/storages/pools',
@@ -2205,18 +2205,18 @@ export const storagePoolActions = {
         body: JSON.stringify(poolData),
       }
     );
-    
+
     // Add to store
     const items = new Map(storagePoolStore.$items.get());
     items.set(response.name, response);
     storagePoolStore.$items.set(items);
-    
+
     // Select the new pool
     $selectedStoragePoolId.set(response.name);
-    
+
     return { success: true, data: response };
   },
-  
+
   async update(poolName: string, config: { autostart?: boolean }) {
     const response = await apiRequest<StoragePool & { id: string }>(
       `/storages/pools/${poolName}`,
@@ -2225,27 +2225,27 @@ export const storagePoolActions = {
         body: JSON.stringify(config),
       }
     );
-    
+
     // Update in store
     const items = new Map(storagePoolStore.$items.get());
     items.set(response.name, response);
     storagePoolStore.$items.set(items);
-    
+
     return { success: true, data: response };
   },
-  
+
   selectPool(poolName: string | null) {
     $selectedStoragePoolId.set(poolName);
   },
-  
+
   setSearchQuery(query: string) {
     $storagePoolSearchQuery.set(query);
   },
-  
+
   setActiveTab(tab: 'all' | 'active' | 'inactive' | 'local' | 'network') {
     $activeStoragePoolTab.set(tab);
   },
-  
+
   setFilters(filters: { type?: string[]; state?: StoragePoolState[] }) {
     $storagePoolFilterState.set(filters);
   },
@@ -2256,7 +2256,7 @@ export const networkActions = {
   async fetchAll() {
     await networkStore.fetch();
   },
-  
+
   async create(networkData: any) {
     try {
       const response = await apiRequest<{
@@ -2295,48 +2295,48 @@ export const networkActions = {
       };
     }
   },
-  
+
   async start(networkName: string) {
     await apiRequest(`/networks/${networkName}/start`, { method: 'POST' });
-    
+
     // Update local state
     const network = networkStore.getById(networkName);
     if (network) {
       await networkStore.update(networkName, { state: 'active' });
     }
   },
-  
+
   async stop(networkName: string) {
     await apiRequest(`/networks/${networkName}/stop`, { method: 'POST' });
-    
+
     const network = networkStore.getById(networkName);
     if (network) {
       await networkStore.update(networkName, { state: 'inactive' });
     }
   },
-  
+
   async delete(networkName: string) {
     await apiRequest(`/networks/${networkName}`, { method: 'DELETE' });
     await networkStore.delete(networkName);
-    
+
     // Clear selection if deleted network was selected
     if ($selectedNetworkId.get() === networkName) {
       $selectedNetworkId.set(null);
     }
   },
-  
+
   selectNetwork(networkName: string | null) {
     $selectedNetworkId.set(networkName);
   },
-  
+
   setSearchQuery(query: string) {
     $networkSearchQuery.set(query);
   },
-  
+
   setActiveTab(tab: 'all' | 'active' | 'inactive' | 'persistent' | 'autostart') {
     $activeNetworkTab.set(tab);
   },
-  
+
   setFilters(filters: { type?: string[]; state?: ('active' | 'inactive')[] }) {
     $networkFilterState.set(filters);
   },
@@ -2348,14 +2348,14 @@ export const volumeActions = {
     perfIncrement('virt_volume_fetchAll');
     await volumeStore.fetch();
   },
-  
+
   async delete(volumeId: string) {
     // volumeId is typically `${pool_name}:${volume_name}`; fall back to legacy /volumes/{id} if parsing fails
     const [poolName, volumeName] = volumeId.includes(':')
       ? ((): [string | null, string | null] => {
-          const parts = volumeId.split(':');
-          return [parts[0] || null, parts[1] || null];
-        })()
+        const parts = volumeId.split(':');
+        return [parts[0] || null, parts[1] || null];
+      })()
       : [null, null];
 
     if (poolName && volumeName) {
@@ -2365,25 +2365,25 @@ export const volumeActions = {
     }
 
     await volumeStore.delete(volumeId);
-    
+
     // Clear selection if deleted volume was selected
     if ($selectedVolumeId.get() === volumeId) {
       $selectedVolumeId.set(null);
     }
   },
-  
+
   selectVolume(volumeId: string | null) {
     $selectedVolumeId.set(volumeId);
   },
-  
+
   setSearchQuery(query: string) {
     $volumeSearchQuery.set(query);
   },
-  
+
   setActiveTab(tab: 'all' | 'disk-images' | 'iso-files' | 'directories') {
     $activeVolumeTab.set(tab);
   },
-  
+
   setFilters(filters: { format?: string[]; pool_name?: string[]; type?: ('file' | 'dir' | 'block')[] }) {
     $volumeFilterState.set(filters);
   },
@@ -2394,29 +2394,29 @@ export const isoActions = {
   async fetchAll() {
     await isoStore.fetch();
   },
-  
+
   async delete(isoId: string) {
     await apiRequest(`/isos/${isoId}`, { method: 'DELETE' });
     await isoStore.delete(isoId);
-    
+
     // Clear selection if deleted ISO was selected
     if ($selectedISOId.get() === isoId) {
       $selectedISOId.set(null);
     }
   },
-  
+
   selectISO(isoId: string | null) {
     $selectedISOId.set(isoId);
   },
-  
+
   setSearchQuery(query: string) {
     $isoSearchQuery.set(query);
   },
-  
+
   setFilters(filters: { os_type?: string[]; storage_pool?: string[] }) {
     $isoFilterState.set(filters);
   },
-  
+
   async uploadISO(file: File, metadata: Record<string, string>) {
     // This would use TUS protocol for resumable uploads
     // For now, using the existing implementation in storageActions
@@ -2429,11 +2429,11 @@ export const storageActions = {
   async fetchPools() {
     await storagePoolStore.fetch();
   },
-  
+
   async fetchISOs() {
     await isoStore.fetch();
   },
-  
+
   async uploadISO(_file: File, _metadata: Record<string, string>) {
     // This would use TUS protocol for resumable uploads
     // Implementation would depend on the TUS client library
@@ -2443,19 +2443,19 @@ export const storageActions = {
       uploadId: crypto.randomUUID(),
       error: null,
     });
-    
+
     // Simulated upload progress
     // Real implementation would use TUS client
     return new Promise((resolve) => {
       const interval = setInterval(() => {
         const state = $isoUploadState.get();
         const newProgress = Math.min(state.uploadProgress + 10, 100);
-        
+
         $isoUploadState.set({
           ...state,
           uploadProgress: newProgress,
         });
-        
+
         if (newProgress >= 100) {
           clearInterval(interval);
           $isoUploadState.set({
@@ -2469,7 +2469,7 @@ export const storageActions = {
       }, 500);
     });
   },
-  
+
   async deleteISO(isoId: string) {
     await apiRequest(`/isos/${isoId}`, { method: 'DELETE' });
     await isoStore.delete(isoId);
@@ -2772,7 +2772,7 @@ export const cloneActions = {
       method: 'POST',
       body: JSON.stringify(options),
     });
-    
+
     if (response.status === 'success' && response.data) {
       // Add cloned VM to store
       const vm = transformVMResponse(response.data);
@@ -2781,7 +2781,7 @@ export const cloneActions = {
       vmStore.$items.set(items);
       return { success: true, data: vm };
     }
-    
+
     throw new Error('Failed to clone VM');
   },
 };
@@ -2880,7 +2880,7 @@ export function cleanupVirtualizationStores() {
   templateStore.clear();
   networkStore.clear();
   volumeStore.clear();
-  
+
   // Reset UI state
   $selectedVMId.set(null);
   $vmWizardState.set({
@@ -2908,10 +2908,10 @@ export function cleanupVirtualizationStores() {
 export function connectVMStatusWebSocket() {
   const token = localStorage.getItem('auth_token');
   const ws = new WebSocket(`ws://localhost:8080/api/v1/ws/virtualization/vms?token=${token}`);
-  
+
   ws.onmessage = (event) => {
     const data = JSON.parse(event.data);
-    
+
     if (data.type === 'vm-state-change') {
       const vm = vmStore.getById(data.vm_id);
       if (vm) {
@@ -2919,11 +2919,11 @@ export function connectVMStatusWebSocket() {
       }
     }
   };
-  
+
   ws.onerror = (error) => {
     console.error('VM WebSocket error:', error);
   };
-  
+
   return ws;
 }
 
@@ -2936,7 +2936,7 @@ export default {
   templateStore,
   networkStore,
   volumeStore,
-  
+
   // Atoms
   $selectedVMId,
   $vmWizardState,
@@ -2960,7 +2960,7 @@ export default {
   $selectedVolumeId,
   $volumeFilterState,
   $activeVolumeTab,
-  
+
   // Computed
   $selectedVM,
   $vmsByState,
@@ -2980,7 +2980,7 @@ export default {
   $selectedVolume,
   $filteredVolumes,
   $volumeStats,
-  
+
   // Actions
   vmActions,
   wizardActions,
@@ -2989,7 +2989,7 @@ export default {
   networkActions,
   isoActions,
   volumeActions,
-  
+
   // Lifecycle
   initializeVirtualizationStores,
   cleanupVirtualizationStores,
