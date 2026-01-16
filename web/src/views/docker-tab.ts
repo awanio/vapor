@@ -523,13 +523,13 @@ export class DockerTab extends LitElement {
     }
 
     .btn-secondary {
-      background: var(--vscode-button-secondary-bg, #3c3c3c);
-      color: var(--vscode-button-secondary-foreground, #cccccc);
-      border: 1px solid var(--vscode-button-secondary-border, #5a5a5a);
+      background: var(--vscode-button-secondaryBackground, #3c3c3c);
+      color: var(--vscode-button-secondaryForeground, #cccccc);
+      border: 1px solid var(--vscode-button-border, transparent);
     }
 
     .btn-secondary:hover {
-      background: var(--vscode-button-secondary-hover-bg, #484848);
+      background: var(--vscode-button-secondaryHoverBackground, #484848);
     }
 
     a {
@@ -574,7 +574,7 @@ export class DockerTab extends LitElement {
       width: 50%;
       height: 100%;
       background: var(--vscode-bg-light);
-      border-left: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-left: 1px solid var(--vscode-border);
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
       z-index: 1001;
       overflow-y: auto;
@@ -620,7 +620,7 @@ export class DockerTab extends LitElement {
       width: 50%;
       height: 100%;
       background: var(--vscode-editor-background, #1e1e1e);
-      border-left: 1px solid var(--vscode-widget-border, #454545);
+      border-left: 1px solid var(--vscode-border);
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
       z-index: 1001;
       overflow-y: auto;
@@ -647,7 +647,7 @@ export class DockerTab extends LitElement {
 
     .create-drawer-header {
       padding: 20px 24px;
-      border-bottom: 1px solid var(--vscode-editorWidget-border, #464647);
+      border-bottom: 1px solid var(--vscode-border);
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -672,7 +672,7 @@ export class DockerTab extends LitElement {
 
     .create-drawer-footer {
       padding: 16px 24px;
-      border-top: 1px solid var(--vscode-editorWidget-border, #464647);
+      border-top: 1px solid var(--vscode-border);
       display: flex;
       justify-content: flex-end;
       gap: 12px;
@@ -759,7 +759,7 @@ export class DockerTab extends LitElement {
       font-weight: 600;
       margin-bottom: 12px;
       color: var(--text-primary);
-      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-bottom: 1px solid var(--vscode-border);
       padding-bottom: 8px;
     }
 
@@ -839,7 +839,7 @@ export class DockerTab extends LitElement {
       font-weight: 600;
       margin-bottom: 12px;
       color: var(--text-primary);
-      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-bottom: 1px solid var(--vscode-border);
       padding-bottom: 8px;
     }
 
@@ -1497,8 +1497,7 @@ export class DockerTab extends LitElement {
           <input 
             id="image-name"
             type="text" 
-            class="search-input"
-            style="width: 100%; max-width: none;"
+            class="form-input"
             placeholder="e.g., nginx:latest or ubuntu:20.04"
             .value=${this.imageName}
             @input=${(e: any) => this.imageName = e.target.value}

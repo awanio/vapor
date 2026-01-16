@@ -69,7 +69,7 @@ export class CRDInstancesDrawer extends LitElement {
       right: 0;
       bottom: 0;
       width: var(--drawer-width, 60%);
-      background: var(--vscode-sideBar-background, #252526);
+      background: var(--vscode-editor-background);
       border-left: 1px solid var(--vscode-border);
       transform: translateX(100%);
       transition: transform 0.3s ease;
@@ -89,7 +89,7 @@ export class CRDInstancesDrawer extends LitElement {
       justify-content: space-between;
       padding: 1rem;
       border-bottom: 1px solid var(--vscode-border);
-      background: var(--vscode-bg-lighter, #252526);
+      background: var(--vscode-editor-background);
     }
 
     .btn-create {
@@ -194,7 +194,8 @@ export class CRDInstancesDrawer extends LitElement {
       display: flex;
       gap: 2rem;
       padding: 1rem;
-      background: var(--vscode-editor-background, #1e1e1e);
+      background: var(--vscode-editorWidget-background);
+      border: 1px solid var(--vscode-border);
       border-radius: 4px;
       margin-bottom: 1rem;
     }
@@ -226,12 +227,12 @@ export class CRDInstancesDrawer extends LitElement {
 
     .status-badge.ready {
       background: var(--vscode-testing-iconPassed, #73c991);
-      color: var(--vscode-editor-background, #1e1e1e);
+      color: var(--vscode-editor-background);
     }
 
     .status-badge.progressing {
       background: var(--vscode-testing-iconQueued, #cca700);
-      color: var(--vscode-editor-background, #1e1e1e);
+      color: var(--vscode-editor-background);
     }
 
     .status-badge.error {

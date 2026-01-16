@@ -2525,7 +2525,7 @@ export class ContainersTab extends LitElement {
           <label for="imageName" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--vscode-foreground);">Image Name:</label>
           <input 
             id="imageName"
-            class="modal-input search-input"
+            class="form-input"
             type="text" 
             placeholder="e.g., nginx:latest, ubuntu:20.04"
             .value=${this.imageName}
@@ -2535,7 +2535,6 @@ export class ContainersTab extends LitElement {
           this.handleConfirmPullImage();
         }
       }}
-            style="width: 100%; padding-left: 12px;"
           />
         </div>
         <div slot="footer" style="display: flex; gap: 8px; justify-content: flex-end;">
