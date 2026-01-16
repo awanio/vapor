@@ -48,3 +48,64 @@ get:
         application/json:
           schema:
             $ref: ../components/schemas/ErrorResponse.yaml
+
+delete:
+  summary: Remove a container image
+  description: Remove a container image from the local storage using CRI runtime (containerd, CRI-O)
+  tags:
+    - Container
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: Image ID or reference
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Image removed successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: success
+              data:
+                type: object
+                properties:
+                  imageId:
+                    type: string
+                    description: ID of the removed image
+                  message:
+                    type: string
+                    example: Image removed successfully
+                  runtime:
+                    type: string
+                    example: containerd
+    '400':
+      description: Invalid image ID
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      description: Failed to remove image
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+          example:
+            status: error
+            error:
+              code: IMAGE_REMOVE_ERROR
+              message: 'Failed to remove image: image is in use by a container'
+    '503':
+      description: No container runtime available
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml

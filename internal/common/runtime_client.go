@@ -14,6 +14,8 @@ type RuntimeClient interface {
 	ListImages() ([]Image, error)
 	GetImage(id string) (*ImageDetail, error)
 	ImportImage(imagePath string) (*ImageImportResult, error)
+	PullImage(imageRef string) (*ImagePullResult, error)
+	RemoveImage(imageRef string) error
 	
 	// Runtime info
 	GetRuntimeName() string
@@ -165,4 +167,15 @@ type ImageImportResult struct {
 	Runtime    string    `json:"runtime"`
 	Status     string    `json:"status"`
 	Message    string    `json:"message,omitempty"`
+}
+
+// ImagePullResult represents the result of pulling an image
+type ImagePullResult struct {
+ImageRef string    `json:"image_ref"`
+ImageID  string    `json:"image_id,omitempty"`
+Size     int64     `json:"size,omitempty"`
+PulledAt time.Time `json:"pulled_at"`
+Runtime  string    `json:"runtime"`
+Status   string    `json:"status"`
+Message  string    `json:"message,omitempty"`
 }

@@ -1,0 +1,90 @@
+post:
+  summary: Pull container image
+  description: Pull a container image from a registry using CRI runtime (containerd, CRI-O)
+  tags:
+    - Containers
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - image
+          properties:
+            image:
+              type: string
+              description: Image reference (e.g., nginx:latest, docker.io/library/alpine:3.18)
+        examples:
+          pullNginx:
+            summary: Pull nginx image
+            value:
+              image: nginx:latest
+          pullAlpine:
+            summary: Pull Alpine Linux
+            value:
+              image: alpine:3.18
+  responses:
+    '200':
+      description: Image pulled successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: success
+              data:
+                type: object
+                properties:
+                  image:
+                    type: string
+                    description: Image reference that was pulled
+                  imageId:
+                    type: string
+                    description: ID of the pulled image
+                  size:
+                    type: integer
+                    description: Size of the image in bytes
+                  runtime:
+                    type: string
+                    description: Runtime used (containerd, cri-o)
+                  status:
+                    type: string
+                    description: Pull status
+                  message:
+                    type: string
+                    description: Status message
+    '400':
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '503':
+      description: No CRI runtime available
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+          example:
+            status: error
+            error:
+              code: NO_RUNTIME_AVAILABLE
+              message: 'No CRI runtime found'
+    '500':
+      description: Failed to pull image
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+          example:
+            status: error
+            error:
+              code: IMAGE_PULL_ERROR
+              message: 'Failed to pull image: repository does not exist'

@@ -643,3 +643,68 @@ func (c *CRIClient) Close() error {
 	}
 	return nil
 }
+
+// PullImage pulls an image from a registry
+func (c *CRIClient) PullImage(imageRef string) (*common.ImagePullResult, error) {
+ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+defer cancel()
+
+// Pull the image using CRI ImageService
+pullReq := &criapi.PullImageRequest{
+Image: &criapi.ImageSpec{
+Image: imageRef,
+},
+}
+
+pullResp, err := c.imageClient.PullImage(ctx, pullReq)
+if err != nil {
+return nil, fmt.Errorf("failed to pull image %s: %w", imageRef, err)
+}
+
+// Get image details after pull
+var imageID string
+var size int64
+if pullResp.ImageRef != "" {
+imageID = pullResp.ImageRef
+// Try to get the image size
+statusReq := &criapi.ImageStatusRequest{
+Image: &criapi.ImageSpec{
+Image: pullResp.ImageRef,
+},
+}
+statusResp, err := c.imageClient.ImageStatus(ctx, statusReq)
+if err == nil && statusResp.Image != nil {
+size = int64(statusResp.Image.Size_)
+}
+}
+
+return &common.ImagePullResult{
+ImageRef: imageRef,
+ImageID:  imageID,
+Size:     size,
+PulledAt: time.Now(),
+Runtime:  c.runtimeName,
+Status:   "success",
+Message:  "Image pulled successfully",
+}, nil
+}
+
+// RemoveImage removes an image from the local storage
+func (c *CRIClient) RemoveImage(imageRef string) error {
+ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+defer cancel()
+
+// Remove the image using CRI ImageService
+removeReq := &criapi.RemoveImageRequest{
+Image: &criapi.ImageSpec{
+Image: imageRef,
+},
+}
+
+_, err := c.imageClient.RemoveImage(ctx, removeReq)
+if err != nil {
+return fmt.Errorf("failed to remove image %s: %w", imageRef, err)
+}
+
+return nil
+}

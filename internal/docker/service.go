@@ -413,9 +413,27 @@ func (s *Service) pullImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	imageRef := req.ImageName
-	if req.Tag != "" {
-		imageRef = fmt.Sprintf("%s:%s", req.ImageName, req.Tag)
+	imageRef := strings.TrimSpace(req.Image)
+	if imageRef == "" {
+		base := strings.TrimSpace(req.ImageName)
+		if base == "" {
+			common.RespondError(w, http.StatusBadRequest, "INVALID_REQUEST", "image or imageName is required")
+			return
+		}
+		imageRef = base
+		tag := strings.TrimSpace(req.Tag)
+		if tag != "" {
+			if !strings.Contains(base, "@") {
+				lastSlash := strings.LastIndex(base, "/")
+				tail := base
+				if lastSlash >= 0 {
+					tail = base[lastSlash+1:]
+				}
+				if !strings.Contains(tail, ":") {
+					imageRef = fmt.Sprintf("%s:%s", base, tag)
+				}
+			}
+		}
 	}
 
 	err := s.client.PullImage(ctx, imageRef)
@@ -425,7 +443,7 @@ func (s *Service) pullImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	common.RespondSuccess(w, ImagePullResponse{ImageName: req.ImageName, Message: "Image pulled successfully", Success: true})
+	common.RespondSuccess(w, ImagePullResponse{ImageName: imageRef, Message: "Image pulled successfully", Success: true})
 }
 
 func (s *Service) importImage(w http.ResponseWriter, r *http.Request) {
@@ -747,9 +765,27 @@ func (s *Service) PullImageGin(c *gin.Context) {
 		return
 	}
 
-	imageRef := req.ImageName
-	if req.Tag != "" {
-		imageRef = fmt.Sprintf("%s:%s", req.ImageName, req.Tag)
+	imageRef := strings.TrimSpace(req.Image)
+	if imageRef == "" {
+		base := strings.TrimSpace(req.ImageName)
+		if base == "" {
+			c.JSON(http.StatusBadRequest, common.ErrorResponse("INVALID_REQUEST", "image or imageName is required"))
+			return
+		}
+		imageRef = base
+		tag := strings.TrimSpace(req.Tag)
+		if tag != "" {
+			if !strings.Contains(base, "@") {
+				lastSlash := strings.LastIndex(base, "/")
+				tail := base
+				if lastSlash >= 0 {
+					tail = base[lastSlash+1:]
+				}
+				if !strings.Contains(tail, ":") {
+					imageRef = fmt.Sprintf("%s:%s", base, tag)
+				}
+			}
+		}
 	}
 
 	err := s.client.PullImage(ctx, imageRef)
@@ -760,7 +796,7 @@ func (s *Service) PullImageGin(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, common.SuccessResponse(ImagePullResponse{
-		ImageName: req.ImageName,
+		ImageName: imageRef,
 		Message:   "Image pulled successfully",
 		Success:   true,
 	}))

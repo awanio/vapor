@@ -57,6 +57,7 @@ export class DockerTab extends LitElement {
   @state() private showImageActionsDropdown: boolean = false;
   @state() private showPullImageModal: boolean = false;
   @state() private imageName: string = '';
+  @state() private isPullingImage: boolean = false;
   // @state() private selectedFile: File | null = null;
   @state() private showUploadDrawer: boolean = false;
   @state() private uploadQueue: UploadItem[] = [];
@@ -1507,13 +1508,13 @@ export class DockerTab extends LitElement {
           </div>
         </div>
         <div slot="footer" style="display: flex; gap: 8px; justify-content: flex-end;">
-          <button class="btn btn-secondary" @click=${() => { this.showPullImageModal = false; this.imageName = ''; }}>
+          <button class="btn btn-secondary" ?disabled=${this.isPullingImage} @click=${() => { this.showPullImageModal = false; this.imageName = ''; }}>
             Cancel
           </button>
           <button class="btn btn-primary" 
-                  ?disabled=${!this.imageName.trim()}
+                  ?disabled=${!this.imageName.trim() || this.isPullingImage}
                   @click=${this.handlePullImage}>
-            Pull Image
+            ${this.isPullingImage ? 'Pulling...' : 'Pull Image'}
           </button>
         </div>
       </modal-dialog>
@@ -2620,7 +2621,78 @@ export class DockerTab extends LitElement {
     `;
   }
 
-  private renderImageDetails() { return html``; }
+  private renderImageDetails() {
+    if (!this.selectedImage) return html``;
+    const image = this.selectedImage;
+    const shortId = image.id?.replace('sha256:', '').substring(0, 12) || 'Unknown';
+    const fullId = image.id || 'Unknown';
+    const tags = image.repoTags && image.repoTags.length > 0 && image.repoTags[0] !== '<none>:<none>'
+      ? image.repoTags
+      : [];
+    const digests = image.repoDigests && image.repoDigests.length > 0
+      ? image.repoDigests
+      : [];
+    const size = typeof image.size === 'number' ? this.formatBytes(image.size) : 'Unknown';
+    const created = image.created ? new Date(image.created).toLocaleString() : 'Unknown';
+
+    return html`
+      <div class="drawer-content">
+        <div class="detail-section">
+          <h3>Image Details</h3>
+          <div class="detail-item">
+            <span class="detail-label">Short ID</span>
+            <span class="detail-value monospace">${shortId}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Full ID</span>
+            <span class="detail-value monospace" style="word-break: break-all;">${fullId}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Size</span>
+            <span class="detail-value">${size}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Created</span>
+            <span class="detail-value">${created}</span>
+          </div>
+        </div>
+
+        ${tags.length > 0 ? html`
+          <div class="detail-section">
+            <h3>Tags</h3>
+            <div class="tag-list">
+              ${tags.map(tag => html`<div class="tag">${tag}</div>`)}
+            </div>
+          </div>
+        ` : html`
+          <div class="detail-section">
+            <h3>Tags</h3>
+            <p style="color: var(--text-secondary); font-style: italic;">No tags</p>
+          </div>
+        `}
+
+        ${digests.length > 0 ? html`
+          <div class="detail-section">
+            <h3>Digests</h3>
+            ${digests.map(digest => html`
+              <div class="detail-item">
+                <span class="detail-value monospace" style="word-break: break-all; font-size: 0.75rem;">${digest}</span>
+              </div>
+            `)}
+          </div>
+        ` : ''}
+
+        ${image.labels && Object.keys(image.labels).length > 0 ? html`
+          <div class="detail-section">
+            <h3>Labels</h3>
+            <div class="tag-list">
+              ${Object.entries(image.labels).map(([key, value]) => html`<div class="tag">${key}: ${value}</div>`)}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
 
   private highlightSearchTerm(text: string, term: string): string {
     if (!term || !text) return text;
@@ -2647,16 +2719,16 @@ export class DockerTab extends LitElement {
     this.showUploadDrawer = true;
   }
 
-  private async fetchImageDetails(imageId: string) {
-    try {
-      this.detailError = null;
-      const response = await api.get(`/docker/images/${imageId}`);
-      this.selectedImage = response.image || response;
+  private fetchImageDetails(imageId: string) {
+    this.detailError = null;
+    // Find the image from the already loaded images list
+    const image = this.images.find(img => img.id === imageId);
+    if (image) {
+      this.selectedImage = image;
       this.selectedContainer = null;
       this.showDrawer = true;
-    } catch (error) {
-      console.error('Error fetching image details:', error);
-      this.detailError = error instanceof ApiError ? error.message : 'Failed to fetch image details';
+    } else {
+      this.detailError = 'Image not found';
       this.selectedContainer = null;
       this.selectedImage = null;
       this.showDrawer = true;
@@ -2782,7 +2854,9 @@ export class DockerTab extends LitElement {
 
   // Pull image method
   private async handlePullImage() {
-    if (!this.imageName.trim()) return;
+    if (!this.imageName.trim() || this.isPullingImage) return;
+
+    this.isPullingImage = true;
 
     try {
       await api.post('/docker/images/pull', {
@@ -2799,6 +2873,8 @@ export class DockerTab extends LitElement {
     } catch (error) {
       console.error('Error pulling image:', error);
       // TODO: Add error handling UI - could show a toast notification or update modal with error
+    } finally {
+      this.isPullingImage = false;
     }
   }
 }

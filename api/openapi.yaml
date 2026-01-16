@@ -254,6 +254,8 @@ paths:
   /containers/images/{id}:
     $ref: paths/containers_images_{id}.yaml
   /containers/images/import:
+  /containers/images/pull:
+    $ref: paths/containers_images_pull.yaml
     $ref: paths/containers_images_import.yaml
   /containers/images/upload:
     $ref: paths/containers_images_upload.yaml

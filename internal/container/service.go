@@ -280,3 +280,71 @@ func (s *Service) Close() error {
 	}
 	return nil
 }
+
+// ImagePullRequest represents a request to pull an image
+type ImagePullRequest struct {
+Image string `json:"image" binding:"required"`
+}
+
+// PullImage handles the POST /containers/images/pull endpoint
+func (s *Service) PullImage(c *gin.Context) {
+// Check if we have a runtime client
+if s.client == nil {
+common.SendError(c, 503, "NO_RUNTIME_AVAILABLE", s.errorMessage)
+return
+}
+
+var req ImagePullRequest
+if err := c.ShouldBindJSON(&req); err != nil {
+common.SendError(c, 400, "INVALID_REQUEST", "Failed to decode request: "+err.Error())
+return
+}
+
+imageRef := strings.TrimSpace(req.Image)
+if imageRef == "" {
+common.SendError(c, 400, "INVALID_REQUEST", "image is required")
+return
+}
+
+result, err := s.client.PullImage(imageRef)
+if err != nil {
+common.SendError(c, 500, "IMAGE_PULL_ERROR", err.Error())
+return
+}
+
+common.SendSuccess(c, gin.H{
+"image":   result.ImageRef,
+"imageId": result.ImageID,
+"size":    result.Size,
+"runtime": result.Runtime,
+"status":  result.Status,
+"message": result.Message,
+})
+}
+
+// RemoveImage handles the DELETE /containers/images/:id endpoint
+func (s *Service) RemoveImage(c *gin.Context) {
+// Check if we have a runtime client
+if s.client == nil {
+common.SendError(c, 503, "NO_RUNTIME_AVAILABLE", s.errorMessage)
+return
+}
+
+imageID := c.Param("id")
+if imageID == "" {
+common.SendError(c, 400, "INVALID_REQUEST", "image ID is required")
+return
+}
+
+err := s.client.RemoveImage(imageID)
+if err != nil {
+common.SendError(c, 500, "IMAGE_REMOVE_ERROR", err.Error())
+return
+}
+
+common.SendSuccess(c, gin.H{
+"imageId": imageID,
+"message": "Image removed successfully",
+"runtime": s.client.GetRuntimeName(),
+})
+}

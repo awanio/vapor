@@ -115,6 +115,9 @@ export class ContainersTab extends LitElement {
   private imageName: string = '';
 
   @state()
+  private isPullingImage: boolean = false;
+
+  @state()
   private selectedFile: File | null = null;
 
   @state()
@@ -668,7 +671,7 @@ export class ContainersTab extends LitElement {
       width: 50%;
       height: 100%;
       background: var(--vscode-bg-light);
-      border-left: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-left: 1px solid var(--vscode-border);
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
       z-index: 1001;
       overflow-y: auto;
@@ -853,7 +856,7 @@ export class ContainersTab extends LitElement {
       font-weight: 600;
       margin-bottom: 12px;
       color: var(--text-primary);
-      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-bottom: 1px solid var(--vscode-border);
       padding-bottom: 8px;
     }
 
@@ -955,7 +958,7 @@ export class ContainersTab extends LitElement {
       font-weight: 600;
       margin-bottom: 12px;
       color: var(--text-primary);
-      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-bottom: 1px solid var(--vscode-border);
       padding-bottom: 8px;
     }
 
@@ -1109,7 +1112,7 @@ export class ContainersTab extends LitElement {
       align-items: center;
       margin-bottom: 16px;
       padding-bottom: 12px;
-      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-bottom: 1px solid var(--vscode-border);
     }
 
     .logs-title {
@@ -1125,7 +1128,7 @@ export class ContainersTab extends LitElement {
       align-items: center;
       margin-bottom: 20px;
       padding-bottom: 12px;
-      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border-bottom: 1px solid var(--vscode-border);
     }
 
     .upload-title {
@@ -2538,11 +2541,11 @@ export class ContainersTab extends LitElement {
           />
         </div>
         <div slot="footer" style="display: flex; gap: 8px; justify-content: flex-end;">
-          <button class="btn btn-secondary" @click=${this.handleCancelPullImage}>
+          <button class="btn btn-secondary" ?disabled=${this.isPullingImage} @click=${this.handleCancelPullImage}>
             Cancel
           </button>
-          <button class="btn btn-primary" @click=${this.handleConfirmPullImage} ?disabled=${!this.imageName.trim()}>
-            Pull Image
+          <button class="btn btn-primary" @click=${this.handleConfirmPullImage} ?disabled=${!this.imageName.trim() || this.isPullingImage}>
+            ${this.isPullingImage ? 'Pulling...' : 'Pull Image'}
           </button>
         </div>
       </modal-dialog>
@@ -2711,12 +2714,18 @@ export class ContainersTab extends LitElement {
     }
   }
 
-  handleConfirmPullImage() {
-    if (!this.imageName.trim()) return;
+  async handleConfirmPullImage() {
+    if (!this.imageName.trim() || this.isPullingImage) return;
 
-    this.pullImage(this.imageName.trim());
-    this.showPullImageModal = false;
-    this.imageName = '';
+    this.isPullingImage = true;
+
+    try {
+      await this.pullImage(this.imageName.trim());
+      this.showPullImageModal = false;
+      this.imageName = '';
+    } finally {
+      this.isPullingImage = false;
+    }
   }
 
   handleCancelPullImage() {
@@ -2726,11 +2735,7 @@ export class ContainersTab extends LitElement {
 
   async pullImage(imageName: string) {
     try {
-      console.log('Pulling image:', imageName);
-
-      // Note: This is a placeholder for the actual pull API call
-      // Replace with the correct API endpoint when available
-      // await api.post('/images/pull', { imageName });
+      await api.post('/containers/images/pull', { image: imageName });
 
       // Refresh images list after successful pull
       this.fetchImages();

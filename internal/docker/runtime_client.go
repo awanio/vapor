@@ -478,3 +478,58 @@ func getPidsLimit(limit *int64) int64 {
 	}
 	return *limit
 }
+
+// PullImage pulls an image from a registry
+func (d *RuntimeClient) PullImage(imageRef string) (*common.ImagePullResult, error) {
+ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+defer cancel()
+
+// Pull the image using Docker SDK
+reader, err := d.client.ImagePull(ctx, imageRef, image.PullOptions{})
+if err != nil {
+return nil, fmt.Errorf("failed to pull image %s: %w", imageRef, err)
+}
+defer reader.Close()
+
+// Consume the pull response to ensure the pull completes
+_, err = io.Copy(io.Discard, reader)
+if err != nil {
+return nil, fmt.Errorf("failed to complete image pull for %s: %w", imageRef, err)
+}
+
+// Get image details after pull
+var imageID string
+var size int64
+imageInspect, _, err := d.client.ImageInspectWithRaw(ctx, imageRef)
+if err == nil {
+imageID = imageInspect.ID
+size = imageInspect.Size
+}
+
+return &common.ImagePullResult{
+ImageRef: imageRef,
+ImageID:  imageID,
+Size:     size,
+PulledAt: time.Now(),
+Runtime:  "docker",
+Status:   "success",
+Message:  "Image pulled successfully",
+}, nil
+}
+
+// RemoveImage removes an image from the local storage
+func (d *RuntimeClient) RemoveImage(imageRef string) error {
+ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+defer cancel()
+
+// Remove the image using Docker SDK
+_, err := d.client.ImageRemove(ctx, imageRef, image.RemoveOptions{
+Force:         false,
+PruneChildren: true,
+})
+if err != nil {
+return fmt.Errorf("failed to remove image %s: %w", imageRef, err)
+}
+
+return nil
+}
