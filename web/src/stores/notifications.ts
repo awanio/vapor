@@ -4,6 +4,7 @@
  */
 
 import { map } from 'nanostores';
+import { generateUUID } from '../utils/uuid';
 
 export interface Notification {
   id: string;
@@ -20,7 +21,7 @@ export const $notifications = map<Record<string, Notification>>({});
 // Notification actions
 export const notificationActions = {
   addNotification(notification: Omit<Notification, 'id' | 'timestamp'>) {
-    const id = crypto.randomUUID();
+    const id = generateUUID();
     const newNotification: Notification = {
       ...notification,
       id,

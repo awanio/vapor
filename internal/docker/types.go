@@ -231,15 +231,15 @@ type ContainerCreateResponse struct {
 
 // ImagePullRequest represents a request to pull an image
 type ImagePullRequest struct {
-// Full image reference, e.g. "nginx:latest" or "registry:5000/repo:tag".
-// Optional; if empty, ImageName+Tag will be composed.
-Image     string `json:"image,omitempty"`
+	// Full image reference, e.g. "nginx:latest" or "registry:5000/repo:tag".
+	// Optional; if empty, ImageName+Tag will be composed.
+	Image string `json:"image,omitempty"`
 
-// Base image name without tag (legacy field).
-ImageName string `json:"imageName,omitempty"`
+	// Base image name without tag (legacy field).
+	ImageName string `json:"imageName,omitempty"`
 
-// Optional tag (legacy field).
-Tag       string `json:"tag,omitempty"`
+	// Optional tag (legacy field).
+	Tag string `json:"tag,omitempty"`
 }
 
 // ImagePullResponse represents response from image pull operation

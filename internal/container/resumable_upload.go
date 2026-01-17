@@ -1,6 +1,7 @@
 package container
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,19 +11,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/awanio/vapor/internal/common"
 	"github.com/awanio/vapor/internal/resumable"
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
 // ResumableUploadHandler manages resumable uploads for container images using TUS protocol
 type ResumableUploadHandler struct {
-	store          resumable.Store
-	uploadDir      string
-	maxFileSize    int64
-	chunkSize      int64
-	containerSvc   *Service
+	store        resumable.Store
+	uploadDir    string
+	maxFileSize  int64
+	chunkSize    int64
+	containerSvc *Service
 }
 
 // NewResumableUploadHandler creates a new resumable upload handler
@@ -34,7 +35,7 @@ func NewResumableUploadHandler(containerSvc *Service, uploadDir string) *Resumab
 		store:        resumable.NewMemoryStore(),
 		uploadDir:    uploadDir,
 		maxFileSize:  10 * 1024 * 1024 * 1024, // 10GB max
-		chunkSize:    4 * 1024 * 1024,          // 4MB chunks
+		chunkSize:    4 * 1024 * 1024,         // 4MB chunks
 		containerSvc: containerSvc,
 	}
 }
@@ -43,7 +44,7 @@ func NewResumableUploadHandler(containerSvc *Service, uploadDir string) *Resumab
 func (h *ResumableUploadHandler) CreateUpload(c *gin.Context) {
 	// Set TUS protocol headers for all responses
 	h.setTUSHeaders(c)
-	
+
 	// Parse TUS headers
 	uploadLength := c.GetHeader("Upload-Length")
 	if uploadLength == "" {
@@ -74,14 +75,14 @@ func (h *ResumableUploadHandler) CreateUpload(c *gin.Context) {
 	}
 
 	// Validate file type
-	if !strings.HasSuffix(filename, ".tar") && !strings.HasSuffix(filename, ".tar.gz") {
-		common.SendError(c, 400, "UNSUPPORTED_FILE_TYPE", "Only .tar and .tar.gz files are supported")
+	if !strings.HasSuffix(filename, ".tar") && !strings.HasSuffix(filename, ".tar.gz") && !strings.HasSuffix(filename, ".tgz") {
+		common.SendError(c, 400, "UNSUPPORTED_FILE_TYPE", "Only .tar, .tar.gz, and .tgz files are supported")
 		return
 	}
 
 	// Generate unique upload ID
 	uploadID := uuid.New().String()
-	
+
 	// Create file path
 	filePath := filepath.Join(h.uploadDir, uploadID+".tmp")
 
@@ -120,15 +121,15 @@ func (h *ResumableUploadHandler) CreateUpload(c *gin.Context) {
 	locationPath := fmt.Sprintf("%s/%s", c.Request.URL.Path, uploadID)
 	c.Header("Location", locationPath)
 	c.Header("Tus-Resumable", "1.0.0")
-	
+
 	// Set expiration header
 	expiresAt := upload.CreatedAt.Add(24 * time.Hour)
 	c.Header("Upload-Expires", expiresAt.Format(time.RFC3339))
 
 	c.JSON(http.StatusCreated, gin.H{
-		"upload_id":   uploadID,
-		"upload_url":  locationPath,
-		"expires_at":  expiresAt,
+		"upload_id":  uploadID,
+		"upload_url": locationPath,
+		"expires_at": expiresAt,
 	})
 }
 
@@ -148,12 +149,12 @@ func (h *ResumableUploadHandler) GetUploadInfo(c *gin.Context) {
 
 	// Set TUS protocol headers
 	h.setTUSHeaders(c)
-	
+
 	// Set upload-specific headers
 	c.Header("Upload-Offset", strconv.FormatInt(upload.UploadedSize, 10))
 	c.Header("Upload-Length", strconv.FormatInt(upload.TotalSize, 10))
 	c.Header("Cache-Control", "no-store")
-	
+
 	// Set expiration header
 	expiresAt := upload.CreatedAt.Add(24 * time.Hour)
 	c.Header("Upload-Expires", expiresAt.Format(time.RFC3339))
@@ -165,7 +166,7 @@ func (h *ResumableUploadHandler) GetUploadInfo(c *gin.Context) {
 func (h *ResumableUploadHandler) UploadChunk(c *gin.Context) {
 	// Set TUS protocol headers
 	h.setTUSHeaders(c)
-	
+
 	uploadID := c.Param("id")
 	if uploadID == "" {
 		common.SendError(c, 400, "MISSING_UPLOAD_ID", "Upload ID is required")
@@ -260,7 +261,7 @@ func (h *ResumableUploadHandler) UploadChunk(c *gin.Context) {
 
 	// Set response headers
 	c.Header("Upload-Offset", strconv.FormatInt(upload.UploadedSize, 10))
-	
+
 	// Set expiration header if upload is not complete
 	if upload.Status != resumable.UploadStatusCompleted {
 		expiresAt := upload.CreatedAt.Add(24 * time.Hour)
@@ -377,7 +378,7 @@ func (h *ResumableUploadHandler) ListUploads(c *gin.Context) {
 // CleanupExpiredUploads removes uploads older than 24 hours
 func (h *ResumableUploadHandler) CleanupExpiredUploads() {
 	expiredTime := time.Now().Add(-24 * time.Hour)
-	
+
 	uploads, err := h.store.List()
 	if err != nil {
 		return
@@ -394,6 +395,7 @@ func (h *ResumableUploadHandler) CleanupExpiredUploads() {
 }
 
 // parseMetadata parses TUS Upload-Metadata header
+// TUS protocol requires metadata values to be base64-encoded
 func (h *ResumableUploadHandler) parseMetadata(metadata string) map[string]string {
 	result := make(map[string]string)
 	if metadata == "" {
@@ -405,11 +407,18 @@ func (h *ResumableUploadHandler) parseMetadata(metadata string) map[string]strin
 		parts := strings.SplitN(strings.TrimSpace(pair), " ", 2)
 		if len(parts) == 2 {
 			key := parts[0]
-			// Base64 decode the value (TUS spec requirement)
-			value := parts[1]
-			// For simplicity, we'll assume the value is not base64 encoded
-			// In a full implementation, you'd decode it properly
-			result[key] = value
+			// Base64 decode the value per TUS spec
+			encodedValue := parts[1]
+			decodedBytes, err := base64.StdEncoding.DecodeString(encodedValue)
+			if err != nil {
+				// If decoding fails, use raw value as fallback
+				result[key] = encodedValue
+			} else {
+				result[key] = string(decodedBytes)
+			}
+		} else if len(parts) == 1 {
+			// Key without value
+			result[parts[0]] = ""
 		}
 	}
 
@@ -455,10 +464,10 @@ func (h *ResumableUploadHandler) HandleOptions(c *gin.Context) {
 	c.Header("Tus-Version", "1.0.0")
 	c.Header("Tus-Max-Size", strconv.FormatInt(h.maxFileSize, 10))
 	c.Header("Tus-Extension", "creation,termination,expiration")
-	
+
 	// Set CORS headers for cross-origin support
 	h.setCORSHeaders(c)
-	
+
 	c.Status(http.StatusNoContent)
 }
 

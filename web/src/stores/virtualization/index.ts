@@ -9,6 +9,7 @@ import { getApiUrl } from '../../config';
 import { StoreEventType } from '../types';
 import { isVirtualizationDisabled, VirtualizationDisabledError, ApiErrorBody } from '../../utils/api-errors';
 import { mapVMError } from '../../utils/error-mapper';
+import { generateUUID } from '../../utils/uuid';
 import type {
   VirtualMachine,
   StoragePool,
@@ -2440,7 +2441,7 @@ export const storageActions = {
     $isoUploadState.set({
       isUploading: true,
       uploadProgress: 0,
-      uploadId: crypto.randomUUID(),
+      uploadId: generateUUID(),
       error: null,
     });
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -612,28 +613,78 @@ func (c *CRIClient) GetRuntimeName() string {
 	return c.runtimeName
 }
 
-// ImportImage imports an image from a tar.gz file
+// ImportImage imports an image from a tar file using runtime-specific tools
 func (c *CRIClient) ImportImage(filePath string) (*common.ImageImportResult, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	// CRI doesn't provide a direct import API
-	// In production, you would need to use runtime-specific mechanisms
-	// For example, for containerd, you might use ctr or nerdctl
-	_ = ctx
-	_ = filePath
+	var cmd *exec.Cmd
+	var importedImages []string
 
-	// Return a placeholder result indicating the operation is not supported
-	importResult := &common.ImageImportResult{
-		ImageID:    "",
-		RepoTags:   []string{},
-		ImportedAt: time.Now(),
-		Runtime:    c.runtimeName,
-		Status:     "unsupported",
-		Message:    "Image import is not supported via CRI API. Please use runtime-specific tools.",
+	// Try to use the appropriate tool based on runtime
+	switch {
+	case strings.Contains(c.runtimeName, "containerd"):
+		// Use ctr to import image into containerd
+		// ctr -n k8s.io images import <file>
+		cmd = exec.CommandContext(ctx, "ctr", "-n", "k8s.io", "images", "import", filePath)
+	case strings.Contains(c.runtimeName, "cri-o"):
+		// For CRI-O, we can try using podman or skopeo
+		cmd = exec.CommandContext(ctx, "podman", "load", "-i", filePath)
+	default:
+		// Try nerdctl as a fallback (works with containerd)
+		cmd = exec.CommandContext(ctx, "nerdctl", "-n", "k8s.io", "load", "-i", filePath)
 	}
 
-	return importResult, nil
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		// If the primary command fails, try alternative tools
+		if strings.Contains(c.runtimeName, "containerd") {
+			// Try nerdctl as fallback
+			cmd = exec.CommandContext(ctx, "nerdctl", "-n", "k8s.io", "load", "-i", filePath)
+			output, err = cmd.CombinedOutput()
+			if err != nil {
+				return nil, fmt.Errorf("failed to import image: %s (output: %s)", err.Error(), string(output))
+			}
+		} else {
+			return nil, fmt.Errorf("failed to import image: %s (output: %s)", err.Error(), string(output))
+		}
+	}
+
+	// Parse output to extract image names
+	outputStr := string(output)
+	lines := strings.Split(outputStr, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		// ctr output: "unpacking docker.io/library/nginx:latest (sha256:...)..."
+		// nerdctl output: "Loaded image: nginx:latest"
+		if strings.Contains(line, "Loaded image:") {
+			parts := strings.SplitN(line, ":", 2)
+			if len(parts) == 2 {
+				importedImages = append(importedImages, strings.TrimSpace(parts[1]))
+			}
+		} else if strings.HasPrefix(line, "unpacking ") {
+			// ctr format
+			parts := strings.Fields(line)
+			if len(parts) >= 2 {
+				importedImages = append(importedImages, parts[1])
+			}
+		}
+	}
+
+	// Generate image ID from the imported images or use a placeholder
+	imageID := ""
+	if len(importedImages) > 0 {
+		imageID = importedImages[0]
+	}
+
+	return &common.ImageImportResult{
+		ImageID:    imageID,
+		RepoTags:   importedImages,
+		ImportedAt: time.Now(),
+		Runtime:    c.runtimeName,
+		Status:     "success",
+		Message:    fmt.Sprintf("Image imported successfully: %s", outputStr),
+	}, nil
 }
 
 // Close closes the connection
@@ -646,65 +697,65 @@ func (c *CRIClient) Close() error {
 
 // PullImage pulls an image from a registry
 func (c *CRIClient) PullImage(imageRef string) (*common.ImagePullResult, error) {
-ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-defer cancel()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
 
-// Pull the image using CRI ImageService
-pullReq := &criapi.PullImageRequest{
-Image: &criapi.ImageSpec{
-Image: imageRef,
-},
-}
+	// Pull the image using CRI ImageService
+	pullReq := &criapi.PullImageRequest{
+		Image: &criapi.ImageSpec{
+			Image: imageRef,
+		},
+	}
 
-pullResp, err := c.imageClient.PullImage(ctx, pullReq)
-if err != nil {
-return nil, fmt.Errorf("failed to pull image %s: %w", imageRef, err)
-}
+	pullResp, err := c.imageClient.PullImage(ctx, pullReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to pull image %s: %w", imageRef, err)
+	}
 
-// Get image details after pull
-var imageID string
-var size int64
-if pullResp.ImageRef != "" {
-imageID = pullResp.ImageRef
-// Try to get the image size
-statusReq := &criapi.ImageStatusRequest{
-Image: &criapi.ImageSpec{
-Image: pullResp.ImageRef,
-},
-}
-statusResp, err := c.imageClient.ImageStatus(ctx, statusReq)
-if err == nil && statusResp.Image != nil {
-size = int64(statusResp.Image.Size_)
-}
-}
+	// Get image details after pull
+	var imageID string
+	var size int64
+	if pullResp.ImageRef != "" {
+		imageID = pullResp.ImageRef
+		// Try to get the image size
+		statusReq := &criapi.ImageStatusRequest{
+			Image: &criapi.ImageSpec{
+				Image: pullResp.ImageRef,
+			},
+		}
+		statusResp, err := c.imageClient.ImageStatus(ctx, statusReq)
+		if err == nil && statusResp.Image != nil {
+			size = int64(statusResp.Image.Size_)
+		}
+	}
 
-return &common.ImagePullResult{
-ImageRef: imageRef,
-ImageID:  imageID,
-Size:     size,
-PulledAt: time.Now(),
-Runtime:  c.runtimeName,
-Status:   "success",
-Message:  "Image pulled successfully",
-}, nil
+	return &common.ImagePullResult{
+		ImageRef: imageRef,
+		ImageID:  imageID,
+		Size:     size,
+		PulledAt: time.Now(),
+		Runtime:  c.runtimeName,
+		Status:   "success",
+		Message:  "Image pulled successfully",
+	}, nil
 }
 
 // RemoveImage removes an image from the local storage
 func (c *CRIClient) RemoveImage(imageRef string) error {
-ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-defer cancel()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
-// Remove the image using CRI ImageService
-removeReq := &criapi.RemoveImageRequest{
-Image: &criapi.ImageSpec{
-Image: imageRef,
-},
-}
+	// Remove the image using CRI ImageService
+	removeReq := &criapi.RemoveImageRequest{
+		Image: &criapi.ImageSpec{
+			Image: imageRef,
+		},
+	}
 
-_, err := c.imageClient.RemoveImage(ctx, removeReq)
-if err != nil {
-return fmt.Errorf("failed to remove image %s: %w", imageRef, err)
-}
+	_, err := c.imageClient.RemoveImage(ctx, removeReq)
+	if err != nil {
+		return fmt.Errorf("failed to remove image %s: %w", imageRef, err)
+	}
 
-return nil
+	return nil
 }

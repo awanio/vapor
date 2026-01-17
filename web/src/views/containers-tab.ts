@@ -1,8 +1,11 @@
 import { LitElement, html, css } from 'lit';
+import { generateUUID } from '../utils/uuid';
 import { state } from 'lit/decorators.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { t } from '../i18n';
 import { api, ApiError } from '../api';
+import { getApiUrl } from '../config';
+import * as tus from 'tus-js-client';
 import type { Container, Image, ContainersResponse, ImagesResponse } from '../types/api';
 import '../components/modal-dialog';
 import '../components/modals/container-terminal-modal.js';
@@ -128,6 +131,8 @@ export class ContainersTab extends LitElement {
 
   @state()
   private isUploading: boolean = false;
+
+  private currentUpload: tus.Upload | null = null;
 
   @state()
   private showCreateDrawer = false;
@@ -2753,6 +2758,11 @@ export class ContainersTab extends LitElement {
   }
 
   closeUploadDrawer() {
+    // Abort any ongoing TUS upload
+    if (this.currentUpload) {
+      this.currentUpload.abort();
+      this.currentUpload = null;
+    }
     this.showUploadDrawer = false;
     this.uploadQueue = [];
     this.isUploading = false;
@@ -2806,7 +2816,7 @@ export class ContainersTab extends LitElement {
     });
 
     const newItems: UploadItem[] = validFiles.map(file => ({
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       file,
       progress: 0,
       status: 'pending' as const
@@ -2835,7 +2845,7 @@ export class ContainersTab extends LitElement {
   }
 
   async uploadSingleFile(item: UploadItem) {
-    try {
+    return new Promise<void>((resolve, reject) => {
       // Update status to uploading
       const index = this.uploadQueue.findIndex(i => i.id === item.id);
       if (index !== -1) {
@@ -2843,54 +2853,84 @@ export class ContainersTab extends LitElement {
         this.requestUpdate();
       }
 
-      const formData = new FormData();
-      formData.append('image', item.file);
+      // Get the base API URL
+      // Build the upload endpoint URL
+      const uploadEndpoint = getApiUrl("/containers/images/upload");
 
-      // Simulate progress for now (replace with actual XMLHttpRequest for real progress)
-      await this.simulateUploadProgress(item.id);
+      // Create TUS upload
+      this.currentUpload = new tus.Upload(item.file, {
+        endpoint: uploadEndpoint,
+        chunkSize: 4 * 1024 * 1024, // 4MB chunks
+        retryDelays: [0, 1000, 3000, 5000],
+        metadata: {
+          filename: item.file.name,
+          filetype: item.file.type || 'application/octet-stream',
+        },
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token') || localStorage.getItem('auth_token')}`,
+        },
+        onError: (error) => {
+          console.error('TUS upload error:', error);
+          const errorIndex = this.uploadQueue.findIndex(i => i.id === item.id);
+          if (errorIndex !== -1 && this.uploadQueue[errorIndex]) {
+            const existingItem = this.uploadQueue[errorIndex];
+            this.uploadQueue[errorIndex] = {
+              ...existingItem,
+              status: 'error',
+              error: error.message || 'Upload failed'
+            };
+            this.requestUpdate();
+          }
+          this.currentUpload = null;
+          reject(error);
+        },
+        onProgress: (bytesUploaded, bytesTotal) => {
+          const percentage = Math.round((bytesUploaded / bytesTotal) * 100);
+          this.updateUploadProgress(item.id, percentage);
+        },
+        onSuccess: async () => {
+          try {
+            // Get the upload URL which contains the upload ID
+            const uploadUrl = this.currentUpload?.url;
+            if (uploadUrl) {
+              // Extract upload ID from URL (last segment)
+              const uploadId = uploadUrl.split('/').pop();
+              if (uploadId) {
+                // Complete the upload
+                await api.post(`/containers/images/upload/${uploadId}/complete`, {});
+              }
+            }
 
-      // TODO: Replace with actual upload API call
-      // const response = await api.post('/images/upload', formData, {
-      //   headers: {
-      //     'Content-Type': 'multipart/form-data'
-      //   },
-      //   onUploadProgress: (progressEvent) => {
-      //     const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-      //     this.updateUploadProgress(item.id, percentCompleted);
-      //   }
-      // });
+            // Update status to completed
+            const completedIndex = this.uploadQueue.findIndex(i => i.id === item.id);
+            if (completedIndex !== -1 && this.uploadQueue[completedIndex]) {
+              const existingItem = this.uploadQueue[completedIndex];
+              this.uploadQueue[completedIndex] = { ...existingItem, status: 'completed', progress: 100 };
+              this.requestUpdate();
+            }
+            this.currentUpload = null;
+            resolve();
+          } catch (error) {
+            console.error('Failed to complete upload:', error);
+            const errorIndex = this.uploadQueue.findIndex(i => i.id === item.id);
+            if (errorIndex !== -1 && this.uploadQueue[errorIndex]) {
+              const existingItem = this.uploadQueue[errorIndex];
+              this.uploadQueue[errorIndex] = {
+                ...existingItem,
+                status: 'error',
+                error: 'Failed to complete upload'
+              };
+              this.requestUpdate();
+            }
+            this.currentUpload = null;
+            reject(error);
+          }
+        },
+      });
 
-      // Update status to completed
-      const completedIndex = this.uploadQueue.findIndex(i => i.id === item.id);
-      if (completedIndex !== -1 && this.uploadQueue[completedIndex]) {
-        const existingItem = this.uploadQueue[completedIndex];
-        this.uploadQueue[completedIndex] = { ...existingItem, status: 'completed', progress: 100 };
-        this.requestUpdate();
-      }
-
-    } catch (error) {
-      console.error('Error uploading file:', error);
-
-      // Update status to error
-      const errorIndex = this.uploadQueue.findIndex(i => i.id === item.id);
-      if (errorIndex !== -1 && this.uploadQueue[errorIndex]) {
-        const existingItem = this.uploadQueue[errorIndex];
-        this.uploadQueue[errorIndex] = {
-          ...existingItem,
-          status: 'error',
-          error: error instanceof Error ? error.message : 'Upload failed'
-        };
-        this.requestUpdate();
-      }
-    }
-  }
-
-  async simulateUploadProgress(itemId: string) {
-    // Simulate upload progress (remove this when implementing real upload)
-    for (let progress = 0; progress <= 100; progress += 10) {
-      await new Promise(resolve => setTimeout(resolve, 200));
-      this.updateUploadProgress(itemId, progress);
-    }
+      // Start the upload
+      this.currentUpload.start();
+    });
   }
 
   updateUploadProgress(itemId: string, progress: number) {

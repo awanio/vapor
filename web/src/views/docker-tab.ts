@@ -1,8 +1,11 @@
 import { LitElement, html, css } from 'lit';
+import { generateUUID } from '../utils/uuid';
 import { state } from 'lit/decorators.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { t } from '../i18n';
 import { api, ApiError } from '../api';
+import { getApiUrl } from '../config';
+import * as tus from 'tus-js-client';
 import type { DockerContainer, DockerImage, DockerVolume, DockerNetwork, DockerContainersResponse, DockerImagesResponse, DockerVolumesResponse, DockerNetworksResponse } from '../types/api';
 import '../components/modal-dialog';
 import '../components/modals/container-terminal-modal.js';
@@ -62,6 +65,7 @@ export class DockerTab extends LitElement {
   @state() private showUploadDrawer: boolean = false;
   @state() private uploadQueue: UploadItem[] = [];
   @state() private isUploading: boolean = false;
+  private currentUpload: tus.Upload | null = null;
 
   @state() private showCreateDrawer = false;
   @state() private isClosingCreateDrawer = false;
@@ -2773,7 +2777,7 @@ export class DockerTab extends LitElement {
 
   private addToUploadQueue(file: File) {
     const uploadItem: UploadItem = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       file,
       progress: 0,
       status: 'pending'
@@ -2799,37 +2803,72 @@ export class DockerTab extends LitElement {
     this.isUploading = false;
   }
 
-  private async uploadFile(item: UploadItem) {
-    try {
+  private async uploadFile(item: UploadItem): Promise<void> {
+    return new Promise((resolve, reject) => {
       // Update status to uploading
       this.updateUploadItem(item.id, { status: 'uploading', progress: 0 });
 
-      const formData = new FormData();
-      formData.append('file', item.file);
+      // Build the upload endpoint URL
+      const uploadEndpoint = getApiUrl('/docker/images/upload');
 
-      // Mock progress for now - in real implementation, you'd track actual upload progress
-      const progressInterval = setInterval(() => {
-        const currentItem = this.uploadQueue.find(i => i.id === item.id);
-        if (currentItem && currentItem.progress < 90) {
-          this.updateUploadItem(item.id, { progress: currentItem.progress + 10 });
-        }
-      }, 200);
+      // Create TUS upload
+      this.currentUpload = new tus.Upload(item.file, {
+        endpoint: uploadEndpoint,
+        chunkSize: 4 * 1024 * 1024, // 4MB chunks
+        retryDelays: [0, 1000, 3000, 5000],
+        metadata: {
+          filename: item.file.name,
+          filetype: item.file.type || 'application/octet-stream',
+        },
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token') || localStorage.getItem('auth_token')}`,
+        },
+        onError: (error) => {
+          console.error('TUS upload error:', error);
+          this.updateUploadItem(item.id, {
+            status: 'error',
+            error: error.message || 'Upload failed'
+          });
+          this.currentUpload = null;
+          reject(error);
+        },
+        onProgress: (bytesUploaded, bytesTotal) => {
+          const percentage = Math.round((bytesUploaded / bytesTotal) * 100);
+          this.updateUploadItem(item.id, { progress: percentage });
+        },
+        onSuccess: async () => {
+          try {
+            // Get the upload URL which contains the upload ID
+            const uploadUrl = this.currentUpload?.url;
+            if (uploadUrl) {
+              // Extract upload ID from URL (last segment)
+              const uploadId = uploadUrl.split('/').pop();
+              if (uploadId) {
+                // Complete the upload
+                await api.post(`/docker/images/upload/${uploadId}/complete`, {});
+              }
+            }
 
-      await api.post('/docker/images/upload', formData);
-
-      clearInterval(progressInterval);
-      this.updateUploadItem(item.id, { status: 'completed', progress: 100 });
-
-      // Refresh images list
-      this.fetchImages();
-
-    } catch (error) {
-      console.error('Error uploading file:', error);
-      this.updateUploadItem(item.id, {
-        status: 'error',
-        error: error instanceof ApiError ? error.message : 'Upload failed'
+            this.updateUploadItem(item.id, { status: 'completed', progress: 100 });
+            // Refresh images list
+            this.fetchImages();
+            this.currentUpload = null;
+            resolve();
+          } catch (error) {
+            console.error('Failed to complete upload:', error);
+            this.updateUploadItem(item.id, {
+              status: 'error',
+              error: 'Failed to complete upload'
+            });
+            this.currentUpload = null;
+            reject(error);
+          }
+        },
       });
-    }
+
+      // Start the upload
+      this.currentUpload.start();
+    });
   }
 
   private updateUploadItem(id: string, updates: Partial<UploadItem>) {

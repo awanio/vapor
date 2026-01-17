@@ -22,6 +22,7 @@ import type {
 
 // Import StoreEventType as a value, not just a type
 import { StoreEventType } from '../types';
+import { generateUUID } from '../../utils/uuid';
 
 /**
  * Store factory options
@@ -311,7 +312,7 @@ export function createStore<T extends BaseEntity>(
       }
 
       // Generate ID if not provided
-      const id = item[idField] || crypto.randomUUID();
+      const id = item[idField] || generateUUID();
       const newItem = { ...item, [idField]: id } as unknown as T;
 
       // Update store
