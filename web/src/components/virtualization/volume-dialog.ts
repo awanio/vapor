@@ -66,7 +66,7 @@ export class VolumeDialog extends LitElement {
     .drawer {
       width: 100%;
       height: 100%;
-      background: var(--vscode-editor-background, var(--vscode-bg-light));
+      background: var(--vscode-editor-background);
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
       display: flex;
       flex-direction: column;
@@ -81,7 +81,7 @@ export class VolumeDialog extends LitElement {
 
     .drawer-header {
       padding: 20px;
-      background: var(--vscode-bg-lighter, #252526);
+      background: var(--vscode-bg-lighter, #2d2d30);
       border-bottom: 1px solid var(--vscode-border);
       display: flex;
       align-items: center;
@@ -127,7 +127,7 @@ export class VolumeDialog extends LitElement {
 
     .drawer-footer {
       padding: 16px 20px;
-      background: var(--vscode-bg-lighter, #252526);
+      background: var(--vscode-bg-lighter, #2d2d30);
       border-top: 1px solid var(--vscode-border);
       display: flex;
       justify-content: flex-end;
@@ -232,7 +232,7 @@ export class VolumeDialog extends LitElement {
     .pool-info {
       padding: 12px;
       background: var(--vscode-editor-background);
-      border: 1px solid var(--vscode-editorWidget-border);
+      border: 1px solid var(--vscode-border);
       border-radius: 4px;
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -266,8 +266,8 @@ export class VolumeDialog extends LitElement {
 
     .format-option {
       padding: 12px;
-      background: var(--vscode-editor-background, #1e1e1e);
-      border: 2px solid var(--vscode-editorWidget-border, #454545);
+      background: var(--vscode-editor-background);
+      border: 2px solid var(--vscode-border);
       border-radius: 4px;
       cursor: pointer;
       transition: all 0.2s;
@@ -340,7 +340,7 @@ export class VolumeDialog extends LitElement {
     .advanced-section {
       margin-top: 8px;
       padding-top: 16px;
-      border-top: 1px solid var(--vscode-editorWidget-border);
+      border-top: 1px solid var(--vscode-border);
     }
 
     .section-title {

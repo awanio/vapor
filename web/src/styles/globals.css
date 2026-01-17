@@ -5,33 +5,33 @@
   --surface-1: #252526;
   --surface-2: #2d2d30;
   --surface-3: #3e3e42;
-  
+
   /* Text colors */
   --text-primary: #cccccc;
   --text-secondary: #9d9d9d;
   --text-disabled: #5a5a5a;
-  
+
   /* Border colors */
   --border-color: #464647;
-  
+
   /* Primary colors */
   --primary: #007acc;
   --primary-hover: #1a86d9;
-  
+
   /* Error/Success/Warning colors */
   --error: #f14c4c;
   --success: #73c991;
   --warning: #cca700;
-  
+
   /* Font */
   --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-  
+
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  
+
   /* VSCode compatibility mappings */
   --vscode-bg: var(--surface-0);
   --vscode-bg-light: var(--surface-1);
@@ -57,7 +57,7 @@
   --vscode-warning: #dcdcaa;
   --vscode-info: #3794ff;
   --vscode-statusbar: #007acc;
-  
+
   /* Success/Error background colors for dark theme */
   --success-bg: rgba(115, 201, 145, 0.15);
   --error-bg: rgba(241, 76, 76, 0.15);
@@ -73,6 +73,7 @@
   --vscode-menu-border: #464647;
   --vscode-menu-foreground: #cccccc;
   --vscode-list-hoverBackground: #2a2d2e;
+  --vscode-list-activeSelectionBackground: #04395e;
 
   /* Validation variables (Dark) */
   --vscode-inputValidation-errorBackground: #5a1d1d;
@@ -88,34 +89,38 @@
 :root.light {
   /* Surface colors - Softened for professional look */
   --surface-0: #ffffff;
-  --surface-1: #f8f9fa; /* Lighter sidebar relative to main content */
+  --surface-1: #f8f9fa;
+  /* Lighter sidebar relative to main content */
   --surface-2: #f3f4f6;
   --surface-3: #e5e7eb;
-  
+
   /* Text colors */
-  --text-primary: #24292f; /* GitHub-like dark gray, not pure black */
+  --text-primary: #24292f;
+  /* GitHub-like dark gray, not pure black */
   --text-secondary: #57606a;
   --text-disabled: #8c959f;
-  
+
   /* Border colors */
-  --border-color: #d0d7de; /* GitHub-like border */
-  
+  --border-color: #d0d7de;
+  /* GitHub-like border */
+
   /* Primary colors */
   --primary: #0969da;
   --primary-hover: #0a53be;
-  
+
   /* Error/Success/Warning colors */
   --error: #cf222e;
   --success: #1a7f37;
   --warning: #9a6700;
-  
+
   /* VSCode compatibility mappings */
   --vscode-bg: var(--surface-0);
   --vscode-bg-light: var(--surface-1);
   --vscode-bg-lighter: var(--surface-2);
   --vscode-sidebar: var(--surface-1);
   --vscode-sidebar-hover: rgba(0, 0, 0, 0.04);
-  --vscode-sidebar-active: #eef2fa; /* Light blue tint for active items */
+  --vscode-sidebar-active: #eef2fa;
+  /* Light blue tint for active items */
   --vscode-sidebar-active-border: var(--primary);
   --vscode-titlebar: var(--surface-1);
   --vscode-text: var(--text-primary);
@@ -134,7 +139,7 @@
   --vscode-tab: #f3f4f6;
   --vscode-tab-active: #ffffff;
   --vscode-statusbar: #0969da;
-  
+
   /* Success/Error background colors for light theme */
   --success-bg: #dafbe1;
   --error-bg: #ffebe9;
@@ -157,6 +162,7 @@
   --vscode-menu-border: #d0d7de;
   --vscode-menu-foreground: #24292f;
   --vscode-list-hoverBackground: #f3f4f6;
+  --vscode-list-activeSelectionBackground: #e8f0fe;
 
   /* Validation variables (Light) */
   --vscode-inputValidation-errorBackground: #fff5f5;
