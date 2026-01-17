@@ -238,6 +238,19 @@ export class SidebarTree extends I18nLitElement {
     .tree-children .tree-item.active {
       opacity: 1;
     }
+
+    /* Masked icon for monochrome SVGs to inherit color */
+    .icon-mask {
+      width: 16px;
+      height: 16px;
+      background-color: currentColor;
+      -webkit-mask-size: contain;
+      mask-size: contain;
+      -webkit-mask-repeat: no-repeat;
+      mask-repeat: no-repeat;
+      -webkit-mask-position: center;
+      mask-position: center;
+    }
   `;
 
   private navigationItems: NavItem[] = [
@@ -256,25 +269,25 @@ export class SidebarTree extends I18nLitElement {
         {
           id: 'network-interfaces',
           label: 'network.interfaces',
-          icon: 'interfaces',
+          icon: 'interface',
           route: 'network/interfaces'
         },
         {
           id: 'network-bridges',
           label: 'network.bridges',
-          icon: 'bonding',
+          icon: 'bridge',
           route: 'network/bridges'
         },
         {
           id: 'network-bonds',
           label: 'network.bonds',
-          icon: 'bonding',
+          icon: 'bond',
           route: 'network/bonds'
         },
         {
           id: 'network-vlans',
           label: 'network.vlans',
-          icon: 'vlans',
+          icon: 'vlan',
           route: 'network/vlans'
         }
       ]
@@ -333,7 +346,7 @@ export class SidebarTree extends I18nLitElement {
         {
           id: 'containers-cri',
           label: 'nav.containers.cri',
-          icon: 'containers',
+          icon: 'cri',
           route: 'containers/cri'
         },
         {
@@ -434,7 +447,7 @@ export class SidebarTree extends I18nLitElement {
         {
           id: 'virtualization-backups',
           label: 'virtualization.backups',
-          icon: 'volumes',
+          icon: 'backups',
           route: 'virtualization/backups'
         }
       ]
@@ -554,37 +567,33 @@ export class SidebarTree extends I18nLitElement {
 
     // Use custom SVG icons for specific menu items
     const renderIcon = () => {
-      if (item.icon === 'kubernetes') {
+      // List of brand icons that should keep their original colors (rendered as img)
+      const brandIcons = ['ansible', 'helm'];
+
+      // List of monochrome icons that should adapt to theme text color (rendered as mask)
+      const maskedIcons = [
+        'dashboard', 'network', 'interface', 'bridge', 'bond', 'vlan',
+        'storage', 'disks', 'containers', 'cri', 'virtualization', 'vms',
+        'storage-pools', 'images', 'virt-networks', 'volumes', 'backups',
+        'logs', 'users', 'terminal', 'kubernetes', 'docker',
+        'workload', 'k8s-networks', 'k8s-storage', 'configurations', 'nodes', 'crds'
+      ];
+
+
+      if (item.icon && brandIcons.includes(item.icon)) {
         return html`
           <span class="tree-item-icon">
-            <img src="/icons/tech/kubernetes.svg" alt="Kubernetes" width="16" height="16" />
+            <img src="/icons/tech/${item.icon}.svg" alt="${item.label}" width="16" height="16" />
           </span>
         `;
-      } else if (item.icon === 'ansible') {
+      } else if (item.icon && maskedIcons.includes(item.icon)) {
         return html`
           <span class="tree-item-icon">
-            <img src="/icons/tech/ansible.svg" alt="Ansible" width="16" height="16" />
-          </span>
-        `;
-      } else if (item.icon === 'docker') {
-        return html`
-          <span class="tree-item-icon">
-            <img src="/icons/tech/docker.svg" alt="Docker" width="16" height="16" />
-          </span>
-        `;
-      } else if (item.icon === 'dashboard') {
-        return html`
-          <span class="tree-item-icon">
-            <img src="/icons/tech/dashboard.svg" alt="Dashboard" width="16" height="16" />
-          </span>
-        `;
-      } else if (item.icon === 'helm') {
-        return html`
-          <span class="tree-item-icon">
-            <img src="/icons/tech/helm.svg" alt="Helm" width="16" height="16" />
+            <div class="icon-mask" style="-webkit-mask-image: url('/icons/tech/${item.icon}.svg'); mask-image: url('/icons/tech/${item.icon}.svg');"></div>
           </span>
         `;
       } else {
+        // Fallback for font/emoji icons
         return html`<span class="tree-item-icon icon-${item.icon}"></span>`;
       }
     };
