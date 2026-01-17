@@ -30,7 +30,7 @@ export class VMConsole extends LitElement {
   @property({ type: String }) vmId = '';
   @property({ type: String }) vmName = '';
   @property({ type: Boolean, reflect: true }) show = false;
-  
+
   @state() private isConnecting = true;
   @state() private isWSConnected = false;  // Renamed to avoid conflict with LitElement's isConnected
   @state() private error: string | null = null;
@@ -39,7 +39,7 @@ export class VMConsole extends LitElement {
   @state() private showVirtualKeyboard = false;
   @state() private availableConsoles: ("vnc" | "spice")[] = [];
   @state() private selectedConsoleType: "vnc" | "spice" = "vnc";
-  
+
   private vncIframe: HTMLIFrameElement | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
@@ -93,7 +93,7 @@ export class VMConsole extends LitElement {
       max-width: 1200px;
       max-height: 800px;
       background: var(--vscode-editor-background, #1e1e1e);
-      border: 1px solid var(--vscode-widget-border, #454545);
+      border: 1px solid var(--vscode-border, #454545);
       border-radius: 8px;
       display: flex;
       flex-direction: column;
@@ -114,8 +114,8 @@ export class VMConsole extends LitElement {
 
     .console-header {
       padding: 12px 16px;
-      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
-      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+      background: var(--vscode-titlebar, #252526);
+      border-bottom: 1px solid var(--vscode-border, #454545);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -136,7 +136,7 @@ export class VMConsole extends LitElement {
     }
 
     .vm-name {
-      color: var(--vscode-textLink-foreground, #3794ff);
+      color: var(--vscode-info, #3794ff);
     }
 
     .connection-status {
@@ -144,23 +144,23 @@ export class VMConsole extends LitElement {
       align-items: center;
       gap: 8px;
       font-size: 12px;
-      color: var(--vscode-descriptionForeground, #8b8b8b);
+      color: var(--vscode-text-dim, #8b8b8b);
     }
 
     .status-indicator {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: var(--vscode-charts-yellow, #cca700);
+      background: var(--vscode-warning, #cca700);
     }
 
     .status-indicator.connected {
-      background: var(--vscode-charts-green, #89d185);
+      background: var(--vscode-success, #89d185);
       animation: pulse 2s infinite;
     }
 
     .status-indicator.error {
-      background: var(--vscode-charts-red, #f48771);
+      background: var(--vscode-error, #f48771);
     }
 
     @keyframes pulse {
@@ -214,7 +214,7 @@ export class VMConsole extends LitElement {
     }
 
     .close-btn:hover {
-      background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
+      background: var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.31));
     }
 
     .console-body {
@@ -254,7 +254,7 @@ export class VMConsole extends LitElement {
     .spinner {
       width: 32px;
       height: 32px;
-      border: 3px solid var(--vscode-widget-border, #454545);
+      border: 3px solid var(--vscode-border, #454545);
       border-top-color: var(--vscode-focusBorder, #007acc);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
@@ -293,7 +293,7 @@ export class VMConsole extends LitElement {
     }
 
     .error-message {
-      color: var(--vscode-errorForeground, #f48771);
+      color: var(--vscode-error, #f48771);
       font-size: 14px;
       text-align: center;
       max-width: 400px;
@@ -316,8 +316,8 @@ export class VMConsole extends LitElement {
 
     .console-footer {
       padding: 8px 16px;
-      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
-      border-top: 1px solid var(--vscode-widget-border, #454545);
+      background: var(--vscode-titlebar, #252526);
+      border-top: 1px solid var(--vscode-border, #454545);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -400,8 +400,8 @@ export class VMConsole extends LitElement {
   private async initConsole() {
     if (this.vncIframe) return; // Already initialized
 
-      // Fetch available console types first
-      await this.fetchAvailableConsoles();
+    // Fetch available console types first
+    await this.fetchAvailableConsoles();
     try {
       // Connect to VNC via iframe
       await this.connectVNC();
@@ -426,7 +426,7 @@ export class VMConsole extends LitElement {
 
       // First, fetch the console token from the HTTP endpoint
       const consoleToken = await this.fetchConsoleToken();
-      
+
       if (!consoleToken) {
         throw new Error('Failed to obtain console access token');
       }
@@ -436,14 +436,14 @@ export class VMConsole extends LitElement {
       // Build WebSocket URL with the console token as query parameter
       const baseUrl = getApiUrl('').replace(/^http/, 'ws'); // Convert http to ws/wss
       const wsUrl = `${baseUrl}virtualization/computes/${this.vmId}/console/vnc/ws?token=${encodeURIComponent(consoleToken.token)}`;
-      
+
       console.log('Connecting to VM VNC via iframe:', wsUrl.replace(consoleToken.token, '[REDACTED]'));
 
       // Create iframe with VNC console
       this.vncIframe = document.createElement('iframe');
       this.vncIframe.className = 'vnc-iframe';
       this.vncIframe.src = `/vnc-console.html?url=${encodeURIComponent(wsUrl)}`;
-      
+
       // Listen for messages from iframe
       const messageHandler = (event: MessageEvent) => {
         if (event.data.type === 'vnc-ready') {
@@ -454,15 +454,15 @@ export class VMConsole extends LitElement {
           this.reconnectAttempts = 0;
         }
       };
-      
+
       window.addEventListener('message', messageHandler);
-      
+
       // Inject iframe into shadow DOM
       const container = this.shadowRoot?.querySelector('.vnc-container');
       if (container) {
         container.appendChild(this.vncIframe);
       }
-      
+
       // Set a timeout in case the iframe doesn't load
       setTimeout(() => {
         if (this.isConnecting) {
@@ -470,7 +470,7 @@ export class VMConsole extends LitElement {
           this.isConnecting = false;
         }
       }, 10000);
-      
+
     } catch (error) {
       console.error('Failed to connect to VNC:', error);
       this.error = error instanceof Error ? error.message : 'Failed to connect to VNC';
@@ -489,7 +489,7 @@ export class VMConsole extends LitElement {
 
       const apiUrl = getApiUrl(`/virtualization/computes/${this.vmId}/console/vnc`);
       console.log('Fetching console token from:', apiUrl);
-      
+
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
@@ -506,11 +506,11 @@ export class VMConsole extends LitElement {
 
       const data = await response.json();
       console.log('Console token response:', { ...data, data: { ...data.data, token: '[REDACTED]' } });
-      
+
       if (data.status === 'success' && data.data) {
         return data.data as ConsoleTokenResponse;
       }
-      
+
       throw new Error('Invalid console token response');
     } catch (error) {
       console.error('Error fetching console token:', error);
@@ -549,7 +549,7 @@ export class VMConsole extends LitElement {
       // Build WebSocket URL
       const baseUrl = getApiUrl('').replace(/^http/, 'ws');
       const wsUrl = `${baseUrl}virtualization/computes/${this.vmId}/console/vnc/ws?token=${encodeURIComponent(consoleToken.token)}`;
-      
+
       // Open in new tab with fullscreen parameter
       const vncUrl = `/vnc-console.html?url=${encodeURIComponent(wsUrl)}&fullscreen=true&vmName=${encodeURIComponent(this.vmName || this.vmId)}`;
       window.open(vncUrl, '_blank');
@@ -584,7 +584,7 @@ export class VMConsole extends LitElement {
     if (this.vncIframe?.contentWindow) {
       this.vncIframe.contentWindow.postMessage({ type: 'disconnect' }, '*');
     }
-    
+
     // Remove iframe
     if (this.vncIframe) {
       this.vncIframe.remove();

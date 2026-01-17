@@ -384,7 +384,7 @@ export class VirtualizationNetworks extends LitElement {
       padding: 6px 12px;
       border: none;
       background: transparent;
-      color: var(--vscode-foreground, #cccccc);
+      color: var(--vscode-text-dim, #9d9d9d);
       cursor: pointer;
       font-size: 13px;
       font-weight: 500;
@@ -392,8 +392,8 @@ export class VirtualizationNetworks extends LitElement {
     }
 
     .detail-tab.active {
-      border-bottom-color: var(--vscode-button-background, #0e639c);
-      color: var(--vscode-button-foreground, #ffffff);
+      border-bottom-color: var(--vscode-accent, #007acc);
+      color: var(--vscode-foreground, #cccccc);
     }
 
     .detail-table {
