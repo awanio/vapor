@@ -61,6 +61,27 @@
   /* Success/Error background colors for dark theme */
   --success-bg: rgba(115, 201, 145, 0.15);
   --error-bg: rgba(241, 76, 76, 0.15);
+
+  /* Button variables (Dark) */
+  --vscode-button-secondaryBackground: #3c3c3c;
+  --vscode-button-secondaryForeground: #cccccc;
+  --vscode-button-secondaryHoverBackground: #45494e;
+  --vscode-button-border: #5a5a5a;
+
+  /* Menu variables (Dark) */
+  --vscode-menu-background: #252526;
+  --vscode-menu-border: #464647;
+  --vscode-menu-foreground: #cccccc;
+  --vscode-list-hoverBackground: #2a2d2e;
+
+  /* Validation variables (Dark) */
+  --vscode-inputValidation-errorBackground: #5a1d1d;
+  --vscode-inputValidation-errorForeground: #f48771;
+  --vscode-inputValidation-errorBorder: #be1100;
+
+  --vscode-inputValidation-warningBackground: #5a5012;
+  --vscode-inputValidation-warningForeground: #cca700;
+  --vscode-inputValidation-warningBorder: #b89500;
 }
 
 /* Light theme */
@@ -124,6 +145,27 @@
   --vscode-input-border: #d0d7de;
   --vscode-focusBorder: #0969da;
   --vscode-foreground: #24292f;
+
+  /* Button variables (Light) */
+  --vscode-button-secondaryBackground: #ffffff;
+  --vscode-button-secondaryForeground: #24292f;
+  --vscode-button-secondaryHoverBackground: #f3f4f6;
+  --vscode-button-border: #d0d7de;
+
+  /* Menu variables (Light) */
+  --vscode-menu-background: #ffffff;
+  --vscode-menu-border: #d0d7de;
+  --vscode-menu-foreground: #24292f;
+  --vscode-list-hoverBackground: #f3f4f6;
+
+  /* Validation variables (Light) */
+  --vscode-inputValidation-errorBackground: #fff5f5;
+  --vscode-inputValidation-errorForeground: #cf222e;
+  --vscode-inputValidation-errorBorder: #cf222e;
+
+  --vscode-inputValidation-warningBackground: #fff8c5;
+  --vscode-inputValidation-warningForeground: #9a6700;
+  --vscode-inputValidation-warningBorder: #d4a72c;
 }
 
 /* Reset and base styles */

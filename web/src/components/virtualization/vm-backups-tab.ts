@@ -18,7 +18,7 @@ export class VMBackupsTab extends LitElement {
       display: block;
     }
     .section {
-      border: 1px solid var(--vscode-widget-border, #2a2f3a);
+      border: 1px solid var(--vscode-border);
       border-radius: 12px;
       padding: 16px;
       background: var(--vscode-editor-background, #1e1e1e);
@@ -36,7 +36,7 @@ export class VMBackupsTab extends LitElement {
       border-radius: 4px;
       border: 1px solid var(--vscode-button-border, #5a5a5a);
       background: var(--vscode-button-secondaryBackground, #3c3c3c);
-      color: var(--vscode-button-foreground, #ffffff);
+      color: var(--vscode-button-secondaryForeground, #cccccc);
       cursor: pointer;
       font-size: 13px;
     }
@@ -53,7 +53,7 @@ export class VMBackupsTab extends LitElement {
     }
     .btn[disabled] { opacity: 0.6; cursor: not-allowed; }
     .table { width: 100%; border-collapse: collapse; }
-    .table th, .table td { padding: 10px; border-bottom: 1px solid var(--vscode-widget-border, #2a2f3a); text-align: left; font-size: 13px; }
+    .table th, .table td { padding: 10px; border-bottom: 1px solid var(--vscode-border); text-align: left; font-size: 13px; }
     .table th { color: var(--vscode-descriptionForeground, #9ca3af); font-weight: 600; }
     .badge { padding: 2px 8px; border-radius: 999px; font-size: 12px; background: #1f2937; color: #e5e7eb; }
     .badge.success { background: #14532d; }
@@ -107,7 +107,7 @@ export class VMBackupsTab extends LitElement {
     }
     .modal {
       background: var(--vscode-editor-background, #1e1e1e);
-      border: 1px solid var(--vscode-widget-border, #454545);
+      border: 1px solid var(--vscode-border);
       border-radius: 8px;
       min-width: 400px;
       max-width: 600px;
@@ -118,7 +118,7 @@ export class VMBackupsTab extends LitElement {
       align-items: center;
       gap: 12px;
       padding: 20px;
-      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+      border-bottom: 1px solid var(--vscode-border);
     }
     .modal-icon { font-size: 24px; }
     .modal-title {
@@ -135,7 +135,7 @@ export class VMBackupsTab extends LitElement {
     }
     .vm-info-box {
       background: var(--vscode-input-background, #3c3c3c);
-      border: 1px solid var(--vscode-widget-border, #454545);
+      border: 1px solid var(--vscode-border);
       border-radius: 6px;
       padding: 12px;
       margin: 16px 0;
@@ -173,7 +173,7 @@ export class VMBackupsTab extends LitElement {
       justify-content: flex-end;
       gap: 8px;
       padding: 16px 20px;
-      border-top: 1px solid var(--vscode-widget-border, #454545);
+      border-top: 1px solid var(--vscode-border);
     }
     .modal-btn {
       padding: 8px 16px;

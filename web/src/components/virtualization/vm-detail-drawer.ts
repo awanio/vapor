@@ -113,7 +113,7 @@ interface NetworkInterfaceInfo {
 export class VMDetailDrawer extends LitElement {
   @property({ type: Boolean, reflect: true }) show = false;
   @property({ type: Object }) vm: VirtualMachine | null = null;
-  
+
   @state() private activeTab = 'overview';
   @state() private isLoading = false;
   @state() private metrics: VMMetrics | null = null;
@@ -154,7 +154,7 @@ export class VMDetailDrawer extends LitElement {
   @state() private snapshotRevertFlags = 1; // Default: DOMAIN_SNAPSHOT_REVERT_RUNNING
   @state() private isSnapshotActionLoading = false;
   @state() private showStopDropdown = false;
-  
+
   private metricsRefreshInterval: NodeJS.Timeout | null = null;
 
   static override styles = css`
@@ -182,7 +182,7 @@ export class VMDetailDrawer extends LitElement {
       flex-direction: column;
       transform: translateX(100%);
       transition: transform 0.3s ease-out;
-      border-left: 1px solid var(--vscode-widget-border, #454545);
+      border-left: 1px solid var(--vscode-border);
     }
 
     :host([show]) .drawer {
@@ -230,8 +230,8 @@ export class VMDetailDrawer extends LitElement {
 
     .drawer-header {
       padding: 20px 24px;
-      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
-      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+      background: var(--vscode-bg-lighter, #2d2d30);
+      border-bottom: 1px solid var(--vscode-border);
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -350,7 +350,7 @@ export class VMDetailDrawer extends LitElement {
       gap: 0;
       padding: 0 24px;
       background: var(--vscode-editor-background, #1e1e1e);
-      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+      border-bottom: 1px solid var(--vscode-border);
       flex-shrink: 0;
     }
 
@@ -386,8 +386,8 @@ export class VMDetailDrawer extends LitElement {
     /* Quick Actions Bar */
     .quick-actions {
       padding: 16px 24px;
-      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
-      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+      background: var(--vscode-bg-lighter, #2d2d30);
+      border-bottom: 1px solid var(--vscode-border);
       display: flex;
       gap: 12px;
       flex-shrink: 0;
@@ -547,7 +547,7 @@ export class VMDetailDrawer extends LitElement {
       color: var(--vscode-foreground, #cccccc);
       margin-bottom: 16px;
       padding-bottom: 8px;
-      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+      border-bottom: 1px solid var(--vscode-border);
     }
 
     /* Info Grid */
@@ -591,8 +591,8 @@ export class VMDetailDrawer extends LitElement {
     }
 
     .metric-card {
-      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
-      border: 1px solid var(--vscode-widget-border, #454545);
+      background: var(--vscode-bg-lighter, #2d2d30);
+      border: 1px solid var(--vscode-border);
       border-radius: 6px;
       padding: 16px;
       display: flex;
@@ -686,16 +686,16 @@ export class VMDetailDrawer extends LitElement {
     .data-table th {
       text-align: left;
       padding: 8px 12px;
-      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
+      background: var(--vscode-bg-lighter, #2d2d30);
       color: var(--vscode-foreground, #cccccc);
       font-weight: 600;
-      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+      border-bottom: 1px solid var(--vscode-border);
     }
 
     .data-table td {
       padding: 10px 12px;
       color: var(--vscode-foreground, #cccccc);
-      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+      border-bottom: 1px solid var(--vscode-border);
     }
 
     .data-table tr:hover {
@@ -784,7 +784,7 @@ export class VMDetailDrawer extends LitElement {
     /* Console Preview */
     .console-preview {
       background: #000;
-      border: 1px solid var(--vscode-widget-border, #454545);
+      border: 1px solid var(--vscode-border);
       border-radius: 4px;
       padding: 16px;
       min-height: 200px;
@@ -842,7 +842,7 @@ export class VMDetailDrawer extends LitElement {
     
     .modal {
       background: var(--vscode-editor-background, #1e1e1e);
-      border: 1px solid var(--vscode-widget-border, #454545);
+      border: 1px solid var(--vscode-border);
       border-radius: 8px;
       padding: 24px;
       width: 90%;
@@ -908,8 +908,8 @@ export class VMDetailDrawer extends LitElement {
     }
     
     .vm-info-box {
-      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
-      border: 1px solid var(--vscode-widget-border, #454545);
+      background: var(--vscode-bg-lighter, #2d2d30);
+      border: 1px solid var(--vscode-border);
       border-radius: 4px;
       padding: 12px;
       margin: 16px 0;
@@ -1023,7 +1023,7 @@ export class VMDetailDrawer extends LitElement {
       align-items: center;
       padding: 12px 16px;
       background: var(--vscode-editor-background, #1e1e1e);
-      border: 1px solid var(--vscode-widget-border, #454545);
+      border: 1px solid var(--vscode-border);
       border-radius: 6px;
     }
 
@@ -1239,7 +1239,7 @@ export class VMDetailDrawer extends LitElement {
     // Add escape key listener
     document.addEventListener('keydown', this.handleKeyDown);
   }
-  
+
   override disconnectedCallback() {
     super.disconnectedCallback();
     this.stopMetricsRefresh();
@@ -1308,13 +1308,13 @@ export class VMDetailDrawer extends LitElement {
     if (currentState !== 'running' || this.metricsRefreshInterval) {
       return;
     }
-    
+
     // Fetch immediately
     if (this.vm) {
       console.log('Starting metrics refresh for VM:', this.vm.id);
       this.fetchVMMetrics(this.vm.id);
     }
-    
+
     // Then set up periodic refresh every 5 seconds
     this.metricsRefreshInterval = setInterval(() => {
       if (this.vm && this.activeTab === 'metrics' && this.show) {
@@ -1323,7 +1323,7 @@ export class VMDetailDrawer extends LitElement {
       }
     }, 5000);
   }
-  
+
   private stopMetricsRefresh() {
     if (this.metricsRefreshInterval) {
       console.log('Stopping metrics refresh');
@@ -1334,17 +1334,17 @@ export class VMDetailDrawer extends LitElement {
 
   private async loadVMDetails() {
     if (!this.vm) return;
-    
+
     this.isLoading = true;
     // this.error = null; // TODO: Display errors in UI
-    
+
     try {
       // Fetch enhanced VM details from the API
       const response = await this.fetchVMEnhancedDetails(this.vm.id);
-      
+
       if (response) {
         this.vmDetails = response;
-        
+
         // Update the vm property with fresh state from API
         // This ensures the UI shows the correct state after operations like snapshot revert
         if (this.vm && response.state) {
@@ -1353,7 +1353,7 @@ export class VMDetailDrawer extends LitElement {
             state: response.state as VMState,
           };
         }
-        
+
         // Process disks information from storage object
         if (response.storage?.disks && response.storage.disks.length > 0) {
           this.disks = response.storage.disks.map((disk, index) => ({
@@ -1369,7 +1369,7 @@ export class VMDetailDrawer extends LitElement {
         } else {
           this.disks = [];
         }
-        
+
         // Process network interfaces
         if (response.networks && response.networks.length > 0) {
           this.networkInterfaces = response.networks.map((net, index) => ({
@@ -1386,7 +1386,7 @@ export class VMDetailDrawer extends LitElement {
         } else {
           this.networkInterfaces = [];
         }
-        
+
         // Fetch real metrics if VM is running
         if (this.vm.state === 'running' || this.vmDetails?.state === 'running') {
           await this.fetchVMMetrics(this.vm.id);
@@ -1408,9 +1408,9 @@ export class VMDetailDrawer extends LitElement {
       console.log('Already loading metrics, skipping...');
       return;
     }
-    
+
     this.isLoadingMetrics = true;
-    
+
     try {
       const authHeaders = auth.getAuthHeaders();
       if (!authHeaders.Authorization) {
@@ -1419,7 +1419,7 @@ export class VMDetailDrawer extends LitElement {
 
       const apiUrl = getApiUrl(`/virtualization/computes/${vmId}/metrics`);
       console.log('Fetching VM metrics from:', apiUrl);
-      
+
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
@@ -1436,7 +1436,7 @@ export class VMDetailDrawer extends LitElement {
 
       const data = await response.json();
       console.log('VM metrics response:', data);
-      
+
       if (data.status === 'success' && data.data) {
         this.metrics = data.data;
         console.log('Metrics updated:', this.metrics);
@@ -1474,7 +1474,7 @@ export class VMDetailDrawer extends LitElement {
       }
 
       const data = await response.json();
-      
+
       // The API returns a wrapper with data.vms array, but for single VM it should be different
       // Assuming the enhanced endpoint returns a single VM in data
       if (data.status === 'success' && data.data) {
@@ -1487,7 +1487,7 @@ export class VMDetailDrawer extends LitElement {
           return data.data;
         }
       }
-      
+
       return null;
     } catch (error) {
       console.error('Error fetching VM enhanced details:', error);
@@ -1542,7 +1542,7 @@ export class VMDetailDrawer extends LitElement {
   private toggleStopDropdown(e: Event) {
     e.stopPropagation();
     this.showStopDropdown = !this.showStopDropdown;
-    
+
     if (this.showStopDropdown) {
       setTimeout(() => {
         document.addEventListener('click', this.closeStopDropdown);
@@ -1610,13 +1610,13 @@ export class VMDetailDrawer extends LitElement {
 
   private async handlePowerAction(action: string, force: boolean = false) {
     if (!this.vm || this.isPowerActionLoading) return;
-    
+
     this.isPowerActionLoading = true;
-    
+
     try {
       // Execute the power action via API
       const success = await this.executePowerAction(this.vm.id, action, force);
-      
+
       if (success) {
         // Immediately update local state to reflect expected new state
         const newState = this.getExpectedStateAfterAction(action);
@@ -1626,15 +1626,15 @@ export class VMDetailDrawer extends LitElement {
         if (this.vm) {
           this.vm = { ...this.vm, state: newState };
         }
-        
+
         // Force re-render to update buttons
         this.requestUpdate();
-        
+
         // Dispatch event for parent component to handle
         this.dispatchEvent(new CustomEvent('power-action', {
           detail: { action, vm: this.vm, success: true }
         }));
-        
+
         // Show success notification
         this.showNotification(`${action.charAt(0).toUpperCase() + action.slice(1)} action initiated for ${this.vm?.name || 'VM'}`, 'success');
       }
@@ -1649,7 +1649,7 @@ export class VMDetailDrawer extends LitElement {
       this.isPowerActionLoading = false;
     }
   }
-  
+
   private buildPowerActionErrorMessage(action: string, responseData: any, statusText: string): string {
     const base = `Failed to ${action} VM`;
 
@@ -1677,7 +1677,7 @@ export class VMDetailDrawer extends LitElement {
     }
     return `${base}: ${full}`;
   }
-  
+
   private async executePowerAction(vmId: string, action: string, force: boolean = false): Promise<boolean> {
     try {
       // Get authentication headers
@@ -1725,7 +1725,7 @@ export class VMDetailDrawer extends LitElement {
       throw error;
     }
   }
-  
+
   private showNotification(message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') {
     // Dispatch event for notification
     this.dispatchEvent(new CustomEvent('show-notification', {
@@ -1742,15 +1742,15 @@ export class VMDetailDrawer extends LitElement {
       this.showNotification('Console is only available when VM is running', 'warning');
       return;
     }
-    
+
     // Open console component
     this.showConsole = true;
   }
-  
+
   private handleConsoleClose = () => {
     this.showConsole = false;
   }
-  
+
   public openCloneModal() {
     this.handleCloneVM();
   }
@@ -1827,7 +1827,7 @@ export class VMDetailDrawer extends LitElement {
       this.isLoadingClonePools = false;
     }
   }
-  
+
   private async confirmCloneVM() {
     if (!this.vm || this.isCloning) return;
 
@@ -1910,8 +1910,8 @@ export class VMDetailDrawer extends LitElement {
         .title=${'Clone Virtual Machine'}
         size="medium"
         @modal-close=${() => {
-          if (!this.isCloning) this.showCloneModal = false;
-        }}
+        if (!this.isCloning) this.showCloneModal = false;
+      }}
       >
         <div class="form-group">
           <label for="clone-name">New VM Name <span class="required">*</span></label>
@@ -1936,15 +1936,15 @@ export class VMDetailDrawer extends LitElement {
           >
             <option value="">Keep source disk pools</option>
             ${this.clonePools.map(
-              (p) =>
-                html`<option value=${p.name}>${p.name}${p.state ? ' (' + p.state + ')' : ''}</option>`,
-            )}
+        (p) =>
+          html`<option value=${p.name}>${p.name}${p.state ? ' (' + p.state + ')' : ''}</option>`,
+      )}
           </select>
           ${this.isLoadingClonePools
-            ? html`<div class="form-hint">Loading storage pools…</div>`
-            : this.clonePoolsError
-              ? html`<div class="form-error">${this.clonePoolsError}</div>`
-              : html`<div class="form-hint">If empty, Vapor will try to clone each disk into its original pool.</div>`}
+        ? html`<div class="form-hint">Loading storage pools…</div>`
+        : this.clonePoolsError
+          ? html`<div class="form-error">${this.clonePoolsError}</div>`
+          : html`<div class="form-hint">If empty, Vapor will try to clone each disk into its original pool.</div>`}
         </div>
 
         <div slot="footer" style="display:flex; justify-content:flex-end; gap:8px;">
@@ -1973,7 +1973,7 @@ export class VMDetailDrawer extends LitElement {
     this.ensureSnapshotsLoaded();
     this.openSnapshotModal();
   }
-  
+
   private openSnapshotModal() {
     // Check if VM is running
     const currentState = this.vm?.state || this.vmDetails?.state;
@@ -2003,38 +2003,38 @@ export class VMDetailDrawer extends LitElement {
       this.showNotification('Cannot delete a running VM. Please stop it first.', 'error');
       return;
     }
-    
+
     // Show confirmation modal
     this.showDeleteModal = true;
   }
-  
+
   private cancelDelete() {
     this.showDeleteModal = false;
     this.isDeleting = false;
   }
-  
+
   private async confirmDelete() {
     if (!this.vm || this.isDeleting) return;
-    
+
     this.isDeleting = true;
-    
+
     try {
       // Execute the delete operation
       const success = await this.executeDeleteVM(this.vm.id);
-      
+
       if (success) {
         this.showNotification(`VM "${this.vm.name}" has been deleted successfully`, 'success');
-        
+
         // Close modal and drawer
         this.showDeleteModal = false;
-        
+
         // Dispatch event for parent component to handle
         this.dispatchEvent(new CustomEvent('vm-deleted', {
           detail: { vm: this.vm },
           bubbles: true,
           composed: true
         }));
-        
+
         // Close the drawer after a short delay
         setTimeout(() => {
           this.handleClose();
@@ -2050,7 +2050,7 @@ export class VMDetailDrawer extends LitElement {
       this.isDeleting = false;
     }
   }
-  
+
   private async executeDeleteVM(vmId: string): Promise<boolean> {
     try {
       // Get authentication headers
@@ -2071,8 +2071,8 @@ export class VMDetailDrawer extends LitElement {
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
         throw new Error(
-          errorData?.message || 
-          errorData?.error || 
+          errorData?.message ||
+          errorData?.error ||
           `Failed to delete VM: ${response.statusText}`
         );
       }
@@ -2126,7 +2126,7 @@ export class VMDetailDrawer extends LitElement {
 
   private renderOverviewTab() {
     if (!this.vm) return html``;
-    
+
     // Use enhanced details if available, fallback to basic VM data
     const details = this.vmDetails || this.vm;
     const osInfo = this.vmDetails?.os || {
@@ -2241,7 +2241,7 @@ export class VMDetailDrawer extends LitElement {
   private renderMetricsTab() {
     const currentState = this.vmDetails?.state || this.vm?.state;
     const displayState = currentState ? currentState.charAt(0).toUpperCase() + currentState.slice(1) : 'Unknown';
-    
+
     // Check if VM is not running
     if (currentState !== 'running') {
       return html`
@@ -2255,7 +2255,7 @@ export class VMDetailDrawer extends LitElement {
         </div>
       `;
     }
-    
+
     // Check if metrics are still loading (initial load)
     if (!this.metrics && this.isLoadingMetrics) {
       return html`
@@ -2265,7 +2265,7 @@ export class VMDetailDrawer extends LitElement {
         </div>
       `;
     }
-    
+
     // Check if we have no metrics and not loading
     if (!this.metrics) {
       return html`
@@ -2277,15 +2277,15 @@ export class VMDetailDrawer extends LitElement {
         </div>
       `;
     }
-    
+
     // Calculate memory usage percentage based on actual memory allocation
     // IMPORTANT: memory_used from API is in bytes, VM memory allocation is in MB!
     const vmMemoryMB = this.vmDetails?.memory || this.vm?.memory || 0;
     const vmMemoryBytes = vmMemoryMB * 1024 * 1024; // Convert MB to bytes
-    const memoryUsagePercent = vmMemoryBytes > 0 
+    const memoryUsagePercent = vmMemoryBytes > 0
       ? (this.metrics.memory_used / vmMemoryBytes) * 100
       : 0;
-    
+
     // Log for debugging
     console.log('Memory calculation:', {
       memory_used_bytes: this.metrics.memory_used,
@@ -2411,7 +2411,7 @@ export class VMDetailDrawer extends LitElement {
 
   private renderStorageTab() {
     const hasDisks = this.disks && this.disks.length > 0;
-    
+
     return html`
       <div class="section">
         <h3 class="section-title">Storage Devices</h3>
@@ -2689,15 +2689,15 @@ export class VMDetailDrawer extends LitElement {
         this.showNotification(`Reverted to snapshot "${snapshotName}"`, 'success');
         // Refresh VM details
         await this.loadVMDetails();
-        
+
         // Notify parent component about state change
         // This ensures the VM list updates with the correct state
         if (this.vm) {
           this.dispatchEvent(new CustomEvent('power-action', {
-            detail: { 
-              action: 'revert', 
-              vm: this.vm, 
-              success: true 
+            detail: {
+              action: 'revert',
+              vm: this.vm,
+              success: true
             },
             bubbles: true,
             composed: true
@@ -2748,8 +2748,8 @@ export class VMDetailDrawer extends LitElement {
           <div class="modal-body">
             <p class="modal-message">
               ${mode === 'delete'
-                ? html`Are you sure you want to delete this snapshot? This action cannot be undone.`
-                : html`Are you sure you want to revert to this snapshot? This will discard all changes since the snapshot was taken.`}
+        ? html`Are you sure you want to delete this snapshot? This action cannot be undone.`
+        : html`Are you sure you want to revert to this snapshot? This will discard all changes since the snapshot was taken.`}
             </p>
 
             <div class="vm-info-box">
@@ -2768,22 +2768,22 @@ export class VMDetailDrawer extends LitElement {
               <div>
                 <strong>Warning:</strong>
                 ${mode === 'delete'
-                  ? html`Deleting a snapshot is permanent.`
-                  : html`Reverting will overwrite the current VM state.`}
+        ? html`Deleting a snapshot is permanent.`
+        : html`Reverting will overwrite the current VM state.`}
               </div>
             </div>
 
             ${mode === 'revert'
-              ? html`
+        ? html`
                   <div class="form-group" style="margin-top: 16px;">
                     <label for="revert-behavior">Revert Behavior</label>
                     <select
                       id="revert-behavior"
                       .value=${String(this.snapshotRevertFlags)}
                       @change=${(e: Event) =>
-                        (this.snapshotRevertFlags = Number(
-                          (e.target as HTMLSelectElement).value
-                        ))}
+          (this.snapshotRevertFlags = Number(
+            (e.target as HTMLSelectElement).value
+          ))}
                       ?disabled=${this.isSnapshotActionLoading}
                     >
                       <option value="1">Keep running (default) - Running VMs stay running</option>
@@ -2795,7 +2795,7 @@ export class VMDetailDrawer extends LitElement {
                     </div>
                   </div>
                 `
-              : ''}
+        : ''}
           </div>
 
           <div class="modal-footer">
@@ -2812,8 +2812,8 @@ export class VMDetailDrawer extends LitElement {
               ?disabled=${this.isSnapshotActionLoading}
             >
               ${this.isSnapshotActionLoading
-                ? html`<span class="spinner-small"></span> ${mode === 'delete' ? 'Deleting…' : 'Reverting…'}`
-                : html`${confirmLabel}`}
+        ? html`<span class="spinner-small"></span> ${mode === 'delete' ? 'Deleting…' : 'Reverting…'}`
+        : html`${confirmLabel}`}
             </button>
           </div>
         </div>
@@ -2867,8 +2867,8 @@ export class VMDetailDrawer extends LitElement {
         @modal-close=${() => (this.showCreateSnapshotModal = false)}
       >
         ${supportsSnapshots === false
-          ? html`<div class="warning-box"><strong>Snapshots are not supported on this VM/host.</strong></div>`
-          : ''}
+        ? html`<div class="warning-box"><strong>Snapshots are not supported on this VM/host.</strong></div>`
+        : ''}
 
         <div class="form-group">
           <label for="snapshot-name">Snapshot Name <span class="required">*</span></label>
@@ -2881,8 +2881,8 @@ export class VMDetailDrawer extends LitElement {
             ?disabled=${this.isCreatingSnapshot}
           />
           ${nameError
-            ? html`<div class="form-error">${nameError}</div>`
-            : html`<div class="form-hint">Allowed: letters, numbers, . _ -</div>`}
+        ? html`<div class="form-error">${nameError}</div>`
+        : html`<div class="form-hint">Allowed: letters, numbers, . _ -</div>`}
         </div>
 
         <div class="form-group">
@@ -2902,7 +2902,7 @@ export class VMDetailDrawer extends LitElement {
             type="checkbox"
             .checked=${this.createIncludeMemory}
             @change=${(e: Event) =>
-              (this.createIncludeMemory = (e.target as HTMLInputElement).checked)}
+        (this.createIncludeMemory = (e.target as HTMLInputElement).checked)}
             ?disabled=${this.isCreatingSnapshot || supportsMemory === false}
           />
           <div>
@@ -2919,7 +2919,7 @@ export class VMDetailDrawer extends LitElement {
             type="checkbox"
             .checked=${this.createQuiesce}
             @change=${(e: Event) =>
-              (this.createQuiesce = (e.target as HTMLInputElement).checked)}
+        (this.createQuiesce = (e.target as HTMLInputElement).checked)}
             ?disabled=${this.isCreatingSnapshot}
           />
           <div>
@@ -2929,7 +2929,7 @@ export class VMDetailDrawer extends LitElement {
         </div>
 
         ${this.snapshotCapabilities?.warnings?.length
-          ? html`
+        ? html`
               <div class="warning-box">
                 <strong>Warnings</strong>
                 <ul>
@@ -2937,10 +2937,10 @@ export class VMDetailDrawer extends LitElement {
                 </ul>
               </div>
             `
-          : ''}
+        : ''}
 
         ${this.snapshotCapabilities?.recommendations?.length
-          ? html`
+        ? html`
               <div class="info-box">
                 <strong>Recommendations</strong>
                 <ul>
@@ -2948,7 +2948,7 @@ export class VMDetailDrawer extends LitElement {
                 </ul>
               </div>
             `
-          : ''}
+        : ''}
 
         <div slot="footer" style="display:flex; justify-content:flex-end; gap:8px;">
           <button
@@ -2984,16 +2984,16 @@ export class VMDetailDrawer extends LitElement {
         @modal-close=${this.closeSnapshotDetailModal}
       >
         ${this.isLoadingSnapshotDetail
-          ? html`
+        ? html`
               <div class="loading-state">
                 <span class="spinner"></span>
                 <span>Loading snapshot details...</span>
               </div>
             `
-          : ''}
+        : ''}
 
         ${snapshot
-          ? html`
+        ? html`
               <div class="info-grid">
                 <div class="info-item">
                   <span class="info-label">Name</span>
@@ -3003,58 +3003,58 @@ export class VMDetailDrawer extends LitElement {
                 <div class="info-item">
                   <span class="info-label">Created</span>
                   <span class="info-value">${this.formatSnapshotDate(
-                    snapshot.created_at || snapshot.creation_time || '',
-                  )}</span>
+          snapshot.created_at || snapshot.creation_time || '',
+        )}</span>
                 </div>
 
                 ${snapshot.type
-                  ? html`
+            ? html`
                       <div class="info-item">
                         <span class="info-label">Type</span>
                         <span class="info-value">${snapshot.type}</span>
                       </div>
                     `
-                  : ''}
+            : ''}
 
                 ${typeof snapshot.memory === 'boolean'
-                  ? html`
+            ? html`
                       <div class="info-item">
                         <span class="info-label">Memory</span>
                         <span class="info-value">${snapshot.memory ? 'Included' : 'Not included'}</span>
                       </div>
                     `
-                  : ''}
+            : ''}
 
                 ${snapshot.parent
-                  ? html`
+            ? html`
                       <div class="info-item">
                         <span class="info-label">Parent</span>
                         <span class="info-value monospace">${snapshot.parent}</span>
                       </div>
                     `
-                  : ''}
+            : ''}
 
                 ${snapshot.disk_formats?.length
-                  ? html`
+            ? html`
                       <div class="info-item">
                         <span class="info-label">Disk formats</span>
                         <span class="info-value">${snapshot.disk_formats.join(', ')}</span>
                       </div>
                     `
-                  : ''}
+            : ''}
 
                 ${snapshot.description
-                  ? html`
+            ? html`
                       <div class="info-item" style="grid-column: 1 / -1;">
                         <span class="info-label">Description</span>
                         <span class="info-value">${snapshot.description}</span>
                       </div>
                     `
-                  : ''}
+            : ''}
               </div>
 
               ${snapshot.warnings?.length
-                ? html`
+            ? html`
                     <div class="warning-box" style="margin-top: 12px;">
                       <strong>Warnings</strong>
                       <ul>
@@ -3062,14 +3062,14 @@ export class VMDetailDrawer extends LitElement {
                       </ul>
                     </div>
                   `
-                : ''}
+            : ''}
             `
-          : html`<div class="empty-state-message">No snapshot selected</div>`}
+        : html`<div class="empty-state-message">No snapshot selected</div>`}
 
         <div slot="footer" style="display:flex; justify-content:flex-end; gap:8px;">
           <button class="btn btn-secondary" @click=${this.closeSnapshotDetailModal}>Close</button>
           ${snapshot
-            ? html`
+        ? html`
                 <button
                   class="btn btn-secondary"
                   @click=${() => this.handleRevertSnapshot(snapshot.name)}
@@ -3085,7 +3085,7 @@ export class VMDetailDrawer extends LitElement {
                   🗑️ Delete
                 </button>
               `
-            : ''}
+        : ''}
         </div>
       </modal-dialog>
     `;
@@ -3102,9 +3102,9 @@ export class VMDetailDrawer extends LitElement {
             <button
               class="btn btn-secondary btn-sm"
               @click=${() => {
-                this.snapshotsLoadedForVmId = null;
-                this.loadSnapshots();
-              }}
+        this.snapshotsLoadedForVmId = null;
+        this.loadSnapshots();
+      }}
               ?disabled=${this.isLoadingSnapshots || !this.vm}
               title="Refresh"
             >
@@ -3121,66 +3121,66 @@ export class VMDetailDrawer extends LitElement {
         </div>
 
         ${this.isLoadingSnapshots
-          ? html`
+        ? html`
               <div class="loading-state">
                 <span class="spinner"></span>
                 <span>Loading snapshots...</span>
               </div>
             `
-          : supportsSnapshots === false
-            ? html`
+        : supportsSnapshots === false
+          ? html`
                 <div class="empty-state">
                   <div class="empty-state-icon">📸</div>
                   <div class="empty-state-message">Snapshots are not supported</div>
                   <div class="empty-state-hint">This host/VM does not support libvirt snapshots.</div>
                 </div>
               `
-            : this.snapshots.length === 0
-              ? html`
+          : this.snapshots.length === 0
+            ? html`
                   <div class="empty-state">
                     <div class="empty-state-icon">📸</div>
                     <div class="empty-state-message">No snapshots available</div>
                     <div class="empty-state-hint">Create a snapshot to save the current state of this VM</div>
                   </div>
                 `
-              : html`
+            : html`
                   <div class="snapshot-list">
                     ${this.snapshots.map(
-                      (snapshot) => html`
+              (snapshot) => html`
                         <div class="snapshot-item" @click=${() => this.openSnapshotDetail(snapshot)}>
                           <div class="snapshot-info">
                             <div class="snapshot-name">
                               ${snapshot.name}
                               ${snapshot.warnings?.length
-                                ? html`<span class="badge warning">Warnings</span>`
-                                : ''}
+                  ? html`<span class="badge warning">Warnings</span>`
+                  : ''}
                               ${snapshot.type ? html`<span class="badge">${snapshot.type}</span>` : ''}
                               ${snapshot.memory ? html`<span class="badge success">Memory</span>` : ''}
                             </div>
                             <div class="snapshot-meta">
                               ${snapshot.description
-                                ? html`<span class="snapshot-desc">${snapshot.description}</span>`
-                                : ''}
+                  ? html`<span class="snapshot-desc">${snapshot.description}</span>`
+                  : ''}
                               <span class="snapshot-date">Created: ${this.formatSnapshotDate(
-                                snapshot.created_at || snapshot.creation_time || '',
-                              )}</span>
+                    snapshot.created_at || snapshot.creation_time || '',
+                  )}</span>
                               ${snapshot.parent
-                                ? html`<span class="snapshot-parent">Parent: ${snapshot.parent}</span>`
-                                : ''}
+                  ? html`<span class="snapshot-parent">Parent: ${snapshot.parent}</span>`
+                  : ''}
                               ${snapshot.disk_formats?.length
-                                ? html`<span class="snapshot-disks">Disks: ${snapshot.disk_formats.join(
-                                    ', ',
-                                  )}</span>`
-                                : ''}
+                  ? html`<span class="snapshot-disks">Disks: ${snapshot.disk_formats.join(
+                    ', ',
+                  )}</span>`
+                  : ''}
                             </div>
                           </div>
                           <div class="snapshot-actions">
                             <button
                               class="btn btn-sm btn-secondary"
                               @click=${(e: Event) => {
-                                e.stopPropagation();
-                                this.handleRevertSnapshot(snapshot.name);
-                              }}
+                  e.stopPropagation();
+                  this.handleRevertSnapshot(snapshot.name);
+                }}
                               title="Revert to this snapshot"
                             >
                               ↩️ Revert
@@ -3188,9 +3188,9 @@ export class VMDetailDrawer extends LitElement {
                             <button
                               class="btn btn-sm btn-danger"
                               @click=${(e: Event) => {
-                                e.stopPropagation();
-                                this.handleDeleteSnapshot(snapshot.name);
-                              }}
+                  e.stopPropagation();
+                  this.handleDeleteSnapshot(snapshot.name);
+                }}
                               title="Delete this snapshot"
                             >
                               🗑️ Delete
@@ -3198,7 +3198,7 @@ export class VMDetailDrawer extends LitElement {
                           </div>
                         </div>
                       `,
-                    )}
+            )}
                   </div>
                 `}
       </div>
@@ -3349,12 +3349,12 @@ export class VMDetailDrawer extends LitElement {
             </div>
           ` : html`
             ${this.activeTab === 'overview' ? this.renderOverviewTab() :
-              this.activeTab === 'metrics' ? this.renderMetricsTab() :
-              this.activeTab === 'storage' ? this.renderStorageTab() :
+          this.activeTab === 'metrics' ? this.renderMetricsTab() :
+            this.activeTab === 'storage' ? this.renderStorageTab() :
               this.activeTab === 'network' ? this.renderNetworkTab() :
-              this.activeTab === 'snapshots' ? this.renderSnapshotsTab() :
-              this.activeTab === 'backups' ? html`<vm-backups-tab .vm=${this.vm}></vm-backups-tab>` :
-              html``}
+                this.activeTab === 'snapshots' ? this.renderSnapshotsTab() :
+                  this.activeTab === 'backups' ? html`<vm-backups-tab .vm=${this.vm}></vm-backups-tab>` :
+                    html``}
           `}
         </div>
       </div>

@@ -340,7 +340,7 @@ export class CreateVMWizardEnhanced extends LitElement {
     /* Collapsible sections */
     .section {
       margin-bottom: 24px;
-      border: 1px solid var(--vscode-widget-border, #454545);
+      border: 1px solid var(--vscode-border);
       border-radius: 6px;
       overflow: visible;
     }
@@ -458,17 +458,17 @@ export class CreateVMWizardEnhanced extends LitElement {
 
     /* Lists */
     .list-container {
-      border: 1px solid var(--vscode-widget-border, #454545);
+      border: 1px solid var(--vscode-border);
       border-radius: 4px;
       padding: 12px;
       margin-bottom: 16px;
-      background: var(--vscode-editor-inactiveSelectionBackground);
+      background: var(--vscode-bg-lighter, #2d2d30);
     }
 
     .list-item {
       padding: 12px;
       background: var(--vscode-editor-background);
-      border: 1px solid var(--vscode-widget-border, #454545);
+      border: 1px solid var(--vscode-border);
       border-radius: 4px;
       margin-bottom: 8px;
       display: flex;
@@ -486,10 +486,10 @@ export class CreateVMWizardEnhanced extends LitElement {
     }
 
     .storage-table-wrapper {
-      border: 1px solid var(--vscode-widget-border, #454545);
+      border: 1px solid var(--vscode-border);
       border-radius: 4px;
       margin-bottom: 16px;
-      background: var(--vscode-editor-inactiveSelectionBackground);
+      background: transparent;
       overflow-x: auto;
     }
 
@@ -502,16 +502,16 @@ export class CreateVMWizardEnhanced extends LitElement {
     .storage-table th {
       text-align: left;
       padding: 8px 12px;
-      background: var(--vscode-editor-inactiveSelectionBackground, #252526);
-      color: var(--vscode-foreground, #cccccc);
+      background: var(--vscode-bg-lighter, #2d2d30);
+      color: var(--vscode-foreground);
       font-weight: 600;
-      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+      border-bottom: 1px solid var(--vscode-border);
     }
 
     .storage-table td {
       padding: 8px 12px;
       color: var(--vscode-foreground, #cccccc);
-      border-bottom: 1px solid var(--vscode-widget-border, #454545);
+      border-bottom: 1px solid var(--vscode-border);
       vertical-align: middle;
       white-space: nowrap;
     }
