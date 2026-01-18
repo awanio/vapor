@@ -104,10 +104,10 @@ class TerminalStore {
   async createSession(name?: string): Promise<string> {
     const counter = sessionCounter.get() + 1;
     sessionCounter.set(counter);
-    
+
     const sessionId = `session-${counter}`;
     const sessionName = name || `Terminal ${counter}`;
-    
+
     const session: TerminalSessionState = {
       id: sessionId,
       name: sessionName,
@@ -118,14 +118,14 @@ class TerminalStore {
       cols: 80,
       rows: 24
     };
-    
+
     const sessions = new Map(terminalSessions.get());
     sessions.set(sessionId, session);
     terminalSessions.set(sessions);
-    
+
     // Set as active session
     activeSessionId.set(sessionId);
-    
+
     return sessionId;
   }
 
@@ -145,6 +145,24 @@ class TerminalStore {
     // Create new terminal instance if needed
     if (!session.terminal) {
       session.terminal = new Terminal(TERMINAL_CONFIG);
+
+      // Smart Ctrl+C handling: Copy if selected, Interrupt if not
+      session.terminal.attachCustomKeyEventHandler((event) => {
+        if (event.ctrlKey && event.type === 'keydown' && (event.key === 'c' || event.key === 'C')) {
+          const selection = session.terminal?.getSelection();
+          if (selection) {
+            // Has selection: Copy to clipboard
+            navigator.clipboard.writeText(selection).catch(err => {
+              console.error('Failed to copy to clipboard:', err);
+            });
+            return false; // Prevent xterm from handling it (sending SIGINT)
+          }
+          // No selection: Pass through to xterm (sends SIGINT)
+          return true;
+        }
+        return true;
+      });
+
       session.fitAddon = new FitAddon();
       session.searchAddon = new SearchAddon();
       session.webLinksAddon = new WebLinksAddon();
@@ -236,13 +254,13 @@ class TerminalStore {
         if (session.terminal && message.payload?.data) {
           const data = message.payload.data;
           session.terminal.write(data);
-          
+
           // Store in scrollback buffer
           if (!session.scrollbackBuffer) {
             session.scrollbackBuffer = [];
           }
           session.scrollbackBuffer.push(data);
-          
+
           // Limit scrollback buffer size
           if (session.scrollbackBuffer.length > this.scrollbackBufferLimit) {
             session.scrollbackBuffer = session.scrollbackBuffer.slice(-this.scrollbackBufferLimit);
@@ -300,7 +318,7 @@ class TerminalStore {
       session.wsManager.disconnect();
       session.wsManager = undefined;
     }
-    
+
     session.connectionStatus = 'disconnected';
     const updatedSessions = new Map(sessions);
     updatedSessions.set(sessionId, session);
@@ -318,7 +336,7 @@ class TerminalStore {
     // Clean up resources
     this.disconnectSession(sessionId);
     this.disposeTerminalInstance(session);
-    
+
     // Remove resize observer
     const observer = this.resizeObservers.get(sessionId);
     if (observer) {
