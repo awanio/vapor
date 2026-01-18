@@ -45,8 +45,9 @@ export class NotificationContainer extends LitElement {
     }
 
     .notification {
-      background: var(--notification-bg, #2c2f3a);
-      border: 1px solid var(--notification-border, #3a3d4a);
+      background: var(--vscode-notifications-background, var(--vscode-editorWidget-background, #2c2f3a));
+      color: var(--vscode-notifications-foreground, var(--vscode-foreground, #cccccc));
+      border: 1px solid var(--vscode-notifications-border, var(--vscode-widget-border, #3a3d4a));
       border-radius: 8px;
       padding: 16px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -56,6 +57,13 @@ export class NotificationContainer extends LitElement {
       pointer-events: auto;
       animation: slideIn 0.3s ease-out;
       position: relative;
+    }
+
+    .notification.light {
+      background: #ffffff;
+      color: #24292f;
+      border-color: #d0d7de;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
 
     .notification.closing {
@@ -91,35 +99,35 @@ export class NotificationContainer extends LitElement {
     }
 
     .notification.info {
-      border-color: var(--info-border, #2196f3);
+      border-left: 4px solid var(--vscode-notificationsInfoIcon-foreground, #2196f3);
     }
 
     .notification.info .notification-icon {
-      color: var(--info-color, #2196f3);
+      color: var(--vscode-notificationsInfoIcon-foreground, #2196f3);
     }
 
     .notification.success {
-      border-color: var(--success-border, #4caf50);
+      border-left: 4px solid var(--vscode-notificationsInfoIcon-foreground, #4caf50); /* Fallback to success color if no precise var */
     }
 
     .notification.success .notification-icon {
-      color: var(--success-color, #4caf50);
+      color: var(--vscode-testing-iconPassed, #4caf50);
     }
 
     .notification.warning {
-      border-color: var(--warning-border, #ff9800);
+      border-left: 4px solid var(--vscode-notificationsWarningIcon-foreground, #ff9800);
     }
 
     .notification.warning .notification-icon {
-      color: var(--warning-color, #ff9800);
+      color: var(--vscode-notificationsWarningIcon-foreground, #ff9800);
     }
 
     .notification.error {
-      border-color: var(--error-border, #f44336);
+      border-left: 4px solid var(--vscode-notificationsErrorIcon-foreground, #f44336);
     }
 
     .notification.error .notification-icon {
-      color: var(--error-color, #f44336);
+      color: var(--vscode-notificationsErrorIcon-foreground, #f44336);
     }
 
     .notification-content {
@@ -130,7 +138,7 @@ export class NotificationContainer extends LitElement {
     }
 
     .notification-message {
-      color: var(--message-color, #e0e0e0);
+      color: var(--vscode-notifications-foreground, var(--vscode-foreground, inherit));
       font-size: 14px;
       line-height: 1.5;
       word-break: break-word;
@@ -143,9 +151,9 @@ export class NotificationContainer extends LitElement {
     }
 
     .notification-action {
-      background: none;
-      border: 1px solid var(--action-border, #4a4d5a);
-      color: var(--action-color, #e0e0e0);
+      background: var(--vscode-button-secondaryBackground, transparent);
+      border: 1px solid var(--vscode-button-border, transparent);
+      color: var(--vscode-button-secondaryForeground, var(--vscode-foreground, inherit));
       padding: 4px 12px;
       border-radius: 4px;
       font-size: 12px;
@@ -154,8 +162,7 @@ export class NotificationContainer extends LitElement {
     }
 
     .notification-action:hover {
-      background: var(--action-hover-bg, rgba(255, 255, 255, 0.1));
-      border-color: var(--action-hover-border, #5a5d6a);
+      background: var(--vscode-button-secondaryHoverBackground, rgba(0, 0, 0, 0.1));
     }
 
     .close-button {
@@ -164,7 +171,7 @@ export class NotificationContainer extends LitElement {
       right: 8px;
       background: none;
       border: none;
-      color: var(--close-color, #999);
+      color: var(--vscode-icon-foreground, #999);
       cursor: pointer;
       padding: 4px;
       border-radius: 4px;
@@ -173,8 +180,9 @@ export class NotificationContainer extends LitElement {
     }
 
     .close-button:hover {
-      background: var(--close-hover-bg, rgba(255, 255, 255, 0.1));
+      background: var(--vscode-toolbar-hoverBackground, rgba(0, 0, 0, 0.1));
       opacity: 1;
+      color: var(--vscode-foreground, #333);
     }
 
     .progress-bar {
@@ -182,7 +190,7 @@ export class NotificationContainer extends LitElement {
       bottom: 0;
       left: 0;
       height: 3px;
-      background: var(--progress-color, currentColor);
+      background: currentColor;
       border-radius: 0 0 8px 8px;
       transition: width linear;
       opacity: 0.3;
@@ -195,12 +203,31 @@ export class NotificationContainer extends LitElement {
 
   @state() private closingIds = new Set<string>();
   private timers = new Map<string, number>();
+  @state() private _theme: 'dark' | 'light' = 'dark';
+
+  override connectedCallback() {
+    super.connectedCallback();
+    this.updateTheme();
+    window.addEventListener('theme-changed', this.handleThemeChange.bind(this) as EventListener);
+    // Also check for class on <html> as fallback
+    const observer = new MutationObserver(() => this.updateTheme());
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  }
+
+  private updateTheme() {
+    const isLight = document.documentElement.classList.contains('light');
+    this._theme = isLight ? 'light' : 'dark';
+  }
+
+  private handleThemeChange(e: CustomEvent) {
+    this._theme = e.detail.theme;
+  }
 
   override render() {
     const visibleNotifications = this.notifications.slice(-this.maxNotifications);
 
     return html`
-      <div class="container" part="container">
+      <div class="container ${this._theme}" part="container">
         ${visibleNotifications.map(notification => this.renderNotification(notification))}
       </div>
     `;
@@ -212,7 +239,7 @@ export class NotificationContainer extends LitElement {
 
     return html`
       <div
-        class="notification ${notification.type} ${isClosing ? 'closing' : ''}"
+        class="notification ${notification.type} ${isClosing ? 'closing' : ''} ${this._theme}"
         part="notification notification-${notification.type}"
         @animationend=${(e: AnimationEvent) => this.handleAnimationEnd(e, notification.id)}
       >
@@ -229,9 +256,9 @@ export class NotificationContainer extends LitElement {
                 <button
                   class="notification-action"
                   @click=${() => {
-                    action.handler();
-                    this.closeNotification(notification.id);
-                  }}
+        action.handler();
+        this.closeNotification(notification.id);
+      }}
                 >
                   ${action.label}
                 </button>
@@ -276,7 +303,7 @@ export class NotificationContainer extends LitElement {
   private closeNotification(id: string) {
     this.closingIds.add(id);
     this.requestUpdate();
-    
+
     // Clear any existing timer
     const timer = this.timers.get(id);
     if (timer) {
@@ -295,7 +322,7 @@ export class NotificationContainer extends LitElement {
     this.notifications = this.notifications.filter(n => n.id !== id);
     this.closingIds.delete(id);
     this.timers.delete(id);
-    
+
     this.dispatchEvent(new CustomEvent('notification-closed', {
       detail: { id },
       bubbles: true,
@@ -318,7 +345,7 @@ export class NotificationContainer extends LitElement {
       const timer = setTimeout(() => {
         this.closeNotification(id);
       }, newNotification.duration) as unknown as number;
-      
+
       this.timers.set(id, timer);
     }
 
@@ -329,11 +356,11 @@ export class NotificationContainer extends LitElement {
     // Clear all timers
     this.timers.forEach(timer => clearTimeout(timer));
     this.timers.clear();
-    
+
     // Mark all as closing
     this.notifications.forEach(n => this.closingIds.add(n.id));
     this.requestUpdate();
-    
+
     // Remove after animation
     setTimeout(() => {
       this.notifications = [];

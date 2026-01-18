@@ -10,14 +10,14 @@ import { repeat } from 'lit/directives/repeat.js';
 import { classMap } from 'lit/directives/class-map.js';
 import xtermStyles from 'xterm/css/xterm.css?inline';
 import { t } from '../i18n';
-import { 
-  terminalStore, 
+import {
+  terminalStore,
   // terminalSessions,  // Available for direct access if needed
-  activeSessionId, 
+  activeSessionId,
   sessionList,
   activeSession,
   connectedSessionsCount,
-  type TerminalSessionState 
+  type TerminalSessionState
 } from '../stores/shared/terminal';
 import { StoreController } from '../stores/utils/lit-mixin';
 
@@ -94,7 +94,7 @@ export class TerminalTabV2 extends LitElement {
     .terminal-tab.active {
       background-color: var(--vscode-bg-lighter);
       color: var(--vscode-text);
-      border-bottom: 2px solid var(--vscode-primary);
+      border-bottom: 2px solid var(--vscode-accent);
     }
 
     .terminal-tab-name {
@@ -275,7 +275,7 @@ export class TerminalTabV2 extends LitElement {
     .terminal-message button {
       margin-top: 12px;
       padding: 6px 12px;
-      background-color: var(--vscode-primary);
+      background-color: var(--vscode-accent);
       color: white;
       border: none;
       border-radius: 4px;
@@ -284,7 +284,7 @@ export class TerminalTabV2 extends LitElement {
     }
 
     .terminal-message button:hover {
-      background-color: var(--vscode-primary-hover);
+      background-color: var(--vscode-accent-hover);
     }
 
     .status-bar {
@@ -385,13 +385,13 @@ export class TerminalTabV2 extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback();
-    
+
     // Subscribe to store updates
     this.updateLocalState();
-    
+
     // Initialize if no sessions exist
     this.initializeTerminals();
-    
+
     // Set up event listeners
     window.addEventListener('resize', this.handleWindowResize);
     document.addEventListener('fullscreenchange', this.handleFullscreenChange);
@@ -400,12 +400,12 @@ export class TerminalTabV2 extends LitElement {
 
   override disconnectedCallback() {
     super.disconnectedCallback();
-    
+
     // Detach all terminals but keep them in store
     this.localSessions.forEach(session => {
       terminalStore.detachTerminal(session.id);
     });
-    
+
     // Remove event listeners
     window.removeEventListener('resize', this.handleWindowResize);
     document.removeEventListener('fullscreenchange', this.handleFullscreenChange);
@@ -419,10 +419,10 @@ export class TerminalTabV2 extends LitElement {
 
   override updated(changedProperties: PropertyValues) {
     super.updated(changedProperties);
-    
+
     // Update local state from store
     this.updateLocalState();
-    
+
     // Setup terminals when sessions change
     if (changedProperties.has('localSessions') || changedProperties.has('localActiveSessionId')) {
       this.setupTerminals();
@@ -445,13 +445,13 @@ export class TerminalTabV2 extends LitElement {
   private async setupTerminals() {
     // Wait for DOM update
     await this.updateComplete;
-    
+
     // Initialize terminals for all sessions
     for (const session of this.localSessions) {
       const wrapper = this.shadowRoot?.querySelector(`#${session.id} .terminal-wrapper`) as HTMLElement;
       if (wrapper && (!session.element || session.element !== wrapper)) {
         await terminalStore.initializeTerminal(session.id, wrapper);
-        
+
         // Focus active terminal
         if (session.id === this.localActiveSessionId) {
           setTimeout(() => {
@@ -466,7 +466,7 @@ export class TerminalTabV2 extends LitElement {
   private async createNewSession() {
     const sessionId = await terminalStore.createSession();
     await this.updateComplete;
-    
+
     // Setup the new terminal
     const wrapper = this.shadowRoot?.querySelector(`#${sessionId} .terminal-wrapper`) as HTMLElement;
     if (wrapper) {
@@ -477,18 +477,18 @@ export class TerminalTabV2 extends LitElement {
 
   private closeSession(sessionId: string, e: Event) {
     e.stopPropagation();
-    
+
     // Don't allow closing the last session
     if (this.localSessions.length <= 1) {
       return;
     }
-    
+
     terminalStore.closeSession(sessionId);
   }
 
   private switchToSession(sessionId: string) {
     activeSessionId.set(sessionId);
-    
+
     // Focus the terminal
     setTimeout(() => {
       terminalStore.focusTerminal(sessionId);
@@ -508,7 +508,7 @@ export class TerminalTabV2 extends LitElement {
 
   private async copySelection() {
     if (!this.localActiveSessionId) return;
-    
+
     const selection = terminalStore.getSelection(this.localActiveSessionId);
     if (selection) {
       try {
@@ -521,7 +521,7 @@ export class TerminalTabV2 extends LitElement {
 
   private async pasteFromClipboard() {
     if (!this.localActiveSessionId) return;
-    
+
     try {
       const text = await navigator.clipboard.readText();
       if (text) {
@@ -547,11 +547,11 @@ export class TerminalTabV2 extends LitElement {
   private toggleFullscreen() {
     if (!document.fullscreenElement) {
       const hostElement = this as unknown as HTMLElement;
-      const requestFullscreen = hostElement.requestFullscreen || 
-                              (hostElement as any).webkitRequestFullscreen || 
-                              (hostElement as any).mozRequestFullScreen || 
-                              (hostElement as any).msRequestFullscreen;
-      
+      const requestFullscreen = hostElement.requestFullscreen ||
+        (hostElement as any).webkitRequestFullscreen ||
+        (hostElement as any).mozRequestFullScreen ||
+        (hostElement as any).msRequestFullscreen;
+
       if (requestFullscreen) {
         requestFullscreen.call(hostElement).then(() => {
           this.isFullscreen = true;
@@ -588,20 +588,20 @@ export class TerminalTabV2 extends LitElement {
       terminalStore.fitTerminal(this.localActiveSessionId);
     }
   };
-  
+
   private handleFullscreenChange = () => {
-    const isFullscreen = !!(document.fullscreenElement || 
-                           (document as any).webkitFullscreenElement ||
-                           (document as any).mozFullScreenElement ||
-                           (document as any).msFullscreenElement);
-    
+    const isFullscreen = !!(document.fullscreenElement ||
+      (document as any).webkitFullscreenElement ||
+      (document as any).mozFullScreenElement ||
+      (document as any).msFullscreenElement);
+
     this.isFullscreen = isFullscreen;
     if (isFullscreen) {
       this.classList.add('fullscreen');
     } else {
       this.classList.remove('fullscreen');
     }
-    
+
     // Refit terminal after fullscreen change
     setTimeout(() => {
       if (this.localActiveSessionId) {
@@ -620,22 +620,22 @@ export class TerminalTabV2 extends LitElement {
       <div class="terminal-header">
         <div class="terminal-tabs">
           ${repeat(
-            this.localSessions,
-            (session) => session.id,
-            (session) => html`
+      this.localSessions,
+      (session) => session.id,
+      (session) => html`
               <button 
                 class=${classMap({
-                  'terminal-tab': true,
-                  'active': session.id === this.localActiveSessionId
-                })}
+        'terminal-tab': true,
+        'active': session.id === this.localActiveSessionId
+      })}
                 @click=${() => this.switchToSession(session.id)}
               >
                 <span class=${classMap({
-                  'terminal-tab-status': true,
-                  'connected': session.connectionStatus === 'connected',
-                  'connecting': session.connectionStatus === 'connecting',
-                  'disconnected': session.connectionStatus === 'disconnected'
-                })}></span>
+        'terminal-tab-status': true,
+        'connected': session.connectionStatus === 'connected',
+        'connecting': session.connectionStatus === 'connecting',
+        'disconnected': session.connectionStatus === 'disconnected'
+      })}></span>
                 <span class="terminal-tab-name">${session.name}</span>
                 ${this.localSessions.length > 1 ? html`
                   <button 
@@ -648,7 +648,7 @@ export class TerminalTabV2 extends LitElement {
                 ` : ''}
               </button>
             `
-          )}
+    )}
           <button 
             class="add-terminal-btn" 
             @click=${() => this.createNewSession()}
@@ -726,15 +726,15 @@ export class TerminalTabV2 extends LitElement {
             </button>
           </div>
         ` : repeat(
-          this.localSessions,
-          (session) => session.id,
-          (session) => html`
+      this.localSessions,
+      (session) => session.id,
+      (session) => html`
             <div 
               id="${session.id}" 
               class=${classMap({
-                'terminal-session': true,
-                'active': session.id === this.localActiveSessionId
-              })}
+        'terminal-session': true,
+        'active': session.id === this.localActiveSessionId
+      })}
             >
               ${session.connectionStatus === 'disconnected' ? html`
                 <div class="terminal-message">
@@ -749,24 +749,24 @@ export class TerminalTabV2 extends LitElement {
               `}
             </div>
           `
-        )}
+    )}
       </div>
       <div class="status-bar">
         <div class="status-left">
           ${this.localActiveSession ? html`
             <div class="status-indicator">
               <span class=${classMap({
-                'status-dot': true,
-                'connected': this.localActiveSession.connectionStatus === 'connected',
-                'connecting': this.localActiveSession.connectionStatus === 'connecting',
-                'disconnected': this.localActiveSession.connectionStatus === 'disconnected'
-              })}></span>
+      'status-dot': true,
+      'connected': this.localActiveSession.connectionStatus === 'connected',
+      'connecting': this.localActiveSession.connectionStatus === 'connecting',
+      'disconnected': this.localActiveSession.connectionStatus === 'disconnected'
+    })}></span>
               <span>
-                ${this.localActiveSession.connectionStatus === 'connected' 
-                  ? t('terminal.connected')
-                  : this.localActiveSession.connectionStatus === 'connecting'
-                  ? t('terminal.connecting')
-                  : t('terminal.disconnected')}
+                ${this.localActiveSession.connectionStatus === 'connected'
+          ? t('terminal.connected')
+          : this.localActiveSession.connectionStatus === 'connecting'
+            ? t('terminal.connecting')
+            : t('terminal.disconnected')}
               </span>
             </div>
             <span>${this.localActiveSession.name}</span>

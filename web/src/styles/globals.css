@@ -58,6 +58,15 @@
   --vscode-info: #3794ff;
   --vscode-statusbar: #007acc;
 
+  /* Notification variables (Dark) */
+  --vscode-notifications-background: #252526;
+  --vscode-notifications-foreground: #cccccc;
+  --vscode-notifications-border: #464647;
+  --vscode-notificationsInfoIcon-foreground: #3794ff;
+  --vscode-notificationsWarningIcon-foreground: #cca700;
+  --vscode-notificationsErrorIcon-foreground: #f14c4c;
+  --vscode-testing-iconPassed: #73c991;
+
   /* Success/Error background colors for dark theme */
   --success-bg: rgba(115, 201, 145, 0.15);
   --error-bg: rgba(241, 76, 76, 0.15);
@@ -139,6 +148,15 @@
   --vscode-tab: #f3f4f6;
   --vscode-tab-active: #ffffff;
   --vscode-statusbar: #0969da;
+
+  /* Notification variables (Light) */
+  --vscode-notifications-background: #ffffff;
+  --vscode-notifications-foreground: #24292f;
+  --vscode-notifications-border: #d0d7de;
+  --vscode-notificationsInfoIcon-foreground: #0969da;
+  --vscode-notificationsWarningIcon-foreground: #9a6700;
+  --vscode-notificationsErrorIcon-foreground: #cf222e;
+  --vscode-testing-iconPassed: #1a7f37;
 
   /* Success/Error background colors for light theme */
   --success-bg: #dafbe1;
