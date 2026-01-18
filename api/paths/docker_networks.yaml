@@ -25,3 +25,57 @@ get:
             error:
               code: DOCKER_ERROR
               message: 'Failed to list networks: Cannot connect to the Docker daemon'
+post:
+  summary: Create Docker network
+  description: Create a new Docker network
+  tags:
+    - Docker
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/NetworkCreateRequest.yaml
+        examples:
+          createBridgeNetwork:
+            summary: Create a bridge network
+            value:
+              name: my-network
+              driver: bridge
+          createNetworkWithSubnet:
+            summary: Create network with custom subnet
+            value:
+              name: my-custom-network
+              driver: bridge
+              subnet: "172.20.0.0/16"
+              gateway: "172.20.0.1"
+              labels:
+                environment: development
+  responses:
+    '201':
+      description: Network created successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/NetworkCreateResponse.yaml
+    '400':
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '500':
+      description: Failed to create network
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+          example:
+            status: error
+            error:
+              code: CREATE_NETWORK_FAILED
+              message: 'Failed to create network: network name already exists'

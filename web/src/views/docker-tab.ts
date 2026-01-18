@@ -34,7 +34,7 @@ interface CreateVolumeMapping {
 }
 
 export class DockerTab extends LitElement {
-  @state() private activeTab = 'processes';
+  @state() private activeTab = 'containers';
   @state() private containers: DockerContainer[] = [];
   @state() private images: DockerImage[] = [];
   @state() private volumes: DockerVolume[] = [];
@@ -46,6 +46,8 @@ export class DockerTab extends LitElement {
   @state() private confirmAction: (() => void) | null = null;
   @state() private selectedContainer: DockerContainer | null = null;
   @state() private selectedImage: DockerImage | null = null;
+  @state() private selectedVolume: DockerVolume | null = null;
+  @state() private selectedNetwork: DockerNetwork | null = null;
   @state() private showDrawer = false;
   @state() private detailError: string | null = null;
   @state() private confirmTitle = '';
@@ -85,6 +87,27 @@ export class DockerTab extends LitElement {
   @state() private createMemoryMB = '';
   @state() private createPorts: CreatePortMapping[] = [];
   @state() private createVolumes: CreateVolumeMapping[] = [];
+
+  // Volume creation drawer state
+  @state() private showCreateVolumeDrawer = false;
+  @state() private isClosingVolumeDrawer = false;
+  @state() private createVolumeError: string | null = null;
+  @state() private isCreatingVolume = false;
+  @state() private createVolumeName = '';
+  @state() private createVolumeDriver = '';
+  @state() private createVolumeLabels = '';
+
+  // Network creation drawer state
+  @state() private showCreateNetworkDrawer = false;
+  @state() private isClosingNetworkDrawer = false;
+  @state() private createNetworkError: string | null = null;
+  @state() private isCreatingNetwork = false;
+  @state() private createNetworkName = '';
+  @state() private createNetworkDriver = 'bridge';
+  @state() private createNetworkSubnet = '';
+  @state() private createNetworkGateway = '';
+  @state() private createNetworkLabels = '';
+
 
   static override styles = css`
     :host {
@@ -1171,7 +1194,7 @@ export class DockerTab extends LitElement {
 
   async fetchData() {
     switch (this.activeTab) {
-      case 'processes':
+      case 'containers':
         await this.fetchContainers();
         break;
       case 'images':
@@ -1241,7 +1264,7 @@ export class DockerTab extends LitElement {
     } else if (path.endsWith('/networks')) {
       this.activeTab = 'networks';
     } else {
-      this.activeTab = 'processes';
+      this.activeTab = 'containers';
     }
     this.fetchData();
   }
@@ -1261,7 +1284,7 @@ export class DockerTab extends LitElement {
         path = '/docker/networks';
         break;
       default:
-        path = '/docker/processes';
+        path = '/docker/containers';
         break;
     }
     window.history.pushState({}, '', path);
@@ -1272,11 +1295,11 @@ export class DockerTab extends LitElement {
     return html`
       <div class="tab-header">
         <a 
-          href="/docker/processes"
-          class="tab-button ${this.activeTab === 'processes' ? 'active' : ''}" 
-          @click="${(e: MouseEvent) => this.handleTabClick(e, 'processes')}"
+          href="/docker/containers"
+          class="tab-button ${this.activeTab === 'containers' ? 'active' : ''}" 
+          @click="${(e: MouseEvent) => this.handleTabClick(e, 'containers')}"
         >
-          Processes
+          Containers
         </a>
         <a 
           href="/docker/images"
@@ -1306,7 +1329,7 @@ export class DockerTab extends LitElement {
   override render() {
     return html`
       <div class="tab-container">
-        <h1>${t('Docker')}</h1>
+        <h1>Docker</h1>
         ${this.renderTabs()}
         <div class="tab-content">
           ${this.error ? html`
@@ -1316,7 +1339,7 @@ export class DockerTab extends LitElement {
           ? 'Container management features are not available. Please install Docker or a CRI-compatible container runtime (containerd, CRI-O) to use this feature.'
           : this.error}</p>
             </div>` : ''}
-          ${this.activeTab === 'processes' && !this.error ? html`
+          ${this.activeTab === 'containers' && !this.error ? html`
             ${this.containers.length > 0
           ? this.renderContainersTable()
           : html`
@@ -1374,12 +1397,18 @@ export class DockerTab extends LitElement {
 
       ${this.showCreateDrawer ? this.renderCreateContainerDrawer() : ''}
 
+      ${this.showCreateVolumeDrawer ? this.renderCreateVolumeDrawer() : ''}
+
+      ${this.showCreateNetworkDrawer ? this.renderCreateNetworkDrawer() : ''}
+
       ${this.showDrawer ? html`
         <div class="drawer">
-          <button class="close-btn" @click=${() => { this.showDrawer = false; this.detailError = null; }}>✕</button>
+          <button class="close-btn" @click=${() => { this.showDrawer = false; this.detailError = null; this.selectedVolume = null; this.selectedNetwork = null; }}>✕</button>
           ${this.detailError ? this.renderError() :
           (this.selectedContainer ? this.renderContainerDetails() :
-            this.selectedImage ? this.renderImageDetails() : '')}
+            this.selectedImage ? this.renderImageDetails() :
+            this.selectedVolume ? this.renderVolumeDetails() :
+            this.selectedNetwork ? this.renderNetworkDetails() : '')}
         </div>` : ''}
 
       ${this.showLogsDrawer ? html`
@@ -1542,6 +1571,8 @@ export class DockerTab extends LitElement {
     this.isClosingCreateDrawer = false;
     this.showCreateDrawer = true;
     void this.fetchImages();
+    void this.fetchVolumes();
+    void this.fetchNetworks();
   }
 
   private closeCreateContainerDrawer() {
@@ -1586,6 +1617,115 @@ export class DockerTab extends LitElement {
   private removeVolumeMapping(index: number) {
     this.createVolumes = this.createVolumes.filter((_, i) => i !== index);
   }
+
+  // Volume creation drawer methods
+  private openCreateVolumeDrawer() {
+    this.resetVolumeForm();
+    this.isClosingVolumeDrawer = false;
+    this.showCreateVolumeDrawer = true;
+  }
+
+  private closeCreateVolumeDrawer() {
+    if (this.isClosingVolumeDrawer) return;
+    this.isClosingVolumeDrawer = true;
+    window.setTimeout(() => {
+      this.showCreateVolumeDrawer = false;
+      this.isClosingVolumeDrawer = false;
+      this.createVolumeError = null;
+    }, 300);
+  }
+
+  private resetVolumeForm() {
+    this.createVolumeName = '';
+    this.createVolumeDriver = '';
+    this.createVolumeLabels = '';
+  }
+
+  private async handleCreateVolume() {
+    if (!this.createVolumeName.trim()) {
+      this.createVolumeError = 'Volume name is required';
+      return;
+    }
+    this.isCreatingVolume = true;
+    this.createVolumeError = null;
+    try {
+      const labels: Record<string, string> = {};
+      this.createVolumeLabels.split('\n').forEach(line => {
+        const [key, ...rest] = line.split('=');
+        if (key && key.trim()) labels[key.trim()] = rest.join('=').trim();
+      });
+      const payload = {
+        name: this.createVolumeName.trim(),
+        driver: this.createVolumeDriver.trim() || undefined,
+        labels: Object.keys(labels).length ? labels : undefined,
+      };
+      await api.post('/docker/volumes', payload);
+      this.closeCreateVolumeDrawer();
+      this.resetVolumeForm();
+      this.fetchVolumes();
+    } catch (error) {
+      this.createVolumeError = error instanceof ApiError ? error.message : 'Failed to create volume';
+    } finally {
+      this.isCreatingVolume = false;
+    }
+  }
+
+  // Network creation drawer methods
+  private openCreateNetworkDrawer() {
+    this.resetNetworkForm();
+    this.isClosingNetworkDrawer = false;
+    this.showCreateNetworkDrawer = true;
+  }
+
+  private closeCreateNetworkDrawer() {
+    if (this.isClosingNetworkDrawer) return;
+    this.isClosingNetworkDrawer = true;
+    window.setTimeout(() => {
+      this.showCreateNetworkDrawer = false;
+      this.isClosingNetworkDrawer = false;
+      this.createNetworkError = null;
+    }, 300);
+  }
+
+  private resetNetworkForm() {
+    this.createNetworkName = '';
+    this.createNetworkDriver = 'bridge';
+    this.createNetworkSubnet = '';
+    this.createNetworkGateway = '';
+    this.createNetworkLabels = '';
+  }
+
+  private async handleCreateNetwork() {
+    if (!this.createNetworkName.trim()) {
+      this.createNetworkError = 'Network name is required';
+      return;
+    }
+    this.isCreatingNetwork = true;
+    this.createNetworkError = null;
+    try {
+      const labels: Record<string, string> = {};
+      this.createNetworkLabels.split('\n').forEach(line => {
+        const [key, ...rest] = line.split('=');
+        if (key && key.trim()) labels[key.trim()] = rest.join('=').trim();
+      });
+      const payload = {
+        name: this.createNetworkName.trim(),
+        driver: this.createNetworkDriver.trim() || 'bridge',
+        subnet: this.createNetworkSubnet.trim() || undefined,
+        gateway: this.createNetworkGateway.trim() || undefined,
+        labels: Object.keys(labels).length ? labels : undefined,
+      };
+      await api.post('/docker/networks', payload);
+      this.closeCreateNetworkDrawer();
+      this.resetNetworkForm();
+      this.fetchNetworks();
+    } catch (error) {
+      this.createNetworkError = error instanceof ApiError ? error.message : 'Failed to create network';
+    } finally {
+      this.isCreatingNetwork = false;
+    }
+  }
+
 
   private parseCommandInput(value: string): string[] {
     const trimmed = value.trim();
@@ -1867,18 +2007,35 @@ export class DockerTab extends LitElement {
             <h3>Volumes</h3>
             ${this.createVolumes.map((volume, index) => html`
               <div class="list-item">
-                <input
-                  class="form-input"
-                  type="text"
-                  placeholder="/host/path"
-                  .value=${volume.source}
-                  @input=${(e: any) => {
+                ${volume.type === 'volume' ? html`
+                  <select
+                    class="form-select"
+                    .value=${volume.source}
+                    @change=${(e: any) => {
           const volumes = [...this.createVolumes];
           const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
           volumes[index] = { ...current, source: e.target.value };
           this.createVolumes = volumes;
         }}
-                />
+                  >
+                    <option value="">Select volume...</option>
+                    ${this.volumes.map(v => html`<option value="${v.name}">${v.name}</option>`)}
+                  </select>
+                ` : html`
+                  <input
+                    class="form-input"
+                    type="text"
+                    placeholder="${volume.type === 'tmpfs' ? 'tmpfs' : '/host/path'}"
+                    .value=${volume.source}
+                    ?disabled=${volume.type === 'tmpfs'}
+                    @input=${(e: any) => {
+          const volumes = [...this.createVolumes];
+          const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
+          volumes[index] = { ...current, source: e.target.value };
+          this.createVolumes = volumes;
+        }}
+                  />
+                `}
                 <input
                   class="form-input"
                   type="text"
@@ -1973,14 +2130,17 @@ export class DockerTab extends LitElement {
             <h3>Runtime</h3>
             <div class="form-row">
               <div class="form-field" style="flex: 1;">
-                <label class="form-label">Network Mode</label>
-                <input
-                  class="form-input"
-                  type="text"
-                  placeholder="bridge"
+                <label class="form-label">Network</label>
+                <select
+                  class="form-select"
                   .value=${this.createNetworkMode}
-                  @input=${(e: any) => { this.createNetworkMode = e.target.value; }}
-                />
+                  @change=${(e: any) => { this.createNetworkMode = e.target.value; }}
+                >
+                  <option value="">Default (bridge)</option>
+                  <option value="host">host</option>
+                  <option value="none">none</option>
+                  ${this.networks.filter(n => !['bridge', 'host', 'none'].includes(n.name)).map(n => html`<option value="${n.name}">${n.name} (${n.driver})</option>`)}
+                </select>
               </div>
               <div class="form-field" style="flex: 1;">
                 <label class="form-label">Restart Policy</label>
@@ -2139,8 +2299,8 @@ export class DockerTab extends LitElement {
     <table class="table">
         <thead>
           <tr>
-            <th>ID</th>
             <th>Tags</th>
+            <th>ID</th>
             <th>Created</th>
             <th>Size</th>
             <th>Actions</th>
@@ -2148,17 +2308,26 @@ export class DockerTab extends LitElement {
         </thead>
         <tbody>
           ${filteredImages.map((image, index) => {
-      const shortId = image.id?.substring(0, 12) || 'Unknown';
-      const tags = image.repoTags && image.repoTags.length > 0
-        ? image.repoTags.join(', ')
-        : 'No tags';
+      const shortId = image.id?.replace('sha256:', '').substring(0, 12) || 'Unknown';
+      const tags = image.repoTags && image.repoTags.length > 0 && image.repoTags[0] !== '<none>:<none>'
+        ? image.repoTags
+        : [];
       const size = typeof image.size === 'number' ? this.formatBytes(image.size) : 'Unknown';
+      const created = image.created 
+        ? (typeof image.created === 'number' 
+          ? new Date(image.created * 1000).toLocaleString() 
+          : new Date(image.created).toLocaleString())
+        : '-';
 
       return html`
             <tr>
-              <td>${shortId}</td>
-              <td>${tags}</td>
-              <td>-</td>
+              <td>
+                ${tags.length > 0 ? tags.map(tag => html`
+                  <button class="link-button" @click=${() => this.fetchImageDetails(image.id)}>${tag}</button>
+                `) : html`<span style="color: var(--text-secondary); font-style: italic;">No tags</span>`}
+              </td>
+              <td class="monospace">${shortId}</td>
+              <td>${created}</td>
               <td>${size}</td>
               <td>
                 <div class="action-menu">
@@ -2239,6 +2408,9 @@ export class DockerTab extends LitElement {
           @input=${(e: any) => this.searchTerm = e.target.value}
         />
       </div>
+      <div class="action-menu">
+        <button class="btn btn-primary" @click=${() => this.openCreateVolumeDrawer()}>+ Create Volume</button>
+      </div>
     </div>
       <table class="table">
         <thead>
@@ -2252,13 +2424,18 @@ export class DockerTab extends LitElement {
         <tbody>
           ${filteredVolumes.map((volume, index) => html`
             <tr>
-              <td>${volume.name}</td>
+              <td>
+                <button class="link-button" @click=${() => this.showVolumeDetails(volume)}>
+                  ${volume.name}
+                </button>
+              </td>
               <td>${volume.driver}</td>
               <td>${volume.mountpoint}</td>
               <td>
                 <div class="action-menu">
                   <button class="action-dots" @click=${(e: Event) => this.toggleActionMenu(e, `docker-volume-${index}`)}>⋮</button>
                   <div class="action-dropdown" id="docker-volume-${index}">
+                    <button @click=${() => { this.closeAllMenus(); this.showVolumeDetails(volume); }}>View Details</button>
                     <button class="danger" @click=${() => { this.closeAllMenus(); this.confirmDeleteVolume(volume); }}>${t('common.delete')}</button>
                   </div>
                 </div>
@@ -2290,6 +2467,9 @@ export class DockerTab extends LitElement {
           @input=${(e: any) => this.searchTerm = e.target.value}
         />
       </div>
+      <div class="action-menu">
+        <button class="btn btn-primary" @click=${() => this.openCreateNetworkDrawer()}>+ Create Network</button>
+      </div>
     </div>
       <table class="table">
         <thead>
@@ -2303,13 +2483,18 @@ export class DockerTab extends LitElement {
         <tbody>
           ${filteredNetworks.map((network, index) => html`
             <tr>
-              <td>${network.name}</td>
+              <td>
+                <button class="link-button" @click=${() => this.showNetworkDetails(network)}>
+                  ${network.name}
+                </button>
+              </td>
               <td>${network.driver}</td>
               <td>${network.scope}</td>
               <td>
                 <div class="action-menu">
                   <button class="action-dots" @click=${(e: Event) => this.toggleActionMenu(e, `docker-network-${index}`)}>⋮</button>
                   <div class="action-dropdown" id="docker-network-${index}">
+                    <button @click=${() => { this.closeAllMenus(); this.showNetworkDetails(network); }}>View Details</button>
                     <button class="danger" @click=${() => { this.closeAllMenus(); this.confirmDeleteNetwork(network); }}>${t('common.delete')}</button>
                   </div>
                 </div>
@@ -2528,19 +2713,23 @@ export class DockerTab extends LitElement {
       const response = await api.get(`/docker/containers/${containerId}`);
       this.selectedContainer = response.container || response;
       this.selectedImage = null;
+      this.selectedVolume = null;
+      this.selectedNetwork = null;
       this.showDrawer = true;
     } catch (error) {
       console.error('Error fetching container details:', error);
       this.detailError = error instanceof ApiError ? error.message : 'Failed to fetch container details';
       this.selectedContainer = null;
       this.selectedImage = null;
+      this.selectedVolume = null;
+      this.selectedNetwork = null;
       this.showDrawer = true;
     }
   }
 
   // Helper methods
   private getStatusClass(state: string): string {
-    switch (state.toLowerCase()) {
+    switch ((state || "").toLowerCase()) {
       case 'running':
         return 'running';
       case 'stopped':
@@ -2564,7 +2753,18 @@ export class DockerTab extends LitElement {
 
   private renderContainerDetails() {
     if (!this.selectedContainer) return html``;
-    const container = this.selectedContainer;
+    const container: any = this.selectedContainer;
+
+    // Handle both list format (lowercase) and inspect/detail format (PascalCase from Docker SDK)
+    const name = container.Name || (container.names && container.names.join(', ')) || 'Unnamed';
+    const id = container.Id || container.id || 'Unknown';
+    const image = container.Config?.Image || container.image || 'Unknown';
+    const state = container.State?.Status || container.state || 'Unknown';
+    const status = container.State?.Status || container.status || 'Unknown';
+    const command = container.Config?.Cmd?.join(' ') || container.command || 'Unknown';
+    const created = container.Created || container.created;
+    const labels = container.Config?.Labels || container.labels || {};
+    const ports = container.NetworkSettings?.Ports || container.ports || [];
 
     return html`
       <div class="drawer-content">
@@ -2572,55 +2772,83 @@ export class DockerTab extends LitElement {
           <h3>Container Details</h3>
           <div class="detail-item">
             <span class="detail-label">Name</span>
-            <span class="detail-value">${container.names.join(', ') || 'Unnamed'}</span>
+            <span class="detail-value">${name.replace(/^\//, '')}</span>
           </div>
           <div class="detail-item">
             <span class="detail-label">ID</span>
-            <span class="detail-value monospace">${container.id || 'Unknown'}</span>
+            <span class="detail-value monospace">${id.substring(0, 12)}</span>
           </div>
           <div class="detail-item">
             <span class="detail-label">Image</span>
-            <span class="detail-value">${container.image || 'Unknown'}</span>
+            <span class="detail-value">${image}</span>
           </div>
           <div class="detail-item">
             <span class="detail-label">State</span>
             <span class="detail-value">
-              <span class="status-badge ${this.getStatusClass(container.state)}">${container.state}</span>
+              <span class="status-badge ${this.getStatusClass(state)}">${state}</span>
             </span>
           </div>
           <div class="detail-item">
             <span class="detail-label">Status</span>
-            <span class="detail-value">${container.status || 'Unknown'}</span>
+            <span class="detail-value">${status}</span>
           </div>
           <div class="detail-item">
             <span class="detail-label">Command</span>
-            <span class="detail-value monospace">${container.command || 'Unknown'}</span>
+            <span class="detail-value monospace">${command}</span>
           </div>
           <div class="detail-item">
             <span class="detail-label">Created</span>
-            <span class="detail-value">${container.created ? new Date(container.created).toLocaleString() : 'Unknown'}</span>
+            <span class="detail-value">${created ? new Date(created).toLocaleString() : 'Unknown'}</span>
           </div>
         </div>
 
-        ${container.labels && Object.keys(container.labels).length > 0 ? html`
+        ${labels && Object.keys(labels).length > 0 ? html`
           <div class="detail-section">
             <h3>Labels</h3>
             <div class="tag-list">
-              ${Object.entries(container.labels).map(([key, value]) => html`<div class="tag">${key}: ${value}</div>`)}
+              ${Object.entries(labels).map(([key, value]) => html`<div class="tag">${key}: ${value}</div>`)}
             </div>
           </div>
         ` : ''}
 
-        ${container.ports && container.ports.length > 0 ? html`
-          <div class="detail-section">
-            <h3>Ports</h3>
-            ${container.ports.map(port => html`
-              <div class="detail-item">
-                <span class="detail-value">${port.privatePort}${port.publicPort ? ` → ${port.publicPort}` : ''} (${port.type})</span>
-              </div>
-            `)}
-          </div>
-        ` : ''}
+        ${this.renderPortsSection(ports)}
+      </div>
+    `;
+  }
+
+  private renderPortsSection(ports: any) {
+    if (!ports) return '';
+    
+    // Handle Docker SDK format (object with port keys) or list format (array)
+    if (Array.isArray(ports)) {
+      if (ports.length === 0) return '';
+      return html`
+        <div class="detail-section">
+          <h3>Ports</h3>
+          ${ports.map(port => html`
+            <div class="detail-item">
+              <span class="detail-value">${port.privatePort}${port.publicPort ? ` → ${port.publicPort}` : ''} (${port.type})</span>
+            </div>
+          `)}
+        </div>
+      `;
+    }
+    
+    // Docker SDK format: { "80/tcp": [{ "HostIp": "0.0.0.0", "HostPort": "8080" }], ... }
+    const portEntries = Object.entries(ports).filter(([_, bindings]) => bindings && (bindings as any[]).length > 0);
+    if (portEntries.length === 0) return '';
+    
+    return html`
+      <div class="detail-section">
+        <h3>Ports</h3>
+        ${portEntries.map(([containerPort, bindings]) => {
+          const binding = (bindings as any[])[0];
+          return html`
+            <div class="detail-item">
+              <span class="detail-value">${containerPort}${binding ? ` → ${binding.HostIp || '0.0.0.0'}:${binding.HostPort}` : ''}</span>
+            </div>
+          `;
+        })}
       </div>
     `;
   }
@@ -2698,6 +2926,170 @@ export class DockerTab extends LitElement {
     `;
   }
 
+  private renderVolumeDetails() {
+    if (!this.selectedVolume) return html``;
+    const volume = this.selectedVolume;
+
+    return html`
+      <div class="drawer-content">
+        <div class="detail-section">
+          <h3>Volume Details</h3>
+          <div class="detail-item">
+            <span class="detail-label">Name</span>
+            <span class="detail-value">${volume.name || 'Unknown'}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Driver</span>
+            <span class="detail-value">${volume.driver || 'Unknown'}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Mount Point</span>
+            <span class="detail-value monospace" style="word-break: break-all;">${volume.mountpoint || 'Unknown'}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Scope</span>
+            <span class="detail-value">${volume.scope || 'Unknown'}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Created</span>
+            <span class="detail-value">${volume.createdAt ? new Date(volume.createdAt).toLocaleString() : 'Unknown'}</span>
+          </div>
+          ${volume.usageData ? html`
+            <div class="detail-item">
+              <span class="detail-label">Size</span>
+              <span class="detail-value">${this.formatBytes(volume.usageData.size)}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Reference Count</span>
+              <span class="detail-value">${volume.usageData.refCount}</span>
+            </div>
+          ` : ''}
+        </div>
+
+        ${volume.labels && Object.keys(volume.labels).length > 0 ? html`
+          <div class="detail-section">
+            <h3>Labels</h3>
+            <div class="tag-list">
+              ${Object.entries(volume.labels).map(([key, value]) => html`<div class="tag">${key}: ${value}</div>`)}
+            </div>
+          </div>
+        ` : ''}
+
+        ${volume.options && Object.keys(volume.options).length > 0 ? html`
+          <div class="detail-section">
+            <h3>Options</h3>
+            <div class="tag-list">
+              ${Object.entries(volume.options).map(([key, value]) => html`<div class="tag">${key}: ${value}</div>`)}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  private renderNetworkDetails() {
+    if (!this.selectedNetwork) return html``;
+    const network = this.selectedNetwork;
+
+    return html`
+      <div class="drawer-content">
+        <div class="detail-section">
+          <h3>Network Details</h3>
+          <div class="detail-item">
+            <span class="detail-label">Name</span>
+            <span class="detail-value">${network.name || 'Unknown'}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">ID</span>
+            <span class="detail-value monospace">${(network.id || 'Unknown').substring(0, 12)}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Driver</span>
+            <span class="detail-value">${network.driver || 'Unknown'}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Scope</span>
+            <span class="detail-value">${network.scope || 'Unknown'}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Created</span>
+            <span class="detail-value">${network.created ? new Date(network.created).toLocaleString() : 'Unknown'}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Internal</span>
+            <span class="detail-value">${network.internal ? 'Yes' : 'No'}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Attachable</span>
+            <span class="detail-value">${network.attachable ? 'Yes' : 'No'}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">IPv6</span>
+            <span class="detail-value">${network.enableIPv6 ? 'Enabled' : 'Disabled'}</span>
+          </div>
+        </div>
+
+        ${network.ipam && network.ipam.config && network.ipam.config.length > 0 ? html`
+          <div class="detail-section">
+            <h3>IPAM Configuration</h3>
+            ${network.ipam.config.map(cfg => html`
+              <div class="detail-item">
+                <span class="detail-label">Subnet</span>
+                <span class="detail-value">${cfg.subnet || 'N/A'}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Gateway</span>
+                <span class="detail-value">${cfg.gateway || 'N/A'}</span>
+              </div>
+              ${cfg.ipRange ? html`
+                <div class="detail-item">
+                  <span class="detail-label">IP Range</span>
+                  <span class="detail-value">${cfg.ipRange}</span>
+                </div>
+              ` : ''}
+            `)}
+          </div>
+        ` : ''}
+
+        ${network.labels && Object.keys(network.labels).length > 0 ? html`
+          <div class="detail-section">
+            <h3>Labels</h3>
+            <div class="tag-list">
+              ${Object.entries(network.labels).map(([key, value]) => html`<div class="tag">${key}: ${value}</div>`)}
+            </div>
+          </div>
+        ` : ''}
+
+        ${network.options && Object.keys(network.options).length > 0 ? html`
+          <div class="detail-section">
+            <h3>Options</h3>
+            <div class="tag-list">
+              ${Object.entries(network.options).map(([key, value]) => html`<div class="tag">${key}: ${value}</div>`)}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  private showVolumeDetails(volume: DockerVolume) {
+    this.selectedVolume = volume;
+    this.selectedContainer = null;
+    this.selectedImage = null;
+    this.selectedNetwork = null;
+    this.detailError = null;
+    this.showDrawer = true;
+  }
+
+  private showNetworkDetails(network: DockerNetwork) {
+    this.selectedNetwork = network;
+    this.selectedContainer = null;
+    this.selectedImage = null;
+    this.selectedVolume = null;
+    this.detailError = null;
+    this.showDrawer = true;
+  }
+
   private highlightSearchTerm(text: string, term: string): string {
     if (!term || !text) return text;
     const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
@@ -2730,11 +3122,15 @@ export class DockerTab extends LitElement {
     if (image) {
       this.selectedImage = image;
       this.selectedContainer = null;
+      this.selectedVolume = null;
+      this.selectedNetwork = null;
       this.showDrawer = true;
     } else {
       this.detailError = 'Image not found';
       this.selectedContainer = null;
       this.selectedImage = null;
+      this.selectedVolume = null;
+      this.selectedNetwork = null;
       this.showDrawer = true;
     }
   }
@@ -2914,9 +3310,152 @@ export class DockerTab extends LitElement {
       // TODO: Add error handling UI - could show a toast notification or update modal with error
     } finally {
       this.isPullingImage = false;
-    }
+
   }
 }
 
-customElements.define('docker-tab', DockerTab);
+  private renderCreateVolumeDrawer() {
+    return html`
+      <div class="create-drawer ${this.isClosingVolumeDrawer ? 'closing' : ''}">
+        <div class="create-drawer-header">
+          <h2 class="create-drawer-title">Create Volume</h2>
+          <button class="create-close-btn" @click=${this.closeCreateVolumeDrawer}>✕</button>
+        </div>
+        <div class="create-drawer-content">
+          ${this.createVolumeError ? html`
+            <div class="error-container">
+              <div class="error-icon">⚠️</div>
+              <p class="error-message">${this.createVolumeError}</p>
+            </div>
+          ` : ''}
+          <div class="form-section">
+            <div class="form-field">
+              <label class="form-label">Name *</label>
+              <input
+                class="form-input"
+                type="text"
+                placeholder="e.g., my-volume"
+                .value=${this.createVolumeName}
+                @input=${(e: any) => { this.createVolumeName = e.target.value; }}
+              />
+            </div>
+            <div class="form-field">
+              <label class="form-label">Driver</label>
+              <select
+                class="form-select"
+                .value=${this.createVolumeDriver}
+                @change=${(e: any) => { this.createVolumeDriver = e.target.value; }}
+              >
+                <option value="">default (local)</option>
+                <option value="local">local</option>
+              </select>
+              <div class="form-hint">Leave empty for default local driver.</div>
+            </div>
+            <div class="form-field">
+              <label class="form-label">Labels</label>
+              <textarea
+                class="form-textarea"
+                placeholder="key=value"
+                .value=${this.createVolumeLabels}
+                @input=${(e: any) => { this.createVolumeLabels = e.target.value; }}
+              ></textarea>
+              <div class="form-hint">One label per line in key=value format.</div>
+            </div>
+          </div>
+        </div>
+        <div class="create-drawer-footer">
+          <button class="btn btn-secondary" @click=${this.closeCreateVolumeDrawer}>Cancel</button>
+          <button class="btn btn-primary" @click=${this.handleCreateVolume} ?disabled=${this.isCreatingVolume}>
+            ${this.isCreatingVolume ? 'Creating...' : 'Create Volume'}
+          </button>
+        </div>
+      </div>
+    `;
+  }
 
+  private renderCreateNetworkDrawer() {
+    return html`
+      <div class="create-drawer ${this.isClosingNetworkDrawer ? 'closing' : ''}">
+        <div class="create-drawer-header">
+          <h2 class="create-drawer-title">Create Network</h2>
+          <button class="create-close-btn" @click=${this.closeCreateNetworkDrawer}>✕</button>
+        </div>
+        <div class="create-drawer-content">
+          ${this.createNetworkError ? html`
+            <div class="error-container">
+              <div class="error-icon">⚠️</div>
+              <p class="error-message">${this.createNetworkError}</p>
+            </div>
+          ` : ''}
+          <div class="form-section">
+            <div class="form-field">
+              <label class="form-label">Name *</label>
+              <input
+                class="form-input"
+                type="text"
+                placeholder="e.g., my-network"
+                .value=${this.createNetworkName}
+                @input=${(e: any) => { this.createNetworkName = e.target.value; }}
+              />
+            </div>
+            <div class="form-field">
+              <label class="form-label">Driver</label>
+              <select
+                class="form-select"
+                .value=${this.createNetworkDriver}
+                @change=${(e: any) => { this.createNetworkDriver = e.target.value; }}
+              >
+                <option value="bridge">bridge</option>
+                <option value="host">host</option>
+                <option value="overlay">overlay</option>
+                <option value="macvlan">macvlan</option>
+                <option value="none">none</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label class="form-label">Subnet</label>
+              <input
+                class="form-input"
+                type="text"
+                placeholder="e.g., 172.20.0.0/16"
+                .value=${this.createNetworkSubnet}
+                @input=${(e: any) => { this.createNetworkSubnet = e.target.value; }}
+              />
+              <div class="form-hint">Optional. CIDR notation for custom subnet.</div>
+            </div>
+            <div class="form-field">
+              <label class="form-label">Gateway</label>
+              <input
+                class="form-input"
+                type="text"
+                placeholder="e.g., 172.20.0.1"
+                .value=${this.createNetworkGateway}
+                @input=${(e: any) => { this.createNetworkGateway = e.target.value; }}
+              />
+              <div class="form-hint">Optional. Gateway IP for the subnet.</div>
+            </div>
+            <div class="form-field">
+              <label class="form-label">Labels</label>
+              <textarea
+                class="form-textarea"
+                placeholder="key=value"
+                .value=${this.createNetworkLabels}
+                @input=${(e: any) => { this.createNetworkLabels = e.target.value; }}
+              ></textarea>
+              <div class="form-hint">One label per line in key=value format.</div>
+            </div>
+          </div>
+        </div>
+        <div class="create-drawer-footer">
+          <button class="btn btn-secondary" @click=${this.closeCreateNetworkDrawer}>Cancel</button>
+          <button class="btn btn-primary" @click=${this.handleCreateNetwork} ?disabled=${this.isCreatingNetwork}>
+            ${this.isCreatingNetwork ? 'Creating...' : 'Create Network'}
+          </button>
+        </div>
+      </div>
+    `;
+
+}
+}
+
+customElements.define('docker-tab', DockerTab);

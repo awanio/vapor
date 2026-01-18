@@ -300,7 +300,9 @@
       "remove": "Remove",
       "imageName": "Image Name",
       "removeConfirm": "Are you sure you want to remove this image?"
-    }
+    },
+    "searchVolumes": "Search volumes",
+    "searchNetworks": "Search networks"
   },
   "docker": {
     "processes": "Processes",

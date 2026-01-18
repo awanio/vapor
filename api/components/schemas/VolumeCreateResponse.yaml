@@ -1,0 +1,28 @@
+type: object
+properties:
+  status:
+    type: string
+    example: success
+  data:
+    type: object
+    properties:
+      name:
+        type: string
+        description: Name of the created volume
+        example: my-data-volume
+      driver:
+        type: string
+        description: Volume driver
+        example: local
+      mountpoint:
+        type: string
+        description: Path where the volume is mounted on the host
+        example: /var/lib/docker/volumes/my-data-volume/_data
+      message:
+        type: string
+        description: Success message
+        example: Volume created successfully
+      success:
+        type: boolean
+        description: Whether the operation was successful
+        example: true

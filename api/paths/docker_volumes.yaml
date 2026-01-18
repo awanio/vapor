@@ -25,3 +25,50 @@ get:
             error:
               code: DOCKER_ERROR
               message: 'Failed to list volumes: Cannot connect to the Docker daemon'
+post:
+  summary: Create Docker volume
+  description: Create a new Docker volume
+  tags:
+    - Docker
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/VolumeCreateRequest.yaml
+        examples:
+          createVolume:
+            summary: Create a named volume
+            value:
+              name: my-data-volume
+              driver: local
+              labels:
+                app: myapp
+  responses:
+    '201':
+      description: Volume created successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/VolumeCreateResponse.yaml
+    '400':
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '401':
+      $ref: ../components/responses/UnauthorizedError.yaml
+    '500':
+      description: Failed to create volume
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+          example:
+            status: error
+            error:
+              code: CREATE_VOLUME_FAILED
+              message: 'Failed to create volume: volume name already exists'

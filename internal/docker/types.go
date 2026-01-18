@@ -266,3 +266,37 @@ type ImageImportResult struct {
 	Status     string    `json:"status"`
 	Message    string    `json:"message,omitempty"`
 }
+
+// VolumeCreateRequest represents a request to create a new volume
+type VolumeCreateRequest struct {
+Name   string            `json:"name"`
+Driver string            `json:"driver,omitempty"`
+Labels map[string]string `json:"labels,omitempty"`
+}
+
+// VolumeCreateResponse represents the response from creating a volume
+type VolumeCreateResponse struct {
+Name       string `json:"name"`
+Driver     string `json:"driver"`
+Mountpoint string `json:"mountpoint"`
+Message    string `json:"message"`
+Success    bool   `json:"success"`
+}
+
+// NetworkCreateRequest represents a request to create a new network
+type NetworkCreateRequest struct {
+Name    string            `json:"name"`
+Driver  string            `json:"driver,omitempty"`
+Subnet  string            `json:"subnet,omitempty"`
+Gateway string            `json:"gateway,omitempty"`
+Labels  map[string]string `json:"labels,omitempty"`
+}
+
+// NetworkCreateResponse represents the response from creating a network
+type NetworkCreateResponse struct {
+ID      string `json:"id"`
+Name    string `json:"name"`
+Driver  string `json:"driver"`
+Message string `json:"message"`
+Success bool   `json:"success"`
+}

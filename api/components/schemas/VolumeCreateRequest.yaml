@@ -1,29 +1,20 @@
 type: object
 required:
   - name
-  - capacity
 properties:
   name:
     type: string
-    description: >-
-      Unique volume name within the storage pool. Allowed characters are
-      letters, digits, hyphen (-) and underscore (_).
-    minLength: 1
-    maxLength: 255
-    pattern: "^[a-zA-Z0-9_-]+$"
-  capacity:
-    type: integer
-    format: int64
-    description: >-
-      Volume capacity in bytes. Must be greater than 0 and at least 1 MiB.
-    minimum: 1048576
-  format:
+    description: Name of the volume to create
+    example: my-data-volume
+  driver:
     type: string
-    description: >-
-      Volume format. If omitted, the backend defaults to `qcow2`.
-    enum:
-      - qcow2
-      - raw
-      - vmdk
-      - qed
-      - vdi
+    description: Volume driver to use (defaults to 'local')
+    example: local
+  labels:
+    type: object
+    additionalProperties:
+      type: string
+    description: Key-value labels to attach to the volume
+    example:
+      app: myapp
+      environment: production

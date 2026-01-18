@@ -1,14 +1,33 @@
 type: object
+required:
+  - name
 properties:
   name:
     type: string
-  mode:
+    description: Name of the network to create
+    example: my-network
+  driver:
     type: string
-  bridge:
+    description: Network driver to use (defaults to 'bridge')
+    example: bridge
+    enum:
+      - bridge
+      - host
+      - overlay
+      - macvlan
+      - none
+  subnet:
     type: string
-  ip_range:
-    $ref: ./IPRange.yaml
-  dhcp:
-    $ref: ./DHCPConfig.yaml
-  autostart:
-    type: boolean
+    description: Subnet in CIDR notation for custom IP allocation
+    example: "172.20.0.0/16"
+  gateway:
+    type: string
+    description: Gateway IP address for the subnet
+    example: "172.20.0.1"
+  labels:
+    type: object
+    additionalProperties:
+      type: string
+    description: Key-value labels to attach to the network
+    example:
+      environment: development

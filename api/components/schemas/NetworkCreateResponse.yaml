@@ -1,0 +1,28 @@
+type: object
+properties:
+  status:
+    type: string
+    example: success
+  data:
+    type: object
+    properties:
+      id:
+        type: string
+        description: ID of the created network
+        example: "a1b2c3d4e5f6"
+      name:
+        type: string
+        description: Name of the created network
+        example: my-network
+      driver:
+        type: string
+        description: Network driver
+        example: bridge
+      message:
+        type: string
+        description: Success message
+        example: Network created successfully
+      success:
+        type: boolean
+        description: Whether the operation was successful
+        example: true

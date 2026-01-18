@@ -316,7 +316,9 @@
       "remove": "Hapus",
       "imageName": "Nama Image",
       "removeConfirm": "Apakah Anda yakin ingin menghapus image ini?"
-    }
+    },
+    "searchVolumes": "Cari volume",
+    "searchNetworks": "Cari jaringan"
   },
   "docker": {
     "processes": "Proses",

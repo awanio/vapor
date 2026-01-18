@@ -877,3 +877,71 @@ func (s *Service) RemoveNetworkGin(c *gin.Context) {
 		Success:   true,
 	}))
 }
+
+// CreateVolumeGin handles volume creation for Gin router
+func (s *Service) CreateVolumeGin(c *gin.Context) {
+ctx := c.Request.Context()
+var req VolumeCreateRequest
+if err := c.ShouldBindJSON(&req); err != nil {
+logrus.Errorf("failed to decode volume create request: %v", err)
+c.JSON(http.StatusBadRequest, common.ErrorResponse("INVALID_REQUEST", "Failed to decode request: "+err.Error()))
+return
+}
+
+if req.Name == "" {
+c.JSON(http.StatusBadRequest, common.ErrorResponse("INVALID_REQUEST", "Volume name is required"))
+return
+}
+
+volume, err := s.client.CreateVolume(ctx, req.Name, req.Driver, req.Labels)
+if err != nil {
+logrus.Errorf("failed to create volume: %v", err)
+c.JSON(http.StatusInternalServerError, common.ErrorResponse("CREATE_VOLUME_FAILED", "Failed to create volume: "+err.Error()))
+return
+}
+
+c.JSON(http.StatusCreated, common.SuccessResponse(VolumeCreateResponse{
+Name:       volume.Name,
+Driver:     volume.Driver,
+Mountpoint: volume.Mountpoint,
+Message:    "Volume created successfully",
+Success:    true,
+}))
+}
+
+// CreateNetworkGin handles network creation for Gin router
+func (s *Service) CreateNetworkGin(c *gin.Context) {
+ctx := c.Request.Context()
+var req NetworkCreateRequest
+if err := c.ShouldBindJSON(&req); err != nil {
+logrus.Errorf("failed to decode network create request: %v", err)
+c.JSON(http.StatusBadRequest, common.ErrorResponse("INVALID_REQUEST", "Failed to decode request: "+err.Error()))
+return
+}
+
+if req.Name == "" {
+c.JSON(http.StatusBadRequest, common.ErrorResponse("INVALID_REQUEST", "Network name is required"))
+return
+}
+
+// Default driver to bridge if not specified
+driver := req.Driver
+if driver == "" {
+driver = "bridge"
+}
+
+network, err := s.client.CreateNetwork(ctx, req.Name, driver, req.Subnet, req.Gateway, req.Labels)
+if err != nil {
+logrus.Errorf("failed to create network: %v", err)
+c.JSON(http.StatusInternalServerError, common.ErrorResponse("CREATE_NETWORK_FAILED", "Failed to create network: "+err.Error()))
+return
+}
+
+c.JSON(http.StatusCreated, common.SuccessResponse(NetworkCreateResponse{
+ID:      network.ID,
+Name:    network.Name,
+Driver:  network.Driver,
+Message: "Network created successfully",
+Success: true,
+}))
+}

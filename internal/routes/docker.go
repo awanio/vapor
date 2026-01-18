@@ -45,6 +45,10 @@ func DockerRoutes(r *gin.RouterGroup) {
 	r.DELETE("/docker/volumes/:id", dockerService.RemoveVolumeGin)
 	r.DELETE("/docker/networks/:id", dockerService.RemoveNetworkGin)
 
+	// Volume and Network creation
+	r.POST("/docker/volumes", dockerService.CreateVolumeGin)
+	r.POST("/docker/networks", dockerService.CreateNetworkGin)
+
 	// Setup resumable upload handler for Docker images using TUS protocol
 	// Create a runtime service wrapper that uses the Docker client
 	dockerServiceWithRuntime, err := docker.NewServiceWithRuntimeClient(dockerClient)
@@ -94,6 +98,10 @@ func DockerRoutesWithClient(r *gin.RouterGroup, dockerClient docker.Client) {
 	r.DELETE("/docker/images/:id", dockerService.RemoveImageGin)
 	r.DELETE("/docker/volumes/:id", dockerService.RemoveVolumeGin)
 	r.DELETE("/docker/networks/:id", dockerService.RemoveNetworkGin)
+
+	// Volume and Network creation
+	r.POST("/docker/volumes", dockerService.CreateVolumeGin)
+	r.POST("/docker/networks", dockerService.CreateNetworkGin)
 
 	// Setup resumable upload handler for Docker images using TUS protocol
 	// Create a runtime service wrapper that uses the Docker client
