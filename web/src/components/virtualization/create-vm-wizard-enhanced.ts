@@ -96,8 +96,11 @@ interface CloudInitConfig {
 }
 
 interface EnhancedVMCreateRequest {
+  // Basic VM resources
   name: string;
   memory: number;
+  max_memory?: number; // Maximum memory in MB (upper limit for memory ballooning)
+  max_vcpus?: number; // Maximum vCPUs (upper limit)
   vcpus: number;
   storage: {
     disks: EnhancedDiskConfig[];
@@ -455,7 +458,6 @@ export class CreateVMWizardEnhanced extends LitElement {
       grid-template-columns: repeat(3, 1fr);
       gap: 16px;
     }
-
     /* Lists */
     .list-container {
       border: 1px solid var(--vscode-border);
@@ -861,6 +863,8 @@ export class CreateVMWizardEnhanced extends LitElement {
     return {
       name: this.generateDefaultVmName(),
       memory: 2048,
+      max_memory: 0, // 0 means use same as memory
+      max_vcpus: 0, // 0 means use same as vcpus
       vcpus: 2,
       os_type: 'linux',
       architecture: 'x86_64',
@@ -1009,6 +1013,8 @@ export class CreateVMWizardEnhanced extends LitElement {
     const payload: any = {
       name: this.formData.name,
       memory: this.formData.memory,
+      max_memory: this.formData.max_memory || 0,
+      max_vcpus: this.formData.max_vcpus || 0,
       vcpus: this.formData.vcpus,
       storage: { disks },
       os_type: this.formData.os_type,
@@ -2280,6 +2286,7 @@ export class CreateVMWizardEnhanced extends LitElement {
             `}
           </div>
 
+
           <div class="grid-2">
             <div class="form-group">
               <label>Memory <span class="required">*</span></label>
@@ -2302,6 +2309,28 @@ export class CreateVMWizardEnhanced extends LitElement {
             </div>
 
             <div class="form-group">
+              <label>Max Memory</label>
+              <div class="input-with-unit">
+                <input
+                  type="number"
+                  min="0"
+                  max="524288"
+                  step="512"
+                  placeholder="Same as memory"
+                  .value=${String(this.formData.max_memory || '')}
+                  @input=${(e: InputEvent) => {
+                    const val = (e.target as HTMLInputElement).value;
+                    this.updateFormData('max_memory', val ? Number(val) : 0);
+                  }}
+                />
+                <span class="unit">MB</span>
+              </div>
+              <div class="help-text">Upper limit. Leave empty to use same as Memory.</div>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
               <label>vCPUs <span class="required">*</span></label>
               <input
                 type="number"
@@ -2316,22 +2345,37 @@ export class CreateVMWizardEnhanced extends LitElement {
                 <div class="error-message">${this.validationErrors.vcpus}</div>
               ` : ''}
             </div>
+
+            <div class="form-group">
+              <label>Max vCPUs</label>
+              <input
+                type="number"
+                min="0"
+                max="128"
+                placeholder="Same as vCPUs"
+                .value=${String(this.formData.max_vcpus || '')}
+                @input=${(e: InputEvent) => {
+                  const val = (e.target as HTMLInputElement).value;
+                  this.updateFormData('max_vcpus', val ? Number(val) : 0);
+                }}
+              />
+              <div class="help-text">Upper limit. Leave empty to use same as vCPUs.</div>
+            </div>
           </div>
 
           <div class="grid-3">
             <div class="form-group">
               <label>OS Type</label>
               <select
-                .value=${this.formData.os_type || 'linux'}
                 ?disabled=${this.templateMode}
                 @change=${(e: Event) =>
         this.updateFormData('os_type', (e.target as HTMLSelectElement).value)
       }
               >
-                <option value="linux">Linux</option>
-                <option value="windows">Windows</option>
-                <option value="freebsd">FreeBSD</option>
-                <option value="other">Other</option>
+                <option value="linux" ?selected=${(this.formData.os_type || 'linux') === 'linux'}>Linux</option>
+                <option value="windows" ?selected=${this.formData.os_type === 'windows'}>Windows</option>
+                <option value="freebsd" ?selected=${this.formData.os_type === 'freebsd'}>FreeBSD</option>
+                <option value="other" ?selected=${this.formData.os_type === 'other'}>Other</option>
               </select>
             </div>
 
@@ -3046,11 +3090,11 @@ export class CreateVMWizardEnhanced extends LitElement {
                 <div class="grid-2" style="margin-top: 12px;">
                   <div>
                     <div class="help-text">Memory</div>
-                    <div>${this.formData.memory || 0} MB</div>
+                    <div>${this.formData.memory || 0} MB${this.formData.max_memory ? ` (max: ${this.formData.max_memory} MB)` : ''}</div>
                   </div>
                   <div>
                     <div class="help-text">vCPUs</div>
-                    <div>${this.formData.vcpus || 0}</div>
+                    <div>${this.formData.vcpus || 0}${this.formData.max_vcpus ? ` (max: ${this.formData.max_vcpus})` : ''}</div>
                   </div>
                 </div>
 

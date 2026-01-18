@@ -16,9 +16,12 @@ import (
 
 // VMCreateRequestEnhanced represents an enhanced request to create a new VM
 type VMCreateRequestEnhanced struct {
-	Name   string `json:"name" binding:"required"`
-	Memory uint64 `json:"memory" binding:"required"` // in MB
-	VCPUs  uint   `json:"vcpus" binding:"required"`
+	// Basic VM identification and resources
+	Name       string `json:"name" binding:"required"`
+	Memory     uint64 `json:"memory" binding:"required"`         // in MB (current/boot memory)
+	MaxMemory  uint64 `json:"max_memory,omitempty"`               // in MB (upper limit). If 0, defaults to Memory
+	VCPUs      uint   `json:"vcpus" binding:"required"`
+	MaxVCPUs   uint   `json:"max_vcpus,omitempty"`                // Upper limit for vCPUs. If 0, defaults to VCPUs
 
 	// Nested storage configuration
 	Storage *StorageConfig `json:"storage" binding:"required"`
@@ -795,46 +798,141 @@ func (s *Service) UpdateVMEnhanced(ctx context.Context, nameOrUUID string, req *
 	isRunning := state == libvirt.DOMAIN_RUNNING
 	requiresRestart := false
 
-	// Update memory if specified (can be hot-plugged if supported)
-	if req.Memory > 0 {
-		memoryKB := req.Memory * 1024
-		if isRunning {
-			// Try live memory update
-			if err := domain.SetMemory(memoryKB); err != nil {
-				log.Printf("UpdateVMEnhanced warning - live memory update failed, updating config: %v\n", err)
-				// Update config for next boot
-				if err := domain.SetMemoryFlags(memoryKB, libvirt.DomainMemoryModFlags(libvirt.DOMAIN_AFFECT_CONFIG)); err != nil {
-					log.Printf("UpdateVMEnhanced error updating memory config: %v\n", err)
-					return nil, fmt.Errorf("failed to update memory configuration: %w", err)
-				}
-				requiresRestart = true
-			}
-		} else {
-			if err := domain.SetMemoryFlags(memoryKB, libvirt.DomainMemoryModFlags(libvirt.DOMAIN_AFFECT_CONFIG)); err != nil {
-				log.Printf("UpdateVMEnhanced error updating memory config: %v\n", err)
-				return nil, fmt.Errorf("failed to update memory configuration: %w", err)
-			}
-		}
-	}
+// Update max memory first if specified (must be done before increasing memory)
+// Max memory can only be changed when the VM is stopped
+if req.MaxMemory > 0 {
+maxMemoryKB := req.MaxMemory * 1024
+if !isRunning {
+// Update max memory in config (requires VM to be stopped)
+if err := domain.SetMemoryFlags(maxMemoryKB, libvirt.DomainMemoryModFlags(libvirt.DOMAIN_MEM_MAXIMUM|libvirt.DOMAIN_MEM_CONFIG)); err != nil {
+log.Printf("UpdateVMEnhanced warning - failed to update max memory config: %v\n", err)
+// Continue anyway, the memory update below might still work if within current limits
+}
+} else {
+log.Printf("UpdateVMEnhanced: max memory cannot be changed while VM is running, will update config for next boot")
+// Try to update config for next boot
+if err := domain.SetMemoryFlags(maxMemoryKB, libvirt.DomainMemoryModFlags(libvirt.DOMAIN_MEM_MAXIMUM|libvirt.DOMAIN_MEM_CONFIG)); err != nil {
+log.Printf("UpdateVMEnhanced warning - failed to update max memory config: %v\n", err)
+}
+requiresRestart = true
+}
+}
 
-	// Update vCPUs if specified
-	if req.VCPUs > 0 {
-		if isRunning {
-			// Try hot-plug vCPUs
-			if err := domain.SetVcpus(req.VCPUs); err != nil {
-				log.Printf("UpdateVMEnhanced warning - vCPU hot-plug failed, updating config: %v\n", err)
-				// Update config for next boot
-				if err := domain.SetVcpusFlags(req.VCPUs, libvirt.DomainVcpuFlags(libvirt.DOMAIN_AFFECT_CONFIG)); err != nil {
-					log.Printf("UpdateVMEnhanced error updating vCPUs config: %v\n", err)
-					return nil, fmt.Errorf("failed to update vCPUs configuration: %w", err)
-				}
-				requiresRestart = true
-			}
+// Update memory if specified (can be hot-plugged if supported)
+if req.Memory > 0 {
+memoryKB := req.Memory * 1024
+
+// If max_memory was not explicitly set but memory is being increased,
+// we need to update max_memory first to accommodate the new memory value
+if req.MaxMemory == 0 && !isRunning {
+// Get current max memory to check if we need to increase it
+info, err := domain.GetInfo()
+if err == nil {
+currentMaxMemKB := info.MaxMem
+if memoryKB > currentMaxMemKB {
+// Need to increase max memory first
+if err := domain.SetMemoryFlags(memoryKB, libvirt.DomainMemoryModFlags(libvirt.DOMAIN_MEM_MAXIMUM|libvirt.DOMAIN_MEM_CONFIG)); err != nil {
+log.Printf("UpdateVMEnhanced warning - failed to auto-increase max memory: %v\n", err)
+}
+}
+}
+}
+
+if isRunning {
+// Try live memory update
+if err := domain.SetMemory(memoryKB); err != nil {
+log.Printf("UpdateVMEnhanced warning - live memory update failed, updating config: %v\n", err)
+// Update config for next boot
+if err := domain.SetMemoryFlags(memoryKB, libvirt.DomainMemoryModFlags(libvirt.DOMAIN_AFFECT_CONFIG)); err != nil {
+log.Printf("UpdateVMEnhanced error updating memory config: %v\n", err)
+return nil, fmt.Errorf("failed to update memory configuration: %w", err)
+}
+requiresRestart = true
+}
+} else {
+if err := domain.SetMemoryFlags(memoryKB, libvirt.DomainMemoryModFlags(libvirt.DOMAIN_AFFECT_CONFIG)); err != nil {
+log.Printf("UpdateVMEnhanced error updating memory config: %v\n", err)
+return nil, fmt.Errorf("failed to update memory configuration: %w", err)
+}
+}
+}
+// Update max vCPUs first if specified (must be done before increasing vCPUs)
+if req.MaxVCPUs > 0 {
+if !isRunning {
+// Update max vCPUs in config (requires VM to be stopped)
+if err := domain.SetVcpusFlags(req.MaxVCPUs, libvirt.DomainVcpuFlags(libvirt.DOMAIN_VCPU_MAXIMUM|libvirt.DOMAIN_VCPU_CONFIG)); err != nil {
+log.Printf("UpdateVMEnhanced warning - failed to update max vCPUs config: %v\n", err)
+// Continue anyway, the vCPUs update below might still work if within current limits
+}
+} else {
+log.Printf("UpdateVMEnhanced: max vCPUs cannot be changed while VM is running, will update config for next boot")
+if err := domain.SetVcpusFlags(req.MaxVCPUs, libvirt.DomainVcpuFlags(libvirt.DOMAIN_VCPU_MAXIMUM|libvirt.DOMAIN_VCPU_CONFIG)); err != nil {
+log.Printf("UpdateVMEnhanced warning - failed to update max vCPUs config: %v\n", err)
+}
+requiresRestart = true
+}
+}
+
+// Update vCPUs if specified
+if req.VCPUs > 0 {
+// If max_vcpus was not explicitly set but vcpus is being increased,
+// we need to update max_vcpus first to accommodate the new vcpus value
+if req.MaxVCPUs == 0 && !isRunning {
+// Get current max vCPUs to check if we need to increase it
+currentMaxVCPUs, err := domain.GetVcpusFlags(libvirt.DOMAIN_VCPU_MAXIMUM | libvirt.DOMAIN_VCPU_CONFIG)
+if err == nil && req.VCPUs > uint(currentMaxVCPUs) {
+// Need to increase max vCPUs first
+if err := domain.SetVcpusFlags(req.VCPUs, libvirt.DomainVcpuFlags(libvirt.DOMAIN_VCPU_MAXIMUM|libvirt.DOMAIN_VCPU_CONFIG)); err != nil {
+log.Printf("UpdateVMEnhanced warning - failed to auto-increase max vCPUs: %v\n", err)
+}
+}
+}
+
+if isRunning {
+// Try hot-plug vCPUs
+if err := domain.SetVcpus(req.VCPUs); err != nil {
+log.Printf("UpdateVMEnhanced warning - vCPU hot-plug failed, updating config: %v\n", err)
+// Update config for next boot
+if err := domain.SetVcpusFlags(req.VCPUs, libvirt.DomainVcpuFlags(libvirt.DOMAIN_AFFECT_CONFIG)); err != nil {
+log.Printf("UpdateVMEnhanced error updating vCPUs config: %v\n", err)
+return nil, fmt.Errorf("failed to update vCPUs configuration: %w", err)
+}
+requiresRestart = true
+}
+} else {
+if err := domain.SetVcpusFlags(req.VCPUs, libvirt.DomainVcpuFlags(libvirt.DOMAIN_AFFECT_CONFIG)); err != nil {
+log.Printf("UpdateVMEnhanced error updating vCPUs config: %v\n", err)
+return nil, fmt.Errorf("failed to update vCPUs configuration: %w", err)
+}
+}
+}
+
+
+	// Update OS metadata if os_type or os_variant is specified
+	if req.OSType != "" || req.OSVariant != "" {
+		// Build Vapor OS metadata XML
+		osMetadataXML := "<os>"
+		if req.OSType != "" {
+			osMetadataXML += fmt.Sprintf("<family>%s</family>", req.OSType)
+		}
+		if req.OSVariant != "" {
+			osMetadataXML += fmt.Sprintf("<variant>%s</variant>", req.OSVariant)
+		}
+		osMetadataXML += "</os>"
+
+		// Set the metadata using Vapor namespace
+		metadataFlags := libvirt.DOMAIN_AFFECT_CONFIG
+		if err := domain.SetMetadata(
+			libvirt.DOMAIN_METADATA_ELEMENT,
+			osMetadataXML,
+			"vapor",
+			"http://vapor.io/xmlns/libvirt/domain/1.0",
+			metadataFlags,
+		); err != nil {
+			log.Printf("UpdateVMEnhanced warning - failed to update OS metadata: %v\n", err)
+			// Do not fail the whole update, just log the warning
 		} else {
-			if err := domain.SetVcpusFlags(req.VCPUs, libvirt.DomainVcpuFlags(libvirt.DOMAIN_AFFECT_CONFIG)); err != nil {
-				log.Printf("UpdateVMEnhanced error updating vCPUs config: %v\n", err)
-				return nil, fmt.Errorf("failed to update vCPUs configuration: %w", err)
-			}
+			log.Printf("UpdateVMEnhanced: OS metadata updated (os_type=%s, os_variant=%s)", req.OSType, req.OSVariant)
 		}
 	}
 

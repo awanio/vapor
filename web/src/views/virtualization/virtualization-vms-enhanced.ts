@@ -111,13 +111,16 @@ export class VirtualizationVMsEnhanced extends LitElement {
     return {
       name: enhanced.name,
       memory: enhanced.memory,
+      max_memory: enhanced.max_memory,
       vcpus: enhanced.vcpus,
+      max_vcpus: enhanced.max_vcpus,
       storage: {
         default_pool: enhanced.storage?.default_pool || '',
         boot_iso: enhanced.storage?.boot_iso,
         disks: storageDisks,
       },
       os_type: enhanced.os_type,
+      os_variant: enhanced.os_variant,
       architecture: enhanced.architecture,
       uefi: enhanced.uefi,
       secure_boot: enhanced.secure_boot,
@@ -889,7 +892,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
       { key: 'vcpus', label: 'vCPUs' },
       { key: 'memory', label: 'Memory (MB)' },
       { key: 'disk_size', label: 'Disk (GB)' },
-      { key: 'os_type', label: 'Operating System' },
+      { key: 'os_type_display', label: 'OS Type' },
+      { key: 'os_variant_display', label: 'Operating System' },
       { key: 'created_at', label: 'Created' }
     ];
   }
@@ -2196,7 +2200,9 @@ export class VirtualizationVMsEnhanced extends LitElement {
         state_rendered: this.renderStateCell(vm.state),
         memory_formatted: this.formatMemory(vm.memory),
         disk_formatted: this.formatDiskSize(vm.disk_size),
-        created_formatted: new Date(vm.created_at).toLocaleDateString()
+        created_formatted: new Date(vm.created_at).toLocaleDateString(),
+        os_type_display: vm.os_type || '-',
+        os_variant_display: vm.os_variant || '-'
       }));
 
     return html`

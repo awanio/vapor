@@ -493,14 +493,46 @@ func (s *Service) generateEnhancedDomainXML(req *VMCreateRequestEnhanced, diskCo
 	// Always use hvm for QEMU/KVM
 	osType := "hvm"
 
+	// Determine max memory (default to Memory if not specified)
+	maxMemory := req.MaxMemory
+	if maxMemory == 0 || maxMemory < req.Memory {
+		maxMemory = req.Memory
+	}
+
+
+	// Determine max vCPUs (default to VCPUs if not specified)
+	maxVCPUs := req.MaxVCPUs
+	if maxVCPUs == 0 || maxVCPUs < req.VCPUs {
+		maxVCPUs = req.VCPUs
+	}
 	// Start building the XML
 	xml := fmt.Sprintf(`<domain type='kvm'>
 <name>%s</name>
 <uuid>%s</uuid>
+<maxMemory slots='16' unit='MiB'>%d</maxMemory>
 <memory unit='MiB'>%d</memory>
-<vcpu>%d</vcpu>`, req.Name, formattedUUID, req.Memory, req.VCPUs)
+<currentMemory unit='MiB'>%d</currentMemory>
+<vcpu current='%d'>%d</vcpu>`, req.Name, formattedUUID, maxMemory, req.Memory, req.Memory, req.VCPUs, maxVCPUs)
+// Add metadata section for OS type/variant
+// Store os_type and os_variant even if OSInfo is not provided
+if req.OSInfo == nil && (req.OSType != "" || req.OSVariant != "") {
+xml += `
+<metadata>
+<vapor:os xmlns:vapor="http://vapor.io/xmlns/libvirt/domain/1.0">`
+if req.OSType != "" {
+xml += fmt.Sprintf(`
+<vapor:family>%s</vapor:family>`, req.OSType)
+}
+if req.OSVariant != "" {
+xml += fmt.Sprintf(`
+<vapor:variant>%s</vapor:variant>`, req.OSVariant)
+}
+xml += `
+</vapor:os>
+</metadata>`
+}
 
-	// Add metadata if OS info is provided
+// Add metadata if OS info is provided
 	if req.OSInfo != nil {
 		xml += `
 <metadata>`

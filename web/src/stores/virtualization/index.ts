@@ -184,8 +184,8 @@ function transformVMResponse(apiVm: any): VirtualMachine {
     memory: Math.floor((apiVm.memory || 0) / 1024), // Convert from KB to MB
     vcpus: apiVm.vcpus || apiVm.max_vcpus || 0,
     disk_size: 0, // Will be populated from disks if available
-    os_type: apiVm.os?.type || 'hvm',
-    os_variant: apiVm.os?.machine || undefined,
+    os_type: apiVm.os_info?.family || apiVm.os?.type || 'hvm',
+    os_variant: apiVm.os_info?.variant || undefined,
     created_at: apiVm.created_at,
     updated_at: apiVm.updated_at,
     graphics: apiVm.graphics,

@@ -2156,6 +2156,10 @@ export class VMDetailDrawer extends LitElement {
             <span class="info-value">${osInfo.type || this.vm.os_type || 'hvm'}</span>
           </div>
           <div class="info-item">
+            <span class="info-label">OS Variant</span>
+            <span class="info-value">${this.vm.os_variant || this.vmDetails?.metadata?.os_variant || '-'}</span>
+          </div>
+          <div class="info-item">
             <span class="info-label">Architecture</span>
             <span class="info-value">${osInfo.architecture || this.vm.metadata?.architecture || 'x86_64'}</span>
           </div>
@@ -3232,7 +3236,7 @@ export class VMDetailDrawer extends LitElement {
                 </span>
                 <span>${this.vm.memory} MB RAM</span>
                 <span>${this.vm.vcpus} vCPUs</span>
-                <span>${this.vm.os_type}</span>
+                <span>${this.vm.os_variant || this.vm.os_type || "-"}</span>
               </div>
             </div>
           </div>

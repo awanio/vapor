@@ -1633,6 +1633,26 @@ func (s *Service) parseOSMetadata(xmlDesc string) *OSInfoEnhanced {
 	}
 }
 
+// extractLibOSInfoVariant extracts the OS variant from libosinfo metadata in domain XML
+func (s *Service) extractLibOSInfoVariant(xmlDesc string) string {
+	// Try to extract libosinfo ID from metadata
+	// Format: <libosinfo:os id="http://..."/>
+	re := regexp.MustCompile(`<libosinfo:os[^>]*id=["']([^"']+)["']`)
+	matches := re.FindStringSubmatch(xmlDesc)
+	if len(matches) > 1 {
+		// Extract variant from URL like "http://ubuntu.com/ubuntu/20.04" or "http://fedoraproject.org/fedora/38"
+		id := matches[1]
+		// Extract the last path segment as variant
+		parts := strings.Split(id, "/")
+		if len(parts) >= 2 {
+			// Return last two parts joined, e.g., "ubuntu20.04" or "fedora38"
+			distro := parts[len(parts)-2]
+			version := parts[len(parts)-1]
+			return distro + version
+		}
+	}
+	return ""
+}
 func (s *Service) domainToVM(domain *libvirt.Domain) (*VM, error) {
 	name, err := domain.GetName()
 	if err != nil {
@@ -2408,11 +2428,23 @@ func (s *Service) parseOSConfiguration(vm *VMEnhanced, xmlDesc string) {
 		vm.TPM = true
 	}
 
-	// Set OS type based on domain type
-	if strings.Contains(xmlDesc, "type='kvm'") || strings.Contains(xmlDesc, "type='hvm'") {
-		vm.OSType = "hvm"
+	// Parse OS metadata (vapor metadata or libosinfo) first
+	vm.OSInfo = s.parseOSMetadata(xmlDesc)
+
+	// Set OS type - prefer family from metadata, fallback to default "linux"
+	if vm.OSInfo != nil && vm.OSInfo.Family != "" {
+		vm.OSType = vm.OSInfo.Family
 	} else {
+		// Default to linux for most VMs
 		vm.OSType = "linux"
+	}
+
+	// Extract os_variant from metadata if available
+	if vm.OSInfo != nil && vm.OSInfo.Variant != "" {
+		vm.OSVariant = vm.OSInfo.Variant
+	} else {
+		// Try to extract from libosinfo metadata
+		vm.OSVariant = s.extractLibOSInfoVariant(xmlDesc)
 	}
 }
 
