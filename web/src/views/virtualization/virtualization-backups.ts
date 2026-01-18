@@ -685,8 +685,8 @@ export class VirtualizationBackupsView extends LitElement {
           description="Import an existing backup or create a new one."
         >
           <div slot="actions" style="display:flex; gap:8px; justify-content:center;">
-            <button class="btn" @click=${() => this.openUploadDrawer()}>Upload backup</button>
-            <button class="btn" @click=${() => (this.showImportDrawer = true)}>Import backup</button>
+            <button class="btn" @click=${() => this.openUploadDrawer()}>Upload from local</button>
+            <button class="btn" @click=${() => (this.showImportDrawer = true)}>Register from server</button>
             <button class="btn btn-primary" @click=${() => (this.showCreateDrawer = true)}>Create backup</button>
           </div>
         </empty-state>
@@ -718,8 +718,8 @@ export class VirtualizationBackupsView extends LitElement {
           <h2 class="title">Backups</h2>
           <div class="actions">
             <button class="btn" @click=${() => this.loadBackups()} ?disabled=${this.loading}>Refresh</button>
-            <button class="btn" @click=${() => this.openUploadDrawer()}>Upload backup</button>
-            <button class="btn" @click=${() => (this.showImportDrawer = true)}>Import backup</button>
+            <button class="btn" @click=${() => this.openUploadDrawer()}>Upload from local</button>
+            <button class="btn" @click=${() => (this.showImportDrawer = true)}>Register from server</button>
             <button class="btn btn-primary" @click=${() => (this.showCreateDrawer = true)}>Create backup</button>
           </div>
         </div>
@@ -767,13 +767,13 @@ export class VirtualizationBackupsView extends LitElement {
   private renderImportDrawer() {
     return html`
       <detail-drawer
-        .title=${'Import backup'}
+        .title=${'Register existing backup'}
         .show=${this.showImportDrawer}
         @close=${() => (this.showImportDrawer = false)}
       >
         <div class="drawer-content">
           <div class="field">
-            <label>Path</label>
+            <label>Server file path</label>
             <input type="text" .value=${this.importForm.path} @input=${(e: Event) => (this.importForm.path = (e.target as HTMLInputElement).value)} />
           </div>
           <div class="field">
@@ -822,11 +822,11 @@ export class VirtualizationBackupsView extends LitElement {
             <label>Description</label>
             <textarea .value=${this.importForm.description} @input=${(e: Event) => (this.importForm.description = (e.target as HTMLTextAreaElement).value)}></textarea>
           </div>
-          <div class="field" style="color: var(--vscode-descriptionForeground, #9ca3af); font-size: 12px;">Import does not move files; path must exist on host.</div>
+          <div class="field" style="color: var(--vscode-descriptionForeground, #9ca3af); font-size: 12px;">This registers an existing backup file that is already on the server. The file will not be moved or copied.</div>
         </div>
         <div class="drawer-footer">
           <button class="btn" @click=${() => (this.showImportDrawer = false)}>Cancel</button>
-          <button class="btn btn-primary" @click=${() => this.handleImport()}>Import</button>
+          <button class="btn btn-primary" @click=${() => this.handleImport()}>Register</button>
         </div>
       </detail-drawer>
     `;
@@ -941,7 +941,7 @@ export class VirtualizationBackupsView extends LitElement {
 
     return html`
       <detail-drawer
-        .title=${'Upload backup'}
+        .title=${'Upload backup from local'}
         .show=${this.showUploadDrawer}
         @close=${() => this.closeUploadDrawer()}
       >
