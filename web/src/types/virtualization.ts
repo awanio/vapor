@@ -658,9 +658,11 @@ export type CompressionType = 'none' | 'gzip' | 'bzip2' | 'xz' | 'zstd';
 export type EncryptionType = 'none' | 'aes-256' | 'aes-128';
 
 export interface BackupCreateRequest {
+  parent_backup_id?: string; // For incremental/differential, auto-determined if empty
   backup_type: BackupType;
   destination_path?: string;
   compression?: CompressionType | string;
+  storage_pool?: string;
   encryption?: EncryptionType | string;
   encryption_key?: string;
   include_memory?: boolean;
@@ -707,6 +709,33 @@ export interface BackupSingleResponse {
 
 export type VMBackupRequest = BackupCreateRequest;
 export type VMBackupResponse = BackupListResponse | BackupSingleResponse;
+
+// ============ Backup Upload Types ============
+
+export interface BackupUploadMetadata {
+  filename: string;
+  size: number;
+  vm_name: string;
+  vm_uuid?: string;
+  backup_type?: BackupType;
+  compression?: CompressionType | string;
+  encryption?: EncryptionType | string;
+  description?: string;
+  retention_days?: number;
+  destination_path?: string;
+}
+
+export interface BackupUploadProgress {
+  upload_id: string;
+  status: 'created' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
+  total_size: number;
+  uploaded_size: number;
+  progress: string;
+  metadata?: Record<string, any>;
+  created_at?: string;
+  updated_at?: string;
+  expires_at?: string;
+}
 
 // ============ Enhanced VM Metrics Types ============
 

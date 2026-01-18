@@ -133,6 +133,11 @@ func main() {
 		libvirtService.SetDatabase(db.DB)
 		libvirtService.SetEventHub(eventsHub)
 		log.Printf("Libvirt integration initialized with URI: %s", libvirtURI)
+
+		// Start backup retention cleanup job (runs every hour)
+		stopRetentionJob := libvirtService.StartBackupRetentionJob(libvirt.DefaultBackupRetentionConfig())
+		defer stopRetentionJob()
+		log.Println("Backup retention cleanup job started")
 		routes.LibvirtRoutes(api, authService, libvirtService)
 		defer libvirtService.Close() // Close service when server shuts down
 	}

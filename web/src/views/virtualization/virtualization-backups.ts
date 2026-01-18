@@ -1,8 +1,9 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import type { VMBackup, BackupCreateRequest, BackupType } from '../../types/virtualization';
+import * as tus from 'tus-js-client';
+import type { VMBackup, BackupCreateRequest, BackupType, StoragePool } from '../../types/virtualization';
 import virtualizationAPI from '../../services/virtualization-api';
-import { $backups, backupActions } from '../../stores/virtualization/backups';
+import { $backups, backupActions, $backupUploadState } from '../../stores/virtualization/backups';
 import { vmStore } from '../../stores/virtualization';
 import '../../components/tables/resource-table';
 import type { Column, ActionItem } from '../../components/tables/resource-table';
@@ -66,6 +67,41 @@ export class VirtualizationBackupsView extends LitElement {
     .toast { margin-bottom: 10px; padding: 10px; border-radius: 8px; }
     .toast.success { background: #0f172a; color: #bbf7d0; border: 1px solid #14532d; }
     .toast.error { background: #1f0f0f; color: #fecdd3; border: 1px solid #7f1d1d; }
+    .drop-zone {
+      border: 2px dashed var(--vscode-input-border, #5a5a5a);
+      border-radius: 8px;
+      padding: 40px;
+      text-align: center;
+      transition: all 0.3s;
+      cursor: pointer;
+      margin-bottom: 16px;
+      background: var(--vscode-editor-inactiveSelectionBackground, rgba(37, 37, 38, 0.5));
+    }
+    .drop-zone:hover {
+      border-color: var(--vscode-focusBorder, #007acc);
+      background: var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.1));
+    }
+    .drop-zone.drag-over {
+      border-color: var(--vscode-focusBorder, #007acc);
+      background: var(--vscode-editor-selectionBackground, rgba(51, 153, 255, 0.2));
+      border-style: solid;
+    }
+    .drop-zone-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.8; }
+    .drop-zone-text { font-size: 16px; color: var(--vscode-foreground, #cccccc); margin-bottom: 8px; font-weight: 500; }
+    .drop-zone-hint { font-size: 13px; color: var(--vscode-descriptionForeground, #8b8b8b); }
+    .file-info {
+      padding: 16px;
+      background: var(--vscode-editor-inactiveSelectionBackground);
+      border: 1px solid var(--vscode-editorWidget-border, #464647);
+      border-radius: 4px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .file-details { display: flex; flex-direction: column; gap: 4px; }
+    .file-name { font-weight: 500; color: var(--vscode-foreground); }
+    .file-size { font-size: 12px; color: var(--vscode-descriptionForeground); }
   `;
 
   @state() private backups: VMBackup[] = [];
@@ -87,9 +123,28 @@ export class VirtualizationBackupsView extends LitElement {
   @state() private missingFiles = new Set<string>();
   @state() private showDeleteModal = false;
   @state() private deleteTarget: VMBackup | null = null;
+  @state() private showUploadDrawer = false;
+  @state() private selectedFile: File | null = null;
+  @state() private dragOver = false;
+  @state() private uploadUrl: string | null = null;
+  @state() private storagePools: StoragePool[] = [];
+  @state() private uploadId: string | null = null;
+  @state() private isPaused = false;
+  private currentUpload: tus.Upload | null = null;
+
+  private uploadMetadata = {
+    vm_name: '',
+    vm_uuid: '',
+    backup_type: 'full' as 'full' | 'incremental' | 'differential',
+    compression: 'none',
+    encryption: 'none',
+    description: '',
+    retention_days: 7,
+  };
 
   private backupsUnsub?: () => void;
   private vmsUnsub?: () => void;
+  private uploadStateUnsub?: () => void;
 
   private importForm = {
     path: '',
@@ -106,7 +161,8 @@ export class VirtualizationBackupsView extends LitElement {
   private createForm: BackupCreateRequest & { vm_id?: string } = {
     vm_id: '',
     backup_type: 'full',
-    destination_path: '',
+    parent_backup_id: '',
+    storage_pool: '',
     compression: 'none',
     encryption: 'none',
     include_memory: false,
@@ -118,14 +174,17 @@ export class VirtualizationBackupsView extends LitElement {
     super.connectedCallback();
     this.backupsUnsub = $backups.subscribe(() => this.sync());
     this.vmsUnsub = vmStore.$items.subscribe(() => this.requestUpdate());
+    this.uploadStateUnsub = $backupUploadState.subscribe(() => this.requestUpdate());
     this.loadVMs();
     this.loadBackups();
+    this.loadStoragePools();
   }
 
   override disconnectedCallback(): void {
     super.disconnectedCallback();
     this.backupsUnsub?.();
     this.vmsUnsub?.();
+    this.uploadStateUnsub?.();
   }
 
   private async loadVMs() {
@@ -133,6 +192,17 @@ export class VirtualizationBackupsView extends LitElement {
       await vmStore.fetch();
     } catch (err) {
       console.warn('VM fetch failed', err);
+    }
+  }
+
+  private async loadStoragePools() {
+    try {
+      const response = await virtualizationAPI.listStoragePools() as any;
+      const pools = response?.pools || response?.data?.pools || (Array.isArray(response) ? response : []);
+      this.storagePools = Array.isArray(pools) ? pools : [];
+      console.log("Loaded storage pools:", this.storagePools);
+    } catch (err) {
+      console.error('Failed to load storage pools:', err);
     }
   }
 
@@ -266,6 +336,7 @@ export class VirtualizationBackupsView extends LitElement {
       await this.updateComplete;
       this.deleteTarget = null;
       this.loadBackups();
+    this.loadStoragePools();
     } catch (err: any) {
       this.setToast(err?.message || 'Failed to delete', 'error');
     } finally {
@@ -334,9 +405,235 @@ export class VirtualizationBackupsView extends LitElement {
       this.setToast('Backup imported', 'success');
       this.showImportDrawer = false;
       this.loadBackups();
+    this.loadStoragePools();
     } catch (err: any) {
       this.setToast(err?.message || 'Import failed', 'error');
     }
+  }
+
+
+  private openUploadDrawer() {
+    this.showUploadDrawer = true;
+    this.selectedFile = null;
+    this.uploadUrl = null;
+    this.uploadId = null;
+    this.isPaused = false;
+    this.uploadMetadata = {
+      vm_name: '',
+      vm_uuid: '',
+      backup_type: 'full',
+      compression: 'none',
+      encryption: 'none',
+      description: '',
+      retention_days: 7,
+    };
+    backupActions.resetUploadState();
+  }
+
+  private closeUploadDrawer() {
+    if (this.currentUpload) {
+      this.currentUpload.abort();
+      this.currentUpload = null;
+    }
+    this.showUploadDrawer = false;
+    this.selectedFile = null;
+    this.uploadUrl = null;
+    this.uploadId = null;
+    backupActions.resetUploadState();
+  }
+
+
+  private handleDragOver(e: DragEvent) {
+    e.preventDefault();
+    this.dragOver = true;
+  }
+
+  private handleDragLeave(e: DragEvent) {
+    e.preventDefault();
+    this.dragOver = false;
+  }
+
+  private handleDrop(e: DragEvent) {
+    e.preventDefault();
+    this.dragOver = false;
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (file && this.validateBackupFile(file)) {
+        this.selectedFile = file;
+      }
+    }
+  }
+
+  private validateBackupFile(file: File): boolean {
+    const lowerName = file.name.toLowerCase();
+    const validExtensions = ['.qcow2', '.qcow2.gz', '.qcow2.zst', '.qcow2.xz', '.qcow2.bz2'];
+    const isValid = validExtensions.some(ext => lowerName.endsWith(ext));
+    if (!isValid) {
+      this.setToast('Please select a .qcow2 backup file (optionally compressed: .gz, .zst, .xz, .bz2)', 'error');
+      return false;
+    }
+    const maxSize = 500 * 1024 * 1024 * 1024;
+    if (file.size > maxSize) {
+      this.setToast('File size exceeds 500GB limit', 'error');
+      return false;
+    }
+    return true;
+  }
+  private handleFileSelect(e: Event) {
+    const input = e.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      if (this.validateBackupFile(file)) {
+        this.selectedFile = file;
+      }
+    }
+  }
+
+
+  private removeSelectedFile() {
+    this.selectedFile = null;
+    this.uploadUrl = null;
+    this.uploadId = null;
+  }
+
+  private async handleUpload() {
+    if (!this.selectedFile) {
+      this.setToast('Please select a file to upload', 'error');
+      return;
+    }
+    if (!this.uploadMetadata.vm_name.trim()) {
+      this.setToast('VM name is required', 'error');
+      return;
+    }
+
+    try {
+      // Only initiate new upload session if we don't have one
+      if (!this.uploadUrl || !this.uploadId) {
+        const { uploadUrl, uploadId } = await virtualizationAPI.initiateBackupUpload({
+          filename: this.selectedFile.name,
+          size: this.selectedFile.size,
+          vm_name: this.uploadMetadata.vm_name,
+          vm_uuid: this.uploadMetadata.vm_uuid || undefined,
+          backup_type: this.uploadMetadata.backup_type,
+          compression: this.uploadMetadata.compression,
+          encryption: this.uploadMetadata.encryption,
+          description: this.uploadMetadata.description || undefined,
+          retention_days: this.uploadMetadata.retention_days,
+        });
+        this.uploadUrl = uploadUrl;
+        this.uploadId = uploadId;
+      }
+
+      // Set upload state
+      backupActions.setUploadState({
+        isUploading: true,
+        uploadProgress: this.isPaused ? $backupUploadState.get().uploadProgress : 0,
+        uploadId: this.uploadId,
+        error: null,
+      });
+
+      this.isPaused = false;
+
+      // Create TUS upload client
+      this.currentUpload = new tus.Upload(this.selectedFile, {
+        uploadUrl: this.uploadUrl!,
+        chunkSize: 10 * 1024 * 1024, // 10MB chunks
+        metadata: {
+          filename: this.selectedFile.name,
+          filetype: this.selectedFile.type || 'application/octet-stream',
+          vm_name: this.uploadMetadata.vm_name,
+        },
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token') || localStorage.getItem('auth_token')}`,
+          'Tus-Resumable': '1.0.0',
+        },
+        uploadDataDuringCreation: true,
+        removeFingerprintOnSuccess: true,
+        retryDelays: [0, 1000, 3000, 5000],
+        onError: (error) => {
+          console.error('Backup upload failed:', error);
+          this.setToast(`Upload failed: ${error.message}`, 'error');
+          this.currentUpload = null;
+          backupActions.setUploadState({
+            isUploading: false,
+            uploadProgress: 0,
+            uploadId: null,
+            error: error.message,
+          });
+        },
+        onProgress: (bytesUploaded, bytesTotal) => {
+          const percentage = Math.round((bytesUploaded / bytesTotal) * 100);
+          backupActions.setUploadState({
+            ...($backupUploadState.get()),
+            uploadProgress: percentage,
+          });
+        },
+        onSuccess: async () => {
+          try {
+            await virtualizationAPI.completeBackupUpload(this.uploadId!);
+            backupActions.resetUploadState();
+            await this.loadBackups();
+    this.loadStoragePools();
+            this.setToast('Backup uploaded successfully', 'success');
+            this.closeUploadDrawer();
+          } catch (error) {
+            console.error('Failed to complete backup upload:', error);
+            this.setToast('Failed to complete upload', 'error');
+            backupActions.setUploadState({
+              isUploading: false,
+              uploadProgress: 0,
+              uploadId: null,
+              error: error instanceof Error ? error.message : 'Unknown error',
+            });
+          }
+        },
+      });
+
+      // Start upload
+      this.currentUpload.start();
+
+    } catch (error) {
+      console.error('Failed to initiate backup upload:', error);
+      this.setToast(
+        `Failed to initiate upload: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'error'
+      );
+    }
+  }
+
+  private pauseUpload() {
+    if (this.currentUpload) {
+      this.currentUpload.abort();
+      this.isPaused = true;
+      backupActions.setUploadState({
+        ...($backupUploadState.get()),
+        isUploading: false,
+      });
+    }
+  }
+
+  private resumeUpload() {
+    if (this.currentUpload && this.isPaused) {
+      this.isPaused = false;
+      backupActions.setUploadState({
+        ...($backupUploadState.get()),
+        isUploading: true,
+      });
+      this.currentUpload.start();
+    }
+  }
+
+  private cancelUpload() {
+    if (this.currentUpload) {
+      this.currentUpload.abort();
+      this.currentUpload = null;
+    }
+    this.uploadUrl = null;
+    this.uploadId = null;
+    this.isPaused = false;
+    backupActions.resetUploadState();
+    this.setToast('Upload cancelled', 'info');
   }
 
   private async handleCreate() {
@@ -347,6 +644,8 @@ export class VirtualizationBackupsView extends LitElement {
     try {
       const payload: BackupCreateRequest = { ...this.createForm } as BackupCreateRequest;
       delete (payload as any).vm_id;
+      if (!payload.parent_backup_id) delete (payload as any).parent_backup_id; // Let backend auto-find
+      if (!payload.storage_pool) delete (payload as any).storage_pool;
       await backupActions.create(this.createForm.vm_id, payload);
       this.setToast('Backup started', 'success');
       this.showCreateDrawer = false;
@@ -386,6 +685,7 @@ export class VirtualizationBackupsView extends LitElement {
           description="Import an existing backup or create a new one."
         >
           <div slot="actions" style="display:flex; gap:8px; justify-content:center;">
+            <button class="btn" @click=${() => this.openUploadDrawer()}>Upload backup</button>
             <button class="btn" @click=${() => (this.showImportDrawer = true)}>Import backup</button>
             <button class="btn btn-primary" @click=${() => (this.showCreateDrawer = true)}>Create backup</button>
           </div>
@@ -418,6 +718,7 @@ export class VirtualizationBackupsView extends LitElement {
           <h2 class="title">Backups</h2>
           <div class="actions">
             <button class="btn" @click=${() => this.loadBackups()} ?disabled=${this.loading}>Refresh</button>
+            <button class="btn" @click=${() => this.openUploadDrawer()}>Upload backup</button>
             <button class="btn" @click=${() => (this.showImportDrawer = true)}>Import backup</button>
             <button class="btn btn-primary" @click=${() => (this.showCreateDrawer = true)}>Create backup</button>
           </div>
@@ -425,14 +726,16 @@ export class VirtualizationBackupsView extends LitElement {
 
         <div class="controls">
           <div class="filters">
-            <select .value=${this.status} @change=${(e: Event) => { this.status = (e.target as HTMLSelectElement).value; this.loadBackups(); }}>
+            <select .value=${this.status} @change=${(e: Event) => { this.status = (e.target as HTMLSelectElement).value; this.loadBackups();
+    this.loadStoragePools(); }}>
               <option value="all">All status</option>
               <option value="pending">Pending</option>
               <option value="running">Running</option>
               <option value="completed">Completed</option>
               <option value="failed">Failed</option>
             </select>
-            <select .value=${this.type} @change=${(e: Event) => { this.type = (e.target as HTMLSelectElement).value as BackupType | 'all'; this.loadBackups(); }}>
+            <select .value=${this.type} @change=${(e: Event) => { this.type = (e.target as HTMLSelectElement).value as BackupType | 'all'; this.loadBackups();
+    this.loadStoragePools(); }}>
               <option value="all">All types</option>
               <option value="full">Full</option>
               <option value="incremental">Incremental</option>
@@ -442,7 +745,8 @@ export class VirtualizationBackupsView extends LitElement {
           <search-input
             .placeholder=${'Search VM name/UUID'}
             .value=${this.search}
-            @search-change=${(e: CustomEvent) => { this.search = e.detail.value; this.loadBackups(); }}
+            @search-change=${(e: CustomEvent) => { this.search = e.detail.value; this.loadBackups();
+    this.loadStoragePools(); }}
           ></search-input>
         </div>
 
@@ -454,6 +758,7 @@ export class VirtualizationBackupsView extends LitElement {
 
       ${this.renderImportDrawer()}
       ${this.renderCreateDrawer()}
+      ${this.renderUploadDrawer()}
       ${this.renderRestoreModal()}
       ${this.renderDeleteModal()}
     `;
@@ -551,15 +856,45 @@ export class VirtualizationBackupsView extends LitElement {
           </div>
           <div class="field">
             <label>Type</label>
-            <select .value=${this.createForm.backup_type} @change=${(e: Event) => (this.createForm.backup_type = (e.target as HTMLSelectElement).value as BackupType)}>
+            <select .value=${this.createForm.backup_type} @change=${(e: Event) => {
+              this.createForm.backup_type = (e.target as HTMLSelectElement).value as BackupType;
+              this.createForm.parent_backup_id = ''; // Reset parent when type changes
+              this.requestUpdate();
+            }}>
               <option value="full">Full</option>
               <option value="incremental">Incremental</option>
               <option value="differential">Differential</option>
             </select>
+            ${this.createForm.backup_type === 'incremental' ? html`
+              <div class="form-hint" style="margin-top: 4px; font-size: 12px; color: var(--vscode-descriptionForeground);">Backs up only changes since the selected parent backup.</div>
+            ` : ''}
+            ${this.createForm.backup_type === 'differential' ? html`
+              <div class="form-hint" style="margin-top: 4px; font-size: 12px; color: var(--vscode-descriptionForeground);">Backs up only changes since the last full backup (auto-selected).</div>
+            ` : ''}
           </div>
+          ${this.createForm.backup_type === 'incremental' ? html`
+            <div class="field">
+              <label>Parent backup</label>
+              <select
+                .value=${this.createForm.parent_backup_id || ''}
+                @change=${(e: Event) => (this.createForm.parent_backup_id = (e.target as HTMLSelectElement).value)}
+              >
+                <option value="">Auto-select latest backup</option>
+                ${this.backups
+                  .filter(b => b.status === 'completed' && b.vm_id === this.createForm.vm_id)
+                  .map(b => html`<option value=${b.backup_id}>${b.type} - ${this.formatDate(b.started_at || b.created_at)} ${b.backup_id?.substring(0, 8)}...</option>`)}
+              </select>
+              <div class="form-hint" style="margin-top: 4px; font-size: 12px; color: var(--vscode-descriptionForeground);">Leave empty to use the most recent backup.</div>
+            </div>
+          ` : ''}
           <div class="field">
-            <label>Destination path</label>
-            <input type="text" .value=${this.createForm.destination_path || ''} @input=${(e: Event) => (this.createForm.destination_path = (e.target as HTMLInputElement).value)} />
+            <label>Storage pool</label>
+            <select .value=${this.createForm.storage_pool || ''} @change=${(e: Event) => (this.createForm.storage_pool = (e.target as HTMLSelectElement).value)}>
+              <option value="">Use default location</option>
+              ${(this.storagePools || [])
+                .filter(p => p.path)
+                .map(p => html`<option value=${p.name}>${p.name} (${this.formatSize(p.available)} free)</option>`)}
+            </select>
           </div>
           <div class="field">
             <label>Compression</label>
@@ -599,6 +934,158 @@ export class VirtualizationBackupsView extends LitElement {
       </detail-drawer>
     `;
   }
+
+
+  private renderUploadDrawer() {
+    const uploadState = $backupUploadState.get();
+
+    return html`
+      <detail-drawer
+        .title=${'Upload backup'}
+        .show=${this.showUploadDrawer}
+        @close=${() => this.closeUploadDrawer()}
+      >
+        <div class="drawer-content">
+          ${!this.selectedFile ? html`
+            <div 
+              class="drop-zone ${this.dragOver ? 'drag-over' : ''}"
+              @dragover=${(e: DragEvent) => this.handleDragOver(e)}
+              @dragleave=${(e: DragEvent) => this.handleDragLeave(e)}
+              @drop=${(e: DragEvent) => this.handleDrop(e)}
+              @click=${() => this.shadowRoot?.getElementById('backup-file-input')?.click()}
+            >
+              <div class="drop-zone-icon">💾</div>
+              <div class="drop-zone-text">Drag and drop a backup file here</div>
+              <div class="drop-zone-hint">or click to browse (.qcow2, .qcow2.gz, .qcow2.zst, .qcow2.xz, .qcow2.bz2)</div>
+            </div>
+            <input
+              type="file"
+              id="backup-file-input"
+              accept=".qcow2,.qcow2.gz,.qcow2.zst,.qcow2.xz,.qcow2.bz2"
+              style="display: none"
+              @change=${(e: Event) => this.handleFileSelect(e)}
+            />
+          ` : html`
+            <div class="file-info">
+              <div class="file-details">
+                <div class="file-name">${this.selectedFile.name}</div>
+                <div class="file-size">${this.formatSize(this.selectedFile.size)}</div>
+              </div>
+              ${!uploadState.isUploading ? html`
+                <button class="btn" @click=${() => this.removeSelectedFile()}>Remove</button>
+              ` : ''}
+            </div>
+          `}
+          <div class="field">
+            <label>VM name *</label>
+            <input
+              type="text"
+              .value=${this.uploadMetadata.vm_name}
+              @input=${(e: Event) => (this.uploadMetadata.vm_name = (e.target as HTMLInputElement).value)}
+              ?disabled=${uploadState.isUploading}
+              placeholder="Name of the VM this backup belongs to"
+            />
+          </div>
+          <div class="field">
+            <label>VM UUID (optional)</label>
+            <input
+              type="text"
+              .value=${this.uploadMetadata.vm_uuid}
+              @input=${(e: Event) => (this.uploadMetadata.vm_uuid = (e.target as HTMLInputElement).value)}
+              ?disabled=${uploadState.isUploading}
+              placeholder="UUID of the VM (if known)"
+            />
+          </div>
+          <div class="field">
+            <label>Type</label>
+            <select
+              .value=${this.uploadMetadata.backup_type}
+              @change=${(e: Event) => (this.uploadMetadata.backup_type = (e.target as HTMLSelectElement).value as any)}
+              ?disabled=${uploadState.isUploading}
+            >
+              <option value="full">Full</option>
+              <option value="incremental">Incremental</option>
+              <option value="differential">Differential</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Compression</label>
+            <select
+              .value=${this.uploadMetadata.compression}
+              @change=${(e: Event) => (this.uploadMetadata.compression = (e.target as HTMLSelectElement).value)}
+              ?disabled=${uploadState.isUploading}
+            >
+              <option value="none">None</option>
+              <option value="gzip">gzip</option>
+              <option value="bzip2">bzip2</option>
+              <option value="zstd">zstd</option>
+              <option value="xz">xz</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Encryption</label>
+            <select
+              .value=${this.uploadMetadata.encryption}
+              @change=${(e: Event) => (this.uploadMetadata.encryption = (e.target as HTMLSelectElement).value)}
+              ?disabled=${uploadState.isUploading}
+            >
+              <option value="none">None</option>
+              <option value="aes-256">AES-256</option>
+              <option value="aes-128">AES-128</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Retention days</label>
+            <input
+              type="number"
+              min="1"
+              .value=${String(this.uploadMetadata.retention_days)}
+              @input=${(e: Event) => (this.uploadMetadata.retention_days = Number((e.target as HTMLInputElement).value))}
+              ?disabled=${uploadState.isUploading}
+            />
+          </div>
+          <div class="field">
+            <label>Description</label>
+            <textarea
+              .value=${this.uploadMetadata.description}
+              @input=${(e: Event) => (this.uploadMetadata.description = (e.target as HTMLTextAreaElement).value)}
+              ?disabled=${uploadState.isUploading}
+            ></textarea>
+          </div>
+          ${uploadState.isUploading || this.isPaused ? html`
+            <div style="margin-top: 16px;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                <span>Upload progress</span>
+                <span>${uploadState.uploadProgress}%</span>
+              </div>
+              <div style="height: 8px; background: var(--vscode-input-background); border-radius: 4px; overflow: hidden;">
+                <div style="height: 100%; width: ${uploadState.uploadProgress}%; background: var(--vscode-accent, #007acc); transition: width 0.3s;"></div>
+              </div>
+              <div style="display: flex; gap: 8px; margin-top: 12px;">
+                ${uploadState.isUploading ? html`
+                  <button class="btn" @click=${() => this.pauseUpload()}>Pause</button>
+                ` : html`
+                  <button class="btn btn-primary" @click=${() => this.resumeUpload()}>Resume</button>
+                `}
+                <button class="btn btn-danger" @click=${() => this.cancelUpload()}>Cancel</button>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+        <div class="drawer-footer">
+          <button class="btn" @click=${() => this.closeUploadDrawer()} ?disabled=${uploadState.isUploading}>Cancel</button>
+          <button
+            class="btn btn-primary"
+            @click=${() => this.handleUpload()}
+            ?disabled=${uploadState.isUploading || !this.selectedFile || !this.uploadMetadata.vm_name.trim()}
+          >
+            ${uploadState.isUploading ? 'Uploading...' : 'Upload'}
+          </button>
+        </div>
+      </detail-drawer>
+    `;
+  }
+
 
   private renderRestoreModal() {
     if (!this.restoreTarget) return html``;

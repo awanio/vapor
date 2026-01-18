@@ -4,6 +4,7 @@ import type {
   BackupCreateRequest,
   BackupRestoreRequest,
   BackupImportRequest,
+
 } from '../../types/virtualization';
 import virtualizationAPI, { VirtualizationAPIError } from '../../services/virtualization-api';
 import { mapVMError } from '../../utils/error-mapper';
@@ -28,6 +29,21 @@ const getBackupKey = (backup: Partial<VMBackup>): string | null => {
 export const $backups = atom<VMBackup[]>([]);
 export const $backupsLoading = atom<boolean>(false);
 export const $backupsError = atom<string | null>(null);
+
+// Backup upload state
+export interface BackupUploadState {
+  isUploading: boolean;
+  uploadProgress: number;
+  uploadId: string | null;
+  error: string | null;
+}
+
+export const $backupUploadState = atom<BackupUploadState>({
+  isUploading: false,
+  uploadProgress: 0,
+  uploadId: null,
+  error: null,
+});
 
 export const $backupsByVm = computed($backups, (items) => {
   const map = new Map<string, VMBackup[]>();
@@ -139,4 +155,15 @@ export const backupActions = {
   import: importBackup,
   restore: restoreBackup,
   delete: deleteBackup,
+  setUploadState: (state: Partial<BackupUploadState>) => {
+    $backupUploadState.set({ ...$backupUploadState.get(), ...state });
+  },
+  resetUploadState: () => {
+    $backupUploadState.set({
+      isUploading: false,
+      uploadProgress: 0,
+      uploadId: null,
+      error: null,
+    });
+  },
 };

@@ -106,6 +106,25 @@ func LibvirtRoutes(r *gin.RouterGroup, authService *auth.EnhancedService, servic
 	r.POST("/virtualization/computes/backups/import", importBackup(service))
 	r.GET("/virtualization/computes/backups/:backup_id/download", downloadBackup(service))
 
+	// Backup Upload with resumable uploads (TUS protocol)
+	backupUpload := r.Group("/virtualization/computes/backups/upload")
+	{
+		// Setup resumable upload handler for VM backups using TUS protocol
+		backupUploadDir := filepath.Join(os.TempDir(), "vapor-uploads", "backups")
+		backupUploadHandler := libvirt.NewBackupResumableUploadHandler(service, backupUploadDir)
+
+		// TUS protocol endpoints for backup uploads
+		backupUpload.OPTIONS("", backupUploadHandler.HandleOptions)            // OPTIONS for TUS protocol discovery
+		backupUpload.OPTIONS("/:id", backupUploadHandler.HandleOptions)        // OPTIONS for TUS protocol discovery
+		backupUpload.POST("", backupUploadHandler.CreateUpload)                // Create new upload session
+		backupUpload.GET("", backupUploadHandler.ListUploads)                  // List active upload sessions
+		backupUpload.HEAD("/:id", backupUploadHandler.GetUploadInfo)           // Get upload session info (HEAD request for TUS)
+		backupUpload.PATCH("/:id", backupUploadHandler.UploadChunk)            // Upload chunk (PATCH request for TUS)
+		backupUpload.GET("/:id", backupUploadHandler.GetUploadStatus)          // Get upload status
+		backupUpload.POST("/:id/complete", backupUploadHandler.CompleteUpload) // Complete upload and register backup
+		backupUpload.DELETE("/:id", backupUploadHandler.CancelUpload)          // Cancel/delete upload session
+	}
+
 	// ISO Management
 	isoGroup := r.Group("/virtualization/isos")
 	{
@@ -923,6 +942,7 @@ func createBackup(service *libvirt.Service) gin.HandlerFunc {
 			IncludeMemory   *bool   `json:"include_memory,omitempty"`
 			RetentionDays   *int    `json:"retention_days,omitempty"`
 			Description     string  `json:"description,omitempty"`
+			StoragePool     string  `json:"storage_pool,omitempty"`
 		}
 
 		var req createBackupRequest
@@ -983,6 +1003,7 @@ func createBackup(service *libvirt.Service) gin.HandlerFunc {
 		libReq := libvirt.VMBackupRequest{
 			Type:            libvirt.BackupType(backupType),
 			DestinationPath: dest,
+			StoragePool:     req.StoragePool,
 			Compression:     libvirt.BackupCompressionType(compression),
 			Encryption:      libvirt.BackupEncryptionType(encryption),
 			EncryptionKey:   req.EncryptionKey,
@@ -1119,13 +1140,13 @@ func downloadBackup(service *libvirt.Service) gin.HandlerFunc {
 		// 2. Legacy format: {vmname}-{backupid}.qcow2
 		// 3. Simple format: {backupid}.qcow2
 		candidatePaths := []string{}
-		
+
 		// New format - try common disk device names
 		for _, disk := range []string{"vda", "sda", "hda"} {
-			candidatePaths = append(candidatePaths, 
+			candidatePaths = append(candidatePaths,
 				filepath.Join(backup.DestinationPath, fmt.Sprintf("%s-%s-%s.qcow2", backup.VMName, disk, backup.ID)))
 		}
-		
+
 		// Legacy formats
 		candidatePaths = append(candidatePaths,
 			filepath.Join(backup.DestinationPath, fmt.Sprintf("%s-%s.qcow2", backup.VMName, backup.ID)),

@@ -228,8 +228,10 @@ type VMBackup struct {
 
 // VMBackupRequest represents a request to create a backup
 type VMBackupRequest struct {
+	ParentBackupID  string                `json:"parent_backup_id,omitempty"` // For incremental/differential, auto-determined if empty
 	Type            BackupType            `json:"type" binding:"required,oneof=full incremental differential"`
 	DestinationPath string                `json:"destination_path,omitempty"` // Optional, will use default if not specified
+	StoragePool     string                `json:"storage_pool,omitempty"`     // Storage pool name, takes precedence over destination_path
 	Compression     BackupCompressionType `json:"compression,omitempty"`
 	Encryption      BackupEncryptionType  `json:"encryption,omitempty"`
 	EncryptionKey   string                `json:"encryption_key,omitempty"`

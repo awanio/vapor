@@ -233,12 +233,27 @@ func (s *Service) CreateBackup(ctx context.Context, nameOrUUID string, req *VMBa
 		return nil, fmt.Errorf("failed to generate backup ID: %w", err)
 	}
 
-	destPath := req.DestinationPath
-	if destPath == "" {
-		destPath = filepath.Join("/var/lib/libvirt/vapor-backups", vm.Name)
-		if err := os.MkdirAll(destPath, 0755); err != nil {
-			return nil, fmt.Errorf("failed to create default backup directory: %w", err)
+	// Determine destination path: storage_pool > destination_path > default
+	var destPath string
+	if req.StoragePool != "" {
+		// Resolve storage pool to path (need to temporarily unlock for this)
+		s.mu.Unlock()
+		pool, err := s.GetStoragePool(ctx, req.StoragePool)
+		s.mu.Lock()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get storage pool '%s': %w", req.StoragePool, err)
 		}
+		if pool.Path == "" {
+			return nil, fmt.Errorf("storage pool '%s' does not have a path (unsupported pool type for backups)", req.StoragePool)
+		}
+		destPath = filepath.Join(pool.Path, "backups", vm.Name)
+	} else if req.DestinationPath != "" {
+		destPath = req.DestinationPath
+	} else {
+		destPath = filepath.Join("/var/lib/libvirt/vapor-backups", vm.Name)
+	}
+	if err := os.MkdirAll(destPath, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create backup directory: %w", err)
 	}
 
 	backup := &VMBackup{
@@ -723,6 +738,37 @@ func (s *Service) saveBackupRecord(backup *VMBackup) error {
 }
 
 // generateBackupXML generates the XML for the backup operation
+
+// findLatestBackup finds the most recent completed backup for a VM (any type)
+func (s *Service) findLatestBackup(ctx context.Context, vmUUID string) (string, error) {
+	if s.db == nil {
+		return "", fmt.Errorf("database not configured")
+	}
+	var backupID string
+	err := s.db.QueryRowContext(ctx,
+		"SELECT id FROM vm_backups WHERE vm_uuid = ? AND status = ? ORDER BY completed_at DESC LIMIT 1",
+		vmUUID, BackupStatusCompleted).Scan(&backupID)
+	if err != nil {
+		return "", err
+	}
+	return backupID, nil
+}
+
+// findLatestFullBackup finds the most recent completed full backup for a VM
+func (s *Service) findLatestFullBackup(ctx context.Context, vmUUID string) (string, error) {
+	if s.db == nil {
+		return "", fmt.Errorf("database not configured")
+	}
+	var backupID string
+	err := s.db.QueryRowContext(ctx,
+		"SELECT id FROM vm_backups WHERE vm_uuid = ? AND status = ? AND type = ? ORDER BY completed_at DESC LIMIT 1",
+		vmUUID, BackupStatusCompleted, BackupTypeFull).Scan(&backupID)
+	if err != nil {
+		return "", err
+	}
+	return backupID, nil
+}
+
 func (s *Service) generateBackupXML(domain *libvirt.Domain, backup *VMBackup, req *VMBackupRequest) (string, error) {
 	// Get domain info
 	name, err := domain.GetName()
@@ -770,7 +816,7 @@ func (s *Service) generateBackupXML(domain *libvirt.Domain, backup *VMBackup, re
 		if disk.Target.Dev == "" {
 			continue
 		}
-		
+
 		targetFile := fmt.Sprintf("%s/%s-%s-%s.qcow2", backup.DestinationPath, name, disk.Target.Dev, backup.ID)
 		diskElements.WriteString(fmt.Sprintf(`
 			<disk name='%s' backup='yes' type='file'>
@@ -787,12 +833,12 @@ func (s *Service) generateBackupXML(domain *libvirt.Domain, backup *VMBackup, re
 	// Build backup XML - for push mode, we don't use <server> element
 	var backupXML strings.Builder
 	backupXML.WriteString("<domainbackup mode='push'>")
-	
+
 	// Only include incremental element if there's a parent backup
 	if backup.ParentBackupID != "" {
 		backupXML.WriteString(fmt.Sprintf("<incremental>%s</incremental>", backup.ParentBackupID))
 	}
-	
+
 	backupXML.WriteString("<disks>")
 	backupXML.WriteString(diskElements.String())
 	backupXML.WriteString("</disks>")
@@ -1240,6 +1286,7 @@ func (s *Service) ListSnapshots(ctx context.Context, nameOrUUID string) ([]VMSna
 //   - 1: DOMAIN_SNAPSHOT_REVERT_RUNNING (keep domain running after revert)
 //   - 2: DOMAIN_SNAPSHOT_REVERT_PAUSED (leave domain paused after revert)
 //   - 4: DOMAIN_SNAPSHOT_REVERT_FORCE (force revert even if risky)
+//
 // Flags can be combined using bitwise OR.
 func (s *Service) RevertSnapshot(ctx context.Context, nameOrUUID string, snapshotName string, flags libvirt.DomainSnapshotRevertFlags) error {
 	// Default to DOMAIN_SNAPSHOT_REVERT_RUNNING if no flags specified
@@ -1271,9 +1318,9 @@ func (s *Service) RevertSnapshot(ctx context.Context, nameOrUUID string, snapsho
 		// Check if this is an external snapshot revert error
 		if strings.Contains(err.Error(), "revert to external snapshot not supported") {
 			fmt.Printf("DEBUG: External snapshot detected, using custom revert\n")
-			return fmt.Errorf("reverting to external snapshots is not supported by libvirt. " +
-				"For running VMs, please use internal snapshots with memory. " +
-				"Alternatively, stop the VM, revert using blockcommit, then restart. " +
+			return fmt.Errorf("reverting to external snapshots is not supported by libvirt. "+
+				"For running VMs, please use internal snapshots with memory. "+
+				"Alternatively, stop the VM, revert using blockcommit, then restart. "+
 				"Original error: %w", err)
 		}
 		return err
@@ -1301,9 +1348,9 @@ func (s *Service) DeleteSnapshot(ctx context.Context, nameOrUUID string, snapsho
 
 	err = snapshot.Delete(0)
 	if err != nil && strings.Contains(err.Error(), "deletion of") && strings.Contains(err.Error(), "external disk snapshots not supported") {
-		return fmt.Errorf("cannot delete external snapshot using standard API. " +
-			"External snapshots must be deleted manually using blockcommit or by removing overlay files. " +
-			"To avoid this issue, use internal snapshots with memory for running VMs. " +
+		return fmt.Errorf("cannot delete external snapshot using standard API. "+
+			"External snapshots must be deleted manually using blockcommit or by removing overlay files. "+
+			"To avoid this issue, use internal snapshots with memory for running VMs. "+
 			"Original error: %w", err)
 	}
 	return err

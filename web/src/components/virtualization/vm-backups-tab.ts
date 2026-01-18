@@ -1,6 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import type { VirtualMachine, VMBackup, BackupCreateRequest, BackupType } from '../../types/virtualization';
+import type { VirtualMachine, VMBackup, BackupCreateRequest, BackupType, StoragePool } from '../../types/virtualization';
 import virtualizationAPI from '../../services/virtualization-api';
 import {
   $backups,
@@ -230,13 +230,15 @@ export class VMBackupsTab extends LitElement {
   @state() private isDeleting = false;
   @state() private missingFiles = new Set<string>();
 
+  @state() private storagePools: StoragePool[] = [];
 
   private backupWatcher?: () => void;
   private pollingHandle: number | null = null;
 
   private createForm: BackupCreateRequest = {
     backup_type: 'full',
-    destination_path: '',
+    parent_backup_id: '',
+    storage_pool: '',
     compression: 'none',
     encryption: 'none',
     include_memory: false,
@@ -247,8 +249,8 @@ export class VMBackupsTab extends LitElement {
   override connectedCallback(): void {
     super.connectedCallback();
     this.backupWatcher = $backups.subscribe(() => this.syncFromStore());
+    this.loadStoragePools();
   }
-
   override disconnectedCallback(): void {
     super.disconnectedCallback();
     this.backupWatcher?.();
@@ -257,14 +259,19 @@ export class VMBackupsTab extends LitElement {
 
   override updated(changed: Map<string, unknown>): void {
     if (changed.has('vm')) {
-      this.createForm.destination_path = this.defaultDestination();
       this.loadBackups();
     }
   }
 
-  private defaultDestination() {
-    const name = this.vm?.name || this.vm?.id || 'vm';
-    return `/var/lib/libvirt/vapor-backups/${name}`;
+  private async loadStoragePools() {
+    try {
+      const response = await virtualizationAPI.listStoragePools() as any;
+      const pools = response?.pools || response?.data?.pools || (Array.isArray(response) ? response : []);
+      this.storagePools = Array.isArray(pools) ? pools : [];
+      console.log("Loaded storage pools:", this.storagePools);
+    } catch (err) {
+      console.error('Failed to load storage pools:', err);
+    }
   }
 
   private syncFromStore() {
@@ -315,8 +322,9 @@ export class VMBackupsTab extends LitElement {
     this.isCreating = true;
     try {
       const payload: BackupCreateRequest = { ...this.createForm };
-      if (!payload.destination_path) delete (payload as any).destination_path;
+      if (!payload.storage_pool) delete (payload as any).storage_pool;
       if (payload.encryption === 'none') delete (payload as any).encryption_key;
+      if (!payload.parent_backup_id) delete (payload as any).parent_backup_id; // Let backend auto-find
       await backupActions.create(this.vm.id, payload);
       this.toast = { text: 'Backup started', type: 'success' };
       this.showCreateModal = false;
@@ -574,22 +582,50 @@ export class VMBackupsTab extends LitElement {
           <label>Type</label>
           <select
             .value=${this.createForm.backup_type}
-            @change=${(e: Event) => (this.createForm.backup_type = (e.target as HTMLSelectElement).value as BackupType)}
+            @change=${(e: Event) => {
+              this.createForm.backup_type = (e.target as HTMLSelectElement).value as BackupType;
+              this.createForm.parent_backup_id = ''; // Reset parent when type changes
+              this.requestUpdate();
+            }}
           >
             <option value="full">Full</option>
             <option value="incremental">Incremental</option>
             <option value="differential">Differential</option>
           </select>
+          ${this.createForm.backup_type === 'incremental' ? html`
+            <div class="form-hint">Backs up only changes since the selected parent backup.</div>
+          ` : ''}
+          ${this.createForm.backup_type === 'differential' ? html`
+            <div class="form-hint">Backs up only changes since the last full backup (auto-selected).</div>
+          ` : ''}
         </div>
+        ${this.createForm.backup_type === 'incremental' ? html`
+          <div class="form-group">
+            <label>Parent backup</label>
+            <select
+              .value=${this.createForm.parent_backup_id || ''}
+              @change=${(e: Event) => (this.createForm.parent_backup_id = (e.target as HTMLSelectElement).value)}
+            >
+              <option value="">Auto-select latest backup</option>
+              ${this.backups
+                .filter(b => b.status === 'completed')
+                .map(b => html`<option value=${b.backup_id}>${b.type} - ${this.formatDate(b.started_at || b.created_at)} ${b.backup_id?.substring(0, 8)}...</option>`)}
+            </select>
+            <div class="form-hint">Leave empty to use the most recent backup.</div>
+          </div>
+        ` : ''}
         <div class="form-group">
-          <label>Destination path</label>
-          <input
-            type="text"
-            .value=${this.createForm.destination_path || ''}
-            placeholder=${this.defaultDestination()}
-            @input=${(e: Event) => (this.createForm.destination_path = (e.target as HTMLInputElement).value)}
-          />
-          <div class="form-hint">Default: ${this.defaultDestination()}</div>
+          <label>Storage pool</label>
+          <select
+            .value=${this.createForm.storage_pool || ''}
+            @change=${(e: Event) => (this.createForm.storage_pool = (e.target as HTMLSelectElement).value)}
+          >
+            <option value="">Use default location</option>
+            ${(this.storagePools || [])
+              .filter(p => p.path)
+              .map(p => html`<option value=${p.name}>${p.name} (${this.formatSize(p.available)} free)</option>`)}
+          </select>
+          <div class="form-hint">Select a storage pool for the backup or use the default location.</div>
         </div>
         <div class="form-group">
           <label>Compression</label>

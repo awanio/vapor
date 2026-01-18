@@ -533,6 +533,141 @@ export class VirtualizationAPI {
     return response.blob();
   }
 
+
+  /**
+   * Initiate a backup upload session (TUS protocol)
+   * This creates a TUS upload session for uploading VM backup files
+   */
+  async initiateBackupUpload(metadata: {
+    filename: string;
+    size: number;
+    vm_name: string;
+    vm_uuid?: string;
+    backup_type?: string;
+    compression?: string;
+    encryption?: string;
+    description?: string;
+    retention_days?: number;
+    destination_path?: string;
+  }): Promise<{ uploadUrl: string; uploadId: string }> {
+    // Prepare TUS metadata in base64 format as per TUS protocol
+    const tusMetadata: Record<string, string> = {};
+
+    // Encode each metadata field to base64
+    if (metadata.filename) {
+      tusMetadata.filename = btoa(metadata.filename);
+    }
+    if (metadata.vm_name) {
+      tusMetadata.vm_name = btoa(metadata.vm_name);
+    }
+    if (metadata.vm_uuid) {
+      tusMetadata.vm_uuid = btoa(metadata.vm_uuid);
+    }
+    if (metadata.backup_type) {
+      tusMetadata.backup_type = btoa(metadata.backup_type);
+    }
+    if (metadata.compression) {
+      tusMetadata.compression = btoa(metadata.compression);
+    }
+    if (metadata.encryption) {
+      tusMetadata.encryption = btoa(metadata.encryption);
+    }
+    if (metadata.description) {
+      tusMetadata.description = btoa(metadata.description);
+    }
+    if (metadata.retention_days !== undefined) {
+      tusMetadata.retention_days = btoa(metadata.retention_days.toString());
+    }
+    if (metadata.destination_path) {
+      tusMetadata.destination_path = btoa(metadata.destination_path);
+    }
+
+    // Build Upload-Metadata header value
+    const uploadMetadata = Object.entries(tusMetadata)
+      .map(([key, value]) => `${key} ${value}`)
+      .join(',');
+
+    const token = getAuthToken();
+    const url = getApiUrl('/virtualization/computes/backups/upload');
+
+    // Make TUS-compliant POST request with proper headers
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Upload-Length': metadata.size.toString(),
+        'Upload-Metadata': uploadMetadata,
+        'Tus-Resumable': '1.0.0',
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({
+        code: 'API_ERROR',
+        message: response.statusText,
+      }));
+      throw new VirtualizationAPIError(
+        error.code || 'API_ERROR',
+        error.message || `Request failed: ${response.status}`,
+        error.details
+      );
+    }
+
+    // Extract upload URL from Location header and response body
+    const location = response.headers.get('Location');
+    const responseData = await response.json();
+
+    console.log('[TUS Backup] Session created:', {
+      location,
+      responseData,
+      originalUrl: url
+    });
+
+    // Ensure we have a full URL for the TUS client
+    let tusUploadUrl = location || responseData.upload_url;
+
+    // If the URL is relative, make it absolute
+    if (tusUploadUrl && !tusUploadUrl.startsWith('http')) {
+      const fullUploadPath = tusUploadUrl.startsWith('/api/')
+        ? tusUploadUrl
+        : `/api/v1/virtualization/computes/backups/upload/${responseData.upload_id}`;
+
+      const baseUrl = url.substring(0, url.indexOf('/api/'));
+      tusUploadUrl = baseUrl + fullUploadPath;
+    }
+
+    console.log('[TUS Backup] Final upload URL:', tusUploadUrl);
+
+    return {
+      uploadUrl: tusUploadUrl,
+      uploadId: responseData.upload_id,
+    };
+  }
+
+  /**
+   * Complete a backup upload
+   */
+  async completeBackupUpload(uploadId: string): Promise<VMBackup> {
+    const response = await apiRequest<any>(`/computes/backups/upload/${uploadId}/complete`, {
+      method: 'POST',
+    });
+    // Response contains { data: { backup: ... } }
+    if (response?.data?.backup) {
+      return response.data.backup;
+    }
+    if (response?.backup) {
+      return response.backup;
+    }
+    return response as VMBackup;
+  }
+
+  /**
+   * Get backup upload progress
+   */
+  async getBackupUploadProgress(uploadId: string): Promise<any> {
+    return apiRequest<any>(`/computes/backups/upload/${uploadId}`);
+  }
+
   private normalizeBackups(response: any): VMBackup[] {
     if (!response) return [];
     if (Array.isArray(response)) return response;
