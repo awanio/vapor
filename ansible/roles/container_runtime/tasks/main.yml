@@ -125,6 +125,17 @@
     # Force regeneration to ensure plugins are correct (fixes CRI error)
     # creates: /etc/containerd/config.toml
   when: install_containerd | bool or install_docker | bool
+  register: containerd_config_generated
+
+# Remove disabled_plugins line that disables CRI - this is critical for Kubernetes
+# The default config from containerd.io package may have disabled_plugins = ["cri"]
+- name: Ensure CRI plugin is enabled in containerd config
+  lineinfile:
+    path: /etc/containerd/config.toml
+    regexp: '^disabled_plugins\s*='
+    state: absent
+  when: install_containerd | bool or install_docker | bool
+  register: cri_plugin_fix
 
 - name: Enable Systemd Cgroup for Containerd
   replace:
@@ -132,11 +143,30 @@
     regexp: 'SystemdCgroup = false'
     replace: 'SystemdCgroup = true'
   when: install_containerd | bool or install_docker | bool
-  notify: restart containerd
+  register: cgroup_config_changed
+
+# Restart containerd immediately after config changes to ensure CRI is available
+# for subsequent roles (like kubernetes). Using handler would defer restart until
+# end of play, which is too late for kubeadm init.
+- name: Restart Containerd to apply config changes
+  service:
+    name: containerd
+    state: restarted
+  when: >
+    (install_containerd | bool or install_docker | bool) and
+    (containerd_config_generated.changed or cri_plugin_fix.changed or cgroup_config_changed.changed)
 
 - name: Start Containerd Service
   service:
     name: containerd
     state: started
     enabled: yes
+  when: install_containerd | bool or install_docker | bool
+
+# Wait for containerd socket to be ready after restart
+- name: Wait for containerd socket to be available
+  wait_for:
+    path: /run/containerd/containerd.sock
+    state: present
+    timeout: 30
   when: install_containerd | bool or install_docker | bool
