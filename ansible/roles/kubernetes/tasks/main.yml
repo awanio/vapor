@@ -11,12 +11,14 @@
         state: present
     - name: Add Kubernetes Apt Key
       get_url:
-        url: https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key
+        url: https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key
         dest: /etc/apt/keyrings/kubernetes-apt-keyring.asc
         mode: '0644'
     - name: Add Kubernetes Repository
       shell: |
-        echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.asc] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+    - name: Add Kubernetes Repository
+      shell: |
+        echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.asc] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
     - name: Update apt index
       apt:
         update_cache: yes
@@ -67,11 +69,14 @@
   register: k8s_conf
   when: node_role == "control-plane"
 
+- name: Create kubeadm config
+  template:
+    src: kubeadm-config.yaml.j2
+    dest: /etc/kubernetes/kubeadm-config.yaml
+  when: node_role == "control-plane"
+
 - name: Initialize Kubernetes Control Plane
-  command: >
-    kubeadm init
-    --pod-network-cidr={{ pod_network_cidr }}
-    --service-cidr={{ service_cidr }}
+  command: kubeadm init --config /etc/kubernetes/kubeadm-config.yaml --ignore-preflight-errors=Swap
   register: kubeadm_init
   when: 
     - node_role == "control-plane"

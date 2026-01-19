@@ -122,7 +122,8 @@
     mkdir -p /etc/containerd
     containerd config default > /etc/containerd/config.toml
   args:
-    creates: /etc/containerd/config.toml
+    # Force regeneration to ensure plugins are correct (fixes CRI error)
+    # creates: /etc/containerd/config.toml
   when: install_containerd | bool or install_docker | bool
 
 - name: Enable Systemd Cgroup for Containerd
