@@ -1,0 +1,73 @@
+---
+- name: Determine latest version if not set
+  set_fact:
+    vapor_version: "v0.0.1-rc.2" 
+  when: vapor_version is not defined
+
+- name: Set download URL
+  set_fact:
+    vapor_download_url: "https://storage.awan.io/assets/vapor/{{ vapor_version }}/vapor"
+
+- name: Create Vapor directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - /etc/vapor
+    - /var/log/vapor
+    - /var/lib/vapor
+
+- name: Stop existing Vapor service
+  service:
+    name: vapor
+    state: stopped
+  failed_when: false # Ignore if service doesn't exist
+
+- name: Download Vapor binary
+  get_url:
+    url: "{{ vapor_download_url }}"
+    dest: /usr/local/bin/vapor
+    mode: '0755'
+  register: download_binary
+
+- name: Verify binary execution
+  command: /usr/local/bin/vapor --version
+  changed_when: false
+  ignore_errors: yes
+
+- name: Create environment file
+  copy:
+    dest: /etc/vapor/environment
+    content: |
+      VAPOR_PORT=7770
+      VAPOR_HOST=0.0.0.0
+      VAPOR_ENV=production
+    force: no # Do not overwrite existing config
+
+- name: Create systemd service
+  copy:
+    dest: /etc/systemd/system/vapor.service
+    content: |
+      [Unit]
+      Description=Vapor Service
+      After=network.target
+
+      [Service]
+      ExecStart=/usr/local/bin/vapor
+      Restart=always
+      EnvironmentFile=/etc/vapor/environment
+      WorkingDirectory=/var/lib/vapor
+      StandardOutput=append:/var/log/vapor/output.log
+      StandardError=append:/var/log/vapor/error.log
+
+      [Install]
+      WantedBy=multi-user.target
+    notify: restart vapor
+
+- name: Start Vapor service
+  service:
+    name: vapor
+    state: started
+    enabled: yes
+    daemon_reload: yes

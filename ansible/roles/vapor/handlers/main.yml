@@ -1,0 +1,5 @@
+---
+- name: restart vapor
+  service:
+    name: vapor
+    state: restarted
