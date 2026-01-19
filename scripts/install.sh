@@ -340,7 +340,11 @@ if prompt_confirmation "Proceed with installation?" "y"; then
     cd "$PLAYBOOK_DIR"
     
     if ansible-playbook "install_vapor_stack.yml" --extra-vars "$EXTRA_VARS" -v; then
-        echo -e "${GREEN}Installation completed successfully!${NC}"
+        
+        DEFAULT_IP=$(ip route get 1.2.3.4 | awk '{print $7}')
+
+        echo -e "${GREEN}Vapor installation completed successfully! Open following URL to access Vapor web UI:${NC}\n"
+        echo -e "${GREEN}https://${DEFAULT_IP}:7770${NC}"
         cd - > /dev/null # Attempt to return to previous dir, though we exit anyway
         rm -rf "$CLONE_DIR"
     else
