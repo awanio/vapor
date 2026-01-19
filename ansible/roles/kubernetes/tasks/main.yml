@@ -14,8 +14,7 @@
         url: https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key
         dest: /etc/apt/keyrings/kubernetes-apt-keyring.asc
         mode: '0644'
-    - name: Add Kubernetes Repository
-      shell: |
+
     - name: Add Kubernetes Repository
       shell: |
         echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.asc] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
