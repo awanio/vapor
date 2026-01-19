@@ -9,6 +9,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"github.com/awanio/vapor/internal/websocket"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -31,6 +32,16 @@ type Service struct {
 	consoleProxy    *ConsoleProxy
 	eventHub        *websocket.Hub
 	eventOnce       sync.Once
+	metricsOnce     sync.Once
+	cpuUsageMu      sync.Mutex
+	cpuUsageCache   map[string]cpuUsageSample
+}
+
+// cpuUsageSample stores previous CPU usage data for calculating percentage
+type cpuUsageSample struct {
+	cpuTime   uint64
+	timestamp time.Time
+	vcpus     uint
 }
 
 // NewService creates a new libvirt service
@@ -52,9 +63,10 @@ func NewService(uri string) (*Service, error) {
 	}
 
 	s := &Service{
-		conn:        conn,
-		metricsStop: make(chan struct{}),
-		templates:   make(map[string]*VMTemplate),
+		conn:          conn,
+		metricsStop:   make(chan struct{}),
+		templates:     make(map[string]*VMTemplate),
+		cpuUsageCache: make(map[string]cpuUsageSample),
 	}
 
 	// Load default templates
@@ -104,6 +116,10 @@ func (s *Service) SetEventHub(h *websocket.Hub) {
 
 		s.conn.DomainEventLifecycleRegister(nil, s.handleLifecycleEvent)
 	})
+
+	s.metricsOnce.Do(func() {
+		go s.broadcastVMMetrics(3 * time.Second)
+	})
 }
 
 func (s *Service) handleLifecycleEvent(conn *libvirt.Connect, dom *libvirt.Domain, event *libvirt.DomainEventLifecycle) {
@@ -129,6 +145,86 @@ func (s *Service) handleLifecycleEvent(conn *libvirt.Connect, dom *libvirt.Domai
 	msg := websocket.Message{Type: websocket.MessageTypeEvent, Payload: payload}
 	if b, err := json.Marshal(msg); err == nil {
 		hub.BroadcastToChannel("vm-events", b)
+	}
+}
+
+func (s *Service) broadcastVMMetrics(interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-s.metricsStop:
+			return
+		case <-ticker.C:
+			s.mu.RLock()
+			hub := s.eventHub
+			conn := s.conn
+			s.mu.RUnlock()
+			if hub == nil || conn == nil {
+				continue
+			}
+
+			if !hub.HasSubscribers("vm-metrics-events") {
+				continue
+			}
+
+			domains, err := conn.ListAllDomains(0)
+			if err != nil {
+				continue
+			}
+
+			now := time.Now().UTC()
+			items := make([]map[string]interface{}, 0, len(domains))
+			for _, domain := range domains {
+				func() {
+					defer domain.Free()
+
+					uuid, err := domain.GetUUIDString()
+					if err != nil {
+						return
+					}
+
+					state, _, err := domain.GetState()
+					if err == nil && state != libvirt.DOMAIN_RUNNING {
+						items = append(items, map[string]interface{}{
+							"id":           uuid,
+							"cpu_usage":    0.0,
+							"memory_usage": 0.0,
+							"timestamp":    now,
+						})
+						return
+					}
+
+					metrics, err := s.getDomainMetrics(&domain)
+					if err != nil {
+						return
+					}
+
+					items = append(items, map[string]interface{}{
+						"id":           metrics.UUID,
+						"cpu_usage":    metrics.CPUUsage,
+						"memory_usage": metrics.MemoryUsage,
+						"timestamp":    metrics.Timestamp,
+					})
+				}()
+			}
+
+			if len(items) == 0 {
+				continue
+			}
+
+			payload := map[string]interface{}{
+				"kind":      "vm-metrics",
+				"timestamp": now,
+				"items":     items,
+			}
+
+			msg := websocket.Message{Type: websocket.MessageTypeEvent, Payload: payload}
+			if data, err := json.Marshal(msg); err == nil {
+				hub.BroadcastToChannel("vm-metrics-events", data)
+			}
+		}
 	}
 }
 
@@ -1531,15 +1627,27 @@ func (s *Service) GetVMMetrics(ctx context.Context, nameOrUUID string) (*VMMetri
 	}
 	defer domain.Free()
 
+	return s.getDomainMetrics(domain)
+}
+
+func (s *Service) getDomainMetrics(domain *libvirt.Domain) (*VMMetrics, error) {
 	uuid, err := domain.GetUUIDString()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get UUID: %w", err)
+	}
+
+	info, err := domain.GetInfo()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get domain info: %w", err)
 	}
 
 	// Get CPU stats
 	cpuStats, err := domain.GetCPUStats(-1, 1, 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get CPU stats: %w", err)
+	}
+	if len(cpuStats) == 0 {
+		return nil, fmt.Errorf("no CPU stats returned")
 	}
 
 	// Get memory stats
@@ -1562,29 +1670,121 @@ func (s *Service) GetVMMetrics(ctx context.Context, nameOrUUID string) (*VMMetri
 		netStats = &libvirt.DomainInterfaceStats{}
 	}
 
+	now := time.Now()
 	metrics := &VMMetrics{
 		UUID:      uuid,
-		Timestamp: time.Now(),
+		Timestamp: now,
 		CPUTime:   cpuStats[0].CpuTime,
 		DiskRead:  uint64(blockStats.RdBytes),
 		DiskWrite: uint64(blockStats.WrBytes),
 		NetworkRX: uint64(netStats.RxBytes),
 		NetworkTX: uint64(netStats.TxBytes),
 	}
+	metrics.CPUUsage = s.calculateCPUUsage(uuid, metrics.CPUTime, uint(info.NrVirtCpu), now)
 
 	// Calculate memory usage
+	var actual uint64
+	var unused uint64
+	var available uint64
+	var rss uint64
+	var usable uint64
+	rawStats := make(map[int32]uint64, len(memStats))
 	for _, stat := range memStats {
+		rawStats[stat.Tag] = stat.Val
 		switch stat.Tag {
 		case int32(libvirt.DOMAIN_MEMORY_STAT_ACTUAL_BALLOON):
-			metrics.MemoryUsed = stat.Val
+			actual = stat.Val
+		case int32(libvirt.DOMAIN_MEMORY_STAT_UNUSED):
+			unused = stat.Val
 		case int32(libvirt.DOMAIN_MEMORY_STAT_AVAILABLE):
-			if stat.Val > 0 && metrics.MemoryUsed > 0 {
-				metrics.MemoryUsage = float64(metrics.MemoryUsed) / float64(stat.Val) * 100
-			}
+			available = stat.Val
+		case int32(libvirt.DOMAIN_MEMORY_STAT_RSS):
+			rss = stat.Val
+		case int32(libvirt.DOMAIN_MEMORY_STAT_USABLE):
+			usable = stat.Val
 		}
 	}
 
+	used := uint64(0)
+	total := actual
+	source := "none"
+	switch {
+	case actual > 0 && unused > 0 && unused <= actual:
+		used = actual - unused
+		source = "actual-unused"
+	case actual > 0 && available > 0 && available <= actual:
+		used = actual - available
+		source = "actual-available"
+	case actual > 0 && rss > 0 && rss <= actual:
+		used = rss
+		source = "actual-rss"
+	case available > 0 && unused > 0 && available >= unused:
+		total = available
+		used = available - unused
+		source = "available-unused"
+	case available > 0 && usable > 0 && available >= usable:
+		total = available
+		used = available - usable
+		source = "available-usable"
+	case usable > 0 && unused > 0 && usable >= unused:
+		total = usable
+		used = usable - unused
+		source = "usable-unused"
+	case rss > 0:
+		total = rss
+		used = rss
+		source = "rss-only"
+	}
+
+	if total > 0 {
+		metrics.MemoryUsed = used
+		metrics.MemoryUsage = float64(used) / float64(total) * 100
+	}
+
+	if metrics.MemoryUsage < 0 {
+		metrics.MemoryUsage = 0
+	} else if metrics.MemoryUsage > 100 {
+		metrics.MemoryUsage = 100
+	}
+
+	if metrics.MemoryUsage == 0 || metrics.MemoryUsage >= 100 {
+		name, _ := domain.GetName()
+		log.Printf("vm memory stats: uuid=%s name=%s actual=%d unused=%d available=%d usable=%d rss=%d used=%d total=%d usage=%.2f source=%s raw=%v", uuid, name, actual, unused, available, usable, rss, metrics.MemoryUsed, total, metrics.MemoryUsage, source, rawStats)
+	}
+
 	return metrics, nil
+}
+
+func (s *Service) calculateCPUUsage(uuid string, cpuTime uint64, vcpus uint, now time.Time) float64 {
+	if vcpus == 0 {
+		vcpus = 1
+	}
+
+	s.cpuUsageMu.Lock()
+	prev, ok := s.cpuUsageCache[uuid]
+	s.cpuUsageCache[uuid] = cpuUsageSample{cpuTime: cpuTime, timestamp: now, vcpus: vcpus}
+	s.cpuUsageMu.Unlock()
+
+	if !ok {
+		return 0
+	}
+
+	elapsed := now.Sub(prev.timestamp).Seconds()
+	if elapsed <= 0 {
+		return 0
+	}
+
+	if cpuTime < prev.cpuTime {
+		return 0
+	}
+	delta := cpuTime - prev.cpuTime
+
+	usage := (float64(delta) / (elapsed * 1e9 * float64(vcpus))) * 100
+	if usage < 0 {
+		return 0
+	}
+
+	return usage
 }
 
 // GetConsole returns console access information
@@ -1882,8 +2082,8 @@ func (s *Service) domainToVM(domain *libvirt.Domain) (*VM, error) {
 		UUID:       uuid,
 		Name:       name,
 		State:      domainStateToVMState(state),
-		Memory:     info.Memory,
-		MaxMemory:  info.MaxMem,
+		Memory:     info.Memory / 1024,
+		MaxMemory:  info.MaxMem / 1024,
 		VCPUs:      info.NrVirtCpu,
 		AutoStart:  autostart,
 		Persistent: persistent,

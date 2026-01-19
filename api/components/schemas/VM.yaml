@@ -7,8 +7,10 @@ properties:
   state:
     type: string
   memory:
+    description: Memory allocation in MiB
     type: integer
   max_memory:
+    description: Maximum memory allocation in MiB
     type: integer
   vcpus:
     type: integer

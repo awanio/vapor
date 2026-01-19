@@ -12,6 +12,7 @@ import './vm-console';
 import '../modal-dialog';
 import './vm-backups-tab';
 import { snapshotActions } from '../../stores/virtualization';
+import { formatMemory } from '../../utils/formatters';
 
 interface VMMetrics {
   uuid: string;
@@ -2113,16 +2114,6 @@ export class VMDetailDrawer extends LitElement {
     return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
   }
 
-  private formatMemory(kb: number): string {
-    // Memory comes in KB from the API
-    if (kb >= 1024 * 1024) {
-      return `${(kb / (1024 * 1024)).toFixed(1)} GB`;
-    } else if (kb >= 1024) {
-      return `${(kb / 1024).toFixed(0)} MB`;
-    }
-    return `${kb} KB`;
-  }
-
   // Unused function - commented out for now
   // private formatUptime(seconds: number): string {
   //   const days = Math.floor(seconds / 86400);
@@ -2213,11 +2204,11 @@ export class VMDetailDrawer extends LitElement {
         <div class="info-grid">
           <div class="info-item">
             <span class="info-label">Current Memory</span>
-            <span class="info-value">${this.formatMemory(this.vmDetails?.memory || this.vm.memory)}</span>
+            <span class="info-value">${formatMemory(this.vmDetails?.memory || this.vm.memory)}</span>
           </div>
           <div class="info-item">
             <span class="info-label">Max Memory</span>
-            <span class="info-value">${this.formatMemory(this.vmDetails?.max_memory || this.vm.memory)}</span>
+            <span class="info-value">${formatMemory(this.vmDetails?.max_memory || this.vm.memory)}</span>
           </div>
           <div class="info-item">
             <span class="info-label">Current vCPUs</span>
@@ -2305,20 +2296,24 @@ export class VMDetailDrawer extends LitElement {
     }
 
     // Calculate memory usage percentage based on actual memory allocation
-    // IMPORTANT: memory_used from API is in bytes, VM memory allocation is in MB!
+    // IMPORTANT: memory_used from API is in KB, VM memory allocation is in MiB!
     const vmMemoryMB = this.vmDetails?.memory || this.vm?.memory || 0;
     const vmMemoryBytes = vmMemoryMB * 1024 * 1024; // Convert MB to bytes
-    const memoryUsagePercent = vmMemoryBytes > 0
-      ? (this.metrics.memory_used / vmMemoryBytes) * 100
-      : 0;
+    const memoryUsedBytes = (this.metrics.memory_used || 0) * 1024; // Convert KB to bytes
+    const memoryUsagePercent = Number.isFinite(this.metrics.memory_usage)
+      ? this.metrics.memory_usage
+      : vmMemoryBytes > 0
+        ? (memoryUsedBytes / vmMemoryBytes) * 100
+        : 0;
 
     // Log for debugging
     console.log('Memory calculation:', {
-      memory_used_bytes: this.metrics.memory_used,
-      memory_used_formatted: this.formatBytes(this.metrics.memory_used),
+      memory_used_kb: this.metrics.memory_used,
+      memory_used_bytes: memoryUsedBytes,
+      memory_used_formatted: this.formatBytes(memoryUsedBytes),
       vm_memory_mb: vmMemoryMB,
       vm_memory_bytes: vmMemoryBytes,
-      vm_memory_formatted: this.formatMemory(vmMemoryMB * 1024), // formatMemory expects KB
+      vm_memory_formatted: formatMemory(vmMemoryMB),
       usage_percent: memoryUsagePercent,
       api_memory_usage_field: this.metrics.memory_usage
     });
@@ -2354,7 +2349,7 @@ export class VMDetailDrawer extends LitElement {
                  style="width: ${Math.min(memoryUsagePercent, 100)}%"></div>
           </div>
           <div style="font-size: 11px; color: var(--vscode-descriptionForeground, #8b8b8b); margin-top: 4px;">
-            ${this.formatBytes(this.metrics.memory_used)} of ${this.formatMemory(vmMemoryMB * 1024)} used
+            ${this.formatBytes(memoryUsedBytes)} of ${formatMemory(vmMemoryMB)} used
           </div>
         </div>
 
@@ -3421,7 +3416,7 @@ export class VMDetailDrawer extends LitElement {
               <div class="vm-info-row">
                 <span class="vm-info-label">Resources:</span>
                 <span class="vm-info-value">
-                  ${this.formatMemory(this.vmDetails?.memory || this.vm.memory)} RAM, 
+                  ${formatMemory(this.vmDetails?.memory || this.vm.memory)} RAM, 
                   ${this.vmDetails?.vcpus || this.vm.vcpus} vCPUs
                 </span>
               </div>

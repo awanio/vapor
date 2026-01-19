@@ -106,6 +106,23 @@ func (h *Hub) Run() {
 	}
 }
 
+// HasSubscribers checks if any authenticated client is subscribed to the given channel
+func (h *Hub) HasSubscribers(channel string) bool {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	for client := range h.clients {
+		client.mu.RLock()
+		subscribed := client.authenticated && client.subscriptions[channel]
+		client.mu.RUnlock()
+		if subscribed {
+			return true
+		}
+	}
+
+	return false
+}
+
 // BroadcastToChannel sends a message to all clients subscribed to a specific channel
 func (h *Hub) BroadcastToChannel(channel string, message []byte) {
 	h.mu.RLock()

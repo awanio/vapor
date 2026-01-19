@@ -51,6 +51,9 @@ import type { VirtualMachine, VMState, VMTemplate, VMTemplateCreateRequest, VMTe
 import { VirtualizationDisabledError } from '../../utils/api-errors';
 import { subscribeToEventsChannel } from '../../stores/shared/events-stream';
 import virtualizationAPI from '../../services/virtualization-api';
+import { formatMemory } from '../../utils/formatters';
+import { getApiUrl } from '../../config';
+import { auth } from '../../auth';
 
 
 @customElement('virtualization-vms-enhanced')
@@ -187,6 +190,12 @@ export class VirtualizationVMsEnhanced extends LitElement {
   private vmLastEventAt = 0;
   private vmDropNotified = false;
   private vmHasConnectedOnce = false;
+
+  // Live metrics stream (VM metrics)
+  @state() private vmMetrics = new Map<string, { cpu_usage?: number; memory_usage?: number; timestamp?: string }>();
+  private unsubscribeVmMetrics: (() => void) | null = null;
+  private vmMetricsStoreUnsubscribe: (() => void) | null = null;
+  private vmMetricsFetchInFlight = new Set<string>();
 
   // Templates UI state
   @state() private showTemplateDrawer = false;
@@ -814,7 +823,45 @@ export class VirtualizationVMsEnhanced extends LitElement {
     }
 
 
-  `;
+  
+    .metric-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 120px;
+    }
+
+    .metric-value {
+      font-size: 0.85rem;
+      color: var(--vscode-text);
+    }
+
+    .metric-bar {
+      height: 6px;
+      border-radius: 999px;
+      background: var(--vscode-progressBar-background, rgba(255, 255, 255, 0.08));
+      overflow: hidden;
+    }
+
+    .metric-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.3s ease;
+      background: var(--vscode-charts-blue);
+    }
+
+    .metric-bar-fill.low {
+      background: var(--vscode-charts-green);
+    }
+
+    .metric-bar-fill.medium {
+      background: var(--vscode-charts-blue);
+    }
+
+    .metric-bar-fill.high {
+      background: var(--vscode-charts-red);
+    }
+`;
 
   private tabs: Tab[] = [
     { id: 'vms', label: 'Virtual Machines' },
@@ -826,11 +873,15 @@ export class VirtualizationVMsEnhanced extends LitElement {
     // Initialize stores
     await this.initializeData();
     this.startVmEventStream();
+    this.startVmMetricsStream();
+    this.subscribeToVmMetricsStore();
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback();
     this.stopVmEventStream();
+    this.stopVmMetricsStream();
+    this.unsubscribeFromVmMetricsStore();
   }
 
 
@@ -891,19 +942,11 @@ export class VirtualizationVMsEnhanced extends LitElement {
       { key: 'state', label: 'State', type: 'status' },
       { key: 'vcpus', label: 'vCPUs' },
       { key: 'memory', label: 'Memory (MB)' },
-      { key: 'disk_size', label: 'Disk (GB)' },
-      { key: 'os_type_display', label: 'OS Type' },
+      { key: 'cpu_usage_display', label: 'CPU Usage (%)' },
+      { key: 'memory_usage_display', label: 'Memory Usage (%)' },
       { key: 'os_variant_display', label: 'Operating System' },
-      { key: 'ip_addresses_display', label: 'IP Addresses' },
-      { key: 'created_at', label: 'Created' }
+      { key: 'ip_addresses_display', label: 'IP Addresses' }
     ];
-  }
-
-  private formatMemory(mb: number): string {
-    if (mb >= 1024) {
-      return `${(mb / 1024).toFixed(1)} GB`;
-    }
-    return `${mb} MB`;
   }
 
   private formatDiskSize(gb: number): string {
@@ -1274,6 +1317,142 @@ export class VirtualizationVMsEnhanced extends LitElement {
     this.vmDropNotified = false;
   }
 
+  private startVmMetricsStream() {
+    if (this.unsubscribeVmMetrics) return;
+
+    this.unsubscribeVmMetrics = subscribeToEventsChannel({
+      channel: 'vm-metrics-events',
+      routeId: 'virtualization:vm-metrics-events',
+      onEvent: (payload: any) => this.handleVmMetricsEvent(payload),
+    });
+  }
+
+  private stopVmMetricsStream() {
+    if (this.unsubscribeVmMetrics) {
+      this.unsubscribeVmMetrics();
+      this.unsubscribeVmMetrics = null;
+    }
+  }
+
+  private subscribeToVmMetricsStore() {
+    if (this.vmMetricsStoreUnsubscribe) return;
+    this.vmMetricsStoreUnsubscribe = vmStore.$items.subscribe(items => {
+      const rawItems = items as unknown;
+      const vms = Array.isArray(rawItems)
+        ? rawItems as VirtualMachine[]
+        : rawItems instanceof Map
+          ? [...rawItems.values()] as VirtualMachine[]
+          : rawItems && typeof rawItems === 'object'
+            ? Object.values(rawItems as Record<string, VirtualMachine>)
+            : [];
+      this.ensureMetricsForVMs(vms);
+    });
+  }
+
+  private unsubscribeFromVmMetricsStore() {
+    if (this.vmMetricsStoreUnsubscribe) {
+      this.vmMetricsStoreUnsubscribe();
+      this.vmMetricsStoreUnsubscribe = null;
+    }
+  }
+
+  private handleVmMetricsEvent(payload: any) {
+    if (!payload || payload.kind !== 'vm-metrics') return;
+    const items = Array.isArray(payload.items) ? payload.items : [];
+    if (items.length === 0) return;
+
+    const next = new Map(this.vmMetrics);
+    items.forEach((item: any) => {
+      const id = item?.id ?? item?.uuid;
+      if (!id) return;
+      next.set(String(id), {
+        cpu_usage: Number.isFinite(item.cpu_usage) ? Number(item.cpu_usage) : undefined,
+        memory_usage: Number.isFinite(item.memory_usage) ? Number(item.memory_usage) : undefined,
+        timestamp: item.timestamp
+      });
+    });
+    this.vmMetrics = next;
+  }
+
+  private updateVmMetrics(vmId: string, metrics: { cpu_usage?: number; memory_usage?: number; timestamp?: string }) {
+    const next = new Map(this.vmMetrics);
+    next.set(vmId, metrics);
+    this.vmMetrics = next;
+  }
+
+  private formatMetricPercent(value?: number): string {
+    if (value === undefined || value === null || !Number.isFinite(value)) return '-';
+    return `${value.toFixed(1)}%`;
+  }
+
+  private renderMetricBar(metric?: { text?: string; value?: number }) {
+    const value = metric?.value;
+    const percent = Number.isFinite(value) ? Math.min(Math.max(Number(value), 0), 100) : 0;
+    const text = metric?.text ?? '-';
+    const fillColor = percent >= 80
+      ? 'var(--vscode-charts-red, #d14343)'
+      : percent >= 50
+        ? 'var(--vscode-charts-blue, #3794ff)'
+        : 'var(--vscode-charts-green, #89d185)';
+    return html`
+      <div style="display:flex;flex-direction:column;gap:6px;min-width:120px;">
+        <div style="font-size:0.85rem;color:var(--vscode-text, #333);">${text}</div>
+        <div style="height:6px;border-radius:999px;background:var(--vscode-progressBar-background, rgba(127, 127, 127, 0.18));border:1px solid var(--vscode-editorWidget-border, rgba(255,255,255,0.12));overflow:hidden;">
+          <div style="height:100%;width:${percent}%;border-radius:999px;background:${fillColor};transition:width 0.3s ease;"></div>
+        </div>
+      </div>
+    `;
+  }
+
+  private ensureMetricsForVMs(vms: VirtualMachine[]) {
+    if (!this.virtualizationEnabledController.value) return;
+
+    const targets = vms.filter(vm => vm && vm.id && vm.state === 'running');
+    const missing = targets.filter(vm => !this.vmMetrics.has(vm.id) && !this.vmMetricsFetchInFlight.has(vm.id));
+    if (missing.length === 0) return;
+    void this.fetchInitialMetrics(missing);
+  }
+
+  private async fetchInitialMetrics(vms: VirtualMachine[]) {
+    for (const vm of vms) {
+      if (!vm?.id) continue;
+      if (this.vmMetrics.has(vm.id) || this.vmMetricsFetchInFlight.has(vm.id)) continue;
+      this.vmMetricsFetchInFlight.add(vm.id);
+      try {
+        const metrics = await this.fetchVmMetrics(vm.id);
+        if (metrics) {
+          this.updateVmMetrics(vm.id, metrics);
+        }
+      } finally {
+        this.vmMetricsFetchInFlight.delete(vm.id);
+      }
+    }
+  }
+
+  private async fetchVmMetrics(vmId: string): Promise<{ cpu_usage?: number; memory_usage?: number; timestamp?: string } | null> {
+    try {
+      const response = await fetch(getApiUrl(`/virtualization/computes/${vmId}/metrics`), {
+        headers: {
+          ...auth.getAuthHeaders(),
+        },
+      });
+
+      if (!response.ok) return null;
+      const payload = await response.json();
+      if (!payload || payload.status !== 'success' || !payload.data) return null;
+
+      const data = payload.data;
+      return {
+        cpu_usage: Number.isFinite(data.cpu_usage) ? Number(data.cpu_usage) : undefined,
+        memory_usage: Number.isFinite(data.memory_usage) ? Number(data.memory_usage) : undefined,
+        timestamp: data.timestamp
+      };
+    } catch (error) {
+      console.warn('Failed to fetch VM metrics', error);
+      return null;
+    }
+  }
+
   private handleVmEventsConnectionChange(connected: boolean) {
     this.vmEventsLive = connected;
 
@@ -1367,6 +1546,23 @@ export class VirtualizationVMsEnhanced extends LitElement {
 
     // Update table + store immediately.
     vmActions.updateLocalState(vmId, state);
+
+    if (state === 'running') {
+      if (!this.vmMetricsFetchInFlight.has(vmId)) {
+        this.vmMetricsFetchInFlight.add(vmId);
+        void this.fetchVmMetrics(vmId)
+          .then(metrics => {
+            if (metrics) {
+              this.updateVmMetrics(vmId, metrics);
+            }
+          })
+          .finally(() => {
+            this.vmMetricsFetchInFlight.delete(vmId);
+          });
+      }
+    } else {
+      this.updateVmMetrics(vmId, { cpu_usage: 0, memory_usage: 0 });
+    }
 
     // Update open details drawer if needed.
     if (this.selectedVMForDetails?.id === vmId) {
@@ -2207,16 +2403,27 @@ export class VirtualizationVMsEnhanced extends LitElement {
         flags: template,
         updated: new Date(template.updated_at || template.created_at).toLocaleDateString(),
       }))
-      : displayVMs.map(vm => ({
-        ...vm,
-        state_rendered: this.renderStateCell(vm.state),
-        memory_formatted: this.formatMemory(vm.memory),
-        disk_formatted: this.formatDiskSize(vm.disk_size),
-        created_formatted: new Date(vm.created_at).toLocaleDateString(),
-        os_type_display: vm.os?.family || vm.os_type || '-',
-        os_variant_display: vm.os?.variant || vm.os_variant || '-',
-        ip_addresses_display: this.formatVMIPs(vm)
-      }));
+      : displayVMs.map(vm => {
+        const metrics = this.vmMetrics.get(vm.id);
+        return {
+          ...vm,
+          state_rendered: this.renderStateCell(vm.state),
+          memory_formatted: formatMemory(vm.memory),
+          disk_formatted: this.formatDiskSize(vm.disk_size),
+          cpu_usage_display: {
+            text: this.formatMetricPercent(metrics?.cpu_usage),
+            value: Number.isFinite(metrics?.cpu_usage) ? Number(metrics?.cpu_usage) : undefined,
+          },
+          memory_usage_display: {
+            text: this.formatMetricPercent(metrics?.memory_usage),
+            value: Number.isFinite(metrics?.memory_usage) ? Number(metrics?.memory_usage) : undefined,
+          },
+          created_formatted: new Date(vm.created_at).toLocaleDateString(),
+          os_type_display: vm.os?.family || vm.os_type || '-',
+          os_variant_display: vm.os?.variant || vm.os_variant || '-',
+          ip_addresses_display: this.formatVMIPs(vm)
+        };
+      });
 
     return html`
       <div class="container">
@@ -2255,7 +2462,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
               <span class="stat-icon memory">🧠</span>
               <span class="stat-label">Total Memory</span>
             </div>
-            <div class="stat-value">${this.formatMemory(stats.totalMemory)}</div>
+            <div class="stat-value">${formatMemory(stats.totalMemory)}</div>
             <div class="stat-subtitle">allocated RAM</div>
           </div>
           
@@ -2356,7 +2563,10 @@ export class VirtualizationVMsEnhanced extends LitElement {
         }
               .customRenderers=${this.activeMainTab === 'templates'
           ? { flags: (tpl: any) => this.renderTemplateFlags(tpl as VMTemplate) }
-          : {}}
+          : {
+            cpu_usage_display: (value: any) => this.renderMetricBar(value as any),
+            memory_usage_display: (value: any) => this.renderMetricBar(value as any),
+          }}
               @cell-click=${this.handleCellClick}
               @action=${this.handleAction}
             ></resource-table>
@@ -2421,7 +2631,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
         <!-- Notification Container -->
         <notification-container></notification-container>
       </div>
-    `;
+    
+`;
   }
 }
 

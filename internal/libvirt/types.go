@@ -48,8 +48,8 @@ type VM struct {
 	UUID       string             `json:"uuid"`
 	Name       string             `json:"name"`
 	State      VMState            `json:"state"`
-	Memory     uint64             `json:"memory"`     // in KB
-	MaxMemory  uint64             `json:"max_memory"` // in KB
+	Memory     uint64             `json:"memory"`     // in MB
+	MaxMemory  uint64             `json:"max_memory"` // in MB
 	VCPUs      uint               `json:"vcpus"`
 	MaxVCPUs   uint               `json:"max_vcpus"`
 	OS         OSInfo             `json:"os"`

@@ -14,6 +14,22 @@ export function formatBytes(bytes: number): string {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
+/**
+ * Format memory (MiB) to human-readable string
+ * @param mb - Memory in MiB
+ * @returns Formatted string (e.g., "512 MB", "4.0 GB")
+ */
+export function formatMemory(mb: number): string {
+  if (!Number.isFinite(mb)) return '-';
+  if (mb >= 1024 * 1024) {
+    return `${(mb / (1024 * 1024)).toFixed(1)} TB`;
+  }
+  if (mb >= 1024) {
+    return `${(mb / 1024).toFixed(1)} GB`;
+  }
+  return `${Math.round(mb)} MB`;
+}
+
 
 /**
  * Format date to locale string
