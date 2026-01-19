@@ -301,7 +301,7 @@ if prompt_confirmation "Proceed with installation?" "y"; then
     # We must cd to the playbook directory so ansible.cfg is picked up
     cd "$PLAYBOOK_DIR"
     
-    if ansible-playbook "install_vapor_stack.yml" --extra-vars "$EXTRA_VARS"; then
+    if ansible-playbook "install_vapor_stack.yml" --extra-vars "$EXTRA_VARS" -v; then
         echo -e "${GREEN}Installation completed successfully!${NC}"
         cd - > /dev/null # Attempt to return to previous dir, though we exit anyway
         rm -rf "$CLONE_DIR"

@@ -38,7 +38,7 @@
         mode: '0644'
     - name: Add Docker repository (Debian)
       apt_repository:
-        repo: "deb [arch={{ ansible_architecture | default('amd64') }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable"
+        repo: "deb [arch={{ 'amd64' if ansible_architecture == 'x86_64' else ansible_architecture }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable"
         state: present
         filename: docker
   when: ansible_distribution == "Debian" and (install_docker | bool or install_containerd | bool)
@@ -59,7 +59,7 @@
         mode: '0644'
     - name: Add Docker repository (Ubuntu)
       apt_repository:
-        repo: "deb [arch={{ ansible_architecture | default('amd64') }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        repo: "deb [arch={{ 'amd64' if ansible_architecture == 'x86_64' else ansible_architecture }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
         state: present
         filename: docker
   when: ansible_distribution == "Ubuntu" and (install_docker | bool or install_containerd | bool)
