@@ -119,9 +119,9 @@ export class VirtualizationVMsEnhanced extends LitElement {
         boot_iso: enhanced.storage?.boot_iso,
         disks: storageDisks,
       },
-      os_type: enhanced.os_type,
-      os_variant: enhanced.os_variant,
-      architecture: enhanced.architecture,
+      os_type: enhanced.os?.family || enhanced.os_type || enhanced.os?.type,
+      os_variant: enhanced.os?.variant || enhanced.os_variant,
+      architecture: enhanced.os?.architecture || enhanced.architecture,
       uefi: enhanced.uefi,
       secure_boot: enhanced.secure_boot,
       tpm: enhanced.tpm,
@@ -894,6 +894,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
       { key: 'disk_size', label: 'Disk (GB)' },
       { key: 'os_type_display', label: 'OS Type' },
       { key: 'os_variant_display', label: 'Operating System' },
+      { key: 'ip_addresses_display', label: 'IP Addresses' },
       { key: 'created_at', label: 'Created' }
     ];
   }
@@ -910,6 +911,17 @@ export class VirtualizationVMsEnhanced extends LitElement {
       return `${(gb / 1024).toFixed(1)} TB`;
     }
     return `${gb} GB`;
+  }
+
+  private formatVMIPs(vm: VirtualMachine): string {
+    const networks = Array.isArray(vm.network_interfaces) ? vm.network_interfaces : [];
+    const ips: string[] = [];
+    networks.forEach(net => {
+      if (net.ipv4) ips.push(net.ipv4);
+      if (net.ipv6) ips.push(net.ipv6);
+    });
+    const unique = Array.from(new Set(ips));
+    return unique.length > 0 ? unique.join(', ') : '-';
   }
 
   private renderStateCell(state: VMState): any {
@@ -2201,8 +2213,9 @@ export class VirtualizationVMsEnhanced extends LitElement {
         memory_formatted: this.formatMemory(vm.memory),
         disk_formatted: this.formatDiskSize(vm.disk_size),
         created_formatted: new Date(vm.created_at).toLocaleDateString(),
-        os_type_display: vm.os_type || '-',
-        os_variant_display: vm.os_variant || '-'
+        os_type_display: vm.os?.family || vm.os_type || '-',
+        os_variant_display: vm.os?.variant || vm.os_variant || '-',
+        ip_addresses_display: this.formatVMIPs(vm)
       }));
 
     return html`

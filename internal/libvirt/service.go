@@ -1411,10 +1411,9 @@ func (s *Service) CloneVM(ctx context.Context, sourceNameOrUUID string, req *VMC
 		Memory:       source.Memory,
 		VCPUs:        source.VCPUs,
 		Storage:      &StorageConfig{Disks: []DiskCreateConfig{}},
-		OSInfo:       source.OSInfo,
-		OSType:       source.OSType,
-		OSVariant:    source.OSVariant,
-		Architecture: source.Architecture,
+		OSType:       source.OS.Family,
+		OSVariant:    source.OS.Variant,
+		Architecture: source.OS.Architecture,
 		UEFI:         source.UEFI,
 		SecureBoot:   source.SecureBoot,
 		TPM:          source.TPM,
@@ -1423,8 +1422,18 @@ func (s *Service) CloneVM(ctx context.Context, sourceNameOrUUID string, req *VMC
 		Metadata:     map[string]string{},
 	}
 
+	if source.OS.Family != "" || source.OS.Distro != "" || source.OS.Version != "" || source.OS.Codename != "" || source.OS.Variant != "" {
+		createReq.OSInfo = &OSInfoEnhanced{
+			Family:   source.OS.Family,
+			Distro:   source.OS.Distro,
+			Version:  source.OS.Version,
+			Codename: source.OS.Codename,
+			Variant:  source.OS.Variant,
+		}
+	}
+
 	if createReq.OSType == "" {
-		createReq.OSType = "hvm"
+		createReq.OSType = "linux"
 	}
 	if createReq.Architecture == "" {
 		createReq.Architecture = "x86_64"
@@ -1619,7 +1628,9 @@ func (s *Service) parseOSMetadata(xmlDesc string) *OSInfoEnhanced {
 	// If no vapor metadata found, return nil
 	if domain.Metadata.VaporOS.Family == "" &&
 		domain.Metadata.VaporOS.Distro == "" &&
-		domain.Metadata.VaporOS.Version == "" {
+		domain.Metadata.VaporOS.Version == "" &&
+		domain.Metadata.VaporOS.Codename == "" &&
+		domain.Metadata.VaporOS.Variant == "" {
 		return nil
 	}
 
@@ -1653,6 +1664,185 @@ func (s *Service) extractLibOSInfoVariant(xmlDesc string) string {
 	}
 	return ""
 }
+
+type interfaceIPInfo struct {
+	IPv4 *string
+	IPv6 *string
+}
+
+func (s *Service) parseOSInfo(xmlDesc string) OSInfo {
+	osInfo := OSInfo{
+		Type:         "hvm",
+		Architecture: "x86_64",
+	}
+
+	type domainOS struct {
+		OS struct {
+			Type struct {
+				Arch    string `xml:"arch,attr"`
+				Machine string `xml:"machine,attr"`
+				Value   string `xml:",chardata"`
+			} `xml:"type"`
+			Boot []struct {
+				Dev string `xml:"dev,attr"`
+			} `xml:"boot"`
+			Kernel  string `xml:"kernel"`
+			Initrd  string `xml:"initrd"`
+			Cmdline string `xml:"cmdline"`
+		} `xml:"os"`
+	}
+
+	var domain domainOS
+	if err := xml.Unmarshal([]byte(xmlDesc), &domain); err != nil {
+		return osInfo
+	}
+
+	if t := strings.TrimSpace(domain.OS.Type.Value); t != "" {
+		osInfo.Type = t
+	}
+	if domain.OS.Type.Arch != "" {
+		osInfo.Architecture = domain.OS.Type.Arch
+	}
+	if domain.OS.Type.Machine != "" {
+		osInfo.Machine = domain.OS.Type.Machine
+	}
+
+	if len(domain.OS.Boot) > 0 {
+		boots := make([]string, 0, len(domain.OS.Boot))
+		for _, boot := range domain.OS.Boot {
+			if boot.Dev != "" {
+				boots = append(boots, boot.Dev)
+			}
+		}
+		if len(boots) > 0 {
+			osInfo.Boot = boots
+		}
+	}
+
+	if domain.OS.Kernel != "" {
+		osInfo.Kernel = domain.OS.Kernel
+	}
+	if domain.OS.Initrd != "" {
+		osInfo.Initrd = domain.OS.Initrd
+	}
+	if domain.OS.Cmdline != "" {
+		osInfo.Cmdline = domain.OS.Cmdline
+	}
+
+	return osInfo
+}
+
+func formatIPAddressWithPrefix(addr string, prefix uint) string {
+	if addr == "" {
+		return ""
+	}
+	if prefix == 0 {
+		return addr
+	}
+	return fmt.Sprintf("%s/%d", addr, prefix)
+}
+
+func (s *Service) getDomainInterfaceIPs(domain *libvirt.Domain) map[string]interfaceIPInfo {
+	ipMap := make(map[string]interfaceIPInfo)
+	sources := []libvirt.DomainInterfaceAddressesSource{
+		libvirt.DOMAIN_INTERFACE_ADDRESSES_SRC_AGENT,
+		libvirt.DOMAIN_INTERFACE_ADDRESSES_SRC_LEASE,
+		libvirt.DOMAIN_INTERFACE_ADDRESSES_SRC_ARP,
+	}
+
+	for _, source := range sources {
+		ifaces, err := domain.ListAllInterfaceAddresses(source)
+		if err != nil {
+			continue
+		}
+		for _, iface := range ifaces {
+			mac := strings.ToLower(strings.TrimSpace(iface.Hwaddr))
+			if mac == "" {
+				continue
+			}
+			entry := ipMap[mac]
+			for _, addr := range iface.Addrs {
+				formatted := formatIPAddressWithPrefix(addr.Addr, addr.Prefix)
+				if formatted == "" {
+					continue
+				}
+				switch addr.Type {
+				case libvirt.IP_ADDR_TYPE_IPV4:
+					if entry.IPv4 == nil {
+						value := formatted
+						entry.IPv4 = &value
+					}
+				case libvirt.IP_ADDR_TYPE_IPV6:
+					if entry.IPv6 == nil {
+						value := formatted
+						entry.IPv6 = &value
+					}
+				}
+			}
+			ipMap[mac] = entry
+		}
+	}
+
+	return ipMap
+}
+
+func (s *Service) parseNetworkInterfaces(xmlDesc string) ([]NetworkInterface, error) {
+	var domainXML DomainInterfaceXML
+	if err := xml.Unmarshal([]byte(xmlDesc), &domainXML); err != nil {
+		return nil, err
+	}
+
+	networks := make([]NetworkInterface, 0, len(domainXML.Devices.Interfaces))
+	for _, iface := range domainXML.Devices.Interfaces {
+		source := iface.Source.Network
+		if source == "" {
+			source = iface.Source.Bridge
+		}
+		if source == "" {
+			source = iface.Source.Dev
+		}
+		model := iface.Model.Type
+		if model == "" {
+			model = "virtio"
+		}
+		networks = append(networks, NetworkInterface{
+			Type:   NetworkType(iface.Type),
+			Source: source,
+			MAC:    iface.MAC.Address,
+			Model:  model,
+			Target: iface.Target.Dev,
+		})
+	}
+
+	return networks, nil
+}
+
+func (s *Service) applyInterfaceIPs(networks []NetworkInterface, ipMap map[string]interfaceIPInfo) {
+	for i := range networks {
+		mac := strings.ToLower(strings.TrimSpace(networks[i].MAC))
+		if mac == "" {
+			continue
+		}
+		if entry, ok := ipMap[mac]; ok {
+			networks[i].IPv4 = entry.IPv4
+			networks[i].IPv6 = entry.IPv6
+		}
+	}
+}
+
+func (s *Service) applyNetworkConfigIPs(networks []NetworkConfigDetail, ipMap map[string]interfaceIPInfo) {
+	for i := range networks {
+		mac := strings.ToLower(strings.TrimSpace(networks[i].MAC))
+		if mac == "" {
+			continue
+		}
+		if entry, ok := ipMap[mac]; ok {
+			networks[i].IPv4 = entry.IPv4
+			networks[i].IPv6 = entry.IPv6
+		}
+	}
+}
+
 func (s *Service) domainToVM(domain *libvirt.Domain) (*VM, error) {
 	name, err := domain.GetName()
 	if err != nil {
@@ -1721,13 +1911,31 @@ func (s *Service) domainToVM(domain *libvirt.Domain) (*VM, error) {
 			vm.UpdatedAt = updatedAt
 		}
 
-		// Parse OS metadata
-		vm.OSInfoDetail = s.parseOSMetadata(xmlDesc)
+		osInfo := s.parseOSInfo(xmlDesc)
+		metadata := s.parseOSMetadata(xmlDesc)
+		if metadata != nil {
+			osInfo.Family = metadata.Family
+			osInfo.Distro = metadata.Distro
+			osInfo.Version = metadata.Version
+			osInfo.Codename = metadata.Codename
+			if metadata.Variant != "" {
+				osInfo.Variant = metadata.Variant
+			}
+		}
+		if osInfo.Family == "" {
+			osInfo.Family = "linux"
+		}
+		if osInfo.Variant == "" {
+			if variant := s.extractLibOSInfoVariant(xmlDesc); variant != "" {
+				osInfo.Variant = variant
+			}
+		}
+		vm.OS = osInfo
 
-		// Parse basic OS info from XML
-		vm.OS = OSInfo{
-			Type:         "hvm",
-			Architecture: "x86_64",
+		if networks, err := s.parseNetworkInterfaces(xmlDesc); err == nil {
+			ipMap := s.getDomainInterfaceIPs(domain)
+			s.applyInterfaceIPs(networks, ipMap)
+			vm.Networks = networks
 		}
 	}
 
@@ -2351,6 +2559,11 @@ func (s *Service) GetVMEnhanced(ctx context.Context, nameOrUUID string) (*VMEnha
 		vmEnhanced.Metadata = metadata
 	}
 
+	if len(vmEnhanced.Networks) > 0 {
+		ipMap := s.getDomainInterfaceIPs(domain)
+		s.applyNetworkConfigIPs(vmEnhanced.Networks, ipMap)
+	}
+
 	// Get network statistics if VM is running
 	if vmEnhanced.Running && len(vmEnhanced.Networks) > 0 {
 		s.enrichNetworkStatistics(domain, vmEnhanced)
@@ -2409,12 +2622,32 @@ func (s *Service) parseEnhancedVMDetails(vm *VMEnhanced, xmlDesc string) error {
 
 // Helper method to parse OS configuration from XML
 func (s *Service) parseOSConfiguration(vm *VMEnhanced, xmlDesc string) {
-	// Basic parsing - would need proper XML unmarshaling in production
-	if strings.Contains(xmlDesc, "arch='x86_64'") || strings.Contains(xmlDesc, "arch=\"x86_64\"") {
-		vm.Architecture = "x86_64"
-	} else if strings.Contains(xmlDesc, "arch='aarch64'") {
-		vm.Architecture = "aarch64"
+	osInfo := s.parseOSInfo(xmlDesc)
+
+	// Parse OS metadata (vapor metadata or libosinfo) first
+	metadata := s.parseOSMetadata(xmlDesc)
+	if metadata != nil {
+		osInfo.Family = metadata.Family
+		osInfo.Distro = metadata.Distro
+		osInfo.Version = metadata.Version
+		osInfo.Codename = metadata.Codename
+		if metadata.Variant != "" {
+			osInfo.Variant = metadata.Variant
+		}
 	}
+
+	if osInfo.Family == "" {
+		// Default to linux for most VMs
+		osInfo.Family = "linux"
+	}
+
+	if osInfo.Variant == "" {
+		if variant := s.extractLibOSInfoVariant(xmlDesc); variant != "" {
+			osInfo.Variant = variant
+		}
+	}
+
+	vm.OS = osInfo
 
 	if strings.Contains(xmlDesc, "<loader") && strings.Contains(xmlDesc, "OVMF") {
 		vm.UEFI = true
@@ -2426,25 +2659,6 @@ func (s *Service) parseOSConfiguration(vm *VMEnhanced, xmlDesc string) {
 
 	if strings.Contains(xmlDesc, "<tpm") {
 		vm.TPM = true
-	}
-
-	// Parse OS metadata (vapor metadata or libosinfo) first
-	vm.OSInfo = s.parseOSMetadata(xmlDesc)
-
-	// Set OS type - prefer family from metadata, fallback to default "linux"
-	if vm.OSInfo != nil && vm.OSInfo.Family != "" {
-		vm.OSType = vm.OSInfo.Family
-	} else {
-		// Default to linux for most VMs
-		vm.OSType = "linux"
-	}
-
-	// Extract os_variant from metadata if available
-	if vm.OSInfo != nil && vm.OSInfo.Variant != "" {
-		vm.OSVariant = vm.OSInfo.Variant
-	} else {
-		// Try to extract from libosinfo metadata
-		vm.OSVariant = s.extractLibOSInfoVariant(xmlDesc)
 	}
 }
 
@@ -2579,12 +2793,12 @@ func (s *Service) parseNetworkConfiguration(xmlDesc string) ([]NetworkConfigDeta
 			}
 		} else {
 			network.Model = "virtio" // default
+		}
 
-			// Parse target device name
-			if targetRe := regexp.MustCompile(`target dev=['"]([^'"]+)['"]`); targetRe.MatchString(ifaceXML) {
-				if matches := targetRe.FindStringSubmatch(ifaceXML); len(matches) > 1 {
-					network.Target = matches[1]
-				}
+		// Parse target device name
+		if targetRe := regexp.MustCompile(`target dev=['"]([^'"]+)['"]`); targetRe.MatchString(ifaceXML) {
+			if matches := targetRe.FindStringSubmatch(ifaceXML); len(matches) > 1 {
+				network.Target = matches[1]
 			}
 		}
 

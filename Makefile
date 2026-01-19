@@ -1,25 +1,14 @@
-.PHONY: build test clean run docker-build docker-run install-deps lint install-system-deps check-system-deps
+.PHONY: build embed-web build-fe test clean run docker-build docker-run install-deps lint install-system-deps check-system-deps
 
 # Variables
 BINARY_NAME=vapor
 MAIN_PATH=cmd/vapor/main.go
 DOCKER_IMAGE=vapor:latest
 
-# Build the binary
-build: embed-web
-	@echo "Building production binary..."
-	go build -o bin/$(BINARY_NAME) $(MAIN_PATH)
-
-# Build for development
-build-dev: embed-web
-	@echo "Building development binary..."
-	go build -o bin/$(BINARY_NAME) $(MAIN_PATH)
-
 # Embed web UI assets
 DIST_DIR=web/dist
 EMBED_DIR=internal/web/dist
 
-.PHONY: embed-web
 embed-web:
 	@if [ -d "$(DIST_DIR)" ] && [ "$(shell ls -A $(DIST_DIR) 2>/dev/null | grep -v '^\.')" ]; then \
 		echo "Embedding web UI assets..."; \
@@ -33,10 +22,18 @@ embed-web:
 		touch $(EMBED_DIR)/.keep; \
 	fi
 
-# Build for Linux x86_64 (native build on Linux)
-build-linux: embed-web
-	@echo "Building for Linux x86_64..."
-	go build -o bin/$(BINARY_NAME)-linux-amd64 $(MAIN_PATH)
+build-fe:
+	cd ./web/ && mv .env .env-bak && npm run build && mv .env-bak .env && cd ../
+
+# Build the binary
+build: build-fe embed-web
+	@echo "Building production binary..."
+	go build -o bin/$(BINARY_NAME) $(MAIN_PATH)
+
+# Build for development
+build-dev: embed-web
+	@echo "Building development binary..."
+	go build -o bin/$(BINARY_NAME) $(MAIN_PATH)
 
 run-dev: embed-web
 	go run cmd/vapor/main.go -config ./vapor.conf.example
@@ -44,9 +41,8 @@ run-dev: embed-web
 run-dev-web:
 	cd web && npm run dev
 
-update-systemd: embed-web
+update-systemd: build
 	@echo "Update Vapor daemon service in systemd"
-	go build -o bin/$(BINARY_NAME) $(MAIN_PATH)
 	cp ./bin/$(BINARY_NAME) /usr/local/bin/$(BINARY_NAME).new
 	mv /usr/local/bin/$(BINARY_NAME).new /usr/local/bin/$(BINARY_NAME)
 	systemctl restart vapor

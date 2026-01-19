@@ -571,10 +571,10 @@ export class VMDetailsDrawer extends LitElement {
                       <span>${nic.mac}</span>
                     </div>
                   ` : ''}
-                  ${nic.ip ? html`
+                  ${(nic.ipv4 || nic.ipv6) ? html`
                     <div class="item-detail">
                       <span class="detail-label">IP:</span>
-                      <span>${nic.ip}</span>
+                      <span>${[nic.ipv4, nic.ipv6].filter(Boolean).join(', ')}</span>
                     </div>
                   ` : ''}
                 </div>

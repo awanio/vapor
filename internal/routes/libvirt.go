@@ -1616,7 +1616,7 @@ func createTemplateFromVM(service *libvirt.Service) gin.HandlerFunc {
 			diskFormat = "qcow2"
 		}
 
-		osType := vm.OSType
+		osType := vm.OS.Family
 		if osType == "" {
 			osType = "other"
 		}
@@ -1646,7 +1646,7 @@ func createTemplateFromVM(service *libvirt.Service) gin.HandlerFunc {
 			Name:              body.Name,
 			Description:       body.Description,
 			OSType:            osType,
-			OSVariant:         vm.OSVariant,
+			OSVariant:         vm.OS.Variant,
 			MinMemory:         vm.Memory,
 			RecommendedMemory: vm.Memory,
 			MinVCPUs:          vm.VCPUs,

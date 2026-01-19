@@ -46,20 +46,8 @@ properties:
     type: integer
     description: Maximum number of vCPUs supported by this VM
     example: 4
-  os_info:
-    $ref: ./OSInfoEnhanced.yaml
-  os_type:
-    type: string
-    description: Low level domain/OS type (for example hvm)
-    example: hvm
-  os_variant:
-    type: string
-    description: OS variant identifier (matches libosinfo variants when available)
-    example: ubuntu22.04
-  architecture:
-    type: string
-    description: Guest architecture
-    example: x86_64
+  os:
+    $ref: ./OSInfo.yaml
   uefi:
     type: boolean
     description: Indicates whether UEFI boot is enabled
@@ -179,10 +167,14 @@ properties:
           type: string
           description: Bridge interface name when using bridge networking
           example: virbr0
-        ip_address:
+        ipv4:
           type: string
-          description: Last known IP address of the interface (when detectable)
-          example: 192.168.122.10
+          description: Last known IPv4 address of the interface (when detectable)
+          example: 192.168.122.10/24
+        ipv6:
+          type: string
+          description: Last known IPv6 address of the interface (when detectable)
+          example: fe80::5054:ff:fe12:3456/64
         gateway:
           type: string
           description: Default gateway associated with this interface

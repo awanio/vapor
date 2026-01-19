@@ -39,6 +39,11 @@ interface VMEnhancedDetails {
     architecture: string;
     machine: string;
     boot?: string[] | null;
+    family?: string;
+    distro?: string;
+    version?: string;
+    codename?: string;
+    variant?: string;
   };
   storage?: {
     default_pool: string;
@@ -59,18 +64,20 @@ interface VMEnhancedDetails {
   networks?: Array<{
     type: string;
     mac: string;
-    source: {
+    source?: string | {
       network?: string;
       bridge?: string;
       dev?: string;
     };
-    model: {
-      type: string;
+    model?: string | {
+      type?: string;
     };
-    target?: {
+    target?: string | {
       dev: string;
     };
     alias?: string;
+    ipv4?: string | null;
+    ipv6?: string | null;
     ip?: string;
   }> | null;
   graphics?: Array<{
@@ -103,7 +110,8 @@ interface NetworkInterfaceInfo {
   source: string;
   model: string;
   mac: string;
-  ip?: string;
+  ipv4?: string | null;
+  ipv6?: string | null;
   state: 'up' | 'down';
   rx_bytes: number;
   tx_bytes: number;
@@ -1372,17 +1380,29 @@ export class VMDetailDrawer extends LitElement {
 
         // Process network interfaces
         if (response.networks && response.networks.length > 0) {
-          this.networkInterfaces = response.networks.map((net, index) => ({
-            name: net.target?.dev || net.alias || `eth${index}`,
-            type: net.type,
-            source: net.source.network || net.source.bridge || net.source.dev || 'Unknown',
-            model: net.model.type || 'virtio',
-            mac: net.mac,
-            ip: net.ip,
-            state: 'up' as 'up' | 'down', // Would need actual state from monitoring
-            rx_bytes: 0, // Would need actual metrics
-            tx_bytes: 0, // Would need actual metrics
-          }));
+          this.networkInterfaces = response.networks.map((net, index) => {
+            const source = typeof net.source === 'string'
+              ? net.source
+              : net.source?.network || net.source?.bridge || net.source?.dev || 'Unknown';
+            const model = typeof net.model === 'string'
+              ? net.model
+              : net.model?.type || 'virtio';
+            const target = typeof net.target === 'string'
+              ? net.target
+              : net.target?.dev;
+            return {
+              name: target || net.alias || `eth${index}`,
+              type: net.type,
+              source,
+              model,
+              mac: net.mac,
+              ipv4: net.ipv4 ?? net.ip,
+              ipv6: net.ipv6,
+              state: 'up' as 'up' | 'down', // Would need actual state from monitoring
+              rx_bytes: 0, // Would need actual metrics
+              tx_bytes: 0, // Would need actual metrics
+            };
+          });
         } else {
           this.networkInterfaces = [];
         }
@@ -2132,7 +2152,9 @@ export class VMDetailDrawer extends LitElement {
     const osInfo = this.vmDetails?.os || {
       type: undefined,
       architecture: undefined,
-      machine: undefined
+      machine: undefined,
+      family: undefined,
+      variant: undefined,
     };
 
     return html`
@@ -2153,11 +2175,11 @@ export class VMDetailDrawer extends LitElement {
           </div>
           <div class="info-item">
             <span class="info-label">OS Type</span>
-            <span class="info-value">${osInfo.type || this.vm.os_type || 'hvm'}</span>
+            <span class="info-value">${osInfo.family || this.vm.os_type || osInfo.type || 'hvm'}</span>
           </div>
           <div class="info-item">
             <span class="info-label">OS Variant</span>
-            <span class="info-value">${this.vm.os_variant || this.vmDetails?.metadata?.os_variant || '-'}</span>
+            <span class="info-value">${osInfo.variant || this.vm.os_variant || '-'}</span>
           </div>
           <div class="info-item">
             <span class="info-label">Architecture</span>
@@ -2512,7 +2534,7 @@ export class VMDetailDrawer extends LitElement {
               <th>Source</th>
               <th>Model</th>
               <th>MAC Address</th>
-              <th>IP Address</th>
+              <th>IP Addresses</th>
               <th>State</th>
               <th>Traffic</th>
             </tr>
@@ -2525,7 +2547,7 @@ export class VMDetailDrawer extends LitElement {
                 <td>${iface.source}</td>
                 <td>${iface.model.toUpperCase()}</td>
                 <td><span class="monospace">${iface.mac}</span></td>
-                <td><span class="monospace">${iface.ip || 'N/A'}</span></td>
+                <td><span class="monospace">${[iface.ipv4, iface.ipv6].filter(Boolean).join(", ") || 'N/A'}</span></td>
                 <td>
                   <span class="badge ${iface.state === 'up' ? 'success' : 'error'}">
                     ${iface.state.toUpperCase()}
@@ -2547,7 +2569,7 @@ export class VMDetailDrawer extends LitElement {
             ${this.vm.network_interfaces.map((net: any) => html`
               <div class="info-item">
                 <span class="info-label">Type: ${net.type}</span>
-                <span class="info-value">${net.source?.network || net.source?.bridge || 'N/A'}</span>
+                <span class="info-value">${typeof net.source === 'string' ? net.source : (net.source?.network || net.source?.bridge || net.source?.dev || 'N/A')}</span>
               </div>
             `)}
           </div>

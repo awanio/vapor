@@ -13,6 +13,7 @@ export interface VirtualMachine {
   disk_size: number;    // In GB
   os_type: string;
   os_variant?: string;
+  os?: OSInfo;
   created_at: string;
   updated_at?: string;
   graphics?: GraphicsConfig;
@@ -39,13 +40,27 @@ export interface DiskInfo {
   bus?: 'virtio' | 'ide' | 'scsi' | 'sata';
 }
 
+export interface OSInfo {
+  type?: string;
+  architecture?: string;
+  machine?: string;
+  boot?: string[] | null;
+  family?: string;
+  distro?: string;
+  version?: string;
+  codename?: string;
+  variant?: string;
+}
+
 export interface NetworkInterface {
   name: string;
   type: 'bridge' | 'network' | 'user' | 'direct';
   source?: string;
   model?: 'virtio' | 'e1000' | 'rtl8139';
   mac?: string;
-  ip?: string;
+  target?: string;
+  ipv4?: string | null;
+  ipv6?: string | null;
 }
 
 // ============ Storage Types ============

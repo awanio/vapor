@@ -24,9 +24,6 @@ properties:
     format: date-time
   os:
     $ref: ./OSInfo.yaml
-  os_info:
-    $ref: ./OSInfoEnhanced.yaml
-    description: Detailed OS metadata from libvirt domain
   disks:
     type: array
     items:

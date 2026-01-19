@@ -45,23 +45,22 @@ const (
 
 // VM represents a virtual machine
 type VM struct {
-	UUID         string             `json:"uuid"`
-	Name         string             `json:"name"`
-	State        VMState            `json:"state"`
-	Memory       uint64             `json:"memory"`     // in KB
-	MaxMemory    uint64             `json:"max_memory"` // in KB
-	VCPUs        uint               `json:"vcpus"`
-	MaxVCPUs     uint               `json:"max_vcpus"`
-	OS           OSInfo             `json:"os"`
-	OSInfoDetail *OSInfoEnhanced    `json:"os_info,omitempty"`
-	Disks        []DiskAttachment   `json:"disks"`
-	Networks     []NetworkInterface `json:"networks"`
-	Graphics     []GraphicsDevice   `json:"graphics,omitempty"`
-	Metadata     map[string]string  `json:"metadata,omitempty"`
-	CreatedAt    time.Time          `json:"created_at"`
-	UpdatedAt    time.Time          `json:"updated_at"`
-	AutoStart    bool               `json:"autostart"`
-	Persistent   bool               `json:"persistent"`
+	UUID       string             `json:"uuid"`
+	Name       string             `json:"name"`
+	State      VMState            `json:"state"`
+	Memory     uint64             `json:"memory"`     // in KB
+	MaxMemory  uint64             `json:"max_memory"` // in KB
+	VCPUs      uint               `json:"vcpus"`
+	MaxVCPUs   uint               `json:"max_vcpus"`
+	OS         OSInfo             `json:"os"`
+	Disks      []DiskAttachment   `json:"disks"`
+	Networks   []NetworkInterface `json:"networks"`
+	Graphics   []GraphicsDevice   `json:"graphics,omitempty"`
+	Metadata   map[string]string  `json:"metadata,omitempty"`
+	CreatedAt  time.Time          `json:"created_at"`
+	UpdatedAt  time.Time          `json:"updated_at"`
+	AutoStart  bool               `json:"autostart"`
+	Persistent bool               `json:"persistent"`
 }
 
 // OSInfoEnhanced contains detailed operating system information
@@ -82,6 +81,11 @@ type OSInfo struct {
 	Kernel       string   `json:"kernel,omitempty"`
 	Initrd       string   `json:"initrd,omitempty"`
 	Cmdline      string   `json:"cmdline,omitempty"`
+	Family       string   `json:"family,omitempty"`   // linux, windows, bsd, etc
+	Distro       string   `json:"distro,omitempty"`   // ubuntu, fedora, centos, windows, etc
+	Version      string   `json:"version,omitempty"`  // 20.04, 10, 8.5, etc
+	Codename     string   `json:"codename,omitempty"` // focal, bullseye, etc
+	Variant      string   `json:"variant,omitempty"`  // ubuntu20.04, win10, etc (libosinfo ID)
 }
 
 // DiskAttachment represents a disk attached to a VM
@@ -100,12 +104,13 @@ type DiskAttachment struct {
 
 // NetworkInterface represents a network interface
 type NetworkInterface struct {
-	Type      NetworkType `json:"type"`
-	Source    string      `json:"source"` // bridge name, network name
-	MAC       string      `json:"mac"`
-	Model     string      `json:"model"` // virtio, e1000, rtl8139
-	Target    string      `json:"target,omitempty"`
-	IPAddress string      `json:"ip_address,omitempty"`
+	Type   NetworkType `json:"type"`
+	Source string      `json:"source"` // bridge name, network name
+	MAC    string      `json:"mac"`
+	Model  string      `json:"model"` // virtio, e1000, rtl8139
+	Target string      `json:"target,omitempty"`
+	IPv4   *string     `json:"ipv4"`
+	IPv6   *string     `json:"ipv6"`
 }
 
 // GraphicsDevice represents graphics/console configuration
@@ -730,13 +735,10 @@ type VMEnhanced struct {
 	Storage *StorageConfigDetail `json:"storage"`
 
 	// OS configuration
-	OSInfo       *OSInfoEnhanced `json:"os_info,omitempty"`
-	OSType       string          `json:"os_type"`
-	OSVariant    string          `json:"os_variant,omitempty"`
-	Architecture string          `json:"architecture"`
-	UEFI         bool            `json:"uefi"`
-	SecureBoot   bool            `json:"secure_boot"`
-	TPM          bool            `json:"tpm"`
+	OS         OSInfo `json:"os"`
+	UEFI       bool   `json:"uefi"`
+	SecureBoot bool   `json:"secure_boot"`
+	TPM        bool   `json:"tpm"`
 
 	// Network configuration with enhanced details
 	Networks []NetworkConfigDetail `json:"networks,omitempty"`
@@ -813,10 +815,11 @@ type NetworkConfigDetail struct {
 	Target string      `json:"target,omitempty"` // Interface name in guest (e.g., eth0, enp0s3)
 
 	// Additional network details
-	Bridge    string   `json:"bridge,omitempty"`
-	IPAddress string   `json:"ip_address,omitempty"`
-	Gateway   string   `json:"gateway,omitempty"`
-	DNS       []string `json:"dns,omitempty"`
+	Bridge  string   `json:"bridge,omitempty"`
+	IPv4    *string  `json:"ipv4"`
+	IPv6    *string  `json:"ipv6"`
+	Gateway string   `json:"gateway,omitempty"`
+	DNS     []string `json:"dns,omitempty"`
 
 	// Statistics
 	RxBytes   int64 `json:"rx_bytes,omitempty"`

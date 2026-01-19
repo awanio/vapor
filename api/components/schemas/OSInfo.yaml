@@ -2,7 +2,30 @@ type: object
 properties:
   type:
     type: string
+    description: Domain OS type (for example hvm)
   architecture:
     type: string
+    description: Guest architecture
   machine:
     type: string
+    description: Machine type (for example pc, q35, virt)
+  boot:
+    type: array
+    description: Boot order (if specified)
+    items:
+      type: string
+  family:
+    type: string
+    description: OS family (e.g., linux, windows, bsd)
+  distro:
+    type: string
+    description: Distribution name (e.g., ubuntu, fedora, centos, windows)
+  version:
+    type: string
+    description: OS version number
+  codename:
+    type: string
+    description: Version codename if applicable
+  variant:
+    type: string
+    description: OS variant identifier for libosinfo compatibility
