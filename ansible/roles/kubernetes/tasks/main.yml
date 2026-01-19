@@ -1,0 +1,139 @@
+---
+- name: Install Kubernetes prerequisites (Debian)
+  block:
+    - name: Install dependencies
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gpg
+        state: present
+    - name: Add Kubernetes Apt Key
+      get_url:
+        url: https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key
+        dest: /etc/apt/keyrings/kubernetes-apt-keyring.asc
+        mode: '0644'
+    - name: Add Kubernetes Repository
+      shell: |
+        echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.asc] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+    - name: Update apt index
+      apt:
+        update_cache: yes
+    - name: Install kubelet, kubeadm, kubectl
+      apt:
+        name:
+          - kubelet
+          - kubeadm
+          - kubectl
+        state: present
+    - name: Hold kubelet, kubeadm, kubectl
+      dpkg_selections:
+        name: "{{ item }}"
+        selection: hold
+      loop:
+        - kubelet
+        - kubeadm
+        - kubectl
+  when: ansible_os_family == "Debian"
+
+# Setup kernel modules and sysctl
+- name: Load overlay and br_netfilter modules
+  modprobe:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - overlay
+    - br_netfilter
+
+- name: Configure sysctl for Kubernetes
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    sysctl_file: /etc/sysctl.d/k8s.conf
+    reload: yes
+  loop:
+    - { name: 'net.bridge.bridge-nf-call-iptables', value: '1' }
+    - { name: 'net.bridge.bridge-nf-call-ip6tables', value: '1' }
+    - { name: 'net.ipv4.ip_forward', value: '1' }
+
+# Initialize Cluster (Control Plane only)
+- name: Check if cluster is already initialized
+  stat:
+    path: /etc/kubernetes/admin.conf
+  register: k8s_conf
+
+- name: Initialize Kubernetes Control Plane
+  command: >
+    kubeadm init
+    --pod-network-cidr={{ pod_network_cidr }}
+    --service-cidr={{ service_cidr }}
+  register: kubeadm_init
+  when: 
+    - not k8s_conf.stat.exists
+    - node_role == "control-plane"
+
+- name: Create .kube directory for user
+  file:
+    path: /root/.kube
+    state: directory
+    mode: '0755'
+  when: node_role == "control-plane"
+
+- name: Copy admin.conf to user's kube config
+  copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /root/.kube/config
+    remote_src: yes
+  when: node_role == "control-plane"
+
+# CNI Installation
+- name: Install Flannel CNI
+  command: kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  when: 
+    - node_role == "control-plane"
+    - cni_plugin == "flannel"
+    - not k8s_conf.stat.exists # only run once roughly (idempotency improvement needed, but okay for installer)
+
+- name: Install Calico CNI
+  command: kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.0/manifests/calico.yaml
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  when: 
+    - node_role == "control-plane"
+    - cni_plugin == "calico"
+    - not k8s_conf.stat.exists
+
+- name: Install Cilium CNI (CLI install simplified)
+  shell: |
+    curl -L --remote-name-all https://github.com/cilium/cilium-cli/releases/latest/download/cilium-linux-amd64.tar.gz
+    tar xzvfC cilium-linux-amd64.tar.gz /usr/local/bin
+    rm cilium-linux-amd64.tar.gz
+    cilium install
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  when: 
+    - node_role == "control-plane"
+    - cni_plugin == "cilium"
+    - not k8s_conf.stat.exists
+
+# Local Path Provisioner
+- name: Install Local Path Provisioner
+  command: kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  when: 
+    - node_role == "control-plane"
+    - install_k8s | bool
+
+- name: Patch Local Path Provisioner as default
+  command: >
+    kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  when:
+    - node_role == "control-plane"
+    - install_k8s | bool

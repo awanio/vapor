@@ -1,0 +1,24 @@
+---
+- name: Update apt cache (Debian)
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+
+- name: Install common packages (Debian)
+  apt:
+    name:
+      - curl
+      - software-properties-common
+      - apt-transport-https
+      - ca-certificates
+      - gnupg
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Install common packages (RedHat)
+  yum:
+    name:
+      - curl
+    state: present
+  when: ansible_os_family == "RedHat"

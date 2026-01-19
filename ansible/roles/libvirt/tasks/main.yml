@@ -1,0 +1,26 @@
+---
+- name: Install Libvirt/KVM packages (Debian)
+  apt:
+    name:
+      - qemu-kvm
+      - libvirt-daemon-system
+      - libvirt-clients
+      - bridge-utils
+      - virtinst
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Install Libvirt/KVM packages (RedHat)
+  yum:
+    name:
+      - qemu-kvm
+      - libvirt
+      - library-virt-client
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Ensure Libvirt service is started and enabled
+  service:
+    name: libvirtd
+    state: started
+    enabled: yes

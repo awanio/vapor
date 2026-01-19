@@ -1,0 +1,25 @@
+---
+- name: Install Helm (Debian)
+  block:
+    - name: Add Helm GPG key
+      get_url:
+        url: https://baltocdn.com/helm/signing.asc
+        dest: /usr/share/keyrings/helm.gpg
+        mode: '0644'
+    - name: Add Helm repository
+      shell: |
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" | \
+        sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
+    - name: Update apt index
+      apt:
+        update_cache: yes
+    - name: Install Helm
+      apt:
+        name: helm
+        state: present
+  when: ansible_os_family == "Debian"
+
+- name: Install Helm (RedHat)
+  shell: |
+    curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+  when: ansible_os_family == "RedHat"
