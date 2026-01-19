@@ -63,10 +63,21 @@
 
       [Install]
       WantedBy=multi-user.target
-  notify: restart vapor
+  register: vapor_unit
+
+- name: Reload systemd if unit changed
+  systemd:
+    daemon_reload: yes
+  when: vapor_unit.changed
+
+- name: Restart Vapor if unit changed
+  systemd:
+    name: vapor
+    state: restarted
+  when: vapor_unit.changed
 
 - name: Start Vapor service
-  service:
+  systemd:
     name: vapor
     state: started
     enabled: yes
