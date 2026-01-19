@@ -1,24 +1,13 @@
 ---
-- name: Install Helm (Debian)
-  block:
-    - name: Add Helm GPG key
-      shell: curl -fsSL https://baltocdn.com/helm/signing.asc | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
-      args:
-        creates: /usr/share/keyrings/helm.gpg
-    - name: Add Helm repository
-      shell: |
-        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" | \
-        sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
-    - name: Update apt index
-      apt:
-        update_cache: yes
-    - name: Install Helm
-      apt:
-        name: helm
-        state: present
-  when: ansible_os_family == "Debian"
+# Install Helm using the official get-helm-3 script which downloads from GitHub releases
+# This is more reliable than apt repositories which can have DNS/CDN issues
+- name: Check if Helm is installed
+  command: which helm
+  register: helm_check
+  ignore_errors: yes
+  changed_when: false
 
-- name: Install Helm (RedHat)
+- name: Install Helm
   shell: |
-    curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-  when: ansible_os_family == "RedHat"
+    curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+  when: helm_check.rc != 0
