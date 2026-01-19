@@ -54,11 +54,12 @@ temp/
 /build/
 node_modules/
 system-api
-./vapor
-./vapor-api
+vapor
+vapor-api
 local-vapor
 vapor.conf
 /exclude/
 *.backup*
 *.bak
 web/coverage/
+!ansible/roles/vapor
