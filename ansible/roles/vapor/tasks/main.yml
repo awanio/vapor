@@ -63,7 +63,7 @@
 
       [Install]
       WantedBy=multi-user.target
-    notify: restart vapor
+  notify: restart vapor
 
 - name: Start Vapor service
   service:
