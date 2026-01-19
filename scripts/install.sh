@@ -5,7 +5,7 @@ set -e
 # This script deploys the Vapor binary and sets up the systemd service.
 
 # Default values
-VERSION=${VERSION:-"v0.0.1-rc.1"}
+VERSION=${VERSION:-"v0.0.1-rc.2"}
 BASE_URL="https://storage.awan.io/assets/vapor/${VERSION}"
 BINARY_NAME="vapor"
 INSTALL_DIR="/usr/local/bin"

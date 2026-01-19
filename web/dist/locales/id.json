@@ -339,7 +339,8 @@
     "storage-pools": "Pool Penyimpanan",
     "networks": "Jaringan",
     "iso-images": "Image ISO",
-    "volumes": "Volume"
+    "volumes": "Volume",
+    "backups": "Cadangan"
   },
   "users": {
     "title": "Manajemen Pengguna",
