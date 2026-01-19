@@ -186,12 +186,12 @@ if prompt_confirmation "Do you want to install a Container Runtime (Docker/Conta
 fi
 
 # Kubernetes
-if prompt_confirmation "Do you want to install Kubernetes?" "n"; then
+if prompt_confirmation "Do you want to install Kubernetes?" "y"; then
     INSTALL_K8S="true"
     
     # Additional K8s Questions
     
-    # 1. Node IP (Try to detect default route IP)
+    # 1. Node IP
     DEFAULT_IP=$(ip route get 1.2.3.4 | awk '{print $7}')
     prompt_value "Enter Node IP" "$DEFAULT_IP" "K8S_NODE_IP"
     
@@ -199,13 +199,26 @@ if prompt_confirmation "Do you want to install Kubernetes?" "n"; then
     echo "Select Node Role:"
     K8S_NODE_ROLE=$(select_option "Select role:" "control-plane" "worker")
     
-    # 2.b If worker, we might need join tokens (Out of scope for this simple installer logic unless we ask for the full join command.
-    # The prompt asked for "other node credential" if answering yes. 
-    # Since this logic is complex to implement purely in bash/ansible without a central server, 
-    # I will assume "control-plane" is the primary path or the user manually handles join for workers via Ansible inventory later.
-    # However, to respect the prompt, if they selected worker, I'd ask for token/hash, but I haven't implemented the join logic in Ansible yet.
-    # I'll stick to 'control-plane' logic primarily in the playbook, or just simple install.)
+    WORKER_NODES=()
     
+    if [ "$K8S_NODE_ROLE" == "control-plane" ]; then
+        # Ask to add worker nodes
+        while prompt_confirmation "Do you want to add a worker node to this cluster?" "n"; do
+             echo "--- Add Worker Node ---"
+             prompt_value "Worker IP" "" "W_IP"
+             prompt_value "SSH User" "root" "W_USER"
+             prompt_value "SSH Private Key Path" "$HOME/.ssh/id_rsa" "W_KEY"
+             
+             if [ -z "$W_IP" ]; then
+                 echo "IP is required."
+                 continue
+             fi
+             
+             WORKER_NODES+=("$W_IP|$W_USER|$W_KEY")
+             echo "Worker $W_IP added."
+        done
+    fi
+
     # 3. Pod CIDR
     prompt_value "Enter Pod CIDR" "10.244.0.0/16" "K8S_POD_CIDR"
     
@@ -230,6 +243,33 @@ fi
 
 
 # --- 3. Execution ---
+
+# Generate Inventory
+INVENTORY_FILE="$CLONE_DIR/ansible/playbooks/inventory.ini"
+echo "[control_plane]" > "$INVENTORY_FILE"
+# Localhost is always CP in this installer flow? 
+# If user selected "worker", then localhost is a worker trying to join existing?
+# The prompt "add another node to join to THIS new cluster" implies we are creating a cluster here.
+# So if Role=control-plane, localhost is CP.
+# If Role=worker, localhost is a worker (remote install logic doesn't apply to "adding workers" usually, but let's support the flow).
+
+if [ "$K8S_NODE_ROLE" == "control-plane" ]; then
+    echo "localhost ansible_connection=local node_role=control-plane" >> "$INVENTORY_FILE"
+    
+    if [ ${#WORKER_NODES[@]} -gt 0 ]; then
+        echo -e "\n[workers]" >> "$INVENTORY_FILE"
+        for worker in "${WORKER_NODES[@]}"; do
+            IFS='|' read -r w_ip w_user w_key <<< "$worker"
+            echo "$w_ip ansible_user=$w_user ansible_ssh_private_key_file=$w_key node_role=worker ansible_ssh_common_args='-o StrictHostKeyChecking=no'" >> "$INVENTORY_FILE"
+        done
+    fi
+else
+    # Localhost is a worker
+    echo "localhost ansible_connection=local node_role=worker" >> "$INVENTORY_FILE"
+    # We'd need join token/hash here if we were joining an existing cluster, but the script doesn't ask for it yet.
+    # Assuming the user manually handles join or simply installs binaries.
+    # But the prompt was about adding OTHER nodes to THIS one.
+fi
 
 echo -e "\n${GREEN}Starting Installation...${NC}"
 echo "--------------------------------"
@@ -258,8 +298,12 @@ if prompt_confirmation "Proceed with installation?" "y"; then
     fi
     
     # Run Ansible
-    if ansible-playbook "$PLAYBOOK_PATH" --extra-vars "$EXTRA_VARS"; then
+    # We must cd to the playbook directory so ansible.cfg is picked up
+    cd "$PLAYBOOK_DIR"
+    
+    if ansible-playbook "install_vapor_stack.yml" --extra-vars "$EXTRA_VARS"; then
         echo -e "${GREEN}Installation completed successfully!${NC}"
+        cd - > /dev/null # Attempt to return to previous dir, though we exit anyway
         rm -rf "$CLONE_DIR"
     else
         echo -e "${RED}Installation failed.${NC}"
