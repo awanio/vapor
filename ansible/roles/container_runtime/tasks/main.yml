@@ -123,14 +123,14 @@
     containerd config default > /etc/containerd/config.toml
   args:
     creates: /etc/containerd/config.toml
-  when: install_containerd | bool
+  when: install_containerd | bool or install_docker | bool
 
 - name: Enable Systemd Cgroup for Containerd
   replace:
     path: /etc/containerd/config.toml
     regexp: 'SystemdCgroup = false'
     replace: 'SystemdCgroup = true'
-  when: install_containerd | bool
+  when: install_containerd | bool or install_docker | bool
   notify: restart containerd
 
 - name: Start Containerd Service
@@ -138,4 +138,4 @@
     name: containerd
     state: started
     enabled: yes
-  when: install_containerd | bool
+  when: install_containerd | bool or install_docker | bool
