@@ -2,10 +2,9 @@
 - name: Install Helm (Debian)
   block:
     - name: Add Helm GPG key
-      get_url:
-        url: https://baltocdn.com/helm/signing.asc
-        dest: /usr/share/keyrings/helm.gpg
-        mode: '0644'
+      shell: curl -fsSL https://baltocdn.com/helm/signing.asc | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
+      args:
+        creates: /usr/share/keyrings/helm.gpg
     - name: Add Helm repository
       shell: |
         echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" | \

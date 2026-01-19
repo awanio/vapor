@@ -197,62 +197,76 @@ else
 fi
 
 # Kubernetes
+# Kubernetes
+K8S_DETECTED=false
+K8S_ACTIVE=false
+SHOULD_INSTALL_K8S=false
+
 if command -v kubeadm &> /dev/null; then
-    echo -e "${GREEN}Kubernetes (kubeadm) detected. Skipping installation.${NC}"
-    # We skip prompt for K8s install, but we might want to allow adding nodes?
-    # The current flow "Do you want to install K8s" implies "Install control plane entirely".
-    # If user wants to add nodes, they should probably not use this "install from scratch" flow logic unmodified.
-    # For now, we skip.
+    K8S_DETECTED=true
+    if systemctl is-active --quiet kubelet; then
+        K8S_ACTIVE=true
+        echo -e "${GREEN}Kubernetes is installed and active. Skipping installation.${NC}"
+    else
+        echo -e "${YELLOW}Kubernetes binaries detected but kubelet is not active.${NC}"
+        if prompt_confirmation "Do you want to setup the cluster?" "y"; then
+            SHOULD_INSTALL_K8S=true
+        fi
+    fi
 else
     if prompt_confirmation "Do you want to install Kubernetes?" "y"; then
-        INSTALL_K8S="true"
-        
-        # Additional K8s Questions
-        
-        # 1. Node IP
-        DEFAULT_IP=$(ip route get 1.2.3.4 | awk '{print $7}')
-        prompt_value "Enter Node IP" "$DEFAULT_IP" "K8S_NODE_IP"
-        
-        # 2. Node Role
-        echo "Select Node Role:"
-        K8S_NODE_ROLE=$(select_option "Select role:" "control-plane" "worker")
-        
-        WORKER_NODES=()
-        
-        if [ "$K8S_NODE_ROLE" == "control-plane" ]; then
-            # Ask to add worker nodes
-            while prompt_confirmation "Do you want to add a worker node to this cluster?" "n"; do
-                 echo "--- Add Worker Node ---"
-                 prompt_value "Worker IP" "" "W_IP"
-                 prompt_value "SSH User" "root" "W_USER"
-                 prompt_value "SSH Private Key Path" "$HOME/.ssh/id_rsa" "W_KEY"
-                 
-                 if [ -z "$W_IP" ]; then
-                     echo "IP is required."
-                     continue
-                 fi
-                 
-                 WORKER_NODES+=("$W_IP|$W_USER|$W_KEY")
-                 echo "Worker $W_IP added."
-            done
-        fi
-
-        # 3. Pod CIDR
-        prompt_value "Enter Pod CIDR" "10.244.0.0/16" "K8S_POD_CIDR"
-        
-        # 4. Service CIDR
-        prompt_value "Enter Service CIDR" "10.96.0.0/12" "K8S_SVC_CIDR"
-        
-        # 5. CNI
-        echo "Select CNI Plugin:"
-        CNI_CHOICE=$(select_option "Select CNI:" "Flannel (default)" "Calico" "Cilium")
-        
-        case "$CNI_CHOICE" in
-            "Flannel (default)") K8S_CNI="flannel" ;;
-            "Calico") K8S_CNI="calico" ;;
-            "Cilium") K8S_CNI="cilium" ;;
-        esac
+        SHOULD_INSTALL_K8S=true
     fi
+fi
+
+if [ "$SHOULD_INSTALL_K8S" == "true" ]; then
+    INSTALL_K8S="true"
+    
+    # Additional K8s Questions
+    
+    # 1. Node IP
+    DEFAULT_IP=$(ip route get 1.2.3.4 | awk '{print $7}')
+    prompt_value "Enter Node IP" "$DEFAULT_IP" "K8S_NODE_IP"
+    
+    # 2. Node Role
+    echo "Select Node Role:"
+    K8S_NODE_ROLE=$(select_option "Select role:" "control-plane" "worker")
+    
+    WORKER_NODES=()
+    
+    if [ "$K8S_NODE_ROLE" == "control-plane" ]; then
+        # Ask to add worker nodes
+        while prompt_confirmation "Do you want to add a worker node to this cluster?" "n"; do
+             echo "--- Add Worker Node ---"
+             prompt_value "Worker IP" "" "W_IP"
+             prompt_value "SSH User" "root" "W_USER"
+             prompt_value "SSH Private Key Path" "$HOME/.ssh/id_rsa" "W_KEY"
+             
+             if [ -z "$W_IP" ]; then
+                 echo "IP is required."
+                 continue
+             fi
+             
+             WORKER_NODES+=("$W_IP|$W_USER|$W_KEY")
+             echo "Worker $W_IP added."
+        done
+    fi
+
+    # 3. Pod CIDR
+    prompt_value "Enter Pod CIDR" "10.244.0.0/16" "K8S_POD_CIDR"
+    
+    # 4. Service CIDR
+    prompt_value "Enter Service CIDR" "10.96.0.0/12" "K8S_SVC_CIDR"
+    
+    # 5. CNI
+    echo "Select CNI Plugin:"
+    CNI_CHOICE=$(select_option "Select CNI:" "Flannel (default)" "Calico" "Cilium")
+    
+    case "$CNI_CHOICE" in
+        "Flannel (default)") K8S_CNI="flannel" ;;
+        "Calico") K8S_CNI="calico" ;;
+        "Cilium") K8S_CNI="cilium" ;;
+    esac
 fi
 
 # Helm
