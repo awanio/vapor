@@ -1,30 +1,97 @@
 ---
-# Check OS family for Docker installation
-- name: Add Docker GPG key (Debian)
+# --- PREPARATION: Install prerequisite packages ---
+- name: Install prerequisite packages (Debian/Ubuntu)
+  apt:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+    state: present
+    update_cache: yes
+  when: ansible_os_family == "Debian" and (install_docker | bool or install_containerd | bool)
+
+- name: Install prerequisite packages (CentOS/RHEL/Rocky/AlmaLinux)
+  yum:
+    name: dnf-plugins-core
+    state: present
+  when: ansible_distribution in ["CentOS", "RedHat", "Rocky", "AlmaLinux"] and (install_docker | bool or install_containerd | bool)
+
+- name: Install prerequisite packages (Fedora)
+  dnf:
+    name: dnf-plugins-core
+    state: present
+  when: ansible_distribution == "Fedora" and (install_docker | bool or install_containerd | bool)
+
+
+# --- REPO SETUP: Debian ---
+- name: Setup Docker repo (Debian)
   block:
     - name: Create /etc/apt/keyrings
       file:
         path: /etc/apt/keyrings
         state: directory
         mode: '0755'
-    - name: Download Docker GPG key
+    - name: Download Docker GPG key (Debian)
+      get_url:
+        url: https://download.docker.com/linux/debian/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+    - name: Add Docker repository (Debian)
+      apt_repository:
+        repo: "deb [arch={{ ansible_architecture | default('amd64') }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable"
+        state: present
+        filename: docker
+  when: ansible_distribution == "Debian" and (install_docker | bool or install_containerd | bool)
+
+
+# --- REPO SETUP: Ubuntu ---
+- name: Setup Docker repo (Ubuntu)
+  block:
+    - name: Create /etc/apt/keyrings
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+    - name: Download Docker GPG key (Ubuntu)
       get_url:
         url: https://download.docker.com/linux/ubuntu/gpg
         dest: /etc/apt/keyrings/docker.asc
         mode: '0644'
-    - name: Add Docker repository
-      shell: |
-        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian \
-        $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-        sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-      args:
-        creates: /etc/apt/sources.list.d/docker.list
-    - name: Update apt index
-      apt:
-        update_cache: yes
+    - name: Add Docker repository (Ubuntu)
+      apt_repository:
+        repo: "deb [arch={{ ansible_architecture | default('amd64') }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+        filename: docker
+  when: ansible_distribution == "Ubuntu" and (install_docker | bool or install_containerd | bool)
+
+
+# --- REPO SETUP: CentOS/Rocky/AlmaLinux ---
+- name: Setup Docker repo (CentOS/Rocky/AlmaLinux)
+  shell: dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+  when: ansible_distribution in ["CentOS", "Rocky", "AlmaLinux"] and (install_docker | bool or install_containerd | bool)
+
+
+# --- REPO SETUP: RHEL ---
+- name: Setup Docker repo (RHEL)
+  shell: dnf config-manager --add-repo https://download.docker.com/linux/rhel/docker-ce.repo
+  when: ansible_distribution == "RedHat" and (install_docker | bool or install_containerd | bool)
+
+
+# --- REPO SETUP: Fedora ---
+- name: Setup Docker repo (Fedora)
+  shell: dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
+  when: ansible_distribution == "Fedora" and (install_docker | bool or install_containerd | bool)
+
+
+# --- UPDATE CACHE (Debian/Ubuntu) ---
+- name: Update apt index
+  apt:
+    update_cache: yes
   when: ansible_os_family == "Debian" and (install_docker | bool or install_containerd | bool)
 
-# Install Docker
+
+# --- INSTALLATION ---
+
 - name: Install Docker
   package:
     name:
@@ -43,8 +110,7 @@
     enabled: yes
   when: install_docker | bool
 
-# Install Containerd only (if explicitly requested without Docker, though Docker installs it too)
-# If Docker is installed, containerd is already there. If we just want containerd:
+# Install Containerd only (if explicitly requested without Docker)
 - name: Install Containerd
   package:
     name: containerd.io
