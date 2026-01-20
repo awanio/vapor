@@ -85,7 +85,7 @@ if ! command -v ansible-playbook &> /dev/null; then
         echo "Installing Ansible and dependencies..."
         if [ "$OS_FAMILY" == "Debian" ]; then
             sudo apt-get update
-            sudo apt-get install -y ansible libvirt-clients python3
+            sudo apt-get install -y ansible libvirt-daemon-system libvirt-clients python3
         elif [ "$OS_FAMILY" == "RedHat" ]; then
             # Attempt to install EPEL for Ansible if needed, simplistic approach
             sudo yum install -y epel-release || true
@@ -170,8 +170,17 @@ K8S_SVC_CIDR="10.96.0.0/12"
 K8S_CNI="flannel"
 
 # Libvirt
-if command -v virsh &> /dev/null; then
-    echo -e "${GREEN}Libvirt detected. Skipping installation.${NC}"
+if command -v virsh &> /dev/null && systemctl is-active --quiet libvirtd 2>/dev/null; then
+    echo -e "${GREEN}Libvirt detected and running. Skipping installation.${NC}"
+elif command -v virsh &> /dev/null; then
+    echo -e "${YELLOW}Libvirt is installed but libvirtd service is not running.${NC}"
+    if prompt_confirmation "Do you want to start libvirtd service?" "y"; then
+        sudo systemctl start libvirtd
+        sudo systemctl enable libvirtd
+        echo -e "${GREEN}libvirtd service started and enabled.${NC}"
+    else
+        echo -e "${YELLOW}Warning: libvirtd is not running. Some features may not work.${NC}"
+    fi
 else
     if prompt_confirmation "Do you want to install Libvirt/KVM?" "y"; then
         INSTALL_LIBVIRT="true"

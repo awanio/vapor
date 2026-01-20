@@ -15,12 +15,14 @@
     name:
       - qemu-kvm
       - libvirt
-      - library-virt-client
+      - libvirt-client
+      - virt-install
     state: present
   when: ansible_os_family == "RedHat"
 
 - name: Ensure Libvirt service is started and enabled
-  service:
+  systemd:
     name: libvirtd
     state: started
     enabled: yes
+    daemon_reload: yes
