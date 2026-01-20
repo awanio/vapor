@@ -20,9 +20,13 @@ networking:
 ---
 apiVersion: kubelet.config.k8s.io/v1beta1
 kind: KubeletConfiguration
+{% if cgroup_version == 'v2' %}
 featureGates:
   NodeSwap: true
 failSwapOn: false
 memorySwap:
   swapBehavior: LimitedSwap
+{% else %}
+failSwapOn: false
+{% endif %}
 cgroupDriver: systemd

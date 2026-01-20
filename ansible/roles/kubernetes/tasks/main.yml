@@ -62,6 +62,33 @@
 # ... (Previous tasks remain, but we need to ensure they run on all nodes if needed)
 
 # Initialize Cluster (Control Plane only)
+- name: Detect cgroup version
+  shell: |
+    if [ -f /sys/fs/cgroup/cgroup.controllers ]; then
+      echo "v2"
+    else
+      echo "v1"
+    fi
+  register: cgroup_check
+  changed_when: false
+
+- name: Set cgroup version fact
+  set_fact:
+    cgroup_version: "{{ cgroup_check.stdout }}"
+
+
+- name: Disable swap immediately (cgroupv1)
+  command: swapoff -a
+  when: cgroup_version == "v1"
+  changed_when: false
+
+- name: Remove swap from fstab (cgroupv1)
+  lineinfile:
+    path: /etc/fstab
+    regexp: "^[^#].*\\sswap\\s"
+    state: absent
+  when: cgroup_version == "v1"
+
 - name: Check if cluster is already initialized
   stat:
     path: /etc/kubernetes/admin.conf
