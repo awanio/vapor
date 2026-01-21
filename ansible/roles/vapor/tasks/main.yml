@@ -32,7 +32,7 @@
   register: vapor_conf_stat
 
 - name: Read existing JWT secret from config
-  shell: grep -oP '(?<=JWT_SECRET: ")[^"]+' {{ vapor_config_dir }}/vapor.conf
+  shell: "grep -oP '(?<=JWT_SECRET: \")[^\"]+' {{ vapor_config_dir }}/vapor.conf"
   register: existing_jwt_secret
   when: vapor_conf_stat.stat.exists
   failed_when: false
