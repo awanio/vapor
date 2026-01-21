@@ -458,6 +458,12 @@ export class CreateVMWizardEnhanced extends LitElement {
       grid-template-columns: repeat(3, 1fr);
       gap: 16px;
     }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
     /* Lists */
     .list-container {
       border: 1px solid var(--vscode-border);
@@ -1131,7 +1137,7 @@ export class CreateVMWizardEnhanced extends LitElement {
       }
 
       d.action = action as any;
-      d.device = 'disk';
+      d.device = d.device || 'disk';
     } else {
       if (!d.path) {
         this.showNotification('ISO image is required', 'error');
@@ -1223,7 +1229,7 @@ export class CreateVMWizardEnhanced extends LitElement {
           </div>
 
           ${disk.action === 'create' ? html`
-            <div class="grid-3">
+            <div class="grid-4">
               <div class="form-group">
                 <label>Size (GB)</label>
                 <input
@@ -1268,6 +1274,21 @@ export class CreateVMWizardEnhanced extends LitElement {
                   <option value="sata">SATA</option>
                 </select>
               </div>
+
+              <div class="form-group">
+                <label>Device Type</label>
+                <select
+                  .value=${disk.device || 'disk'}
+                  @change=${(e: Event) => {
+            disk.device = (e.target as HTMLSelectElement).value as any;
+            this.requestUpdate();
+          }}
+                >
+                  <option value="disk">Disk</option>
+                  <option value="cdrom">CD-ROM</option>
+                  <option value="floppy">Floppy</option>
+                </select>
+              </div>
             </div>
           ` : disk.action === 'clone' ? html`
             <div class="form-group">
@@ -1288,6 +1309,68 @@ export class CreateVMWizardEnhanced extends LitElement {
                 `)}
               </select>
             </div>
+
+            <div class="grid-4">
+              <div class="form-group">
+                <label>Format</label>
+                <select
+                  .value=${disk.format || 'qcow2'}
+                  @change=${(e: Event) => {
+            disk.format = (e.target as HTMLSelectElement).value as any;
+            this.requestUpdate();
+          }}
+                >
+                  <option value="qcow2">QCOW2</option>
+                  <option value="raw">RAW</option>
+                  <option value="vmdk">VMDK</option>
+                  <option value="vdi">VDI</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Bus</label>
+                <select
+                  .value=${disk.bus || 'virtio'}
+                  @change=${(e: Event) => {
+            disk.bus = (e.target as HTMLSelectElement).value as any;
+            this.requestUpdate();
+          }}
+                >
+                  <option value="virtio">VirtIO</option>
+                  <option value="scsi">SCSI</option>
+                  <option value="ide">IDE</option>
+                  <option value="sata">SATA</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Device Type</label>
+                <select
+                  .value=${disk.device || 'disk'}
+                  @change=${(e: Event) => {
+            disk.device = (e.target as HTMLSelectElement).value as any;
+            this.requestUpdate();
+          }}
+                >
+                  <option value="disk">Disk</option>
+                  <option value="cdrom">CD-ROM</option>
+                  <option value="floppy">Floppy</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Size (GB)</label>
+                <input
+                  type="number"
+                  min="1"
+                  .value=${String(disk.size || 20)}
+                  @input=${(e: InputEvent) => {
+            disk.size = Number((e.target as HTMLInputElement).value);
+            this.requestUpdate();
+          }}
+                />
+              </div>
+            </div>
           ` : html`
             <div class="form-group">
               <label>Source volume</label>
@@ -1306,6 +1389,55 @@ export class CreateVMWizardEnhanced extends LitElement {
                   </option>
                 `)}
               </select>
+            </div>
+
+            <div class="grid-3">
+              <div class="form-group">
+                <label>Format</label>
+                <select
+                  .value=${disk.format || 'qcow2'}
+                  @change=${(e: Event) => {
+            disk.format = (e.target as HTMLSelectElement).value as any;
+            this.requestUpdate();
+          }}
+                >
+                  <option value="qcow2">QCOW2</option>
+                  <option value="raw">RAW</option>
+                  <option value="vmdk">VMDK</option>
+                  <option value="vdi">VDI</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Bus</label>
+                <select
+                  .value=${disk.bus || 'virtio'}
+                  @change=${(e: Event) => {
+            disk.bus = (e.target as HTMLSelectElement).value as any;
+            this.requestUpdate();
+          }}
+                >
+                  <option value="virtio">VirtIO</option>
+                  <option value="scsi">SCSI</option>
+                  <option value="ide">IDE</option>
+                  <option value="sata">SATA</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Device Type</label>
+                <select
+                  .value=${disk.device || 'disk'}
+                  @change=${(e: Event) => {
+            disk.device = (e.target as HTMLSelectElement).value as any;
+            this.requestUpdate();
+          }}
+                >
+                  <option value="disk">Disk</option>
+                  <option value="cdrom">CD-ROM</option>
+                  <option value="floppy">Floppy</option>
+                </select>
+              </div>
             </div>
           `}
 
@@ -1384,16 +1516,30 @@ export class CreateVMWizardEnhanced extends LitElement {
             <div class="form-group">
               <label>Bus</label>
               <select
-                .value=${disk.bus || 'ide'}
+                .value=${disk.bus || 'sata'}
                 @change=${(e: Event) => {
           disk.bus = (e.target as HTMLSelectElement).value as any;
           this.requestUpdate();
         }}
               >
-                <option value="ide">IDE</option>
-                <option value="virtio">VirtIO</option>
-                <option value="scsi">SCSI</option>
                 <option value="sata">SATA</option>
+                <option value="ide">IDE</option>
+                <option value="scsi">SCSI</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Device Type</label>
+              <select
+                .value=${disk.device || 'cdrom'}
+                @change=${(e: Event) => {
+          disk.device = (e.target as HTMLSelectElement).value as any;
+          this.requestUpdate();
+        }}
+              >
+                <option value="cdrom">CD-ROM</option>
+                <option value="disk">Disk</option>
+                <option value="floppy">Floppy</option>
               </select>
             </div>
 

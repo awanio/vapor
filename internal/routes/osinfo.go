@@ -83,13 +83,34 @@ func listOSVariants() gin.HandlerFunc {
 	}
 }
 
+// matchFamily checks if the variant family matches the requested family.
+// It handles aliasing for user-friendly family names (e.g., "windows" -> winnt, win9x, win16)
+func matchFamily(variantFamily, requestedFamily string) bool {
+	if variantFamily == requestedFamily {
+		return true
+	}
+
+	// Map user-friendly family names to actual osinfo-db family values
+	switch requestedFamily {
+	case "windows":
+		// Windows variants use winnt, win9x, win16 as family
+		return variantFamily == "winnt" || variantFamily == "win9x" || variantFamily == "win16"
+	case "macos", "macosx", "osx":
+		return variantFamily == "darwin"
+	case "bsd":
+		return variantFamily == "freebsd" || variantFamily == "openbsd" || variantFamily == "netbsd" || variantFamily == "dragonflybsd"
+	}
+
+	return false
+}
+
 func filterOSVariants(items []OSVariant, q string, family string, limit int) []OSVariant {
 	q = strings.ToLower(q)
 	family = strings.ToLower(family)
 
 	matches := make([]OSVariant, 0, len(items))
 	for _, v := range items {
-		if family != "" && strings.ToLower(v.Family) != family {
+		if family != "" && !matchFamily(strings.ToLower(v.Family), family) {
 			continue
 		}
 		if q != "" {

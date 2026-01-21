@@ -506,13 +506,33 @@ func (s *Service) generateEnhancedDomainXML(req *VMCreateRequestEnhanced, diskCo
 		maxVCPUs = req.VCPUs
 	}
 	// Start building the XML
-	xml := fmt.Sprintf(`<domain type='kvm'>
+	// Only enable memory hotplug (with NUMA requirement) when max_memory > memory
+	enableMemoryHotplug := req.MaxMemory > 0 && req.MaxMemory > req.Memory
+
+	var xml string
+	if enableMemoryHotplug {
+		// Memory hotplug enabled - requires NUMA config, add it
+		xml = fmt.Sprintf(`<domain type='kvm'>
 <name>%s</name>
 <uuid>%s</uuid>
 <maxMemory slots='16' unit='MiB'>%d</maxMemory>
 <memory unit='MiB'>%d</memory>
 <currentMemory unit='MiB'>%d</currentMemory>
-<vcpu current='%d'>%d</vcpu>`, req.Name, formattedUUID, maxMemory, req.Memory, req.Memory, req.VCPUs, maxVCPUs)
+<vcpu current='%d'>%d</vcpu>
+<cpu>
+<numa>
+<cell id='0' cpus='0-%d' memory='%d' unit='MiB'/>
+</numa>
+</cpu>`, req.Name, formattedUUID, maxMemory, req.Memory, req.Memory, req.VCPUs, maxVCPUs, maxVCPUs-1, req.Memory)
+	} else {
+		// No memory hotplug - simple configuration
+		xml = fmt.Sprintf(`<domain type='kvm'>
+<name>%s</name>
+<uuid>%s</uuid>
+<memory unit='MiB'>%d</memory>
+<currentMemory unit='MiB'>%d</currentMemory>
+<vcpu current='%d'>%d</vcpu>`, req.Name, formattedUUID, maxMemory, req.Memory, req.VCPUs, maxVCPUs)
+	}
 // Add metadata section for OS type/variant
 // Store os_type and os_variant even if OSInfo is not provided
 if req.OSInfo == nil && (req.OSType != "" || req.OSVariant != "") {
@@ -669,6 +689,10 @@ xml += `
 			// Common client mistake: attaching ISOs as floppy/disk.
 			if deviceType == "" || strings.EqualFold(deviceType, "disk") || strings.EqualFold(deviceType, "floppy") {
 				deviceType = "cdrom"
+			}
+			// CDROM devices cannot use virtio bus - use sata instead
+			if strings.EqualFold(busType, "virtio") {
+				busType = "sata"
 			}
 		}
 

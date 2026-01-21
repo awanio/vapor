@@ -17,11 +17,11 @@ import (
 // VMCreateRequestEnhanced represents an enhanced request to create a new VM
 type VMCreateRequestEnhanced struct {
 	// Basic VM identification and resources
-	Name       string `json:"name" binding:"required"`
-	Memory     uint64 `json:"memory" binding:"required"`         // in MB (current/boot memory)
-	MaxMemory  uint64 `json:"max_memory,omitempty"`               // in MB (upper limit). If 0, defaults to Memory
-	VCPUs      uint   `json:"vcpus" binding:"required"`
-	MaxVCPUs   uint   `json:"max_vcpus,omitempty"`                // Upper limit for vCPUs. If 0, defaults to VCPUs
+	Name      string `json:"name" binding:"required"`
+	Memory    uint64 `json:"memory" binding:"required"` // in MB (current/boot memory)
+	MaxMemory uint64 `json:"max_memory,omitempty"`      // in MB (upper limit). If 0, defaults to Memory
+	VCPUs     uint   `json:"vcpus" binding:"required"`
+	MaxVCPUs  uint   `json:"max_vcpus,omitempty"` // Upper limit for vCPUs. If 0, defaults to VCPUs
 
 	// Nested storage configuration
 	Storage *StorageConfig `json:"storage" binding:"required"`
@@ -798,115 +798,114 @@ func (s *Service) UpdateVMEnhanced(ctx context.Context, nameOrUUID string, req *
 	isRunning := state == libvirt.DOMAIN_RUNNING
 	requiresRestart := false
 
-// Update max memory first if specified (must be done before increasing memory)
-// Max memory can only be changed when the VM is stopped
-if req.MaxMemory > 0 {
-maxMemoryKB := req.MaxMemory * 1024
-if !isRunning {
-// Update max memory in config (requires VM to be stopped)
-if err := domain.SetMemoryFlags(maxMemoryKB, libvirt.DomainMemoryModFlags(libvirt.DOMAIN_MEM_MAXIMUM|libvirt.DOMAIN_MEM_CONFIG)); err != nil {
-log.Printf("UpdateVMEnhanced warning - failed to update max memory config: %v\n", err)
-// Continue anyway, the memory update below might still work if within current limits
-}
-} else {
-log.Printf("UpdateVMEnhanced: max memory cannot be changed while VM is running, will update config for next boot")
-// Try to update config for next boot
-if err := domain.SetMemoryFlags(maxMemoryKB, libvirt.DomainMemoryModFlags(libvirt.DOMAIN_MEM_MAXIMUM|libvirt.DOMAIN_MEM_CONFIG)); err != nil {
-log.Printf("UpdateVMEnhanced warning - failed to update max memory config: %v\n", err)
-}
-requiresRestart = true
-}
-}
+	// Update max memory first if specified (must be done before increasing memory)
+	// Max memory can only be changed when the VM is stopped
+	if req.MaxMemory > 0 {
+		maxMemoryKB := req.MaxMemory * 1024
+		if !isRunning {
+			// Update max memory in config (requires VM to be stopped)
+			if err := domain.SetMemoryFlags(maxMemoryKB, libvirt.DomainMemoryModFlags(libvirt.DOMAIN_MEM_MAXIMUM|libvirt.DOMAIN_MEM_CONFIG)); err != nil {
+				log.Printf("UpdateVMEnhanced warning - failed to update max memory config: %v\n", err)
+				// Continue anyway, the memory update below might still work if within current limits
+			}
+		} else {
+			log.Printf("UpdateVMEnhanced: max memory cannot be changed while VM is running, will update config for next boot")
+			// Try to update config for next boot
+			if err := domain.SetMemoryFlags(maxMemoryKB, libvirt.DomainMemoryModFlags(libvirt.DOMAIN_MEM_MAXIMUM|libvirt.DOMAIN_MEM_CONFIG)); err != nil {
+				log.Printf("UpdateVMEnhanced warning - failed to update max memory config: %v\n", err)
+			}
+			requiresRestart = true
+		}
+	}
 
-// Update memory if specified (can be hot-plugged if supported)
-if req.Memory > 0 {
-memoryKB := req.Memory * 1024
+	// Update memory if specified (can be hot-plugged if supported)
+	if req.Memory > 0 {
+		memoryKB := req.Memory * 1024
 
-// If max_memory was not explicitly set but memory is being increased,
-// we need to update max_memory first to accommodate the new memory value
-if req.MaxMemory == 0 && !isRunning {
-// Get current max memory to check if we need to increase it
-info, err := domain.GetInfo()
-if err == nil {
-currentMaxMemKB := info.MaxMem
-if memoryKB > currentMaxMemKB {
-// Need to increase max memory first
-if err := domain.SetMemoryFlags(memoryKB, libvirt.DomainMemoryModFlags(libvirt.DOMAIN_MEM_MAXIMUM|libvirt.DOMAIN_MEM_CONFIG)); err != nil {
-log.Printf("UpdateVMEnhanced warning - failed to auto-increase max memory: %v\n", err)
-}
-}
-}
-}
+		// If max_memory was not explicitly set but memory is being increased,
+		// we need to update max_memory first to accommodate the new memory value
+		if req.MaxMemory == 0 && !isRunning {
+			// Get current max memory to check if we need to increase it
+			info, err := domain.GetInfo()
+			if err == nil {
+				currentMaxMemKB := info.MaxMem
+				if memoryKB > currentMaxMemKB {
+					// Need to increase max memory first
+					if err := domain.SetMemoryFlags(memoryKB, libvirt.DomainMemoryModFlags(libvirt.DOMAIN_MEM_MAXIMUM|libvirt.DOMAIN_MEM_CONFIG)); err != nil {
+						log.Printf("UpdateVMEnhanced warning - failed to auto-increase max memory: %v\n", err)
+					}
+				}
+			}
+		}
 
-if isRunning {
-// Try live memory update
-if err := domain.SetMemory(memoryKB); err != nil {
-log.Printf("UpdateVMEnhanced warning - live memory update failed, updating config: %v\n", err)
-// Update config for next boot
-if err := domain.SetMemoryFlags(memoryKB, libvirt.DomainMemoryModFlags(libvirt.DOMAIN_AFFECT_CONFIG)); err != nil {
-log.Printf("UpdateVMEnhanced error updating memory config: %v\n", err)
-return nil, fmt.Errorf("failed to update memory configuration: %w", err)
-}
-requiresRestart = true
-}
-} else {
-if err := domain.SetMemoryFlags(memoryKB, libvirt.DomainMemoryModFlags(libvirt.DOMAIN_AFFECT_CONFIG)); err != nil {
-log.Printf("UpdateVMEnhanced error updating memory config: %v\n", err)
-return nil, fmt.Errorf("failed to update memory configuration: %w", err)
-}
-}
-}
-// Update max vCPUs first if specified (must be done before increasing vCPUs)
-if req.MaxVCPUs > 0 {
-if !isRunning {
-// Update max vCPUs in config (requires VM to be stopped)
-if err := domain.SetVcpusFlags(req.MaxVCPUs, libvirt.DomainVcpuFlags(libvirt.DOMAIN_VCPU_MAXIMUM|libvirt.DOMAIN_VCPU_CONFIG)); err != nil {
-log.Printf("UpdateVMEnhanced warning - failed to update max vCPUs config: %v\n", err)
-// Continue anyway, the vCPUs update below might still work if within current limits
-}
-} else {
-log.Printf("UpdateVMEnhanced: max vCPUs cannot be changed while VM is running, will update config for next boot")
-if err := domain.SetVcpusFlags(req.MaxVCPUs, libvirt.DomainVcpuFlags(libvirt.DOMAIN_VCPU_MAXIMUM|libvirt.DOMAIN_VCPU_CONFIG)); err != nil {
-log.Printf("UpdateVMEnhanced warning - failed to update max vCPUs config: %v\n", err)
-}
-requiresRestart = true
-}
-}
+		if isRunning {
+			// Try live memory update
+			if err := domain.SetMemory(memoryKB); err != nil {
+				log.Printf("UpdateVMEnhanced warning - live memory update failed, updating config: %v\n", err)
+				// Update config for next boot
+				if err := domain.SetMemoryFlags(memoryKB, libvirt.DomainMemoryModFlags(libvirt.DOMAIN_AFFECT_CONFIG)); err != nil {
+					log.Printf("UpdateVMEnhanced error updating memory config: %v\n", err)
+					return nil, fmt.Errorf("failed to update memory configuration: %w", err)
+				}
+				requiresRestart = true
+			}
+		} else {
+			if err := domain.SetMemoryFlags(memoryKB, libvirt.DomainMemoryModFlags(libvirt.DOMAIN_AFFECT_CONFIG)); err != nil {
+				log.Printf("UpdateVMEnhanced error updating memory config: %v\n", err)
+				return nil, fmt.Errorf("failed to update memory configuration: %w", err)
+			}
+		}
+	}
+	// Update max vCPUs first if specified (must be done before increasing vCPUs)
+	if req.MaxVCPUs > 0 {
+		if !isRunning {
+			// Update max vCPUs in config (requires VM to be stopped)
+			if err := domain.SetVcpusFlags(req.MaxVCPUs, libvirt.DomainVcpuFlags(libvirt.DOMAIN_VCPU_MAXIMUM|libvirt.DOMAIN_VCPU_CONFIG)); err != nil {
+				log.Printf("UpdateVMEnhanced warning - failed to update max vCPUs config: %v\n", err)
+				// Continue anyway, the vCPUs update below might still work if within current limits
+			}
+		} else {
+			log.Printf("UpdateVMEnhanced: max vCPUs cannot be changed while VM is running, will update config for next boot")
+			if err := domain.SetVcpusFlags(req.MaxVCPUs, libvirt.DomainVcpuFlags(libvirt.DOMAIN_VCPU_MAXIMUM|libvirt.DOMAIN_VCPU_CONFIG)); err != nil {
+				log.Printf("UpdateVMEnhanced warning - failed to update max vCPUs config: %v\n", err)
+			}
+			requiresRestart = true
+		}
+	}
 
-// Update vCPUs if specified
-if req.VCPUs > 0 {
-// If max_vcpus was not explicitly set but vcpus is being increased,
-// we need to update max_vcpus first to accommodate the new vcpus value
-if req.MaxVCPUs == 0 && !isRunning {
-// Get current max vCPUs to check if we need to increase it
-currentMaxVCPUs, err := domain.GetVcpusFlags(libvirt.DOMAIN_VCPU_MAXIMUM | libvirt.DOMAIN_VCPU_CONFIG)
-if err == nil && req.VCPUs > uint(currentMaxVCPUs) {
-// Need to increase max vCPUs first
-if err := domain.SetVcpusFlags(req.VCPUs, libvirt.DomainVcpuFlags(libvirt.DOMAIN_VCPU_MAXIMUM|libvirt.DOMAIN_VCPU_CONFIG)); err != nil {
-log.Printf("UpdateVMEnhanced warning - failed to auto-increase max vCPUs: %v\n", err)
-}
-}
-}
+	// Update vCPUs if specified
+	if req.VCPUs > 0 {
+		// If max_vcpus was not explicitly set but vcpus is being increased,
+		// we need to update max_vcpus first to accommodate the new vcpus value
+		if req.MaxVCPUs == 0 && !isRunning {
+			// Get current max vCPUs to check if we need to increase it
+			currentMaxVCPUs, err := domain.GetVcpusFlags(libvirt.DOMAIN_VCPU_MAXIMUM | libvirt.DOMAIN_VCPU_CONFIG)
+			if err == nil && req.VCPUs > uint(currentMaxVCPUs) {
+				// Need to increase max vCPUs first
+				if err := domain.SetVcpusFlags(req.VCPUs, libvirt.DomainVcpuFlags(libvirt.DOMAIN_VCPU_MAXIMUM|libvirt.DOMAIN_VCPU_CONFIG)); err != nil {
+					log.Printf("UpdateVMEnhanced warning - failed to auto-increase max vCPUs: %v\n", err)
+				}
+			}
+		}
 
-if isRunning {
-// Try hot-plug vCPUs
-if err := domain.SetVcpus(req.VCPUs); err != nil {
-log.Printf("UpdateVMEnhanced warning - vCPU hot-plug failed, updating config: %v\n", err)
-// Update config for next boot
-if err := domain.SetVcpusFlags(req.VCPUs, libvirt.DomainVcpuFlags(libvirt.DOMAIN_AFFECT_CONFIG)); err != nil {
-log.Printf("UpdateVMEnhanced error updating vCPUs config: %v\n", err)
-return nil, fmt.Errorf("failed to update vCPUs configuration: %w", err)
-}
-requiresRestart = true
-}
-} else {
-if err := domain.SetVcpusFlags(req.VCPUs, libvirt.DomainVcpuFlags(libvirt.DOMAIN_AFFECT_CONFIG)); err != nil {
-log.Printf("UpdateVMEnhanced error updating vCPUs config: %v\n", err)
-return nil, fmt.Errorf("failed to update vCPUs configuration: %w", err)
-}
-}
-}
-
+		if isRunning {
+			// Try hot-plug vCPUs
+			if err := domain.SetVcpus(req.VCPUs); err != nil {
+				log.Printf("UpdateVMEnhanced warning - vCPU hot-plug failed, updating config: %v\n", err)
+				// Update config for next boot
+				if err := domain.SetVcpusFlags(req.VCPUs, libvirt.DomainVcpuFlags(libvirt.DOMAIN_AFFECT_CONFIG)); err != nil {
+					log.Printf("UpdateVMEnhanced error updating vCPUs config: %v\n", err)
+					return nil, fmt.Errorf("failed to update vCPUs configuration: %w", err)
+				}
+				requiresRestart = true
+			}
+		} else {
+			if err := domain.SetVcpusFlags(req.VCPUs, libvirt.DomainVcpuFlags(libvirt.DOMAIN_AFFECT_CONFIG)); err != nil {
+				log.Printf("UpdateVMEnhanced error updating vCPUs config: %v\n", err)
+				return nil, fmt.Errorf("failed to update vCPUs configuration: %w", err)
+			}
+		}
+	}
 
 	// Update OS metadata if os_type or os_variant is specified
 	if req.OSType != "" || req.OSVariant != "" {
@@ -964,12 +963,18 @@ return nil, fmt.Errorf("failed to update vCPUs configuration: %w", err)
 		// Build sets of desired targets and sources from request
 		desiredTargets := map[string]bool{}
 		desiredSources := map[string]bool{}
-		for _, d := range req.Storage.Disks {
+		// Also build a map of desired configs by source path for attribute comparison
+		desiredDiskBySource := map[string]*DiskCreateConfig{}
+		desiredDiskByTarget := map[string]*DiskCreateConfig{}
+		for i := range req.Storage.Disks {
+			d := &req.Storage.Disks[i]
 			if d.Target != "" {
 				desiredTargets[d.Target] = true
+				desiredDiskByTarget[d.Target] = d
 			}
 			if d.Path != "" {
 				desiredSources[d.Path] = true
+				desiredDiskBySource[d.Path] = d
 			}
 		}
 
@@ -978,26 +983,62 @@ return nil, fmt.Errorf("failed to update vCPUs configuration: %w", err)
 			deviceFlags = deviceFlags | libvirt.DOMAIN_DEVICE_MODIFY_LIVE
 		}
 
-		// Detach disks that are not in the desired configuration
+		// Track disks that need reattachment due to attribute changes
+		disksNeedingReattach := map[string]bool{} // source path -> needs reattach
+
+		// Detach disks that are not in the desired configuration OR have changed attributes
 		for _, existDisk := range existingDisks {
 			if existDisk.Target == "" {
 				continue
 			}
 
-			// Keep disk if its target OR source is in the desired set
-			if desiredTargets[existDisk.Target] || desiredSources[existDisk.Source] {
-				log.Printf("UpdateVMEnhanced: keeping disk target=%s source=%s", existDisk.Target, existDisk.Source)
+			// Check if disk is in desired set
+			inDesired := desiredTargets[existDisk.Target] || desiredSources[existDisk.Source]
+			if !inDesired {
+				// Detach this disk - it's not in desired config
+				log.Printf("UpdateVMEnhanced: detaching disk target=%s source=%s (not in desired config)", existDisk.Target, existDisk.Source)
+				detachXML := buildDetachDiskXML(existDisk)
+				if err := domain.DetachDeviceFlags(detachXML, deviceFlags); err != nil {
+					log.Printf("UpdateVMEnhanced error detaching disk target=%s: %v", existDisk.Target, err)
+					return nil, fmt.Errorf("failed to detach disk %s: %w", existDisk.Target, err)
+				}
 				continue
 			}
 
-			// Detach this disk
-			log.Printf("UpdateVMEnhanced: detaching disk target=%s source=%s", existDisk.Target, existDisk.Source)
-			detachXML := buildDetachDiskXML(existDisk)
-			if err := domain.DetachDeviceFlags(detachXML, deviceFlags); err != nil {
-				log.Printf("UpdateVMEnhanced error detaching disk target=%s: %v", existDisk.Target, err)
-				return nil, fmt.Errorf("failed to detach disk %s: %w", existDisk.Target, err)
+			// Disk is in desired set - check if attributes changed
+			var desiredConfig *DiskCreateConfig
+			if dc, ok := desiredDiskBySource[existDisk.Source]; ok {
+				desiredConfig = dc
+			} else if dc, ok := desiredDiskByTarget[existDisk.Target]; ok {
+				desiredConfig = dc
 			}
+
+			if desiredConfig != nil {
+				bootOrderChanged := existDisk.BootOrder != desiredConfig.BootOrder
+				readOnlyChanged := existDisk.ReadOnly != desiredConfig.ReadOnly
+
+				if bootOrderChanged || readOnlyChanged {
+					log.Printf("UpdateVMEnhanced: detaching disk target=%s source=%s for reattach (bootOrder: %d->%d, readOnly: %v->%v)",
+						existDisk.Target, existDisk.Source,
+						existDisk.BootOrder, desiredConfig.BootOrder,
+						existDisk.ReadOnly, desiredConfig.ReadOnly)
+					detachXML := buildDetachDiskXML(existDisk)
+					if err := domain.DetachDeviceFlags(detachXML, deviceFlags); err != nil {
+						log.Printf("UpdateVMEnhanced error detaching disk target=%s: %v", existDisk.Target, err)
+						return nil, fmt.Errorf("failed to detach disk %s: %w", existDisk.Target, err)
+					}
+					if existDisk.Source != "" {
+						disksNeedingReattach[existDisk.Source] = true
+					}
+					continue
+				}
+			}
+
+			log.Printf("UpdateVMEnhanced: keeping disk target=%s source=%s", existDisk.Target, existDisk.Source)
 		}
+
+		// Store for use in attach phase
+		_ = disksNeedingReattach
 
 		// Prepare new disks to attach
 		diskConfigs, err := s.prepareEnhancedStorageConfig(ctx, req)

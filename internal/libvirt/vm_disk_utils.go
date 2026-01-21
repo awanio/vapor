@@ -65,6 +65,10 @@ type domainDiskAttachmentXML struct {
 		Dev string `xml:"dev,attr"`
 		Bus string `xml:"bus,attr"`
 	} `xml:"target"`
+	Boot struct {
+		Order int `xml:"order,attr"`
+	} `xml:"boot"`
+	ReadOnly *struct{} `xml:"readonly"`
 }
 
 type domainDevicesAttachmentXML struct {
@@ -102,11 +106,13 @@ func parseDomainDiskAttachments(xmlDesc string) (map[string]bool, map[string]boo
 
 // existingDiskInfo holds details about an existing disk attachment for reconciliation.
 type existingDiskInfo struct {
-	Target string // target device name (e.g., vda, sda)
-	Source string // source path (file or dev)
-	Device string // device type: disk, cdrom, floppy
-	Bus    string // bus type: virtio, sata, scsi, ide
-	Type   string // source type: file, block
+	Target    string // target device name (e.g., vda, sda)
+	Source    string // source path (file or dev)
+	Device    string // device type: disk, cdrom, floppy
+	Bus       string // bus type: virtio, sata, scsi, ide
+	Type      string // source type: file, block
+	BootOrder int    // boot order (0 means not set)
+	ReadOnly  bool   // whether the disk is read-only
 }
 
 // parseDomainDiskDetails parses libvirt domain XML and returns detailed info about
@@ -130,6 +136,8 @@ func parseDomainDiskDetails(xmlDesc string) ([]existingDiskInfo, error) {
 		} else if d.Source.Dev != "" {
 			info.Source = d.Source.Dev
 		}
+		info.BootOrder = d.Boot.Order
+		info.ReadOnly = d.ReadOnly != nil
 		disks = append(disks, info)
 	}
 
