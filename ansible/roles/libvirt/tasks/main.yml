@@ -7,6 +7,8 @@
       - libvirt-clients
       - bridge-utils
       - virtinst
+      - osinfo-db-tools
+      - libosinfo-bin
     state: present
   when: ansible_os_family == "Debian"
 
@@ -17,6 +19,8 @@
       - libvirt
       - libvirt-client
       - virt-install
+      - osinfo-db-tools
+      - libosinfo
     state: present
   when: ansible_os_family == "RedHat"
 
