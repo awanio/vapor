@@ -103,6 +103,7 @@ interface DiskInfo {
   bus: string;
   readonly: boolean;
   device?: string;
+  boot_order?: number;
 }
 
 interface NetworkInterfaceInfo {
@@ -1365,7 +1366,7 @@ export class VMDetailDrawer extends LitElement {
 
         // Process disks information from storage object
         if (response.storage?.disks && response.storage.disks.length > 0) {
-          this.disks = response.storage.disks.map((disk, index) => ({
+          this.disks = response.storage.disks.map((disk: any, index) => ({
             name: disk.target || `disk${index}`,
             path: disk.path || disk.source_path || 'Unknown',
             size: disk.size || 0,
@@ -1374,6 +1375,7 @@ export class VMDetailDrawer extends LitElement {
             bus: disk.bus || 'virtio',
             readonly: disk.readonly || false,
             device: disk.device || 'disk',
+            boot_order: disk.boot_order,
           }));
         } else {
           this.disks = [];
@@ -2446,6 +2448,7 @@ export class VMDetailDrawer extends LitElement {
                 <th>Format</th>
                 <th>Bus</th>
                 <th>Size</th>
+                <th>Boot</th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -2466,6 +2469,11 @@ export class VMDetailDrawer extends LitElement {
                   <td>${disk.format.toUpperCase()}</td>
                   <td>${disk.bus.toUpperCase()}</td>
                   <td>${disk.size > 0 ? this.formatBytes(disk.size) : 'N/A'}</td>
+                  <td>
+                    <span class="badge ${disk.boot_order ? '' : 'dim'}">
+                      ${disk.boot_order || '-'}
+                    </span>
+                  </td>
                   <td>
                     <span class="badge ${disk.readonly ? 'warning' : 'success'}">
                       ${disk.readonly ? 'Read-Only' : 'Read/Write'}

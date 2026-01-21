@@ -72,6 +72,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
         device: d.device,
         target: d.target,
         readonly: !!d.readonly,
+        boot_order: d.boot_order,
       }))
       : [];
 

@@ -499,7 +499,6 @@ func (s *Service) generateEnhancedDomainXML(req *VMCreateRequestEnhanced, diskCo
 		maxMemory = req.Memory
 	}
 
-
 	// Determine max vCPUs (default to VCPUs if not specified)
 	maxVCPUs := req.MaxVCPUs
 	if maxVCPUs == 0 || maxVCPUs < req.VCPUs {
@@ -533,26 +532,26 @@ func (s *Service) generateEnhancedDomainXML(req *VMCreateRequestEnhanced, diskCo
 <currentMemory unit='MiB'>%d</currentMemory>
 <vcpu current='%d'>%d</vcpu>`, req.Name, formattedUUID, maxMemory, req.Memory, req.VCPUs, maxVCPUs)
 	}
-// Add metadata section for OS type/variant
-// Store os_type and os_variant even if OSInfo is not provided
-if req.OSInfo == nil && (req.OSType != "" || req.OSVariant != "") {
-xml += `
+	// Add metadata section for OS type/variant
+	// Store os_type and os_variant even if OSInfo is not provided
+	if req.OSInfo == nil && (req.OSType != "" || req.OSVariant != "") {
+		xml += `
 <metadata>
 <vapor:os xmlns:vapor="http://vapor.io/xmlns/libvirt/domain/1.0">`
-if req.OSType != "" {
-xml += fmt.Sprintf(`
+		if req.OSType != "" {
+			xml += fmt.Sprintf(`
 <vapor:family>%s</vapor:family>`, req.OSType)
-}
-if req.OSVariant != "" {
-xml += fmt.Sprintf(`
+		}
+		if req.OSVariant != "" {
+			xml += fmt.Sprintf(`
 <vapor:variant>%s</vapor:variant>`, req.OSVariant)
-}
-xml += `
+		}
+		xml += `
 </vapor:os>
 </metadata>`
-}
+	}
 
-// Add metadata if OS info is provided
+	// Add metadata if OS info is provided
 	if req.OSInfo != nil {
 		xml += `
 <metadata>`

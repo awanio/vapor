@@ -1290,6 +1290,38 @@ export class CreateVMWizardEnhanced extends LitElement {
                 </select>
               </div>
             </div>
+
+            <div class="grid-2">
+              <div class="form-group">
+                <label>Boot Order (optional)</label>
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 1"
+                  .value=${String(disk.boot_order || '')}
+                  @input=${(e: InputEvent) => {
+            const v = (e.target as HTMLInputElement).value;
+            disk.boot_order = v ? Number(v) : undefined;
+            this.requestUpdate();
+          }}
+                />
+              </div>
+              <div class="form-group">
+                <label>&nbsp;</label>
+                <div class="checkbox-group">
+                  <input
+                    type="checkbox"
+                    id="create-disk-readonly"
+                    ?checked=${disk.readonly}
+                    @change=${(e: Event) => {
+            disk.readonly = (e.target as HTMLInputElement).checked;
+            this.requestUpdate();
+          }}
+                  />
+                  <label for="create-disk-readonly">Read-only</label>
+                </div>
+              </div>
+            </div>
           ` : disk.action === 'clone' ? html`
             <div class="form-group">
               <label>Source volume</label>
@@ -1369,6 +1401,38 @@ export class CreateVMWizardEnhanced extends LitElement {
             this.requestUpdate();
           }}
                 />
+              </div>
+            </div>
+
+            <div class="grid-2">
+              <div class="form-group">
+                <label>Boot Order (optional)</label>
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 1"
+                  .value=${String(disk.boot_order || '')}
+                  @input=${(e: InputEvent) => {
+            const v = (e.target as HTMLInputElement).value;
+            disk.boot_order = v ? Number(v) : undefined;
+            this.requestUpdate();
+          }}
+                />
+              </div>
+              <div class="form-group">
+                <label>&nbsp;</label>
+                <div class="checkbox-group">
+                  <input
+                    type="checkbox"
+                    id="clone-disk-readonly"
+                    ?checked=${disk.readonly}
+                    @change=${(e: Event) => {
+            disk.readonly = (e.target as HTMLInputElement).checked;
+            this.requestUpdate();
+          }}
+                  />
+                  <label for="clone-disk-readonly">Read-only</label>
+                </div>
               </div>
             </div>
           ` : html`
@@ -2687,6 +2751,7 @@ export class CreateVMWizardEnhanced extends LitElement {
                       <th>Format</th>
                       <th>Bus</th>
                       <th>Size</th>
+                      <th>Boot</th>
                       <th>Status</th>
                       <th></th>
                     </tr>
@@ -2713,6 +2778,11 @@ export class CreateVMWizardEnhanced extends LitElement {
                         <td>${(disk.format || 'qcow2').toUpperCase()}</td>
                         <td>${(disk.bus || 'virtio').toUpperCase()}</td>
                         <td>${disk.action === 'create' && disk.size ? `${disk.size} GB` : 'N/A'}</td>
+                        <td>
+                          <span class="storage-badge ${disk.boot_order ? '' : 'dim'}">
+                            ${disk.boot_order || '-'}
+                          </span>
+                        </td>
                         <td>
                           <span class="storage-badge ${disk.readonly ? 'warning' : 'success'}">
                             ${disk.readonly ? 'Read-Only' : 'Read/Write'}
@@ -3277,6 +3347,7 @@ export class CreateVMWizardEnhanced extends LitElement {
                         <th>Format</th>
                         <th>Bus</th>
                         <th>Size</th>
+                        <th>Boot</th>
                         <th>Status</th>
                       </tr>
                     </thead>
@@ -3289,6 +3360,7 @@ export class CreateVMWizardEnhanced extends LitElement {
                           <td>${(d.format || 'qcow2').toUpperCase()}</td>
                           <td>${(d.bus || 'virtio').toUpperCase()}</td>
                           <td>${d.action === 'create' && d.size ? `${d.size} GB` : 'N/A'}</td>
+                          <td><span class="storage-badge ${d.boot_order ? '' : 'dim'}">${d.boot_order || '-'}</span></td>
                           <td><span class="storage-badge ${d.readonly ? 'warning' : 'success'}">${d.readonly ? 'Read-Only' : 'Read/Write'}</span></td>
                         </tr>
                       `)}

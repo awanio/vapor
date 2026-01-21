@@ -953,6 +953,25 @@ func (s *Service) UpdateVMEnhanced(ctx context.Context, nameOrUUID string, req *
 			return nil, fmt.Errorf("failed to get VM XML: %w", err)
 		}
 
+		// Handle per-device boot order by modifying domain XML directly
+		// (libvirt doesn't allow attaching disks with boot order if OS-level boot exists)
+		// Disks with boot order will be added directly to domain XML
+		modifiedXML, addedPaths, err := modifyDomainXMLForBootOrder(xmlDesc, req.Storage.Disks)
+		if err != nil {
+			log.Printf("UpdateVMEnhanced warning: failed to modify XML for boot order: %v", err)
+		} else if modifiedXML != xmlDesc {
+			log.Printf("UpdateVMEnhanced: redefining domain with per-device boot order (added %d disks)", len(addedPaths))
+			newDomain, err := s.conn.DomainDefineXML(modifiedXML)
+			if err != nil {
+				log.Printf("UpdateVMEnhanced error: failed to redefine domain with boot order: %v", err)
+				return nil, fmt.Errorf("failed to update boot order: %w", err)
+			}
+			domain.Free()
+			domain = newDomain
+			xmlDesc = modifiedXML
+			_ = addedPaths // disks with boot order are now in domain XML
+		}
+
 		// Parse existing disks for reconciliation
 		existingDisks, err := parseDomainDiskDetails(xmlDesc)
 		if err != nil {
