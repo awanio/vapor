@@ -277,6 +277,19 @@ if [ "$SHOULD_INSTALL_K8S" == "true" ]; then
         "Calico") K8S_CNI="calico" ;;
         "Cilium") K8S_CNI="cilium" ;;
     esac
+
+    # 6. Kubernetes Version
+    echo "Select Kubernetes Version:"
+    K8S_VERSION=$(select_option "Select version:" "v1.34 (latest)" "v1.33" "v1.32" "v1.31" "v1.30" "v1.29")
+    
+    case "$K8S_VERSION" in
+        "v1.34 (latest)") K8S_VERSION="1.34" ;;
+        "v1.33") K8S_VERSION="1.33" ;;
+        "v1.32") K8S_VERSION="1.32" ;;
+        "v1.31") K8S_VERSION="1.31" ;;
+        "v1.30") K8S_VERSION="1.30" ;;
+        "v1.29") K8S_VERSION="1.29" ;;
+    esac
 fi
 
 # Helm
@@ -330,6 +343,7 @@ if [ "$INSTALL_K8S" == "true" ]; then
     echo "  - Pod CIDR: $K8S_POD_CIDR"
     echo "  - Service CIDR: $K8S_SVC_CIDR"
     echo "  - CNI: $K8S_CNI"
+    echo "  - Version: v$K8S_VERSION"
 fi
 echo "Helm: $INSTALL_HELM"
 echo "--------------------------------"
@@ -341,7 +355,7 @@ if prompt_confirmation "Proceed with installation?" "y"; then
     EXTRA_VARS="install_libvirt=$INSTALL_LIBVIRT install_docker=$INSTALL_DOCKER install_containerd=$INSTALL_CONTAINERD install_k8s=$INSTALL_K8S install_helm=$INSTALL_HELM"
     
     if [ "$INSTALL_K8S" == "true" ]; then
-        EXTRA_VARS="$EXTRA_VARS k8s_version='1.28.0-00' pod_network_cidr='$K8S_POD_CIDR' service_cidr='$K8S_SVC_CIDR' cni_plugin='$K8S_CNI' node_role='$K8S_NODE_ROLE'"
+        EXTRA_VARS="$EXTRA_VARS k8s_version='$K8S_VERSION' pod_network_cidr='$K8S_POD_CIDR' service_cidr='$K8S_SVC_CIDR' cni_plugin='$K8S_CNI' node_role='$K8S_NODE_ROLE'"
     fi
     
     # Run Ansible

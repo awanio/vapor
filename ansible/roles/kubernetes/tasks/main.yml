@@ -11,13 +11,13 @@
         state: present
     - name: Add Kubernetes Apt Key
       get_url:
-        url: https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key
+        url: https://pkgs.k8s.io/core:/stable:/v{{ k8s_version }}/deb/Release.key
         dest: /etc/apt/keyrings/kubernetes-apt-keyring.asc
         mode: '0644'
 
     - name: Add Kubernetes Repository
       shell: |
-        echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.asc] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+        echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.asc] https://pkgs.k8s.io/core:/stable:/v{{ k8s_version }}/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
     - name: Update apt index
       apt:
         update_cache: yes
