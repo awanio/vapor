@@ -1,0 +1,30 @@
+[Unit]
+Description=Vapor - Linux OS Management System
+Documentation=https://github.com/awanio/vapor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ vapor_user }}
+Group={{ vapor_group }}
+ExecStart={{ vapor_install_dir }}/vapor --config {{ vapor_config_dir }}/vapor.conf
+Restart=on-failure
+RestartSec=5
+EnvironmentFile={{ vapor_config_dir }}/environment
+WorkingDirectory={{ vapor_app_dir }}
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=vapor
+
+# Resource limits
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

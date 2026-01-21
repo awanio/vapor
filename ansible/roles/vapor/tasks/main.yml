@@ -1,84 +1,181 @@
 ---
-- name: Determine latest version if not set
-  set_fact:
-    vapor_version: "v0.0.1-rc.2" 
-  when: vapor_version is not defined
+# Vapor installation and configuration tasks
 
 - name: Set download URL
   set_fact:
-    vapor_download_url: "https://storage.awan.io/assets/vapor/{{ vapor_version }}/vapor"
+    vapor_download_url: "{{ vapor_base_url }}/{{ vapor_version }}/vapor"
+
+# =============================================================================
+# Directory Setup
+# =============================================================================
 
 - name: Create Vapor directories
   file:
-    path: "{{ item }}"
+    path: "{{ item.path }}"
     state: directory
-    mode: '0755'
+    mode: "{{ item.mode }}"
+    owner: "{{ vapor_user }}"
+    group: "{{ vapor_group }}"
   loop:
-    - /etc/vapor
-    - /var/log/vapor
-    - /var/lib/vapor
+    - { path: "{{ vapor_config_dir }}", mode: "0755" }
+    - { path: "{{ vapor_log_dir }}", mode: "0755" }
+    - { path: "{{ vapor_app_dir }}", mode: "0755" }
+    - { path: "{{ vapor_certs_dir }}", mode: "0700" }
+
+# =============================================================================
+# JWT Secret Generation
+# =============================================================================
+
+- name: Check if vapor.conf exists
+  stat:
+    path: "{{ vapor_config_dir }}/vapor.conf"
+  register: vapor_conf_stat
+
+- name: Read existing JWT secret from config
+  shell: grep -oP '(?<=JWT_SECRET: ")[^"]+' {{ vapor_config_dir }}/vapor.conf
+  register: existing_jwt_secret
+  when: vapor_conf_stat.stat.exists
+  failed_when: false
+  changed_when: false
+
+- name: Generate new JWT secret if not provided and not existing
+  command: openssl rand -base64 32
+  register: generated_jwt_secret
+  when: >
+    vapor_jwt_secret == "" and
+    (not vapor_conf_stat.stat.exists or
+     existing_jwt_secret.stdout | default('') == "")
+  changed_when: false
+
+- name: Set final JWT secret
+  set_fact:
+    vapor_jwt_secret_final: >-
+      {{
+        vapor_jwt_secret if vapor_jwt_secret != ""
+        else (existing_jwt_secret.stdout if vapor_conf_stat.stat.exists and existing_jwt_secret.stdout | default('') != ""
+        else generated_jwt_secret.stdout | default(''))
+      }}
+
+# =============================================================================
+# Binary Installation
+# =============================================================================
 
 - name: Stop existing Vapor service
-  service:
+  systemd:
     name: vapor
     state: stopped
-  failed_when: false # Ignore if service doesn't exist
+  failed_when: false
 
 - name: Download Vapor binary
   get_url:
     url: "{{ vapor_download_url }}"
-    dest: /usr/local/bin/vapor
-    mode: '0755'
+    dest: "{{ vapor_install_dir }}/vapor"
+    mode: "0755"
+    force: yes
   register: download_binary
 
-- name: Verify binary execution
-  command: /usr/local/bin/vapor --version
+- name: Verify binary is executable
+  command: "{{ vapor_install_dir }}/vapor --version"
   changed_when: false
-  ignore_errors: yes
+  failed_when: false
+  register: binary_version
+
+- name: Display installed version
+  debug:
+    msg: "Vapor version: {{ binary_version.stdout | default('unknown') }}"
+  when: binary_version.rc == 0
+
+# =============================================================================
+# Configuration Files
+# =============================================================================
 
 - name: Create environment file
-  copy:
-    dest: /etc/vapor/environment
-    content: |
-      VAPOR_PORT=7770
-      VAPOR_HOST=0.0.0.0
-      VAPOR_ENV=production
-    force: no # Do not overwrite existing config
+  template:
+    src: environment.j2
+    dest: "{{ vapor_config_dir }}/environment"
+    owner: "{{ vapor_user }}"
+    group: "{{ vapor_group }}"
+    mode: "0600"
+    force: no
+  notify: restart vapor
+
+- name: Create Vapor configuration file
+  template:
+    src: vapor.conf.j2
+    dest: "{{ vapor_config_dir }}/vapor.conf"
+    owner: "{{ vapor_user }}"
+    group: "{{ vapor_group }}"
+    mode: "0600"
+    force: no
+  notify: restart vapor
+
+- name: Display TLS status
+  debug:
+    msg: "TLS/HTTPS is {{ 'ENABLED' if vapor_tls_enabled else 'DISABLED' }} - Self-signed certificates will be auto-generated on first start"
+
+# =============================================================================
+# Systemd Service
+# =============================================================================
 
 - name: Create systemd service
-  copy:
+  template:
+    src: vapor.service.j2
     dest: /etc/systemd/system/vapor.service
-    content: |
-      [Unit]
-      Description=Vapor Service
-      After=network.target
-
-      [Service]
-      ExecStart=/usr/local/bin/vapor
-      Restart=always
-      EnvironmentFile=/etc/vapor/environment
-      WorkingDirectory=/var/lib/vapor
-      StandardOutput=append:/var/log/vapor/output.log
-      StandardError=append:/var/log/vapor/error.log
-
-      [Install]
-      WantedBy=multi-user.target
+    owner: root
+    group: root
+    mode: "0644"
   register: vapor_unit
+  notify: restart vapor
 
-- name: Reload systemd if unit changed
+- name: Reload systemd daemon
   systemd:
     daemon_reload: yes
   when: vapor_unit.changed
 
-- name: Restart Vapor if unit changed
-  systemd:
-    name: vapor
-    state: restarted
-  when: vapor_unit.changed
-
-- name: Start Vapor service
+- name: Enable and start Vapor service
   systemd:
     name: vapor
     state: started
     enabled: yes
-    daemon_reload: yes
+
+- name: Wait for Vapor to start
+  wait_for:
+    port: "{{ vapor_port }}"
+    host: "127.0.0.1"
+    delay: 2
+    timeout: 30
+  register: vapor_started
+  failed_when: false
+
+- name: Check Vapor service status
+  systemd:
+    name: vapor
+  register: vapor_service_status
+
+# =============================================================================
+# Installation Summary
+# =============================================================================
+
+- name: Display installation summary
+  debug:
+    msg: |
+      ============================================
+      Vapor Installation Complete!
+      ============================================
+      Version:       {{ vapor_version }}
+      Binary:        {{ vapor_install_dir }}/vapor
+      Config:        {{ vapor_config_dir }}/vapor.conf
+      App Directory: {{ vapor_app_dir }}
+      Log Directory: {{ vapor_log_dir }}
+      Certs:         {{ vapor_certs_dir }}
+      
+      Service Status: {{ vapor_service_status.status.ActiveState | default('unknown') }}
+      TLS/HTTPS:      {{ 'Enabled' if vapor_tls_enabled else 'Disabled' }}
+      
+      Access: {{ 'https' if vapor_tls_enabled else 'http' }}://{{ ansible_default_ipv4.address | default('localhost') }}:{{ vapor_port }}
+      
+      Useful Commands:
+        View logs:     journalctl -u vapor -f
+        Status:        systemctl status vapor
+        Restart:       systemctl restart vapor
+      ============================================

@@ -1,0 +1,29 @@
+---
+# Vapor role default variables
+
+# Version to install
+vapor_version: "v0.0.1-rc.2"
+
+# Base download URL
+vapor_base_url: "https://storage.awan.io/assets/vapor"
+
+# Installation paths
+vapor_install_dir: "/usr/local/bin"
+vapor_config_dir: "/etc/vapor"
+vapor_log_dir: "/var/log/vapor"
+vapor_app_dir: "/var/lib/vapor"
+vapor_certs_dir: "{{ vapor_app_dir }}/certs"
+
+# Server configuration
+vapor_port: 7770
+vapor_host: "0.0.0.0"
+
+# TLS/HTTPS configuration (enabled by default for security)
+vapor_tls_enabled: true
+
+# JWT secret (auto-generated if not provided)
+vapor_jwt_secret: ""
+
+# Service user (root required for system management)
+vapor_user: root
+vapor_group: root
