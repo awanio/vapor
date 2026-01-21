@@ -124,6 +124,7 @@ FILES=(
     "ansible/roles/kubernetes/templates/kubeadm-config.yaml.j2"
     "ansible/roles/helm/tasks/main.yml"
     "ansible/roles/vapor/tasks/main.yml"
+    "ansible/roles/vapor/defaults/main.yml"
     "ansible/roles/vapor/handlers/main.yml"
 )
 
