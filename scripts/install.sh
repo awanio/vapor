@@ -126,6 +126,9 @@ FILES=(
     "ansible/roles/vapor/tasks/main.yml"
     "ansible/roles/vapor/defaults/main.yml"
     "ansible/roles/vapor/handlers/main.yml"
+    "ansible/roles/vapor/templates/vapor.conf.j2"
+    "ansible/roles/vapor/templates/environment.j2" 
+    "ansible/roles/vapor/templates/vapor.service.j2"
 )
 
 echo "Downloading Ansible files..."
@@ -138,7 +141,7 @@ for file in "${FILES[@]}"; do
     # Use -f to fail silently on server errors (404), -s for silent, -L for redirects
     # check for failure manually
     echo "Downloading $file..."
-    if ! curl -fsSL "$REPO_BASE/$file" -o "$CLONE_DIR/$file"; then
+    if ! curl -fsSL --progress-bar -O "$REPO_BASE/$file" -o "$CLONE_DIR/$file"; then
          echo -e "${RED}Error: Failed to download $file${NC}"
          echo -e "${YELLOW}Please ensure you are connected to the internet and the repository structure is correct.${NC}"
          rm -rf "$CLONE_DIR"
