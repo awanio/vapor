@@ -1,433 +1,351 @@
 # Panduan Instalasi
 
+Panduan ini menjelaskan cara menginstal Vapor di sistem Linux Anda.
+
 ## Persyaratan Sistem
 
-Sebelum menginstal Vapor, pastikan sistem Anda memenuhi persyaratan berikut:
+### Kebutuhan Hardware Minimum
 
-### Sistem Operasi
-- **Target Utama**: Linux x86_64
-  - Ubuntu 18.04 LTS atau yang lebih baru
-  - Debian 10 atau yang lebih baru
-  - RHEL/CentOS 8 atau yang lebih baru
-  - Fedora 32 atau yang lebih baru
-  - Arch Linux (terbaru)
-  - Alpine Linux 3.12 atau yang lebih baru
-- **Arsitektur**: x86_64 (AMD64)
-  - Dukungan ARM64 masih eksperimental
-- **Kernel**: Linux 4.15 atau yang lebih baru
+| Komponen | Kebutuhan |
+|----------|-----------|
+| Arsitektur | x86_64 (amd64) |
+| CPU | 2 core |
+| RAM | 2 GB |
+| Disk | 1 GB ruang kosong |
+| Jaringan | Koneksi jaringan aktif |
 
-### Persyaratan Perangkat Keras
-- **CPU**: Minimal 2 core (4+ core direkomendasikan)
-- **RAM**: Minimal 2GB (4GB+ direkomendasikan)
-- **Disk**: 1GB ruang kosong untuk Vapor
-- **Jaringan**: Koneksi jaringan aktif
+### Sistem Operasi yang Didukung
 
-### Paket Sistem yang Diperlukan
+Vapor memerlukan **libvirt 8.0.0 atau lebih baru** untuk fitur virtualisasi.
 
-#### Utilitas Inti
-Ini biasanya sudah terinstal pada sebagian besar distribusi Linux:
-- `mount`, `umount` - Operasi mounting filesystem
-- `lsblk` - Informasi block device
-- `useradd`, `usermod`, `userdel` - Manajemen pengguna
-- `systemd` - Manajemen layanan dan logging
+| Distribusi | Versi | Libvirt Default | Status |
+|------------|-------|-----------------|--------|
+| **Ubuntu** | 24.04 LTS | 10.0.0 | ✅ Direkomendasikan |
+| | 22.04 LTS | 8.0.0 | ✅ Didukung |
+| | 20.04 LTS | 6.0.0 | ⚠️ Memerlukan Ubuntu Cloud Archive |
+| **Debian** | 12 (Bookworm) | 9.0.0 | ✅ Didukung |
+| | 11 (Bullseye) | 7.0.0 | ❌ Tidak didukung |
+| **RHEL** | 9.x | 9.0.0+ | ✅ Didukung |
+| | 8.6+ | 8.6.0 | ✅ Didukung |
+| **Rocky Linux** | 9.x | 9.0.0+ | ✅ Didukung |
+| | 8.6+ | 8.6.0 | ✅ Didukung |
+| **AlmaLinux** | 9.x | 9.0.0+ | ✅ Didukung |
+| | 8.6+ | 8.6.0 | ✅ Didukung |
+| **Fedora** | 40+ | 10.0.0+ | ✅ Didukung |
+| | 39 | 9.6.0 | ✅ Didukung |
+| **CentOS Stream** | 9 | 9.0.0+ | ✅ Didukung |
 
-#### Alat Filesystem
-Instal berdasarkan filesystem yang akan Anda gunakan:
+> **Catatan**: Debian 11 (Bullseye) menggunakan libvirt 7.0.0 yang tidak kompatibel. Pertimbangkan untuk upgrade ke Debian 12 atau menggunakan distribusi lain.
+
+## Persyaratan Pra-Instalasi
+
+### Ubuntu 20.04 - Ubuntu Cloud Archive
+
+Ubuntu 20.04 menggunakan libvirt 6.0.0 secara default, yang tidak kompatibel dengan Vapor. Anda harus mengupgrade libvirt menggunakan Ubuntu Cloud Archive (UCA) sebelum menginstal Vapor.
+
+#### Apa itu Ubuntu Cloud Archive?
+
+Ubuntu Cloud Archive adalah repositori resmi yang dikelola oleh Canonical yang menyediakan versi lebih baru dari OpenStack dan paket-paket terkait (termasuk libvirt) yang di-backport ke rilis Ubuntu LTS yang lebih lama.
+
+#### Upgrade Libvirt di Ubuntu 20.04
+
 ```bash
-# Ubuntu/Debian
-sudo apt-get install -y e2fsprogs xfsprogs btrfs-progs
+# Install software-properties-common jika belum ada
+sudo apt install -y software-properties-common
 
-# RHEL/CentOS/Fedora
-sudo dnf install -y e2fsprogs xfsprogs btrfs-progs
+# Tambahkan repositori Ubuntu Cloud Archive - Yoga
+sudo add-apt-repository -y cloud-archive:yoga
 
-# Arch Linux
-sudo pacman -S e2fsprogs xfsprogs btrfs-progs
+# Update daftar paket
+sudo apt update
 
-# Alpine Linux
-sudo apk add e2fsprogs xfsprogs btrfs-progs
+# Upgrade paket libvirt
+sudo apt install -y libvirt-daemon-system libvirt-dev libvirt0 libvirt-clients
+
+# Restart layanan libvirt
+sudo systemctl restart libvirtd
 ```
 
-#### Fitur Lanjutan Opsional
-Untuk fungsionalitas lengkap, instal paket opsional berikut:
+#### Verifikasi Versi Libvirt
+
 ```bash
-# Dukungan LVM
-sudo apt-get install -y lvm2
+virsh version
+```
 
-# Dukungan iSCSI
-sudo apt-get install -y open-iscsi
+Output yang diharapkan:
+```
+Compiled against library: libvirt 8.0.0
+Using library: libvirt 8.0.0
+Using API: QEMU 8.0.0
+```
 
-# Dukungan Multipath
-sudo apt-get install -y multipath-tools
+### RHEL/Rocky/Alma 8.x
 
-# Container Runtime (pilih salah satu)
-sudo apt-get install -y docker.io
-# ATAU
-sudo apt-get install -y containerd
-# ATAU
-sudo apt-get install -y cri-o
+Untuk RHEL 8, Rocky Linux 8, atau AlmaLinux 8, pastikan Anda menjalankan versi 8.6 atau lebih baru. Versi 8.x yang lebih lama memiliki libvirt yang mungkin tidak sepenuhnya kompatibel.
+
+```bash
+# Cek versi Anda
+cat /etc/redhat-release
+
+# Update ke versi terbaru jika perlu
+sudo dnf update -y
 ```
 
 ## Metode Instalasi
 
 ### Metode 1: Instalasi Cepat (Direkomendasikan)
 
-Cara termudah untuk menginstal Vapor adalah menggunakan skrip instalasi otomatis:
+Installer interaktif menggunakan Ansible untuk menyiapkan Vapor dan komponen opsional:
 
 ```bash
-# Unduh skrip instalasi
-wget https://github.com/awanio/vapor/releases/latest/download/deploy.sh
+# Download script instalasi
+curl -fsSL https://raw.githubusercontent.com/awanio/vapor/main/scripts/install.sh -o install.sh
 
-# Buat dapat dieksekusi
-chmod +x deploy.sh
+# Buat executable
+chmod +x install.sh
 
-# Jalankan instalasi
-sudo ./deploy.sh
+# Jalankan installer
+sudo ./install.sh
 ```
 
-Skrip ini akan:
-1. Memeriksa kompatibilitas sistem
-2. Mengunduh binary Vapor terbaru
-3. Menginstal dependensi yang diperlukan
-4. Mengkonfigurasi layanan systemd
-5. Memulai Vapor secara otomatis
+Installer akan memandu Anda memilih komponen:
 
-### Metode 2: Instalasi Manual
+1. **Ansible & Dependensi**: Otomatis diinstal jika belum ada
+2. **Libvirt/KVM**: Manajemen mesin virtual (direkomendasikan)
+3. **Container Runtime**: Pilih Docker atau Containerd
+4. **Kubernetes**: Opsional, dengan pilihan versi (v1.29 - v1.34)
+5. **Helm**: Package manager Kubernetes (jika K8s dipilih)
 
-Untuk kontrol lebih terhadap proses instalasi:
+### Metode 2: Instalasi Non-Interaktif
 
-#### Langkah 1: Unduh Binary
+Untuk deployment otomatis atau scripted:
+
 ```bash
-# Buat direktori untuk Vapor
-sudo mkdir -p /opt/vapor
+# Set variabel environment
+export AUTO_INSTALL_DEPS=y
+export INSTALL_LIBVIRT=y
+export INSTALL_DOCKER=y
+export INSTALL_K8S=y
+export K8S_VERSION=1.30
 
-# Unduh rilis terbaru
-wget https://github.com/awanio/vapor/releases/latest/download/vapor-linux-amd64 \
-  -O /opt/vapor/vapor
-
-# Buat dapat dieksekusi
-sudo chmod +x /opt/vapor/vapor
-
-# Buat symbolic link
-sudo ln -s /opt/vapor/vapor /usr/local/bin/vapor
+# Jalankan installer
+curl -fsSL https://raw.githubusercontent.com/awanio/vapor/main/scripts/install.sh | sudo -E bash
 ```
 
-#### Langkah 2: Buat Konfigurasi
-```bash
-# Buat direktori konfigurasi
-sudo mkdir -p /etc/vapor
+#### Variabel Environment yang Tersedia
 
-# Generate JWT secret
-JWT_SECRET=$(openssl rand -base64 32)
+| Variabel | Nilai | Deskripsi |
+|----------|-------|-----------|
+| `AUTO_INSTALL_DEPS` | y/n | Auto-install Ansible dan dependensi |
+| `INSTALL_LIBVIRT` | y/n | Install libvirt/KVM |
+| `INSTALL_DOCKER` | y/n | Install Docker |
+| `INSTALL_CONTAINERD` | y/n | Install Containerd (alternatif Docker) |
+| `INSTALL_K8S` | y/n | Install Kubernetes |
+| `K8S_VERSION` | 1.29-1.34 | Versi Kubernetes yang akan diinstal |
+| `INSTALL_HELM` | y/n | Install Helm |
 
-# Buat file environment
-sudo tee /etc/vapor/environment > /dev/null <<EOF
-# Konfigurasi Vapor
-JWT_SECRET=$JWT_SECRET
-SERVER_ADDR=:8080
-LOG_LEVEL=info
-EOF
+### Metode 3: Build dari Source
 
-# Amankan konfigurasi
-sudo chmod 600 /etc/vapor/environment
-```
-
-#### Langkah 3: Buat Layanan systemd
-```bash
-# Buat file layanan
-sudo tee /etc/systemd/system/vapor.service > /dev/null <<EOF
-[Unit]
-Description=Vapor System Management API
-Documentation=https://github.com/awanio/vapor
-After=network.target
-
-[Service]
-Type=simple
-User=root
-Group=root
-ExecStart=/usr/local/bin/vapor
-Restart=on-failure
-RestartSec=5
-EnvironmentFile=/etc/vapor/environment
-
-# Pengaturan keamanan
-NoNewPrivileges=true
-PrivateTmp=true
-
-# Logging
-StandardOutput=journal
-StandardError=journal
-SyslogIdentifier=vapor
-
-[Install]
-WantedBy=multi-user.target
-EOF
-```
-
-#### Langkah 4: Aktifkan dan Mulai Layanan
-```bash
-# Reload systemd
-sudo systemctl daemon-reload
-
-# Aktifkan layanan untuk mulai saat boot
-sudo systemctl enable vapor
-
-# Mulai layanan
-sudo systemctl start vapor
-
-# Periksa status
-sudo systemctl status vapor
-```
-
-### Metode 3: Instalasi Docker
-
-Untuk deployment terkontainerisasi:
+Untuk development atau custom build:
 
 ```bash
-# Buat direktori data
-mkdir -p ~/vapor-data
+# Prasyarat
+# - Go 1.21+
+# - Node.js 18+
+# - Paket libvirt-dev (Ubuntu/Debian) atau libvirt-devel (RHEL/Fedora)
 
-# Jalankan kontainer Vapor
-docker run -d \
-  --name vapor \
-  --restart unless-stopped \
-  --privileged \
-  --pid host \
-  --network host \
-  -v /:/host:ro \
-  -v ~/vapor-data:/data \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -e JWT_SECRET=$(openssl rand -base64 32) \
-  -p 8080:8080 \
-  awanio/vapor:latest
-```
-
-### Metode 4: Build dari Source
-
-Untuk developer atau build kustom:
-
-```bash
-# Clone repository
+# Clone repositori
 git clone https://github.com/awanio/vapor.git
 cd vapor
 
-# Instal Go 1.21 atau yang lebih baru
-# Lihat: https://golang.org/doc/install
-
-# Build binary
+# Build
 make build
 
-# Instal
+# Install ke sistem
 sudo make install
 
-# Mulai layanan
-sudo systemctl start vapor
+# Atau jalankan langsung
+./bin/vapor
 ```
 
-## Langkah Pasca-Instalasi
+## Pasca-Instalasi
 
-### 1. Verifikasi Instalasi
-
-Periksa bahwa Vapor berjalan dengan benar:
+### Verifikasi Instalasi
 
 ```bash
-# Periksa status layanan
+# Cek status layanan
 sudo systemctl status vapor
 
-# Periksa log
-sudo journalctl -u vapor -n 50
+# Cek log
+sudo journalctl -u vapor -f
 
-# Tes endpoint API
-curl http://localhost:8080/health
+# Test endpoint API
+curl -k https://localhost:7770/api/health
 ```
 
-Respons yang diharapkan:
+Response health yang diharapkan:
 ```json
 {
   "status": "healthy",
-  "version": "1.0.0",
-  "uptime": 30
+  "version": "1.0.0"
 }
 ```
 
-### 2. Konfigurasi Firewall
+### Akses Antarmuka Web
 
-Jika Anda mengaktifkan firewall, izinkan akses ke Vapor:
+Buka browser dan navigasi ke:
+```
+https://<ip-server>:7770
+```
 
+Login dengan kredensial sistem Anda (user root atau sudo).
+
+### Konfigurasi Firewall
+
+**Ubuntu/Debian (UFW):**
 ```bash
-# UFW (Ubuntu/Debian)
-sudo ufw allow 8080/tcp
+sudo ufw allow 7770/tcp
+```
 
-# firewalld (RHEL/CentOS/Fedora)
-sudo firewall-cmd --permanent --add-port=8080/tcp
+**RHEL/Rocky/Alma/Fedora (firewalld):**
+```bash
+sudo firewall-cmd --permanent --add-port=7770/tcp
 sudo firewall-cmd --reload
-
-# iptables
-sudo iptables -A INPUT -p tcp --dport 8080 -j ACCEPT
-sudo service iptables save
 ```
 
-### 3. Konfigurasi Reverse Proxy (Opsional)
+## Konfigurasi
 
-Untuk deployment produksi, gunakan reverse proxy seperti Nginx:
+File konfigurasi utama terletak di `/etc/vapor/vapor.conf`.
 
-```nginx
-server {
-    listen 80;
-    server_name vapor.example.com;
-    
-    # Redirect ke HTTPS
-    return 301 https://$server_name$request_uri;
-}
+```ini
+[server]
+host = 0.0.0.0
+port = 7770
+tls = true
 
-server {
-    listen 443 ssl http2;
-    server_name vapor.example.com;
-    
-    # Konfigurasi SSL
-    ssl_certificate /path/to/cert.pem;
-    ssl_certificate_key /path/to/key.pem;
-    
-    # Pengaturan proxy
-    location / {
-        proxy_pass http://localhost:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-    
-    # Dukungan WebSocket
-    location /api/v1/ws/ {
-        proxy_pass http://localhost:8080;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_read_timeout 86400;
-    }
-}
+[auth]
+session_timeout = 3600
+
+[logging]
+level = info
+file = /var/log/vapor/vapor.log
 ```
 
-### 4. Atur Backup Otomatis
+### Sertifikat TLS
 
-Buat skrip backup untuk konfigurasi Vapor:
+Secara default, Vapor membuat sertifikat self-signed. Untuk produksi, konfigurasi sertifikat Anda sendiri:
+
+```ini
+[tls]
+cert_file = /etc/vapor/certs/server.crt
+key_file = /etc/vapor/certs/server.key
+```
+
+## Upgrade
+
+### Menggunakan Installer
 
 ```bash
-#!/bin/bash
-# /usr/local/bin/vapor-backup.sh
-
-BACKUP_DIR="/var/backups/vapor"
-DATE=$(date +%Y%m%d_%H%M%S)
-
-# Buat direktori backup
-mkdir -p $BACKUP_DIR
-
-# Backup konfigurasi
-tar -czf $BACKUP_DIR/vapor-config-$DATE.tar.gz /etc/vapor/
-
-# Simpan hanya backup 7 hari terakhir
-find $BACKUP_DIR -name "vapor-config-*.tar.gz" -mtime +7 -delete
-```
-
-Tambahkan ke crontab:
-```bash
-# Jalankan setiap hari pada jam 2 pagi
-0 2 * * * /usr/local/bin/vapor-backup.sh
-```
-
-## Upgrade Vapor
-
-Untuk upgrade ke versi yang lebih baru:
-
-### Upgrade Otomatis
-```bash
-# Unduh dan jalankan skrip upgrade
-wget https://github.com/awanio/vapor/releases/latest/download/upgrade.sh
-chmod +x upgrade.sh
-sudo ./upgrade.sh
+curl -fsSL https://raw.githubusercontent.com/awanio/vapor/main/scripts/install.sh -o install.sh
+chmod +x install.sh
+sudo ./install.sh --upgrade
 ```
 
 ### Upgrade Manual
+
 ```bash
-# Hentikan layanan
+# Stop layanan
 sudo systemctl stop vapor
 
-# Backup binary saat ini
-sudo cp /usr/local/bin/vapor /usr/local/bin/vapor.backup
-
-# Unduh versi baru
-wget https://github.com/awanio/vapor/releases/latest/download/vapor-linux-amd64 \
-  -O /usr/local/bin/vapor
-
-# Buat dapat dieksekusi
+# Download binary baru
+sudo curl -L https://github.com/awanio/vapor/releases/latest/download/vapor-linux-amd64 -o /usr/local/bin/vapor
 sudo chmod +x /usr/local/bin/vapor
 
-# Mulai layanan
+# Start layanan
 sudo systemctl start vapor
 ```
 
 ## Uninstall
 
-Untuk menghapus Vapor sepenuhnya:
-
 ```bash
-# Hentikan dan nonaktifkan layanan
+# Stop dan disable layanan
 sudo systemctl stop vapor
 sudo systemctl disable vapor
 
 # Hapus file
-sudo rm -f /usr/local/bin/vapor
-sudo rm -f /etc/systemd/system/vapor.service
+sudo rm -rf /usr/local/bin/vapor
 sudo rm -rf /etc/vapor
+sudo rm -rf /var/log/vapor
+sudo rm /etc/systemd/system/vapor.service
 
 # Reload systemd
 sudo systemctl daemon-reload
 ```
 
-## Pemecahan Masalah Instalasi
+## Troubleshooting
 
-### Layanan Gagal Dimulai
+### Error Versi Libvirt
 
-Periksa log untuk error:
+Jika Anda melihat error seperti:
+```
+/usr/local/bin/vapor: /lib/x86_64-linux-gnu/libvirt.so.0: version `LIBVIRT_8.0.0' not found
+```
+
+**Solusi berdasarkan distribusi:**
+
+| Distribusi | Solusi |
+|------------|--------|
+| Ubuntu 20.04 | Aktifkan Ubuntu Cloud Archive (lihat di atas) |
+| Ubuntu 22.04+ | Sudah kompatibel, coba `sudo apt install libvirt-dev` |
+| Debian 11 | Upgrade ke Debian 12 |
+| Debian 12 | Sudah kompatibel |
+| RHEL/Rocky/Alma 8.x | Update ke 8.6+ dengan `sudo dnf update` |
+| RHEL/Rocky/Alma 9 | Sudah kompatibel |
+
+### Layanan Tidak Bisa Start
+
+Cek log untuk error:
 ```bash
 sudo journalctl -u vapor -n 100 --no-pager
 ```
 
 Masalah umum:
-- Port 8080 sudah digunakan
-- Paket yang diperlukan tidak ada
-- Izin tidak mencukupi
+- Port 7770 sudah digunakan
+- Libvirt tidak terinstal (untuk fitur virtualisasi)
+- Masalah permission
 
-### Tidak Dapat Mengakses Antarmuka Web
+### Tidak Bisa Terhubung ke Antarmuka Web
 
-1. Periksa apakah layanan berjalan:
+1. Verifikasi layanan berjalan:
    ```bash
-   sudo systemctl is-active vapor
+   sudo systemctl status vapor
    ```
 
-2. Periksa apakah port mendengarkan:
+2. Cek firewall:
    ```bash
-   sudo netstat -tlnp | grep 8080
+   sudo ufw status  # Ubuntu/Debian
+   sudo firewall-cmd --list-all  # RHEL/Rocky/Fedora
    ```
 
-3. Periksa aturan firewall:
+3. Verifikasi port listening:
    ```bash
-   sudo iptables -L -n | grep 8080
+   sudo ss -tlnp | grep 7770
    ```
 
 ### Error Permission Denied
 
-Pastikan Vapor berjalan dengan priviledge yang sesuai:
+Pastikan user vapor memiliki permission yang diperlukan:
 ```bash
-# Periksa pengguna layanan
-sudo systemctl show vapor | grep User=
+# Tambahkan ke grup libvirt (untuk manajemen VM)
+sudo usermod -aG libvirt vapor
 
-# Harus menunjukkan: User=root
+# Tambahkan ke grup docker (untuk manajemen container)
+sudo usermod -aG docker vapor
 ```
 
 ## Langkah Selanjutnya
 
-Setelah instalasi selesai, lanjutkan ke [Login Pertama](03-first-login.md) untuk mengakses Vapor untuk pertama kalinya.
-
----
-
-[← Sebelumnya: Pendahuluan](01-introduction.md) | [Selanjutnya: Login Pertama →](03-first-login.md)
+Setelah instalasi, lihat:
+- [Panduan Quick Start](03-quick-start.md) - Langkah pertama dengan Vapor
+- [Panduan Konfigurasi](04-configuration.md) - Opsi konfigurasi detail
+- [Panduan Virtualisasi](05-virtualization.md) - Mengelola mesin virtual

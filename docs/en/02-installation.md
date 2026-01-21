@@ -1,364 +1,264 @@
 # Installation Guide
 
+This guide covers how to install Vapor on your Linux system.
+
 ## System Requirements
 
-Before installing Vapor, ensure your system meets the following requirements:
+### Minimum Hardware
 
-### Operating System
-- **Primary Target**: Linux x86_64
-  - Ubuntu 18.04 LTS or newer
-  - Debian 10 or newer
-  - RHEL/CentOS 8 or newer
-  - Fedora 32 or newer
-  - Arch Linux (latest)
-  - Alpine Linux 3.12 or newer
-- **Architecture**: x86_64 (AMD64)
-  - ARM64 support is experimental
-- **Kernel**: Linux 4.15 or newer
+| Component | Requirement |
+|-----------|-------------|
+| Architecture | x86_64 (amd64) |
+| CPU | 2 cores |
+| RAM | 2 GB |
+| Disk | 1 GB free space |
+| Network | Active network connection |
 
-### Hardware Requirements
-- **CPU**: 2 cores minimum (4+ cores recommended)
-- **RAM**: 2GB minimum (4GB+ recommended)
-- **Disk**: 1GB free space for Vapor
-- **Network**: Active network connection
+### Supported Operating Systems
 
-### Required System Packages
+Vapor requires **libvirt 8.0.0 or newer** for virtualization features.
 
-#### Core Utilities
-These are typically pre-installed on most Linux distributions:
-- `mount`, `umount` - Filesystem mounting operations
-- `lsblk` - Block device information
-- `useradd`, `usermod`, `userdel` - User management
-- `systemd` - Service management and logging
+| Distribution | Version | Default libvirt | Status |
+|--------------|---------|-----------------|--------|
+| **Ubuntu** | 24.04 LTS | 10.0.0 | ✅ Recommended |
+| | 22.04 LTS | 8.0.0 | ✅ Supported |
+| | 20.04 LTS | 6.0.0 | ⚠️ Requires Ubuntu Cloud Archive |
+| **Debian** | 12 (Bookworm) | 9.0.0 | ✅ Supported |
+| | 11 (Bullseye) | 7.0.0 | ❌ Not supported |
+| **RHEL** | 9.x | 9.0.0+ | ✅ Supported |
+| | 8.6+ | 8.6.0 | ✅ Supported |
+| **Rocky Linux** | 9.x | 9.0.0+ | ✅ Supported |
+| | 8.6+ | 8.6.0 | ✅ Supported |
+| **AlmaLinux** | 9.x | 9.0.0+ | ✅ Supported |
+| | 8.6+ | 8.6.0 | ✅ Supported |
+| **Fedora** | 40+ | 10.0.0+ | ✅ Supported |
+| | 39 | 9.6.0 | ✅ Supported |
+| **CentOS Stream** | 9 | 9.0.0+ | ✅ Supported |
 
-#### Filesystem Tools
-Install based on the filesystems you plan to use:
+> **Note**: Debian 11 (Bullseye) ships with libvirt 7.0.0 which is not compatible. Consider upgrading to Debian 12 or using a different distribution.
+
+## Pre-Installation Requirements
+
+### Ubuntu 20.04 - Ubuntu Cloud Archive
+
+Ubuntu 20.04 ships with libvirt 6.0.0, which is incompatible with Vapor. You must upgrade libvirt using the Ubuntu Cloud Archive (UCA) before installing Vapor.
+
+#### What is Ubuntu Cloud Archive?
+
+The Ubuntu Cloud Archive is an official repository maintained by Canonical that provides newer versions of OpenStack and related packages (including libvirt) backported to older Ubuntu LTS releases.
+
+#### Upgrade Libvirt on Ubuntu 20.04
+
 ```bash
-# Ubuntu/Debian
-sudo apt-get install -y e2fsprogs xfsprogs btrfs-progs
+# Install software-properties-common if not present
+sudo apt install -y software-properties-common
 
-# RHEL/CentOS/Fedora
-sudo dnf install -y e2fsprogs xfsprogs btrfs-progs
+# Add Ubuntu Cloud Archive - Yoga repository
+sudo add-apt-repository -y cloud-archive:yoga
 
-# Arch Linux
-sudo pacman -S e2fsprogs xfsprogs btrfs-progs
+# Update package lists
+sudo apt update
 
-# Alpine Linux
-sudo apk add e2fsprogs xfsprogs btrfs-progs
+# Upgrade libvirt packages
+sudo apt install -y libvirt-daemon-system libvirt-dev libvirt0 libvirt-clients
+
+# Restart libvirt service
+sudo systemctl restart libvirtd
 ```
 
-#### Optional Advanced Features
-For full functionality, install these optional packages:
+#### Verify Libvirt Version
+
 ```bash
-# LVM Support
-sudo apt-get install -y lvm2
+virsh version
+```
 
-# iSCSI Support
-sudo apt-get install -y open-iscsi
+Expected output:
+```
+Compiled against library: libvirt 8.0.0
+Using library: libvirt 8.0.0
+Using API: QEMU 8.0.0
+```
 
-# Multipath Support
-sudo apt-get install -y multipath-tools
+### RHEL/Rocky/Alma 8.x
 
-# Container Runtime (choose one)
-sudo apt-get install -y docker.io
-# OR
-sudo apt-get install -y containerd
-# OR
-sudo apt-get install -y cri-o
+For RHEL 8, Rocky Linux 8, or AlmaLinux 8, ensure you're running version 8.6 or later. Earlier 8.x versions have older libvirt that may not be fully compatible.
+
+```bash
+# Check your version
+cat /etc/redhat-release
+
+# Update to latest if needed
+sudo dnf update -y
 ```
 
 ## Installation Methods
 
 ### Method 1: Quick Installation (Recommended)
 
-The easiest way to install Vapor is using our automated installation script:
+The interactive installer uses Ansible to set up Vapor and optional components:
 
 ```bash
-# Download the installation script
-wget https://github.com/awanio/vapor/releases/latest/download/deploy.sh
+# Download the install script
+curl -fsSL https://raw.githubusercontent.com/awanio/vapor/main/scripts/install.sh -o install.sh
 
 # Make it executable
-chmod +x deploy.sh
+chmod +x install.sh
 
-# Run the installation
-sudo ./deploy.sh
+# Run the installer
+sudo ./install.sh
 ```
 
-The script will:
-1. Check system compatibility
-2. Download the latest Vapor binary
-3. Install required dependencies
-4. Configure systemd service
-5. Start Vapor automatically
+The installer will guide you through selecting components:
 
-### Method 2: Manual Installation
+1. **Ansible & Dependencies**: Automatically installed if not present
+2. **Libvirt/KVM**: Virtual machine management (recommended)
+3. **Container Runtime**: Choose Docker or Containerd
+4. **Kubernetes**: Optional, with version selection (v1.29 - v1.34)
+5. **Helm**: Kubernetes package manager (if K8s selected)
 
-For more control over the installation process:
+### Method 2: Non-Interactive Installation
 
-#### Step 1: Download the Binary
+For automated or scripted deployments:
+
 ```bash
-# Create directory for Vapor
-sudo mkdir -p /opt/vapor
+# Set environment variables
+export AUTO_INSTALL_DEPS=y
+export INSTALL_LIBVIRT=y
+export INSTALL_DOCKER=y
+export INSTALL_K8S=y
+export K8S_VERSION=1.30
 
-# Download the latest release
-wget https://github.com/awanio/vapor/releases/latest/download/vapor-linux-amd64 \
-  -O /opt/vapor/vapor
-
-# Make it executable
-sudo chmod +x /opt/vapor/vapor
-
-# Create symbolic link
-sudo ln -s /opt/vapor/vapor /usr/local/bin/vapor
+# Run installer
+curl -fsSL https://raw.githubusercontent.com/awanio/vapor/main/scripts/install.sh | sudo -E bash
 ```
 
-#### Step 2: Create Configuration
-```bash
-# Create configuration directory
-sudo mkdir -p /etc/vapor
+#### Available Environment Variables
 
-# Generate JWT secret
-JWT_SECRET=$(openssl rand -base64 32)
+| Variable | Values | Description |
+|----------|--------|-------------|
+| `AUTO_INSTALL_DEPS` | y/n | Auto-install Ansible and dependencies |
+| `INSTALL_LIBVIRT` | y/n | Install libvirt/KVM |
+| `INSTALL_DOCKER` | y/n | Install Docker |
+| `INSTALL_CONTAINERD` | y/n | Install Containerd (alternative to Docker) |
+| `INSTALL_K8S` | y/n | Install Kubernetes |
+| `K8S_VERSION` | 1.29-1.34 | Kubernetes version to install |
+| `INSTALL_HELM` | y/n | Install Helm |
 
-# Create environment file
-sudo tee /etc/vapor/environment > /dev/null <<EOF
-# Vapor Configuration
-JWT_SECRET=$JWT_SECRET
-SERVER_ADDR=:8080
-LOG_LEVEL=info
-EOF
+### Method 3: Building from Source
 
-# Secure the configuration
-sudo chmod 600 /etc/vapor/environment
-```
-
-#### Step 3: Create systemd Service
-```bash
-# Create service file
-sudo tee /etc/systemd/system/vapor.service > /dev/null <<EOF
-[Unit]
-Description=Vapor System Management API
-Documentation=https://github.com/awanio/vapor
-After=network.target
-
-[Service]
-Type=simple
-User=root
-Group=root
-ExecStart=/usr/local/bin/vapor
-Restart=on-failure
-RestartSec=5
-EnvironmentFile=/etc/vapor/environment
-
-# Security settings
-NoNewPrivileges=true
-PrivateTmp=true
-
-# Logging
-StandardOutput=journal
-StandardError=journal
-SyslogIdentifier=vapor
-
-[Install]
-WantedBy=multi-user.target
-EOF
-```
-
-#### Step 4: Enable and Start Service
-```bash
-# Reload systemd
-sudo systemctl daemon-reload
-
-# Enable service to start on boot
-sudo systemctl enable vapor
-
-# Start the service
-sudo systemctl start vapor
-
-# Check status
-sudo systemctl status vapor
-```
-
-### Method 3: Docker Installation
-
-For containerized deployment:
+For development or custom builds:
 
 ```bash
-# Create data directory
-mkdir -p ~/vapor-data
+# Prerequisites
+# - Go 1.21+
+# - Node.js 18+
+# - libvirt-dev package (Ubuntu/Debian) or libvirt-devel (RHEL/Fedora)
 
-# Run Vapor container
-docker run -d \
-  --name vapor \
-  --restart unless-stopped \
-  --privileged \
-  --pid host \
-  --network host \
-  -v /:/host:ro \
-  -v ~/vapor-data:/data \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -e JWT_SECRET=$(openssl rand -base64 32) \
-  -p 8080:8080 \
-  awanio/vapor:latest
-```
-
-### Method 4: Building from Source
-
-For developers or custom builds:
-
-```bash
 # Clone the repository
 git clone https://github.com/awanio/vapor.git
 cd vapor
 
-# Install Go 1.21 or newer
-# See: https://golang.org/doc/install
-
-# Build the binary
+# Build
 make build
 
-# Install
+# Install system-wide
 sudo make install
 
-# Start the service
-sudo systemctl start vapor
+# Or run directly
+./bin/vapor
 ```
 
-## Post-Installation Steps
+## Post-Installation
 
-### 1. Verify Installation
-
-Check that Vapor is running correctly:
+### Verify Installation
 
 ```bash
 # Check service status
 sudo systemctl status vapor
 
 # Check logs
-sudo journalctl -u vapor -n 50
+sudo journalctl -u vapor -f
 
 # Test API endpoint
-curl http://localhost:8080/health
+curl -k https://localhost:7770/api/health
 ```
 
-Expected response:
+Expected health response:
 ```json
 {
   "status": "healthy",
-  "version": "1.0.0",
-  "uptime": 30
+  "version": "1.0.0"
 }
 ```
 
-### 2. Configure Firewall
+### Access Web Interface
 
-If you have a firewall enabled, allow access to Vapor:
+Open your browser and navigate to:
+```
+https://<server-ip>:7770
+```
 
+Login with your system credentials (root or sudo user).
+
+### Firewall Configuration
+
+**Ubuntu/Debian (UFW):**
 ```bash
-# UFW (Ubuntu/Debian)
-sudo ufw allow 8080/tcp
+sudo ufw allow 7770/tcp
+```
 
-# firewalld (RHEL/CentOS/Fedora)
-sudo firewall-cmd --permanent --add-port=8080/tcp
+**RHEL/Rocky/Alma/Fedora (firewalld):**
+```bash
+sudo firewall-cmd --permanent --add-port=7770/tcp
 sudo firewall-cmd --reload
-
-# iptables
-sudo iptables -A INPUT -p tcp --dport 8080 -j ACCEPT
-sudo service iptables save
 ```
 
-### 3. Configure Reverse Proxy (Optional)
+## Configuration
 
-For production deployments, use a reverse proxy like Nginx:
+The main configuration file is located at `/etc/vapor/vapor.conf`.
 
-```nginx
-server {
-    listen 80;
-    server_name vapor.example.com;
-    
-    # Redirect to HTTPS
-    return 301 https://$server_name$request_uri;
-}
+```ini
+[server]
+host = 0.0.0.0
+port = 7770
+tls = true
 
-server {
-    listen 443 ssl http2;
-    server_name vapor.example.com;
-    
-    # SSL configuration
-    ssl_certificate /path/to/cert.pem;
-    ssl_certificate_key /path/to/key.pem;
-    
-    # Proxy settings
-    location / {
-        proxy_pass http://localhost:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-    
-    # WebSocket support
-    location /api/v1/ws/ {
-        proxy_pass http://localhost:8080;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_read_timeout 86400;
-    }
-}
+[auth]
+session_timeout = 3600
+
+[logging]
+level = info
+file = /var/log/vapor/vapor.log
 ```
 
-### 4. Set Up Automatic Backups
+### TLS Certificates
 
-Create a backup script for Vapor configuration:
+By default, Vapor generates self-signed certificates. For production, configure your own certificates:
+
+```ini
+[tls]
+cert_file = /etc/vapor/certs/server.crt
+key_file = /etc/vapor/certs/server.key
+```
+
+## Upgrading
+
+### Using the Installer
 
 ```bash
-#!/bin/bash
-# /usr/local/bin/vapor-backup.sh
-
-BACKUP_DIR="/var/backups/vapor"
-DATE=$(date +%Y%m%d_%H%M%S)
-
-# Create backup directory
-mkdir -p $BACKUP_DIR
-
-# Backup configuration
-tar -czf $BACKUP_DIR/vapor-config-$DATE.tar.gz /etc/vapor/
-
-# Keep only last 7 days of backups
-find $BACKUP_DIR -name "vapor-config-*.tar.gz" -mtime +7 -delete
-```
-
-Add to crontab:
-```bash
-# Run daily at 2 AM
-0 2 * * * /usr/local/bin/vapor-backup.sh
-```
-
-## Upgrading Vapor
-
-To upgrade to a newer version:
-
-### Automated Upgrade
-```bash
-# Download and run upgrade script
-wget https://github.com/awanio/vapor/releases/latest/download/upgrade.sh
-chmod +x upgrade.sh
-sudo ./upgrade.sh
+curl -fsSL https://raw.githubusercontent.com/awanio/vapor/main/scripts/install.sh -o install.sh
+chmod +x install.sh
+sudo ./install.sh --upgrade
 ```
 
 ### Manual Upgrade
+
 ```bash
-# Stop the service
+# Stop service
 sudo systemctl stop vapor
 
-# Backup current binary
-sudo cp /usr/local/bin/vapor /usr/local/bin/vapor.backup
-
-# Download new version
-wget https://github.com/awanio/vapor/releases/latest/download/vapor-linux-amd64 \
-  -O /usr/local/bin/vapor
-
-# Make executable
+# Download new binary
+sudo curl -L https://github.com/awanio/vapor/releases/latest/download/vapor-linux-amd64 -o /usr/local/bin/vapor
 sudo chmod +x /usr/local/bin/vapor
 
 # Start service
@@ -367,67 +267,85 @@ sudo systemctl start vapor
 
 ## Uninstallation
 
-To completely remove Vapor:
-
 ```bash
 # Stop and disable service
 sudo systemctl stop vapor
 sudo systemctl disable vapor
 
 # Remove files
-sudo rm -f /usr/local/bin/vapor
-sudo rm -f /etc/systemd/system/vapor.service
+sudo rm -rf /usr/local/bin/vapor
 sudo rm -rf /etc/vapor
+sudo rm -rf /var/log/vapor
+sudo rm /etc/systemd/system/vapor.service
 
 # Reload systemd
 sudo systemctl daemon-reload
 ```
 
-## Troubleshooting Installation
+## Troubleshooting
 
-### Service Fails to Start
+### Libvirt Version Error
 
-Check the logs for errors:
+If you see errors like:
+```
+/usr/local/bin/vapor: /lib/x86_64-linux-gnu/libvirt.so.0: version `LIBVIRT_8.0.0' not found
+```
+
+**Solutions by distribution:**
+
+| Distribution | Solution |
+|--------------|----------|
+| Ubuntu 20.04 | Enable Ubuntu Cloud Archive (see above) |
+| Ubuntu 22.04+ | Already compatible, try `sudo apt install libvirt-dev` |
+| Debian 11 | Upgrade to Debian 12 |
+| Debian 12 | Already compatible |
+| RHEL/Rocky/Alma 8.x | Update to 8.6+ with `sudo dnf update` |
+| RHEL/Rocky/Alma 9 | Already compatible |
+
+### Service Won't Start
+
+Check logs for errors:
 ```bash
 sudo journalctl -u vapor -n 100 --no-pager
 ```
 
 Common issues:
-- Port 8080 already in use
-- Missing required packages
-- Insufficient permissions
+- Port 7770 already in use
+- Missing libvirt (for virtualization features)
+- Permission issues
 
-### Cannot Access Web Interface
+### Cannot Connect to Web Interface
 
-1. Check if service is running:
+1. Verify service is running:
    ```bash
-   sudo systemctl is-active vapor
+   sudo systemctl status vapor
    ```
 
-2. Check if port is listening:
+2. Check firewall:
    ```bash
-   sudo netstat -tlnp | grep 8080
+   sudo ufw status  # Ubuntu/Debian
+   sudo firewall-cmd --list-all  # RHEL/Rocky/Fedora
    ```
 
-3. Check firewall rules:
+3. Verify port is listening:
    ```bash
-   sudo iptables -L -n | grep 8080
+   sudo ss -tlnp | grep 7770
    ```
 
 ### Permission Denied Errors
 
-Ensure Vapor is running with appropriate privileges:
+Ensure the vapor user has necessary permissions:
 ```bash
-# Check service user
-sudo systemctl show vapor | grep User=
+# Add to libvirt group (for VM management)
+sudo usermod -aG libvirt vapor
 
-# Should show: User=root
+# Add to docker group (for container management)
+sudo usermod -aG docker vapor
 ```
 
 ## Next Steps
 
-Once installation is complete, proceed to [First Login](03-first-login.md) to access Vapor for the first time.
-
----
-
-[← Previous: Introduction](01-introduction.md) | [Next: First Login →](03-first-login.md)
+After installation, see:
+- [Quick Start Guide](03-quick-start.md) - First steps with Vapor
+- [Configuration Guide](04-configuration.md) - Detailed configuration options
+- [Virtualization Guide](05-virtualization.md) - Managing virtual machines
