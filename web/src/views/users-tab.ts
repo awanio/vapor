@@ -311,8 +311,8 @@ export class UsersTab extends LitElement {
       border-left: 1px solid var(--vscode-border);
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
       z-index: 1001;
-      overflow-y: auto;
-      padding: 24px;
+      display: flex;
+      flex-direction: column;
       animation: slideIn 0.3s ease-out;
     }
 
@@ -331,32 +331,54 @@ export class UsersTab extends LitElement {
       }
     }
 
-    .drawer h2 {
-      margin-top: 0;
-      margin-bottom: 24px;
-      font-size: 20px;
-      font-weight: 500;
+    .drawer-header {
+      padding: 16px 20px;
+      background: var(--vscode-bg-lighter);
+      border-bottom: 1px solid var(--vscode-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
     }
 
-    .drawer .close-btn {
-      position: absolute;
-      top: 16px;
-      right: 16px;
-      padding: 8px;
+    .drawer-title {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--vscode-foreground);
+    }
+
+    .close-btn {
       background: none;
       border: none;
-      cursor: pointer;
-      font-size: 20px;
       color: var(--vscode-text-dim);
-      transition: color 0.2s;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 20px;
+      line-height: 1;
+      transition: all 0.2s;
     }
 
-    .drawer .close-btn:hover {
+    .close-btn:hover {
+      background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.1));
       color: var(--vscode-text);
     }
 
-    .drawer-form {
-      margin-top: 40px;
+    .drawer-content {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .drawer-footer {
+      padding: 16px 20px;
+      background: var(--vscode-bg-lighter);
+      border-top: 1px solid var(--vscode-border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      flex-shrink: 0;
     }
   `;
 
@@ -720,9 +742,11 @@ export class UsersTab extends LitElement {
 
       ${this.showCreateForm ? html`
         <div class="drawer">
-          <button class="close-btn" @click=${this.closeCreateDrawer}>✕</button>
-          <h2>${t('users.createUser')}</h2>
-          <div class="drawer-form">
+          <div class="drawer-header">
+            <h2 class="drawer-title">${t('users.createUser')}</h2>
+            <button class="close-btn" @click=${this.closeCreateDrawer}>✕</button>
+          </div>
+          <div class="drawer-content">
             <div class="form-group">
               <label for="username">${t('users.username')}</label>
               <input
@@ -763,23 +787,25 @@ export class UsersTab extends LitElement {
                 placeholder="wheel,users"
               />
             </div>
-            <div class="form-actions">
-              <button class="btn-secondary" @click=${this.closeCreateDrawer}>
-                ${t('common.cancel')}
-              </button>
-              <button class="btn-primary" @click=${this.createUser}>
-                ${t('common.create')}
-              </button>
-            </div>
+          </div>
+          <div class="drawer-footer">
+            <button class="btn-secondary" @click=${this.closeCreateDrawer}>
+              ${t('common.cancel')}
+            </button>
+            <button class="btn-primary" @click=${this.createUser}>
+              ${t('common.create')}
+            </button>
           </div>
         </div>
       ` : ''}
 
       ${this.showEditForm ? html`
         <div class="drawer">
-          <button class="close-btn" @click=${this.closeEditDrawer}>✕</button>
-          <h2>${t('users.editUser')}</h2>
-          <div class="drawer-form">
+          <div class="drawer-header">
+            <h2 class="drawer-title">${t('users.editUser')}</h2>
+            <button class="close-btn" @click=${this.closeEditDrawer}>✕</button>
+          </div>
+          <div class="drawer-content">
             <div class="form-group">
               <label for="username">${t('users.username')}</label>
               <input
@@ -806,36 +832,42 @@ export class UsersTab extends LitElement {
               <input
                 id="groups"
                 type="text"
-                .value=${this.editingUser?.groups?.join(',') || ''}
+                .value=${Array.isArray(this.editingUser?.groups) ? this.editingUser!.groups.join(',') : ''}
                 @input=${(e: Event) => this.updateEditingUser('groups', (e.target as HTMLInputElement).value)}
                 placeholder="wheel,users"
               />
             </div>
-            <div class="form-actions">
-              <button class="btn-secondary" @click=${this.closeEditDrawer}>
-                ${t('common.cancel')}
-              </button>
-              <button class="btn-primary" @click=${this.updateUser}>
-                ${t('common.save')}
-              </button>
-            </div>
+          </div>
+          <div class="drawer-footer">
+            <button class="btn-secondary" @click=${this.closeEditDrawer}>
+              ${t('common.cancel')}
+            </button>
+            <button class="btn-primary" @click=${this.updateUser}>
+              ${t('common.save')}
+            </button>
           </div>
         </div>
       ` : ''}
 
       ${this.showResetPasswordForm ? html`
         <div class="drawer">
-          <button class="close-btn" @click=${this.closeResetPasswordDrawer}>✕</button>
-          <h2>${t('users.resetPassword')} - ${this.resetPasswordUsername}</h2>
-          <div class="drawer-form">
+          <div class="drawer-header">
+            <h2 class="drawer-title">${t('users.resetPassword')}</h2>
+            <button class="close-btn" @click=${this.closeResetPasswordDrawer}>✕</button>
+          </div>
+          <div class="drawer-content">
             <div class="form-group">
-              <label for="new-password">${t('users.newPassword', { default: 'New Password' })}</label>
+              <label>${t('users.username')}</label>
+              <input type="text" .value=${this.resetPasswordUsername || ''} disabled />
+            </div>
+            <div class="form-group">
+              <label for="new-password">${t('users.newPassword')}</label>
               <input
                 id="new-password"
                 type="password"
                 .value=${this.newPassword}
-                @input=${(e: Event) => this.newPassword = (e.target as HTMLInputElement).value}
-                placeholder="${t('users.newPassword', { default: 'New Password' })}"
+                @input=${(e: Event) => (this.newPassword = (e.target as HTMLInputElement).value)}
+                placeholder="${t('users.newPassword')}"
               />
             </div>
             <div class="form-group">
@@ -844,18 +876,18 @@ export class UsersTab extends LitElement {
                 id="confirm-password"
                 type="password"
                 .value=${this.confirmPassword}
-                @input=${(e: Event) => this.confirmPassword = (e.target as HTMLInputElement).value}
+                @input=${(e: Event) => (this.confirmPassword = (e.target as HTMLInputElement).value)}
                 placeholder="${t('users.confirmPassword')}"
               />
             </div>
-            <div class="form-actions">
-              <button class="btn-secondary" @click=${this.closeResetPasswordDrawer}>
-                ${t('common.cancel')}
-              </button>
-              <button class="btn-primary" @click=${this.resetPassword}>
-                ${t('users.resetPassword')}
-              </button>
-            </div>
+          </div>
+          <div class="drawer-footer">
+            <button class="btn-secondary" @click=${this.closeResetPasswordDrawer}>
+              ${t('common.cancel')}
+            </button>
+            <button class="btn-primary" @click=${this.resetPassword}>
+              ${t('users.resetPassword')}
+            </button>
           </div>
         </div>
       ` : ''}

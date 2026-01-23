@@ -775,6 +775,7 @@ export class VirtualizationBackupsView extends LitElement {
       <detail-drawer
         .title=${'Register existing backup'}
         .show=${this.showImportDrawer}
+        .hasFooter=${true}
         @close=${() => (this.showImportDrawer = false)}
       >
         <div class="drawer-content">
@@ -830,10 +831,8 @@ export class VirtualizationBackupsView extends LitElement {
           </div>
           <div class="field" style="color: var(--vscode-descriptionForeground, #9ca3af); font-size: 12px;">This registers an existing backup file that is already on the server. The file will not be moved or copied.</div>
         </div>
-        <div class="drawer-footer">
-          <button class="btn" @click=${() => (this.showImportDrawer = false)}>Cancel</button>
-          <button class="btn btn-primary" @click=${() => this.handleImport()}>Register</button>
-        </div>
+        <button slot="footer" class="btn" @click=${() => (this.showImportDrawer = false)}>Cancel</button>
+        <button slot="footer" class="btn btn-primary" @click=${() => this.handleImport()}>Register</button>
       </detail-drawer>
     `;
   }
@@ -850,6 +849,7 @@ export class VirtualizationBackupsView extends LitElement {
       <detail-drawer
         .title=${'Create backup'}
         .show=${this.showCreateDrawer}
+        .hasFooter=${true}
         @close=${() => (this.showCreateDrawer = false)}
       >
         <div class="drawer-content">
@@ -933,10 +933,8 @@ export class VirtualizationBackupsView extends LitElement {
             <textarea .value=${this.createForm.description || ''} @input=${(e: Event) => (this.createForm.description = (e.target as HTMLTextAreaElement).value)}></textarea>
           </div>
         </div>
-        <div class="drawer-footer">
-          <button class="btn" @click=${() => (this.showCreateDrawer = false)}>Cancel</button>
-          <button class="btn btn-primary" @click=${() => this.handleCreate()}>Create</button>
-        </div>
+        <button slot="footer" class="btn" @click=${() => (this.showCreateDrawer = false)}>Cancel</button>
+        <button slot="footer" class="btn btn-primary" @click=${() => this.handleCreate()}>Create</button>
       </detail-drawer>
     `;
   }
@@ -949,6 +947,7 @@ export class VirtualizationBackupsView extends LitElement {
       <detail-drawer
         .title=${'Upload backup from local'}
         .show=${this.showUploadDrawer}
+        .hasFooter=${true}
         @close=${() => this.closeUploadDrawer()}
       >
         <div class="drawer-content">
@@ -1078,16 +1077,16 @@ export class VirtualizationBackupsView extends LitElement {
             </div>
           ` : ''}
         </div>
-        <div class="drawer-footer">
-          <button class="btn" @click=${() => this.closeUploadDrawer()} ?disabled=${uploadState.isUploading}>Cancel</button>
-          <button
-            class="btn btn-primary"
-            @click=${() => this.handleUpload()}
-            ?disabled=${uploadState.isUploading || !this.selectedFile || !this.uploadMetadata.vm_name.trim()}
-          >
-            ${uploadState.isUploading ? 'Uploading...' : 'Upload'}
-          </button>
         </div>
+        <button slot="footer" class="btn" @click=${() => this.closeUploadDrawer()} ?disabled=${uploadState.isUploading}>Cancel</button>
+        <button
+          slot="footer"
+          class="btn btn-primary"
+          @click=${() => this.handleUpload()}
+          ?disabled=${uploadState.isUploading || !this.selectedFile || !this.uploadMetadata.vm_name.trim()}
+        >
+          ${uploadState.isUploading ? 'Uploading...' : 'Upload'}
+        </button>
       </detail-drawer>
     `;
   }

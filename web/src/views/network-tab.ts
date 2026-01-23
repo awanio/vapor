@@ -446,22 +446,69 @@ export class NetworkTab extends I18nLitElement {
       position: fixed;
       top: 0;
       right: 0;
-      width: 400px;
-      max-width: 90%;
-      height: 100%;
-      background: var(--vscode-bg-light);
+      width: 500px;
+      max-width: 100%;
+      height: 100vh;
+      background: var(--vscode-editor-background);
       border-left: 1px solid var(--vscode-border);
-      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
-      z-index: 1001;
-      overflow-y: auto;
-      padding: 24px;
+      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.2);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
       animation: slideIn 0.3s ease-out;
+    }
+
+    .drawer-header {
+      padding: 20px;
+      background: var(--vscode-bg-lighter, #252526);
+      border-bottom: 1px solid var(--vscode-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .drawer-title {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--vscode-foreground);
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: var(--vscode-foreground);
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 20px;
+      transition: background 0.2s;
+    }
+
+    .close-btn:hover {
+      background: var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.1));
+    }
+
+    .drawer-content {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .drawer-footer {
+      padding: 16px 20px;
+      background: var(--vscode-bg-lighter, #252526);
+      border-top: 1px solid var(--vscode-border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      flex-shrink: 0;
     }
 
     @media (max-width: 768px) {
       .drawer {
         width: 100%;
-        max-width: 100%;
       }
     }
 
@@ -472,10 +519,6 @@ export class NetworkTab extends I18nLitElement {
       to {
         transform: translateX(0);
       }
-    }
-
-    .drawer h2 {
-      margin-top: 0;
     }
 
     .drawer button.close-btn {
@@ -2289,11 +2332,13 @@ ${this.interfaces.length > 0 ? html`
 
       ${this.showConfigureDrawer ? html`
         <div class="drawer">
-          <button class="close-btn" @click="${() => this.closeConfigureDrawer()}">×</button>
+          <div class="drawer-header">
+            <h2 class="drawer-title">${t('network.configureInterface')}</h2>
+            <button class="close-btn" @click="${() => this.closeConfigureDrawer()}">×</button>
+          </div>
           <div class="drawer-content">
-            <h2>${t('network.configureInterface')}</h2>
             ${this.configureNetworkInterface ? html`
-              <form @submit=${(e: Event) => { e.preventDefault(); this.submitConfigureAddress(); }}>
+              <form id="configure-form" @submit=${(e: Event) => { e.preventDefault(); this.submitConfigureAddress(); }}>
                 <div class="detail-item" style="margin-bottom: 16px;">
                   <span class="detail-label">${t('network.interfaceName')}</span>
                   <span class="detail-value">${this.configureNetworkInterface.name}</span>
@@ -2342,27 +2387,28 @@ ${this.interfaces.length > 0 ? html`
                     @input=${(e: Event) => this.configureFormData.gateway = (e.target as HTMLInputElement).value}
                   />
                 </div>
-                
-                <div class="form-actions">
-                  <button type="button" class="action-button" @click="${() => this.closeConfigureDrawer()}">
-                    ${t('common.cancel')}
-                  </button>
-                  <button type="submit" class="action-button primary">
-                    ${t('network.applyConfiguration')}
-                  </button>
-                </div>
               </form>
             ` : null}
+          </div>
+          <div class="drawer-footer">
+            <button type="button" class="action-button" @click="${() => this.closeConfigureDrawer()}">
+              ${t('common.cancel')}
+            </button>
+            <button type="submit" form="configure-form" class="action-button primary">
+              ${t('network.applyConfiguration')}
+            </button>
           </div>
         </div>
       ` : null}
 
       ${this.showBridgeDrawer ? html`
         <div class="drawer">
-          <button class="close-btn" @click="${() => this.closeBridgeDrawer()}">×</button>
+          <div class="drawer-header">
+            <h2 class="drawer-title">${this.isEditingBridge ? t('network.editBridgeTitle') : t('network.createBridgeTitle')}</h2>
+            <button class="close-btn" @click="${() => this.closeBridgeDrawer()}">×</button>
+          </div>
           <div class="drawer-content">
-            <h2>${this.isEditingBridge ? t('network.editBridgeTitle') : t('network.createBridgeTitle')}</h2>
-            <form @submit=${(e: Event) => { e.preventDefault(); this.handleCreateBridge(); }}>
+            <form id="bridge-form" @submit=${(e: Event) => { e.preventDefault(); this.handleCreateBridge(); }}>
               <div class="form-group">
                 <label class="form-label" for="bridge-name">${t('network.bridgeNameRequired')}</label>
                 <input 
@@ -2415,26 +2461,27 @@ ${this.interfaces.length > 0 ? html`
                   ${t('network.commaSeparatedInterfaces')}
                 </small>
               </div>
-              
-              <div class="form-actions">
-                <button type="button" class="action-button" @click="${() => this.closeBridgeDrawer()}">
-                  ${t('common.cancel')}
-                </button>
-                <button type="submit" class="action-button primary">
-                  ${this.isEditingBridge ? t('common.update') : t('network.createBridge')}
-                </button>
-              </div>
             </form>
+          </div>
+          <div class="drawer-footer">
+            <button type="button" class="action-button" @click="${() => this.closeBridgeDrawer()}">
+              ${t('common.cancel')}
+            </button>
+            <button type="submit" form="bridge-form" class="action-button primary">
+              ${this.isEditingBridge ? t('common.update') : t('network.createBridge')}
+            </button>
           </div>
         </div>
       ` : null}
 
       ${this.showBondDrawer ? html`
         <div class="drawer">
-          <button class="close-btn" @click="${() => this.closeBondDrawer()}">×</button>
+          <div class="drawer-header">
+            <h2 class="drawer-title">${this.isEditingBond ? t('network.editBondTitle') : t('network.createBondTitle')}</h2>
+            <button class="close-btn" @click="${() => this.closeBondDrawer()}">×</button>
+          </div>
           <div class="drawer-content">
-            <h2>${this.isEditingBond ? t('network.editBondTitle') : t('network.createBondTitle')}</h2>
-            <form @submit=${(e: Event) => { e.preventDefault(); this.handleCreateBond(); }}>
+            <form id="bond-form" @submit=${(e: Event) => { e.preventDefault(); this.handleCreateBond(); }}>
               <div class="form-group">
                 <label class="form-label" for="bond-name">${t('network.bondNameRequired')}</label>
                 <input 
@@ -2506,27 +2553,27 @@ ${this.interfaces.length > 0 ? html`
                   ${t('network.commaSeparatedInterfaces')}
                 </small>
               </div>
-              
-              
-              <div class="form-actions">
-                <button type="button" class="action-button" @click="${() => this.closeBondDrawer()}">
-                  ${t('common.cancel')}
-                </button>
-                <button type="submit" class="action-button primary">
-                  ${this.isEditingBond ? t('common.update') : t('network.createBond')}
-                </button>
-              </div>
             </form>
+          </div>
+          <div class="drawer-footer">
+            <button type="button" class="action-button" @click="${() => this.closeBondDrawer()}">
+              ${t('common.cancel')}
+            </button>
+            <button type="submit" form="bond-form" class="action-button primary">
+              ${this.isEditingBond ? t('common.update') : t('network.createBond')}
+            </button>
           </div>
         </div>
       ` : null}
 
       ${this.showVLANDrawer ? html`
         <div class="drawer">
-          <button class="close-btn" @click="${() => this.closeVLANDrawer()}">×</button>
+          <div class="drawer-header">
+            <h2 class="drawer-title">${this.isEditingVlan ? t('network.editVlanTitle') : t('network.createVlanTitle')}</h2>
+            <button class="close-btn" @click="${() => this.closeVLANDrawer()}">×</button>
+          </div>
           <div class="drawer-content">
-            <h2>${this.isEditingVlan ? t('network.editVlanTitle') : t('network.createVlanTitle')}</h2>
-            <form @submit=${(e: Event) => { e.preventDefault(); this.handleCreateVLANInterface(); }}>
+            <form id="vlan-form" @submit=${(e: Event) => { e.preventDefault(); this.handleCreateVLANInterface(); }}>
               <div class="form-group">
                 <label class="form-label" for="vlan-interface">${t('network.baseInterfaceRequired')}</label>
                 <div class="autocomplete-container">
@@ -2595,25 +2642,26 @@ ${this.interfaces.length > 0 ? html`
                   ${t('network.vlanNameDefault')}
                 </small>
               </div>
-
-              <div class="form-actions">
-                <button type="button" class="action-button" @click="${() => this.closeVLANDrawer()}">
-                  ${t('common.cancel')}
-                </button>
-                <button type="submit" class="action-button primary">
-                  ${this.isEditingVlan ? t('common.update') : t('network.createVLAN')}
-                </button>
-              </div>
             </form>
+          </div>
+          <div class="drawer-footer">
+            <button type="button" class="action-button" @click="${() => this.closeVLANDrawer()}">
+              ${t('common.cancel')}
+            </button>
+            <button type="submit" form="vlan-form" class="action-button primary">
+              ${this.isEditingVlan ? t('common.update') : t('network.createVLAN')}
+            </button>
           </div>
         </div>
       ` : null}
 
       ${this.showDetailsDrawer && this.selectedInterface ? html`
         <div class="drawer">
-          <button class="close-btn" @click="${() => this.closeDetailsDrawer()}">×</button>
+          <div class="drawer-header">
+            <h2 class="drawer-title">Interface Details: ${this.selectedInterface.name}</h2>
+            <button class="close-btn" @click="${() => this.closeDetailsDrawer()}">×</button>
+          </div>
           <div class="drawer-content">
-            <h2>Interface Details: ${this.selectedInterface.name}</h2>
             
             <!-- Interface Information Section -->
             <div class="interface-info-section">
@@ -2726,17 +2774,15 @@ ${this.interfaces.length > 0 ? html`
                 </tbody>
               </table>
             ` : ''}
-
-            <!-- Interface Actions -->
-            <div class="form-actions" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
-              <button class="action-button" @click="${() => this.closeDetailsDrawer()}">
-                Close
-              </button>
-              <button class="action-button ${this.selectedInterface.state === 'up' ? '' : 'primary'}" 
-                      @click="${() => { this.toggleInterfaceState(this.selectedInterface!); this.closeDetailsDrawer(); }}">
-                ${this.selectedInterface.state === 'up' ? 'Bring Down' : 'Bring Up'}
-              </button>
-            </div>
+          </div>
+          <div class="drawer-footer">
+            <button class="action-button" @click="${() => this.closeDetailsDrawer()}">
+              Close
+            </button>
+            <button class="action-button ${this.selectedInterface.state === 'up' ? '' : 'primary'}" 
+                    @click="${() => { this.toggleInterfaceState(this.selectedInterface!); this.closeDetailsDrawer(); }}">
+              ${this.selectedInterface.state === 'up' ? 'Bring Down' : 'Bring Up'}
+            </button>
           </div>
         </div>
       ` : null}

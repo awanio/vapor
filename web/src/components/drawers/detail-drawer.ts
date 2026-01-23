@@ -7,6 +7,7 @@ export class DetailDrawer extends LitElement {
   @property({ type: Boolean }) show = false;
   @property({ type: Boolean }) loading = false;
   @property({ type: Number }) width = 600;
+  @property({ type: Boolean }) hasFooter = false;
 
   @state() private isClosing = false;
   @state() private animationFinished = false;
@@ -94,7 +95,16 @@ export class DetailDrawer extends LitElement {
       flex: 1;
       overflow-y: auto;
       padding: 20px;
-      padding-bottom: 40px; /* Extra padding at bottom to ensure last content is visible */
+    }
+
+    .drawer-footer {
+      padding: 16px 20px;
+      background: var(--vscode-bg-lighter, #252526);
+      border-top: 1px solid var(--vscode-border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      flex-shrink: 0;
     }
   `;
 
@@ -157,6 +167,11 @@ export class DetailDrawer extends LitElement {
             <slot></slot>
           `}
         </div>
+        ${this.hasFooter ? html`
+          <div class="drawer-footer">
+            <slot name="footer"></slot>
+          </div>
+        ` : ''}
       </div>
     `;
   }

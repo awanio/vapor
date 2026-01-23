@@ -50,7 +50,7 @@ export class LogsDrawer extends LitElement {
 
     .drawer-header {
       padding: 20px;
-      background: var(--vscode-sideBar-background, var(--vscode-bg-light, #252526));
+      background: var(--vscode-bg-lighter, #252526);
       border-bottom: 1px solid var(--vscode-border);
       display: flex;
       align-items: center;
@@ -90,7 +90,7 @@ export class LogsDrawer extends LitElement {
 
     .controls {
       padding: 12px 20px;
-      background: var(--vscode-sideBar-background, var(--vscode-bg-light, #252526));
+      background: var(--vscode-bg-lighter, #252526);
       border-bottom: 1px solid var(--vscode-border);
       display: flex;
       gap: 8px;

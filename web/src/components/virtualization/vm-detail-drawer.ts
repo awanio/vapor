@@ -239,8 +239,8 @@ export class VMDetailDrawer extends LitElement {
     }
 
     .drawer-header {
-      padding: 20px 24px;
-      background: var(--vscode-bg-lighter, #2d2d30);
+      padding: 20px;
+      background: var(--vscode-bg-lighter, #252526);
       border-bottom: 1px solid var(--vscode-border);
       display: flex;
       justify-content: space-between;
@@ -358,7 +358,7 @@ export class VMDetailDrawer extends LitElement {
     .tabs {
       display: flex;
       gap: 0;
-      padding: 0 24px;
+      padding: 0 20px;
       background: var(--vscode-editor-background, #1e1e1e);
       border-bottom: 1px solid var(--vscode-border);
       flex-shrink: 0;
@@ -390,13 +390,13 @@ export class VMDetailDrawer extends LitElement {
     .drawer-content {
       flex: 1;
       overflow-y: auto;
-      padding: 24px;
+      padding: 20px;
     }
 
     /* Quick Actions Bar */
     .quick-actions {
-      padding: 16px 24px;
-      background: var(--vscode-bg-lighter, #2d2d30);
+      padding: 16px 20px;
+      background: var(--vscode-bg-lighter, #252526);
       border-bottom: 1px solid var(--vscode-border);
       display: flex;
       gap: 12px;

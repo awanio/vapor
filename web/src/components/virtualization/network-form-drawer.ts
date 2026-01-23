@@ -97,17 +97,18 @@ export class NetworkFormDrawer extends LitElement {
     }
 
     .drawer-header {
-      padding: 16px 20px;
+      padding: 20px;
+      background: var(--vscode-bg-lighter, #252526);
       border-bottom: 1px solid var(--vscode-border);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: var(--vscode-editor-background, var(--vscode-bg-light));
+      flex-shrink: 0;
     }
 
     .drawer-title {
       margin: 0;
-      font-size: 16px;
+      font-size: 18px;
       font-weight: 500;
       color: var(--vscode-foreground, #cccccc);
     }
@@ -117,29 +118,30 @@ export class NetworkFormDrawer extends LitElement {
       border: none;
       color: var(--vscode-foreground, #cccccc);
       cursor: pointer;
-      padding: 4px;
+      padding: 4px 8px;
       border-radius: 4px;
-      font-size: 18px;
-      line-height: 1;
+      font-size: 20px;
+      transition: background 0.2s;
     }
 
     .close-btn:hover {
-      background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
+      background: var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.1));
     }
 
     .drawer-body {
-      padding: 16px 20px 80px;
-      overflow-y: auto;
       flex: 1;
+      padding: 20px;
+      overflow-y: auto;
     }
 
     .drawer-footer {
-      padding: 12px 20px;
+      padding: 16px 20px;
+      background: var(--vscode-bg-lighter, #252526);
       border-top: 1px solid var(--vscode-border);
       display: flex;
       justify-content: flex-end;
-      gap: 8px;
-      background: var(--vscode-editor-background, var(--vscode-bg-light));
+      gap: 12px;
+      flex-shrink: 0;
     }
 
     form {
