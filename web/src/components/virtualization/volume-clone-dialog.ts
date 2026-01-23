@@ -320,6 +320,10 @@ export class VolumeCloneDialog extends LitElement {
         message = error.message;
       }
 
+      if ((error as any).details) {
+        message = `${message}: ${(error as any).details}`;
+      }
+
       notificationActions.addNotification({
         type: 'error',
         title: 'Failed to clone volume',
@@ -375,8 +379,8 @@ export class VolumeCloneDialog extends LitElement {
                 class="form-input ${this.errors.has('name') ? 'error' : ''}"
                 .value=${this.newName}
                 @input=${(e: Event) => {
-                  this.newName = (e.target as HTMLInputElement).value;
-                }}
+        this.newName = (e.target as HTMLInputElement).value;
+      }}
                 ?disabled=${disableInputs}
               />
               ${this.errors.has('name') ? html`
@@ -393,8 +397,8 @@ export class VolumeCloneDialog extends LitElement {
                 class="form-select ${this.errors.has('targetPool') ? 'error' : ''}"
                 .value=${selectedTargetPool}
                 @change=${(e: Event) => {
-                  this.targetPool = (e.target as HTMLSelectElement).value;
-                }}
+        this.targetPool = (e.target as HTMLSelectElement).value;
+      }}
                 ?disabled=${disableInputs}
               >
                 ${poolOptions.map(name => html`<option value=${name}>${name}</option>`)}

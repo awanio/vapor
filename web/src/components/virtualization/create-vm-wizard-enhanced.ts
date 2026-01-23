@@ -2115,13 +2115,22 @@ export class CreateVMWizardEnhanced extends LitElement {
         );
       } else {
         const error = await response.json().catch(() => null);
+        let errorMessage = 'VM operation failed';
+
         if (error && error.status === 'error' && error.error) {
-          throw new Error(error.error.message || error.error.details || 'VM operation failed');
+          // New format: check details
+          if (error.error.details) {
+            errorMessage = `${error.error.message || 'Error'}: ${error.error.details}`;
+          } else {
+            errorMessage = error.error.message || error.error.details || 'VM operation failed';
+          }
         } else if (error && error.message) {
-          throw new Error(error.message);
+          errorMessage = error.message;
         } else {
-          throw new Error(`Failed to ${this.editMode ? 'update' : 'create'} virtual machine`);
+          errorMessage = `Failed to ${this.editMode ? 'update' : 'create'} virtual machine`;
         }
+
+        throw new Error(errorMessage);
       }
 
       wizardActions.closeWizard();
@@ -2529,9 +2538,9 @@ export class CreateVMWizardEnhanced extends LitElement {
                   placeholder="Same as memory"
                   .value=${String(this.formData.max_memory || '')}
                   @input=${(e: InputEvent) => {
-                    const val = (e.target as HTMLInputElement).value;
-                    this.updateFormData('max_memory', val ? Number(val) : 0);
-                  }}
+        const val = (e.target as HTMLInputElement).value;
+        this.updateFormData('max_memory', val ? Number(val) : 0);
+      }}
                 />
                 <span class="unit">MB</span>
               </div>
@@ -2565,9 +2574,9 @@ export class CreateVMWizardEnhanced extends LitElement {
                 placeholder="Same as vCPUs"
                 .value=${String(this.formData.max_vcpus || '')}
                 @input=${(e: InputEvent) => {
-                  const val = (e.target as HTMLInputElement).value;
-                  this.updateFormData('max_vcpus', val ? Number(val) : 0);
-                }}
+        const val = (e.target as HTMLInputElement).value;
+        this.updateFormData('max_vcpus', val ? Number(val) : 0);
+      }}
               />
               <div class="help-text">Upper limit. Leave empty to use same as vCPUs.</div>
             </div>
@@ -3635,7 +3644,7 @@ export class CreateVMWizardEnhanced extends LitElement {
         <div class="drawer-header">
           <h2 class="header-title">
             <span>🖥️</span>
-            ${this.editMode ? 'Edit' : (this.templateMode ? 'Create from Template' : 'Create')} Virtual Machine (Enhanced)
+            ${this.editMode ? 'Edit' : (this.templateMode ? 'Create from Template' : 'Create')} Virtual Machine
           </h2>
           <button 
             class="close-button" 

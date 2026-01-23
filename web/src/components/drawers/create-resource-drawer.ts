@@ -576,6 +576,11 @@ data:
       }
     } catch (error: any) {
       this.validationMessage = error.message || 'Invalid format';
+      if ((error as any).details) {
+        this.validationMessage = `${this.validationMessage}: ${(error as any).details}`;
+      } else if ((error as any).error?.details) {
+        this.validationMessage = `${(error as any).error.message || this.validationMessage}: ${(error as any).error.details}`;
+      }
       this.validationStatus = 'error';
     }
   }

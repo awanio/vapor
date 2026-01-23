@@ -526,6 +526,11 @@ export class VolumeDialog extends LitElement {
         message = error.message;
       }
 
+      // Append specific details if available
+      if ((error as any).details) {
+        message = `${message}: ${(error as any).details}`;
+      }
+
       const title = this.mode === 'resize' ? 'Failed to resize volume' : 'Failed to create volume';
       notificationActions.addNotification({
         type: 'error',

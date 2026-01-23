@@ -1407,8 +1407,8 @@ export class DockerTab extends LitElement {
           ${this.detailError ? this.renderError() :
           (this.selectedContainer ? this.renderContainerDetails() :
             this.selectedImage ? this.renderImageDetails() :
-            this.selectedVolume ? this.renderVolumeDetails() :
-            this.selectedNetwork ? this.renderNetworkDetails() : '')}
+              this.selectedVolume ? this.renderVolumeDetails() :
+                this.selectedNetwork ? this.renderNetworkDetails() : '')}
         </div>` : ''}
 
       ${this.showLogsDrawer ? html`
@@ -1665,6 +1665,11 @@ export class DockerTab extends LitElement {
       this.fetchVolumes();
     } catch (error) {
       this.createVolumeError = error instanceof ApiError ? error.message : 'Failed to create volume';
+      if ((error as any).details) {
+        this.createVolumeError = `${this.createVolumeError}: ${(error as any).details}`;
+      } else if ((error as any).error?.details) {
+        this.createVolumeError = `${(error as any).error?.message || this.createVolumeError}: ${(error as any).error.details}`;
+      }
     } finally {
       this.isCreatingVolume = false;
     }
@@ -1721,6 +1726,11 @@ export class DockerTab extends LitElement {
       this.fetchNetworks();
     } catch (error) {
       this.createNetworkError = error instanceof ApiError ? error.message : 'Failed to create network';
+      if ((error as any).details) {
+        this.createNetworkError = `${this.createNetworkError}: ${(error as any).details}`;
+      } else if ((error as any).error?.details) {
+        this.createNetworkError = `${(error as any).error?.message || this.createNetworkError}: ${(error as any).error.details}`;
+      }
     } finally {
       this.isCreatingNetwork = false;
     }
@@ -1854,6 +1864,11 @@ export class DockerTab extends LitElement {
       this.fetchContainers();
     } catch (error) {
       this.createError = error instanceof ApiError ? error.message : 'Failed to create container';
+      if ((error as any).details) {
+        this.createError = `${this.createError}: ${(error as any).details}`;
+      } else if ((error as any).error?.details) {
+        this.createError = `${(error as any).error?.message || this.createError}: ${(error as any).error.details}`;
+      }
     } finally {
       this.isCreating = false;
     }
@@ -2012,11 +2027,11 @@ export class DockerTab extends LitElement {
                     class="form-select"
                     .value=${volume.source}
                     @change=${(e: any) => {
-          const volumes = [...this.createVolumes];
-          const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
-          volumes[index] = { ...current, source: e.target.value };
-          this.createVolumes = volumes;
-        }}
+            const volumes = [...this.createVolumes];
+            const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
+            volumes[index] = { ...current, source: e.target.value };
+            this.createVolumes = volumes;
+          }}
                   >
                     <option value="">Select volume...</option>
                     ${this.volumes.map(v => html`<option value="${v.name}">${v.name}</option>`)}
@@ -2029,11 +2044,11 @@ export class DockerTab extends LitElement {
                     .value=${volume.source}
                     ?disabled=${volume.type === 'tmpfs'}
                     @input=${(e: any) => {
-          const volumes = [...this.createVolumes];
-          const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
-          volumes[index] = { ...current, source: e.target.value };
-          this.createVolumes = volumes;
-        }}
+            const volumes = [...this.createVolumes];
+            const current = volumes[index] ?? { source: '', target: '', type: 'bind', readOnly: false, propagation: '' };
+            volumes[index] = { ...current, source: e.target.value };
+            this.createVolumes = volumes;
+          }}
                   />
                 `}
                 <input
@@ -2313,9 +2328,9 @@ export class DockerTab extends LitElement {
         ? image.repoTags
         : [];
       const size = typeof image.size === 'number' ? this.formatBytes(image.size) : 'Unknown';
-      const created = image.created 
-        ? (typeof image.created === 'number' 
-          ? new Date(image.created * 1000).toLocaleString() 
+      const created = image.created
+        ? (typeof image.created === 'number'
+          ? new Date(image.created * 1000).toLocaleString()
           : new Date(image.created).toLocaleString())
         : '-';
 
@@ -2818,7 +2833,7 @@ export class DockerTab extends LitElement {
 
   private renderPortsSection(ports: any) {
     if (!ports) return '';
-    
+
     // Handle Docker SDK format (object with port keys) or list format (array)
     if (Array.isArray(ports)) {
       if (ports.length === 0) return '';
@@ -2833,22 +2848,22 @@ export class DockerTab extends LitElement {
         </div>
       `;
     }
-    
+
     // Docker SDK format: { "80/tcp": [{ "HostIp": "0.0.0.0", "HostPort": "8080" }], ... }
     const portEntries = Object.entries(ports).filter(([_, bindings]) => bindings && (bindings as any[]).length > 0);
     if (portEntries.length === 0) return '';
-    
+
     return html`
       <div class="detail-section">
         <h3>Ports</h3>
         ${portEntries.map(([containerPort, bindings]) => {
-          const binding = (bindings as any[])[0];
-          return html`
+      const binding = (bindings as any[])[0];
+      return html`
             <div class="detail-item">
               <span class="detail-value">${containerPort}${binding ? ` → ${binding.HostIp || '0.0.0.0'}:${binding.HostPort}` : ''}</span>
             </div>
           `;
-        })}
+    })}
       </div>
     `;
   }
@@ -3311,8 +3326,8 @@ export class DockerTab extends LitElement {
     } finally {
       this.isPullingImage = false;
 
+    }
   }
-}
 
   private renderCreateVolumeDrawer() {
     return html`
@@ -3455,7 +3470,7 @@ export class DockerTab extends LitElement {
       </div>
     `;
 
-}
+  }
 }
 
 customElements.define('docker-tab', DockerTab);

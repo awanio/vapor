@@ -2094,6 +2094,8 @@ export class VMDetailDrawer extends LitElement {
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
         throw new Error(
+          errorData?.error?.details ||
+          errorData?.error?.message ||
           errorData?.message ||
           errorData?.error ||
           `Failed to delete VM: ${response.statusText}`

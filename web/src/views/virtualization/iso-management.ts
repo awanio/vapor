@@ -694,10 +694,14 @@ export class ISOManagement extends LitElement {
       window.URL.revokeObjectURL(url);
 
       this.showNotification(`Downloading ${iso.name}...`, 'success');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to download ISO:', error);
+      let errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (error.details) {
+        errorMessage = `${errorMessage}: ${error.details}`;
+      }
       this.showNotification(
-        `Failed to download ISO: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to download ISO: ${errorMessage}`,
         'error'
       );
     }
@@ -718,10 +722,14 @@ export class ISOManagement extends LitElement {
         os_variant: detailedISO.os_variant || detailedISO.os_version || iso.os_variant,
         architecture: detailedISO.architecture || detailedISO.arch || iso.architecture,
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch ISO details:', error);
+      let errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (error.details) {
+        errorMessage = `${errorMessage}: ${error.details}`;
+      }
       this.showNotification(
-        `Failed to load ISO details: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to load ISO details: ${errorMessage}`,
         'error'
       );
     } finally {
@@ -761,10 +769,14 @@ export class ISOManagement extends LitElement {
       this.showNotification(`ISO "${this.isoToDelete.name}" deleted successfully`, 'success');
       this.showDeleteModal = false;
       this.isoToDelete = null;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to delete ISO:', error);
+      let errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (error.details) {
+        errorMessage = `${errorMessage}: ${error.details}`;
+      }
       this.showNotification(
-        `Failed to delete ISO: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to delete ISO: ${errorMessage}`,
         'error'
       );
     } finally {

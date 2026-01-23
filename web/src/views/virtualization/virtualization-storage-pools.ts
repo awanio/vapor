@@ -12,6 +12,7 @@ import '../../components/drawers/detail-drawer.js';
 import '../../components/modals/delete-modal.js';
 import '../../components/drawers/create-resource-drawer';
 import '../../components/virtualization/storage-pool-form-drawer';
+import '../../components/ui/notification-container.js';
 
 // Import types
 import type { Tab } from '../../components/tabs/tab-group.js';
@@ -33,7 +34,6 @@ import {
   $virtualizationDisabledMessage,
 } from '../../stores/virtualization';
 import { virtualizationAPI } from '../../services/virtualization-api';
-import type { StoragePoolFormData } from '../../components/virtualization/storage-pool-form-drawer';
 
 // Internal interface with computed fields for display
 interface StoragePoolDisplay extends StoragePool {
@@ -57,6 +57,7 @@ interface StoragePoolDisplay extends StoragePool {
 
 @customElement('virtualization-storage-pools')
 export class VirtualizationStoragePools extends LitElement {
+  private notificationContainer: any = null;
   // Store controllers for reactive updates
   private storeController = new StoreController(this, storagePoolStore.$state);
   private filteredPoolsController = new StoreController(this, $filteredStoragePools);
@@ -191,6 +192,36 @@ export class VirtualizationStoragePools extends LitElement {
     // Initialize stores if not already initialized
     await this.loadData();
   }
+
+  override firstUpdated(_changedProperties: any) {
+    this.notificationContainer = this.renderRoot.querySelector('notification-container');
+    this.addEventListener('show-notification', this.handleShowNotification as EventListener);
+  }
+
+  override disconnectedCallback() {
+    super.disconnectedCallback();
+    this.removeEventListener('show-notification', this.handleShowNotification as EventListener);
+  }
+
+  private handleShowNotification = (event: Event) => {
+    const detail = (event as CustomEvent).detail as
+      | { message: string; type: 'success' | 'error' | 'info' | 'warning'; duration?: number }
+      | undefined;
+    if (!detail) return;
+
+    // Stop propagation so parent doesn't show it too (if parent has container)
+    event.stopPropagation();
+
+    const nc = this.notificationContainer as any;
+    if (nc && typeof nc.addNotification === 'function') {
+      nc.addNotification({
+        type: detail.type,
+        message: detail.message,
+        // Errors should stay until dismissed
+        duration: detail.duration ?? (detail.type === 'error' ? 0 : undefined),
+      });
+    }
+  };
 
   private formatBytes(bytes: number): string {
     if (bytes === 0) return '0 B';
@@ -376,9 +407,9 @@ export class VirtualizationStoragePools extends LitElement {
       if (poolToDelete) {
         // Call API directly with deleteVolumes parameter
         await virtualizationAPI.deleteStoragePool(poolToDelete.name, deleteVolumes);
-        
+
         this.showNotification(`Storage pool "${poolToDelete.name}" deleted successfully`, 'success');
-        
+
         // Refresh list with error handling to prevent race condition
         try {
           await storagePoolActions.fetchAll();
@@ -395,7 +426,7 @@ export class VirtualizationStoragePools extends LitElement {
       this.volumeCount = 0;
     } catch (error: any) {
       console.error('Failed to delete storage pool:', error);
-      
+
       // Handle specific error cases
       let errorMessage = 'Unknown error';
       if (error.message) {
@@ -422,7 +453,7 @@ export class VirtualizationStoragePools extends LitElement {
           }
         }
       }
-      
+
       this.showNotification(`Failed to delete storage pool: ${errorMessage}`, 'error');
     } finally {
       this.isDeleting = false;
@@ -438,69 +469,15 @@ export class VirtualizationStoragePools extends LitElement {
     storagePoolActions.setSearchQuery(e.detail.value);
   }
 
-  private async handleFormSave(event: CustomEvent) {
-    const { formData } = event.detail as { formData: StoragePoolFormData };
-    this.isCreating = true;
+  private async handleDrawerSuccess() {
+    this.showEditDrawer = false;
+    this.showFormDrawer = false;
+    this.editingPool = null;
+    this.isCreating = false;
+    this.isUpdating = false;
 
-    try {
-      // Build the API payload
-      const payload: any = {
-        name: formData.name,
-        type: formData.type,
-        autostart: formData.autostart,
-      };
-
-      // Add type-specific fields
-      if (formData.type === 'dir' && formData.path) {
-        payload.path = formData.path;
-      } else if (formData.type === 'netfs') {
-        payload.source = formData.source;
-        payload.target = formData.target;
-      }
-
-      await storagePoolActions.create(payload);
-      this.showNotification(`Storage pool "${formData.name}" created successfully`, 'success');
-      this.showFormDrawer = false;
-    } catch (error: any) {
-      console.error('Failed to create pool:', error);
-      // Extract error message from API response
-      let errorMessage = 'Unknown error';
-      if (error.message) {
-        errorMessage = error.message;
-      } else if (error.details) {
-        errorMessage = error.details;
-      }
-      this.showNotification(`Failed to create storage pool: ${errorMessage}`, 'error');
-    } finally {
-      this.isCreating = false;
-    }
-  }
-
-  private async handleEditSave(event: CustomEvent) {
-    if (!this.editingPool) return;
-    
-    const { formData } = event.detail as { formData: StoragePoolFormData };
-    this.isUpdating = true;
-
-    try {
-      // Only autostart can be updated
-      await storagePoolActions.update(this.editingPool.name, {
-        autostart: formData.autostart,
-      });
-      
-      this.showNotification(`Storage pool "${this.editingPool.name}" updated successfully`, 'success');
-      this.showEditDrawer = false;
-      this.editingPool = null;
-    } catch (error: any) {
-      console.error('Failed to update pool:', error);
-      let errorMessage = 'Unknown error';
-      if (error.message) {
-        errorMessage = error.message;
-      }
-      this.showNotification(`Failed to update storage pool: ${errorMessage}`, 'error');
-    } finally {
-      this.isUpdating = false;
-    }
+    // Refresh the list
+    await this.loadData();
   }
 
   private showNotification(message: string, type: 'success' | 'error' | 'info' = 'info') {
@@ -559,6 +536,7 @@ export class VirtualizationStoragePools extends LitElement {
 
     return html`
       <div class="container">
+        <notification-container></notification-container>
 
         <tab-group
           .tabs=${this.tabs}
@@ -679,12 +657,12 @@ export class VirtualizationStoragePools extends LitElement {
             .hasVolumes=${this.hasVolumes}
             .volumeCount=${this.volumeCount}
             @confirm-delete=${this.handleDelete}
-            @cancel-delete=${() => { 
-              this.showDeleteModal = false; 
-              this.itemToDelete = null; 
-              this.hasVolumes = false;
-              this.volumeCount = 0;
-            }}
+            @cancel-delete=${() => {
+          this.showDeleteModal = false;
+          this.itemToDelete = null;
+          this.hasVolumes = false;
+          this.volumeCount = 0;
+        }}
           ></delete-modal>
         ` : ''}
 
@@ -693,7 +671,7 @@ export class VirtualizationStoragePools extends LitElement {
           .loading=${this.isCreating}
           .editMode=${false}
           .poolData=${null}
-          @save=${this.handleFormSave}
+          @success=${this.handleDrawerSuccess}
           @close=${() => { this.showFormDrawer = false; }}
         ></storage-pool-form-drawer>
 
@@ -702,7 +680,7 @@ export class VirtualizationStoragePools extends LitElement {
           .loading=${this.isUpdating}
           .editMode=${true}
           .poolData=${this.editingPool}
-          @save=${this.handleEditSave}
+          @success=${this.handleDrawerSuccess}
           @close=${() => { this.showEditDrawer = false; this.editingPool = null; }}
         ></storage-pool-form-drawer>
       </div>

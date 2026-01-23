@@ -336,9 +336,9 @@ export class VirtualizationBackupsView extends LitElement {
       await this.updateComplete;
       this.deleteTarget = null;
       this.loadBackups();
-    this.loadStoragePools();
+      this.loadStoragePools();
     } catch (err: any) {
-      this.setToast(err?.message || 'Failed to delete', 'error');
+      this.setToast((err?.message || 'Failed to delete') + (err?.details ? `: ${err.details}` : ''), 'error');
     } finally {
       this.deletingId = null;
     }
@@ -359,7 +359,7 @@ export class VirtualizationBackupsView extends LitElement {
 
       this.setToast('Download started', 'info');
     } catch (err: any) {
-      this.setToast(err?.message || 'Failed to start download', 'error');
+      this.setToast((err?.message || 'Failed to start download') + (err?.details ? `: ${err.details}` : ''), 'error');
     }
     // No need to set downloading state as it's a direct link
     this.downloadingId = null;
@@ -385,7 +385,7 @@ export class VirtualizationBackupsView extends LitElement {
       this.setToast('Restore started', 'success');
       this.showRestore = false;
     } catch (err: any) {
-      this.setToast(err?.message || 'Restore failed', 'error');
+      this.setToast((err?.message || 'Restore failed') + (err?.details ? `: ${err.details}` : ''), 'error');
     }
   }
 
@@ -405,9 +405,9 @@ export class VirtualizationBackupsView extends LitElement {
       this.setToast('Backup imported', 'success');
       this.showImportDrawer = false;
       this.loadBackups();
-    this.loadStoragePools();
+      this.loadStoragePools();
     } catch (err: any) {
-      this.setToast(err?.message || 'Import failed', 'error');
+      this.setToast((err?.message || 'Import failed') + (err?.details ? `: ${err.details}` : ''), 'error');
     }
   }
 
@@ -574,7 +574,7 @@ export class VirtualizationBackupsView extends LitElement {
             await virtualizationAPI.completeBackupUpload(this.uploadId!);
             backupActions.resetUploadState();
             await this.loadBackups();
-    this.loadStoragePools();
+            this.loadStoragePools();
             this.setToast('Backup uploaded successfully', 'success');
             this.closeUploadDrawer();
           } catch (error) {
@@ -584,7 +584,7 @@ export class VirtualizationBackupsView extends LitElement {
               isUploading: false,
               uploadProgress: 0,
               uploadId: null,
-              error: error instanceof Error ? error.message : 'Unknown error',
+              error: (error instanceof Error ? error.message : 'Unknown error') + ((error as any).details ? `: ${(error as any).details}` : ''),
             });
           }
         },
@@ -596,7 +596,7 @@ export class VirtualizationBackupsView extends LitElement {
     } catch (error) {
       console.error('Failed to initiate backup upload:', error);
       this.setToast(
-        `Failed to initiate upload: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to initiate upload: ${(error instanceof Error ? error.message : 'Unknown error') + ((error as any).details ? `: ${(error as any).details}` : '')}`,
         'error'
       );
     }
@@ -651,7 +651,7 @@ export class VirtualizationBackupsView extends LitElement {
       this.showCreateDrawer = false;
       this.loadBackups();
     } catch (err: any) {
-      this.setToast(err?.message || 'Create failed', 'error');
+      this.setToast((err?.message || 'Create failed') + (err?.details ? `: ${err.details}` : ''), 'error');
     }
   }
 
@@ -726,16 +726,20 @@ export class VirtualizationBackupsView extends LitElement {
 
         <div class="controls">
           <div class="filters">
-            <select .value=${this.status} @change=${(e: Event) => { this.status = (e.target as HTMLSelectElement).value; this.loadBackups();
-    this.loadStoragePools(); }}>
+            <select .value=${this.status} @change=${(e: Event) => {
+        this.status = (e.target as HTMLSelectElement).value; this.loadBackups();
+        this.loadStoragePools();
+      }}>
               <option value="all">All status</option>
               <option value="pending">Pending</option>
               <option value="running">Running</option>
               <option value="completed">Completed</option>
               <option value="failed">Failed</option>
             </select>
-            <select .value=${this.type} @change=${(e: Event) => { this.type = (e.target as HTMLSelectElement).value as BackupType | 'all'; this.loadBackups();
-    this.loadStoragePools(); }}>
+            <select .value=${this.type} @change=${(e: Event) => {
+        this.type = (e.target as HTMLSelectElement).value as BackupType | 'all'; this.loadBackups();
+        this.loadStoragePools();
+      }}>
               <option value="all">All types</option>
               <option value="full">Full</option>
               <option value="incremental">Incremental</option>
@@ -745,8 +749,10 @@ export class VirtualizationBackupsView extends LitElement {
           <search-input
             .placeholder=${'Search VM name/UUID'}
             .value=${this.search}
-            @search-change=${(e: CustomEvent) => { this.search = e.detail.value; this.loadBackups();
-    this.loadStoragePools(); }}
+            @search-change=${(e: CustomEvent) => {
+        this.search = e.detail.value; this.loadBackups();
+        this.loadStoragePools();
+      }}
           ></search-input>
         </div>
 
@@ -857,10 +863,10 @@ export class VirtualizationBackupsView extends LitElement {
           <div class="field">
             <label>Type</label>
             <select .value=${this.createForm.backup_type} @change=${(e: Event) => {
-              this.createForm.backup_type = (e.target as HTMLSelectElement).value as BackupType;
-              this.createForm.parent_backup_id = ''; // Reset parent when type changes
-              this.requestUpdate();
-            }}>
+        this.createForm.backup_type = (e.target as HTMLSelectElement).value as BackupType;
+        this.createForm.parent_backup_id = ''; // Reset parent when type changes
+        this.requestUpdate();
+      }}>
               <option value="full">Full</option>
               <option value="incremental">Incremental</option>
               <option value="differential">Differential</option>
@@ -881,8 +887,8 @@ export class VirtualizationBackupsView extends LitElement {
               >
                 <option value="">Auto-select latest backup</option>
                 ${this.backups
-                  .filter(b => b.status === 'completed' && b.vm_id === this.createForm.vm_id)
-                  .map(b => html`<option value=${b.backup_id}>${b.type} - ${this.formatDate(b.started_at || b.created_at)} ${b.backup_id?.substring(0, 8)}...</option>`)}
+          .filter(b => b.status === 'completed' && b.vm_id === this.createForm.vm_id)
+          .map(b => html`<option value=${b.backup_id}>${b.type} - ${this.formatDate(b.started_at || b.created_at)} ${b.backup_id?.substring(0, 8)}...</option>`)}
               </select>
               <div class="form-hint" style="margin-top: 4px; font-size: 12px; color: var(--vscode-descriptionForeground);">Leave empty to use the most recent backup.</div>
             </div>
@@ -892,8 +898,8 @@ export class VirtualizationBackupsView extends LitElement {
             <select .value=${this.createForm.storage_pool || ''} @change=${(e: Event) => (this.createForm.storage_pool = (e.target as HTMLSelectElement).value)}>
               <option value="">Use default location</option>
               ${(this.storagePools || [])
-                .filter(p => p.path)
-                .map(p => html`<option value=${p.name}>${p.name} (${this.formatSize(p.available)} free)</option>`)}
+        .filter(p => p.path)
+        .map(p => html`<option value=${p.name}>${p.name} (${this.formatSize(p.available)} free)</option>`)}
             </select>
           </div>
           <div class="field">

@@ -1779,25 +1779,36 @@ export class NetworkTab extends I18nLitElement {
       name: this.bridgeFormData.name,
       interfaces: this.bridgeFormData.interfaces.split(',').map(item => item.trim()).filter(Boolean)
     };
-    let response;
-    if (this.isEditingBridge) {
-      response = await networkActions.updateBridge(this.editingBridgeName!, { interfaces: request.interfaces });
-    } else {
-      response = await networkActions.createBridge(request);
-    }
+    try {
+      let response;
+      if (this.isEditingBridge) {
+        response = await networkActions.updateBridge(this.editingBridgeName!, { interfaces: request.interfaces });
+      } else {
+        response = await networkActions.createBridge(request);
+      }
 
-    // Handle warnings
-    if (response?.warning) {
-      this.showOperationWarning('warning', response.warning);
-    }
-    if (response?.persistence_warning) {
-      this.showOperationWarning('persistence', response.persistence_warning);
-    }
-    if (response?.failed && response.failed.length > 0) {
-      this.showOperationWarning('partial-success',
-        response.warning || 'Some interfaces failed to add',
-        response.failed,
-        response.successfully_added);
+      // Handle warnings
+      if (response?.warning) {
+        this.showOperationWarning('warning', response.warning);
+      }
+      if (response?.persistence_warning) {
+        this.showOperationWarning('persistence', response.persistence_warning);
+      }
+      if (response?.failed && response.failed.length > 0) {
+        this.showOperationWarning('partial-success',
+          response.warning || 'Some interfaces failed to add',
+          response.failed,
+          response.successfully_added);
+      }
+    } catch (error: any) {
+      console.error('Error creating/updating bridge:', error);
+      let errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (error.details) {
+        errorMessage = `${errorMessage}: ${error.details}`;
+      } else if (error.error?.details) {
+        errorMessage = `${error.error.message || errorMessage}: ${error.error.details}`;
+      }
+      this.showOperationWarning('warning', `Failed to save bridge: ${errorMessage}`);
     }
     this.closeBridgeDrawer();
   }
@@ -1812,25 +1823,36 @@ export class NetworkTab extends I18nLitElement {
       mode: this.bondFormData.mode,
       interfaces: this.bondFormData.interfaces.split(',').map(item => item.trim()).filter(Boolean)
     };
-    let response;
-    if (this.isEditingBond) {
-      response = await networkActions.updateBond(this.editingBondName!, { mode: request.mode, interfaces: request.interfaces });
-    } else {
-      response = await networkActions.createBond(request);
-    }
+    try {
+      let response;
+      if (this.isEditingBond) {
+        response = await networkActions.updateBond(this.editingBondName!, { mode: request.mode, interfaces: request.interfaces });
+      } else {
+        response = await networkActions.createBond(request);
+      }
 
-    // Handle warnings
-    if (response?.warning) {
-      this.showOperationWarning('warning', response.warning);
-    }
-    if (response?.persistence_warning) {
-      this.showOperationWarning('persistence', response.persistence_warning);
-    }
-    if (response?.failed && response.failed.length > 0) {
-      this.showOperationWarning('partial-success',
-        response.warning || 'Some interfaces failed to add',
-        response.failed,
-        response.successfully_added);
+      // Handle warnings
+      if (response?.warning) {
+        this.showOperationWarning('warning', response.warning);
+      }
+      if (response?.persistence_warning) {
+        this.showOperationWarning('persistence', response.persistence_warning);
+      }
+      if (response?.failed && response.failed.length > 0) {
+        this.showOperationWarning('partial-success',
+          response.warning || 'Some interfaces failed to add',
+          response.failed,
+          response.successfully_added);
+      }
+    } catch (error: any) {
+      console.error('Error creating/updating bond:', error);
+      let errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (error.details) {
+        errorMessage = `${errorMessage}: ${error.details}`;
+      } else if (error.error?.details) {
+        errorMessage = `${error.error.message || errorMessage}: ${error.error.details}`;
+      }
+      this.showOperationWarning('warning', `Failed to save bond: ${errorMessage}`);
     }
     this.closeBondDrawer();
   }
@@ -1845,25 +1867,36 @@ export class NetworkTab extends I18nLitElement {
       vlan_id: this.vlanFormData.vlanId,
       name: this.vlanFormData.name || `${this.vlanFormData.interface}.${this.vlanFormData.vlanId}`
     };
-    let response;
-    if (this.isEditingVlan) {
-      response = await networkActions.updateVlan(this.editingVlanName!, { vlan_id: request.vlan_id });
-    } else {
-      response = await networkActions.createVlan(request);
-    }
+    try {
+      let response;
+      if (this.isEditingVlan) {
+        response = await networkActions.updateVlan(this.editingVlanName!, { vlan_id: request.vlan_id });
+      } else {
+        response = await networkActions.createVlan(request);
+      }
 
-    // Handle warnings
-    if (response?.warning) {
-      this.showOperationWarning('warning', response.warning);
-    }
-    if (response?.persistence_warning) {
-      this.showOperationWarning('persistence', response.persistence_warning);
-    }
-    if (response?.failed && response.failed.length > 0) {
-      this.showOperationWarning('partial-success',
-        response.warning || 'Some operations failed',
-        response.failed,
-        response.successfully_added);
+      // Handle warnings
+      if (response?.warning) {
+        this.showOperationWarning('warning', response.warning);
+      }
+      if (response?.persistence_warning) {
+        this.showOperationWarning('persistence', response.persistence_warning);
+      }
+      if (response?.failed && response.failed.length > 0) {
+        this.showOperationWarning('partial-success',
+          response.warning || 'Some operations failed',
+          response.failed,
+          response.successfully_added);
+      }
+    } catch (error: any) {
+      console.error('Error creating/updating vlan:', error);
+      let errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (error.details) {
+        errorMessage = `${errorMessage}: ${error.details}`;
+      } else if (error.error?.details) {
+        errorMessage = `${error.error.message || errorMessage}: ${error.error.details}`;
+      }
+      this.showOperationWarning('warning', `Failed to save VLAN: ${errorMessage}`);
     }
     this.closeVLANDrawer();
   }

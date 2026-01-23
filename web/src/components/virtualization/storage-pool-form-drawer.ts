@@ -1,6 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { StoragePool, StoragePoolType } from '../../types/virtualization';
+import { virtualizationAPI } from '../../services/virtualization-api';
 
 export interface StoragePoolFormData {
   name: string;
@@ -379,7 +380,15 @@ export class StoragePoolFormDrawer extends LitElement {
     this.requestUpdate();
   }
 
-  private handleSubmit(e: Event) {
+  private showNotification(message: string, type: 'success' | 'error' | 'info' = 'info', duration?: number) {
+    this.dispatchEvent(new CustomEvent('show-notification', {
+      detail: { message, type, duration },
+      bubbles: true,
+      composed: true,
+    }));
+  }
+
+  private async handleSubmit(e: Event) {
     e.preventDefault();
     if (this.loading || !this.validateForm()) {
       return;
@@ -395,11 +404,57 @@ export class StoragePoolFormDrawer extends LitElement {
       autostart: this.formData.autostart,
     };
 
-    this.dispatchEvent(new CustomEvent('save', {
-      detail: { formData: sanitizedFormData },
-      bubbles: true,
-      composed: true,
-    }));
+    this.loading = true;
+
+    try {
+      if (this.editMode && this.poolData && this.poolData.name) {
+        await virtualizationAPI.updateStoragePool(this.poolData.name, {
+          autostart: sanitizedFormData.autostart,
+        });
+        this.showNotification(`Storage pool "${this.poolData.name}" updated successfully`, 'success');
+      } else {
+        // Create pool payload
+        const payload: any = {
+          name: sanitizedFormData.name,
+          type: sanitizedFormData.type,
+          autostart: sanitizedFormData.autostart,
+        };
+
+        if (sanitizedFormData.type === 'dir' && sanitizedFormData.path) {
+          payload.path = sanitizedFormData.path;
+        } else if (sanitizedFormData.type === 'netfs') {
+          payload.source = sanitizedFormData.source;
+          payload.target = sanitizedFormData.target;
+        }
+
+        await virtualizationAPI.createStoragePool(payload);
+        this.showNotification(`Storage pool "${sanitizedFormData.name}" created successfully`, 'success');
+      }
+
+      this.dispatchEvent(new CustomEvent('success', {
+        bubbles: true,
+        composed: true,
+      }));
+      this.handleClose();
+    } catch (error: any) {
+      console.error('Failed to save storage pool:', error);
+      let errorMessage = 'Unknown error';
+
+      // Check for details in the error object (common in VirtualizationAPIError)
+      if (error.details) {
+        errorMessage = `${error.message || 'Error'}: ${error.details}`;
+      } else if (error.error?.details) {
+        errorMessage = `${error.error.message || errorMessage}: ${error.error.details}`;
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      this.showNotification(`Failed to ${this.editMode ? 'update' : 'create'} storage pool: ${errorMessage}`, 'error');
+    } finally {
+      this.loading = false;
+    }
   }
 
   override render() {

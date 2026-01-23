@@ -1814,6 +1814,11 @@ export class ContainersTab extends LitElement {
       this.fetchContainers();
     } catch (error) {
       this.createError = error instanceof ApiError ? error.message : 'Failed to create container';
+      if ((error as any).details) {
+        this.createError = `${this.createError}: ${(error as any).details}`;
+      } else if ((error as any).error?.details) {
+        this.createError = `${(error as any).error?.message || this.createError}: ${(error as any).error.details}`;
+      }
     } finally {
       this.isCreating = false;
     }
