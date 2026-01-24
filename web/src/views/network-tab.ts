@@ -708,7 +708,6 @@ export class NetworkTab extends I18nLitElement {
     }
 
     .type-filter-select {
-      padding: 0.5rem 2.5rem 0.5rem 0.75rem;
       background-color: var(--surface-0);
       border: 1px solid var(--border-color);
       border-radius: 4px;
@@ -720,6 +719,7 @@ export class NetworkTab extends I18nLitElement {
       background-repeat: no-repeat;
       background-position: right 0.75rem center;
       min-width: 150px;
+      width: auto;
     }
 
     .type-filter-select:hover {
