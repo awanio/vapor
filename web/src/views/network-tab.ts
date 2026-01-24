@@ -190,33 +190,117 @@ export class NetworkTab extends I18nLitElement {
       margin-bottom: 1rem;
     }
 
-    .form-group {
-      margin-bottom: 1rem;
+    /* Form Styles matching NetworkFormDrawer */
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
     }
 
-    .form-label {
-      display: block;
-      margin-bottom: 0.5rem;
-      font-size: 0.875rem;
-      color: var(--text-primary);
+    .section {
+      border-radius: 4px;
+      border: 1px solid var(--vscode-border);
+      padding: 12px 12px 8px;
+      background: var(--vscode-editorWidget-background, rgba(0, 0, 0, 0.03));
+    }
+
+    .section + .section {
+      margin-top: 4px;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      margin: 0 0 8px 0;
+      color: var(--vscode-foreground);
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .form-label, 
+    label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--vscode-descriptionForeground);
+      margin-bottom: 0; /* Reset margin as .field handles gap */
+    }
+
+    .required::after {
+      content: ' *';
+      color: var(--vscode-inputValidation-errorForeground);
     }
 
     .form-input,
-    .form-select {
+    .form-select,
+    input,
+    select {
       width: 100%;
-      padding: 0.5rem;
-      background-color: var(--surface-0);
-      border: 1px solid var(--vscode-border);
-      border-radius: 4px;
-      color: var(--text-primary);
-      font-size: 0.875rem;
+      padding: 6px 8px;
+      border-radius: 3px;
+      border: 1px solid var(--vscode-input-border);
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
       box-sizing: border-box;
     }
 
     .form-input:focus,
-    .form-select:focus {
-      outline: none;
-      border-color: var(--primary);
+    .form-select:focus,
+    input:focus,
+    select:focus {
+      border-color: var(--vscode-focusBorder);
+    }
+
+    input:disabled,
+    select:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    input.error,
+    select.error {
+      border-color: var(--vscode-inputValidation-errorBorder);
+    }
+
+    .error-text {
+      color: var(--vscode-inputValidation-errorForeground);
+      font-size: 11px;
+    }
+
+    .hint {
+      font-size: 11px;
+      color: var(--vscode-descriptionForeground);
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .checkbox-row input {
+      width: auto;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+      margin-top: 1.5rem;
     }
 
     .form-actions {
@@ -539,10 +623,6 @@ export class NetworkTab extends I18nLitElement {
     .drawer button.close-btn:hover {
       background: var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.2));
       border-color: var(--vscode-widget-border, rgba(0, 0, 0, 0.2));
-    }
-
-    .drawer-content {
-      margin-top: 40px;
     }
 
     .search-container {
@@ -2339,53 +2419,52 @@ ${this.interfaces.length > 0 ? html`
           <div class="drawer-content">
             ${this.configureNetworkInterface ? html`
               <form id="configure-form" @submit=${(e: Event) => { e.preventDefault(); this.submitConfigureAddress(); }}>
-                <div class="detail-item" style="margin-bottom: 16px;">
-                  <span class="detail-label">${t('network.interfaceName')}</span>
-                  <span class="detail-value">${this.configureNetworkInterface.name}</span>
-                </div>
-                <div class="detail-item" style="margin-bottom: 16px;">
-                  <span class="detail-label">${t('network.currentState')}</span>
-                  <span class="detail-value">${this.configureNetworkInterface.state}</span>
-                </div>
-                
-                <div class="form-group">
-                  <label class="form-label" for="address">${t('network.ipAddressRequired')}</label>
-                  <input 
-                    id="address"
-                    class="form-input" 
-                    type="text" 
-                    placeholder="192.168.1.100"
-                    .value=${this.configureFormData.address}
-                    @input=${(e: Event) => this.configureFormData.address = (e.target as HTMLInputElement).value}
-                    required
-                  />
-                </div>
-                
-                <div class="form-group">
-                  <label class="form-label" for="netmask">${t('network.netmaskCidrRequired')}</label>
-                  <input 
-                    id="netmask"
-                    class="form-input" 
-                    type="number" 
-                    min="0" 
-                    max="32" 
-                    placeholder="24"
-                    .value=${this.configureFormData.netmask}
-                    @input=${(e: Event) => this.configureFormData.netmask = parseInt((e.target as HTMLInputElement).value) || 24}
-                    required
-                  />
-                </div>
-                
-                <div class="form-group">
-                  <label class="form-label" for="gateway">${t('network.gatewayOptional')}</label>
-                  <input 
-                    id="gateway"
-                    class="form-input" 
-                    type="text" 
-                    placeholder="192.168.1.1"
-                    .value=${this.configureFormData.gateway}
-                    @input=${(e: Event) => this.configureFormData.gateway = (e.target as HTMLInputElement).value}
-                  />
+                <div class="section">
+                  <div class="field" style="margin-bottom: 16px;">
+                    <label>Interface Name</label>
+                    <div style="font-size: 13px;">${this.configureNetworkInterface.name}</div>
+                  </div>
+                  <div class="field" style="margin-bottom: 16px;">
+                    <label>Current State</label>
+                    <div style="font-size: 13px;">${this.configureNetworkInterface.state}</div>
+                  </div>
+                  
+                  <div class="field">
+                    <label class="required" for="address">${t('network.ipAddress')}</label>
+                    <input 
+                      id="address"
+                      type="text" 
+                      placeholder="192.168.1.100"
+                      .value=${this.configureFormData.address}
+                      @input=${(e: Event) => this.configureFormData.address = (e.target as HTMLInputElement).value}
+                      required
+                    />
+                  </div>
+                  
+                  <div class="field">
+                    <label class="required" for="netmask">${t('network.netmaskCidr')}</label>
+                    <input 
+                      id="netmask"
+                      type="number" 
+                      min="0" 
+                      max="32" 
+                      placeholder="24"
+                      .value=${this.configureFormData.netmask}
+                      @input=${(e: Event) => this.configureFormData.netmask = parseInt((e.target as HTMLInputElement).value) || 24}
+                      required
+                    />
+                  </div>
+                  
+                  <div class="field">
+                    <label for="gateway">${t('network.gatewayOptional')}</label>
+                    <input 
+                      id="gateway"
+                      type="text" 
+                      placeholder="192.168.1.1"
+                      .value=${this.configureFormData.gateway}
+                      @input=${(e: Event) => this.configureFormData.gateway = (e.target as HTMLInputElement).value}
+                    />
+                  </div>
                 </div>
               </form>
             ` : null}
@@ -2409,57 +2488,57 @@ ${this.interfaces.length > 0 ? html`
           </div>
           <div class="drawer-content">
             <form id="bridge-form" @submit=${(e: Event) => { e.preventDefault(); this.handleCreateBridge(); }}>
-              <div class="form-group">
-                <label class="form-label" for="bridge-name">${t('network.bridgeNameRequired')}</label>
-                <input 
-                  id="bridge-name"
-                  class="form-input" 
-                  type="text" 
-                  placeholder="br0"
-                  .value=${this.bridgeFormData.name}
-                  @input=${(e: Event) => this.bridgeFormData.name = (e.target as HTMLInputElement).value}
-                  required
-                  ?disabled=${this.isEditingBridge}
-                />
-              </div>
-              
-              <div class="form-group">
-                <label class="form-label" for="bridge-interfaces">${t('network.interfacesRequired')}</label>
-                <div class="autocomplete-container">
+              <div class="section">
+                <div class="field">
+                  <label class="required" for="bridge-name">${t('network.bridgeName')}</label>
                   <input 
-                    id="bridge-interfaces"
-                    class="form-input" 
+                    id="bridge-name"
                     type="text" 
-                    placeholder="eth0, eth1"
-                    .value=${this.bridgeInterfaceInputValue}
-                    @input=${(e: Event) => {
+                    placeholder="br0"
+                    .value=${this.bridgeFormData.name}
+                    @input=${(e: Event) => this.bridgeFormData.name = (e.target as HTMLInputElement).value}
+                    required
+                    ?disabled=${this.isEditingBridge}
+                  />
+                </div>
+                
+                <div class="field">
+                  <label class="required" for="bridge-interfaces">${t('network.interfaces')}</label>
+                  <div class="autocomplete-container">
+                    <input 
+                      id="bridge-interfaces"
+                      type="text" 
+                      placeholder="eth0, eth1"
+                      .value=${this.bridgeInterfaceInputValue}
+                      @input=${(e: Event) => {
           this.bridgeFormData.interfaces = (e.target as HTMLInputElement).value;
           this.handleBridgeInterfaceInput(e);
         }}
-                    @keydown=${(e: KeyboardEvent) => this.handleBridgeInterfaceKeyDown(e)}
-                    @blur=${() => this.closeBridgeInterfacesSuggestions()}
-                    autocomplete="off"
-                    required
-                  />
-                  ${this.showBridgeInterfacesSuggestions && this.getFilteredSuggestions().length > 0 ? html`
-                    <div class="autocomplete-suggestions">
-                      ${this.getFilteredSuggestions().map((name, index) => html`
-                        <div 
-                          class="autocomplete-suggestion ${index === this.selectedSuggestionIndex ? 'selected' : ''}"
-                          @mousedown=${(e: Event) => {
+                      @keydown=${(e: KeyboardEvent) => this.handleBridgeInterfaceKeyDown(e)}
+                      @blur=${() => this.closeBridgeInterfacesSuggestions()}
+                      autocomplete="off"
+                      required
+                    />
+                    ${this.showBridgeInterfacesSuggestions && this.getFilteredSuggestions().length > 0 ? html`
+                      <div class="autocomplete-suggestions">
+                        ${this.getFilteredSuggestions().map((name, index) => html`
+                          <div 
+                            class="autocomplete-suggestion ${index === this.selectedSuggestionIndex ? 'selected' : ''}"
+                            @mousedown=${(e: Event) => {
             e.preventDefault();
             this.selectSuggestion(name);
           }}
-                        >
-                          ${name}
-                        </div>
-                      `)}
-                    </div>
-                  ` : ''}
+                          >
+                            ${name}
+                          </div>
+                        `)}
+                      </div>
+                    ` : ''}
+                  </div>
+                  <div class="hint">
+                    ${t('network.commaSeparatedInterfaces')}
+                  </div>
                 </div>
-                <small style="display: block; margin-top: 0.25rem; color: var(--text-secondary); font-size: 0.75rem;">
-                  ${t('network.commaSeparatedInterfaces')}
-                </small>
               </div>
             </form>
           </div>
@@ -2482,76 +2561,75 @@ ${this.interfaces.length > 0 ? html`
           </div>
           <div class="drawer-content">
             <form id="bond-form" @submit=${(e: Event) => { e.preventDefault(); this.handleCreateBond(); }}>
-              <div class="form-group">
-                <label class="form-label" for="bond-name">${t('network.bondNameRequired')}</label>
-                <input 
-                  id="bond-name"
-                  class="form-input" 
-                  type="text" 
-                  placeholder="bond0"
-                  .value=${this.bondFormData.name}
-                  @input=${(e: Event) => this.bondFormData.name = (e.target as HTMLInputElement).value}
-                  required
-                  ?disabled=${this.isEditingBond}
-                />
-              </div>
-              
-              <div class="form-group">
-                <label class="form-label" for="bond-mode">${t('network.modeRequired')}</label>
-                <select 
-                  id="bond-mode"
-                  class="form-select" 
-                  .value=${this.bondFormData.mode}
-                  @input=${(e: Event) => this.bondFormData.mode = (e.target as HTMLSelectElement).value as BondMode}
-                  required
-                >
-                  <option value="balance-rr">balance-rr (Round-robin)</option>
-                  <option value="active-backup">active-backup</option>
-                  <option value="balance-xor">balance-xor</option>
-                  <option value="broadcast">broadcast</option>
-                  <option value="802.3ad">802.3ad (LACP)</option>
-                  <option value="balance-tlb">balance-tlb</option>
-                  <option value="balance-alb">balance-alb</option>
-                </select>
-              </div>
-              
-              <div class="form-group">
-                <label class="form-label" for="bond-interfaces">${t('network.interfacesRequired')}</label>
-                <div class="autocomplete-container">
+              <div class="section">
+                <div class="field">
+                  <label class="required" for="bond-name">${t('network.bondName')}</label>
                   <input 
-                    id="bond-interfaces"
-                    class="form-input" 
+                    id="bond-name"
                     type="text" 
-                    placeholder="eth2, eth3"
-                    .value=${this.bondInterfaceInputValue}
-                    @input=${(e: Event) => {
+                    placeholder="bond0"
+                    .value=${this.bondFormData.name}
+                    @input=${(e: Event) => this.bondFormData.name = (e.target as HTMLInputElement).value}
+                    required
+                    ?disabled=${this.isEditingBond}
+                  />
+                </div>
+                
+                <div class="field">
+                  <label class="required" for="bond-mode">${t('network.mode')}</label>
+                  <select 
+                    id="bond-mode"
+                    .value=${this.bondFormData.mode}
+                    @input=${(e: Event) => this.bondFormData.mode = (e.target as HTMLSelectElement).value as BondMode}
+                    required
+                  >
+                    <option value="balance-rr">balance-rr (Round-robin)</option>
+                    <option value="active-backup">active-backup</option>
+                    <option value="balance-xor">balance-xor</option>
+                    <option value="broadcast">broadcast</option>
+                    <option value="802.3ad">802.3ad (LACP)</option>
+                    <option value="balance-tlb">balance-tlb</option>
+                    <option value="balance-alb">balance-alb</option>
+                  </select>
+                </div>
+                
+                <div class="field">
+                  <label class="required" for="bond-interfaces">${t('network.interfaces')}</label>
+                  <div class="autocomplete-container">
+                    <input 
+                      id="bond-interfaces"
+                      type="text" 
+                      placeholder="eth2, eth3"
+                      .value=${this.bondInterfaceInputValue}
+                      @input=${(e: Event) => {
           this.bondFormData.interfaces = (e.target as HTMLInputElement).value;
           this.handleBondInterfaceInput(e);
         }}
-                    @keydown=${(e: KeyboardEvent) => this.handleBondInterfaceKeyDown(e)}
-                    @blur=${() => this.closeBondInterfacesSuggestions()}
-                    autocomplete="off"
-                    required
-                  />
-                  ${this.showBondInterfacesSuggestions && this.getFilteredBondSuggestions().length > 0 ? html`
-                    <div class="autocomplete-suggestions">
-                      ${this.getFilteredBondSuggestions().map((name, index) => html`
-                        <div 
-                          class="autocomplete-suggestion ${index === this.selectedBondSuggestionIndex ? 'selected' : ''}"
-                          @mousedown=${(e: Event) => {
+                      @keydown=${(e: KeyboardEvent) => this.handleBondInterfaceKeyDown(e)}
+                      @blur=${() => this.closeBondInterfacesSuggestions()}
+                      autocomplete="off"
+                      required
+                    />
+                    ${this.showBondInterfacesSuggestions && this.getFilteredBondSuggestions().length > 0 ? html`
+                      <div class="autocomplete-suggestions">
+                        ${this.getFilteredBondSuggestions().map((name, index) => html`
+                          <div 
+                            class="autocomplete-suggestion ${index === this.selectedBondSuggestionIndex ? 'selected' : ''}"
+                            @mousedown=${(e: Event) => {
             e.preventDefault();
             this.selectBondSuggestion(name);
           }}
-                        >
-                          ${name}
-                        </div>
-                      `)}
-                    </div>
-                  ` : ''}
+                          >
+                            ${name}
+                          </div>
+                        `)}
+                      </div>
+                    ` : ''}
+                  </div>
+                  <div class="hint">
+                    ${t('network.commaSeparatedInterfaces')}
+                  </div>
                 </div>
-                <small style="display: block; margin-top: 0.25rem; color: var(--text-secondary); font-size: 0.75rem;">
-                  ${t('network.commaSeparatedInterfaces')}
-                </small>
               </div>
             </form>
           </div>
@@ -2574,73 +2652,75 @@ ${this.interfaces.length > 0 ? html`
           </div>
           <div class="drawer-content">
             <form id="vlan-form" @submit=${(e: Event) => { e.preventDefault(); this.handleCreateVLANInterface(); }}>
-              <div class="form-group">
-                <label class="form-label" for="vlan-interface">${t('network.baseInterfaceRequired')}</label>
-                <div class="autocomplete-container">
-                  <input 
-                    id="vlan-interface"
-                    class="form-input" 
-                    type="text" 
-                    placeholder="eth0"
-                    .value=${this.vlanInterfaceInputValue}
-                    ?disabled=${this.isEditingVlan}
-                    @input=${(e: Event) => {
+              <div class="section">
+                <div class="field">
+                  <label class="required" for="vlan-interface">${t('network.baseInterface')}</label>
+                  <div class="autocomplete-container">
+                    <input 
+                      id="vlan-interface"
+                      type="text" 
+                      placeholder="eth0"
+                      .value=${this.vlanInterfaceInputValue}
+                      ?disabled=${this.isEditingVlan}
+                      @input=${(e: Event) => {
           this.vlanFormData.interface = (e.target as HTMLInputElement).value;
           this.handleVlanInterfaceInput(e);
         }}
-                    @keydown=${(e: KeyboardEvent) => this.handleVlanInterfaceKeyDown(e)}
-                    @blur=${() => this.closeVlanInterfacesSuggestions()}
-                    autocomplete="off"
-                    required
-                  />
-                  ${this.showVlanInterfacesSuggestions && this.getFilteredVlanSuggestions().length > 0 ? html`
-                    <div class="autocomplete-suggestions">
-                      ${this.getFilteredVlanSuggestions().map((name, index) => html`
-                        <div 
-                          class="autocomplete-suggestion ${index === this.selectedVlanSuggestionIndex ? 'selected' : ''}"
-                          @mousedown=${(e: Event) => {
+                      @keydown=${(e: KeyboardEvent) => this.handleVlanInterfaceKeyDown(e)}
+                      @blur=${() => this.closeVlanInterfacesSuggestions()}
+                      autocomplete="off"
+                      required
+                    />
+                    ${this.showVlanInterfacesSuggestions && this.getFilteredVlanSuggestions().length > 0 ? html`
+                      <div class="autocomplete-suggestions">
+                        ${this.getFilteredVlanSuggestions().map((name, index) => html`
+                          <div 
+                            class="autocomplete-suggestion ${index === this.selectedVlanSuggestionIndex ? 'selected' : ''}"
+                            @mousedown=${(e: Event) => {
             e.preventDefault();
             this.selectVlanSuggestion(name);
           }}
-                        >
-                          ${name}
-                        </div>
-                      `)}
-                    </div>
-                  ` : ''}
+                          >
+                            ${name}
+                          </div>
+                        `)}
+                      </div>
+                    ` : ''}
+                  </div>
                 </div>
-              </div>
-              
-              
-              <div class="form-group">
-                <label class="form-label" for="vlan-id">${t('network.vlanIdRequired')}</label>
-                <input 
-                  id="vlan-id"
-                  class="form-input" 
-                  type="number"
-                  min="1"
-                  max="4094"
-                  placeholder="100"
-                  .value=${this.vlanFormData.vlanId}
-                  @input=${(e: Event) => this.vlanFormData.vlanId = parseInt((e.target as HTMLInputElement).value) || 0}
-                  required
-                />
-              </div>
+                
+                
+                <div class="field">
+                  <label class="required" for="vlan-id">${t('network.vlanId')}</label>
+                  <input 
+                    id="vlan-id"
+                    type="number"
+                    min="1"
+                    max="4094"
+                    placeholder="100"
+                    .value=${this.vlanFormData.vlanId}
+                    @input=${(e: Event) => this.vlanFormData.vlanId = parseInt((e.target as HTMLInputElement).value) || 0}
+                    required
+                  />
+                </div>
 
-              <div class="form-group">
-                <label class="form-label" for="vlan-name">${t('network.vlanNameOptional')}</label>
-                <input 
-                  id="vlan-name"
-                  class="form-input" 
-                  type="text"
-                  placeholder="eth0.100"
-                  .value=${this.vlanFormData.name}
-                  @input=${(e: Event) => this.vlanFormData.name = (e.target as HTMLInputElement).value}
-                  ?disabled=${this.isEditingVlan}
-                />
-                <small style="display: block; margin-top: 0.25rem; color: var(--text-secondary); font-size: 0.75rem;">
-                  ${t('network.vlanNameDefault')}
-                </small>
+                <div class="field">
+                  <label for="vlan-name">${t('network.vlanNameOptional')}</label>
+                  <input 
+                    id="vlan-name"
+                    type="text"
+                    placeholder="eth0.100"
+                    .value=${this.vlanFormData.name}
+                    @input=${(e: Event) => this.vlanFormData.name = (e.target as HTMLInputElement).value}
+                    ?disabled=${this.isEditingVlan}
+                  />
+                  <div class="hint">
+                    ${t('network.vlanNameDefault', {
+            interface: this.vlanFormData.interface || '<interface>',
+            vlan_id: this.vlanFormData.vlanId || '<vlan_id>'
+          })}
+                  </div>
+                </div>
               </div>
             </form>
           </div>
@@ -2796,45 +2876,44 @@ ${this.interfaces.length > 0 ? html`
         @modal-close=${() => this.closeAddIpModal()}
       >
         <form @submit=${(e: Event) => { e.preventDefault(); this.addNewIpAddress(); }}>
-          <div class="form-group">
-            <label class="form-label" for="modal-ip-address">IP Address *</label>
-            <input 
-              id="modal-ip-address"
-              class="form-input" 
-              type="text" 
-              placeholder="192.168.1.100"
-              .value=${this.newIpAddress}
-              @input=${(e: Event) => this.newIpAddress = (e.target as HTMLInputElement).value}
-              required
-              autofocus
-            />
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label" for="modal-netmask">Netmask (CIDR) *</label>
-            <input 
-              id="modal-netmask"
-              class="form-input" 
-              type="number" 
-              min="0" 
-              max="32" 
-              placeholder="24"
-              .value=${this.newIpNetmask}
-              @input=${(e: Event) => this.newIpNetmask = parseInt((e.target as HTMLInputElement).value) || 24}
-              required
-            />
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label" for="modal-gateway">Gateway (Optional)</label>
-            <input 
-              id="modal-gateway"
-              class="form-input" 
-              type="text" 
-              placeholder="192.168.1.1"
-              .value=${this.newIpGateway}
-              @input=${(e: Event) => this.newIpGateway = (e.target as HTMLInputElement).value}
-            />
+          <div class="section">
+            <div class="field">
+              <label class="required" for="modal-ip-address">IP Address</label>
+              <input 
+                id="modal-ip-address"
+                type="text" 
+                placeholder="192.168.1.100"
+                .value=${this.newIpAddress}
+                @input=${(e: Event) => this.newIpAddress = (e.target as HTMLInputElement).value}
+                required
+                autofocus
+              />
+            </div>
+            
+            <div class="field">
+              <label class="required" for="modal-netmask">Netmask (CIDR)</label>
+              <input 
+                id="modal-netmask"
+                type="number" 
+                min="0" 
+                max="32" 
+                placeholder="24"
+                .value=${this.newIpNetmask}
+                @input=${(e: Event) => this.newIpNetmask = parseInt((e.target as HTMLInputElement).value) || 24}
+                required
+              />
+            </div>
+            
+            <div class="field">
+              <label for="modal-gateway">Gateway (Optional)</label>
+              <input 
+                id="modal-gateway"
+                type="text" 
+                placeholder="192.168.1.1"
+                .value=${this.newIpGateway}
+                @input=${(e: Event) => this.newIpGateway = (e.target as HTMLInputElement).value}
+              />
+            </div>
           </div>
           
           <div slot="footer" style="display: flex; gap: 8px; justify-content: flex-end;">
@@ -2857,48 +2936,47 @@ ${this.interfaces.length > 0 ? html`
         @modal-close=${() => this.closeEditIpModal()}
       >
         <form @submit=${(e: Event) => { e.preventDefault(); this.saveEditedIp(); }}>
-          <div class="form-group">
-            <label class="form-label" for="edit-ip-address">IP Address *</label>
-            <input 
-              id="edit-ip-address"
-              class="form-input" 
-              type="text" 
-              placeholder="192.168.1.100"
-              .value=${this.editIpAddress}
-              @input=${(e: Event) => this.editIpAddress = (e.target as HTMLInputElement).value}
-              required
-              autofocus
-            />
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label" for="edit-netmask">Netmask (CIDR) *</label>
-            <input 
-              id="edit-netmask"
-              class="form-input" 
-              type="number" 
-              min="0" 
-              max="32" 
-              placeholder="24"
-              .value=${this.editIpNetmask}
-              @input=${(e: Event) => this.editIpNetmask = parseInt((e.target as HTMLInputElement).value) || 24}
-              required
-            />
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label" for="edit-gateway">Gateway (Optional)</label>
-            <input 
-              id="edit-gateway"
-              class="form-input" 
-              type="text" 
-              placeholder="192.168.1.1"
-              .value=${this.editIpGateway}
-              @input=${(e: Event) => this.editIpGateway = (e.target as HTMLInputElement).value}
-            />
+          <div class="section">
+            <div class="field">
+              <label class="required" for="edit-ip-address">IP Address</label>
+              <input 
+                id="edit-ip-address"
+                type="text" 
+                placeholder="192.168.1.100"
+                .value=${this.editIpAddress}
+                @input=${(e: Event) => this.editIpAddress = (e.target as HTMLInputElement).value}
+                required
+                autofocus
+              />
+            </div>
+            
+            <div class="field">
+              <label class="required" for="edit-netmask">Netmask (CIDR)</label>
+              <input 
+                id="edit-netmask"
+                type="number" 
+                min="0" 
+                max="32" 
+                placeholder="24"
+                .value=${this.editIpNetmask}
+                @input=${(e: Event) => this.editIpNetmask = parseInt((e.target as HTMLInputElement).value) || 24}
+                required
+              />
+            </div>
+            
+            <div class="field">
+              <label for="edit-gateway">Gateway (Optional)</label>
+              <input 
+                id="edit-gateway"
+                type="text" 
+                placeholder="192.168.1.1"
+                .value=${this.editIpGateway}
+                @input=${(e: Event) => this.editIpGateway = (e.target as HTMLInputElement).value}
+              />
+            </div>
           </div>
 
-          <div class="form-group" style="background-color: var(--surface-0); padding: 0.75rem; border-radius: 4px; border: 1px solid var(--border-color);">
+          <div class="field" style="background-color: var(--surface-0); padding: 0.75rem; border-radius: 4px; border: 1px solid var(--border-color);">
             <div class="info-label" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Original IP Address</div>
             <div class="info-value" style="font-size: 0.9rem; color: var(--text-primary);">${this.originalIpAddress}</div>
           </div>

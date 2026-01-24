@@ -67,7 +67,7 @@ export class KubernetesNodes extends LitElement {
 
     /* Raw Data Section */
     .raw-data {
-      background: var(--vscode-editor-background, #1e1e1e);
+      background: var(--vscode-textCodeBlock-background, rgba(175, 175, 175, 0.12));
       border: 1px solid var(--vscode-border);
       border-radius: 4px;
       padding: 1rem;

@@ -852,53 +852,63 @@ export class ContainersTab extends LitElement {
       padding-bottom: 80px;
     }
 
-    .form-section {
-      margin-bottom: 24px;
-    }
-
-    .form-section h3 {
-      font-size: 1rem;
-      font-weight: 600;
-      margin-bottom: 12px;
-      color: var(--text-primary);
-      border-bottom: 1px solid var(--vscode-border);
-      padding-bottom: 8px;
-    }
-
-    .form-field {
-      margin-bottom: 12px;
-    }
-
-    .form-label {
-      display: block;
-      font-size: 0.8125rem;
-      color: var(--text-secondary);
-      margin-bottom: 4px;
-      font-weight: 500;
-    }
-
-    .form-input,
-    .form-select,
-    .form-textarea {
-      width: 100%;
-      padding: 8px 10px;
-      border: 1px solid var(--vscode-widget-border, var(--vscode-input-border, var(--vscode-panel-border, #454545)));
+    .section {
       border-radius: 4px;
-      background-color: var(--vscode-input-background);
+      border: 1px solid var(--vscode-border);
+      padding: 12px 12px 8px;
+      background: var(--vscode-editorWidget-background, rgba(0, 0, 0, 0.03));
+      margin-bottom: 16px;
+    }
+
+    .section h3 {
+      margin-top: 0;
+      margin-bottom: 12px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+
+    .field label {
+      font-size: 13px;
+      font-weight: 500;
       color: var(--vscode-input-foreground);
-      font-size: 0.875rem;
+      display: block;
+    }
+
+    .field label.required::after {
+      content: " *";
+      color: var(--vscode-errorForeground);
+    }
+
+    input,
+    select,
+    textarea {
+      padding: 6px 8px;
+      border-radius: 3px;
+      border: 1px solid var(--vscode-input-border);
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+      font-size: 13px;
       font-family: inherit;
       outline: none;
       box-sizing: border-box;
+      width: 100%;
     }
 
-    .form-input:focus,
-    .form-select:focus,
-    .form-textarea:focus {
-      border-color: var(--vscode-focusBorder, #007acc);
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--vscode-focusBorder);
+      outline: 1px solid var(--vscode-focusBorder);
     }
 
-    .form-textarea {
+    textarea {
       min-height: 80px;
       resize: vertical;
     }
@@ -910,7 +920,9 @@ export class ContainersTab extends LitElement {
     }
 
     .form-row .form-input,
-    .form-row .form-select {
+    .form-row .form-select,
+    .form-row input,
+    .form-row select {
       flex: 1;
     }
 
@@ -1840,19 +1852,18 @@ export class ContainersTab extends LitElement {
               <p class="error-message">${this.createError}</p>
             </div>
           ` : ''}
-          <div class="form-section">
-            <div class="form-field">
-              <label class="form-label">Name *</label>
+          <div class="section">
+            <div class="field">
+              <label class="required">Name</label>
               <input
-                class="form-input"
                 type="text"
                 placeholder="e.g., my-container"
                 .value=${this.createName}
                 @input=${(e: any) => { this.createName = e.target.value; }}
               />
             </div>
-            <div class="form-field">
-              <label class="form-label">Image *</label>
+            <div class="field">
+              <label class="required">Image</label>
               <container-image-autocomplete
                 .value=${this.createImage}
                 .suggestions=${suggestions}
@@ -1862,10 +1873,9 @@ export class ContainersTab extends LitElement {
               ></container-image-autocomplete>
               <div class="form-hint">Suggestions are based on existing images. You can enter any image.</div>
             </div>
-            <div class="form-field">
-              <label class="form-label">Entrypoint</label>
+            <div class="field">
+              <label>Entrypoint</label>
               <input
-                class="form-input"
                 type="text"
                 placeholder="/bin/sh -c"
                 .value=${this.createEntrypoint}
@@ -1873,10 +1883,9 @@ export class ContainersTab extends LitElement {
               />
               <div class="form-hint">Space-separated or JSON array.</div>
             </div>
-            <div class="form-field">
-              <label class="form-label">Command</label>
+            <div class="field">
+              <label>Command</label>
               <input
-                class="form-input"
                 type="text"
                 placeholder="echo hello"
                 .value=${this.createCmd}
@@ -1884,10 +1893,9 @@ export class ContainersTab extends LitElement {
               />
               <div class="form-hint">Space-separated or JSON array.</div>
             </div>
-            <div class="form-field">
-              <label class="form-label">Working Directory</label>
+            <div class="field">
+              <label>Working Directory</label>
               <input
-                class="form-input"
                 type="text"
                 placeholder="/app"
                 .value=${this.createWorkingDir}
@@ -1896,21 +1904,19 @@ export class ContainersTab extends LitElement {
             </div>
           </div>
 
-          <div class="form-section">
+          <div class="section">
             <h3>Environment</h3>
-            <div class="form-field">
-              <label class="form-label">Environment Variables</label>
+            <div class="field">
+              <label>Environment Variables</label>
               <textarea
-                class="form-textarea"
                 placeholder="KEY=value"
                 .value=${this.createEnv}
                 @input=${(e: any) => { this.createEnv = e.target.value; }}
               ></textarea>
             </div>
-            <div class="form-field">
-              <label class="form-label">Labels</label>
+            <div class="field">
+              <label>Labels</label>
               <textarea
-                class="form-textarea"
                 placeholder="key=value"
                 .value=${this.createLabels}
                 @input=${(e: any) => { this.createLabels = e.target.value; }}
@@ -1918,12 +1924,11 @@ export class ContainersTab extends LitElement {
             </div>
           </div>
 
-          <div class="form-section">
+          <div class="section">
             <h3>Ports</h3>
             ${this.createPorts.map((mapping, index) => html`
               <div class="list-item">
                 <input
-                  class="form-input"
                   type="number"
                   min="1"
                   placeholder="Container port"
@@ -1936,7 +1941,6 @@ export class ContainersTab extends LitElement {
       }}
                 />
                 <input
-                  class="form-input"
                   type="number"
                   min="1"
                   placeholder="Host port"
@@ -1949,7 +1953,6 @@ export class ContainersTab extends LitElement {
       }}
                 />
                 <select
-                  class="form-select"
                   .value=${mapping.protocol}
                   @change=${(e: any) => {
         const ports = [...this.createPorts];
@@ -1968,12 +1971,11 @@ export class ContainersTab extends LitElement {
             <button class="btn btn-secondary btn-small" @click=${this.addPortMapping}>+ Add Port</button>
           </div>
 
-          <div class="form-section">
+          <div class="section">
             <h3>Volumes</h3>
             ${this.createVolumes.map((volume, index) => html`
               <div class="list-item">
                 <input
-                  class="form-input"
                   type="text"
                   placeholder="/host/path"
                   .value=${volume.source}
@@ -1985,7 +1987,6 @@ export class ContainersTab extends LitElement {
         }}
                 />
                 <input
-                  class="form-input"
                   type="text"
                   placeholder="/container/path"
                   .value=${volume.target}
@@ -1997,7 +1998,6 @@ export class ContainersTab extends LitElement {
         }}
                 />
                 <select
-                  class="form-select"
                   .value=${volume.type}
                   @change=${(e: any) => {
           const volumes = [...this.createVolumes];
@@ -2011,7 +2011,6 @@ export class ContainersTab extends LitElement {
                   <option value="tmpfs">tmpfs</option>
                 </select>
                 <select
-                  class="form-select"
                   .value=${volume.propagation}
                   @change=${(e: any) => {
           const volumes = [...this.createVolumes];
@@ -2044,13 +2043,12 @@ export class ContainersTab extends LitElement {
             <button class="btn btn-secondary btn-small" @click=${this.addVolumeMapping}>+ Add Volume</button>
           </div>
 
-          <div class="form-section">
+          <div class="section">
             <h3>Resources</h3>
             <div class="form-row">
-              <div class="form-field" style="flex: 1;">
-                <label class="form-label">CPU Cores</label>
+              <div class="field" style="flex: 1;">
+                <label>CPU Cores</label>
                 <input
-                  class="form-input"
                   type="number"
                   min="0"
                   step="0.1"
@@ -2059,10 +2057,9 @@ export class ContainersTab extends LitElement {
                   @input=${(e: any) => { this.createCpuCores = e.target.value; }}
                 />
               </div>
-              <div class="form-field" style="flex: 1;">
-                <label class="form-label">Memory (MB)</label>
+              <div class="field" style="flex: 1;">
+                <label>Memory (MB)</label>
                 <input
-                  class="form-input"
                   type="number"
                   min="0"
                   step="64"
@@ -2074,7 +2071,7 @@ export class ContainersTab extends LitElement {
             </div>
           </div>
 
-          <div class="form-section">
+          <div class="section">
             <h3>Advanced</h3>
             <div class="toggle-row">
               <label class="toggle">
@@ -2538,7 +2535,6 @@ export class ContainersTab extends LitElement {
           <label for="imageName" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--vscode-foreground);">Image Name:</label>
           <input 
             id="imageName"
-            class="form-input"
             type="text" 
             placeholder="e.g., nginx:latest, ubuntu:20.04"
             .value=${this.imageName}

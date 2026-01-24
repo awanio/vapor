@@ -163,9 +163,9 @@ export class CreateResourceDrawer extends LitElement {
       width: 100%;
       min-height: 400px;
       padding: 16px;
-      background: var(--vscode-editor-background, #1e1e1e);
-      color: var(--vscode-editor-foreground, #d4d4d4);
-      border: 1px solid var(--vscode-border);
+      background: var(--vscode-input-background, #3c3c3c);
+      color: var(--vscode-input-foreground, #cccccc);
+      border: 1px solid var(--vscode-input-border, #3c3c3c);
       border-radius: 4px;
       font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
       font-size: 14px;

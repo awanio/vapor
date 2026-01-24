@@ -246,7 +246,7 @@ export class ResourceDetailView extends LitElement {
     /* Code block */
     .code-block,
     .raw-data {
-      background: var(--vscode-textCodeBlock-background, var(--vscode-editor-background, #1e1e1e));
+      background: var(--vscode-textCodeBlock-background, rgba(175, 175, 175, 0.12));
       border: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.35));
       border-radius: 4px;
       padding: 12px;
@@ -346,9 +346,9 @@ export class ResourceDetailView extends LitElement {
     }
 
     // Check if this is a Pod resource
-    const isPod = this.resource.kind === 'Pod' || 
-                  (this.resource.metadata && this.resource.spec && this.resource.status && 
-                   'containers' in (this.resource.spec || {}));
+    const isPod = this.resource.kind === 'Pod' ||
+      (this.resource.metadata && this.resource.spec && this.resource.status &&
+        'containers' in (this.resource.spec || {}));
 
     if (isPod) {
       return this.renderPodDetails();
@@ -384,19 +384,19 @@ export class ResourceDetailView extends LitElement {
         ${metadata.namespace ? this.renderDetailItem('Namespace', metadata.namespace) : ''}
         ${metadata.uid ? this.renderDetailItem('UID', metadata.uid) : ''}
         ${metadata.resourceVersion ? this.renderDetailItem('Resource Version', metadata.resourceVersion) : ''}
-        ${metadata.creationTimestamp ? 
-          this.renderDetailItem('Creation Timestamp', this.formatTimestamp(metadata.creationTimestamp)) : ''}
-        ${metadata.creationTimestamp ? 
-          this.renderDetailItem('Age', this.formatTimestamp(metadata.creationTimestamp)) : ''}
+        ${metadata.creationTimestamp ?
+        this.renderDetailItem('Creation Timestamp', this.formatTimestamp(metadata.creationTimestamp)) : ''}
+        ${metadata.creationTimestamp ?
+        this.renderDetailItem('Age', this.formatTimestamp(metadata.creationTimestamp)) : ''}
       </div>
 
       <!-- Labels -->
       ${hasLabels ? html`
         <div class="detail-section">
           <h3>Labels</h3>
-          ${Object.entries(metadata.labels).map(([key, value]) => 
-            this.renderDetailItem(key, value as string)
-          )}
+          ${Object.entries(metadata.labels).map(([key, value]) =>
+          this.renderDetailItem(key, value as string)
+        )}
         </div>
       ` : ''}
 
@@ -404,9 +404,9 @@ export class ResourceDetailView extends LitElement {
       ${hasAnnotations ? html`
         <div class="detail-section">
           <h3>Annotations</h3>
-          ${Object.entries(metadata.annotations).map(([key, value]) => 
-            this.renderDetailItem(key, value as string)
-          )}
+          ${Object.entries(metadata.annotations).map(([key, value]) =>
+          this.renderDetailItem(key, value as string)
+        )}
         </div>
       ` : ''}
     `;
@@ -442,9 +442,9 @@ export class ResourceDetailView extends LitElement {
       ${conditions && conditions.length > 0 ? html`
         <div class="detail-section">
           <h3>Conditions</h3>
-          ${conditions.map((condition: any) => 
-            this.renderConditionDetails(condition)
-          )}
+          ${conditions.map((condition: any) =>
+      this.renderConditionDetails(condition)
+    )}
         </div>
       ` : ''}
     `;
@@ -485,7 +485,7 @@ export class ResourceDetailView extends LitElement {
       filteredResource.metadata = { ...filteredResource.metadata };
       delete filteredResource.metadata.managedFields;
     }
-    
+
     additionalSections.push(html`
       <div class="detail-section">
         <h3>Raw Data</h3>
@@ -680,7 +680,7 @@ export class ResourceDetailView extends LitElement {
     if (diff < 24 * 60 * 60 * 1000) {
       const hours = Math.floor(diff / (60 * 60 * 1000));
       const minutes = Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000));
-      
+
       if (hours > 0) {
         return `${hours}h ${minutes}m ago (${date.toLocaleString()})`;
       } else if (minutes > 0) {
@@ -701,7 +701,7 @@ export class ResourceDetailView extends LitElement {
 
   private renderObjectAsDetailItems(obj: any, isStatus = false): TemplateResult[] {
     const results: TemplateResult[] = [];
-    
+
     Object.entries(obj).forEach(([key, value]) => {
       if (value === null || value === undefined) {
         results.push(this.renderDetailItem(this.formatKey(key), null));
@@ -748,7 +748,7 @@ export class ResourceDetailView extends LitElement {
         }
       }
     });
-    
+
     return results;
   }
 
@@ -793,17 +793,17 @@ export class ResourceDetailView extends LitElement {
             ${this.renderDetailItem('Restart Policy', spec.restartPolicy)}
             ${this.renderDetailItem('DNS Policy', spec.dnsPolicy)}
             ${this.renderDetailItem('Service Account', spec.serviceAccount || spec.serviceAccountName || 'default')}
-            ${spec.nodeSelector && Object.keys(spec.nodeSelector).length > 0 ? 
-              this.renderNestedObject('Node Selector', spec.nodeSelector) : ''}
+            ${spec.nodeSelector && Object.keys(spec.nodeSelector).length > 0 ?
+        this.renderNestedObject('Node Selector', spec.nodeSelector) : ''}
           </div>
 
           <!-- Labels -->
           ${metadata.labels && Object.keys(metadata.labels).length > 0 ? html`
             <div class="detail-section">
               <h3>Labels</h3>
-              ${Object.entries(metadata.labels).map(([key, value]) => 
-                this.renderDetailItem(key, value as string)
-              )}
+              ${Object.entries(metadata.labels).map(([key, value]) =>
+          this.renderDetailItem(key, value as string)
+        )}
             </div>
           ` : ''}
 
@@ -811,9 +811,9 @@ export class ResourceDetailView extends LitElement {
           ${metadata.annotations && Object.keys(metadata.annotations).length > 0 ? html`
             <div class="detail-section">
               <h3>Annotations</h3>
-              ${Object.entries(metadata.annotations).map(([key, value]) => 
-                this.renderDetailItem(key, value as string)
-              )}
+              ${Object.entries(metadata.annotations).map(([key, value]) =>
+          this.renderDetailItem(key, value as string)
+        )}
             </div>
           ` : ''}
 
@@ -821,9 +821,9 @@ export class ResourceDetailView extends LitElement {
           ${spec.containers && spec.containers.length > 0 ? html`
             <div class="detail-section">
               <h3>Containers</h3>
-              ${spec.containers.map((container: any, index: number) => 
-                this.renderContainerDetails(container, index + 1, status.containerStatuses)
-              )}
+              ${spec.containers.map((container: any, index: number) =>
+          this.renderContainerDetails(container, index + 1, status.containerStatuses)
+        )}
             </div>
           ` : ''}
 
@@ -831,9 +831,9 @@ export class ResourceDetailView extends LitElement {
           ${status.conditions && status.conditions.length > 0 ? html`
             <div class="detail-section">
               <h3>Conditions</h3>
-              ${status.conditions.map((condition: any) => 
-                this.renderConditionDetails(condition)
-              )}
+              ${status.conditions.map((condition: any) =>
+          this.renderConditionDetails(condition)
+        )}
             </div>
           ` : ''}
 
@@ -885,7 +885,7 @@ export class ResourceDetailView extends LitElement {
 
   private renderContainerDetails(container: any, index: number, containerStatuses: any[] = []) {
     const containerStatus = containerStatuses?.find(cs => cs.name === container.name);
-    
+
     return html`
       <div class="detail-item nested">
         <strong class="detail-key">Container ${index}:</strong>

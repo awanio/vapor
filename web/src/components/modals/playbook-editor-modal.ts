@@ -158,7 +158,7 @@ export class PlaybookEditorModal extends LitElement {
       flex: 1;
       width: 100%;
       padding: 12px;
-      background: var(--vscode-editor-background, #1e1e1e);
+      background: var(--vscode-input-background, #3c3c3c);
       color: var(--vscode-editor-foreground, #d4d4d4);
       border: 1px solid var(--vscode-panel-border, #2d2d30);
       border-radius: 4px;
@@ -364,7 +364,7 @@ export class PlaybookEditorModal extends LitElement {
 
       // Clean up temp file if in create mode
       if (this.mode === 'create') {
-        await AnsibleService.deletePlaybook(tempName).catch(() => {});
+        await AnsibleService.deletePlaybook(tempName).catch(() => { });
       }
     } catch (error) {
       console.error('Validation failed:', error);
@@ -425,11 +425,11 @@ export class PlaybookEditorModal extends LitElement {
       const start = target.selectionStart;
       const end = target.selectionEnd;
       const value = target.value;
-      
+
       // Insert two spaces for tab
       target.value = value.substring(0, start) + '  ' + value.substring(end);
       target.selectionStart = target.selectionEnd = start + 2;
-      
+
       this.content = target.value;
     }
   }
