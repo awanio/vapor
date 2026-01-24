@@ -24,9 +24,12 @@ func startTerminal(client *Client, username string) *PseudoTerminal {
 	log.Printf("Starting terminal session for user: %s", username)
 
 	// Get the shell to use
-	shell := os.Getenv("SHELL")
-	if shell == "" {
-		shell = "/bin/bash"
+	// Get the shell to use
+	// Prefer bash explicitly for consistent experience across envs
+	shell := "/bin/bash"
+	if _, err := os.Stat(shell); os.IsNotExist(err) {
+		// Fallback to sh if bash is missing
+		shell = "/bin/sh"
 	}
 
 	// First check if the user exists
