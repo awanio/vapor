@@ -255,10 +255,36 @@ export class SidebarTree extends I18nLitElement {
 
   private navigationItems: NavItem[] = [
     {
-      id: 'dashboard',
-      label: 'nav.dashboard',
-      icon: 'dashboard',
-      route: 'dashboard'
+      id: 'host',
+      label: 'nav.host',
+      icon: 'system',
+      route: 'host',
+      children: [
+        {
+          id: 'dashboard',
+          label: 'nav.monitor',
+          icon: 'dashboard',
+          route: 'dashboard'
+        },
+        {
+          id: 'users',
+          label: 'nav.users',
+          icon: 'users',
+          route: 'users'
+        },
+        {
+          id: 'logs',
+          label: 'nav.logs',
+          icon: 'logs',
+          route: 'logs'
+        },
+        {
+          id: 'terminal',
+          label: 'nav.terminal',
+          icon: 'terminal',
+          route: 'terminal'
+        }
+      ]
     },
     {
       id: 'network',
@@ -477,24 +503,7 @@ export class SidebarTree extends I18nLitElement {
     //           route: 'ansible/executions'
     // //         }
     //     },
-    {
-      id: 'logs',
-      label: 'nav.logs',
-      icon: 'logs',
-      route: 'logs'
-    },
-    {
-      id: 'users',
-      label: 'nav.users',
-      icon: 'users',
-      route: 'users'
-    },
-    {
-      id: 'terminal',
-      label: 'nav.terminal',
-      icon: 'terminal',
-      route: 'terminal'
-    }
+
   ];
 
   private handleItemClick(item: NavItem, event: Event) {
@@ -576,7 +585,8 @@ export class SidebarTree extends I18nLitElement {
         'storage', 'disks', 'containers', 'cri', 'virtualization', 'vms',
         'storage-pools', 'images', 'virt-networks', 'volumes', 'backups',
         'logs', 'users', 'terminal', 'kubernetes', 'docker',
-        'workload', 'k8s-networks', 'k8s-storage', 'configurations', 'nodes', 'crds'
+        'workload', 'k8s-networks', 'k8s-storage', 'configurations', 'nodes', 'crds',
+        'system'
       ];
 
 

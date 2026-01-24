@@ -17,6 +17,8 @@
   },
   "nav": {
     "system": "System",
+    "host": "Host",
+    "monitor": "Monitor",
     "dashboard": "Dashboard",
     "logs": "Logs",
     "terminal": "Terminal",
