@@ -1035,12 +1035,14 @@ func (s *Service) UpdateVMEnhanced(ctx context.Context, nameOrUUID string, req *
 			if desiredConfig != nil {
 				bootOrderChanged := existDisk.BootOrder != desiredConfig.BootOrder
 				readOnlyChanged := existDisk.ReadOnly != desiredConfig.ReadOnly
+				sourceChanged := existDisk.Source != desiredConfig.Path
 
-				if bootOrderChanged || readOnlyChanged {
-					log.Printf("UpdateVMEnhanced: detaching disk target=%s source=%s for reattach (bootOrder: %d->%d, readOnly: %v->%v)",
+				if bootOrderChanged || readOnlyChanged || sourceChanged {
+					log.Printf("UpdateVMEnhanced: detaching disk target=%s source=%s for reattach (bootOrder: %d->%d, readOnly: %v->%v, source: %s->%s)",
 						existDisk.Target, existDisk.Source,
 						existDisk.BootOrder, desiredConfig.BootOrder,
-						existDisk.ReadOnly, desiredConfig.ReadOnly)
+						existDisk.ReadOnly, desiredConfig.ReadOnly,
+						existDisk.Source, desiredConfig.Path)
 					detachXML := buildDetachDiskXML(existDisk)
 					if err := domain.DetachDeviceFlags(detachXML, deviceFlags); err != nil {
 						log.Printf("UpdateVMEnhanced error detaching disk target=%s: %v", existDisk.Target, err)

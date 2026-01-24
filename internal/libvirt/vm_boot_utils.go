@@ -26,6 +26,46 @@ func modifyDomainXMLForBootOrder(xmlDesc string, disks []DiskCreateConfig) (stri
 	// Remove OS-level boot elements
 	xmlDesc = removeOSBootElements(xmlDesc)
 
+	// Identify targets that are being replaced/updated with boot order
+	targetsToReplace := make(map[string]bool)
+	for _, d := range disks {
+		if d.BootOrder > 0 && d.Target != "" {
+			targetsToReplace[d.Target] = true
+		} else if d.BootOrder > 0 {
+			// If target is empty, we need to guess it based on bus just like buildDiskXMLForDefine does
+			// This is a safety fallback
+			bus := string(d.Bus)
+			if bus == "" {
+				if d.Device == "cdrom" {
+					bus = "sata"
+				} else {
+					bus = "virtio"
+				}
+			}
+			target := ""
+			switch bus {
+			case "virtio":
+				target = "vda"
+			case "sata", "scsi":
+				target = "sda"
+			case "ide":
+				target = "hda"
+			}
+			if target != "" {
+				targetsToReplace[target] = true
+			}
+		}
+	}
+
+	// Remove existing disks that are being replaced
+	if len(targetsToReplace) > 0 {
+		var err error
+		xmlDesc, err = removeConflictingDisks(xmlDesc, targetsToReplace)
+		if err != nil {
+			return xmlDesc, nil, err
+		}
+	}
+
 	// Build disk XML elements for disks with boot order
 	var addedPaths []string
 	var diskXMLs []string
@@ -61,6 +101,83 @@ func modifyDomainXMLForBootOrder(xmlDesc string, disks []DiskCreateConfig) (stri
 	xmlDesc = xmlDesc[:devicesEndIdx] + insertXML + "\n" + xmlDesc[devicesEndIdx:]
 
 	return xmlDesc, addedPaths, nil
+}
+
+// removeConflictingDisks removes <disk> elements from XML that match the given targets.
+func removeConflictingDisks(xmlDesc string, targets map[string]bool) (string, error) {
+	// Simple regex parsing to find disk blocks
+	// Matches <disk ...> ... </disk>
+	// This is a basic implementation; for production robustness with complex XML, 
+	// a full XML parser is often better, but libvirt XMLs are generally consistent enough for this.
+	// We use strings.Index to find start/end of disks and check content.
+	
+	// Helper to find next disk block
+	findNextDisk := func(startIdx int) (int, int, bool) {
+		diskStart := strings.Index(xmlDesc[startIdx:], "<disk")
+		if diskStart == -1 {
+			return -1, -1, false
+		}
+		diskStart += startIdx
+		
+		// Find closing tag
+		// We need to handle nested tags if any (unlikely for <disk> in libvirt valid output)
+		// But simplistic search for </disk> should work for standard libvirt output
+		diskEnd := strings.Index(xmlDesc[diskStart:], "</disk>")
+		if diskEnd == -1 {
+			return -1, -1, false
+		}
+		diskEnd += diskStart + 7 // include length of "</disk>"
+		return diskStart, diskEnd, true
+	}
+
+	var newXML strings.Builder
+	currentIdx := 0
+	
+	for {
+		start, end, found := findNextDisk(currentIdx)
+		if !found {
+			// Append remainder
+			newXML.WriteString(xmlDesc[currentIdx:])
+			break
+		}
+		
+		// Append everything before this disk
+		newXML.WriteString(xmlDesc[currentIdx:start])
+		
+		// Check if this disk matches one of our targets
+		diskContent := xmlDesc[start:end]
+		shouldRemove := false
+		
+		for target := range targets {
+			// Look for <target dev='target' ... />
+			// Match exact target attribute
+			targetPattern := fmt.Sprintf("dev='%s'", target)
+			if strings.Contains(diskContent, targetPattern) {
+				// Verify it's inside a <target> tag to be safe
+				if strings.Contains(diskContent, "<target") {
+					shouldRemove = true
+					break
+				}
+			}
+			// Also support double quotes
+			targetPattern2 := fmt.Sprintf("dev=\"%s\"", target)
+			if strings.Contains(diskContent, targetPattern2) {
+				if strings.Contains(diskContent, "<target") {
+					shouldRemove = true
+					break
+				}
+			}
+		}
+		
+		if !shouldRemove {
+			// Keep it
+			newXML.WriteString(diskContent)
+		}
+		
+		currentIdx = end
+	}
+	
+	return newXML.String(), nil
 }
 
 // buildDiskXMLForDefine builds a disk XML element for domain definition (not attach).
