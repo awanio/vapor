@@ -1113,7 +1113,7 @@ export class CreateVMWizardEnhanced extends LitElement {
     // We verify the volume exists in the reported pool, otherwise find the correct pool by path.
     if (draft.path && draft.action === 'attach') {
       const pools = this.storagePoolsController.value || [];
-      const volumes = this.getVolumesForPool(draft.storage_pool || '');
+      let volumes = this.getVolumesForPool(draft.storage_pool || '');
       const volumeExists = volumes.some((v: any) => v.path === draft.path);
 
       if (!volumeExists) {
@@ -1127,12 +1127,23 @@ export class CreateVMWizardEnhanced extends LitElement {
         const bestMatch = sortedPools[0];
         if (bestMatch && bestMatch.name) {
           draft.storage_pool = bestMatch.name;
+          // Re-fetch volumes for the corrected pool
+          volumes = this.getVolumesForPool(draft.storage_pool);
         } else if (!draft.storage_pool) {
           // Fallback if no pool matches and none set
           if (draft.path.includes('/var/lib/libvirt/images')) {
             draft.storage_pool = 'default';
+            volumes = this.getVolumesForPool('default');
           }
         }
+      }
+
+      // INFRA-FIX: Sync format from volume metadata
+      // The backend may report wrong format (e.g., "qcow2" when file is actually "vmdk").
+      // Find the matching volume and use its format.
+      const matchingVolume = volumes.find((v: any) => v.path === draft.path);
+      if (matchingVolume && matchingVolume.format) {
+        draft.format = matchingVolume.format.toLowerCase() as 'qcow2' | 'raw' | 'vmdk' | 'vdi';
       }
     }
 
@@ -1293,10 +1304,10 @@ export class CreateVMWizardEnhanced extends LitElement {
             this.requestUpdate();
           }}
                 >
-                  <option value="qcow2">QCOW2</option>
-                  <option value="raw">RAW</option>
-                  <option value="vmdk">VMDK</option>
-                  <option value="vdi">VDI</option>
+                  <option value="qcow2" ?selected=${(disk.format || 'qcow2') === 'qcow2'}>QCOW2</option>
+                  <option value="raw" ?selected=${disk.format === 'raw'}>RAW</option>
+                  <option value="vmdk" ?selected=${disk.format === 'vmdk'}>VMDK</option>
+                  <option value="vdi" ?selected=${disk.format === 'vdi'}>VDI</option>
                 </select>
               </div>
 
@@ -1309,10 +1320,10 @@ export class CreateVMWizardEnhanced extends LitElement {
             this.requestUpdate();
           }}
                 >
-                  <option value="virtio">VirtIO</option>
-                  <option value="scsi">SCSI</option>
-                  <option value="ide">IDE</option>
-                  <option value="sata">SATA</option>
+                  <option value="virtio" ?selected=${(disk.bus || 'virtio') === 'virtio'}>VirtIO</option>
+                  <option value="scsi" ?selected=${disk.bus === 'scsi'}>SCSI</option>
+                  <option value="ide" ?selected=${disk.bus === 'ide'}>IDE</option>
+                  <option value="sata" ?selected=${disk.bus === 'sata'}>SATA</option>
                 </select>
               </div>
 
@@ -1325,9 +1336,9 @@ export class CreateVMWizardEnhanced extends LitElement {
             this.requestUpdate();
           }}
                 >
-                  <option value="disk">Disk</option>
-                  <option value="cdrom">CD-ROM</option>
-                  <option value="floppy">Floppy</option>
+                  <option value="disk" ?selected=${(disk.device || 'disk') === 'disk'}>Disk</option>
+                  <option value="cdrom" ?selected=${disk.device === 'cdrom'}>CD-ROM</option>
+                  <option value="floppy" ?selected=${(disk.device as any) === 'floppy'}>Floppy</option>
                 </select>
               </div>
             </div>
@@ -1393,10 +1404,10 @@ export class CreateVMWizardEnhanced extends LitElement {
             this.requestUpdate();
           }}
                 >
-                  <option value="qcow2">QCOW2</option>
-                  <option value="raw">RAW</option>
-                  <option value="vmdk">VMDK</option>
-                  <option value="vdi">VDI</option>
+                  <option value="qcow2" ?selected=${(disk.format || 'qcow2') === 'qcow2'}>QCOW2</option>
+                  <option value="raw" ?selected=${disk.format === 'raw'}>RAW</option>
+                  <option value="vmdk" ?selected=${disk.format === 'vmdk'}>VMDK</option>
+                  <option value="vdi" ?selected=${disk.format === 'vdi'}>VDI</option>
                 </select>
               </div>
 
@@ -1409,10 +1420,10 @@ export class CreateVMWizardEnhanced extends LitElement {
             this.requestUpdate();
           }}
                 >
-                  <option value="virtio">VirtIO</option>
-                  <option value="scsi">SCSI</option>
-                  <option value="ide">IDE</option>
-                  <option value="sata">SATA</option>
+                  <option value="virtio" ?selected=${(disk.bus || 'virtio') === 'virtio'}>VirtIO</option>
+                  <option value="scsi" ?selected=${disk.bus === 'scsi'}>SCSI</option>
+                  <option value="ide" ?selected=${disk.bus === 'ide'}>IDE</option>
+                  <option value="sata" ?selected=${disk.bus === 'sata'}>SATA</option>
                 </select>
               </div>
 
@@ -1425,9 +1436,9 @@ export class CreateVMWizardEnhanced extends LitElement {
             this.requestUpdate();
           }}
                 >
-                  <option value="disk">Disk</option>
-                  <option value="cdrom">CD-ROM</option>
-                  <option value="floppy">Floppy</option>
+                  <option value="disk" ?selected=${(disk.device || 'disk') === 'disk'}>Disk</option>
+                  <option value="cdrom" ?selected=${disk.device === 'cdrom'}>CD-ROM</option>
+                  <option value="floppy" ?selected=${(disk.device as any) === 'floppy'}>Floppy</option>
                 </select>
               </div>
 
@@ -1506,10 +1517,10 @@ export class CreateVMWizardEnhanced extends LitElement {
             this.requestUpdate();
           }}
                 >
-                  <option value="qcow2">QCOW2</option>
-                  <option value="raw">RAW</option>
-                  <option value="vmdk">VMDK</option>
-                  <option value="vdi">VDI</option>
+                  <option value="qcow2" ?selected=${(disk.format || 'qcow2') === 'qcow2'}>QCOW2</option>
+                  <option value="raw" ?selected=${disk.format === 'raw'}>RAW</option>
+                  <option value="vmdk" ?selected=${disk.format === 'vmdk'}>VMDK</option>
+                  <option value="vdi" ?selected=${disk.format === 'vdi'}>VDI</option>
                 </select>
               </div>
 
@@ -1522,10 +1533,10 @@ export class CreateVMWizardEnhanced extends LitElement {
             this.requestUpdate();
           }}
                 >
-                  <option value="virtio">VirtIO</option>
-                  <option value="scsi">SCSI</option>
-                  <option value="ide">IDE</option>
-                  <option value="sata">SATA</option>
+                  <option value="virtio" ?selected=${(disk.bus || 'virtio') === 'virtio'}>VirtIO</option>
+                  <option value="scsi" ?selected=${disk.bus === 'scsi'}>SCSI</option>
+                  <option value="ide" ?selected=${disk.bus === 'ide'}>IDE</option>
+                  <option value="sata" ?selected=${disk.bus === 'sata'}>SATA</option>
                 </select>
               </div>
 
@@ -1538,9 +1549,9 @@ export class CreateVMWizardEnhanced extends LitElement {
             this.requestUpdate();
           }}
                 >
-                  <option value="disk">Disk</option>
-                  <option value="cdrom">CD-ROM</option>
-                  <option value="floppy">Floppy</option>
+                  <option value="disk" ?selected=${(disk.device || 'disk') === 'disk'}>Disk</option>
+                  <option value="cdrom" ?selected=${disk.device === 'cdrom'}>CD-ROM</option>
+                  <option value="floppy" ?selected=${(disk.device as any) === 'floppy'}>Floppy</option>
                 </select>
               </div>
             </div>
@@ -1627,9 +1638,9 @@ export class CreateVMWizardEnhanced extends LitElement {
           this.requestUpdate();
         }}
               >
-                <option value="sata">SATA</option>
-                <option value="ide">IDE</option>
-                <option value="scsi">SCSI</option>
+                <option value="sata" ?selected=${(disk.bus || 'sata') === 'sata'}>SATA</option>
+                <option value="ide" ?selected=${disk.bus === 'ide'}>IDE</option>
+                <option value="scsi" ?selected=${disk.bus === 'scsi'}>SCSI</option>
               </select>
             </div>
 
@@ -1642,9 +1653,9 @@ export class CreateVMWizardEnhanced extends LitElement {
           this.requestUpdate();
         }}
               >
-                <option value="cdrom">CD-ROM</option>
-                <option value="disk">Disk</option>
-                <option value="floppy">Floppy</option>
+                <option value="cdrom" ?selected=${(disk.device || 'cdrom') === 'cdrom'}>CD-ROM</option>
+                <option value="disk" ?selected=${disk.device === 'disk'}>Disk</option>
+                <option value="floppy" ?selected=${(disk.device as any) === 'floppy'}>Floppy</option>
               </select>
             </div>
 
@@ -2491,6 +2502,36 @@ export class CreateVMWizardEnhanced extends LitElement {
   }
 
   /**
+   * Get the correct display format for a disk.
+   * For attached disks, syncs format from volume metadata (more accurate than saved config).
+   */
+  private getDiskDisplayFormat(disk: any): string {
+    // If no path or not an attach action, use the saved format
+    if (!disk.path || (disk.action && disk.action !== 'attach')) {
+      return (disk.format || 'qcow2').toUpperCase();
+    }
+
+    // For attached disks, try to get format from volume metadata
+    const pools = this.storagePoolsController.value || [];
+
+    // Find the correct pool by path (using longest match)
+    const sortedPools = [...pools]
+      .filter((p: any) => p.path && disk.path.startsWith(p.path))
+      .sort((a: any, b: any) => (b.path?.length || 0) - (a.path?.length || 0));
+
+    const poolName = sortedPools[0]?.name || disk.storage_pool || '';
+    const volumes = this.getVolumesForPool(poolName);
+    const matchingVolume = volumes.find((v: any) => v.path === disk.path);
+
+    if (matchingVolume && matchingVolume.format) {
+      return matchingVolume.format.toUpperCase();
+    }
+
+    // Fallback to saved format
+    return (disk.format || 'qcow2').toUpperCase();
+  }
+
+  /**
    * Format volume size from bytes to human readable
    */
   private formatVolumeSize(bytes: number): string {
@@ -2834,7 +2875,7 @@ export class CreateVMWizardEnhanced extends LitElement {
           : '-')}
                           </span>
                         </td>
-                        <td>${(disk.format || 'qcow2').toUpperCase()}</td>
+                        <td>${this.getDiskDisplayFormat(disk)}</td>
                         <td>${(disk.bus || 'virtio').toUpperCase()}</td>
                         <td>${disk.action === 'create' && disk.size ? `${disk.size} GB` : 'N/A'}</td>
                         <td>
