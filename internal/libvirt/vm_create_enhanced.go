@@ -1036,13 +1036,43 @@ func (s *Service) UpdateVMEnhanced(ctx context.Context, nameOrUUID string, req *
 				bootOrderChanged := existDisk.BootOrder != desiredConfig.BootOrder
 				readOnlyChanged := existDisk.ReadOnly != desiredConfig.ReadOnly
 				sourceChanged := existDisk.Source != desiredConfig.Path
+				desiredFormat := strings.TrimSpace(desiredConfig.Format)
+				formatChanged := false
+				if desiredFormat != "" {
+					formatChanged = !strings.EqualFold(strings.TrimSpace(existDisk.Format), desiredFormat)
+				}
+				desiredBus := strings.TrimSpace(string(desiredConfig.Bus))
+				busChanged := false
+				if desiredBus != "" {
+					busChanged = !strings.EqualFold(strings.TrimSpace(existDisk.Bus), desiredBus)
+				}
+				desiredTarget := strings.TrimSpace(desiredConfig.Target)
+				targetChanged := false
+				if desiredTarget != "" {
+					targetChanged = !strings.EqualFold(strings.TrimSpace(existDisk.Target), desiredTarget)
+				}
+				desiredCache := strings.TrimSpace(desiredConfig.Cache)
+				cacheChanged := false
+				if desiredCache != "" {
+					cacheChanged = !strings.EqualFold(strings.TrimSpace(existDisk.Cache), desiredCache)
+				}
+				desiredIOMode := strings.TrimSpace(desiredConfig.IOMode)
+				ioModeChanged := false
+				if desiredIOMode != "" {
+					ioModeChanged = !strings.EqualFold(strings.TrimSpace(existDisk.IOMode), desiredIOMode)
+				}
 
-				if bootOrderChanged || readOnlyChanged || sourceChanged {
-					log.Printf("UpdateVMEnhanced: detaching disk target=%s source=%s for reattach (bootOrder: %d->%d, readOnly: %v->%v, source: %s->%s)",
+				if bootOrderChanged || readOnlyChanged || sourceChanged || formatChanged || busChanged || targetChanged || cacheChanged || ioModeChanged {
+					log.Printf("UpdateVMEnhanced: detaching disk target=%s source=%s for reattach (bootOrder: %d->%d, readOnly: %v->%v, source: %s->%s, format: %s->%s, bus: %s->%s, target: %s->%s, cache: %s->%s, io: %s->%s)",
 						existDisk.Target, existDisk.Source,
 						existDisk.BootOrder, desiredConfig.BootOrder,
 						existDisk.ReadOnly, desiredConfig.ReadOnly,
-						existDisk.Source, desiredConfig.Path)
+						existDisk.Source, desiredConfig.Path,
+						existDisk.Format, desiredFormat,
+						existDisk.Bus, desiredBus,
+						existDisk.Target, desiredTarget,
+						existDisk.Cache, desiredCache,
+						existDisk.IOMode, desiredIOMode)
 					detachXML := buildDetachDiskXML(existDisk)
 					if err := domain.DetachDeviceFlags(detachXML, deviceFlags); err != nil {
 						log.Printf("UpdateVMEnhanced error detaching disk target=%s: %v", existDisk.Target, err)
@@ -1535,11 +1565,20 @@ func (s *Service) buildEnhancedAttachDiskXML(d PreparedDisk) string {
 		}
 	}
 
+	driverAttrs := []string{fmt.Sprintf("name='qemu'"), fmt.Sprintf("type='%s'", driverType)}
+	if cache := strings.TrimSpace(d.Config.Cache); cache != "" {
+		driverAttrs = append(driverAttrs, fmt.Sprintf("cache='%s'", cache))
+	}
+	if ioMode := strings.TrimSpace(d.Config.IOMode); ioMode != "" {
+		driverAttrs = append(driverAttrs, fmt.Sprintf("io='%s'", ioMode))
+	}
+	driverXML := fmt.Sprintf("<driver %s/>", strings.Join(driverAttrs, " "))
+
 	xml := fmt.Sprintf(`
 <disk type='file' device='%s'>
-<driver name='qemu' type='%s'/>
+%s
 <source file='%s'/>
-<target dev='%s' bus='%s'/>`, deviceType, driverType, d.Path, d.Config.Target, busType)
+<target dev='%s' bus='%s'/>`, deviceType, driverXML, d.Path, d.Config.Target, busType)
 
 	if d.Config.ReadOnly {
 		xml += `

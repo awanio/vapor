@@ -68,6 +68,11 @@ type domainDiskAttachmentXML struct {
 	Boot struct {
 		Order int `xml:"order,attr"`
 	} `xml:"boot"`
+	Driver struct {
+		Type  string `xml:"type,attr"`
+		Cache string `xml:"cache,attr"`
+		IO    string `xml:"io,attr"`
+	} `xml:"driver"`
 	ReadOnly *struct{} `xml:"readonly"`
 }
 
@@ -111,6 +116,9 @@ type existingDiskInfo struct {
 	Device    string // device type: disk, cdrom, floppy
 	Bus       string // bus type: virtio, sata, scsi, ide
 	Type      string // source type: file, block
+	Format    string // driver format type: qcow2, raw, vmdk, etc
+	Cache     string // driver cache mode
+	IOMode    string // driver I/O mode
 	BootOrder int    // boot order (0 means not set)
 	ReadOnly  bool   // whether the disk is read-only
 }
@@ -136,6 +144,9 @@ func parseDomainDiskDetails(xmlDesc string) ([]existingDiskInfo, error) {
 		} else if d.Source.Dev != "" {
 			info.Source = d.Source.Dev
 		}
+		info.Format = strings.ToLower(strings.TrimSpace(d.Driver.Type))
+		info.Cache = strings.TrimSpace(d.Driver.Cache)
+		info.IOMode = strings.TrimSpace(d.Driver.IO)
 		info.BootOrder = d.Boot.Order
 		info.ReadOnly = d.ReadOnly != nil
 		disks = append(disks, info)

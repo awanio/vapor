@@ -107,10 +107,10 @@ func modifyDomainXMLForBootOrder(xmlDesc string, disks []DiskCreateConfig) (stri
 func removeConflictingDisks(xmlDesc string, targets map[string]bool) (string, error) {
 	// Simple regex parsing to find disk blocks
 	// Matches <disk ...> ... </disk>
-	// This is a basic implementation; for production robustness with complex XML, 
+	// This is a basic implementation; for production robustness with complex XML,
 	// a full XML parser is often better, but libvirt XMLs are generally consistent enough for this.
 	// We use strings.Index to find start/end of disks and check content.
-	
+
 	// Helper to find next disk block
 	findNextDisk := func(startIdx int) (int, int, bool) {
 		diskStart := strings.Index(xmlDesc[startIdx:], "<disk")
@@ -118,7 +118,7 @@ func removeConflictingDisks(xmlDesc string, targets map[string]bool) (string, er
 			return -1, -1, false
 		}
 		diskStart += startIdx
-		
+
 		// Find closing tag
 		// We need to handle nested tags if any (unlikely for <disk> in libvirt valid output)
 		// But simplistic search for </disk> should work for standard libvirt output
@@ -132,7 +132,7 @@ func removeConflictingDisks(xmlDesc string, targets map[string]bool) (string, er
 
 	var newXML strings.Builder
 	currentIdx := 0
-	
+
 	for {
 		start, end, found := findNextDisk(currentIdx)
 		if !found {
@@ -140,14 +140,14 @@ func removeConflictingDisks(xmlDesc string, targets map[string]bool) (string, er
 			newXML.WriteString(xmlDesc[currentIdx:])
 			break
 		}
-		
+
 		// Append everything before this disk
 		newXML.WriteString(xmlDesc[currentIdx:start])
-		
+
 		// Check if this disk matches one of our targets
 		diskContent := xmlDesc[start:end]
 		shouldRemove := false
-		
+
 		for target := range targets {
 			// Look for <target dev='target' ... />
 			// Match exact target attribute
@@ -168,15 +168,15 @@ func removeConflictingDisks(xmlDesc string, targets map[string]bool) (string, er
 				}
 			}
 		}
-		
+
 		if !shouldRemove {
 			// Keep it
 			newXML.WriteString(diskContent)
 		}
-		
+
 		currentIdx = end
 	}
-	
+
 	return newXML.String(), nil
 }
 
@@ -240,10 +240,19 @@ func buildDiskXMLForDefine(d DiskCreateConfig) string {
 	}
 
 	// Build the disk XML
+	driverAttrs := []string{fmt.Sprintf("name='qemu'"), fmt.Sprintf("type='%s'", format)}
+	if cache := strings.TrimSpace(d.Cache); cache != "" {
+		driverAttrs = append(driverAttrs, fmt.Sprintf("cache='%s'", cache))
+	}
+	if ioMode := strings.TrimSpace(d.IOMode); ioMode != "" {
+		driverAttrs = append(driverAttrs, fmt.Sprintf("io='%s'", ioMode))
+	}
+	driverXML := fmt.Sprintf("<driver %s/>", strings.Join(driverAttrs, " "))
+
 	xml := fmt.Sprintf(`    <disk type='%s' device='%s'>
-      <driver name='qemu' type='%s'/>
       %s
-      <target dev='%s' bus='%s'/>`, sourceType, deviceType, format, sourceAttr, target, bus)
+      %s
+      <target dev='%s' bus='%s'/>`, sourceType, deviceType, driverXML, sourceAttr, target, bus)
 
 	// Add boot order if specified
 	if d.BootOrder > 0 {
