@@ -215,14 +215,18 @@ func isValidVolumeName(name string) bool {
 }
 
 // createDisk creates a new disk in a storage pool
-func (s *Service) createDisk(poolName, vmName string, sizeGB uint64) (string, error) {
+func (s *Service) createDisk(poolName, vmName string, sizeGB uint64, format string) (string, error) {
 	pool, err := s.conn.LookupStoragePoolByName(poolName)
 	if err != nil {
 		return "", fmt.Errorf("storage pool not found: %w", err)
 	}
 	defer pool.Free()
 
-	volName := fmt.Sprintf("%s.qcow2", vmName)
+	if format == "" {
+		format = "qcow2"
+	}
+
+	volName := fmt.Sprintf("%s.%s", vmName, format)
 	sizeBytes := sizeGB * 1024 * 1024 * 1024
 
 	volXML := fmt.Sprintf(`
@@ -230,10 +234,10 @@ func (s *Service) createDisk(poolName, vmName string, sizeGB uint64) (string, er
 			<name>%s</name>
 			<capacity>%d</capacity>
 			<target>
-				<format type='qcow2'/>
+				<format type='%s'/>
 			</target>
 		</volume>
-	`, volName, sizeBytes)
+	`, volName, sizeBytes, format)
 
 	vol, err := pool.StorageVolCreateXML(volXML, 0)
 	if err != nil {

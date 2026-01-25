@@ -244,6 +244,81 @@ export class VirtualizationAPI {
     );
   }
 
+
+
+  /**
+   * Initiate a volume upload session (TUS protocol)
+   */
+  async initiateVolumeUpload(metadata: {
+    filename: string;
+    size: number;
+    pool_name: string;
+    format?: string;
+  }): Promise<{ uploadUrl: string; uploadId: string }> {
+    const tusMetadata: Record<string, string> = {};
+
+    if (metadata.filename) tusMetadata.filename = btoa(metadata.filename);
+    if (metadata.pool_name) tusMetadata.pool_name = btoa(metadata.pool_name);
+    if (metadata.format) tusMetadata.format = btoa(metadata.format);
+
+    const uploadMetadata = Object.entries(tusMetadata)
+      .map(([key, value]) => `${key} ${value}`)
+      .join(',');
+
+    const token = getAuthToken();
+    const url = getApiUrl('/virtualization/volumes/upload');
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Upload-Length': metadata.size.toString(),
+        'Upload-Metadata': uploadMetadata,
+        'Tus-Resumable': '1.0.0',
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({
+        code: 'API_ERROR',
+        message: response.statusText,
+      }));
+      throw new VirtualizationAPIError(
+        error.code || 'API_ERROR',
+        error.message || `Request failed: ${response.status}`,
+        error.details
+      );
+    }
+
+    const location = response.headers.get('Location');
+    const responseData = await response.json();
+
+    let tusUploadUrl = location || responseData.upload_url;
+
+    if (tusUploadUrl && !tusUploadUrl.startsWith('http')) {
+      const fullUploadPath = tusUploadUrl.startsWith('/api/')
+        ? tusUploadUrl
+        : `/api/v1/virtualization/volumes/upload/${responseData.upload_id}`;
+
+      const baseUrl = url.substring(0, url.indexOf('/api/'));
+      tusUploadUrl = baseUrl + fullUploadPath;
+    }
+
+    return {
+      uploadUrl: tusUploadUrl,
+      uploadId: responseData.upload_id,
+    };
+  }
+
+  /**
+   * Complete a volume upload
+   */
+  async completeVolumeUpload(uploadId: string): Promise<any> {
+    return apiRequest<any>(`/volumes/upload/${uploadId}/complete`, {
+      method: 'POST',
+    });
+  }
+
   /**
    * Clone a virtual machine
    */

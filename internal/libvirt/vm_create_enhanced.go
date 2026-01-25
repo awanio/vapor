@@ -349,7 +349,7 @@ func (s *Service) createEnhancedDisk(ctx context.Context, config DiskCreateConfi
 	}
 
 	// Use the existing createDisk method
-	return s.createDisk(poolName, diskName, config.Size)
+	return s.createDisk(poolName, diskName, config.Size, config.Format)
 }
 
 // cloneEnhancedDisk clones an existing disk to a new location

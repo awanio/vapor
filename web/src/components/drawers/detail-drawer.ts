@@ -1,61 +1,50 @@
 import { LitElement, html, css } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { customElement, property } from 'lit/decorators.js';
 
 @customElement('detail-drawer')
 export class DetailDrawer extends LitElement {
   @property({ type: String }) override title = '';
-  @property({ type: Boolean }) show = false;
+  @property({ type: Boolean, reflect: true }) show = false;
   @property({ type: Boolean }) loading = false;
   @property({ type: Number }) width = 600;
   @property({ type: Boolean }) hasFooter = false;
 
-  @state() private isClosing = false;
-  @state() private animationFinished = false;
-
   private handleKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'Escape' && this.show) {
-      // Stop propagation to prevent parent drawer from also closing
       event.stopPropagation();
       this.handleClose();
     }
   };
 
   static override styles = css`
-    .drawer {
+    :host {
+      display: block;
       position: fixed;
       top: 0;
       right: 0;
       height: 100vh;
+      z-index: 2000;
+      pointer-events: none;
+    }
+
+    :host([show]) {
+      pointer-events: auto;
+    }
+
+    .drawer {
+      width: 100%;
+      height: 100%;
       background: var(--vscode-editor-background, var(--vscode-bg-light));
       border-left: 1px solid var(--vscode-border);
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
-      z-index: 2000;
       display: flex;
       flex-direction: column;
-      animation: slideIn 0.3s ease-out;
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
     }
 
-    @keyframes slideIn {
-      from {
-        transform: translateX(100%);
-      }
-      to {
-        transform: translateX(0);
-      }
-    }
-
-    @keyframes slideOut {
-      from {
-        transform: translateX(0);
-      }
-      to {
-        transform: translateX(100%);
-      }
-    }
-
-    .drawer.animation-finished { animation: none !important; transform: none !important; }
-    .drawer.closing {
-      animation: slideOut 0.3s ease-in forwards;
+    :host([show]) .drawer {
+      transform: translateX(0);
     }
 
     .close-button {
@@ -70,6 +59,7 @@ export class DetailDrawer extends LitElement {
       padding: 4px;
       border-radius: 4px;
       transition: background-color 0.2s;
+      z-index: 10;
     }
 
     .close-button:hover {
@@ -80,6 +70,7 @@ export class DetailDrawer extends LitElement {
       padding: 20px;
       border-bottom: 1px solid var(--vscode-border);
       flex-shrink: 0;
+      position: relative;
     }
 
     h2 {
@@ -108,35 +99,15 @@ export class DetailDrawer extends LitElement {
     }
   `;
 
-
-  override updated(changedProperties: Map<string, any>) {
-    if (changedProperties.has('show') && this.show) {
-      this.animationFinished = false;
-      setTimeout(() => {
-        this.animationFinished = true;
-      }, 300);
-    }
-  }
-
   private handleClose(event?: Event) {
-    // Stop propagation if this was triggered by a UI event
     if (event) {
       event.stopPropagation();
     }
 
-    if (this.isClosing) return; // Prevent double-close
-
-    // Start close animation
-    this.isClosing = true;
-
-    // Wait for animation to complete before dispatching close event
-    setTimeout(() => {
-      this.isClosing = false;
-      this.dispatchEvent(new CustomEvent('close', {
-        bubbles: false,  // Don't bubble to prevent parent drawer from closing
-        composed: true
-      }));
-    }, 300); // Match animation duration
+    this.dispatchEvent(new CustomEvent('close', {
+      bubbles: true,
+      composed: true
+    }));
   }
 
   override connectedCallback() {
@@ -150,15 +121,14 @@ export class DetailDrawer extends LitElement {
   }
 
   override render() {
-    if (!this.show && !this.isClosing) {
-      return null;
-    }
+    // Apply width to host specifically
+    this.style.width = `${this.width}px`;
 
     return html`
-      <div class="drawer ${this.isClosing ? 'closing' : ''} ${this.animationFinished ? 'animation-finished' : ''}" style="width: ${this.width}px">
+      <div class="drawer">
         <div class="drawer-header">
-          <button class="close-button" @click=${(e: Event) => this.handleClose(e)}>×</button>
           <h2>${this.title}</h2>
+          <button class="close-button" @click=${(e: Event) => this.handleClose(e)}>×</button>
         </div>
         <div class="drawer-content">
           ${this.loading ? html`

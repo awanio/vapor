@@ -185,6 +185,23 @@ func LibvirtRoutes(r *gin.RouterGroup, authService *auth.EnhancedService, servic
 	// Volumes (across all pools)
 	r.GET("/virtualization/volumes", listAllVolumes(service)) // List all volumes across all pools
 
+	// Volume Upload with resumable uploads (TUS protocol)
+	volumeUpload := r.Group("/virtualization/volumes/upload")
+	{
+		uploadDir := filepath.Join(os.TempDir(), "vapor-uploads", "volumes")
+		volumeUploadHandler := libvirt.NewVolumeResumableUploadHandler(service, uploadDir)
+
+		volumeUpload.OPTIONS("", volumeUploadHandler.HandleOptions)
+		volumeUpload.OPTIONS("/:id", volumeUploadHandler.HandleOptions)
+		volumeUpload.POST("", volumeUploadHandler.CreateUpload)
+		volumeUpload.GET("", volumeUploadHandler.ListUploads)
+		volumeUpload.HEAD("/:id", volumeUploadHandler.GetUploadInfo)
+		volumeUpload.PATCH("/:id", volumeUploadHandler.UploadChunk)
+		volumeUpload.GET("/:id", volumeUploadHandler.GetUploadStatus)
+		volumeUpload.POST("/:id/complete", volumeUploadHandler.CompleteUpload)
+		volumeUpload.DELETE("/:id", volumeUploadHandler.CancelUpload)
+	}
+
 	// Network Management
 	networkGroup := r.Group("/virtualization/networks")
 	{

@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
-	"github.com/awanio/vapor/internal/websocket"
 	"log"
 	"os"
 	"path/filepath"
@@ -17,6 +16,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/awanio/vapor/internal/websocket"
 
 	"libvirt.org/go/libvirt"
 )
@@ -1053,7 +1054,7 @@ func (s *Service) CreateVM(ctx context.Context, req *VMCreateRequest) (*VM, erro
 			poolName = "default"
 		}
 
-		diskPath, err := s.createDisk(poolName, req.Name, req.DiskSize)
+		diskPath, err := s.createDisk(poolName, req.Name, req.DiskSize, "qcow2")
 		if err != nil {
 			// Clean up domain definition
 			domain.Undefine()

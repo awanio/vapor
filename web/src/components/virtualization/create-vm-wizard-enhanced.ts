@@ -15,7 +15,6 @@ import {
   $vmWizardState,
   $availableStoragePools,
   $availableISOs,
-  $filteredVolumes,
   wizardActions,
   vmActions,
   storagePoolStore,
@@ -23,6 +22,7 @@ import {
   templateStore,
   networkStore,
   volumeActions,
+  volumeStore,
 } from '../../stores/virtualization';
 import type { TemplateWizardContext } from '../../stores/virtualization';
 import type { StorageVolume } from '../../types/virtualization';
@@ -129,7 +129,7 @@ export class CreateVMWizardEnhanced extends LitElement {
   private isosController = new StoreController(this, $availableISOs);
   private networksController = new StoreController(this, networkStore.$items);
   private bridgesController = new StoreController(this, $bridges);
-  private volumesController = new StoreController(this, $filteredVolumes);
+  private volumesController = new StoreController(this, volumeStore.$items);
 
   // Component state
   @state() private isCreating = false;
@@ -1004,7 +1004,7 @@ export class CreateVMWizardEnhanced extends LitElement {
     const disks = (this.formData.storage?.disks || []).map(d => ({
       action: d.action,
       size: d.size,
-      format: d.format === 'vmdk' ? 'qcow2' : d.format,
+      format: d.format,
       storage_pool: d.storage_pool,
       path: d.path,
       source: d.clone_from,
@@ -1095,7 +1095,48 @@ export class CreateVMWizardEnhanced extends LitElement {
     this.showAddDeviceMenu = false;
     this.editingDiskIndex = index;
     this.deviceModalMode = existing.device === 'cdrom' ? 'iso' : 'disk';
-    this.deviceDraft = { ...existing };
+
+    // Create a copy to edit
+    const draft = { ...existing };
+
+    // INFRA-FIX: Infer action if missing
+    if (!draft.action) {
+      if (draft.path && draft.path.length > 0) {
+        draft.action = 'attach';
+      } else {
+        draft.action = 'create';
+      }
+    }
+
+    // INFRA-FIX: Smart storage_pool resolution for attached disks
+    // The backend might report wrong storage_pool (e.g., "default" when file is in another pool).
+    // We verify the volume exists in the reported pool, otherwise find the correct pool by path.
+    if (draft.path && draft.action === 'attach') {
+      const pools = this.storagePoolsController.value || [];
+      const volumes = this.getVolumesForPool(draft.storage_pool || '');
+      const volumeExists = volumes.some((v: any) => v.path === draft.path);
+
+      if (!volumeExists) {
+        // Volume not found in reported pool - find correct pool by path
+        // Sort pools by path length (descending) to match the most specific path first
+        // e.g., "/home/awanio/data/virtualcompute" should match before "/"
+        const sortedPools = [...pools]
+          .filter((p: any) => p.path && draft.path!.startsWith(p.path))
+          .sort((a: any, b: any) => (b.path?.length || 0) - (a.path?.length || 0));
+
+        const bestMatch = sortedPools[0];
+        if (bestMatch && bestMatch.name) {
+          draft.storage_pool = bestMatch.name;
+        } else if (!draft.storage_pool) {
+          // Fallback if no pool matches and none set
+          if (draft.path.includes('/var/lib/libvirt/images')) {
+            draft.storage_pool = 'default';
+          }
+        }
+      }
+    }
+
+    this.deviceDraft = draft;
     this.showDeviceModal = true;
   }
 
@@ -1223,7 +1264,7 @@ export class CreateVMWizardEnhanced extends LitElement {
             >
               <option value="">Select a storage pool</option>
               ${storagePools.map((pool: any) => html`
-                <option value=${pool.name}>${pool.name}</option>
+                <option value=${pool.name} ?selected=${disk.storage_pool === pool.name}>${pool.name}</option>
               `)}
             </select>
           </div>
@@ -1569,7 +1610,7 @@ export class CreateVMWizardEnhanced extends LitElement {
             >
               <option value="">Select ISO image...</option>
               ${isos.map((iso: any) => html`
-                <option value=${iso.path}>
+                <option value=${iso.path} ?selected=${disk.path === iso.path}>
                   ${iso.name} (${this.formatVolumeSize(iso.size)})
                 </option>
               `)}
@@ -2435,7 +2476,16 @@ export class CreateVMWizardEnhanced extends LitElement {
    * Get volumes filtered by storage pool name
    */
   private getVolumesForPool(poolName: string): StorageVolume[] {
-    const volumes = this.volumesController.value || [];
+    const volumesData = this.volumesController.value;
+    // Convert Map to array if needed
+    let volumes: StorageVolume[] = [];
+    if (volumesData instanceof Map) {
+      volumes = Array.from(volumesData.values()) as StorageVolume[];
+    } else if (Array.isArray(volumesData)) {
+      volumes = volumesData;
+    } else if (volumesData && typeof volumesData === 'object') {
+      volumes = Object.values(volumesData) as StorageVolume[];
+    }
     if (!poolName) return volumes;
     return volumes.filter((vol: StorageVolume) => vol.pool_name === poolName);
   }

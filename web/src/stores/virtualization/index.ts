@@ -2014,7 +2014,8 @@ export const wizardActions = {
 
     // Convert VM's disk info to DiskConfig format
     const disks = vm.disks?.map(disk => {
-      const storage_pool = resolvePoolForPath(disk.path);
+      // Use the storage_pool from the disk data if available, otherwise try to resolve from volume store
+      const storage_pool = (disk as any).storage_pool || resolvePoolForPath(disk.path);
       return {
         action: 'attach' as const,
         path: disk.path,

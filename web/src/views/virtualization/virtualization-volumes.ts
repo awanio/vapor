@@ -14,6 +14,7 @@ import '../../components/drawers/detail-drawer.js';
 import '../../components/modals/delete-modal.js';
 import '../../components/virtualization/volume-dialog.js';
 import '../../components/virtualization/volume-clone-dialog.js';
+import '../../components/virtualization/volume-upload-drawer.js';
 
 // Import types
 import type { Tab } from '../../components/tabs/tab-group.js';
@@ -47,6 +48,7 @@ export class VirtualizationVolumes extends LitElement {
   @state() private selectedVolume: StorageVolume | null = null;
   @state() private detailsLoading = false;
   @state() private showVolumeDialog = false;
+  @state() private showUploadDrawer = false;
   @state() private volumeDialogMode: 'create' | 'resize' = 'create';
   @state() private dialogPool: StoragePool | null = null;
   @state() private dialogVolume: StorageVolume | null = null;
@@ -655,16 +657,8 @@ export class VirtualizationVolumes extends LitElement {
   private getCustomRenderers() {
     return {
       nameCell: (volume: StorageVolume) => {
-        const iconClass = volume.type === 'dir' ? 'dir'
-          : volume.format === 'iso' ? 'iso'
-            : 'disk';
-        const icon = volume.type === 'dir' ? '📁'
-          : volume.format === 'iso' ? '💿'
-            : '💾';
-
         return html`
           <div class="volume-name">
-            <span class="volume-icon ${iconClass}">${icon}</span>
             <div class="volume-details">
               <div class="volume-title">${volume.name}</div>
             </div>
@@ -820,6 +814,26 @@ export class VirtualizationVolumes extends LitElement {
       case 'delete':
         this.openDeleteModal(volume);
         break;
+    }
+  }
+
+  private formatDate(dateStr: string) {
+    if (!dateStr) return 'N/A';
+    try {
+      return new Date(dateStr).toLocaleString();
+    } catch (e) {
+      return dateStr;
+    }
+  }
+
+  private getFormatIcon(format: string) {
+    switch (format?.toLowerCase()) {
+      case 'qcow2': return '📦';
+      case 'raw': return '💿';
+      case 'iso': return '📀';
+      case 'vmdk': return '🖥️';
+      case 'dir': return '📁';
+      default: return '📄';
     }
   }
 
@@ -1184,6 +1198,9 @@ export class VirtualizationVolumes extends LitElement {
             <button class="btn btn-secondary" @click=${this.handleRefresh} title="Refresh">
               🔄
             </button>
+            <button class="btn btn-secondary" @click=${() => this.showUploadDrawer = true} title="Upload Volume">
+              Upload
+            </button>
             <button
               class="btn btn-primary"
               @click=${this.handleCreateVolume}
@@ -1226,32 +1243,91 @@ export class VirtualizationVolumes extends LitElement {
         <!-- Notification Container -->
         <notification-container></notification-container>
 
-        ${this.showDetails && this.selectedVolume ? html`
-          <detail-drawer
-            .title=${`Volume: ${this.selectedVolume.name}`}
-            .show=${this.showDetails}
-            .loading=${this.detailsLoading}
-            @close=${() => {
-          this.showDetails = false;
-          this.selectedVolume = null;
-        }}
-          >
-            <div style="padding: 20px;">
-              <h3>Volume Information</h3>
-              <div style="display: grid; grid-template-columns: 150px 1fr; gap: 12px; margin-bottom: 20px;">
-                <strong>Name:</strong> <span>${this.selectedVolume.name}</span>
-                <strong>Pool:</strong> <span>${this.selectedVolume.pool_name}</span>
-                <strong>Type:</strong> <span>${this.selectedVolume.type}</span>
-                <strong>Format:</strong> <span>${this.selectedVolume.format}</span>
-                <strong>Capacity:</strong> <span>${formatBytes(this.selectedVolume.capacity)}</span>
-                <strong>Allocation:</strong> <span>${formatBytes(this.selectedVolume.allocation || 0)}</span>
-                <strong>Usage:</strong> <span>${this.selectedVolume.used_percent || 0}%</span>
-                <strong>Path:</strong> <span>${this.selectedVolume.path}</span>
-                <strong>Created:</strong> <span>${formatDate(this.selectedVolume.created_at)}</span>
+        <notification-container></notification-container>
+
+        <detail-drawer
+          .title=${`Volume Details: ${this.selectedVolume?.name || ''}`}
+          .show=${this.showDetails}
+          .loading=${this.detailsLoading}
+          @close=${() => this.showDetails = false}
+        >
+          ${this.selectedVolume ? html`
+            <div style="display: flex; flex-direction: column; gap: 24px;">
+              <!-- Header Section -->
+              <div style="display: flex; align-items: center; gap: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--vscode-widget-border, #454545);">
+                <div style="font-size: 32px;">${this.getFormatIcon(this.selectedVolume.format)}</div>
+                <div>
+                  <div style="font-size: 18px; font-weight: 600; color: var(--vscode-foreground);">${this.selectedVolume.name}</div>
+                  <div style="font-size: 13px; color: var(--vscode-descriptionForeground); margin-top: 4px;">
+                    ${this.selectedVolume.path}
+                  </div>
+                </div>
+              </div>
+
+              <!-- General Info -->
+              <div>
+                <h3 style="font-size: 11px; text-transform: uppercase; color: var(--vscode-descriptionForeground); margin: 0 0 12px 0;">
+                  Properties
+                </h3>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; background: var(--vscode-editor-background); padding: 16px; border: 1px solid var(--vscode-widget-border, #454545); border-radius: 6px;">
+                  <div>
+                    <div style="font-size: 11px; color: var(--vscode-descriptionForeground);">Format</div>
+                    <div style="font-size: 13px; margin-top: 4px;">${this.selectedVolume.format}</div>
+                  </div>
+                  <div>
+                    <div style="font-size: 11px; color: var(--vscode-descriptionForeground);">Type</div>
+                    <div style="font-size: 13px; margin-top: 4px;">${this.selectedVolume.type}</div>
+                  </div>
+                  <div>
+                    <div style="font-size: 11px; color: var(--vscode-descriptionForeground);">Created</div>
+                    <div style="font-size: 13px; margin-top: 4px;">${this.formatDate(this.selectedVolume.created_at)}</div>
+                  </div>
+                  <div>
+                     <div style="font-size: 11px; color: var(--vscode-descriptionForeground);">Pool</div>
+                     <div style="font-size: 13px; margin-top: 4px;">${this.selectedVolume.pool_name}</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Storage Usage -->
+              <div>
+                <h3 style="font-size: 11px; text-transform: uppercase; color: var(--vscode-descriptionForeground); margin: 0 0 12px 0;">
+                  Storage Usage
+                </h3>
+                <div style="background: var(--vscode-editor-background); padding: 16px; border: 1px solid var(--vscode-widget-border, #454545); border-radius: 6px;">
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <div style="font-size: 13px;">Used Space</div>
+                    <div style="font-size: 13px; font-weight: 500;">
+                      ${formatBytes(this.selectedVolume.allocation || 0)} / ${formatBytes(this.selectedVolume.capacity)}
+                    </div>
+                  </div>
+                  
+                  <div style="height: 6px; background: #3c3c3c; border-radius: 3px; overflow: hidden;">
+                    <div style="height: 100%; ${({
+          'low': 'background: var(--vscode-charts-green, #388a34);',
+          'medium': 'background: var(--vscode-charts-yellow, #cca700);',
+          'high': 'background: var(--vscode-charts-red, #f14c4c);'
+        }[this.getUsageClass(this.selectedVolume.used_percent || 0)])} width: ${this.selectedVolume.used_percent || 0}%;"></div>
+                  </div>
+                  <div style="display: flex; justify-content: flex-end; margin-top: 4px;">
+                     <span style="font-size: 11px; color: var(--vscode-descriptionForeground);">${this.selectedVolume.used_percent || 0}% Allocated</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Technical Details -->
+              <div>
+                 <h3 style="font-size: 11px; text-transform: uppercase; color: var(--vscode-descriptionForeground); margin: 0 0 12px 0;">
+                  Technical Details
+                </h3>
+                <div style="background: var(--vscode-textCodeBlock-background); padding: 12px; border-radius: 4px; font-family: 'Fira Code', monospace; font-size: 12px;">
+                  <div style="margin-bottom: 4px;"><span style="color: var(--vscode-symbolIcon-propertyForeground);">key:</span> <span style="color: var(--vscode-symbolIcon-stringForeground);">${(this.selectedVolume as any).key || 'N/A'}</span></div>
+                  <div style="margin-bottom: 4px;"><span style="color: var(--vscode-symbolIcon-propertyForeground);">path:</span> <span style="color: var(--vscode-symbolIcon-stringForeground);">${this.selectedVolume.path}</span></div>
+                </div>
               </div>
             </div>
-          </detail-drawer>
-        ` : ''}
+          ` : ''}
+        </detail-drawer>
 
         ${this.showDeleteModal && this.deleteItem ? html`
           <delete-modal
@@ -1281,6 +1357,17 @@ export class VirtualizationVolumes extends LitElement {
           @close=${this.handleCloneDialogClose}
           @volume-cloned=${this.handleVolumeCloned}
         ></volume-clone-dialog>
+
+        <volume-upload-drawer
+          .open=${this.showUploadDrawer}
+          .storagePools=${stats.pools}
+          @close=${() => this.showUploadDrawer = false}
+          @success=${() => {
+        this.showUploadDrawer = false;
+        this.handleRefresh();
+        this.showNotification('Volume uploaded successfully', 'success');
+      }}
+        ></volume-upload-drawer>
       </div>
     `;
   }
