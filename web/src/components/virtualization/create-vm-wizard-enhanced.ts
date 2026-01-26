@@ -108,6 +108,7 @@ interface EnhancedVMCreateRequest {
   os_type?: string;
   os_variant?: string;
   architecture?: string;
+  machine_type?: string;
   uefi?: boolean;
   secure_boot?: boolean;
   tpm?: boolean;
@@ -153,6 +154,9 @@ export class CreateVMWizardEnhanced extends LitElement {
   @state() private currentStep = 1;
   @state() private availablePCIDevices: any[] = [];
   @state() private isLoadingPCIDevices = false;
+  @state() private machineTypeOptions: string[] = [];
+  @state() private isLoadingCapabilities = false;
+  @state() private capabilitiesError: string | null = null;
   @state() private editMode = false;
   @state() private editingVmId: string | null = null;
   @state() private templateMode = false;
@@ -795,6 +799,7 @@ export class CreateVMWizardEnhanced extends LitElement {
         volumeActions.fetchAll(), // Fetch volumes for clone disk source selection
         initializeNetworkStore(), // Initialize network store to load bridges and interfaces
         this.loadPCIDevices(), // Load available PCI devices
+        this.loadCapabilities(), // Load domain capabilities (machine types)
       ]);
     } catch (error) {
       console.error('Failed to load data for VM wizard:', error);
@@ -839,6 +844,58 @@ export class CreateVMWizardEnhanced extends LitElement {
     }
   }
 
+
+  private async loadCapabilities(arch?: string) {
+    const targetArch = arch || this.formData.architecture || 'x86_64';
+    this.isLoadingCapabilities = true;
+    this.capabilitiesError = null;
+
+    try {
+      const token = localStorage.getItem('jwt_token') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+      const url = new URL(getApiUrl('/virtualization/capabilities'));
+      url.searchParams.set('arch', targetArch);
+      url.searchParams.set('virt_type', 'kvm');
+
+      const response = await fetch(url.toString(), {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: response.statusText }));
+        this.capabilitiesError = errorData?.error?.message || errorData?.message || response.statusText;
+        this.machineTypeOptions = [];
+        return;
+      }
+
+      const result = await response.json();
+      const data = result?.data || result;
+      const fromList = Array.isArray(data?.machine_types) ? data.machine_types : [];
+      const fromEnums = Array.isArray(data?.enums?.machine) ? data.enums.machine : [];
+      const combined = [...fromList, ...fromEnums].filter((v, i, arr) => v && arr.indexOf(v) === i);
+      const fallback = targetArch === 'x86_64' ? ['q35', 'pc'] : [];
+      this.machineTypeOptions = combined.length ? combined : fallback;
+
+      const current = this.formData.machine_type || '';
+      if (this.machineTypeOptions.length > 0) {
+        if (!current || !this.machineTypeOptions.includes(current)) {
+          const preferred = this.machineTypeOptions.find(m => m.includes('q35')) || this.machineTypeOptions[0];
+          this.updateFormData('machine_type', preferred);
+        }
+      } else if (targetArch !== 'x86_64') {
+        this.updateFormData('machine_type', '');
+      }
+    } catch (error) {
+      console.error('Failed to load capabilities:', error);
+      this.capabilitiesError = error instanceof Error ? error.message : 'Failed to load capabilities';
+      this.machineTypeOptions = [];
+    } finally {
+      this.isLoadingCapabilities = false;
+    }
+  }
+
   private toggleSection(section: string) {
     if (this.expandedSections.has(section)) {
       this.expandedSections.delete(section);
@@ -874,6 +931,7 @@ export class CreateVMWizardEnhanced extends LitElement {
       vcpus: 2,
       os_type: 'linux',
       architecture: 'x86_64',
+      machine_type: 'q35',
       storage: {
         disks: [],
       },
@@ -902,6 +960,10 @@ export class CreateVMWizardEnhanced extends LitElement {
     this.lastInitializedOpenId = null;
   }
   private goToStep(step: number) {
+    // Sync disk formats from volume metadata when navigating to Storage or Review steps
+    if (this.editMode && (step === 2 || step === 6)) {
+      this.syncDiskFormatsFromVolumes();
+    }
     this.currentStep = step;
   }
 
@@ -914,7 +976,12 @@ export class CreateVMWizardEnhanced extends LitElement {
   private handleNext() {
     if (this.validateStep(this.currentStep)) {
       if (this.currentStep < 6) {
-        this.currentStep++;
+        const nextStep = this.currentStep + 1;
+        // Sync disk formats from volume metadata when navigating to Storage or Review steps
+        if (this.editMode && (nextStep === 2 || nextStep === 6)) {
+          this.syncDiskFormatsFromVolumes();
+        }
+        this.currentStep = nextStep;
       }
     }
   }
@@ -1026,6 +1093,7 @@ export class CreateVMWizardEnhanced extends LitElement {
       os_type: this.formData.os_type,
       os_variant: this.formData.os_variant,
       architecture: this.formData.architecture,
+      machine_type: this.formData.machine_type,
       uefi: this.formData.uefi,
       secure_boot: this.formData.secure_boot,
       tpm: this.formData.tpm,
@@ -1507,7 +1575,7 @@ export class CreateVMWizardEnhanced extends LitElement {
               </select>
             </div>
 
-            <div class="grid-3">
+            <div class="grid-4">
               <div class="form-group">
                 <label>Format</label>
                 <select
@@ -2532,6 +2600,41 @@ export class CreateVMWizardEnhanced extends LitElement {
   }
 
   /**
+   * Sync disk formats in formData from volume metadata.
+   * This ensures the Review stage and JSON payload have correct formats.
+   * Should be called after loading formData in edit mode.
+   */
+  private syncDiskFormatsFromVolumes() {
+    const disks = this.formData.storage?.disks;
+    if (!disks || disks.length === 0) return;
+
+    const pools = this.storagePoolsController.value || [];
+
+    disks.forEach((disk: any) => {
+      // Only sync for attached disks with a path
+      if (!disk.path || (disk.action && disk.action !== 'attach')) return;
+
+      // Find the correct pool by path (using longest match)
+      const sortedPools = [...pools]
+        .filter((p: any) => p.path && disk.path.startsWith(p.path))
+        .sort((a: any, b: any) => (b.path?.length || 0) - (a.path?.length || 0));
+
+      const poolName = sortedPools[0]?.name || disk.storage_pool || '';
+      const volumes = this.getVolumesForPool(poolName);
+      const matchingVolume = volumes.find((v: any) => v.path === disk.path);
+
+      if (matchingVolume && matchingVolume.format) {
+        disk.format = matchingVolume.format.toLowerCase();
+      }
+
+      // Also sync storage_pool if needed
+      if (sortedPools[0]?.name && disk.storage_pool !== sortedPools[0].name) {
+        disk.storage_pool = sortedPools[0].name;
+      }
+    });
+  }
+
+  /**
    * Format volume size from bytes to human readable
    */
   private formatVolumeSize(bytes: number): string {
@@ -2708,15 +2811,34 @@ export class CreateVMWizardEnhanced extends LitElement {
               <select
                 .value=${this.formData.architecture || 'x86_64'}
                 ?disabled=${this.templateMode}
-                @change=${(e: Event) =>
-        this.updateFormData('architecture', (e.target as HTMLSelectElement).value)
-      }
+                @change=${async (e: Event) => {
+        const arch = (e.target as HTMLSelectElement).value;
+        this.updateFormData('architecture', arch);
+        await this.loadCapabilities(arch);
+      }}
               >
                 <option value="x86_64">x86_64</option>
                 <option value="aarch64">ARM64</option>
                 <option value="ppc64le">PowerPC</option>
                 <option value="s390x">s390x</option>
               </select>
+            </div>
+
+            <div class="form-group">
+              <label>Machine Type</label>
+              <select
+                .value=${this.formData.machine_type || ''}
+                ?disabled=${this.templateMode || this.isLoadingCapabilities}
+                @change=${(e: Event) =>
+        this.updateFormData('machine_type', (e.target as HTMLSelectElement).value)
+      }
+              >
+                ${this.machineTypeOptions.length > 0
+        ? this.machineTypeOptions.map(m => html`<option value=${m} ?selected=${(this.formData.machine_type || '') === m}>${m}</option>`)
+        : html`<option value="">${this.isLoadingCapabilities ? 'Loading...' : 'Unavailable'}</option>`}
+              </select>
+              ${this.capabilitiesError ? html`<div class="error-message">${this.capabilitiesError}</div>` : ''}
+              <div class="help-text">Secure Boot requires q35 on x86_64.</div>
             </div>
           </div>
 
@@ -3654,6 +3776,7 @@ export class CreateVMWizardEnhanced extends LitElement {
           graphics: vmFormData.graphics ? [vmFormData.graphics] : base.graphics,
         } as Partial<EnhancedVMCreateRequest>;
         this.templateDiskSizeGB = null;
+        this.loadCapabilities(this.formData.architecture || 'x86_64');
       } else if (this.templateMode && this.templateContext) {
         const t = this.templateContext;
         const defaults: any = wizardState.formData || {};
@@ -3682,6 +3805,7 @@ export class CreateVMWizardEnhanced extends LitElement {
         } as Partial<EnhancedVMCreateRequest>;
 
         this.templateDiskSizeGB = (t.recommended_disk ?? t.min_disk) as any;
+        this.loadCapabilities(this.formData.architecture || 'x86_64');
       } else {
         // Create mode
         this.formData = {
@@ -3689,6 +3813,7 @@ export class CreateVMWizardEnhanced extends LitElement {
           ...(wizardState.formData || {}),
         } as Partial<EnhancedVMCreateRequest>;
         this.templateDiskSizeGB = null;
+        this.loadCapabilities(this.formData.architecture || 'x86_64');
       }
     }
 

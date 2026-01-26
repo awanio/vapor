@@ -147,6 +147,7 @@ export interface VMCreateRequest {
   network?: NetworkConfig;
   graphics?: GraphicsConfig;
   boot?: BootConfig;
+  machine_type?: string;
   metadata?: Record<string, string>;
 }
 
@@ -784,3 +785,19 @@ export interface VMMetricsEnhanced {
     tx_errors: number;
   }[];
 }
+
+
+export interface DomainCapabilities {
+  emulator?: string;
+  arch?: string;
+  domain?: string;
+  machine_types?: string[];
+  enums?: Record<string, string[]>;
+  raw_xml?: string;
+}
+
+export interface DomainCapabilitiesResponse {
+  status: string;
+  data: DomainCapabilities;
+}
+

@@ -30,12 +30,13 @@ type VMCreateRequestEnhanced struct {
 	// Detailed OS information for metadata
 	OSInfo *OSInfoEnhanced `json:"os_info,omitempty"`
 
-	OSType       string `json:"os_type"`              // linux, windows, etc
-	OSVariant    string `json:"os_variant,omitempty"` // ubuntu20.04, win10, etc
-	Architecture string `json:"architecture"`         // x86_64 by default
-	UEFI         bool   `json:"uefi"`                 // Use UEFI boot
-	SecureBoot   bool   `json:"secure_boot"`          // Enable secure boot
-	TPM          bool   `json:"tpm"`                  // Add TPM device
+	OSType       string `json:"os_type"`                // linux, windows, etc
+	OSVariant    string `json:"os_variant,omitempty"`   // ubuntu20.04, win10, etc
+	Architecture string `json:"architecture"`           // x86_64 by default
+	MachineType  string `json:"machine_type,omitempty"` // q35, pc, virt, etc
+	UEFI         bool   `json:"uefi"`                   // Use UEFI boot
+	SecureBoot   bool   `json:"secure_boot"`            // Enable secure boot
+	TPM          bool   `json:"tpm"`                    // Add TPM device
 
 	// Network configuration
 	Networks []NetworkConfig `json:"networks,omitempty"` // Multiple networks
@@ -1565,11 +1566,11 @@ func (s *Service) UpdateVMEnhanced(ctx context.Context, nameOrUUID string, req *
 		}
 	}
 
-	// Handle UEFI/SecureBoot/TPM changes if specified
-	if req.UEFI || req.SecureBoot || req.TPM {
+	// Handle UEFI/SecureBoot/TPM/machine_type changes if specified
+	if req.UEFI || req.SecureBoot || req.TPM || req.MachineType != "" {
 		if isRunning {
 			log.Printf("UpdateVMEnhanced error: Firmware changes require VM to be stopped")
-			return nil, fmt.Errorf("firmware changes (UEFI/SecureBoot/TPM) require VM to be stopped")
+			return nil, fmt.Errorf("firmware or machine type changes (UEFI/SecureBoot/TPM/machine_type) require VM to be stopped")
 		}
 		log.Printf("UpdateVMEnhanced: Firmware configuration updates requested")
 
@@ -1579,12 +1580,38 @@ func (s *Service) UpdateVMEnhanced(ctx context.Context, nameOrUUID string, req *
 			return nil, fmt.Errorf("failed to get VM XML: %w", err)
 		}
 
+		desiredMachine := req.MachineType
+		if desiredMachine == "" {
+			desiredMachine = getDomainMachineType(xmlDesc)
+		}
+		if req.SecureBoot {
+			if desiredMachine == "" {
+				return nil, fmt.Errorf("secure boot requires q35 machine type (machine attribute not found)")
+			}
+			if !strings.Contains(desiredMachine, "q35") {
+				return nil, fmt.Errorf("secure boot requires q35 machine type (current: %s)", desiredMachine)
+			}
+		}
+
 		modifiedXML := xmlDesc
 		if req.UEFI || req.SecureBoot {
-			modifiedXML, err = ensureFirmwareFeatures(modifiedXML, req.UEFI || req.SecureBoot, req.SecureBoot)
+			vmName, nameErr := domain.GetName()
+			if nameErr != nil {
+				log.Printf("UpdateVMEnhanced error getting domain name for firmware update: %v", nameErr)
+				return nil, fmt.Errorf("failed to get VM name: %w", nameErr)
+			}
+			modifiedXML, err = ensureUEFIBootXML(modifiedXML, vmName, req.SecureBoot)
 			if err != nil {
-				log.Printf("UpdateVMEnhanced error updating firmware features: %v", err)
-				return nil, fmt.Errorf("failed to update firmware features: %w", err)
+				log.Printf("UpdateVMEnhanced error updating UEFI settings: %v", err)
+				return nil, fmt.Errorf("failed to update firmware settings: %w", err)
+			}
+		}
+
+		if req.MachineType != "" {
+			modifiedXML, err = ensureMachineTypeXML(modifiedXML, req.MachineType)
+			if err != nil {
+				log.Printf("UpdateVMEnhanced error updating machine type: %v", err)
+				return nil, fmt.Errorf("failed to update machine type: %w", err)
 			}
 		}
 

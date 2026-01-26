@@ -39,6 +39,7 @@ import type {
   VMSnapshotCreateResponse,
   VMSnapshotRevertResponse,
   SnapshotCapabilitiesResponse,
+  DomainCapabilitiesResponse,
   BackupCreateRequest,
   BackupImportRequest,
   BackupRestoreRequest,
@@ -202,6 +203,27 @@ export class VirtualizationAPI {
    */
   async getVM(id: string): Promise<VirtualMachine> {
     return apiRequest<VirtualMachine>(`/computes/${id}`);
+  }
+
+  /**
+   * Get libvirt domain capabilities (machine types, enums, etc)
+   */
+  async getCapabilities(params: {
+    arch?: string;
+    virt_type?: string;
+    machine_type?: string;
+    emulator?: string;
+    include_raw?: boolean;
+  } = {}): Promise<DomainCapabilitiesResponse> {
+    const query = new URLSearchParams();
+    if (params.arch) query.set('arch', params.arch);
+    if (params.virt_type) query.set('virt_type', params.virt_type);
+    if (params.machine_type) query.set('machine_type', params.machine_type);
+    if (params.emulator) query.set('emulator', params.emulator);
+    if (params.include_raw !== undefined) query.set('include_raw', String(params.include_raw));
+
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest<DomainCapabilitiesResponse>(`/capabilities${suffix}`);
   }
 
   /**
