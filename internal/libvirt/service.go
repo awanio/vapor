@@ -2854,6 +2854,9 @@ func (s *Service) parseOSConfiguration(vm *VMEnhanced, xmlDesc string) {
 	if strings.Contains(xmlDesc, "<loader") && strings.Contains(xmlDesc, "OVMF") {
 		uefiEnabled = true
 	}
+	if strings.Contains(xmlDesc, "<os") && (strings.Contains(xmlDesc, "firmware='efi'") || strings.Contains(xmlDesc, "firmware=\"efi\"")) {
+		uefiEnabled = true
+	}
 	if strings.Contains(xmlDesc, "<firmware") && (strings.Contains(xmlDesc, "name='efi'") || strings.Contains(xmlDesc, "name=\"efi\"")) {
 		uefiEnabled = true
 	}

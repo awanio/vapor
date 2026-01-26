@@ -11,6 +11,10 @@
 #   VAPOR_TLS_CERT_DIR - Directory for TLS certificates
 #   VAPOR_TLS_CERT_FILE - Path to TLS certificate file
 #   VAPOR_TLS_KEY_FILE  - Path to TLS private key file
+#   VAPOR_OVMF_CODE       - Path to OVMF code (non-secure)
+#   VAPOR_OVMF_VARS       - Path to OVMF vars template (non-secure)
+#   VAPOR_OVMF_CODE_SECURE - Path to OVMF code (secure boot)
+#   VAPOR_OVMF_VARS_SECURE - Path to OVMF vars template (secure boot)
 #
 # Command-line flags:
 #   --config <path>  - Path to configuration file
@@ -60,6 +64,13 @@ tls_enabled: true
 # Specify custom libvirt connection URI
 # Default uses system connection
 # libvirt_uri: "qemu:///system"
+
+# OVMF/UEFI firmware paths (optional)
+# Use these to override autodetection for UEFI/Secure Boot.
+# ovmf_code: "/usr/share/OVMF/OVMF_CODE.fd"
+# ovmf_vars: "/usr/share/OVMF/OVMF_VARS.fd"
+# ovmf_code_secure: "/usr/share/OVMF/OVMF_CODE.secboot.fd"
+# ovmf_vars_secure: "/usr/share/OVMF/OVMF_VARS.ms.fd"
 
 # Console settings for web-based VM console access
 # console:

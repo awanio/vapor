@@ -38,6 +38,11 @@ properties:
     description: System architecture
     default: x86_64
     example: x86_64
+  machine_type:
+    type: string
+    description: Machine type (q35, pc, virt, etc)
+    default: q35
+    example: q35
   uefi:
     type: boolean
     description: Use UEFI boot

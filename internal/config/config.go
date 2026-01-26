@@ -25,6 +25,11 @@ type Config struct {
 	TLSCertFile string `yaml:"tls_cert_file,omitempty"`
 	TLSKeyFile  string `yaml:"tls_key_file,omitempty"`
 	TLSCertDir  string `yaml:"tls_cert_dir,omitempty"`
+	// OVMF/UEFI firmware paths (optional)
+	OVMFCode       string `yaml:"ovmf_code,omitempty"`
+	OVMFVars       string `yaml:"ovmf_vars,omitempty"`
+	OVMFCodeSecure string `yaml:"ovmf_code_secure,omitempty"`
+	OVMFVarsSecure string `yaml:"ovmf_vars_secure,omitempty"`
 }
 
 // Default configuration values
@@ -77,6 +82,18 @@ func Load() (*Config, error) {
 	if envAppDir := os.Getenv("VAPOR_APPDIR"); envAppDir != "" {
 		config.AppDir = envAppDir
 	}
+	if envOVMFCode := os.Getenv("VAPOR_OVMF_CODE"); envOVMFCode != "" {
+		config.OVMFCode = envOVMFCode
+	}
+	if envOVMFVars := os.Getenv("VAPOR_OVMF_VARS"); envOVMFVars != "" {
+		config.OVMFVars = envOVMFVars
+	}
+	if envOVMFCodeSecure := os.Getenv("VAPOR_OVMF_CODE_SECURE"); envOVMFCodeSecure != "" {
+		config.OVMFCodeSecure = envOVMFCodeSecure
+	}
+	if envOVMFVarsSecure := os.Getenv("VAPOR_OVMF_VARS_SECURE"); envOVMFVarsSecure != "" {
+		config.OVMFVarsSecure = envOVMFVarsSecure
+	}
 
 	// Override with command-line flags (highest priority)
 	if *port != "" {
@@ -95,6 +112,8 @@ func Load() (*Config, error) {
 	if err := os.MkdirAll(config.AppDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create app directory %s: %w", config.AppDir, err)
 	}
+
+	config.ApplyOVMFEnv()
 
 	return &config, nil
 }
@@ -255,6 +274,54 @@ return c.TLSKeyFile
 return filepath.Join(c.GetTLSCertDir(), "server.key")
 }
 
+// GetOVMFCodePath returns the path to the OVMF code firmware
+func (c *Config) GetOVMFCodePath() string {
+	if code := os.Getenv("VAPOR_OVMF_CODE"); code != "" {
+		return code
+	}
+	return c.OVMFCode
+}
+
+// GetOVMFVarsPath returns the path to the OVMF vars template
+func (c *Config) GetOVMFVarsPath() string {
+	if vars := os.Getenv("VAPOR_OVMF_VARS"); vars != "" {
+		return vars
+	}
+	return c.OVMFVars
+}
+
+// GetOVMFCodeSecurePath returns the path to the secure OVMF code firmware
+func (c *Config) GetOVMFCodeSecurePath() string {
+	if code := os.Getenv("VAPOR_OVMF_CODE_SECURE"); code != "" {
+		return code
+	}
+	return c.OVMFCodeSecure
+}
+
+// GetOVMFVarsSecurePath returns the path to the secure OVMF vars template
+func (c *Config) GetOVMFVarsSecurePath() string {
+	if vars := os.Getenv("VAPOR_OVMF_VARS_SECURE"); vars != "" {
+		return vars
+	}
+	return c.OVMFVarsSecure
+}
+
+// ApplyOVMFEnv sets OVMF env vars from config values if env vars are not already set
+func (c *Config) ApplyOVMFEnv() {
+	if os.Getenv("VAPOR_OVMF_CODE") == "" && c.OVMFCode != "" {
+		_ = os.Setenv("VAPOR_OVMF_CODE", c.OVMFCode)
+	}
+	if os.Getenv("VAPOR_OVMF_VARS") == "" && c.OVMFVars != "" {
+		_ = os.Setenv("VAPOR_OVMF_VARS", c.OVMFVars)
+	}
+	if os.Getenv("VAPOR_OVMF_CODE_SECURE") == "" && c.OVMFCodeSecure != "" {
+		_ = os.Setenv("VAPOR_OVMF_CODE_SECURE", c.OVMFCodeSecure)
+	}
+	if os.Getenv("VAPOR_OVMF_VARS_SECURE") == "" && c.OVMFVarsSecure != "" {
+		_ = os.Setenv("VAPOR_OVMF_VARS_SECURE", c.OVMFVarsSecure)
+	}
+}
+
 // Print prints the configuration to stdout (for debugging)
 func (c *Config) Print() {
 	fmt.Printf("Configuration:\n")
@@ -305,6 +372,10 @@ func GenerateExample(path string) error {
 #   VAPOR_CONFIG - Path to this configuration file
 #   VAPOR_PORT   - Server port
 #   VAPOR_APPDIR - Application data directory
+#   VAPOR_OVMF_CODE        - Path to OVMF code (non-secure)
+#   VAPOR_OVMF_VARS        - Path to OVMF vars template (non-secure)
+#   VAPOR_OVMF_CODE_SECURE - Path to OVMF code (secure boot)
+#   VAPOR_OVMF_VARS_SECURE - Path to OVMF vars template (secure boot)
 #
 # Command-line flags:
 #   --config <path>  - Path to configuration file

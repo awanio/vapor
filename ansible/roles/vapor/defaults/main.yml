@@ -24,6 +24,37 @@ vapor_tls_enabled: true
 # JWT secret (auto-generated if not provided)
 vapor_jwt_secret: ""
 
+# OVMF/UEFI firmware paths (auto-detected if empty)
+vapor_ovmf_code_path: ""
+vapor_ovmf_vars_path: ""
+vapor_ovmf_code_secure_path: ""
+vapor_ovmf_vars_secure_path: ""
+
+# OVMF packages per distro family
+vapor_ovmf_packages_debian:
+  - ovmf
+vapor_ovmf_packages_redhat:
+  - edk2-ovmf
+
+# OVMF candidate paths
+vapor_ovmf_candidates_nonsecure:
+  - { code: "/usr/share/OVMF/OVMF_CODE.fd", vars: "/usr/share/OVMF/OVMF_VARS.fd" }
+  - { code: "/usr/share/edk2/ovmf/OVMF_CODE.fd", vars: "/usr/share/edk2/ovmf/OVMF_VARS.fd" }
+  - { code: "/usr/share/edk2/ovmf/OVMF_CODE_4M.fd", vars: "/usr/share/edk2/ovmf/OVMF_VARS_4M.fd" }
+vapor_ovmf_candidates_secure:
+  - { code: "/usr/share/OVMF/OVMF_CODE.secboot.fd", vars: "/usr/share/OVMF/OVMF_VARS.secboot.fd" }
+  - { code: "/usr/share/OVMF/OVMF_CODE.secboot.fd", vars: "/usr/share/OVMF/OVMF_VARS.ms.fd" }
+  - { code: "/usr/share/OVMF/OVMF_CODE.secboot.fd", vars: "/usr/share/OVMF/OVMF_VARS.fd" }
+  - { code: "/usr/share/OVMF/OVMF_CODE_4M.secboot.fd", vars: "/usr/share/OVMF/OVMF_VARS_4M.secboot.fd" }
+  - { code: "/usr/share/OVMF/OVMF_CODE_4M.secboot.fd", vars: "/usr/share/OVMF/OVMF_VARS_4M.ms.fd" }
+  - { code: "/usr/share/OVMF/OVMF_CODE_4M.secboot.fd", vars: "/usr/share/OVMF/OVMF_VARS_4M.fd" }
+  - { code: "/usr/share/edk2/ovmf/OVMF_CODE.secboot.fd", vars: "/usr/share/edk2/ovmf/OVMF_VARS.secboot.fd" }
+  - { code: "/usr/share/edk2/ovmf/OVMF_CODE.secboot.fd", vars: "/usr/share/edk2/ovmf/OVMF_VARS.ms.fd" }
+  - { code: "/usr/share/edk2/ovmf/OVMF_CODE.secboot.fd", vars: "/usr/share/edk2/ovmf/OVMF_VARS.fd" }
+  - { code: "/usr/share/edk2/ovmf/OVMF_CODE_4M.secboot.fd", vars: "/usr/share/edk2/ovmf/OVMF_VARS_4M.secboot.fd" }
+  - { code: "/usr/share/edk2/ovmf/OVMF_CODE_4M.secboot.fd", vars: "/usr/share/edk2/ovmf/OVMF_VARS_4M.ms.fd" }
+  - { code: "/usr/share/edk2/ovmf/OVMF_CODE_4M.secboot.fd", vars: "/usr/share/edk2/ovmf/OVMF_VARS_4M.fd" }
+
 # Service user (root required for system management)
 vapor_user: root
 vapor_group: root

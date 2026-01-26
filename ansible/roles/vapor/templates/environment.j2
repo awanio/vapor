@@ -5,6 +5,11 @@ VAPOR_PORT={{ vapor_port }}
 VAPOR_HOST={{ vapor_host }}
 VAPOR_ENV=production
 
+{% if vapor_ovmf_code_path %}VAPOR_OVMF_CODE={{ vapor_ovmf_code_path }}{% endif %}
+{% if vapor_ovmf_vars_path %}VAPOR_OVMF_VARS={{ vapor_ovmf_vars_path }}{% endif %}
+{% if vapor_ovmf_code_secure_path %}VAPOR_OVMF_CODE_SECURE={{ vapor_ovmf_code_secure_path }}{% endif %}
+{% if vapor_ovmf_vars_secure_path %}VAPOR_OVMF_VARS_SECURE={{ vapor_ovmf_vars_secure_path }}{% endif %}
+
 # Uncomment and modify as needed
 # VAPOR_DEBUG=false
 # VAPOR_DRY_RUN=false

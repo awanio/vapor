@@ -439,6 +439,10 @@ func (s *Service) generateDomainXML(req *VMCreateRequest) (string, error) {
 	if req.Architecture == "" {
 		req.Architecture = "x86_64"
 	}
+	machineAttr := ""
+	if req.Architecture == "x86_64" {
+		machineAttr = " machine='q35'"
+	}
 	// Always use hvm for QEMU/KVM
 	req.OSType = "hvm"
 
@@ -449,7 +453,7 @@ func (s *Service) generateDomainXML(req *VMCreateRequest) (string, error) {
 	<memory unit='MiB'>%d</memory>
 	<vcpu>%d</vcpu>
 	<os>
-		<type arch='%s'>%s</type>
+		<type arch='%s'%s>%s</type>
 		<boot dev='hd'/>
 	</os>
 	<features>
@@ -470,6 +474,7 @@ func (s *Service) generateDomainXML(req *VMCreateRequest) (string, error) {
 		req.Memory,
 		req.VCPUs,
 		req.Architecture,
+		machineAttr,
 		req.OSType,
 		req.Architecture,
 		req.Graphics.Type)
@@ -492,6 +497,9 @@ func (s *Service) generateEnhancedDomainXML(req *VMCreateRequestEnhanced, diskCo
 	// Default values
 	if req.Architecture == "" {
 		req.Architecture = "x86_64"
+	}
+	if req.MachineType == "" && req.Architecture == "x86_64" {
+		req.MachineType = "q35"
 	}
 
 	// Always use hvm for QEMU/KVM
@@ -616,9 +624,13 @@ func (s *Service) generateEnhancedDomainXML(req *VMCreateRequestEnhanced, diskCo
 	}
 
 	// OS configuration
+	machineAttr := ""
+	if req.MachineType != "" {
+		machineAttr = fmt.Sprintf(" machine='%s'", req.MachineType)
+	}
 	xml += fmt.Sprintf(`
 <os>
-<type arch='%s'>%s</type>`, req.Architecture, osType)
+<type arch='%s'%s>%s</type>`, req.Architecture, machineAttr, osType)
 
 	// Check if any disk has boot order specified
 	hasBootOrder := false
@@ -644,18 +656,6 @@ func (s *Service) generateEnhancedDomainXML(req *VMCreateRequestEnhanced, diskCo
 <features>
 <acpi/>
 <apic/>`
-
-	if req.UEFI {
-		xml += `
-<firmware>
-<feature enabled='yes' name='efi'/>`
-		if req.SecureBoot {
-			xml += `
-<feature enabled='yes' name='secure-boot'/>`
-		}
-		xml += `
-</firmware>`
-	}
 
 	xml += `
 </features>`
@@ -851,6 +851,14 @@ func (s *Service) generateEnhancedDomainXML(req *VMCreateRequestEnhanced, diskCo
 	xml += `
 </devices>
 </domain>`
+
+	if req.UEFI || req.SecureBoot {
+		updated, err := ensureUEFIBootXML(xml, req.Name, req.SecureBoot)
+		if err != nil {
+			return "", err
+		}
+		xml = updated
+	}
 
 	return xml, nil
 }

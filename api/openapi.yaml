@@ -451,6 +451,8 @@ paths:
   #   $ref: paths/virtualization_computes_create-enhanced.yaml
   /virtualization/os-variants:
     $ref: paths/virtualization_os-variants.yaml
+  /virtualization/capabilities:
+    $ref: paths/virtualization_capabilities.yaml
   /virtualization/isos:
     $ref: paths/virtualization_isos.yaml
   /virtualization/isos/{id}:

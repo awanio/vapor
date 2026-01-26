@@ -1,0 +1,32 @@
+type: object
+properties:
+  emulator:
+    type: string
+    description: Path to the emulator binary
+    example: /usr/bin/qemu-system-x86_64
+  arch:
+    type: string
+    description: Architecture used for capabilities
+    example: x86_64
+  domain:
+    type: string
+    description: Domain virtualization type
+    example: kvm
+  machine_types:
+    type: array
+    description: Supported machine types
+    items:
+      type: string
+    example:
+      - q35
+      - pc-i440fx-7.2
+  enums:
+    type: object
+    description: Enum values extracted from domain capabilities
+    additionalProperties:
+      type: array
+      items:
+        type: string
+  raw_xml:
+    type: string
+    description: Raw domain capabilities XML (only when include_raw=true)

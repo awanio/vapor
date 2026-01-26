@@ -19,6 +19,10 @@ properties:
     minimum: 1
     maximum: 256
     example: 2
+  machine_type:
+    type: string
+    description: Machine type (q35, pc, virt, etc)
+    example: q35
   disks:
     type: array
     description: Disk configurations

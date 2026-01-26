@@ -36,6 +36,10 @@ build-dev: embed-web
 	go build -o bin/$(BINARY_NAME) $(MAIN_PATH)
 
 run-dev: embed-web
+	export VAPOR_OVMF_CODE=/usr/share/OVMF/OVMF_CODE.fd 
+	export VAPOR_OVMF_VARS=/usr/share/OVMF/OVMF_VARS.fd 
+	export VAPOR_OVMF_CODE_SECURE=/usr/share/OVMF/OVMF_CODE.secboot.fd
+	export VAPOR_OVMF_VARS_SECURE=/usr/share/OVMF/OVMF_VARS.ms.fd
 	go run cmd/vapor/main.go -config ./vapor.conf.example
 
 run-dev-web:

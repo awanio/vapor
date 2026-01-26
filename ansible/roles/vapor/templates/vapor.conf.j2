@@ -18,3 +18,8 @@ tls_enabled: {{ vapor_tls_enabled | lower }}
 # tls_cert_file: "{{ vapor_certs_dir }}/server.crt"
 # tls_key_file: "{{ vapor_certs_dir }}/server.key"
 {% endif %}
+# OVMF/UEFI firmware paths (optional)
+{% if vapor_ovmf_code_path %}ovmf_code: "{{ vapor_ovmf_code_path }}"{% endif %}
+{% if vapor_ovmf_vars_path %}ovmf_vars: "{{ vapor_ovmf_vars_path }}"{% endif %}
+{% if vapor_ovmf_code_secure_path %}ovmf_code_secure: "{{ vapor_ovmf_code_secure_path }}"{% endif %}
+{% if vapor_ovmf_vars_secure_path %}ovmf_vars_secure: "{{ vapor_ovmf_vars_secure_path }}"{% endif %}

@@ -30,6 +30,8 @@ func LibvirtRoutes(r *gin.RouterGroup, authService *auth.EnhancedService, servic
 
 	r.Use(authService.AuthMiddleware())
 
+	r.GET("/virtualization/capabilities", getDomainCapabilities(service))
+
 	vmGroup := r.Group("/virtualization/computes")
 	{
 		// Console Access
@@ -3072,6 +3074,18 @@ func updateVMEnhanced(service *libvirt.Service) gin.HandlerFunc {
 					"error": gin.H{
 						"code":    "VM_NOT_FOUND",
 						"message": fmt.Sprintf("VM '%s' not found", vmID),
+						"details": err.Error(),
+					},
+				})
+				return
+			}
+
+			if strings.Contains(err.Error(), "secure boot requires q35") {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"status": "error",
+					"error": gin.H{
+						"code":    "INVALID_FIRMWARE_CONFIG",
+						"message": "Secure Boot requires q35 machine type",
 						"details": err.Error(),
 					},
 				})

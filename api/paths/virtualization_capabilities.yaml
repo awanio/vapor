@@ -1,0 +1,50 @@
+get:
+  summary: Get virtualization domain capabilities
+  description: Returns parsed libvirt domain capabilities (including machine types)
+  tags:
+    - Virtualization
+  parameters:
+    - in: query
+      name: arch
+      schema:
+        type: string
+      description: Architecture to query (default derived from host)
+    - in: query
+      name: virt_type
+      schema:
+        type: string
+      description: Virtualization type (kvm or qemu)
+    - in: query
+      name: machine_type
+      schema:
+        type: string
+      description: Machine type to query for
+    - in: query
+      name: emulator
+      schema:
+        type: string
+      description: Emulator binary path to use
+    - in: query
+      name: include_raw
+      schema:
+        type: boolean
+      description: Include raw domain capabilities XML
+  responses:
+    '200':
+      description: Capabilities retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/DomainCapabilitiesResponse.yaml
+    '400':
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+    '500':
+      description: Failed to get capabilities
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml

@@ -11,28 +11,28 @@
     install_k8s: false
     install_helm: false
     install_vapor: true
-    
+
     # Kubernetes defaults
     k8s_version: "1.28.0-00" # Example default
     pod_network_cidr: "10.244.0.0/16"
     service_cidr: "10.96.0.0/12"
     cni_plugin: "flannel"
     node_role: "control-plane" # or worker
-    
+
   roles:
     - role: common
-    
+
     - role: libvirt
       when: install_libvirt | bool
-      
+
     - role: container_runtime
       when: install_docker | bool or install_containerd | bool
-      
+
     - role: kubernetes
       when: install_k8s | bool
-      
+
     - role: helm
       when: install_helm | bool
-      
+
     - role: vapor
       when: install_vapor | bool

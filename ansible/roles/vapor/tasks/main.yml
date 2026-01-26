@@ -23,6 +23,124 @@
     - { path: "{{ vapor_certs_dir }}", mode: "0700" }
 
 # =============================================================================
+# OVMF/UEFI Firmware Preflight
+# =============================================================================
+
+- name: Detect secure OVMF firmware (code)
+  stat:
+    path: "{{ item.code }}"
+  register: ovmf_secure_code_stats
+  loop: "{{ vapor_ovmf_candidates_secure }}"
+  changed_when: false
+  when: vapor_ovmf_code_secure_path == "" or vapor_ovmf_vars_secure_path == ""
+
+- name: Detect secure OVMF firmware (vars)
+  stat:
+    path: "{{ item.vars }}"
+  register: ovmf_secure_vars_stats
+  loop: "{{ vapor_ovmf_candidates_secure }}"
+  changed_when: false
+  when: vapor_ovmf_code_secure_path == "" or vapor_ovmf_vars_secure_path == ""
+
+- name: Select secure OVMF firmware paths
+  set_fact:
+    vapor_ovmf_code_secure_path: "{{ item.code }}"
+    vapor_ovmf_vars_secure_path: "{{ item.vars }}"
+  when:
+    - (vapor_ovmf_code_secure_path | default('')) == ''
+    - (vapor_ovmf_vars_secure_path | default('')) == ''
+    - ovmf_secure_code_stats is defined
+    - ovmf_secure_vars_stats is defined
+    - ovmf_secure_code_stats.results[loop.index0].stat.exists
+    - ovmf_secure_vars_stats.results[loop.index0].stat.exists
+  loop: "{{ vapor_ovmf_candidates_secure }}"
+
+- name: Install OVMF firmware package (Debian family)
+  apt:
+    name: "{{ vapor_ovmf_packages_debian }}"
+    state: present
+    update_cache: true
+  when:
+    - ansible_os_family == "Debian"
+    - (vapor_ovmf_code_secure_path | default('')) == '' or (vapor_ovmf_vars_secure_path | default('')) == ''
+
+- name: Install OVMF firmware package (RedHat family)
+  yum:
+    name: "{{ vapor_ovmf_packages_redhat }}"
+    state: present
+  when:
+    - ansible_os_family == "RedHat"
+    - (vapor_ovmf_code_secure_path | default('')) == '' or (vapor_ovmf_vars_secure_path | default('')) == ''
+
+- name: Re-check secure OVMF firmware (code)
+  stat:
+    path: "{{ item.code }}"
+  register: ovmf_secure_code_stats
+  loop: "{{ vapor_ovmf_candidates_secure }}"
+  changed_when: false
+  when: vapor_ovmf_code_secure_path == "" or vapor_ovmf_vars_secure_path == ""
+
+- name: Re-check secure OVMF firmware (vars)
+  stat:
+    path: "{{ item.vars }}"
+  register: ovmf_secure_vars_stats
+  loop: "{{ vapor_ovmf_candidates_secure }}"
+  changed_when: false
+  when: vapor_ovmf_code_secure_path == "" or vapor_ovmf_vars_secure_path == ""
+
+- name: Select secure OVMF firmware paths after install
+  set_fact:
+    vapor_ovmf_code_secure_path: "{{ item.code }}"
+    vapor_ovmf_vars_secure_path: "{{ item.vars }}"
+  when:
+    - (vapor_ovmf_code_secure_path | default('')) == ''
+    - (vapor_ovmf_vars_secure_path | default('')) == ''
+    - ovmf_secure_code_stats is defined
+    - ovmf_secure_vars_stats is defined
+    - ovmf_secure_code_stats.results[loop.index0].stat.exists
+    - ovmf_secure_vars_stats.results[loop.index0].stat.exists
+  loop: "{{ vapor_ovmf_candidates_secure }}"
+
+- name: Detect non-secure OVMF firmware (code)
+  stat:
+    path: "{{ item.code }}"
+  register: ovmf_nonsecure_code_stats
+  loop: "{{ vapor_ovmf_candidates_nonsecure }}"
+  changed_when: false
+  when: vapor_ovmf_code_path == "" or vapor_ovmf_vars_path == ""
+
+- name: Detect non-secure OVMF firmware (vars)
+  stat:
+    path: "{{ item.vars }}"
+  register: ovmf_nonsecure_vars_stats
+  loop: "{{ vapor_ovmf_candidates_nonsecure }}"
+  changed_when: false
+  when: vapor_ovmf_code_path == "" or vapor_ovmf_vars_path == ""
+
+- name: Select non-secure OVMF firmware paths
+  set_fact:
+    vapor_ovmf_code_path: "{{ item.code }}"
+    vapor_ovmf_vars_path: "{{ item.vars }}"
+  when:
+    - (vapor_ovmf_code_path | default('')) == ''
+    - (vapor_ovmf_vars_path | default('')) == ''
+    - ovmf_nonsecure_code_stats is defined
+    - ovmf_nonsecure_vars_stats is defined
+    - ovmf_nonsecure_code_stats.results[loop.index0].stat.exists
+    - ovmf_nonsecure_vars_stats.results[loop.index0].stat.exists
+  loop: "{{ vapor_ovmf_candidates_nonsecure }}"
+
+- name: Fallback non-secure OVMF paths to secure firmware when only secure is available
+  set_fact:
+    vapor_ovmf_code_path: "{{ vapor_ovmf_code_secure_path }}"
+    vapor_ovmf_vars_path: "{{ vapor_ovmf_vars_secure_path }}"
+  when:
+    - (vapor_ovmf_code_path | default('')) == ''
+    - (vapor_ovmf_vars_path | default('')) == ''
+    - (vapor_ovmf_code_secure_path | default('')) != ''
+    - (vapor_ovmf_vars_secure_path | default('')) != ''
+
+# =============================================================================
 # JWT Secret Generation
 # =============================================================================
 
