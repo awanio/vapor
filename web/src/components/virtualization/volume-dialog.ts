@@ -16,7 +16,7 @@ interface VolumeFormData {
   capacityUnit: 'GB' | 'TB';
   allocation: number;
   allocationUnit: 'GB' | 'TB';
-  format: 'raw' | 'qcow2' | 'vmdk' | 'qed' | 'vdi';
+  format: 'raw' | 'qcow2' | 'vmdk';
 }
 
 @customElement('volume-dialog')
@@ -577,16 +577,6 @@ export class VolumeDialog extends LitElement {
         value: 'vmdk',
         name: 'VMDK',
         description: 'VMware disk format',
-      },
-      {
-        value: 'qed',
-        name: 'QED',
-        description: 'QEMU enhanced disk format',
-      },
-      {
-        value: 'vdi',
-        name: 'VDI',
-        description: 'VirtualBox disk format',
       },
     ];
 

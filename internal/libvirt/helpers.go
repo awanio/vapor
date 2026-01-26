@@ -194,11 +194,9 @@ func validateVolumeCreateRequest(req *VolumeCreateRequest) error {
 			"qcow2": true,
 			"raw":   true,
 			"vmdk":  true,
-			"qed":   true,
-			"vdi":   true,
 		}
 		if !validFormats[req.Format] {
-			return fmt.Errorf("invalid format: %s (valid: qcow2, raw, vmdk, qed, vdi)", req.Format)
+			return fmt.Errorf("invalid format: %s (valid: qcow2, raw, vmdk)", req.Format)
 		}
 	}
 

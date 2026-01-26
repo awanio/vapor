@@ -148,7 +148,7 @@ export class VolumeUploadDrawer extends LitElement {
   }
 
   private handleFileSelect(file: File) {
-    const validExtensions = ['qcow2', 'raw', 'vmdk', 'img', 'vdi', 'qed'];
+    const validExtensions = ['qcow2', 'raw', 'vmdk', 'img'];
     const extension = file.name.split('.').pop()?.toLowerCase();
 
     if (!extension || !validExtensions.includes(extension)) {
@@ -262,8 +262,8 @@ export class VolumeUploadDrawer extends LitElement {
             >
               <div class="drop-zone-icon">☁️</div>
               <div class="drop-zone-text">Click or drag file to upload</div>
-              <div class="drop-zone-hint">Supports QCOW2, RAW, VMDK, IMG, VDI, QED</div>
-              <input type="file" style="display: none" accept=".qcow2,.raw,.vmdk,.img,.vdi,.qed" @change=${this.handleFileInput} />
+              <div class="drop-zone-hint">Supports QCOW2, RAW, VMDK, IMG</div>
+              <input type="file" style="display: none" accept=".qcow2,.raw,.vmdk,.img" @change=${this.handleFileInput} />
             </div>
           ` : html`
             <div class="file-info">

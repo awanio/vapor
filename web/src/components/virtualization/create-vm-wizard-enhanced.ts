@@ -41,7 +41,7 @@ import './os-variant-autocomplete.js';
 interface EnhancedDiskConfig {
   action: 'create' | 'clone' | 'attach';
   size?: number;
-  format?: 'qcow2' | 'raw' | 'vmdk' | 'vdi';
+  format?: 'qcow2' | 'raw' | 'vmdk';
   storage_pool: string;
   clone_from?: string;
   path?: string;
@@ -1211,7 +1211,7 @@ export class CreateVMWizardEnhanced extends LitElement {
       // Find the matching volume and use its format.
       const matchingVolume = volumes.find((v: any) => v.path === draft.path);
       if (matchingVolume && matchingVolume.format) {
-        draft.format = matchingVolume.format.toLowerCase() as 'qcow2' | 'raw' | 'vmdk' | 'vdi';
+        draft.format = matchingVolume.format.toLowerCase() as 'qcow2' | 'raw' | 'vmdk';
       }
     }
 
@@ -1375,7 +1375,6 @@ export class CreateVMWizardEnhanced extends LitElement {
                   <option value="qcow2" ?selected=${(disk.format || 'qcow2') === 'qcow2'}>QCOW2</option>
                   <option value="raw" ?selected=${disk.format === 'raw'}>RAW</option>
                   <option value="vmdk" ?selected=${disk.format === 'vmdk'}>VMDK</option>
-                  <option value="vdi" ?selected=${disk.format === 'vdi'}>VDI</option>
                 </select>
               </div>
 
@@ -1475,7 +1474,6 @@ export class CreateVMWizardEnhanced extends LitElement {
                   <option value="qcow2" ?selected=${(disk.format || 'qcow2') === 'qcow2'}>QCOW2</option>
                   <option value="raw" ?selected=${disk.format === 'raw'}>RAW</option>
                   <option value="vmdk" ?selected=${disk.format === 'vmdk'}>VMDK</option>
-                  <option value="vdi" ?selected=${disk.format === 'vdi'}>VDI</option>
                 </select>
               </div>
 
@@ -1588,7 +1586,6 @@ export class CreateVMWizardEnhanced extends LitElement {
                   <option value="qcow2" ?selected=${(disk.format || 'qcow2') === 'qcow2'}>QCOW2</option>
                   <option value="raw" ?selected=${disk.format === 'raw'}>RAW</option>
                   <option value="vmdk" ?selected=${disk.format === 'vmdk'}>VMDK</option>
-                  <option value="vdi" ?selected=${disk.format === 'vdi'}>VDI</option>
                 </select>
               </div>
 
