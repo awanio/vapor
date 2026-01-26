@@ -2,6 +2,8 @@ package libvirt
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -281,4 +283,397 @@ func removeOSBootElements(xmlDesc string) string {
 		bootRe := regexp.MustCompile(`\s*<boot\s+dev=['"][^'"]*['"]\s*/?>`)
 		return bootRe.ReplaceAllString(match, "")
 	})
+}
+
+// ensureFirmwareFeatures ensures <features><firmware> contains requested UEFI/secure-boot flags.
+// It returns updated XML or an error if the features section is missing.
+func ensureFirmwareFeatures(xmlDesc string, enableEFI bool, enableSecureBoot bool) (string, error) {
+	if !enableEFI && !enableSecureBoot {
+		return xmlDesc, nil
+	}
+
+	// Secure boot implies EFI.
+	if enableSecureBoot {
+		enableEFI = true
+	}
+
+	firmwareRe := regexp.MustCompile(`(?s)<firmware>.*?</firmware>`)
+	if firmwareRe.MatchString(xmlDesc) {
+		firmware := firmwareRe.FindString(xmlDesc)
+		updated := firmware
+
+		needsEFI := enableEFI && !regexp.MustCompile(`name=['"]efi['"]`).MatchString(firmware)
+		needsSecure := enableSecureBoot && !regexp.MustCompile(`name=['"]secure-boot['"]`).MatchString(firmware)
+
+		if needsEFI || needsSecure {
+			insert := ""
+			if needsEFI {
+				insert += "\n<feature enabled='yes' name='efi'/>"
+			}
+			if needsSecure {
+				insert += "\n<feature enabled='yes' name='secure-boot'/>"
+			}
+			updated = strings.Replace(updated, "</firmware>", insert+"\n</firmware>", 1)
+		}
+
+		if updated != firmware {
+			xmlDesc = strings.Replace(xmlDesc, firmware, updated, 1)
+		}
+
+		return xmlDesc, nil
+	}
+
+	// No firmware block yet - add under <features>.
+	featuresRe := regexp.MustCompile(`(?s)<features>.*?</features>`)
+	if !featuresRe.MatchString(xmlDesc) {
+		return xmlDesc, fmt.Errorf("features section not found in domain XML")
+	}
+
+	features := featuresRe.FindString(xmlDesc)
+	firmware := "\n<firmware>\n<feature enabled='yes' name='efi'/>"
+	if enableSecureBoot {
+		firmware += "\n<feature enabled='yes' name='secure-boot'/>"
+	}
+	firmware += "\n</firmware>"
+
+	updated := strings.Replace(features, "</features>", firmware+"\n</features>", 1)
+	if updated != features {
+		xmlDesc = strings.Replace(xmlDesc, features, updated, 1)
+	}
+
+	return xmlDesc, nil
+}
+
+// ensureTPMDevice ensures a TPM device exists in the domain XML.
+func ensureTPMDevice(xmlDesc string) (string, error) {
+	if strings.Contains(xmlDesc, "<tpm") {
+		return xmlDesc, nil
+	}
+
+	devicesEnd := strings.LastIndex(xmlDesc, "</devices>")
+	if devicesEnd == -1 {
+		return xmlDesc, fmt.Errorf("devices section not found in domain XML")
+	}
+
+	tpmXML := `
+<tpm model='tpm-tis'>
+<backend type='emulator' version='2.0'/>
+</tpm>
+`
+	xmlDesc = xmlDesc[:devicesEnd] + tpmXML + xmlDesc[devicesEnd:]
+
+	return xmlDesc, nil
+}
+
+func findOVMFPaths(secureBoot bool) (string, string, error) {
+	// Env overrides for testing/custom installations.
+	if secureBoot {
+		code := strings.TrimSpace(os.Getenv("VAPOR_OVMF_CODE_SECURE"))
+		vars := strings.TrimSpace(os.Getenv("VAPOR_OVMF_VARS_SECURE"))
+		if code != "" && vars != "" {
+			if _, err := os.Stat(code); err == nil {
+				if _, err := os.Stat(vars); err == nil {
+					return code, vars, nil
+				}
+			}
+		}
+	} else {
+		code := strings.TrimSpace(os.Getenv("VAPOR_OVMF_CODE"))
+		vars := strings.TrimSpace(os.Getenv("VAPOR_OVMF_VARS"))
+		if code != "" && vars != "" {
+			if _, err := os.Stat(code); err == nil {
+				if _, err := os.Stat(vars); err == nil {
+					return code, vars, nil
+				}
+			}
+		}
+	}
+
+	nonSecure := [][2]string{
+		{"/usr/share/OVMF/OVMF_CODE.fd", "/usr/share/OVMF/OVMF_VARS.fd"},
+		{"/usr/share/edk2/ovmf/OVMF_CODE.fd", "/usr/share/edk2/ovmf/OVMF_VARS.fd"},
+		{"/usr/share/edk2/ovmf/OVMF_CODE_4M.fd", "/usr/share/edk2/ovmf/OVMF_VARS_4M.fd"},
+	}
+	secure := [][2]string{
+		{"/usr/share/OVMF/OVMF_CODE.secboot.fd", "/usr/share/OVMF/OVMF_VARS.secboot.fd"},
+		{"/usr/share/OVMF/OVMF_CODE.secboot.fd", "/usr/share/OVMF/OVMF_VARS.ms.fd"},
+		{"/usr/share/OVMF/OVMF_CODE.secboot.fd", "/usr/share/OVMF/OVMF_VARS.fd"},
+		{"/usr/share/OVMF/OVMF_CODE_4M.secboot.fd", "/usr/share/OVMF/OVMF_VARS_4M.secboot.fd"},
+		{"/usr/share/OVMF/OVMF_CODE_4M.secboot.fd", "/usr/share/OVMF/OVMF_VARS_4M.ms.fd"},
+		{"/usr/share/OVMF/OVMF_CODE_4M.secboot.fd", "/usr/share/OVMF/OVMF_VARS_4M.fd"},
+		{"/usr/share/edk2/ovmf/OVMF_CODE.secboot.fd", "/usr/share/edk2/ovmf/OVMF_VARS.secboot.fd"},
+		{"/usr/share/edk2/ovmf/OVMF_CODE.secboot.fd", "/usr/share/edk2/ovmf/OVMF_VARS.ms.fd"},
+		{"/usr/share/edk2/ovmf/OVMF_CODE.secboot.fd", "/usr/share/edk2/ovmf/OVMF_VARS.fd"},
+		{"/usr/share/edk2/ovmf/OVMF_CODE_4M.secboot.fd", "/usr/share/edk2/ovmf/OVMF_VARS_4M.secboot.fd"},
+		{"/usr/share/edk2/ovmf/OVMF_CODE_4M.secboot.fd", "/usr/share/edk2/ovmf/OVMF_VARS_4M.ms.fd"},
+		{"/usr/share/edk2/ovmf/OVMF_CODE_4M.secboot.fd", "/usr/share/edk2/ovmf/OVMF_VARS_4M.fd"},
+	}
+
+	if secureBoot {
+		for _, pair := range secure {
+			if _, err := os.Stat(pair[0]); err == nil {
+				if _, err := os.Stat(pair[1]); err == nil {
+					return pair[0], pair[1], nil
+				}
+			}
+		}
+		return "", "", fmt.Errorf("secure boot firmware not found (OVMF)")
+	}
+
+	for _, pair := range nonSecure {
+		if _, err := os.Stat(pair[0]); err == nil {
+			if _, err := os.Stat(pair[1]); err == nil {
+				return pair[0], pair[1], nil
+			}
+		}
+	}
+	// Fallback to secure firmware if non-secure not found.
+	for _, pair := range secure {
+		if _, err := os.Stat(pair[0]); err == nil {
+			if _, err := os.Stat(pair[1]); err == nil {
+				return pair[0], pair[1], nil
+			}
+		}
+	}
+
+	return "", "", fmt.Errorf("UEFI firmware not found (OVMF)")
+}
+
+func sanitizeVMNameForNVRAM(name string) string {
+	if name == "" {
+		return "vm"
+	}
+	re := regexp.MustCompile(`[^a-zA-Z0-9._-]`)
+	return re.ReplaceAllString(name, "_")
+}
+
+// ensureUEFIBootXML ensures the domain XML has loader/nvram entries for UEFI (and secure boot if requested).
+
+// getDomainMachineType extracts the machine type from the domain XML (os/type machine attribute).
+func getDomainMachineType(xmlDesc string) string {
+	// Find the <type ...> tag within <os> block
+	reType := regexp.MustCompile(`(?s)<os[^>]*>.*?<type[^>]*>`) // non-greedy to first type
+	match := reType.FindString(xmlDesc)
+	if match == "" {
+		return ""
+	}
+	reMachine := regexp.MustCompile(`machine=['"]([^'"]+)['"]`)
+	parts := reMachine.FindStringSubmatch(match)
+	if len(parts) > 1 {
+		return strings.TrimSpace(parts[1])
+	}
+	return ""
+}
+
+// ensureMachineTypeXML updates/sets the machine attribute on the OS type element.
+
+func isQ35MachineType(machineType string) bool {
+	mt := strings.ToLower(strings.TrimSpace(machineType))
+	return strings.Contains(mt, "q35")
+}
+
+func updateControllerModel(xmlDesc string, controllerType string, desiredModel string, shouldReplace func(current string, hasModel bool) bool) string {
+	if strings.TrimSpace(desiredModel) == "" {
+		return xmlDesc
+	}
+	re := regexp.MustCompile(`(?s)<controller[^>]*type=['"]` + regexp.QuoteMeta(controllerType) + `['"][^>]*>`)
+	reModel := regexp.MustCompile(`model=['"]([^'"]*)['"]`)
+	return re.ReplaceAllStringFunc(xmlDesc, func(tag string) string {
+		current := ""
+		hasModel := false
+		if m := reModel.FindStringSubmatch(tag); len(m) > 1 {
+			current = strings.TrimSpace(m[1])
+			hasModel = true
+		}
+		if !shouldReplace(current, hasModel) {
+			return tag
+		}
+		if hasModel {
+			return reModel.ReplaceAllString(tag, fmt.Sprintf("model='%s'", desiredModel))
+		}
+		if strings.HasSuffix(tag, "/>") {
+			return strings.TrimSuffix(tag, "/>") + fmt.Sprintf(" model='%s'/>", desiredModel)
+		}
+		if strings.HasSuffix(tag, ">") {
+			return strings.TrimSuffix(tag, ">") + fmt.Sprintf(" model='%s'>", desiredModel)
+		}
+		return tag
+	})
+}
+
+func replaceControllerTypeAndModel(xmlDesc string, fromType string, toType string, toModel string) string {
+	if strings.TrimSpace(fromType) == "" || strings.TrimSpace(toType) == "" {
+		return xmlDesc
+	}
+	re := regexp.MustCompile(`(?s)<controller[^>]*type=['"]` + regexp.QuoteMeta(fromType) + `['"][^>]*>`)
+	reType := regexp.MustCompile(`type=['"][^'"]*['"]`)
+	// Match model attribute with optional leading whitespace
+	reModel := regexp.MustCompile(`\s*model=['"][^'"]*['"]`)
+
+	return re.ReplaceAllStringFunc(xmlDesc, func(tag string) string {
+		tag = reType.ReplaceAllString(tag, fmt.Sprintf("type='%s'", toType))
+		if strings.TrimSpace(toModel) != "" {
+			if reModel.MatchString(tag) {
+				tag = reModel.ReplaceAllString(tag, fmt.Sprintf(" model='%s'", toModel))
+			} else if strings.HasSuffix(tag, "/>") {
+				tag = strings.TrimSuffix(tag, "/>") + fmt.Sprintf(" model='%s'/>", toModel)
+			} else if strings.HasSuffix(tag, ">") {
+				tag = strings.TrimSuffix(tag, ">") + fmt.Sprintf(" model='%s'>", toModel)
+			}
+		} else {
+			// Remove model attribute if it exists (requested removal)
+			tag = reModel.ReplaceAllString(tag, "")
+		}
+		return tag
+	})
+}
+
+func ensurePCIControllerModel(xmlDesc string, model string) (string, error) {
+	if strings.TrimSpace(model) == "" {
+		return xmlDesc, nil
+	}
+
+	re := regexp.MustCompile(`(?s)<controller[^>]*type=['"]pci['"][^>]*index=['"]0['"][^>]*>`)
+	tag := re.FindString(xmlDesc)
+	if tag == "" {
+		return xmlDesc, nil
+	}
+
+	updated := tag
+	if strings.Contains(tag, "model=") {
+		reModel := regexp.MustCompile(`model=['"][^'"]*['"]`)
+		updated = reModel.ReplaceAllString(tag, fmt.Sprintf("model='%s'", model))
+	} else {
+		if strings.HasSuffix(tag, "/>") {
+			updated = strings.TrimSuffix(tag, "/>") + fmt.Sprintf(" model='%s'/>", model)
+		} else if strings.HasSuffix(tag, ">") {
+			updated = strings.TrimSuffix(tag, ">") + fmt.Sprintf(" model='%s'>", model)
+		}
+	}
+
+	if updated == tag {
+		return xmlDesc, nil
+	}
+
+	return strings.Replace(xmlDesc, tag, updated, 1), nil
+}
+
+func ensureMachineTypeXML(xmlDesc string, machineType string) (string, error) {
+	if strings.TrimSpace(machineType) == "" {
+		return xmlDesc, nil
+	}
+	osRe := regexp.MustCompile(`(?s)<os[^>]*>.*?</os>`)
+	osBlock := osRe.FindString(xmlDesc)
+	if osBlock == "" {
+		return xmlDesc, fmt.Errorf("os section not found in domain XML")
+	}
+	typeRe := regexp.MustCompile(`(?s)<type[^>]*>`) // opening <type ...>
+	typeOpen := typeRe.FindString(osBlock)
+	if typeOpen == "" {
+		return xmlDesc, fmt.Errorf("os type tag not found in domain XML")
+	}
+	updated := typeOpen
+	if strings.Contains(typeOpen, "machine=") {
+		reMachine := regexp.MustCompile(`machine=['"]([^'"]*)['"]`)
+		updated = reMachine.ReplaceAllString(typeOpen, fmt.Sprintf("machine='%s'", machineType))
+	} else {
+		updated = strings.TrimSuffix(typeOpen, ">") + fmt.Sprintf(" machine='%s'>", machineType)
+	}
+	osBlockUpdated := strings.Replace(osBlock, typeOpen, updated, 1)
+	updatedXML := strings.Replace(xmlDesc, osBlock, osBlockUpdated, 1)
+
+	desiredControllerModel := "pci-root"
+	if isQ35MachineType(machineType) {
+		desiredControllerModel = "pcie-root"
+	}
+
+	updatedXML, _ = ensurePCIControllerModel(updatedXML, desiredControllerModel)
+
+	if isQ35MachineType(machineType) {
+		shouldReplace := func(current string, hasModel bool) bool {
+			if !hasModel {
+				return true
+			}
+			return strings.Contains(strings.ToLower(current), "piix")
+		}
+		updatedXML = updateControllerModel(updatedXML, "usb", "qemu-xhci", shouldReplace)
+		// Convert IDE to SATA without specifying a model (let libvirt default)
+		updatedXML = replaceControllerTypeAndModel(updatedXML, "ide", "sata", "")
+	}
+	return updatedXML, nil
+}
+
+func ensureUEFIBootXML(xmlDesc string, vmName string, secureBoot bool) (string, error) {
+	codePath, varsTemplate, err := findOVMFPaths(secureBoot)
+	if err != nil {
+		return xmlDesc, err
+	}
+
+	osRe := regexp.MustCompile(`(?s)<os[^>]*>.*?</os>`)
+	osBlock := osRe.FindString(xmlDesc)
+	if osBlock == "" {
+		return xmlDesc, fmt.Errorf("os section not found in domain XML")
+	}
+
+	// Ensure <os> has firmware='efi'
+	osOpenRe := regexp.MustCompile(`(?s)<os([^>]*)>`)
+	osOpen := osOpenRe.FindString(osBlock)
+	if osOpen == "" {
+		return xmlDesc, fmt.Errorf("os opening tag not found")
+	}
+	if !strings.Contains(osOpen, "firmware=") {
+		osOpenUpdated := strings.TrimSuffix(osOpen, ">") + " firmware='efi'>"
+		osBlock = strings.Replace(osBlock, osOpen, osOpenUpdated, 1)
+	}
+
+	secureAttr := ""
+	if secureBoot {
+		secureAttr = " secure='yes'"
+	}
+	loaderXML := fmt.Sprintf("<loader readonly='yes' type='pflash'%s>%s</loader>", secureAttr, codePath)
+
+	// Keep existing nvram path if present; otherwise create one.
+	nvramPath := filepath.Join("/var/lib/libvirt/qemu/nvram", fmt.Sprintf("%s_VARS.fd", sanitizeVMNameForNVRAM(vmName)))
+	nvramRe := regexp.MustCompile(`(?s)<nvram[^>]*>.*?</nvram>`)
+	if nvramRe.MatchString(osBlock) {
+		current := nvramRe.FindString(osBlock)
+		pathRe := regexp.MustCompile(`(?s)<nvram[^>]*>([^<]*)</nvram>`)
+		if m := pathRe.FindStringSubmatch(current); len(m) > 1 {
+			p := strings.TrimSpace(m[1])
+			if p != "" {
+				nvramPath = p
+			}
+		}
+	}
+	nvramXML := fmt.Sprintf("<nvram template='%s'>%s</nvram>", varsTemplate, nvramPath)
+
+	loaderRe := regexp.MustCompile(`(?s)<loader[^>]*>.*?</loader>`)
+	if loaderRe.MatchString(osBlock) {
+		osBlock = loaderRe.ReplaceAllString(osBlock, loaderXML)
+	} else {
+		typeRe := regexp.MustCompile(`(?s)<type[^>]*>.*?</type>`)
+		if typeRe.MatchString(osBlock) {
+			typeBlock := typeRe.FindString(osBlock)
+			osBlock = strings.Replace(osBlock, typeBlock, typeBlock+"\n"+loaderXML, 1)
+		} else {
+			// Fallback: insert loader right after <os>
+			osBlock = strings.Replace(osBlock, osOpenRe.FindString(osBlock), osOpenRe.FindString(osBlock)+"\n"+loaderXML, 1)
+		}
+	}
+
+	if nvramRe.MatchString(osBlock) {
+		osBlock = nvramRe.ReplaceAllString(osBlock, nvramXML)
+	} else {
+		// Insert nvram right after loader.
+		if loaderRe.MatchString(osBlock) {
+			lb := loaderRe.FindString(osBlock)
+			osBlock = strings.Replace(osBlock, lb, lb+"\n"+nvramXML, 1)
+		} else {
+			osBlock = strings.Replace(osBlock, loaderXML, loaderXML+"\n"+nvramXML, 1)
+		}
+	}
+
+	// Replace in the full XML.
+	xmlDesc = strings.Replace(xmlDesc, osRe.FindString(xmlDesc), osBlock, 1)
+	return xmlDesc, nil
 }

@@ -2850,13 +2850,23 @@ func (s *Service) parseOSConfiguration(vm *VMEnhanced, xmlDesc string) {
 
 	vm.OS = osInfo
 
+	uefiEnabled := false
 	if strings.Contains(xmlDesc, "<loader") && strings.Contains(xmlDesc, "OVMF") {
-		vm.UEFI = true
+		uefiEnabled = true
 	}
+	if strings.Contains(xmlDesc, "<firmware") && (strings.Contains(xmlDesc, "name='efi'") || strings.Contains(xmlDesc, "name=\"efi\"")) {
+		uefiEnabled = true
+	}
+	vm.UEFI = uefiEnabled
 
-	if strings.Contains(xmlDesc, "secure='yes'") {
-		vm.SecureBoot = true
+	secureBootEnabled := false
+	if strings.Contains(xmlDesc, "secure='yes'") || strings.Contains(xmlDesc, "secure=\"yes\"") {
+		secureBootEnabled = true
 	}
+	if strings.Contains(xmlDesc, "name='secure-boot'") || strings.Contains(xmlDesc, "name=\"secure-boot\"") {
+		secureBootEnabled = true
+	}
+	vm.SecureBoot = secureBootEnabled
 
 	if strings.Contains(xmlDesc, "<tpm") {
 		vm.TPM = true

@@ -197,6 +197,7 @@ type existingGraphicsInfo struct {
 	Port     int
 	AutoPort bool
 	Listen   string
+	Password string
 }
 
 // domainHostdevXML represents a <hostdev> device in libvirt domain XML for PCI passthrough.
@@ -226,6 +227,7 @@ type domainGraphicsXML struct {
 	Port     string `xml:"port,attr"`
 	AutoPort string `xml:"autoport,attr"`
 	Listen   string `xml:"listen,attr"`
+	Password string `xml:"passwd,attr"`
 }
 
 // domainDevicesFullXML extends domainDevicesAttachmentXML to include hostdevs and graphics.
@@ -288,8 +290,9 @@ func parseDomainGraphics(xmlDesc string) ([]existingGraphicsInfo, error) {
 	var graphics []existingGraphicsInfo
 	for _, g := range dom.Devices.Graphics {
 		info := existingGraphicsInfo{
-			Type:   g.Type,
-			Listen: g.Listen,
+			Type:     g.Type,
+			Listen:   g.Listen,
+			Password: g.Password,
 		}
 
 		if g.Port != "" && g.Port != "-1" {

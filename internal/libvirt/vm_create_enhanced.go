@@ -127,6 +127,15 @@ func (s *Service) CreateVMEnhanced(ctx context.Context, req *VMCreateRequestEnha
 		return nil, err
 	}
 
+	if err := validateUniqueNetworkMACs(req.Networks); err != nil {
+		log.Printf("CreateVMEnhanced error: %v\n", err)
+		return nil, err
+	}
+	if err := validateUniqueGraphicsTypes(req.Graphics); err != nil {
+		log.Printf("CreateVMEnhanced error: %v\n", err)
+		return nil, err
+	}
+
 	// Apply template if specified
 	if req.Template != "" {
 		if err := s.applyVMTemplate(ctx, req); err != nil {
@@ -798,6 +807,15 @@ func (s *Service) UpdateVMEnhanced(ctx context.Context, nameOrUUID string, req *
 	isRunning := state == libvirt.DOMAIN_RUNNING
 	requiresRestart := false
 
+	if err := validateUniqueNetworkMACs(req.Networks); err != nil {
+		log.Printf("UpdateVMEnhanced error: %v\n", err)
+		return nil, err
+	}
+	if err := validateUniqueGraphicsTypes(req.Graphics); err != nil {
+		log.Printf("UpdateVMEnhanced error: %v\n", err)
+		return nil, err
+	}
+
 	// Update max memory first if specified (must be done before increasing memory)
 	// Max memory can only be changed when the VM is stopped
 	if req.MaxMemory > 0 {
@@ -1213,6 +1231,7 @@ func (s *Service) UpdateVMEnhanced(ctx context.Context, nameOrUUID string, req *
 		desiredKeys := map[string]bool{}
 		desiredMACs := map[string]bool{}
 		desiredKeyMACs := map[string]map[string]bool{} // key -> allowed MACs (if explicitly provided)
+		desiredKeyByMAC := map[string]string{}         // mac -> desired key
 		for i, net := range req.Networks {
 			ifaceType, source, model, mac, key, hadMAC, err := s.normalizeNetworkForKey(net)
 			if err != nil {
@@ -1226,6 +1245,7 @@ func (s *Service) UpdateVMEnhanced(ctx context.Context, nameOrUUID string, req *
 				macLower := strings.ToLower(strings.TrimSpace(mac))
 				if macLower != "" {
 					desiredMACs[macLower] = true
+					desiredKeyByMAC[macLower] = key
 					if desiredKeyMACs[key] == nil {
 						desiredKeyMACs[key] = map[string]bool{}
 					}
@@ -1246,7 +1266,12 @@ func (s *Service) UpdateVMEnhanced(ctx context.Context, nameOrUUID string, req *
 
 			keep := false
 			if ex.mac != "" && desiredMACs[ex.mac] {
-				keep = true
+				// If the MAC is desired but its attributes changed, force reattach.
+				if desiredKey, ok := desiredKeyByMAC[ex.mac]; ok && desiredKey != "" && desiredKey != ex.key {
+					keep = false
+				} else {
+					keep = true
+				}
 			} else if desiredKeys[ex.key] {
 				// If desired explicitly specifies MAC(s) for this key, only keep if MAC matches.
 				if macs := desiredKeyMACs[ex.key]; macs != nil {
@@ -1428,23 +1453,53 @@ func (s *Service) UpdateVMEnhanced(ctx context.Context, nameOrUUID string, req *
 
 		// Build set of desired graphics types
 		desiredGraphicsTypes := map[string]bool{}
+		desiredGraphicsByType := map[string]EnhancedGraphicsConfig{}
 		for _, g := range req.Graphics {
 			gType := strings.ToLower(strings.TrimSpace(g.Type))
 			if gType != "" && gType != "none" {
 				desiredGraphicsTypes[gType] = true
+				desiredGraphicsByType[gType] = g
 			}
 		}
 
-		// Detach graphics devices not in desired configuration
+		// Detach graphics devices not in desired configuration or with changed attributes
 		for _, existG := range existingGraphics {
 			gType := strings.ToLower(strings.TrimSpace(existG.Type))
 			if gType == "" {
 				continue
 			}
 
-			if desiredGraphicsTypes[gType] {
-				log.Printf("UpdateVMEnhanced: keeping graphics type=%s", gType)
-				continue
+			desiredG, ok := desiredGraphicsByType[gType]
+			if ok {
+				desiredListen := strings.TrimSpace(desiredG.Listen)
+				if desiredListen == "" {
+					desiredListen = "0.0.0.0"
+				}
+				existingListen := strings.TrimSpace(existG.Listen)
+				if existingListen == "" {
+					existingListen = "0.0.0.0"
+				}
+
+				desiredAutoPort := desiredG.AutoPort || desiredG.Port <= 0
+				desiredPort := desiredG.Port
+				if desiredAutoPort || desiredPort < 0 {
+					desiredPort = 0
+				}
+
+				existingAutoPort := existG.AutoPort
+				existingPort := existG.Port
+				if existingAutoPort {
+					existingPort = 0
+				}
+
+				passwordChanged := desiredG.Password != "" && desiredG.Password != existG.Password
+				listenChanged := !strings.EqualFold(desiredListen, existingListen)
+				portChanged := desiredPort != existingPort || desiredAutoPort != existingAutoPort
+
+				if !listenChanged && !portChanged && !passwordChanged {
+					log.Printf("UpdateVMEnhanced: keeping graphics type=%s", gType)
+					continue
+				}
 			}
 
 			log.Printf("UpdateVMEnhanced: detaching graphics type=%s", gType)
@@ -1517,6 +1572,39 @@ func (s *Service) UpdateVMEnhanced(ctx context.Context, nameOrUUID string, req *
 			return nil, fmt.Errorf("firmware changes (UEFI/SecureBoot/TPM) require VM to be stopped")
 		}
 		log.Printf("UpdateVMEnhanced: Firmware configuration updates requested")
+
+		xmlDesc, err := domain.GetXMLDesc(0)
+		if err != nil {
+			log.Printf("UpdateVMEnhanced error getting domain XML for firmware update: %v", err)
+			return nil, fmt.Errorf("failed to get VM XML: %w", err)
+		}
+
+		modifiedXML := xmlDesc
+		if req.UEFI || req.SecureBoot {
+			modifiedXML, err = ensureFirmwareFeatures(modifiedXML, req.UEFI || req.SecureBoot, req.SecureBoot)
+			if err != nil {
+				log.Printf("UpdateVMEnhanced error updating firmware features: %v", err)
+				return nil, fmt.Errorf("failed to update firmware features: %w", err)
+			}
+		}
+
+		if req.TPM {
+			modifiedXML, err = ensureTPMDevice(modifiedXML)
+			if err != nil {
+				log.Printf("UpdateVMEnhanced error updating TPM device: %v", err)
+				return nil, fmt.Errorf("failed to update TPM device: %w", err)
+			}
+		}
+
+		if modifiedXML != xmlDesc {
+			newDomain, err := s.conn.DomainDefineXML(modifiedXML)
+			if err != nil {
+				log.Printf("UpdateVMEnhanced error redefining domain for firmware updates: %v", err)
+				return nil, fmt.Errorf("failed to update firmware settings: %w", err)
+			}
+			domain.Free()
+			domain = newDomain
+		}
 	}
 
 	// Update metadata if provided
@@ -1673,6 +1761,47 @@ func (s *Service) buildEnhancedAttachInterfaceXML(net NetworkConfig) (string, st
 
 // normalizeNetworkForKey normalizes a NetworkConfig to the effective libvirt interface type/source/model
 // and returns a stable key for idempotency/diffing.
+
+func validateUniqueNetworkMACs(networks []NetworkConfig) error {
+	if len(networks) == 0 {
+		return nil
+	}
+
+	seen := map[string]struct{}{}
+	for i, net := range networks {
+		mac := strings.ToLower(strings.TrimSpace(net.MAC))
+		if mac == "" {
+			continue
+		}
+		if _, ok := seen[mac]; ok {
+			return fmt.Errorf("duplicate network MAC %s at index %d", mac, i)
+		}
+		seen[mac] = struct{}{}
+	}
+
+	return nil
+}
+
+func validateUniqueGraphicsTypes(graphics []EnhancedGraphicsConfig) error {
+	if len(graphics) == 0 {
+		return nil
+	}
+
+	seen := map[string]struct{}{}
+	for i, g := range graphics {
+		gType := strings.ToLower(strings.TrimSpace(g.Type))
+		if gType == "" || gType == "none" {
+			continue
+		}
+		if _, ok := seen[gType]; ok {
+			return fmt.Errorf("duplicate graphics type %s at index %d", gType, i)
+		}
+		seen[gType] = struct{}{}
+	}
+
+	return nil
+}
+
 func (s *Service) normalizeNetworkForKey(net NetworkConfig) (ifaceType string, source string, model string, mac string, key string, hadMAC bool, err error) {
 	reqType := strings.ToLower(strings.TrimSpace(string(net.Type)))
 	if reqType == "" {
