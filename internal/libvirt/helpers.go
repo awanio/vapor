@@ -851,6 +851,14 @@ func (s *Service) generateEnhancedDomainXML(req *VMCreateRequestEnhanced, diskCo
 </tpm>`
 	}
 
+	// Video device - UEFI requires GOP-compatible video adapter
+	// Use qxl for both UEFI and non-UEFI: provides GOP support with VGA fallback
+	// (virtio requires guest drivers which may not be available during install)
+	xml += `
+<video>
+<model type='qxl' ram='65536' vram='65536' vgamem='16384' heads='1' primary='yes'/>
+</video>`
+
 	xml += `
 </devices>
 </domain>`

@@ -664,13 +664,15 @@ func ensureUEFIBootXML(xmlDesc string, vmName string, secureBoot bool) (string, 
 		return xmlDesc, fmt.Errorf("os section not found in domain XML")
 	}
 
-	// Ensure <os> has firmware='efi'
+	// Only add firmware='efi' attribute for secure boot.
+	// For plain UEFI, we manually configure loader/nvram without firmware='efi'
+	// because firmware='efi' causes libvirt to enable SMM which breaks display on QEMU 4.2.x
 	osOpenRe := regexp.MustCompile(`(?s)<os([^>]*)>`)
 	osOpen := osOpenRe.FindString(osBlock)
 	if osOpen == "" {
 		return xmlDesc, fmt.Errorf("os opening tag not found")
 	}
-	if !strings.Contains(osOpen, "firmware=") {
+	if secureBoot && !strings.Contains(osOpen, "firmware=") {
 		osOpenUpdated := strings.TrimSuffix(osOpen, ">") + " firmware='efi'>"
 		osBlock = strings.Replace(osBlock, osOpen, osOpenUpdated, 1)
 	}
@@ -725,4 +727,30 @@ func ensureUEFIBootXML(xmlDesc string, vmName string, secureBoot bool) (string, 
 	// Replace in the full XML.
 	xmlDesc = strings.Replace(xmlDesc, osRe.FindString(xmlDesc), osBlock, 1)
 	return xmlDesc, nil
+}
+
+// ensureUEFIVideoDevice updates the video device to be UEFI-compatible.
+// UEFI requires a GOP-compatible video adapter - cirrus doesn't support GOP.
+// This function replaces the video model with qxl which has GOP support with VGA fallback.
+func ensureUEFIVideoDevice(xmlDesc string) string {
+	// Match <video>...</video> block
+	videoRe := regexp.MustCompile(`(?s)<video>.*?</video>`)
+	if videoRe.MatchString(xmlDesc) {
+		// Replace with qxl video for UEFI compatibility (has VGA fallback for VNC)
+		newVideo := `<video>
+<model type='qxl' ram='65536' vram='65536' vgamem='16384' heads='1' primary='yes'/>
+</video>`
+		xmlDesc = videoRe.ReplaceAllString(xmlDesc, newVideo)
+	} else {
+		// No video device exists, add one before </devices>
+		devicesCloseRe := regexp.MustCompile(`</devices>`)
+		if devicesCloseRe.MatchString(xmlDesc) {
+			newVideo := `<video>
+<model type='qxl' ram='65536' vram='65536' vgamem='16384' heads='1' primary='yes'/>
+</video>
+</devices>`
+			xmlDesc = devicesCloseRe.ReplaceAllString(xmlDesc, newVideo)
+		}
+	}
+	return xmlDesc
 }

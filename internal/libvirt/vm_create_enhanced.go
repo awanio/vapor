@@ -1605,6 +1605,8 @@ func (s *Service) UpdateVMEnhanced(ctx context.Context, nameOrUUID string, req *
 				log.Printf("UpdateVMEnhanced error updating UEFI settings: %v", err)
 				return nil, fmt.Errorf("failed to update firmware settings: %w", err)
 			}
+			// Update video device to be UEFI-compatible (GOP support)
+			modifiedXML = ensureUEFIVideoDevice(modifiedXML)
 		}
 
 		if req.MachineType != "" {

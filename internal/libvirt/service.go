@@ -1210,8 +1210,10 @@ func (s *Service) DeleteVM(ctx context.Context, nameOrUUID string, removeDisks b
 		}
 	}
 
-	// Undefine the domain
-	if err := domain.Undefine(); err != nil {
+	// Undefine the domain with NVRAM flag to handle UEFI VMs
+	// UEFI VMs have NVRAM storage that must be explicitly removed
+	undefineFlags := libvirt.DOMAIN_UNDEFINE_NVRAM
+	if err := domain.UndefineFlags(undefineFlags); err != nil {
 		return fmt.Errorf("failed to undefine domain: %w", err)
 	}
 
