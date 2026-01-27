@@ -257,39 +257,6 @@ func listVMs(service *libvirt.Service) gin.HandlerFunc {
 	}
 }
 
-func getVM(service *libvirt.Service) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		id := c.Param("id")
-		vm, err := service.GetVM(c.Request.Context(), id)
-		if err != nil {
-			if strings.Contains(err.Error(), "not found") {
-				c.JSON(http.StatusNotFound, gin.H{
-					"status": "error",
-					"error": gin.H{
-						"code":    "VM_NOT_FOUND",
-						"message": "Virtual machine not found",
-						"details": err.Error(),
-					},
-				})
-				return
-			}
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"status": "error",
-				"error": gin.H{
-					"code":    "GET_VM_FAILED",
-					"message": "Failed to get virtual machine",
-					"details": err.Error(),
-				},
-			})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{
-			"status": "success",
-			"data":   vm,
-		})
-	}
-}
-
 func getVMEnhanced(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		vm, err := service.GetVMEnhanced(c.Request.Context(), c.Param("id"))
@@ -318,94 +285,6 @@ func getVMEnhanced(service *libvirt.Service) gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{
 			"status": "success",
 			"data":   vm,
-		})
-	}
-}
-
-func createVM(service *libvirt.Service) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req libvirt.VMCreateRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"status": "error",
-				"error": gin.H{
-					"code":    "INVALID_REQUEST",
-					"message": "Invalid VM creation request",
-					"details": err.Error(),
-				},
-			})
-			return
-		}
-
-		vm, err := service.CreateVM(c.Request.Context(), &req)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"status": "error",
-				"error": gin.H{
-					"code":    "CREATE_VM_FAILED",
-					"message": "Failed to create virtual machine",
-					"details": err.Error(),
-				},
-			})
-			return
-		}
-
-		c.JSON(http.StatusCreated, gin.H{
-			"status": "success",
-			"data": gin.H{
-				"vm":      vm,
-				"message": "Virtual machine created successfully",
-			},
-		})
-	}
-}
-
-func updateVM(service *libvirt.Service) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		id := c.Param("id")
-		var req libvirt.VMUpdateRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"status": "error",
-				"error": gin.H{
-					"code":    "INVALID_REQUEST",
-					"message": "Invalid VM update request",
-					"details": err.Error(),
-				},
-			})
-			return
-		}
-
-		vm, err := service.UpdateVM(c.Request.Context(), id, &req)
-		if err != nil {
-			if strings.Contains(err.Error(), "not found") {
-				c.JSON(http.StatusNotFound, gin.H{
-					"status": "error",
-					"error": gin.H{
-						"code":    "VM_NOT_FOUND",
-						"message": "Virtual machine not found",
-						"details": err.Error(),
-					},
-				})
-				return
-			}
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"status": "error",
-				"error": gin.H{
-					"code":    "UPDATE_VM_FAILED",
-					"message": "Failed to update virtual machine",
-					"details": err.Error(),
-				},
-			})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"status": "success",
-			"data": gin.H{
-				"vm":      vm,
-				"message": "Virtual machine updated successfully",
-			},
 		})
 	}
 }
