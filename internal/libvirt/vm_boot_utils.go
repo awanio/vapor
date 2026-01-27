@@ -578,6 +578,27 @@ func removeController(xmlDesc string, controllerType string) string {
 	return xmlDesc
 }
 
+// convertDiskBusForQ35 converts disk buses from IDE to SATA for Q35 compatibility.
+// Q35 chipset doesn't support IDE, so we need to convert IDE disks to use SATA.
+// Also updates targets from hdX to sdX.
+func convertDiskBusForQ35(xmlDesc string) string {
+	// Match <target dev='hdX' bus='ide'/> and convert to <target dev='sdX' bus='sata'/>
+	// Handle both single and double quotes
+	reTarget := regexp.MustCompile(`(<target\s+[^>]*dev=['"])hd([a-z])(['"][^>]*bus=['"])ide(['"][^>]*/?>)`)
+	xmlDesc = reTarget.ReplaceAllString(xmlDesc, "${1}sd${2}${3}sata${4}")
+
+	// Also handle reverse order: bus before dev
+	reTargetReverse := regexp.MustCompile(`(<target\s+[^>]*bus=['"])ide(['"][^>]*dev=['"])hd([a-z])(['"][^>]*/?>)`)
+	xmlDesc = reTargetReverse.ReplaceAllString(xmlDesc, "${1}sata${2}sd${3}${4}")
+
+	// Handle address type='drive' which references IDE controller
+	// These addresses should be removed so libvirt can assign new ones for SATA
+	reAddress := regexp.MustCompile(`\s*<address\s+type=['"]drive['"][^>]*/>\s*`)
+	xmlDesc = reAddress.ReplaceAllString(xmlDesc, "\n")
+
+	return xmlDesc
+}
+
 func ensureMachineTypeXML(xmlDesc string, machineType string) (string, error) {
 	if strings.TrimSpace(machineType) == "" {
 		return xmlDesc, nil
@@ -617,7 +638,11 @@ func ensureMachineTypeXML(xmlDesc string, machineType string) (string, error) {
 			return strings.Contains(strings.ToLower(current), "piix")
 		}
 		updatedXML = updateControllerModel(updatedXML, "usb", "qemu-xhci", shouldReplace)
-		// When switching to Q35, remove both IDE and SATA controllers.
+
+		// Convert IDE disk buses to SATA (Q35 doesn't support IDE)
+		updatedXML = convertDiskBusForQ35(updatedXML)
+
+		// Remove both IDE and SATA controllers.
 		// Q35 requires SATA controller at specific PCI address (0:0:1f.2).
 		// Existing controllers from i440fx have incompatible addresses.
 		// Libvirt will automatically add the correct SATA controller for Q35.
