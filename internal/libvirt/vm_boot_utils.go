@@ -617,13 +617,12 @@ func ensureMachineTypeXML(xmlDesc string, machineType string) (string, error) {
 			return strings.Contains(strings.ToLower(current), "piix")
 		}
 		updatedXML = updateControllerModel(updatedXML, "usb", "qemu-xhci", shouldReplace)
-		// Convert IDE to SATA only if no SATA controller already exists
-		// Otherwise, just remove the IDE controller to avoid duplicate SATA controllers
-		if controllerExists(updatedXML, "sata") {
-			updatedXML = removeController(updatedXML, "ide")
-		} else {
-			updatedXML = replaceControllerTypeAndModel(updatedXML, "ide", "sata", "")
-		}
+		// When switching to Q35, remove both IDE and SATA controllers.
+		// Q35 requires SATA controller at specific PCI address (0:0:1f.2).
+		// Existing controllers from i440fx have incompatible addresses.
+		// Libvirt will automatically add the correct SATA controller for Q35.
+		updatedXML = removeController(updatedXML, "ide")
+		updatedXML = removeController(updatedXML, "sata")
 	}
 	return updatedXML, nil
 }

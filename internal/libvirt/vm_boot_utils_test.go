@@ -223,6 +223,8 @@ func TestEnsureMachineTypeXMLUpdatesPCIController(t *testing.T) {
 }
 
 func TestEnsureMachineTypeXMLUpdatesControllersForQ35(t *testing.T) {
+	// Test switching from i440fx to q35
+	// IDE controller should be removed (libvirt recreates with Q35-compatible SATA)
 	xml := `<domain type='kvm'>
   <name>test</name>
   <os>
@@ -245,20 +247,16 @@ func TestEnsureMachineTypeXMLUpdatesControllersForQ35(t *testing.T) {
 	if !strings.Contains(updated, "type='usb'") || !strings.Contains(updated, "model='qemu-xhci'") {
 		t.Fatalf("expected usb controller model to be qemu-xhci, got: %s", updated)
 	}
+	// IDE controller should be removed for Q35 (libvirt adds correct SATA when defining)
 	if strings.Contains(updated, "type='ide'") {
-		t.Fatalf("expected ide controller to be converted to sata, got: %s", updated)
-	}
-	if !strings.Contains(updated, "type='sata'") {
-		t.Fatalf("expected sata controller type, got: %s", updated)
-	}
-	// Verify we are NOT setting model='ahci' explicitly (allowing libvirt default)
-	if strings.Contains(updated, "model='ahci'") {
-		t.Fatalf("expected sata controller to NOT have explicit model='ahci', got: %s", updated)
+		t.Fatalf("expected ide controller to be removed, got: %s", updated)
 	}
 }
 
 func TestEnsureMachineTypeXMLWithExistingSATA(t *testing.T) {
 	// Test case: VM has both IDE and SATA controllers (like the reported bug)
+	// When switching to Q35, both should be removed so libvirt can recreate
+	// them with correct Q35-compatible PCI addresses
 	xml := `<domain type='kvm'>
   <name>test</name>
   <os>
@@ -286,13 +284,11 @@ func TestEnsureMachineTypeXMLWithExistingSATA(t *testing.T) {
 		t.Errorf("expected machine type to be updated to q35, got: %s", updated)
 	}
 
-	// Verify we have exactly one SATA controller (not duplicated)
-	sataCount := strings.Count(updated, "type='sata'")
-	if sataCount != 1 {
-		t.Fatalf("expected exactly 1 SATA controller, found %d in: %s", sataCount, updated)
+	// Verify both IDE and SATA controllers are removed
+	// (libvirt will add Q35-compatible SATA controller when domain is defined)
+	if strings.Contains(updated, "type='sata'") {
+		t.Fatalf("expected SATA controller to be removed (libvirt recreates with correct address), but found in: %s", updated)
 	}
-
-	// Verify IDE controller is removed
 	if strings.Contains(updated, "type='ide'") {
 		t.Fatalf("expected IDE controller to be removed, but found in: %s", updated)
 	}
