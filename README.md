@@ -29,37 +29,22 @@ Vapor is a comprehensive Linux OS management system, inspired by Cockpit, design
 
 ### Supported Operating Systems
 
-Vapor requires **libvirt 8.0.0 or newer** for virtualization features.
+Vapor requires **libvirt 8.0.0+** and **QEMU 6.2+** for full virtualization features including UEFI and Secure Boot support.
 
-| Distribution | Version | Default libvirt | Status |
-|--------------|---------|-----------------|--------|
-| **Ubuntu** | 24.04 LTS | 10.0.0 | ✅ Recommended |
-| | 22.04 LTS | 8.0.0 | ✅ Supported |
-| | 20.04 LTS | 6.0.0 | ⚠️ Requires [Ubuntu Cloud Archive](#ubuntu-2004---enable-ubuntu-cloud-archive) |
-| **Debian** | 12 (Bookworm) | 9.0.0 | ✅ Supported |
-| | 11 (Bullseye) | 7.0.0 | ❌ Not supported (libvirt too old) |
-| **RHEL/Rocky/Alma** | 9.x | 9.0.0+ | ✅ Supported |
-| | 8.x | 8.6.0 | ✅ Supported (8.6+) |
-| **Fedora** | 40+ | 10.0.0+ | ✅ Supported |
-| | 39 | 9.6.0 | ✅ Supported |
-| **CentOS Stream** | 9 | 9.0.0+ | ✅ Supported |
+| Distribution | Version | QEMU | libvirt | Status |
+|--------------|---------|------|---------|--------|
+| **Ubuntu** | 24.04 LTS | 8.2.2 | 10.0.0 | ✅ Recommended |
+| | 22.04 LTS | 6.2.0 | 8.0.0 | ✅ Supported |
+| | 20.04 LTS | 4.2.1 | 6.0.0 | ❌ Not supported (QEMU too old) |
+| **Debian** | 12 (Bookworm) | 7.2.0 | 9.0.0 | ✅ Supported |
+| | 11 (Bullseye) | 5.2.0 | 7.0.0 | ❌ Not supported (QEMU/libvirt too old) |
+| **RHEL/Rocky/Alma** | 9.x | 7.0+ | 9.0.0+ | ✅ Supported |
+| | 8.x | 4.2.0 | 8.6.0 | ❌ Not supported (QEMU too old) |
+| **Fedora** | 40+ | 8.2+ | 10.0.0+ | ✅ Supported |
+| | 39 | 8.1.0 | 9.6.0 | ✅ Supported |
+| **CentOS Stream** | 9 | 7.0+ | 9.0.0+ | ✅ Supported |
 
-### Ubuntu 20.04 - Enable Ubuntu Cloud Archive
-
-Ubuntu 20.04 ships with libvirt 6.0.0 which is too old. To use Vapor on Ubuntu 20.04, enable the Ubuntu Cloud Archive to get libvirt 8.0.0:
-
-```bash
-# Add Ubuntu Cloud Archive - Yoga repository
-sudo add-apt-repository cloud-archive:yoga
-
-# Update and install libvirt
-sudo apt update
-sudo apt install -y libvirt-daemon-system libvirt-dev libvirt0 libvirt-clients
-
-# Verify version
-virsh version
-# Should show: Using library: libvirt 8.0.0
-```
+> **Note**: QEMU 6.2+ is required for proper UEFI display output. Older QEMU versions have display initialization issues with UEFI VMs.
 
 ## Installation
 
