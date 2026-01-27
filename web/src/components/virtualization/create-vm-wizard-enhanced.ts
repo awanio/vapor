@@ -150,7 +150,7 @@ export class CreateVMWizardEnhanced extends LitElement {
   @state() private editingPCIDeviceIndex: number | null = null;
   @state() private pciHostSelection = '';
   @state() private validationErrors: Record<string, string> = {};
-  @state() private expandedSections: Set<string> = new Set(['basic', 'storage', 'network']);
+
   @state() private currentStep = 1;
   @state() private availablePCIDevices: any[] = [];
   @state() private isLoadingPCIDevices = false;
@@ -355,16 +355,11 @@ export class CreateVMWizardEnhanced extends LitElement {
     .section-header {
       padding: 12px 16px;
       background: var(--vscode-editor-inactiveSelectionBackground);
-      cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: space-between;
       user-select: none;
-      transition: background 0.2s;
-    }
-
-    .section-header:hover {
-      background: var(--vscode-list-hoverBackground);
+      border-bottom: 1px solid var(--vscode-border);
     }
 
     .section-title {
@@ -376,22 +371,7 @@ export class CreateVMWizardEnhanced extends LitElement {
       color: var(--vscode-foreground);
     }
 
-    .section-toggle {
-      transition: transform 0.2s;
-    }
-
-    .section.expanded .section-toggle {
-      transform: rotate(90deg);
-    }
-
     .section-content {
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height 0.3s ease;
-    }
-
-    .section.expanded .section-content {
-      max-height: none;
       padding: 16px;
       overflow: visible;
     }
@@ -896,14 +876,7 @@ export class CreateVMWizardEnhanced extends LitElement {
     }
   }
 
-  private toggleSection(section: string) {
-    if (this.expandedSections.has(section)) {
-      this.expandedSections.delete(section);
-    } else {
-      this.expandedSections.add(section);
-    }
-    this.requestUpdate();
-  }
+
 
 
   private handleClose() {
@@ -2659,10 +2632,9 @@ export class CreateVMWizardEnhanced extends LitElement {
       : '';
 
     return html`
-      <div class="section ${this.expandedSections.has('basic') ? 'expanded' : ''}">
-        <div class="section-header" @click=${() => this.toggleSection('basic')}>
+      <div class="section">
+        <div class="section-header">
           <div class="section-title">
-            <span class="section-toggle">▶</span>
             <span>Basic Configuration</span>
             <span class="badge">Required</span>
           </div>
@@ -2773,7 +2745,7 @@ export class CreateVMWizardEnhanced extends LitElement {
             </div>
           </div>
 
-          <div class="grid-3">
+          <div class="grid-4">
             <div class="form-group">
               <label>OS Type</label>
               <select
@@ -2839,7 +2811,7 @@ export class CreateVMWizardEnhanced extends LitElement {
             </div>
           </div>
 
-          <div class="grid-3">
+          <div class="grid-4">
             <div class="checkbox-group">
               <input
                 type="checkbox"
@@ -2878,19 +2850,19 @@ export class CreateVMWizardEnhanced extends LitElement {
               />
               <label for="tpm">Enable TPM</label>
             </div>
-          </div>
 
-          <div class="checkbox-group">
-            <input
-              type="checkbox"
-              id="autostart"
-              ?checked=${this.formData.autostart}
+            <div class="checkbox-group">
+              <input
+                type="checkbox"
+                id="autostart"
+                ?checked=${this.formData.autostart}
                 ?disabled=${this.templateMode}
-              @change=${(e: Event) =>
+                @change=${(e: Event) =>
         this.updateFormData('autostart', (e.target as HTMLInputElement).checked)
       }
-            />
-            <label for="autostart">Autostart VM with host</label>
+              />
+              <label for="autostart">Autostart VM with host</label>
+            </div>
           </div>
 
           
@@ -2906,10 +2878,9 @@ export class CreateVMWizardEnhanced extends LitElement {
       const diskValue = this.templateDiskSizeGB ?? defaultDisk;
 
       return html`
-        <div class="section ${this.expandedSections.has('storage') ? 'expanded' : ''}">
-          <div class="section-header" @click=${() => this.toggleSection('storage')}>
+        <div class="section">
+          <div class="section-header">
             <div class="section-title">
-              <span class="section-toggle">▶</span>
               <span>Storage Configuration</span>
               <span class="badge">Required</span>
             </div>
@@ -2944,10 +2915,9 @@ export class CreateVMWizardEnhanced extends LitElement {
     }
 
     return html`
-      <div class="section ${this.expandedSections.has('storage') ? 'expanded' : ''}">
-        <div class="section-header" @click=${() => this.toggleSection('storage')}>
+      <div class="section">
+        <div class="section-header">
           <div class="section-title">
-            <span class="section-toggle">▶</span>
             <span>Storage Configuration</span>
             <span class="badge">Required</span>
           </div>
@@ -3083,10 +3053,9 @@ export class CreateVMWizardEnhanced extends LitElement {
     };
 
     return html`
-      <div class="section ${this.expandedSections.has('network') ? 'expanded' : ''}">
-        <div class="section-header" @click=${() => this.toggleSection('network')}>
+      <div class="section">
+        <div class="section-header">
           <div class="section-title">
-            <span class="section-toggle">▶</span>
             <span>Network Configuration</span>
           </div>
         </div>
@@ -3231,10 +3200,9 @@ export class CreateVMWizardEnhanced extends LitElement {
   private renderAdvancedConfig() {
     if (this.templateMode) {
       return html`
-        <div class="section ${this.expandedSections.has('advanced') ? 'expanded' : ''}">
-          <div class="section-header" @click=${() => this.toggleSection('advanced')}>
+        <div class="section">
+          <div class="section-header">
             <div class="section-title">
-              <span class="section-toggle">▶</span>
               <span>Advanced Configuration</span>
             </div>
           </div>
@@ -3253,10 +3221,9 @@ export class CreateVMWizardEnhanced extends LitElement {
     const getDeviceInfo = (addr: string) => this.availablePCIDevices.find(d => d.pci_address === addr);
 
     return html`
-      <div class="section ${this.expandedSections.has('advanced') ? 'expanded' : ''}">
-        <div class="section-header" @click=${() => this.toggleSection('advanced')}>
+      <div class="section">
+        <div class="section-header">
           <div class="section-title">
-            <span class="section-toggle">▶</span>
             <span>Advanced Configuration</span>
           </div>
         </div>
@@ -3370,10 +3337,9 @@ export class CreateVMWizardEnhanced extends LitElement {
 
   private renderCloudInitConfig() {
     return html`
-      <div class="section ${this.expandedSections.has('cloudinit') ? 'expanded' : ''}">
-        <div class="section-header" @click=${() => this.toggleSection('cloudinit')}>
+      <div class="section">
+        <div class="section-header">
           <div class="section-title">
-            <span class="section-toggle">▶</span>
             <span>Cloud-Init Configuration</span>
           </div>
         </div>
