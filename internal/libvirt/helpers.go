@@ -697,6 +697,11 @@ func (s *Service) generateEnhancedDomainXML(req *VMCreateRequestEnhanced, diskCo
 			}
 		}
 
+		// Q35 machine type doesn't support IDE - convert to SATA
+		if isQ35MachineType(req.MachineType) && strings.EqualFold(busType, "ide") {
+			busType = "sata"
+		}
+
 		xml += fmt.Sprintf(`
 	<disk type='file' device='%s'>
 	<driver name='qemu' type='%s'/>
