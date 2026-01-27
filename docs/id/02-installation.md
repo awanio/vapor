@@ -16,80 +16,40 @@ Panduan ini menjelaskan cara menginstal Vapor di sistem Linux Anda.
 
 ### Sistem Operasi yang Didukung
 
-Vapor memerlukan **libvirt 8.0.0 atau lebih baru** untuk fitur virtualisasi.
+Vapor memerlukan **libvirt 8.0.0+** dan **QEMU 6.2+** untuk fitur virtualisasi lengkap termasuk dukungan UEFI dan Secure Boot.
 
-| Distribusi | Versi | Libvirt Default | Status |
-|------------|-------|-----------------|--------|
-| **Ubuntu** | 24.04 LTS | 10.0.0 | ✅ Direkomendasikan |
-| | 22.04 LTS | 8.0.0 | ✅ Didukung |
-| | 20.04 LTS | 6.0.0 | ⚠️ Memerlukan Ubuntu Cloud Archive |
-| **Debian** | 12 (Bookworm) | 9.0.0 | ✅ Didukung |
-| | 11 (Bullseye) | 7.0.0 | ❌ Tidak didukung |
-| **RHEL** | 9.x | 9.0.0+ | ✅ Didukung |
-| | 8.6+ | 8.6.0 | ✅ Didukung |
-| **Rocky Linux** | 9.x | 9.0.0+ | ✅ Didukung |
-| | 8.6+ | 8.6.0 | ✅ Didukung |
-| **AlmaLinux** | 9.x | 9.0.0+ | ✅ Didukung |
-| | 8.6+ | 8.6.0 | ✅ Didukung |
-| **Fedora** | 40+ | 10.0.0+ | ✅ Didukung |
-| | 39 | 9.6.0 | ✅ Didukung |
-| **CentOS Stream** | 9 | 9.0.0+ | ✅ Didukung |
+| Distribusi | Versi | QEMU | libvirt | Status |
+|------------|-------|------|---------|--------|
+| **Ubuntu** | 24.04 LTS | 8.2.2 | 10.0.0 | ✅ Direkomendasikan |
+| | 22.04 LTS | 6.2.0 | 8.0.0 | ✅ Didukung |
+| | 20.04 LTS | 4.2.1 | 6.0.0 | ❌ Tidak didukung (QEMU terlalu lama) |
+| **Debian** | 12 (Bookworm) | 7.2.0 | 9.0.0 | ✅ Didukung |
+| | 11 (Bullseye) | 5.2.0 | 7.0.0 | ❌ Tidak didukung (QEMU/libvirt terlalu lama) |
+| **RHEL/Rocky/Alma** | 9.x | 7.0+ | 9.0.0+ | ✅ Didukung |
+| | 8.x | 4.2.0 | 8.6.0 | ❌ Tidak didukung (QEMU terlalu lama) |
+| **Fedora** | 40+ | 8.2+ | 10.0.0+ | ✅ Didukung |
+| | 39 | 8.1.0 | 9.6.0 | ✅ Didukung |
+| **CentOS Stream** | 9 | 7.0+ | 9.0.0+ | ✅ Didukung |
 
-> **Catatan**: Debian 11 (Bullseye) menggunakan libvirt 7.0.0 yang tidak kompatibel. Pertimbangkan untuk upgrade ke Debian 12 atau menggunakan distribusi lain.
+> **Penting**: QEMU 6.2+ diperlukan untuk output tampilan UEFI yang benar. Versi QEMU lama (seperti 4.2.x di Ubuntu 20.04) memiliki masalah inisialisasi tampilan dengan VM UEFI.
 
 ## Persyaratan Pra-Instalasi
 
-### Ubuntu 20.04 - Ubuntu Cloud Archive
+### Memeriksa Sistem Anda
 
-Ubuntu 20.04 menggunakan libvirt 6.0.0 secara default, yang tidak kompatibel dengan Vapor. Anda harus mengupgrade libvirt menggunakan Ubuntu Cloud Archive (UCA) sebelum menginstal Vapor.
-
-#### Apa itu Ubuntu Cloud Archive?
-
-Ubuntu Cloud Archive adalah repositori resmi yang dikelola oleh Canonical yang menyediakan versi lebih baru dari OpenStack dan paket-paket terkait (termasuk libvirt) yang di-backport ke rilis Ubuntu LTS yang lebih lama.
-
-#### Upgrade Libvirt di Ubuntu 20.04
+Sebelum menginstal, verifikasi versi QEMU dan libvirt Anda:
 
 ```bash
-# Install software-properties-common jika belum ada
-sudo apt install -y software-properties-common
+# Cek versi QEMU
+qemu-system-x86_64 --version
 
-# Tambahkan repositori Ubuntu Cloud Archive - Yoga
-sudo add-apt-repository -y cloud-archive:yoga
-
-# Update daftar paket
-sudo apt update
-
-# Upgrade paket libvirt
-sudo apt install -y libvirt-daemon-system libvirt-dev libvirt0 libvirt-clients
-
-# Restart layanan libvirt
-sudo systemctl restart libvirtd
-```
-
-#### Verifikasi Versi Libvirt
-
-```bash
+# Cek versi libvirt
 virsh version
 ```
 
-Output yang diharapkan:
-```
-Compiled against library: libvirt 8.0.0
-Using library: libvirt 8.0.0
-Using API: QEMU 8.0.0
-```
-
-### RHEL/Rocky/Alma 8.x
-
-Untuk RHEL 8, Rocky Linux 8, atau AlmaLinux 8, pastikan Anda menjalankan versi 8.6 atau lebih baru. Versi 8.x yang lebih lama memiliki libvirt yang mungkin tidak sepenuhnya kompatibel.
-
-```bash
-# Cek versi Anda
-cat /etc/redhat-release
-
-# Update ke versi terbaru jika perlu
-sudo dnf update -y
-```
+**Versi minimum yang diperlukan:**
+- QEMU: 6.2.0 atau lebih tinggi
+- libvirt: 8.0.0 atau lebih tinggi
 
 ## Metode Instalasi
 
