@@ -337,10 +337,10 @@ fi
 
 echo -e "\n${GREEN}Starting Installation...${NC}"
 echo "--------------------------------"
-echo "Libvirt: $INSTALL_LIBVIRT"
-echo "Docker: $INSTALL_DOCKER"
-echo "Containerd: $INSTALL_CONTAINERD"
-echo "Kubernetes: $INSTALL_K8S"
+echo "Libvirt: $([ "$INSTALL_LIBVIRT" == "true" ] && echo "yes" || echo "no")"
+echo "Docker: $([ "$INSTALL_DOCKER" == "true" ] && echo "yes" || echo "no")"
+echo "Containerd: $([ "$INSTALL_CONTAINERD" == "true" ] && echo "yes" || echo "no")"
+echo "Kubernetes: $([ "$INSTALL_K8S" == "true" ] && echo "yes" || echo "no")"
 if [ "$INSTALL_K8S" == "true" ]; then
     echo "  - Role: $K8S_NODE_ROLE"
     echo "  - IP: $K8S_NODE_IP"
@@ -349,10 +349,15 @@ if [ "$INSTALL_K8S" == "true" ]; then
     echo "  - CNI: $K8S_CNI"
     echo "  - Version: v$K8S_VERSION"
 fi
-echo "Helm: $INSTALL_HELM"
+echo "Helm: $([ "$INSTALL_HELM" == "true" ] && echo "yes" || echo "no")"
 echo "--------------------------------"
 
-if prompt_confirmation "Proceed with installation?" "y"; then
+INSTALL_PROMPT="Proceed with Vapor installation?"
+if systemctl is-active --quiet vapor 2>/dev/null; then
+    INSTALL_PROMPT="Proceed with Vapor upgrade?"
+fi
+
+if prompt_confirmation "$INSTALL_PROMPT" "y"; then
     # Playbook path is already set in PLAYBOOK_PATH
     
     # Build Extra Vars
