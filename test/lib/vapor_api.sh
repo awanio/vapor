@@ -57,9 +57,9 @@ login_if_needed() {
   local login_resp
   login_resp=$(curl -ksS -X POST "${API_BASE}/auth/login" \
     -H "Content-Type: application/json" \
-    -d "{\"username\":\"${VAPOR_USERNAME}\",\"password\":\"${VAPOR_PASSWORD}\"}")
+    -d "{\"username\":\"${VAPOR_USERNAME}\",\"password\":\"${VAPOR_PASSWORD}\",\"auth_type\":\"password\"}")
 
-  AUTH_TOKEN=$(echo "${login_resp}" | jq -r '.token // empty') || AUTH_TOKEN=""
+  AUTH_TOKEN=$(echo "${login_resp}" | jq -r '.data.token // .token // empty') || AUTH_TOKEN=""
   if [[ -z "${AUTH_TOKEN}" || "${AUTH_TOKEN}" == "null" ]]; then
     echo "ERROR: Failed to obtain AUTH_TOKEN from /auth/login response" >&2
     echo "Response was: ${login_resp}" >&2

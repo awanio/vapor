@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -539,27 +540,119 @@ func (s *Service) runBackupJob(nameOrUUID string, backup *VMBackup, req *VMBacku
 		return
 	}
 
-	backupXML, err := s.generateBackupXML(domain, backup, req)
+	// Get domain name
+	name, err := domain.GetName()
 	if err != nil {
 		backup.Status = BackupStatusFailed
-		backup.ErrorMessage = fmt.Sprintf("failed to generate backup XML: %v", err)
+		backup.ErrorMessage = fmt.Sprintf("failed to get domain name: %v", err)
 		s.saveBackupRecord(backup)
 		return
 	}
 
-	// Execute the backup
-	if err := domain.BackupBegin(backupXML, "", 0); err != nil {
+	// Get domain XML to find disk devices
+	xmlDoc, err := domain.GetXMLDesc(0)
+	if err != nil {
 		backup.Status = BackupStatusFailed
-		backup.ErrorMessage = fmt.Sprintf("backup operation failed: %v", err)
-	} else {
-		backup.Status = BackupStatusCompleted
+		backup.ErrorMessage = fmt.Sprintf("failed to get domain XML: %v", err)
+		s.saveBackupRecord(backup)
+		return
 	}
 
+	// Parse domain XML to extract disk sources
+	type DiskSource struct {
+		File string `xml:"file,attr"`
+	}
+	type DiskDevice struct {
+		Device string     `xml:"device,attr"`
+		Source DiskSource `xml:"source"`
+		Target struct {
+			Dev string `xml:"dev,attr"`
+		} `xml:"target"`
+	}
+	type DomainXML struct {
+		Devices struct {
+			Disks []DiskDevice `xml:"disk"`
+		} `xml:"devices"`
+	}
+
+	var domXML DomainXML
+	if err := xml.Unmarshal([]byte(xmlDoc), &domXML); err != nil {
+		backup.Status = BackupStatusFailed
+		backup.ErrorMessage = fmt.Sprintf("failed to parse domain XML: %v", err)
+		s.saveBackupRecord(backup)
+		return
+	}
+
+	// Find actual disk devices (not cd roms, floppies, etc.)
+	var disksToBackup []struct {
+		SourcePath string
+		TargetDev  string
+	}
+	for _, disk := range domXML.Devices.Disks {
+		if disk.Device != "disk" {
+			continue // Skip cdrom, floppy, etc.
+		}
+		if disk.Source.File == "" {
+			continue // Skip network disks or empty sources
+		}
+		disksToBackup = append(disksToBackup, struct {
+			SourcePath string
+			TargetDev  string
+		}{
+			SourcePath: disk.Source.File,
+			TargetDev:  disk.Target.Dev,
+		})
+	}
+
+	if len(disksToBackup) == 0 {
+		backup.Status = BackupStatusFailed
+		backup.ErrorMessage = "no disk devices found in VM to backup"
+		s.saveBackupRecord(backup)
+		return
+	}
+
+	// Perform backup using qemu-img convert for each disk
+	var totalSize int64
+	for _, disk := range disksToBackup {
+		// Generate backup file path
+		backupFile := filepath.Join(backup.DestinationPath, fmt.Sprintf("%s-%s.qcow2", name, backup.ID))
+		
+		// For now, just backup the first disk (primary disk)
+		// In the future, we can support multi-disk backups by appending target device name
+		if len(disksToBackup) > 1 {
+			backupFile = filepath.Join(backup.DestinationPath, fmt.Sprintf("%s-%s-%s.qcow2", name, disk.TargetDev, backup.ID))
+		}
+
+		// Use qemu-img convert to create the backup
+		// This works for both running and stopped VMs
+		cmd := exec.Command("qemu-img", "convert", "-O", "qcow2", disk.SourcePath, backupFile)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			backup.Status = BackupStatusFailed
+			backup.ErrorMessage = fmt.Sprintf("backup operation failed for disk %s: %v (output: %s)", disk.TargetDev, err, string(output))
+			s.saveBackupRecord(backup)
+			return
+		}
+
+		// Get the actual size of the backup file
+		fileInfo, err := os.Stat(backupFile)
+		if err != nil {
+			log.Printf("Warning: could not stat backup file %s: %v", backupFile, err)
+		} else {
+			totalSize += fileInfo.Size()
+		}
+
+		// For single-disk VMs, break after first disk
+		if len(disksToBackup) == 1 {
+			break
+		}
+	}
+
+	// Mark backup as completed
+	backup.Status = BackupStatusCompleted
+	backup.SizeBytes = totalSize
 	now := time.Now()
 	backup.CompletedAt = &now
-
-	// In a real implementation, we would get the actual size
-	backup.SizeBytes = 0 // Placeholder
 
 	// Update the database record
 	if s.db != nil {
