@@ -256,3 +256,49 @@ func TestEnsureMachineTypeXMLUpdatesControllersForQ35(t *testing.T) {
 		t.Fatalf("expected sata controller to NOT have explicit model='ahci', got: %s", updated)
 	}
 }
+
+func TestEnsureMachineTypeXMLWithExistingSATA(t *testing.T) {
+	// Test case: VM has both IDE and SATA controllers (like the reported bug)
+	xml := `<domain type='kvm'>
+  <name>test</name>
+  <os>
+    <type arch='x86_64' machine='pc-i440fx-focal'>hvm</type>
+  </os>
+  <devices>
+    <controller type='pci' index='0' model='pci-root'/>
+    <controller type='usb' index='0' model='piix3-uhci'/>
+    <controller type='sata' index='0'>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x0'/>
+    </controller>
+    <controller type='ide' index='0'>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x1'/>
+    </controller>
+  </devices>
+</domain>`
+
+	updated, err := ensureMachineTypeXML(xml, "q35")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify machine type is updated to q35
+	if !strings.Contains(updated, "machine='q35'") {
+		t.Errorf("expected machine type to be updated to q35, got: %s", updated)
+	}
+
+	// Verify we have exactly one SATA controller (not duplicated)
+	sataCount := strings.Count(updated, "type='sata'")
+	if sataCount != 1 {
+		t.Fatalf("expected exactly 1 SATA controller, found %d in: %s", sataCount, updated)
+	}
+
+	// Verify IDE controller is removed
+	if strings.Contains(updated, "type='ide'") {
+		t.Fatalf("expected IDE controller to be removed, but found in: %s", updated)
+	}
+
+	// Verify PCI controller model is pcie-root for q35
+	if !strings.Contains(updated, "model='pcie-root'") {
+		t.Errorf("expected pci controller model to be pcie-root, got: %s", updated)
+	}
+}

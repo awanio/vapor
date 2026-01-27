@@ -558,6 +558,26 @@ func ensurePCIControllerModel(xmlDesc string, model string) (string, error) {
 	return strings.Replace(xmlDesc, tag, updated, 1), nil
 }
 
+// controllerExists checks if a controller of the given type exists in the domain XML.
+func controllerExists(xmlDesc string, controllerType string) bool {
+	re := regexp.MustCompile(`<controller[^>]*type=['"]` + regexp.QuoteMeta(controllerType) + `['"][^>]*>`)
+	return re.MatchString(xmlDesc)
+}
+
+// removeController removes all controllers of the given type from the domain XML.
+func removeController(xmlDesc string, controllerType string) string {
+	// Match both self-closing <controller ... /> and <controller ...>...</controller>
+	// Self-closing pattern
+	reSelfClosing := regexp.MustCompile(`\s*<controller[^>]*type=['"]` + regexp.QuoteMeta(controllerType) + `['"][^>]*/>\s*`)
+	xmlDesc = reSelfClosing.ReplaceAllString(xmlDesc, "\n")
+
+	// Full tag pattern <controller ...>...</controller>
+	reFull := regexp.MustCompile(`(?s)\s*<controller[^>]*type=['"]` + regexp.QuoteMeta(controllerType) + `['"][^>]*>.*?</controller>\s*`)
+	xmlDesc = reFull.ReplaceAllString(xmlDesc, "\n")
+
+	return xmlDesc
+}
+
 func ensureMachineTypeXML(xmlDesc string, machineType string) (string, error) {
 	if strings.TrimSpace(machineType) == "" {
 		return xmlDesc, nil
@@ -597,8 +617,13 @@ func ensureMachineTypeXML(xmlDesc string, machineType string) (string, error) {
 			return strings.Contains(strings.ToLower(current), "piix")
 		}
 		updatedXML = updateControllerModel(updatedXML, "usb", "qemu-xhci", shouldReplace)
-		// Convert IDE to SATA without specifying a model (let libvirt default)
-		updatedXML = replaceControllerTypeAndModel(updatedXML, "ide", "sata", "")
+		// Convert IDE to SATA only if no SATA controller already exists
+		// Otherwise, just remove the IDE controller to avoid duplicate SATA controllers
+		if controllerExists(updatedXML, "sata") {
+			updatedXML = removeController(updatedXML, "ide")
+		} else {
+			updatedXML = replaceControllerTypeAndModel(updatedXML, "ide", "sata", "")
+		}
 	}
 	return updatedXML, nil
 }

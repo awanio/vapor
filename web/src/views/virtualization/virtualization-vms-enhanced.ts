@@ -986,7 +986,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
 
   private getActions(vm: VirtualMachine): ActionItem[] {
     const actions: ActionItem[] = [
-      { label: 'View Details', action: 'view', icon: 'ℹ️' }
+      { label: 'View Details', action: 'view' }
     ];
 
     // Normalize state to lowercase for comparison
@@ -995,34 +995,34 @@ export class VirtualizationVMsEnhanced extends LitElement {
     switch (vmState) {
       case 'running':
         actions.push(
-          { label: 'Console', action: 'console', icon: '💻' },
-          { label: 'Stop', action: 'stop', icon: '⏹️' },
-          { label: 'Pause', action: 'pause', icon: '⏸️' },
-          { label: 'Restart', action: 'restart', icon: '🔄' }
+          { label: 'Console', action: 'console' },
+          { label: 'Stop', action: 'stop' },
+          { label: 'Pause', action: 'pause' },
+          { label: 'Restart', action: 'restart' }
         );
         break;
       case 'stopped':
       case 'shutoff': // Handle both stopped and shutoff states
       case 'stop':    // Some systems might use 'stop' instead of 'stopped'
         actions.push(
-          { label: 'Start', action: 'start', icon: '▶️' },
-          { label: 'Edit', action: 'edit', icon: '✏️' },
-          { label: 'Clone', action: 'clone', icon: '📋' }
+          { label: 'Start', action: 'start' },
+          { label: 'Edit', action: 'edit' },
+          { label: 'Clone', action: 'clone' }
         );
         // Add delete action for stopped VMs
         actions.push(
-          { label: 'Delete', action: 'delete', icon: '🗑️', danger: true }
+          { label: 'Delete', action: 'delete', danger: true }
         );
         break;
       case 'paused':
         actions.push(
-          { label: 'Resume', action: 'resume', icon: '▶️' },
-          { label: 'Stop', action: 'stop', icon: '⏹️' }
+          { label: 'Resume', action: 'resume' },
+          { label: 'Stop', action: 'stop' }
         );
         break;
       case 'suspended':
         actions.push(
-          { label: 'Resume', action: 'resume', icon: '▶️' }
+          { label: 'Resume', action: 'resume' }
         );
         break;
       default:
@@ -1032,8 +1032,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
 
     // Add snapshot and template actions for all states
     actions.push(
-      { label: 'Snapshot', action: 'snapshot', icon: '📸' },
-      { label: 'Create Template', action: 'create-template', icon: '📄' },
+      { label: 'Snapshot', action: 'snapshot' },
+      { label: 'Create Template', action: 'create-template' },
     );
 
     return actions;
@@ -2525,10 +2525,10 @@ export class VirtualizationVMsEnhanced extends LitElement {
               </span>
             ` : ''}
             <button class="btn-refresh" @click=${this.handleRefresh} title="Refresh">
-              🔄
+              <span>Refresh</span>
             </button>
             <button class="btn-create" @click=${this.handleCreateNew}>
-              <span>+ New ${this.activeMainTab === 'templates' ? 'Template' : 'VM'}</span>
+              <span>New ${this.activeMainTab === 'templates' ? 'Template' : 'VM'}</span>
             </button>
           </div>
         </div>
