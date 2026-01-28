@@ -13,6 +13,7 @@ import {
 } from '../stores/shared/sidebar';
 import { StoreController } from '@nanostores/lit';
 import { $virtualizationEnabled } from '../stores/virtualization';
+import { config } from '../config';
 
 export class SidebarTree extends I18nLitElement {
   @property({ type: Boolean }) collapsed = false;
@@ -25,6 +26,9 @@ export class SidebarTree extends I18nLitElement {
 
   @state()
   private translationsLoaded = false;
+
+  @state()
+  private appVersion = '';
 
   private virtualizationEnabledController = new StoreController(this, $virtualizationEnabled);
   private storeUnsubscribers: Array<() => void> = [];
@@ -215,6 +219,10 @@ export class SidebarTree extends I18nLitElement {
 
     :host([collapsed]) .tree-item-icon {
       margin-right: 0;
+    }
+
+    :host([collapsed]) .sidebar-footer {
+      display: none;
     }
 
     /* Focus styles for keyboard navigation */
@@ -650,6 +658,19 @@ export class SidebarTree extends I18nLitElement {
       this.navigationItems = this.navigationItems.filter(item => item.id !== 'virtualization');
     }
 
+    // Fetch application version
+    try {
+      const response = await fetch(`${config.API_BASE_URL}/health`);
+      if (response.ok) {
+        const json = await response.json();
+        if (json.status === 'success' && json.data && json.data.version) {
+          this.appVersion = json.data.version;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to fetch version:', e);
+    }
+
     // Ensure translations are loaded before rendering
     await i18n.init();
     this.translationsLoaded = true;
@@ -758,6 +779,7 @@ export class SidebarTree extends I18nLitElement {
       <div class="sidebar-footer">
         <div class="sidebar-footer-brand">Vapor by Awanio</div>
         <div class="sidebar-footer-copyright">© ${currentYear} Awanio. All rights reserved.</div>
+        <div class="sidebar-footer-version"><small>${this.appVersion}</small></div>
       </div>
     `;
   }
