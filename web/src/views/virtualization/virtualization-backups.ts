@@ -10,8 +10,11 @@ import type { Column, ActionItem } from '../../components/tables/resource-table'
 import '../../components/ui/empty-state';
 import '../../components/ui/loading-state';
 import '../../components/ui/search-input';
+import '../../components/ui/search-input';
 import '../../components/drawers/detail-drawer';
 import '../../components/modal-dialog';
+import '../../components/ui/notification-container';
+import type { Notification } from '../../components/ui/notification-container';
 
 @customElement('virtualization-backups')
 export class VirtualizationBackupsView extends LitElement {
@@ -37,14 +40,15 @@ export class VirtualizationBackupsView extends LitElement {
       background-position: right 10px center;
     }
     .filters select:focus { outline: none; border-color: var(--vscode-focusBorder, #007acc); box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc); }
-    .actions { display: flex; gap: 8px; align-items: center; }
-    .btn { height: 36px; padding: 0 16px; border-radius: 4px; border: 1px solid var(--vscode-border, #464647); background: var(--vscode-bg-lighter, #2d2d30); color: var(--vscode-text, #cccccc); cursor: pointer; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; }
-    .btn:hover:not([disabled]) { background: var(--surface-3, #3e3e42); }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn-primary { background: var(--vscode-accent, #007acc); color: #ffffff; border-color: var(--vscode-accent, #007acc); }
-    .btn-primary:hover:not([disabled]) { background: var(--vscode-accent-hover, #1a86d9); border-color: var(--vscode-accent-hover, #1a86d9); }
-    .btn-danger { background: #a4262c; border-color: #a4262c; color: #ffffff; }
-    .btn-danger:hover:not([disabled]) { background: #c42b32; border-color: #c42b32; }
+    .actions { display: flex; gap: 8px; align-items: center; margin-left: auto; }
+    .btn { height: 36px; padding: 0 16px; border-radius: 4px; border: 1px solid transparent; cursor: pointer; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; font-family: inherit; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary { background: var(--vscode-button-background, #0e639c); color: var(--vscode-button-foreground, #ffffff); border: 1px solid var(--vscode-button-background, #0e639c); }
+    .btn-primary:hover:not(:disabled) { background: var(--vscode-button-hoverBackground, #1177bb); border-color: var(--vscode-button-hoverBackground, #1177bb); }
+    .btn-secondary { background: var(--vscode-button-secondaryBackground, #3c3c3c); color: var(--vscode-button-secondaryForeground, #cccccc); border: 1px solid var(--vscode-button-border, #5a5a5a); }
+    .btn-secondary:hover:not(:disabled) { background: var(--vscode-button-secondaryHoverBackground, #484848); }
+    .btn-danger { background: var(--vscode-inputValidation-errorBackground, #a4262c); border-color: var(--vscode-inputValidation-errorBorder, #a4262c); color: var(--vscode-inputValidation-errorForeground, #ffffff); }
+    .btn-danger:hover:not([disabled]) { opacity: 0.9; }
     table { width: 100%; border-collapse: collapse; }
     th, td { padding: 12px 10px; border-bottom: 1px solid var(--vscode-border); text-align: left; font-size: 13px; }
     th { color: var(--vscode-descriptionForeground, #9ca3af); font-weight: 600; }
@@ -64,9 +68,7 @@ export class VirtualizationBackupsView extends LitElement {
     .field textarea { resize: vertical; min-height: 60px; }
     .drawer-content { padding: 16px; }
     .drawer-footer { display: flex; gap: 8px; justify-content: flex-end; padding: 12px 16px; border-top: 1px solid var(--vscode-border, #464647); }
-    .toast { margin-bottom: 10px; padding: 10px; border-radius: 8px; }
-    .toast.success { background: #0f172a; color: #bbf7d0; border: 1px solid #14532d; }
-    .toast.error { background: #1f0f0f; color: #fecdd3; border: 1px solid #7f1d1d; }
+
     .drop-zone {
       border: 2px dashed var(--vscode-input-border, #5a5a5a);
       border-radius: 8px;
@@ -102,6 +104,12 @@ export class VirtualizationBackupsView extends LitElement {
     .file-details { display: flex; flex-direction: column; gap: 4px; }
     .file-name { font-weight: 500; color: var(--vscode-foreground); }
     .file-size { font-size: 12px; color: var(--vscode-descriptionForeground); }
+    .dropdown { position: relative; display: inline-block; }
+    .dropdown { position: relative; display: inline-block; }
+    .dropdown-menu { display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; background: var(--vscode-dropdown-background, var(--vscode-menu-background, var(--vscode-bg-light, #252526))); border: 1px solid var(--vscode-dropdown-border, var(--vscode-menu-border, var(--border-color, #454545))); border-radius: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index: 100; min-width: 180px; padding: 4px 0; }
+    .dropdown.open .dropdown-menu { display: block; }
+    .dropdown-item { display: block; width: 100%; text-align: left; padding: 8px 12px; background: none; border: none; color: var(--vscode-menu-foreground, var(--vscode-foreground, var(--vscode-text, #cccccc))); cursor: pointer; font-size: 13px; box-sizing: border-box; display: flex; align-items: center; gap: 8px; }
+    .dropdown-item:hover { background-color: var(--vscode-list-hoverBackground, var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.08))); color: var(--vscode-list-hoverForeground, var(--vscode-foreground)); }
   `;
 
   @state() private backups: VMBackup[] = [];
@@ -110,7 +118,7 @@ export class VirtualizationBackupsView extends LitElement {
   @state() private search = '';
   @state() private status = 'all';
   @state() private type: BackupType | 'all' = 'all';
-  @state() private toast: { text: string; type: 'success' | 'error' | 'info' } | null = null;
+  @state() private notifications: Notification[] = [];
   @state() private showImportDrawer = false;
   @state() private showCreateDrawer = false;
   @state() private showRestore = false;
@@ -130,6 +138,7 @@ export class VirtualizationBackupsView extends LitElement {
   @state() private storagePools: StoragePool[] = [];
   @state() private uploadId: string | null = null;
   @state() private isPaused = false;
+  @state() private showActionsMenu = false;
   private currentUpload: tus.Upload | null = null;
 
   private uploadMetadata = {
@@ -314,9 +323,21 @@ export class VirtualizationBackupsView extends LitElement {
     }
   }
 
-  private setToast(text: string, type: 'success' | 'error' | 'info' = 'info') {
-    this.toast = { text, type };
-    setTimeout(() => (this.toast = null), 3000);
+  private setToast(text: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') {
+    const id = Math.random().toString(36).substring(2, 9);
+    this.notifications = [
+      ...this.notifications,
+      {
+        id,
+        message: text,
+        type: type,
+        duration: 3000,
+      },
+    ];
+  }
+
+  private handleNotificationClosed(e: CustomEvent) {
+    this.notifications = this.notifications.filter(n => n.id !== e.detail.id);
   }
 
   private handleDelete(b: VMBackup) {
@@ -685,7 +706,7 @@ export class VirtualizationBackupsView extends LitElement {
           description="Import an existing backup or create a new one."
         >
           <div slot="actions" style="display:flex; gap:8px; justify-content:center;">
-            <button class="btn" @click=${() => this.openUploadDrawer()}>Upload from local</button>
+            <button class="btn" @click=${() => this.openUploadDrawer()}>Upload</button>
             <button class="btn" @click=${() => (this.showImportDrawer = true)}>Register from server</button>
             <button class="btn btn-primary" @click=${() => (this.showCreateDrawer = true)}>Create backup</button>
           </div>
@@ -716,12 +737,6 @@ export class VirtualizationBackupsView extends LitElement {
       <div class="page">
         <div class="header">
           <h2 class="title">Backups</h2>
-          <div class="actions">
-            <button class="btn" @click=${() => this.loadBackups()} ?disabled=${this.loading}>Refresh</button>
-            <button class="btn" @click=${() => this.openUploadDrawer()}>Upload from local</button>
-            <button class="btn" @click=${() => (this.showImportDrawer = true)}>Register from server</button>
-            <button class="btn btn-primary" @click=${() => (this.showCreateDrawer = true)}>Create backup</button>
-          </div>
         </div>
 
         <div class="controls">
@@ -747,6 +762,7 @@ export class VirtualizationBackupsView extends LitElement {
             </select>
           </div>
           <search-input
+            style="--search-input-padding: 8px 12px 8px 32px;"
             .placeholder=${'Search VM name/UUID'}
             .value=${this.search}
             @search-change=${(e: CustomEvent) => {
@@ -754,9 +770,30 @@ export class VirtualizationBackupsView extends LitElement {
         this.loadStoragePools();
       }}
           ></search-input>
+          <div class="actions">
+            <button class="btn btn-secondary" @click=${() => this.loadBackups()} ?disabled=${this.loading}>Refresh</button>
+            <div class="dropdown ${this.showActionsMenu ? 'open' : ''}">
+              <button class="btn btn-primary" @click=${() => (this.showActionsMenu = !this.showActionsMenu)}>
+                <span>Create</span>
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor" style="margin-left: 4px; opacity: 0.8;"><path d="M6 8L2 4h8z"/></svg>
+              </button>
+              <div class="dropdown-menu">
+                <button class="dropdown-item" @click=${() => { this.showCreateDrawer = true; this.showActionsMenu = false; }}>
+                  <span>Create backup</span>
+                </button>
+                <button class="dropdown-item" @click=${() => { this.openUploadDrawer(); this.showActionsMenu = false; }}>
+                  <span>Upload</span>
+                </button>
+                <button class="dropdown-item" @click=${() => { this.showImportDrawer = true; this.showActionsMenu = false; }}>
+                  <span>Register from server</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
-        ${this.toast ? html`<div class="toast ${this.toast.type}">${this.toast.text}</div>` : ''}
+
+        <notification-container .notifications=${this.notifications} @notification-closed=${this.handleNotificationClosed}></notification-container>
         ${this.error ? html`<div class="toast error">${this.error}</div>` : ''}
 
         ${this.renderTable()}

@@ -26,7 +26,7 @@ export class SearchInput extends LitElement {
     }
 
     .search-input {
-      padding: 6px 12px 6px 32px;
+      padding: var(--search-input-padding, 6px 12px 6px 32px);
       border: 1px solid var(--vscode-widget-border, var(--vscode-input-border, var(--vscode-panel-border, #454545)));
       border-radius: 4px;
       background-color: var(--vscode-input-background);
