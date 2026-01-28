@@ -32,6 +32,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var Version = "dev"
+var Features = ""
+
 func main() {
 	// Check for special flags first (before config.Load which calls flag.Parse)
 	if len(os.Args) > 1 {
@@ -46,7 +49,7 @@ func main() {
 			printHelp()
 			return
 		case "--version", "-v":
-			fmt.Println("Vapor API v0.0.1")
+			fmt.Println(Version)
 			return
 		}
 	}
@@ -79,10 +82,9 @@ func main() {
 	}
 
 	// Enforce Linux-only execution
-	// NOTE: Temporarily disabled for testing on macOS
-	// if runtime.GOOS != "linux" {
-	// 	log.Fatalf("Error: This application requires Linux. Current OS: %s/%s", runtime.GOOS, runtime.GOARCH)
-	// }
+	if runtime.GOOS != "linux" {
+		log.Fatalf("Error: This application requires Linux. Current OS: %s/%s", runtime.GOOS, runtime.GOARCH)
+	}
 
 	log.Printf("Running on %s/%s", runtime.GOOS, runtime.GOARCH)
 
@@ -138,7 +140,7 @@ func main() {
 		stopRetentionJob := libvirtService.StartBackupRetentionJob(libvirt.DefaultBackupRetentionConfig())
 		defer stopRetentionJob()
 		log.Println("Backup retention cleanup job started")
-		routes.LibvirtRoutes(api, authService, libvirtService)
+		routes.LibvirtRoutes(api, authService, libvirtService, Features)
 		defer libvirtService.Close() // Close service when server shuts down
 	}
 
@@ -202,8 +204,9 @@ func main() {
 	// Health check endpoint
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, common.SuccessResponse(gin.H{
-			"status": "healthy",
-			"time":   time.Now().Unix(),
+			"status":  "healthy",
+			"time":    time.Now().Unix(),
+			"version": Version,
 		}))
 	})
 

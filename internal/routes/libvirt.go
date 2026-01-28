@@ -18,7 +18,20 @@ import (
 )
 
 // LibvirtRoutes sets up libvirt VM management routes
-func LibvirtRoutes(r *gin.RouterGroup, authService *auth.EnhancedService, service *libvirt.Service) {
+func LibvirtRoutes(r *gin.RouterGroup, authService *auth.EnhancedService, service *libvirt.Service, features string) {
+	// Check if Virtualization feature is enabled
+	// It's enabled if "Virtualization" is present in the comma-separated features string
+	isEnabled := false
+	for _, f := range strings.Split(features, ",") {
+		if strings.TrimSpace(f) == "Virtualization" {
+			isEnabled = true
+			break
+		}
+	}
+
+	if !isEnabled {
+		return
+	}
 
 	// Exclude from auth header token middleware (WebSocket endpoints)
 	// Legacy WebSocket endpoint (backward compatibility)

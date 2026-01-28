@@ -642,6 +642,14 @@ export class SidebarTree extends I18nLitElement {
   override async connectedCallback() {
     super.connectedCallback();
 
+    // Filter out disabled features based on build-time flags
+    const features = import.meta.env.VITE_FEATURES || '';
+    const enabledFeatures = features.split(',').map((f: string) => f.trim());
+
+    if (!enabledFeatures.includes('Virtualization')) {
+      this.navigationItems = this.navigationItems.filter(item => item.id !== 'virtualization');
+    }
+
     // Ensure translations are loaded before rendering
     await i18n.init();
     this.translationsLoaded = true;

@@ -4,6 +4,9 @@
 BINARY_NAME=vapor
 MAIN_PATH=cmd/vapor/main.go
 DOCKER_IMAGE=vapor:latest
+VERSION ?= $(shell git describe --tags --always --dirty || echo "dev")
+FEATURES ?= "Virtualization"
+LDFLAGS := -ldflags "-X 'main.Version=$(VERSION)' -X 'main.Features=$(FEATURES)'"
 
 # Embed web UI assets
 DIST_DIR=web/dist
@@ -23,27 +26,27 @@ embed-web:
 	fi
 
 build-fe:
-	cd ./web/ && mv .env .env-bak && npm run build && mv .env-bak .env && cd ../
+	cd ./web/ && mv .env .env-bak && VITE_FEATURES=$(FEATURES) npm run build && mv .env-bak .env && cd ../
 
 # Build the binary
 build: build-fe embed-web
 	@echo "Building production binary..."
-	go build -o bin/$(BINARY_NAME) $(MAIN_PATH)
+	go build -o bin/$(BINARY_NAME) $(MAIN_PATH) $(LDFLAGS)
 
 # Build for development
 build-dev: embed-web
 	@echo "Building development binary..."
-	go build -o bin/$(BINARY_NAME) $(MAIN_PATH)
+	go build -o bin/$(BINARY_NAME) $(MAIN_PATH) $(LDFLAGS)
 
 run-dev: embed-web
 	export VAPOR_OVMF_CODE=/usr/share/OVMF/OVMF_CODE.fd 
 	export VAPOR_OVMF_VARS=/usr/share/OVMF/OVMF_VARS.fd 
 	export VAPOR_OVMF_CODE_SECURE=/usr/share/OVMF/OVMF_CODE.secboot.fd
 	export VAPOR_OVMF_VARS_SECURE=/usr/share/OVMF/OVMF_VARS.ms.fd
-	go run cmd/vapor/main.go -config ./vapor.conf.example
+	go run $(LDFLAGS) cmd/vapor/main.go -config ./vapor.conf.example 
 
 run-dev-web:
-	cd web && npm run dev
+	cd web && VITE_FEATURES=$(FEATURES) npm run dev
 
 update-systemd: build
 	@echo "Update Vapor daemon service in systemd"
