@@ -124,28 +124,29 @@ wait_for_backup_presence() {
 }
 
 wait_for_backup_completion() {
-  local deadline=$(( $(date +%s) + TIMEOUT_SECONDS ))
+  local backup_id="${1:-$BACKUP_ID}"
+  local timeout="${2:-$TIMEOUT_SECONDS}"
+  local deadline=$(( $(date +%s) + timeout ))
   while (( $(date +%s) < deadline )); do
     api_call GET "/virtualization/computes/${VM_ID}/backups"
-    status=$(jq -r --arg id "${BACKUP_ID}" '.data.backups[]? | select((.backup_id // .id) == $id) | .status // empty' "${RESP_FILE}" 2>/dev/null || true)
+    status=$(jq -r --arg id "${backup_id}" '.data.backups[]? | select((.backup_id // .id) == $id) | .status // empty' "${RESP_FILE}" 2>/dev/null || true)
     if [[ -z "${status}" ]]; then
       sleep 1
       continue
     fi
     log "Backup status: ${status}"
     if [[ "${status}" == "completed" ]]; then
-      return
+      return 0
     fi
     if [[ "${status}" == "failed" ]]; then
-      echo "ERROR: Backup ${BACKUP_ID} failed" >&2
-      exit 1
+      echo "ERROR: Backup ${backup_id} failed" >&2
+      return 1
     fi
     sleep 2
   done
-  echo "ERROR: Backup ${BACKUP_ID} did not complete within ${TIMEOUT_SECONDS}s" >&2
-  exit 1
+  echo "ERROR: Backup ${backup_id} did not complete within ${timeout}s" >&2
+  return 1
 }
-
 main() {
   pick_vm_if_needed
 

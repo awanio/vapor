@@ -26,9 +26,6 @@ func generateRandomID(length int) (string, error) {
 
 // RestoreBackup restores a VM from a backup
 func (s *Service) RestoreBackup(ctx context.Context, req *VMRestoreRequest) (*VM, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	if s.db == nil {
 		return nil, fmt.Errorf("database is not configured")
 	}
@@ -48,8 +45,12 @@ func (s *Service) RestoreBackup(ctx context.Context, req *VMRestoreRequest) (*VM
 		vmName = req.NewVMName
 	}
 
+	// Use RLock for checking if VM exists (lookupDomain does not take its own lock)
 	if !req.Overwrite {
-		if _, err := s.lookupDomain(vmName); err == nil {
+		s.mu.RLock()
+		_, err := s.lookupDomain(vmName)
+		s.mu.RUnlock()
+		if err == nil {
 			return nil, fmt.Errorf("VM %s already exists, use overwrite flag to replace", vmName)
 		}
 	}
@@ -68,6 +69,7 @@ func (s *Service) RestoreBackup(ctx context.Context, req *VMRestoreRequest) (*VM
 	}
 
 	// Create a new VM with the restored disk
+	// Note: CreateVM takes its own lock, so we do not hold any lock here
 	createReq := &VMCreateRequest{
 		Name:     vmName,
 		Memory:   2048, // Default values, should be stored with backup
