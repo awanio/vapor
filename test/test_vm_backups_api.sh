@@ -463,6 +463,85 @@ test_tus_upload() {
   log "TUS upload test completed successfully ✓"
 }
 
+# Test incremental backup creation
+test_incremental_backup() {
+  log ""
+  log "=== Testing Incremental Backup ==="
+  
+  # First create a full backup
+  log "Creating full backup..."
+  api_call POST "/virtualization/computes/${VM_ID}/backups" '{
+    "backup_type": "full",
+    "description": "Full backup for incremental test"
+  }'
+  
+  FULL_BACKUP_ID=$(jq -r '.data.backup.id // .data.backup.backup_id' "${RESP_FILE}")
+  if [[ -z "${FULL_BACKUP_ID}" || "${FULL_BACKUP_ID}" == "null" ]]; then
+    echo "ERROR: Could not extract full backup ID" >&2
+    exit 1
+  fi
+  log "Full backup ID: ${FULL_BACKUP_ID}"
+  
+  # Wait for full backup to complete
+  log "Waiting for full backup to complete..."
+  wait_for_backup_completion "${FULL_BACKUP_ID}" 60
+  
+  # Get full backup info
+  api_call GET "/virtualization/computes/backups/${FULL_BACKUP_ID}"
+  FULL_SIZE=$(jq -r '.data.backup.size_bytes' "${RESP_FILE}")
+  log "Full backup size: ${FULL_SIZE} bytes"
+  
+  # Now create an incremental backup
+  log "Creating incremental backup..."
+  api_call POST "/virtualization/computes/${VM_ID}/backups" "{
+    \"backup_type\": \"incremental\",
+    \"parent_backup_id\": \"${FULL_BACKUP_ID}\",
+    \"description\": \"Incremental backup test\"
+  }"
+  
+  INCR_BACKUP_ID=$(jq -r '.data.backup.id // .data.backup.backup_id' "${RESP_FILE}")
+  if [[ -z "${INCR_BACKUP_ID}" || "${INCR_BACKUP_ID}" == "null" ]]; then
+    echo "ERROR: Could not extract incremental backup ID" >&2
+    # Clean up full backup
+    api_call DELETE "/virtualization/computes/backups/${FULL_BACKUP_ID}"
+    exit 1
+  fi
+  log "Incremental backup ID: ${INCR_BACKUP_ID}"
+  
+  # Verify parent_backup_id is set
+  PARENT_ID=$(jq -r '.data.backup.parent_backup_id' "${RESP_FILE}")
+  if [[ "${PARENT_ID}" != "${FULL_BACKUP_ID}" ]]; then
+    echo "ERROR: Parent backup ID not set correctly" >&2
+    echo "Expected: ${FULL_BACKUP_ID}" >&2
+    echo "Got: ${PARENT_ID}" >&2
+    api_call DELETE "/virtualization/computes/backups/${FULL_BACKUP_ID}"
+    exit 1
+  fi
+  log "✓ Parent backup ID verified: ${PARENT_ID}"
+  
+  # Wait for incremental backup to complete
+  log "Waiting for incremental backup to complete..."
+  if ! wait_for_backup_completion "${INCR_BACKUP_ID}" 60; then
+    log "Incremental backup failed or timed out"
+    # Clean up
+    api_call DELETE "/virtualization/computes/backups/${FULL_BACKUP_ID}" || true
+    exit 1
+  fi
+  
+  # Get incremental backup info
+  api_call GET "/virtualization/computes/backups/${INCR_BACKUP_ID}"
+  INCR_SIZE=$(jq -r '.data.backup.size_bytes' "${RESP_FILE}")
+  log "Incremental backup size: ${INCR_SIZE} bytes"
+  log "Size comparison: Incremental (${INCR_SIZE}) vs Full (${FULL_SIZE})"
+  
+  # Clean up test backups
+  log "Cleaning up test backups..."
+  api_call DELETE "/virtualization/computes/backups/${INCR_BACKUP_ID}"
+  api_call DELETE "/virtualization/computes/backups/${FULL_BACKUP_ID}"
+  
+  log "✅ Incremental backup test passed"
+}
+
 run_all_tests() {
   pick_vm_if_needed
   
@@ -477,6 +556,9 @@ run_all_tests() {
   
   # Run TUS upload test
   test_tus_upload
+  
+  # Run incremental backup test
+  test_incremental_backup
   
   log "===================================="
   log "All backup API tests completed successfully! ✓"

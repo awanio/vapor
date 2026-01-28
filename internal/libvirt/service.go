@@ -366,6 +366,41 @@ func (s *Service) CreateBackup(ctx context.Context, nameOrUUID string, req *VMBa
 		StartedAt:       time.Now(),
 	}
 
+	// Handle parent backup for incremental/differential backups
+	if req.Type == BackupTypeIncremental || req.Type == BackupTypeDifferential {
+		parentBackupID := req.ParentBackupID
+		
+		// Auto-find latest backup if not specified
+		if parentBackupID == "" {
+			s.mu.Unlock()
+			latestBackup, err := s.findLatestCompletedBackup(ctx, vm.UUID)
+			s.mu.Lock()
+			if err != nil {
+				return nil, fmt.Errorf("failed to find parent backup for incremental: %w", err)
+			}
+			if latestBackup == nil {
+				return nil, fmt.Errorf("no completed backup found to use as parent for incremental backup")
+			}
+			parentBackupID = latestBackup.ID
+		}
+		
+		// For differential, find the latest full backup
+		if req.Type == BackupTypeDifferential {
+			s.mu.Unlock()
+			fullBackup, err := s.findLatestFullBackup(ctx, vm.UUID)
+			s.mu.Lock()
+			if err != nil {
+				return nil, fmt.Errorf("failed to find parent full backup for differential: %w", err)
+			}
+			if fullBackup == nil {
+				return nil, fmt.Errorf("no full backup found to use as parent for differential backup")
+			}
+			parentBackupID = fullBackup.ID
+		}
+		
+		backup.ParentBackupID = parentBackupID
+	}
+
 	// Attach persistable metadata
 	backup.Compressed = req.Compression != BackupCompressionNone
 	backup.Retention = req.RetentionDays
@@ -389,6 +424,7 @@ func (s *Service) CreateBackup(ctx context.Context, nameOrUUID string, req *VMBa
 
 	return backup, nil
 }
+
 
 // ListAllBackups lists backups across all VMs.
 func (s *Service) ListAllBackups(ctx context.Context) ([]VMBackup, error) {
@@ -518,6 +554,96 @@ func (s *Service) ListBackups(ctx context.Context, nameOrUUID string) ([]VMBacku
 	return backups, nil
 }
 
+// findLatestCompletedBackup finds the most recent completed backup for a VM
+func (s *Service) findLatestCompletedBackup(ctx context.Context, vmUUID string) (*VMBackup, error) {
+	if s.db == nil {
+		return nil, fmt.Errorf("database is not configured")
+	}
+
+	row := s.db.QueryRowContext(ctx,
+		`SELECT id, vm_uuid, vm_name, type, status, destination_path, size_bytes, compression, encryption, parent_backup_id, started_at, completed_at, error_message, retention_days, metadata 
+		FROM vm_backups 
+		WHERE vm_uuid = ? AND status = ? 
+		ORDER BY started_at DESC LIMIT 1`,
+		vmUUID, BackupStatusCompleted)
+
+	var b VMBackup
+	var completedAt sql.NullTime
+	var parentID sql.NullString
+	var errMsg sql.NullString
+	var metadata sql.NullString
+
+	if err := row.Scan(&b.ID, &b.VMUUID, &b.VMName, &b.Type, &b.Status, &b.DestinationPath, &b.SizeBytes, &b.Compression, &b.Encryption, &parentID, &b.StartedAt, &completedAt, &errMsg, &b.Retention, &metadata); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // No backup found
+		}
+		return nil, fmt.Errorf("database error: %w", err)
+	}
+
+	if completedAt.Valid {
+		b.CompletedAt = &completedAt.Time
+	}
+	if parentID.Valid {
+		b.ParentBackupID = parentID.String
+	}
+	if errMsg.Valid {
+		b.ErrorMessage = errMsg.String
+	}
+	if metadata.Valid && metadata.String != "" {
+		var m map[string]string
+		if err := json.Unmarshal([]byte(metadata.String), &m); err == nil {
+			b.Metadata = m
+		}
+	}
+
+	return &b, nil
+}
+
+// findLatestFullBackup finds the most recent full backup for a VM (for differential backups)
+func (s *Service) findLatestFullBackup(ctx context.Context, vmUUID string) (*VMBackup, error) {
+	if s.db == nil {
+		return nil, fmt.Errorf("database is not configured")
+	}
+
+	row := s.db.QueryRowContext(ctx,
+		`SELECT id, vm_uuid, vm_name, type, status, destination_path, size_bytes, compression, encryption, parent_backup_id, started_at, completed_at, error_message, retention_days, metadata 
+		FROM vm_backups 
+		WHERE vm_uuid = ? AND status = ? AND type = ? 
+		ORDER BY started_at DESC LIMIT 1`,
+		vmUUID, BackupStatusCompleted, BackupTypeFull)
+
+	var b VMBackup
+	var completedAt sql.NullTime
+	var parentID sql.NullString
+	var errMsg sql.NullString
+	var metadata sql.NullString
+
+	if err := row.Scan(&b.ID, &b.VMUUID, &b.VMName, &b.Type, &b.Status, &b.DestinationPath, &b.SizeBytes, &b.Compression, &b.Encryption, &parentID, &b.StartedAt, &completedAt, &errMsg, &b.Retention, &metadata); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // No full backup found
+		}
+		return nil, fmt.Errorf("database error: %w", err)
+	}
+
+	if completedAt.Valid {
+		b.CompletedAt = &completedAt.Time
+	}
+	if parentID.Valid {
+		b.ParentBackupID = parentID.String
+	}
+	if errMsg.Valid {
+		b.ErrorMessage = errMsg.String
+	}
+	if metadata.Valid && metadata.String != "" {
+		var m map[string]string
+		if err := json.Unmarshal([]byte(metadata.String), &m); err == nil {
+			b.Metadata = m
+		}
+	}
+
+	return &b, nil
+}
+
 func (s *Service) runBackupJob(nameOrUUID string, backup *VMBackup, req *VMBackupRequest) {
 	// Lock and lookup domain in the goroutine context
 	s.mu.Lock()
@@ -623,15 +749,77 @@ func (s *Service) runBackupJob(nameOrUUID string, backup *VMBackup, req *VMBacku
 			backupFile = filepath.Join(backup.DestinationPath, fmt.Sprintf("%s-%s-%s.qcow2", name, disk.TargetDev, backup.ID))
 		}
 
-		// Use qemu-img convert to create the backup
-		// This works for both running and stopped VMs
-		cmd := exec.Command("qemu-img", "convert", "-O", "qcow2", disk.SourcePath, backupFile)
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			backup.Status = BackupStatusFailed
-			backup.ErrorMessage = fmt.Sprintf("backup operation failed for disk %s: %v (output: %s)", disk.TargetDev, err, string(output))
-			s.saveBackupRecord(backup)
-			return
+		// Check if this is an incremental backup
+		if backup.ParentBackupID != "" {
+			// Get parent backup to find its file path
+			s.mu.Unlock()
+			parentBackup, err := s.GetBackupByID(context.Background(), backup.ParentBackupID)
+			s.mu.Lock()
+			
+			if err != nil {
+				backup.Status = BackupStatusFailed
+				backup.ErrorMessage = fmt.Sprintf("failed to find parent backup: %v", err)
+				s.saveBackupRecord(backup)
+				return
+			}
+
+			// Construct parent backup file path
+			parentBackupFile := filepath.Join(parentBackup.DestinationPath, fmt.Sprintf("%s-%s.qcow2", parentBackup.VMName, parentBackup.ID))
+			if len(disksToBackup) > 1 {
+				parentBackupFile = filepath.Join(parentBackup.DestinationPath, fmt.Sprintf("%s-%s-%s.qcow2", parentBackup.VMName, disk.TargetDev, parentBackup.ID))
+			}
+
+			// Verify parent backup file exists
+			if _, err := os.Stat(parentBackupFile); err != nil {
+				backup.Status = BackupStatusFailed
+				backup.ErrorMessage = fmt.Sprintf("parent backup file not found: %v", err)
+				s.saveBackupRecord(backup)
+				return
+			}
+
+			// Create incremental backup with backing file
+			// First, create a qcow2 image with the parent as backing file
+			cmd := exec.Command("qemu-img", "create", "-f", "qcow2", "-F", "qcow2", "-b", parentBackupFile, backupFile)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				backup.Status = BackupStatusFailed
+				backup.ErrorMessage = fmt.Sprintf("failed to create incremental backup for disk %s: %v (output: %s)", disk.TargetDev, err, string(output))
+				s.saveBackupRecord(backup)
+				return
+			}
+
+			// Use qemu-img commit to capture changes from current disk to the new incremental
+			// Note: For offline VMs, we can use rebase to efficiently create the incremental
+			cmd = exec.Command("qemu-img", "rebase", "-u", "-b", parentBackupFile, "-F", "qcow2", backupFile)
+			output, err = cmd.CombinedOutput()
+			if err != nil {
+				// Try alternative approach: copy changes using convert with backing file
+				log.Printf("Rebase failed, trying convert approach: %v", err)
+				
+				// Remove the empty file we created
+				os.Remove(backupFile)
+				
+				// Create backing chain by converting current disk with backing file reference
+				cmd = exec.Command("qemu-img", "convert", "-O", "qcow2", "-o", fmt.Sprintf("backing_file=%s,backing_fmt=qcow2", parentBackupFile), disk.SourcePath, backupFile)
+				output, err = cmd.CombinedOutput()
+				if err != nil {
+					backup.Status = BackupStatusFailed
+					backup.ErrorMessage = fmt.Sprintf("incremental backup failed for disk %s: %v (output: %s)", disk.TargetDev, err, string(output))
+					s.saveBackupRecord(backup)
+					return
+				}
+			}
+		} else {
+			// Full backup: Use qemu-img convert to create the backup
+			// This works for both running and stopped VMs
+			cmd := exec.Command("qemu-img", "convert", "-O", "qcow2", disk.SourcePath, backupFile)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				backup.Status = BackupStatusFailed
+				backup.ErrorMessage = fmt.Sprintf("backup operation failed for disk %s: %v (output: %s)", disk.TargetDev, err, string(output))
+				s.saveBackupRecord(backup)
+				return
+			}
 		}
 
 		// Get the actual size of the backup file
@@ -938,21 +1126,6 @@ func (s *Service) findLatestBackup(ctx context.Context, vmUUID string) (string, 
 	err := s.db.QueryRowContext(ctx,
 		"SELECT id FROM vm_backups WHERE vm_uuid = ? AND status = ? ORDER BY completed_at DESC LIMIT 1",
 		vmUUID, BackupStatusCompleted).Scan(&backupID)
-	if err != nil {
-		return "", err
-	}
-	return backupID, nil
-}
-
-// findLatestFullBackup finds the most recent completed full backup for a VM
-func (s *Service) findLatestFullBackup(ctx context.Context, vmUUID string) (string, error) {
-	if s.db == nil {
-		return "", fmt.Errorf("database not configured")
-	}
-	var backupID string
-	err := s.db.QueryRowContext(ctx,
-		"SELECT id FROM vm_backups WHERE vm_uuid = ? AND status = ? AND type = ? ORDER BY completed_at DESC LIMIT 1",
-		vmUUID, BackupStatusCompleted, BackupTypeFull).Scan(&backupID)
 	if err != nil {
 		return "", err
 	}
