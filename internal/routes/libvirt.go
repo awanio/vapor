@@ -106,6 +106,7 @@ func LibvirtRoutes(r *gin.RouterGroup, authService *auth.EnhancedService, servic
 	// Global Backups
 	r.GET("/virtualization/computes/backups", listAllBackups(service))
 	r.POST("/virtualization/computes/backups/import", importBackup(service))
+r.GET("/virtualization/computes/backups/:backup_id", getBackup(service))
 	r.GET("/virtualization/computes/backups/:backup_id/download", downloadBackup(service))
 
 	// Backup Upload with resumable uploads (TUS protocol)
@@ -1015,6 +1016,57 @@ func deleteBackup(service *libvirt.Service) gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "success",
 			"message": "Backup deleted successfully",
+		})
+	}
+}
+
+
+func getBackup(service *libvirt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		backupID := c.Param("backup_id")
+
+		backup, err := service.GetBackupByID(c.Request.Context(), backupID)
+		if err != nil {
+			if strings.Contains(err.Error(), "not configured") {
+				sendComputeError(c, "BACKUPS_NOT_AVAILABLE", "Backups are not available (database not configured)", err, http.StatusInternalServerError)
+				return
+			}
+			sendComputeError(c, "BACKUP_NOT_FOUND", "Backup not found", err, http.StatusNotFound)
+			return
+		}
+
+		includeMemory := false
+		if backup.Metadata != nil {
+			if v, ok := backup.Metadata["include_memory"]; ok {
+				includeMemory = strings.ToLower(strings.TrimSpace(v)) == "true"
+			}
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data": gin.H{
+				"backup": gin.H{
+					"id":               backup.ID,
+					"backup_id":        backup.ID,
+					"vm_uuid":          backup.VMUUID,
+					"vm_name":          backup.VMName,
+					"type":             backup.Type,
+					"backup_type":      backup.Type,
+					"status":           backup.Status,
+					"destination_path": backup.DestinationPath,
+					"size_bytes":       backup.SizeBytes,
+					"compressed":       backup.Compressed,
+					"compression":      backup.Compression,
+					"encryption":       backup.Encryption,
+					"parent_backup_id": backup.ParentBackupID,
+					"started_at":       backup.StartedAt,
+					"completed_at":     backup.CompletedAt,
+					"retention_days":   backup.Retention,
+					"include_memory":   includeMemory,
+					"error_message":    backup.ErrorMessage,
+					"metadata":         backup.Metadata,
+				},
+			},
 		})
 	}
 }
