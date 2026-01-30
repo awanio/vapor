@@ -51,8 +51,12 @@
     - (vapor_ovmf_vars_secure_path | default('')) == ''
     - ovmf_secure_code_stats is defined
     - ovmf_secure_vars_stats is defined
-    - ovmf_secure_code_stats.results[loop.index0].stat.exists
-    - ovmf_secure_vars_stats.results[loop.index0].stat.exists
+    - ovmf_secure_code_stats.results | length > loop.index0
+    - ovmf_secure_vars_stats.results | length > loop.index0
+    - ovmf_secure_code_stats.results[loop.index0].stat is defined
+    - ovmf_secure_vars_stats.results[loop.index0].stat is defined
+    - ovmf_secure_code_stats.results[loop.index0].stat.exists | default(false)
+    - ovmf_secure_vars_stats.results[loop.index0].stat.exists | default(false)
   loop: "{{ vapor_ovmf_candidates_secure }}"
 
 - name: Install OVMF firmware package (Debian family)
@@ -97,8 +101,12 @@
     - (vapor_ovmf_vars_secure_path | default('')) == ''
     - ovmf_secure_code_stats is defined
     - ovmf_secure_vars_stats is defined
-    - ovmf_secure_code_stats.results[loop.index0].stat.exists
-    - ovmf_secure_vars_stats.results[loop.index0].stat.exists
+    - ovmf_secure_code_stats.results | length > loop.index0
+    - ovmf_secure_vars_stats.results | length > loop.index0
+    - ovmf_secure_code_stats.results[loop.index0].stat is defined
+    - ovmf_secure_vars_stats.results[loop.index0].stat is defined
+    - ovmf_secure_code_stats.results[loop.index0].stat.exists | default(false)
+    - ovmf_secure_vars_stats.results[loop.index0].stat.exists | default(false)
   loop: "{{ vapor_ovmf_candidates_secure }}"
 
 - name: Detect non-secure OVMF firmware (code)
@@ -126,8 +134,12 @@
     - (vapor_ovmf_vars_path | default('')) == ''
     - ovmf_nonsecure_code_stats is defined
     - ovmf_nonsecure_vars_stats is defined
-    - ovmf_nonsecure_code_stats.results[loop.index0].stat.exists
-    - ovmf_nonsecure_vars_stats.results[loop.index0].stat.exists
+    - ovmf_nonsecure_code_stats.results | length > loop.index0
+    - ovmf_nonsecure_vars_stats.results | length > loop.index0
+    - ovmf_nonsecure_code_stats.results[loop.index0].stat is defined
+    - ovmf_nonsecure_vars_stats.results[loop.index0].stat is defined
+    - ovmf_nonsecure_code_stats.results[loop.index0].stat.exists | default(false)
+    - ovmf_nonsecure_vars_stats.results[loop.index0].stat.exists | default(false)
   loop: "{{ vapor_ovmf_candidates_nonsecure }}"
 
 - name: Fallback non-secure OVMF paths to secure firmware when only secure is available
@@ -140,6 +152,18 @@
     - (vapor_ovmf_code_secure_path | default('')) != ''
     - (vapor_ovmf_vars_secure_path | default('')) != ''
 
+
+- name: Warn if OVMF firmware not found
+  debug:
+    msg: |
+      WARNING: OVMF/UEFI firmware was not detected on this system.
+      VM creation features requiring UEFI boot will not work.
+      To fix this, install OVMF manually:
+        - Debian/Ubuntu: sudo apt install ovmf
+        - RHEL/CentOS/Fedora: sudo dnf install edk2-ovmf
+      Then re-run the installer or set vapor_ovmf_code_path and vapor_ovmf_vars_path manually.
+  when:
+    - (vapor_ovmf_code_path | default('')) == '' or (vapor_ovmf_vars_path | default('')) == ''
 # =============================================================================
 # JWT Secret Generation
 # =============================================================================
