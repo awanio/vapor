@@ -31,6 +31,8 @@
     path: "{{ item.code }}"
   register: ovmf_secure_code_stats
   loop: "{{ vapor_ovmf_candidates_secure }}"
+  loop_control:
+    extended: true
   changed_when: false
   when: vapor_ovmf_code_secure_path == "" or vapor_ovmf_vars_secure_path == ""
 
@@ -39,6 +41,8 @@
     path: "{{ item.vars }}"
   register: ovmf_secure_vars_stats
   loop: "{{ vapor_ovmf_candidates_secure }}"
+  loop_control:
+    extended: true
   changed_when: false
   when: vapor_ovmf_code_secure_path == "" or vapor_ovmf_vars_secure_path == ""
 
@@ -51,13 +55,15 @@
     - (vapor_ovmf_vars_secure_path | default('')) == ''
     - ovmf_secure_code_stats is defined
     - ovmf_secure_vars_stats is defined
-    - ovmf_secure_code_stats.results | length > loop.index0
-    - ovmf_secure_vars_stats.results | length > loop.index0
-    - ovmf_secure_code_stats.results[loop.index0].stat is defined
-    - ovmf_secure_vars_stats.results[loop.index0].stat is defined
-    - ovmf_secure_code_stats.results[loop.index0].stat.exists | default(false)
-    - ovmf_secure_vars_stats.results[loop.index0].stat.exists | default(false)
+    - ovmf_secure_code_stats.results | length > ansible_loop.index0
+    - ovmf_secure_vars_stats.results | length > ansible_loop.index0
+    - ovmf_secure_code_stats.results[ansible_loop.index0].stat is defined
+    - ovmf_secure_vars_stats.results[ansible_loop.index0].stat is defined
+    - ovmf_secure_code_stats.results[ansible_loop.index0].stat.exists | default(false)
+    - ovmf_secure_vars_stats.results[ansible_loop.index0].stat.exists | default(false)
   loop: "{{ vapor_ovmf_candidates_secure }}"
+  loop_control:
+    extended: true
 
 - name: Install OVMF firmware package (Debian family)
   apt:
@@ -81,6 +87,8 @@
     path: "{{ item.code }}"
   register: ovmf_secure_code_stats
   loop: "{{ vapor_ovmf_candidates_secure }}"
+  loop_control:
+    extended: true
   changed_when: false
   when: vapor_ovmf_code_secure_path == "" or vapor_ovmf_vars_secure_path == ""
 
@@ -89,6 +97,8 @@
     path: "{{ item.vars }}"
   register: ovmf_secure_vars_stats
   loop: "{{ vapor_ovmf_candidates_secure }}"
+  loop_control:
+    extended: true
   changed_when: false
   when: vapor_ovmf_code_secure_path == "" or vapor_ovmf_vars_secure_path == ""
 
@@ -101,19 +111,23 @@
     - (vapor_ovmf_vars_secure_path | default('')) == ''
     - ovmf_secure_code_stats is defined
     - ovmf_secure_vars_stats is defined
-    - ovmf_secure_code_stats.results | length > loop.index0
-    - ovmf_secure_vars_stats.results | length > loop.index0
-    - ovmf_secure_code_stats.results[loop.index0].stat is defined
-    - ovmf_secure_vars_stats.results[loop.index0].stat is defined
-    - ovmf_secure_code_stats.results[loop.index0].stat.exists | default(false)
-    - ovmf_secure_vars_stats.results[loop.index0].stat.exists | default(false)
+    - ovmf_secure_code_stats.results | length > ansible_loop.index0
+    - ovmf_secure_vars_stats.results | length > ansible_loop.index0
+    - ovmf_secure_code_stats.results[ansible_loop.index0].stat is defined
+    - ovmf_secure_vars_stats.results[ansible_loop.index0].stat is defined
+    - ovmf_secure_code_stats.results[ansible_loop.index0].stat.exists | default(false)
+    - ovmf_secure_vars_stats.results[ansible_loop.index0].stat.exists | default(false)
   loop: "{{ vapor_ovmf_candidates_secure }}"
+  loop_control:
+    extended: true
 
 - name: Detect non-secure OVMF firmware (code)
   stat:
     path: "{{ item.code }}"
   register: ovmf_nonsecure_code_stats
   loop: "{{ vapor_ovmf_candidates_nonsecure }}"
+  loop_control:
+    extended: true
   changed_when: false
   when: vapor_ovmf_code_path == "" or vapor_ovmf_vars_path == ""
 
@@ -122,6 +136,8 @@
     path: "{{ item.vars }}"
   register: ovmf_nonsecure_vars_stats
   loop: "{{ vapor_ovmf_candidates_nonsecure }}"
+  loop_control:
+    extended: true
   changed_when: false
   when: vapor_ovmf_code_path == "" or vapor_ovmf_vars_path == ""
 
@@ -134,13 +150,15 @@
     - (vapor_ovmf_vars_path | default('')) == ''
     - ovmf_nonsecure_code_stats is defined
     - ovmf_nonsecure_vars_stats is defined
-    - ovmf_nonsecure_code_stats.results | length > loop.index0
-    - ovmf_nonsecure_vars_stats.results | length > loop.index0
-    - ovmf_nonsecure_code_stats.results[loop.index0].stat is defined
-    - ovmf_nonsecure_vars_stats.results[loop.index0].stat is defined
-    - ovmf_nonsecure_code_stats.results[loop.index0].stat.exists | default(false)
-    - ovmf_nonsecure_vars_stats.results[loop.index0].stat.exists | default(false)
+    - ovmf_nonsecure_code_stats.results | length > ansible_loop.index0
+    - ovmf_nonsecure_vars_stats.results | length > ansible_loop.index0
+    - ovmf_nonsecure_code_stats.results[ansible_loop.index0].stat is defined
+    - ovmf_nonsecure_vars_stats.results[ansible_loop.index0].stat is defined
+    - ovmf_nonsecure_code_stats.results[ansible_loop.index0].stat.exists | default(false)
+    - ovmf_nonsecure_vars_stats.results[ansible_loop.index0].stat.exists | default(false)
   loop: "{{ vapor_ovmf_candidates_nonsecure }}"
+  loop_control:
+    extended: true
 
 - name: Fallback non-secure OVMF paths to secure firmware when only secure is available
   set_fact:
