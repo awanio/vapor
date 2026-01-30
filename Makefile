@@ -5,7 +5,7 @@ BINARY_NAME=vapor
 MAIN_PATH=cmd/vapor/main.go
 DOCKER_IMAGE=vapor:latest
 VERSION ?= $(shell git describe --tags --always --dirty || echo "dev")
-FEATURES ?= "Virtualization"
+FEATURES ?= Virtualization
 LDFLAGS := -ldflags "-X 'main.Version=$(VERSION)' -X 'main.Features=$(FEATURES)'"
 
 # Embed web UI assets
@@ -26,17 +26,17 @@ embed-web:
 	fi
 
 build-fe:
-	cd ./web/ && mv .env .env-bak && VITE_FEATURES=$(FEATURES) npm run build && mv .env-bak .env && cd ../
+	cd ./web/ && mv .env .env-bak && VITE_FEATURES="$(FEATURES)" npm run build && mv .env-bak .env && cd ../
 
 # Build the binary
 build: build-fe embed-web
 	@echo "Building production binary..."
-	go build -o bin/$(BINARY_NAME) $(MAIN_PATH) $(LDFLAGS)
+	go build -o bin/$(BINARY_NAME) $(LDFLAGS) $(MAIN_PATH)
 
 # Build for development
 build-dev: embed-web
 	@echo "Building development binary..."
-	go build -o bin/$(BINARY_NAME) $(MAIN_PATH) $(LDFLAGS)
+	go build -o bin/$(BINARY_NAME) $(LDFLAGS) $(MAIN_PATH)
 
 run-dev: embed-web
 	export VAPOR_OVMF_CODE=/usr/share/OVMF/OVMF_CODE.fd 
