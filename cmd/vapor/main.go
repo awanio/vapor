@@ -145,6 +145,12 @@ func main() {
 	}
 
 	api.Use(authService.AuthMiddleware())
+
+// Token management routes
+api.POST("/auth/tokens", authService.CreateToken)
+api.GET("/auth/tokens", authService.ListTokens)
+api.DELETE("/auth/tokens/:id", authService.RevokeToken)
+api.GET("/auth/tokens/:id", authService.GetToken)
 	{
 		// Network routes
 		networkService := network.NewService()
