@@ -2,7 +2,7 @@
 # Vapor role default variables
 
 # Version to install
-vapor_version: "v0.1.0-alpha.1"
+vapor_version: "v0.1.0-alpha.0"
 
 # Base download URL
 vapor_base_url: "https://storage.awan.io/assets/vapor"
