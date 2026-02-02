@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"github.com/awanio/vapor/internal/auth"
 	"context"
 	"fmt"
 	"io"
@@ -39,7 +40,7 @@ type ContainerExecTerminal struct {
 }
 
 // ServeContainerExecWebSocket handles WebSocket requests for container exec
-func ServeContainerExecWebSocket(hub *Hub, jwtSecret string) gin.HandlerFunc {
+func ServeContainerExecWebSocket(hub *Hub, jwtSecret string, tokenService *auth.TokenService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		containerID := c.Query("container")
 		runtime := c.Query("runtime")

@@ -1,0 +1,39 @@
+get:
+  summary: Kubernetes Pod Exec WebSocket
+  description: Establish a WebSocket connection to execute commands in a Kubernetes pod
+  tags:
+    - WebSocket
+    - Kubernetes
+  parameters:
+    - name: namespace
+      in: query
+      required: true
+      schema:
+        type: string
+    - name: pod
+      in: query
+      required: true
+      schema:
+        type: string
+    - name: container
+      in: query
+      required: false
+      schema:
+        type: string
+    - name: token
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Authentication token
+  responses:
+    '101':
+      description: Switching Protocols
+    '400':
+      $ref: '../components/responses/BadRequest.yaml'
+    '401':
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/ErrorResponse.yaml'

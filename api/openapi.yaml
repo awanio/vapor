@@ -195,6 +195,10 @@ paths:
     $ref: paths/auth_challenge_verify.yaml
   /auth/users/{username}/keys:
     $ref: paths/auth_users_{username}_keys.yaml
+  /auth/tokens:
+    $ref: paths/auth_tokens.yaml
+  /auth/tokens/{id}:
+    $ref: paths/auth_tokens_{id}.yaml
   /network/interface-types:
     $ref: paths/network_interface_types.yaml
   /network/interfaces:
@@ -461,6 +465,10 @@ paths:
     $ref: paths/ws_terminal.yaml
   /ws/containers/exec:
     $ref: paths/ws_containers_exec.yaml
+  /ws/kubernetes/pods/exec:
+    $ref: paths/ws_kubernetes_pods_exec.yaml
+  /ws/events:
+    $ref: paths/ws_events.yaml
   /kubernetes/customresourcedefinitions:
     $ref: paths/kubernetes_customresourcedefinitions.yaml
   /kubernetes/customresourcedefinitions/{name}:

@@ -1,0 +1,74 @@
+get:
+  summary: List API tokens
+  description: List all API tokens for the authenticated user
+  tags:
+    - Auth
+  security:
+    - bearerAuth: []
+    - basicAuth: []
+  responses:
+    '200':
+      description: List of API tokens
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: success
+              data:
+                type: array
+                items:
+                  $ref: '../components/schemas/APIToken.yaml'
+    '401':
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/ErrorResponse.yaml'
+post:
+  summary: Create API token
+  description: Create a new API token
+  tags:
+    - Auth
+  security:
+    - bearerAuth: []
+    - basicAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../components/schemas/CreateTokenRequest.yaml'
+  responses:
+    '200':
+      description: Token created successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: success
+              data:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: The raw token string (only shown once)
+                  token_info:
+                    $ref: '../components/schemas/APIToken.yaml'
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/ErrorResponse.yaml'
+    '401':
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/ErrorResponse.yaml'

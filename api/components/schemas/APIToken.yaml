@@ -1,0 +1,36 @@
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique identifier of the token
+  name:
+    type: string
+    description: Friendly name of the token
+  username:
+    type: string
+    description: Username of the token owner
+  created_at:
+    type: string
+    format: date-time
+    description: Timestamp when the token was created
+  expires_at:
+    type: string
+    format: date-time
+    description: Timestamp when the token expires
+    nullable: true
+  revoked_at:
+    type: string
+    format: date-time
+    description: Timestamp when the token was revoked
+    nullable: true
+  last_used_at:
+    type: string
+    format: date-time
+    description: Timestamp when the token was last used
+    nullable: true
+required:
+  - id
+  - name
+  - username
+  - created_at

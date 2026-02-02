@@ -1,0 +1,11 @@
+type: object
+properties:
+  name:
+    type: string
+    description: Friendly name for the token
+  expires_at:
+    type: string
+    format: date-time
+    description: Optional expiration time for the token
+required:
+  - name

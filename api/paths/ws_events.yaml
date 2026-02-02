@@ -1,0 +1,22 @@
+get:
+  summary: System Events WebSocket
+  description: Establish a WebSocket connection to receive system events and metrics
+  tags:
+    - WebSocket
+    - System
+  parameters:
+    - name: token
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Authentication token
+  responses:
+    '101':
+      description: Switching Protocols
+    '401':
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/ErrorResponse.yaml'

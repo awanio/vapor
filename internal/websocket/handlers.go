@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"github.com/awanio/vapor/internal/auth"
 	"bufio"
 	"context"
 	"encoding/json"
@@ -32,7 +33,7 @@ var upgrader = websocket.Upgrader{
 }
 
 // ServeEventsWebSocket handles WebSocket connections for event streams (VMs, containers, k8s)
-func ServeEventsWebSocket(hub *Hub, jwtSecret string) gin.HandlerFunc {
+func ServeEventsWebSocket(hub *Hub, jwtSecret string, tokenService *auth.TokenService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
@@ -54,6 +55,7 @@ func ServeEventsWebSocket(hub *Hub, jwtSecret string) gin.HandlerFunc {
 
 		client.hub.register <- client
 		client.jwtSecret = jwtSecret
+		client.tokenService = tokenService
 		client.handlerType = "events"
 
 		go client.readPump()
@@ -62,7 +64,7 @@ func ServeEventsWebSocket(hub *Hub, jwtSecret string) gin.HandlerFunc {
 }
 
 // ServeTerminalWebSocket handles WebSocket connections for terminal sessions
-func ServeTerminalWebSocket(hub *Hub, jwtSecret string) gin.HandlerFunc {
+func ServeTerminalWebSocket(hub *Hub, jwtSecret string, tokenService *auth.TokenService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
@@ -85,6 +87,7 @@ func ServeTerminalWebSocket(hub *Hub, jwtSecret string) gin.HandlerFunc {
 
 		// Store handler context
 		client.jwtSecret = jwtSecret
+		client.tokenService = tokenService
 		client.handlerType = "terminal"
 
 		// Start goroutines for reading and writing
@@ -95,55 +98,64 @@ func ServeTerminalWebSocket(hub *Hub, jwtSecret string) gin.HandlerFunc {
 
 // handleAuth handles authentication for WebSocket connections
 func handleAuth(client *Client, msg Message, jwtSecret string) {
-	payload, ok := msg.Payload.(map[string]interface{})
-	if !ok {
-		client.sendError("Invalid auth payload")
-		return
-	}
+payload, ok := msg.Payload.(map[string]interface{})
+if !ok {
+client.sendError("Invalid auth payload")
+return
+}
 
-	tokenStr, ok := payload["token"].(string)
-	if !ok {
-		client.sendError("Token not provided")
-		return
-	}
+tokenStr, ok := payload["token"].(string)
+if !ok {
+client.sendError("Token not provided")
+return
+}
 
-	// Validate JWT token
-	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return []byte(jwtSecret), nil
-	})
+// Try JWT first
+token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+}
+return []byte(jwtSecret), nil
+})
 
-	if err != nil || !token.Valid {
-		client.sendError("Invalid token")
-		return
-	}
+var username string
+var authenticated bool
 
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		client.sendError("Invalid token claims")
-		return
-	}
+if err == nil && token.Valid {
+if claims, ok := token.Claims.(jwt.MapClaims); ok {
+if u, ok := claims["username"].(string); ok {
+username = u
+authenticated = true
+}
+}
+}
 
-	username, ok := claims["username"].(string)
-	if !ok {
-		client.sendError("Username not found in token")
-		return
-	}
+// If not authenticated via JWT, try API token
+if !authenticated && client.tokenService != nil {
+apiToken, err := client.tokenService.VerifyToken(tokenStr)
+if err == nil && apiToken != nil {
+username = apiToken.Username
+authenticated = true
+}
+}
 
-	client.mu.Lock()
-	client.authenticated = true
-	client.username = username
-	client.mu.Unlock()
+if !authenticated {
+client.sendError("Invalid token")
+return
+}
 
-	client.sendMessage(Message{
-		Type: MessageTypeAuth,
-		Payload: map[string]interface{}{
-			"authenticated": true,
-			"username":      username,
-		},
-	})
+client.mu.Lock()
+client.authenticated = true
+client.username = username
+client.mu.Unlock()
+
+client.sendMessage(Message{
+Type: MessageTypeAuth,
+Payload: map[string]interface{}{
+"authenticated": true,
+"username":      username,
+},
+})
 }
 
 // sendMetrics continuously sends system metrics to the client

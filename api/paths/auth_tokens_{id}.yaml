@@ -1,0 +1,74 @@
+parameters:
+  - name: id
+    in: path
+    required: true
+    schema:
+      type: string
+    description: ID of the token
+get:
+  summary: Get API token details
+  description: Get details of a specific API token
+  tags:
+    - Auth
+  security:
+    - bearerAuth: []
+    - basicAuth: []
+  responses:
+    '200':
+      description: API token details
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: success
+              data:
+                $ref: '../components/schemas/APIToken.yaml'
+    '404':
+      description: Token not found
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/ErrorResponse.yaml'
+    '401':
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/ErrorResponse.yaml'
+delete:
+  summary: Revoke API token
+  description: Revoke (delete) an API token
+  tags:
+    - Auth
+  security:
+    - bearerAuth: []
+    - basicAuth: []
+  responses:
+    '200':
+      description: Token revoked successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: success
+              message:
+                type: string
+                example: Token revoked
+    '404':
+      description: Token not found
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/ErrorResponse.yaml'
+    '401':
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/ErrorResponse.yaml'

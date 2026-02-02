@@ -146,11 +146,11 @@ func main() {
 
 	api.Use(authService.AuthMiddleware())
 
-// Token management routes
-api.POST("/auth/tokens", authService.CreateToken)
-api.GET("/auth/tokens", authService.ListTokens)
-api.DELETE("/auth/tokens/:id", authService.RevokeToken)
-api.GET("/auth/tokens/:id", authService.GetToken)
+	// Token management routes
+	api.POST("/auth/tokens", authService.CreateToken)
+	api.GET("/auth/tokens", authService.ListTokens)
+	api.DELETE("/auth/tokens/:id", authService.RevokeToken)
+	api.GET("/auth/tokens/:id", authService.GetToken)
 	{
 		// Network routes
 		networkService := network.NewService()
@@ -226,10 +226,10 @@ api.GET("/auth/tokens/:id", authService.GetToken)
 	go eventsHub.Run()
 
 	// WebSocket routes
-	router.GET("/ws/terminal", websocket.ServeTerminalWebSocket(terminalHub, cfg.GetJWTSecret()))
-	router.GET("/ws/containers/exec", websocket.ServeContainerExecWebSocket(terminalHub, cfg.GetJWTSecret()))
-	router.GET("/ws/kubernetes/pods/exec", websocket.ServePodExecWebSocket(terminalHub, cfg.GetJWTSecret()))
-	router.GET("/ws/events", websocket.ServeEventsWebSocket(eventsHub, cfg.GetJWTSecret()))
+	router.GET("/ws/terminal", websocket.ServeTerminalWebSocket(terminalHub, cfg.GetJWTSecret(), authService.GetTokenService()))
+	router.GET("/ws/containers/exec", websocket.ServeContainerExecWebSocket(terminalHub, cfg.GetJWTSecret(), authService.GetTokenService()))
+	router.GET("/ws/kubernetes/pods/exec", websocket.ServePodExecWebSocket(terminalHub, cfg.GetJWTSecret(), authService.GetTokenService()))
+	router.GET("/ws/events", websocket.ServeEventsWebSocket(eventsHub, cfg.GetJWTSecret(), authService.GetTokenService()))
 
 	// Serve embedded web UI
 	if web.HasWebUI() {

@@ -721,3 +721,8 @@ return
 
 common.SendSuccess(c, token)
 }
+
+// GetTokenService returns the token service instance
+func (s *EnhancedService) GetTokenService() *TokenService {
+return s.tokenService
+}

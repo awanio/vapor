@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"github.com/awanio/vapor/internal/auth"
 "fmt"
 "io"
 "net/http"
@@ -39,7 +40,7 @@ return nil
 }
 
 // ServePodExecWebSocket handles WebSocket requests for pod exec
-func ServePodExecWebSocket(hub *Hub, jwtSecret string) gin.HandlerFunc {
+func ServePodExecWebSocket(hub *Hub, jwtSecret string, tokenService *auth.TokenService) gin.HandlerFunc {
 return func(c *gin.Context) {
 podName := c.Query("pod")
 namespace := c.Query("namespace")

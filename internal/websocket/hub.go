@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"github.com/awanio/vapor/internal/auth"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -21,6 +22,7 @@ type Client struct {
 	id                    string
 	authenticated         bool
 	username              string
+	tokenService          *auth.TokenService
 	subscriptions         map[string]bool
 	mu                    sync.RWMutex
 	jwtSecret             string
