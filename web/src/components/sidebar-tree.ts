@@ -291,6 +291,12 @@ export class SidebarTree extends I18nLitElement {
           label: 'nav.terminal',
           icon: 'terminal',
           route: 'terminal'
+        },
+        {
+          id: 'api-tokens',
+          label: 'nav.apiTokens',
+          icon: 'api-tokens',
+          route: 'api-tokens'
         }
       ]
     },
@@ -592,7 +598,7 @@ export class SidebarTree extends I18nLitElement {
         'dashboard', 'network', 'interface', 'bridge', 'bond', 'vlan',
         'storage', 'disks', 'containers', 'cri', 'virtualization', 'vms',
         'storage-pools', 'images', 'virt-networks', 'volumes', 'backups',
-        'logs', 'users', 'terminal', 'kubernetes', 'docker',
+        'logs', 'users', 'terminal', 'kubernetes', 'docker', 'api-tokens',
         'workload', 'k8s-networks', 'k8s-storage', 'configurations', 'nodes', 'crds',
         'system'
       ];

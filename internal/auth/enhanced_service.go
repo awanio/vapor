@@ -22,8 +22,8 @@ import (
 
 // EnhancedService handles enhanced authentication with multiple methods
 type EnhancedService struct {
-	jwtSecret  []byte
-	challenges map[string]*SSHChallenge // In-memory storage for challenges
+	jwtSecret    []byte
+	challenges   map[string]*SSHChallenge // In-memory storage for challenges
 	tokenService *TokenService
 }
 
@@ -83,8 +83,8 @@ type VerifyRequest struct {
 func NewEnhancedService(secret string) *EnhancedService {
 	ts, _ := NewTokenService() // Best effort init
 	return &EnhancedService{
-		jwtSecret:  []byte(secret),
-		challenges: make(map[string]*SSHChallenge),
+		jwtSecret:    []byte(secret),
+		challenges:   make(map[string]*SSHChallenge),
 		tokenService: ts,
 	}
 }
@@ -285,31 +285,31 @@ func (s *EnhancedService) GetUserKeys(c *gin.Context) {
 func (s *EnhancedService) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 
-header := c.GetHeader("Authorization")
-if strings.HasPrefix(header, "Basic ") {
-payload, err := base64.StdEncoding.DecodeString(header[6:])
-if err == nil {
-decoded := string(payload)
-// Try to treat the whole decoded string as token, or the username part
-tokenToVerify := decoded
-if strings.Contains(decoded, ":") {
-parts := strings.SplitN(decoded, ":", 2)
-if parts[0] != "" {
-tokenToVerify = parts[0]
-}
-}
+		header := c.GetHeader("Authorization")
+		if strings.HasPrefix(header, "Basic ") {
+			payload, err := base64.StdEncoding.DecodeString(header[6:])
+			if err == nil {
+				decoded := string(payload)
+				// Try to treat the whole decoded string as token, or the username part
+				tokenToVerify := decoded
+				if strings.Contains(decoded, ":") {
+					parts := strings.SplitN(decoded, ":", 2)
+					if parts[0] != "" {
+						tokenToVerify = parts[0]
+					}
+				}
 
-if s.tokenService != nil {
-apiToken, err := s.tokenService.VerifyToken(tokenToVerify)
-if err == nil && apiToken != nil {
-c.Set("username", apiToken.Username)
-c.Set("role", "admin")
-c.Next()
-return
-}
-}
-}
-}
+				if s.tokenService != nil {
+					apiToken, err := s.tokenService.VerifyToken(tokenToVerify)
+					if err == nil && apiToken != nil {
+						c.Set("username", apiToken.Username)
+						c.Set("role", "admin")
+						c.Next()
+						return
+					}
+				}
+			}
+		}
 		var tokenString string
 
 		// Get token from header
@@ -627,102 +627,102 @@ func (s *EnhancedService) cleanupExpiredChallenges() {
 // Token Management Handlers
 
 type CreateTokenRequest struct {
-Name      string     `json:"name" binding:"required"`
-ExpiresAt *time.Time `json:"expires_at"`
+	Name      string     `json:"name" binding:"required"`
+	ExpiresAt *time.Time `json:"expires_at"`
 }
 
 func (s *EnhancedService) CreateToken(c *gin.Context) {
-var req CreateTokenRequest
-if err := c.ShouldBindJSON(&req); err != nil {
-common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Invalid request", err.Error())
-return
-}
+	var req CreateTokenRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeValidation, "Invalid request", err.Error())
+		return
+	}
 
-username := c.GetString("username")
-if username == "" {
-common.SendError(c, http.StatusUnauthorized, common.ErrCodeUnauthorized, "User not authenticated")
-return
-}
+	username := c.GetString("username")
+	if username == "" {
+		common.SendError(c, http.StatusUnauthorized, common.ErrCodeUnauthorized, "User not authenticated")
+		return
+	}
 
-if s.tokenService == nil {
-common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Token service not available")
-return
-}
+	if s.tokenService == nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Token service not available")
+		return
+	}
 
-apiToken, rawToken, err := s.tokenService.CreateToken(username, req.Name, req.ExpiresAt)
-if err != nil {
-common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to create token", err.Error())
-return
-}
+	apiToken, rawToken, err := s.tokenService.CreateToken(username, req.Name, req.ExpiresAt)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to create token", err.Error())
+		return
+	}
 
-// Return the raw token only once
-c.JSON(http.StatusOK, gin.H{
-"status": "success",
-"data": gin.H{
-"token":      rawToken,
-"token_info": apiToken,
-},
-})
+	// Return the raw token only once
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"token":      rawToken,
+			"token_info": apiToken,
+		},
+	})
 }
 
 func (s *EnhancedService) ListTokens(c *gin.Context) {
-username := c.GetString("username")
-if username == "" {
-common.SendError(c, http.StatusUnauthorized, common.ErrCodeUnauthorized, "User not authenticated")
-return
-}
+	username := c.GetString("username")
+	if username == "" {
+		common.SendError(c, http.StatusUnauthorized, common.ErrCodeUnauthorized, "User not authenticated")
+		return
+	}
 
-if s.tokenService == nil {
-common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Token service not available")
-return
-}
+	if s.tokenService == nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Token service not available")
+		return
+	}
 
-tokens, err := s.tokenService.ListTokens(username)
-if err != nil {
-common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to list tokens", err.Error())
-return
-}
+	tokens, err := s.tokenService.ListTokens(username)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to list tokens", err.Error())
+		return
+	}
 
-common.SendSuccess(c, tokens)
+	common.SendSuccess(c, tokens)
 }
 
 func (s *EnhancedService) RevokeToken(c *gin.Context) {
-id := c.Param("id")
-username := c.GetString("username")
+	id := c.Param("id")
+	username := c.GetString("username")
 
-if s.tokenService == nil {
-common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Token service not available")
-return
-}
+	if s.tokenService == nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Token service not available")
+		return
+	}
 
-err := s.tokenService.RevokeToken(id, username)
-if err != nil {
-common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to revoke token", err.Error())
-return
-}
+	err := s.tokenService.RevokeToken(id, username)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to revoke token", err.Error())
+		return
+	}
 
-common.SendSuccess(c, gin.H{"message": "Token revoked"})
+	common.SendSuccess(c, gin.H{"message": "Token revoked"})
 }
 
 func (s *EnhancedService) GetToken(c *gin.Context) {
-id := c.Param("id")
-username := c.GetString("username")
+	id := c.Param("id")
+	username := c.GetString("username")
 
-if s.tokenService == nil {
-common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Token service not available")
-return
-}
+	if s.tokenService == nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Token service not available")
+		return
+	}
 
-token, err := s.tokenService.GetToken(id, username)
-if err != nil {
-common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "Token not found")
-return
-}
+	token, err := s.tokenService.GetToken(id, username)
+	if err != nil {
+		common.SendError(c, http.StatusNotFound, common.ErrCodeNotFound, "Token not found")
+		return
+	}
 
-common.SendSuccess(c, token)
+	common.SendSuccess(c, token)
 }
 
 // GetTokenService returns the token service instance
 func (s *EnhancedService) GetTokenService() *TokenService {
-return s.tokenService
+	return s.tokenService
 }

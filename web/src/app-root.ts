@@ -17,28 +17,29 @@ import './views/docker-tab';
 import './views/kubernetes-tab';
 import './views/virtualization-tab';
 import './views/ansible-tab';
+import './views/api-tokens-tab';
 import './components/sidebar-tree';
 
 export class AppRoot extends LitElement {
   @state()
   private isAuthenticated = false;
-  
+
   @state()
   private activeView = 'dashboard';
-  
+
   @state()
   private currentTheme = theme.getTheme();
-  
+
   @state()
   private currentLocale = i18n.getLocale();
-  
+
   @state()
   private languageMenuOpen = false;
-  
+
   @state()
   private sidebarCollapsed = false;
-  
-  
+
+
   @state()
   private subRoute: string | null = null;
 
@@ -248,16 +249,16 @@ export class AppRoot extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback();
-    
+
     // Check initial authentication state
     this.isAuthenticated = auth.isAuthenticated();
-    
+
     // Subscribe to locale changes
     const unsubscribe = i18n.onChange(() => {
       this.currentLocale = i18n.getLocale();
       this.requestUpdate();
     });
-    
+
     // Store unsubscribe function for cleanup
     (this as any)._unsubscribeI18n = unsubscribe;
 
@@ -271,7 +272,7 @@ export class AppRoot extends LitElement {
       // Parse main route and sub-route
       const [mainRoute, ...subParts] = path.split('/');
       this.subRoute = subParts.length > 0 ? subParts.join('/') : null;
-      
+
       if (mainRoute && this.isValidRoute(mainRoute)) {
         this.activeView = mainRoute;
       } else if (mainRoute) {
@@ -282,27 +283,27 @@ export class AppRoot extends LitElement {
 
     // Listen for popstate events to handle navigation
     window.addEventListener('popstate', this.handlePopstate);
-    
+
     // Listen for auth events
     window.addEventListener('auth:login', this.handleAuthLogin);
     window.addEventListener('auth:logout', this.handleAuthLogout);
     this.addEventListener('login-success', this.handleLoginSuccess);
-    
+
     // Listen for theme changes
     window.addEventListener('theme-changed', this.handleThemeChange as EventListener);
-    
+
     // Handle clicks outside language dropdown
     document.addEventListener('click', this.handleDocumentClick);
   }
-  
+
   override disconnectedCallback() {
     super.disconnectedCallback();
-    
+
     // Cleanup i18n subscription
     if ((this as any)._unsubscribeI18n) {
       (this as any)._unsubscribeI18n();
     }
-    
+
     // Remove event listeners
     window.removeEventListener('popstate', this.handlePopstate);
     document.removeEventListener('click', this.handleDocumentClick);
@@ -310,7 +311,7 @@ export class AppRoot extends LitElement {
     window.removeEventListener('auth:login', this.handleAuthLogin);
     window.removeEventListener('auth:logout', this.handleAuthLogout);
   }
-  
+
   private handlePopstate = (event: PopStateEvent) => {
     if (event.state && event.state.route) {
       const [mainRoute, ...subParts] = event.state.route.split('/');
@@ -330,10 +331,10 @@ export class AppRoot extends LitElement {
       }
     }
   };
-  
+
   private handleAuthLogin = async () => {
     this.isAuthenticated = true;
-    
+
     // Skip metrics initialization in test environment to keep tests isolated
     if (import.meta.env.MODE === 'test') {
       return;
@@ -343,11 +344,11 @@ export class AppRoot extends LitElement {
     const { reinitializeMetricsAfterLogin } = await import('./stores/shared/metrics');
     await reinitializeMetricsAfterLogin();
   };
-  
+
   private handleAuthLogout = () => {
     this.isAuthenticated = false;
   };
-  
+
   private handleLoginSuccess = async () => {
     this.isAuthenticated = true;
 
@@ -360,30 +361,30 @@ export class AppRoot extends LitElement {
     const { reinitializeMetricsAfterLogin } = await import('./stores/shared/metrics');
     await reinitializeMetricsAfterLogin();
   };
-  
+
   private handleLogout() {
     auth.logout();
   }
-  
-  
+
+
   private handleThemeChange = (e: CustomEvent) => {
     this.currentTheme = e.detail.theme;
   };
-  
+
   private toggleTheme() {
     theme.toggleTheme();
   }
-  
+
   private toggleLanguageMenu(e: Event) {
     e.stopPropagation();
     this.languageMenuOpen = !this.languageMenuOpen;
   }
-  
+
   private async selectLanguage(locale: Locale) {
     await i18n.setLocale(locale);
     this.languageMenuOpen = false;
   }
-  
+
   private handleDocumentClick = (e: Event) => {
     const target = e.target as HTMLElement;
     if (!target.closest('.language-selector')) {
@@ -394,36 +395,36 @@ export class AppRoot extends LitElement {
   override async updated(changedProperties: Map<string, any>) {
     super.updated(changedProperties);
   }
-  
+
   override render() {
     // Show login page if not authenticated
     if (!this.isAuthenticated) {
       return html`<login-page></login-page>`;
     }
-    
+
     // Show main app if authenticated
-    
+
     // Check for standalone terminal
     if (this.activeView === 'containers' && this.subRoute === 'terminal') {
-       const urlParams = new URLSearchParams(window.location.search);
-       const container = urlParams.get('container') || '';
-       const runtime = urlParams.get('runtime') || 'docker';
-       const name = urlParams.get('name') || '';
-       return html`
+      const urlParams = new URLSearchParams(window.location.search);
+      const container = urlParams.get('container') || '';
+      const runtime = urlParams.get('runtime') || 'docker';
+      const name = urlParams.get('name') || '';
+      return html`
          <container-terminal .containerId="${container}" .containerName="${name}" .runtime="${runtime}"></container-terminal>
        `;
     }
 
     if (this.activeView === 'kubernetes' && this.subRoute === 'terminal') {
-       const urlParams = new URLSearchParams(window.location.search);
-       const pod = urlParams.get('pod') || '';
-       const namespace = urlParams.get('namespace') || '';
-       const container = urlParams.get('container') || '';
-       return html`
+      const urlParams = new URLSearchParams(window.location.search);
+      const pod = urlParams.get('pod') || '';
+      const namespace = urlParams.get('namespace') || '';
+      const container = urlParams.get('container') || '';
+      return html`
          <pod-terminal .pod="${pod}" .namespace="${namespace}" .container="${container}"></pod-terminal>
        `;
     }
-return html`
+    return html`
       <!-- App Header -->
       <header class="app-header">
         <div class="header-title">Vapor</div>
@@ -501,6 +502,7 @@ return html`
             ${this.activeView === 'kubernetes' ? html`<kubernetes-tab .subRoute=${this.subRoute}></kubernetes-tab>` : ''}
             ${this.activeView === 'virtualization' ? html`<virtualization-tab .subRoute=${this.subRoute}></virtualization-tab>` : ''}
             ${this.activeView === 'ansible' ? html`<ansible-tab .subRoute=${this.subRoute}></ansible-tab>` : ''}
+            ${this.activeView === 'api-tokens' ? html`<api-tokens-tab></api-tokens-tab>` : ''}
             ${!this.isValidRoute(this.activeView) ? html`<div>404 - Page Not Found</div>` : ''}
           </div>
         </main>
@@ -515,16 +517,16 @@ return html`
 
   private handleNavigation(e: CustomEvent) {
     const route = e.detail.route;
-    
+
     // Parse main route and sub-route
     const [mainRoute, ...subParts] = route.split('/');
     this.activeView = mainRoute;
     this.subRoute = subParts.length > 0 ? subParts.join('/') : null;
     // this.queryParams = e.detail.queryParams;
   }
-  
+
   private isValidRoute(route: string): boolean {
-    const validRoutes = ['dashboard', 'network', 'storage', 'containers', 'logs', 'terminal', 'users', 'docker', 'kubernetes', 'virtualization', 'ansible'];
+    const validRoutes = ['dashboard', 'network', 'storage', 'containers', 'logs', 'terminal', 'users', 'docker', 'kubernetes', 'virtualization', 'ansible', 'api-tokens'];
     return validRoutes.includes(route);
   }
 }
