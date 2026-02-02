@@ -19,6 +19,7 @@
     "system": "System",
     "host": "Host",
     "monitor": "Monitor",
+    "apiTokens": "API Tokens",
     "dashboard": "Dashboard",
     "logs": "Logs",
     "terminal": "Terminal",

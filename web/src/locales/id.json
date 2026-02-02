@@ -18,6 +18,7 @@
   "nav": {
     "system": "Sistem",
     "host": "Host",
+    "apiTokens": "API Token",
     "monitor": "Pantau",
     "dashboard": "Dasbor",
     "logs": "Log",
