@@ -432,7 +432,7 @@ func (h *VolumeResumableUploadHandler) copyFile(src, dst string) error {
 
 
 
-// resolvePoolPath resolves the directory path for a pool
+// resolvePoolPath resolves the directory path for a pool.
 func (s *Service) resolvePoolPath(poolName string) (string, error) {
 	if poolName == "" {
 		poolName = "default"
@@ -477,3 +477,39 @@ func (s *Service) resolvePoolPath(poolName string) (string, error) {
 }
 
 
+
+// resolvePoolPathNoLock resolves the directory path for a pool without taking Service mutex.
+// Caller must ensure appropriate synchronization if needed.
+func (s *Service) resolvePoolPathNoLock(poolName string) (string, error) {
+if poolName == "" {
+poolName = "default"
+}
+
+pool, err := s.conn.LookupStoragePoolByName(poolName)
+if err != nil {
+return "", fmt.Errorf("storage pool %q not found: %w", poolName, err)
+}
+defer pool.Free()
+
+xmlDesc, err := pool.GetXMLDesc(0)
+if err != nil {
+return "", fmt.Errorf("failed to get pool XML: %w", err)
+}
+
+var poolXML struct {
+Type   string `xml:"type,attr"`
+Target struct {
+Path string `xml:"path"`
+} `xml:"target"`
+}
+if err := xml.Unmarshal([]byte(xmlDesc), &poolXML); err != nil {
+return "", fmt.Errorf("failed to parse pool XML: %w", err)
+}
+
+switch poolXML.Type {
+case "dir", "fs", "netfs":
+return poolXML.Target.Path, nil
+default:
+return "", fmt.Errorf("unsupported storage pool type %q for direct upload", poolXML.Type)
+}
+}

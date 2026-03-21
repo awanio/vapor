@@ -119,7 +119,7 @@ func LibvirtRoutes(r *gin.RouterGroup, authService *auth.EnhancedService, servic
 	// Global Backups
 	r.GET("/virtualization/computes/backups", listAllBackups(service))
 	r.POST("/virtualization/computes/backups/import", importBackup(service))
-r.GET("/virtualization/computes/backups/:backup_id", getBackup(service))
+	r.GET("/virtualization/computes/backups/:backup_id", getBackup(service))
 	r.GET("/virtualization/computes/backups/:backup_id/download", downloadBackup(service))
 
 	// Backup Upload with resumable uploads (TUS protocol)
@@ -1032,7 +1032,6 @@ func deleteBackup(service *libvirt.Service) gin.HandlerFunc {
 		})
 	}
 }
-
 
 func getBackup(service *libvirt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {

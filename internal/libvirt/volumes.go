@@ -274,7 +274,7 @@ func (s *Service) ListAllVolumes(ctx context.Context) ([]StorageVolumeWithPool, 
 		return nil, fmt.Errorf("failed to list storage pools: %w", err)
 	}
 
-	var allVolumes []StorageVolumeWithPool
+	allVolumes := make([]StorageVolumeWithPool, 0)
 
 	// Iterate through each pool and get its volumes
 	for _, pool := range pools {

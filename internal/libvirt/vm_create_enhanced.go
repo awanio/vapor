@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -83,7 +84,7 @@ type DiskCreateConfig struct {
 	Action string `json:"action" binding:"required,oneof=create attach clone"` // "create", "attach", "clone"
 
 	// For create action
-	Size   uint64 `json:"size,omitempty"`   // Size in GB for new disk (required for create)
+	Size   uint64 `json:"size,omitempty"`   // Size in GB (required for create, optional for clone expansion)
 	Format string `json:"format,omitempty"` // qcow2, raw, etc (default: qcow2)
 
 	// For attach/clone action or override
@@ -152,10 +153,29 @@ func (s *Service) CreateVMEnhanced(ctx context.Context, req *VMCreateRequestEnha
 		return nil, fmt.Errorf("failed to prepare storage: %w", err)
 	}
 
+	if hasCloudInitContent(req.CloudInit) {
+		poolName := "default"
+		if len(diskConfigs) > 0 && strings.TrimSpace(diskConfigs[0].StoragePool) != "" {
+			poolName = strings.TrimSpace(diskConfigs[0].StoragePool)
+		}
+
+		cloudInitDisk, err := s.prepareCloudInitDisk(req.Name, req.CloudInit, poolName)
+		if err != nil {
+			log.Printf("CreateVMEnhanced error preparing cloud-init disk: %v\n", err)
+			s.cleanupCreatedDisks(diskConfigs)
+			return nil, fmt.Errorf("failed to prepare cloud-init disk: %w", err)
+		}
+		if cloudInitDisk.Config.Target == "" {
+			cloudInitDisk.Config.Target = s.generateDiskTarget(cloudInitDisk.Config.Bus, len(diskConfigs))
+		}
+		diskConfigs = append(diskConfigs, cloudInitDisk)
+	}
+
 	// Validate PCI devices if specified
 	if len(req.PCIDevices) > 0 {
 		if err := s.validatePCIDevices(ctx, req.PCIDevices); err != nil {
 			log.Printf("CreateVMEnhanced error validating PCI devices: %v\n", err)
+			s.cleanupCreatedDisks(diskConfigs)
 			return nil, fmt.Errorf("failed to validate PCI devices: %w", err)
 		}
 	}
@@ -268,7 +288,7 @@ func (s *Service) prepareEnhancedStorageConfig(ctx context.Context, req *VMCreat
 				log.Printf("prepareEnhancedStorageConfig: error in operation for sourcePath, err :: %v\n", err)
 				return nil, fmt.Errorf("failed to resolve clone source for disk %d: %w", i, err)
 			}
-			targetPath, err := s.cloneEnhancedDisk(ctx, sourcePath, poolName, fmt.Sprintf("%s-disk%d", req.Name, i))
+			targetPath, err := s.cloneEnhancedDisk(ctx, sourcePath, poolName, fmt.Sprintf("%s-disk%d", req.Name, i), diskConfig.Size)
 			if err != nil {
 				log.Printf("prepareEnhancedStorageConfig: warning - in operation for targetPath, err :: %v\n", err)
 				s.cleanupCreatedDisks(disks)
@@ -363,9 +383,9 @@ func (s *Service) createEnhancedDisk(ctx context.Context, config DiskCreateConfi
 }
 
 // cloneEnhancedDisk clones an existing disk to a new location
-func (s *Service) cloneEnhancedDisk(ctx context.Context, sourcePath string, poolName string, diskName string) (string, error) {
+func (s *Service) cloneEnhancedDisk(ctx context.Context, sourcePath string, poolName string, diskName string, requestedSizeGB uint64) (string, error) {
 	// Use the existing cloneDisk method
-	return s.cloneDisk(poolName, sourcePath, diskName)
+	return s.cloneDisk(poolName, sourcePath, diskName, requestedSizeGB)
 }
 
 // generateDiskTarget generates a disk target device name based on bus type
@@ -1870,4 +1890,229 @@ func (s *Service) normalizeNetworkForKey(net NetworkConfig) (ifaceType string, s
 
 	key = fmt.Sprintf("%s|%s|%s", ifaceType, source, model)
 	return ifaceType, source, model, mac, key, hadMAC, nil
+}
+
+// CloudInit helper functions
+
+func hasCloudInitContent(config *CloudInitConfig) bool {
+if config == nil {
+return false
+}
+if strings.TrimSpace(config.UserData) != "" || strings.TrimSpace(config.MetaData) != "" || strings.TrimSpace(config.NetworkData) != "" {
+return true
+}
+if len(config.SSHKeys) > 0 || len(config.Users) > 0 || len(config.Packages) > 0 || len(config.RunCmd) > 0 {
+return true
+}
+return false
+}
+
+func sanitizeCloudInitFilename(name string) string {
+trimmed := strings.TrimSpace(name)
+if trimmed == "" {
+return "vm"
+}
+return strings.Map(func(r rune) rune {
+if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_' || r == '.' {
+return r
+}
+return '-'
+}, trimmed)
+}
+
+func yamlSingleQuote(value string) string {
+escaped := strings.ReplaceAll(value, "'", "''")
+return "'" + escaped + "'"
+}
+
+func buildCloudInitUserData(config *CloudInitConfig) string {
+if config == nil {
+return ""
+}
+if strings.TrimSpace(config.UserData) != "" {
+return config.UserData
+}
+
+var sb strings.Builder
+sb.WriteString("#cloud-config\n")
+
+if len(config.Users) > 0 {
+sb.WriteString("users:\n")
+for _, user := range config.Users {
+name := strings.TrimSpace(user.Name)
+if name == "" {
+continue
+}
+sb.WriteString("  - name: " + yamlSingleQuote(name) + "\n")
+if len(user.SSHAuthorizedKeys) > 0 {
+sb.WriteString("    ssh_authorized_keys:\n")
+for _, key := range user.SSHAuthorizedKeys {
+trimmed := strings.TrimSpace(key)
+if trimmed == "" {
+continue
+}
+sb.WriteString("      - " + yamlSingleQuote(trimmed) + "\n")
+}
+}
+if strings.TrimSpace(user.Sudo) != "" {
+sb.WriteString("    sudo: " + yamlSingleQuote(strings.TrimSpace(user.Sudo)) + "\n")
+}
+if strings.TrimSpace(user.Groups) != "" {
+sb.WriteString("    groups: " + yamlSingleQuote(strings.TrimSpace(user.Groups)) + "\n")
+}
+if strings.TrimSpace(user.Shell) != "" {
+sb.WriteString("    shell: " + yamlSingleQuote(strings.TrimSpace(user.Shell)) + "\n")
+}
+if strings.TrimSpace(user.Password) != "" {
+sb.WriteString("    passwd: " + yamlSingleQuote(strings.TrimSpace(user.Password)) + "\n")
+sb.WriteString("    lock_passwd: false\n")
+}
+}
+}
+
+if len(config.SSHKeys) > 0 {
+sb.WriteString("ssh_authorized_keys:\n")
+for _, key := range config.SSHKeys {
+trimmed := strings.TrimSpace(key)
+if trimmed == "" {
+continue
+}
+sb.WriteString("  - " + yamlSingleQuote(trimmed) + "\n")
+}
+}
+
+if len(config.Packages) > 0 {
+sb.WriteString("packages:\n")
+for _, pkg := range config.Packages {
+trimmed := strings.TrimSpace(pkg)
+if trimmed == "" {
+continue
+}
+sb.WriteString("  - " + yamlSingleQuote(trimmed) + "\n")
+}
+}
+
+if len(config.RunCmd) > 0 {
+sb.WriteString("runcmd:\n")
+for _, cmd := range config.RunCmd {
+trimmed := strings.TrimSpace(cmd)
+if trimmed == "" {
+continue
+}
+sb.WriteString("  - " + yamlSingleQuote(trimmed) + "\n")
+}
+}
+
+result := sb.String()
+if strings.TrimSpace(result) == "#cloud-config" {
+return ""
+}
+return result
+}
+
+func createCloudInitISOImage(isoPath, userDataPath, metaDataPath, networkDataPath string) error {
+if cloudLocalds, err := exec.LookPath("cloud-localds"); err == nil {
+args := []string{}
+if strings.TrimSpace(networkDataPath) != "" {
+args = append(args, "-N", networkDataPath)
+}
+args = append(args, isoPath, userDataPath, metaDataPath)
+cmd := exec.Command(cloudLocalds, args...)
+output, err := cmd.CombinedOutput()
+if err != nil {
+return fmt.Errorf("cloud-localds failed: %w: %s", err, strings.TrimSpace(string(output)))
+}
+return nil
+}
+
+isoBuilder := ""
+if path, err := exec.LookPath("genisoimage"); err == nil {
+isoBuilder = path
+} else if path, err := exec.LookPath("mkisofs"); err == nil {
+isoBuilder = path
+}
+if isoBuilder == "" {
+return fmt.Errorf("cloud-init tool not found: install cloud-localds or genisoimage/mkisofs")
+}
+
+workingDir := filepath.Dir(userDataPath)
+args := []string{"-output", isoPath, "-volid", "cidata", "-joliet", "-rock", "user-data", "meta-data"}
+if strings.TrimSpace(networkDataPath) != "" {
+args = append(args, "network-config")
+}
+
+cmd := exec.Command(isoBuilder, args...)
+cmd.Dir = workingDir
+output, err := cmd.CombinedOutput()
+if err != nil {
+return fmt.Errorf("%s failed: %w: %s", filepath.Base(isoBuilder), err, strings.TrimSpace(string(output)))
+}
+
+return nil
+}
+
+func (s *Service) prepareCloudInitDisk(vmName string, config *CloudInitConfig, poolName string) (PreparedDisk, error) {
+poolPath, err := s.resolvePoolPathNoLock(poolName)
+if err != nil {
+return PreparedDisk{}, fmt.Errorf("failed to resolve storage pool path: %w", err)
+}
+
+cloudInitDir := filepath.Join(poolPath, "cloud-init")
+if err := os.MkdirAll(cloudInitDir, 0o755); err != nil {
+return PreparedDisk{}, fmt.Errorf("failed to create cloud-init directory: %w", err)
+}
+
+tmpDir, err := os.MkdirTemp("", "vapor-cloudinit-*")
+if err != nil {
+return PreparedDisk{}, fmt.Errorf("failed to create cloud-init temp directory: %w", err)
+}
+defer os.RemoveAll(tmpDir)
+
+userData := buildCloudInitUserData(config)
+if strings.TrimSpace(userData) == "" {
+userData = "#cloud-config\n"
+}
+metaData := strings.TrimSpace(config.MetaData)
+if metaData == "" {
+metaData = fmt.Sprintf("instance-id: %s\nlocal-hostname: %s\n", vmName, vmName)
+}
+networkData := strings.TrimSpace(config.NetworkData)
+
+userDataPath := filepath.Join(tmpDir, "user-data")
+metaDataPath := filepath.Join(tmpDir, "meta-data")
+if err := os.WriteFile(userDataPath, []byte(userData), 0o644); err != nil {
+return PreparedDisk{}, fmt.Errorf("failed to write cloud-init user-data: %w", err)
+}
+if err := os.WriteFile(metaDataPath, []byte(metaData), 0o644); err != nil {
+return PreparedDisk{}, fmt.Errorf("failed to write cloud-init meta-data: %w", err)
+}
+
+networkDataPath := ""
+if networkData != "" {
+networkDataPath = filepath.Join(tmpDir, "network-config")
+if err := os.WriteFile(networkDataPath, []byte(networkData), 0o644); err != nil {
+return PreparedDisk{}, fmt.Errorf("failed to write cloud-init network-data: %w", err)
+}
+}
+
+safeName := sanitizeCloudInitFilename(vmName)
+isoPath := filepath.Join(cloudInitDir, fmt.Sprintf("%s-cloud-init-%d.iso", safeName, time.Now().UnixNano()))
+if err := createCloudInitISOImage(isoPath, userDataPath, metaDataPath, networkDataPath); err != nil {
+return PreparedDisk{}, fmt.Errorf("failed to create cloud-init ISO: %w", err)
+}
+
+return PreparedDisk{
+Path:        isoPath,
+StoragePool: poolName,
+Created:     true,
+Config: DiskCreateConfig{
+Action:      "attach",
+Path:        isoPath,
+StoragePool: poolName,
+Format:      "raw",
+Bus:         DiskBusIDE,
+Device:      "cdrom",
+ReadOnly:    true,
+},
+}, nil
 }

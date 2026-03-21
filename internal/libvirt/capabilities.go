@@ -40,6 +40,25 @@ func defaultDomainArch() string {
 		return runtime.GOARCH
 	}
 }
+func (s *Service) resolveDomainVirtType(arch string) string {
+resolvedArch := strings.TrimSpace(arch)
+if resolvedArch == "" {
+resolvedArch = defaultDomainArch()
+}
+if s == nil || s.conn == nil {
+return "kvm"
+}
+
+if _, err := s.conn.GetDomainCapabilities("", resolvedArch, "", "kvm", 0); err == nil {
+return "kvm"
+}
+if _, err := s.conn.GetDomainCapabilities("", resolvedArch, "", "qemu", 0); err == nil {
+return "qemu"
+}
+
+return "kvm"
+}
+
 
 func appendUnique(list []string, value string) []string {
 	value = strings.TrimSpace(value)
@@ -226,7 +245,7 @@ func (s *Service) GetDomainCapabilities(ctx context.Context, req DomainCapabilit
 	}
 
 	xmlDesc, err := s.conn.GetDomainCapabilities(req.Emulator, arch, req.Machine, virtType, 0)
-	if err != nil && req.VirtType == "" {
+	if err != nil && virtType == "kvm" {
 		// Fallback to qemu if kvm is not supported
 		virtType = "qemu"
 		xmlDesc, err = s.conn.GetDomainCapabilities(req.Emulator, arch, req.Machine, virtType, 0)

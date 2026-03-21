@@ -99,6 +99,8 @@ func matchFamily(variantFamily, requestedFamily string) bool {
 		return variantFamily == "darwin"
 	case "bsd":
 		return variantFamily == "freebsd" || variantFamily == "openbsd" || variantFamily == "netbsd" || variantFamily == "dragonflybsd"
+	case "other":
+		return variantFamily != "linux" && variantFamily != "winnt" && variantFamily != "win9x" && variantFamily != "win16" && variantFamily != "freebsd"
 	}
 
 	return false

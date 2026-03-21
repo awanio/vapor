@@ -50,15 +50,15 @@ tmp/
 temp/
 
 # Build artifacts
-/dist/
-/build/
+dist/
+build/
 node_modules/
 system-api
 vapor
 vapor-api
 local-vapor
 vapor.conf
-/exclude/
+exclude/
 *.backup*
 *.bak
 web/coverage/

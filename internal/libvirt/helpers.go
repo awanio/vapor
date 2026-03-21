@@ -248,10 +248,34 @@ func (s *Service) createDisk(poolName, vmName string, sizeGB uint64, format stri
 	return vol.GetPath()
 }
 
+const bytesPerGiB uint64 = 1024 * 1024 * 1024
+
+func resolveCloneCapacityBytes(sourceCapacityBytes, requestedSizeGB uint64) (uint64, error) {
+	if sourceCapacityBytes == 0 {
+		return 0, fmt.Errorf("source volume capacity is zero")
+	}
+
+	if requestedSizeGB == 0 {
+		return sourceCapacityBytes, nil
+	}
+
+	if requestedSizeGB > ^uint64(0)/bytesPerGiB {
+		return 0, fmt.Errorf("requested clone size %dGB exceeds supported limit", requestedSizeGB)
+	}
+
+	requestedCapacityBytes := requestedSizeGB * bytesPerGiB
+	if requestedCapacityBytes < sourceCapacityBytes {
+		sourceSizeGB := (sourceCapacityBytes + bytesPerGiB - 1) / bytesPerGiB
+		return 0, fmt.Errorf("requested clone size %dGB is smaller than source disk size %dGB", requestedSizeGB, sourceSizeGB)
+	}
+
+	return requestedCapacityBytes, nil
+}
+
 // cloneDisk clones an existing disk.
 //
 // It preserves the source volume's format when possible.
-func (s *Service) cloneDisk(poolName, sourcePath, newVMName string) (string, error) {
+func (s *Service) cloneDisk(poolName, sourcePath, newVMName string, requestedSizeGB uint64) (string, error) {
 	pool, err := s.conn.LookupStoragePoolByName(poolName)
 	if err != nil {
 		return "", fmt.Errorf("storage pool not found: %w", err)
@@ -268,6 +292,11 @@ func (s *Service) cloneDisk(poolName, sourcePath, newVMName string) (string, err
 	sourceInfo, err := sourceVol.GetInfo()
 	if err != nil {
 		return "", fmt.Errorf("failed to get source volume info: %w", err)
+	}
+
+	targetCapacityBytes, err := resolveCloneCapacityBytes(sourceInfo.Capacity, requestedSizeGB)
+	if err != nil {
+		return "", fmt.Errorf("invalid clone disk size: %w", err)
 	}
 
 	format := "qcow2"
@@ -300,7 +329,7 @@ func (s *Service) cloneDisk(poolName, sourcePath, newVMName string) (string, err
 <format type='%s'/>
 </target>
 </volume>
-`, volName, sourceInfo.Capacity, format)
+`, volName, targetCapacityBytes, format)
 
 	// Create the new volume
 	newVol, err := pool.StorageVolCreateXMLFrom(volXML, sourceVol, 0)
@@ -308,6 +337,19 @@ func (s *Service) cloneDisk(poolName, sourcePath, newVMName string) (string, err
 		return "", fmt.Errorf("failed to clone volume: %w", err)
 	}
 	defer newVol.Free()
+
+	if requestedSizeGB > 0 {
+		newInfo, err := newVol.GetInfo()
+		if err != nil {
+			return "", fmt.Errorf("failed to inspect cloned volume capacity: %w", err)
+		}
+		if newInfo.Capacity < targetCapacityBytes {
+			if err := newVol.Resize(targetCapacityBytes, 0); err != nil {
+				_ = newVol.Delete(0)
+				return "", fmt.Errorf("failed to expand cloned volume to requested size %dGB: %w", requestedSizeGB, err)
+			}
+		}
+	}
 
 	return newVol.GetPath()
 }
@@ -443,11 +485,12 @@ func (s *Service) generateDomainXML(req *VMCreateRequest) (string, error) {
 	if req.Architecture == "x86_64" {
 		machineAttr = " machine='q35'"
 	}
+	virtType := s.resolveDomainVirtType(req.Architecture)
 	// Always use hvm for QEMU/KVM
 	req.OSType = "hvm"
 
 	xml := fmt.Sprintf(`
-<domain type='kvm'>
+<domain type='%s'>
 	<name>%s</name>
 	<uuid>%s</uuid>
 	<memory unit='MiB'>%d</memory>
@@ -469,6 +512,7 @@ func (s *Service) generateDomainXML(req *VMCreateRequest) (string, error) {
 		<graphics type='%s' port='-1' autoport='yes' listen='0.0.0.0'/>
 	</devices>
 </domain>`,
+		virtType,
 		req.Name,
 		formattedUUID,
 		req.Memory,
@@ -501,6 +545,7 @@ func (s *Service) generateEnhancedDomainXML(req *VMCreateRequestEnhanced, diskCo
 	if req.MachineType == "" && req.Architecture == "x86_64" {
 		req.MachineType = "q35"
 	}
+	virtType := s.resolveDomainVirtType(req.Architecture)
 
 	// Always use hvm for QEMU/KVM
 	osType := "hvm"
@@ -523,7 +568,7 @@ func (s *Service) generateEnhancedDomainXML(req *VMCreateRequestEnhanced, diskCo
 	var xml string
 	if enableMemoryHotplug {
 		// Memory hotplug enabled - requires NUMA config, add it
-		xml = fmt.Sprintf(`<domain type='kvm'>
+		xml = fmt.Sprintf(`<domain type='%s'>
 <name>%s</name>
 <uuid>%s</uuid>
 <maxMemory slots='16' unit='MiB'>%d</maxMemory>
@@ -534,15 +579,15 @@ func (s *Service) generateEnhancedDomainXML(req *VMCreateRequestEnhanced, diskCo
 <numa>
 <cell id='0' cpus='0-%d' memory='%d' unit='MiB'/>
 </numa>
-</cpu>`, req.Name, formattedUUID, maxMemory, req.Memory, req.Memory, req.VCPUs, maxVCPUs, maxVCPUs-1, req.Memory)
+</cpu>`, virtType, req.Name, formattedUUID, maxMemory, req.Memory, req.Memory, req.VCPUs, maxVCPUs, maxVCPUs-1, req.Memory)
 	} else {
 		// No memory hotplug - simple configuration
-		xml = fmt.Sprintf(`<domain type='kvm'>
+		xml = fmt.Sprintf(`<domain type='%s'>
 <name>%s</name>
 <uuid>%s</uuid>
 <memory unit='MiB'>%d</memory>
 <currentMemory unit='MiB'>%d</currentMemory>
-<vcpu current='%d'>%d</vcpu>`, req.Name, formattedUUID, maxMemory, req.Memory, req.VCPUs, maxVCPUs)
+<vcpu current='%d'>%d</vcpu>`, virtType, req.Name, formattedUUID, maxMemory, req.Memory, req.VCPUs, maxVCPUs)
 	}
 	// Add metadata section for OS type/variant
 	// Store os_type and os_variant even if OSInfo is not provided

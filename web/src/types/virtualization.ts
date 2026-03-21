@@ -163,7 +163,7 @@ export interface DiskConfig {
   format?: 'qcow2' | 'raw';
   storage_pool?: string;
   path?: string;         // For attach
-  source?: string;       // For clone
+  clone_from?: string;   // For clone
   bus?: 'virtio' | 'ide' | 'scsi' | 'sata';
   cache?: 'none' | 'writethrough' | 'writeback';
 }
