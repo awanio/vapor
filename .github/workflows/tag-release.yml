@@ -87,8 +87,8 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${BINARY_NAME}-linux-amd64
-          path: bin/${BINARY_NAME}
+          name: ${{ env.BINARY_NAME }}-linux-amd64
+          path: bin/${{ env.BINARY_NAME }}
           retention-days: 1
 
   release:
@@ -106,7 +106,7 @@ jobs:
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
-          name: ${BINARY_NAME}-linux-amd64
+          name: ${{ env.BINARY_NAME }}-linux-amd64
           path: dist
 
       - name: Make binary executable
