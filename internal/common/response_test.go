@@ -54,7 +54,7 @@ func TestErrorResponse(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			response := ErrorResponse(tt.code, tt.message, tt.details...)
-			
+
 			assert.Equal(t, "error", response.Status)
 			assert.Nil(t, response.Data)
 			assert.NotNil(t, response.Error)

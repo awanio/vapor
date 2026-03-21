@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/awanio/vapor/internal/common"
+	"github.com/gin-gonic/gin"
 )
 
 // Service handles log operations
@@ -44,7 +44,7 @@ type LogsResponse struct {
 func (s *Service) GetLogs(c *gin.Context) {
 	// Check if journalctl is available
 	if !isJournalctlAvailable() {
-		common.SendError(c, http.StatusNotImplemented, common.ErrCodeNotImplemented, 
+		common.SendError(c, http.StatusNotImplemented, common.ErrCodeNotImplemented,
 			"Log viewing requires systemd journalctl, which is only available on Linux systems with systemd")
 		return
 	}
@@ -107,7 +107,7 @@ func (s *Service) GetLogs(c *gin.Context) {
 	// Apply pagination
 	startIdx := (page - 1) * pageSize
 	endIdx := startIdx + pageSize
-	
+
 	if startIdx >= len(logs) {
 		logs = []LogEntry{}
 	} else if endIdx > len(logs) {
@@ -237,7 +237,7 @@ func (s *Service) GetLogsSummary(c *gin.Context) {
 	// Get top services with errors
 	cmd := exec.Command("journalctl", "-p", "3", "--no-pager", "-o", "json")
 	output, _ := cmd.Output()
-	
+
 	serviceCounts := make(map[string]int)
 	lines := strings.Split(string(output), "\n")
 	for _, line := range lines {
@@ -270,11 +270,11 @@ func (s *Service) StreamLogs(c *gin.Context) {
 
 	// Build journalctl command for following logs
 	args := []string{"-f", "-o", "json", "--no-pager"}
-	
+
 	if service != "" {
 		args = append(args, "-u", service)
 	}
-	
+
 	if priority != "" {
 		args = append(args, "-p", priority)
 	}

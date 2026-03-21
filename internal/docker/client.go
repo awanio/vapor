@@ -493,41 +493,41 @@ func (c *dockerClient) Events(ctx context.Context, opts types.EventsOptions) (<-
 
 // CreateVolume creates a Docker volume
 func (c *dockerClient) CreateVolume(ctx context.Context, name string, driver string, labels map[string]string) (Volume, error) {
-    opts := volume.CreateOptions{ Name: name }
-    if driver != "" {
-        opts.Driver = driver
-    }
-    if labels != nil {
-        opts.Labels = labels
-    }
-    v, err := c.client.VolumeCreate(ctx, opts)
-    if err != nil {
-        return Volume{}, fmt.Errorf("failed to create volume: %w", err)
-    }
-    return convertVolume(&v), nil
+	opts := volume.CreateOptions{Name: name}
+	if driver != "" {
+		opts.Driver = driver
+	}
+	if labels != nil {
+		opts.Labels = labels
+	}
+	v, err := c.client.VolumeCreate(ctx, opts)
+	if err != nil {
+		return Volume{}, fmt.Errorf("failed to create volume: %w", err)
+	}
+	return convertVolume(&v), nil
 }
 
 // CreateNetwork creates a Docker network
 func (c *dockerClient) CreateNetwork(ctx context.Context, name string, driver string, subnet string, gateway string, labels map[string]string) (Network, error) {
-    ipamCfg := []network.IPAMConfig{}
-    if subnet != "" || gateway != "" {
-        ipamCfg = append(ipamCfg, network.IPAMConfig{ Subnet: subnet, Gateway: gateway })
-    }
-    create := types.NetworkCreate{
-        Driver:     driver,
-        Attachable: true,
-        Labels:     labels,
-    }
-    if len(ipamCfg) > 0 {
-        create.IPAM = &network.IPAM{ Config: ipamCfg }
-    }
-    resp, err := c.client.NetworkCreate(ctx, name, create)
-    if err != nil {
-        return Network{}, fmt.Errorf("failed to create network: %w", err)
-    }
-    n, err := c.client.NetworkInspect(ctx, resp.ID, types.NetworkInspectOptions{})
-    if err != nil {
-        return Network{}, fmt.Errorf("failed to inspect network: %w", err)
-    }
-    return convertNetwork(types.NetworkResource(n)), nil
+	ipamCfg := []network.IPAMConfig{}
+	if subnet != "" || gateway != "" {
+		ipamCfg = append(ipamCfg, network.IPAMConfig{Subnet: subnet, Gateway: gateway})
+	}
+	create := types.NetworkCreate{
+		Driver:     driver,
+		Attachable: true,
+		Labels:     labels,
+	}
+	if len(ipamCfg) > 0 {
+		create.IPAM = &network.IPAM{Config: ipamCfg}
+	}
+	resp, err := c.client.NetworkCreate(ctx, name, create)
+	if err != nil {
+		return Network{}, fmt.Errorf("failed to create network: %w", err)
+	}
+	n, err := c.client.NetworkInspect(ctx, resp.ID, types.NetworkInspectOptions{})
+	if err != nil {
+		return Network{}, fmt.Errorf("failed to inspect network: %w", err)
+	}
+	return convertNetwork(types.NetworkResource(n)), nil
 }

@@ -32,7 +32,7 @@ type MockCommandExecutor struct {
 	// Map of command -> output
 	outputs map[string]string
 	// Map of command -> error
-	errors  map[string]error
+	errors map[string]error
 	// Track executed commands
 	executed []string
 }
@@ -63,15 +63,15 @@ func (m *MockCommandExecutor) Execute(name string, args ...string) ([]byte, erro
 		command = name + " " + args[0] // Simple key for mocking
 	}
 	m.executed = append(m.executed, command)
-	
+
 	if err, ok := m.errors[command]; ok && err != nil {
 		return nil, err
 	}
-	
+
 	if output, ok := m.outputs[command]; ok {
 		return []byte(output), nil
 	}
-	
+
 	return []byte(""), nil
 }
 

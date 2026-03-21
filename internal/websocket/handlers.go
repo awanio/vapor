@@ -1,11 +1,11 @@
 package websocket
 
 import (
-	"github.com/awanio/vapor/internal/auth"
 	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/awanio/vapor/internal/auth"
 	"log"
 	"net/http"
 	"os/exec"
@@ -98,64 +98,64 @@ func ServeTerminalWebSocket(hub *Hub, jwtSecret string, tokenService *auth.Token
 
 // handleAuth handles authentication for WebSocket connections
 func handleAuth(client *Client, msg Message, jwtSecret string) {
-payload, ok := msg.Payload.(map[string]interface{})
-if !ok {
-client.sendError("Invalid auth payload")
-return
-}
+	payload, ok := msg.Payload.(map[string]interface{})
+	if !ok {
+		client.sendError("Invalid auth payload")
+		return
+	}
 
-tokenStr, ok := payload["token"].(string)
-if !ok {
-client.sendError("Token not provided")
-return
-}
+	tokenStr, ok := payload["token"].(string)
+	if !ok {
+		client.sendError("Token not provided")
+		return
+	}
 
-// Try JWT first
-token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
-if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-}
-return []byte(jwtSecret), nil
-})
+	// Try JWT first
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(jwtSecret), nil
+	})
 
-var username string
-var authenticated bool
+	var username string
+	var authenticated bool
 
-if err == nil && token.Valid {
-if claims, ok := token.Claims.(jwt.MapClaims); ok {
-if u, ok := claims["username"].(string); ok {
-username = u
-authenticated = true
-}
-}
-}
+	if err == nil && token.Valid {
+		if claims, ok := token.Claims.(jwt.MapClaims); ok {
+			if u, ok := claims["username"].(string); ok {
+				username = u
+				authenticated = true
+			}
+		}
+	}
 
-// If not authenticated via JWT, try API token
-if !authenticated && client.tokenService != nil {
-apiToken, err := client.tokenService.VerifyToken(tokenStr)
-if err == nil && apiToken != nil {
-username = apiToken.Username
-authenticated = true
-}
-}
+	// If not authenticated via JWT, try API token
+	if !authenticated && client.tokenService != nil {
+		apiToken, err := client.tokenService.VerifyToken(tokenStr)
+		if err == nil && apiToken != nil {
+			username = apiToken.Username
+			authenticated = true
+		}
+	}
 
-if !authenticated {
-client.sendError("Invalid token")
-return
-}
+	if !authenticated {
+		client.sendError("Invalid token")
+		return
+	}
 
-client.mu.Lock()
-client.authenticated = true
-client.username = username
-client.mu.Unlock()
+	client.mu.Lock()
+	client.authenticated = true
+	client.username = username
+	client.mu.Unlock()
 
-client.sendMessage(Message{
-Type: MessageTypeAuth,
-Payload: map[string]interface{}{
-"authenticated": true,
-"username":      username,
-},
-})
+	client.sendMessage(Message{
+		Type: MessageTypeAuth,
+		Payload: map[string]interface{}{
+			"authenticated": true,
+			"username":      username,
+		},
+	})
 }
 
 // sendMetrics continuously sends system metrics to the client
@@ -164,7 +164,7 @@ func sendMetrics(client *Client) {
 	defer ticker.Stop()
 
 	_ = system.NewService() // TODO: Use this for more advanced metrics
-	
+
 	for {
 		select {
 		case <-client.ctx.Done():
@@ -217,38 +217,38 @@ func sendMetrics(client *Client) {
 				// Skip virtual filesystems and problematic mount types
 				fstype := partition.Fstype
 				mountpoint := partition.Mountpoint
-				
+
 				// Skip virtual filesystems
-				if fstype == "sysfs" || fstype == "proc" || fstype == "devtmpfs" || 
-				   fstype == "devpts" || fstype == "tmpfs" || fstype == "securityfs" ||
-				   fstype == "cgroup" || fstype == "cgroup2" || fstype == "pstore" ||
-				   fstype == "debugfs" || fstype == "tracefs" || fstype == "configfs" ||
-				   fstype == "fusectl" || fstype == "mqueue" || fstype == "hugetlbfs" ||
-				   fstype == "binfmt_misc" || fstype == "autofs" || fstype == "bpf" ||
-				   fstype == "efivarfs" || fstype == "nsfs" || fstype == "squashfs" ||
-				   fstype == "overlay" || fstype == "fuse.lxcfs" {
+				if fstype == "sysfs" || fstype == "proc" || fstype == "devtmpfs" ||
+					fstype == "devpts" || fstype == "tmpfs" || fstype == "securityfs" ||
+					fstype == "cgroup" || fstype == "cgroup2" || fstype == "pstore" ||
+					fstype == "debugfs" || fstype == "tracefs" || fstype == "configfs" ||
+					fstype == "fusectl" || fstype == "mqueue" || fstype == "hugetlbfs" ||
+					fstype == "binfmt_misc" || fstype == "autofs" || fstype == "bpf" ||
+					fstype == "efivarfs" || fstype == "nsfs" || fstype == "squashfs" ||
+					fstype == "overlay" || fstype == "fuse.lxcfs" {
 					continue
 				}
-				
+
 				// Skip Kubernetes and container mounts
 				if strings.Contains(mountpoint, "/kubelet/") ||
-				   strings.Contains(mountpoint, "/containerd/") ||
-				   strings.Contains(mountpoint, "/docker/") ||
-				   strings.Contains(mountpoint, "/snap/") ||
-				   strings.Contains(mountpoint, "/run/snapd/") ||
-				   strings.Contains(mountpoint, "/sys/") ||
-				   strings.Contains(mountpoint, "/proc/") ||
-				   strings.Contains(mountpoint, "/dev/") ||
-				   strings.Contains(mountpoint, "/run/netns/") ||
-				   strings.Contains(mountpoint, "/var/snap/") {
+					strings.Contains(mountpoint, "/containerd/") ||
+					strings.Contains(mountpoint, "/docker/") ||
+					strings.Contains(mountpoint, "/snap/") ||
+					strings.Contains(mountpoint, "/run/snapd/") ||
+					strings.Contains(mountpoint, "/sys/") ||
+					strings.Contains(mountpoint, "/proc/") ||
+					strings.Contains(mountpoint, "/dev/") ||
+					strings.Contains(mountpoint, "/run/netns/") ||
+					strings.Contains(mountpoint, "/var/snap/") {
 					continue
 				}
-				
+
 				usage, err := disk.Usage(mountpoint)
 				if err != nil || usage == nil {
 					continue
 				}
-				
+
 				metricsData.Disk = append(metricsData.Disk, DiskMetrics{
 					Device:      partition.Device,
 					Mountpoint:  mountpoint,

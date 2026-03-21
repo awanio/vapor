@@ -1150,8 +1150,8 @@ type HorizontalPodAutoscalerInfo struct {
 
 // DrainNodeOptions contains options for draining a node
 type DrainNodeOptions struct {
-GracePeriodSeconds int  `json:"gracePeriodSeconds"`
-Timeout            int  `json:"timeout"`
-IgnoreDaemonSets   bool `json:"ignoreDaemonSets"`
-DeleteEmptyDirData bool `json:"deleteEmptyDirData"`
+	GracePeriodSeconds int  `json:"gracePeriodSeconds"`
+	Timeout            int  `json:"timeout"`
+	IgnoreDaemonSets   bool `json:"ignoreDaemonSets"`
+	DeleteEmptyDirData bool `json:"deleteEmptyDirData"`
 }

@@ -9,14 +9,14 @@ type RuntimeClient interface {
 	ListContainers() ([]Container, error)
 	GetContainer(id string) (*ContainerDetail, error)
 	GetContainerLogs(id string) (string, error)
-	
+
 	// Image operations
 	ListImages() ([]Image, error)
 	GetImage(id string) (*ImageDetail, error)
 	ImportImage(imagePath string) (*ImageImportResult, error)
 	PullImage(imageRef string) (*ImagePullResult, error)
 	RemoveImage(imageRef string) error
-	
+
 	// Runtime info
 	GetRuntimeName() string
 	Close() error
@@ -91,24 +91,24 @@ type Network struct {
 
 // Resources represents container resource limits and usage
 type Resources struct {
-	CPUShares          int64   `json:"cpu_shares"`
-	CPUQuota           int64   `json:"cpu_quota"`
-	CPUPeriod          int64   `json:"cpu_period"`
-	CPUsetCPUs         string  `json:"cpuset_cpus"`
-	CPUsetMems         string  `json:"cpuset_mems"`
-	MemoryLimit        int64   `json:"memory_limit"`
-	MemoryReservation  int64   `json:"memory_reservation"`
-	MemorySwap         int64   `json:"memory_swap"`
-	MemoryUsage        int64   `json:"memory_usage"`
-	MemoryMaxUsage     int64   `json:"memory_max_usage"`
-	CPUUsagePercent    float64 `json:"cpu_usage_percent"`
-	PidsLimit          int64   `json:"pids_limit"`
-	PidsCurrent        int64   `json:"pids_current"`
-	BlkioWeight        uint16  `json:"blkio_weight"`
-	IOReadBytes        uint64  `json:"io_read_bytes"`
-	IOWriteBytes       uint64  `json:"io_write_bytes"`
-	NetworkRxBytes     uint64  `json:"network_rx_bytes"`
-	NetworkTxBytes     uint64  `json:"network_tx_bytes"`
+	CPUShares         int64   `json:"cpu_shares"`
+	CPUQuota          int64   `json:"cpu_quota"`
+	CPUPeriod         int64   `json:"cpu_period"`
+	CPUsetCPUs        string  `json:"cpuset_cpus"`
+	CPUsetMems        string  `json:"cpuset_mems"`
+	MemoryLimit       int64   `json:"memory_limit"`
+	MemoryReservation int64   `json:"memory_reservation"`
+	MemorySwap        int64   `json:"memory_swap"`
+	MemoryUsage       int64   `json:"memory_usage"`
+	MemoryMaxUsage    int64   `json:"memory_max_usage"`
+	CPUUsagePercent   float64 `json:"cpu_usage_percent"`
+	PidsLimit         int64   `json:"pids_limit"`
+	PidsCurrent       int64   `json:"pids_current"`
+	BlkioWeight       uint16  `json:"blkio_weight"`
+	IOReadBytes       uint64  `json:"io_read_bytes"`
+	IOWriteBytes      uint64  `json:"io_write_bytes"`
+	NetworkRxBytes    uint64  `json:"network_rx_bytes"`
+	NetworkTxBytes    uint64  `json:"network_tx_bytes"`
 }
 
 // Image represents a container image with unified fields
@@ -171,11 +171,11 @@ type ImageImportResult struct {
 
 // ImagePullResult represents the result of pulling an image
 type ImagePullResult struct {
-ImageRef string    `json:"image_ref"`
-ImageID  string    `json:"image_id,omitempty"`
-Size     int64     `json:"size,omitempty"`
-PulledAt time.Time `json:"pulled_at"`
-Runtime  string    `json:"runtime"`
-Status   string    `json:"status"`
-Message  string    `json:"message,omitempty"`
+	ImageRef string    `json:"image_ref"`
+	ImageID  string    `json:"image_id,omitempty"`
+	Size     int64     `json:"size,omitempty"`
+	PulledAt time.Time `json:"pulled_at"`
+	Runtime  string    `json:"runtime"`
+	Status   string    `json:"status"`
+	Message  string    `json:"message,omitempty"`
 }

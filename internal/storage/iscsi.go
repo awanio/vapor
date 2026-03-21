@@ -24,12 +24,12 @@ func (s *ISCSIService) DiscoverTargets(portal string) ([]ISCSITarget, error) {
 
 	targets := make([]ISCSITarget, 0)
 	lines := strings.Split(string(output), "\n")
-	
+
 	for _, line := range lines {
 		if line == "" {
 			continue
 		}
-		
+
 		// Parse discovery output: "192.168.1.10:3260,1 iqn.2020-01.com.example:target1"
 		parts := strings.Fields(line)
 		if len(parts) >= 2 {
@@ -40,10 +40,10 @@ func (s *ISCSIService) DiscoverTargets(portal string) ([]ISCSITarget, error) {
 					IQN:    parts[1],
 					Name:   parts[1],
 				}
-				
+
 				// Check if already connected
 				target.Connected = s.isTargetConnected(target.IQN)
-				
+
 				targets = append(targets, target)
 			}
 		}
@@ -65,12 +65,12 @@ func (s *ISCSIService) GetSessions() ([]ISCSISession, error) {
 
 	sessions := make([]ISCSISession, 0)
 	lines := strings.Split(string(output), "\n")
-	
+
 	for _, line := range lines {
 		if line == "" {
 			continue
 		}
-		
+
 		// Parse session output: "tcp: [1] 192.168.1.10:3260,1 iqn.2020-01.com.example:target1"
 		if strings.HasPrefix(line, "tcp:") {
 			parts := strings.Fields(line)
@@ -78,14 +78,14 @@ func (s *ISCSIService) GetSessions() ([]ISCSISession, error) {
 				sessionID := strings.Trim(parts[1], "[]")
 				portal := strings.Split(parts[2], ",")[0]
 				target := parts[3]
-				
+
 				session := ISCSISession{
 					Target:    target,
 					Portal:    portal,
 					SessionID: sessionID,
 					State:     "active",
 				}
-				
+
 				sessions = append(sessions, session)
 			}
 		}
@@ -103,12 +103,12 @@ func (s *ISCSIService) Login(target, portal string, username, password string) e
 			"--op=update", "--name", "node.session.auth.authmethod", "--value=CHAP"); err != nil {
 			return fmt.Errorf("failed to set auth method: %w", err)
 		}
-		
+
 		if _, err := s.executor.Execute("iscsiadm", "-m", "node", "-T", target, "-p", portal,
 			"--op=update", "--name", "node.session.auth.username", "--value="+username); err != nil {
 			return fmt.Errorf("failed to set username: %w", err)
 		}
-		
+
 		if _, err := s.executor.Execute("iscsiadm", "-m", "node", "-T", target, "-p", portal,
 			"--op=update", "--name", "node.session.auth.password", "--value="+password); err != nil {
 			return fmt.Errorf("failed to set password: %w", err)

@@ -13,7 +13,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-policyv1 "k8s.io/api/policy/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -506,106 +506,107 @@ func (s *Service) GetCRDDetail(ctx context.Context, name string) (*apiextensions
 
 // ApplyCRD creates or updates a Custom Resource Definition
 func (s *Service) ApplyCRD(ctx context.Context, crd *apiextensionsv1.CustomResourceDefinition) (*apiextensionsv1.CustomResourceDefinition, error) {
-// Try to get the CRD first to see if it exists
-existingCRD, err := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, crd.Name, metav1.GetOptions{})
+	// Try to get the CRD first to see if it exists
+	existingCRD, err := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, crd.Name, metav1.GetOptions{})
 
-if err != nil {
-// CRD doesn't exist, create it
-createdCRD, createErr := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Create(ctx, crd, metav1.CreateOptions{})
-if createErr != nil {
-return nil, fmt.Errorf("failed to create CRD: %w", createErr)
-}
-createdCRD.APIVersion = "apiextensions.k8s.io/v1"
-createdCRD.Kind = "CustomResourceDefinition"
-return createdCRD, nil
-}
+	if err != nil {
+		// CRD doesn't exist, create it
+		createdCRD, createErr := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Create(ctx, crd, metav1.CreateOptions{})
+		if createErr != nil {
+			return nil, fmt.Errorf("failed to create CRD: %w", createErr)
+		}
+		createdCRD.APIVersion = "apiextensions.k8s.io/v1"
+		createdCRD.Kind = "CustomResourceDefinition"
+		return createdCRD, nil
+	}
 
-// CRD exists, update it
-crd.ResourceVersion = existingCRD.ResourceVersion
-updatedCRD, updateErr := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Update(ctx, crd, metav1.UpdateOptions{})
-if updateErr != nil {
-return nil, fmt.Errorf("failed to update CRD: %w", updateErr)
-}
-updatedCRD.APIVersion = "apiextensions.k8s.io/v1"
-updatedCRD.Kind = "CustomResourceDefinition"
-return updatedCRD, nil
+	// CRD exists, update it
+	crd.ResourceVersion = existingCRD.ResourceVersion
+	updatedCRD, updateErr := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Update(ctx, crd, metav1.UpdateOptions{})
+	if updateErr != nil {
+		return nil, fmt.Errorf("failed to update CRD: %w", updateErr)
+	}
+	updatedCRD.APIVersion = "apiextensions.k8s.io/v1"
+	updatedCRD.Kind = "CustomResourceDefinition"
+	return updatedCRD, nil
 }
 
 // UpdateCRD updates an existing Custom Resource Definition
 func (s *Service) UpdateCRD(ctx context.Context, name string, crd *apiextensionsv1.CustomResourceDefinition) (*apiextensionsv1.CustomResourceDefinition, error) {
-// Get the existing CRD to obtain its ResourceVersion
-existingCRD, err := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, name, metav1.GetOptions{})
-if err != nil {
-return nil, fmt.Errorf("failed to get existing CRD: %w", err)
-}
+	// Get the existing CRD to obtain its ResourceVersion
+	existingCRD, err := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get existing CRD: %w", err)
+	}
 
-// Set the ResourceVersion for optimistic concurrency control
-crd.ResourceVersion = existingCRD.ResourceVersion
-crd.Name = name // Ensure the name matches
+	// Set the ResourceVersion for optimistic concurrency control
+	crd.ResourceVersion = existingCRD.ResourceVersion
+	crd.Name = name // Ensure the name matches
 
-updatedCRD, updateErr := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Update(ctx, crd, metav1.UpdateOptions{})
-if updateErr != nil {
-return nil, fmt.Errorf("failed to update CRD: %w", updateErr)
-}
-updatedCRD.APIVersion = "apiextensions.k8s.io/v1"
-updatedCRD.Kind = "CustomResourceDefinition"
-return updatedCRD, nil
+	updatedCRD, updateErr := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Update(ctx, crd, metav1.UpdateOptions{})
+	if updateErr != nil {
+		return nil, fmt.Errorf("failed to update CRD: %w", updateErr)
+	}
+	updatedCRD.APIVersion = "apiextensions.k8s.io/v1"
+	updatedCRD.Kind = "CustomResourceDefinition"
+	return updatedCRD, nil
 }
 
 // DeleteCRD deletes a Custom Resource Definition
 func (s *Service) DeleteCRD(ctx context.Context, name string) error {
-err := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Delete(ctx, name, metav1.DeleteOptions{})
-if err != nil {
-return fmt.Errorf("failed to delete CRD: %w", err)
-}
-return nil
+	err := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Delete(ctx, name, metav1.DeleteOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to delete CRD: %w", err)
+	}
+	return nil
 }
 
 // ListCRDObjects lists all objects for a specific CRD
 func (s *Service) ListCRDObjects(ctx context.Context, crdName, namespace string) ([]*unstructured.Unstructured, error) {
-// First, get the CRD to extract necessary information
-crd, err := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, crdName, metav1.GetOptions{})
-if err != nil {
-return nil, fmt.Errorf("failed to get CRD %s: %w", crdName, err)
+	// First, get the CRD to extract necessary information
+	crd, err := s.apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, crdName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get CRD %s: %w", crdName, err)
+	}
+
+	// Find the served version
+	var version string
+	for _, v := range crd.Spec.Versions {
+		if v.Served {
+			version = v.Name
+			break
+		}
+	}
+	if version == "" && len(crd.Spec.Versions) > 0 {
+		version = crd.Spec.Versions[0].Name
+	}
+
+	// Create GroupVersionResource
+	gvr := schema.GroupVersionResource{
+		Group:    crd.Spec.Group,
+		Version:  version,
+		Resource: crd.Spec.Names.Plural,
+	}
+
+	// List objects using dynamic client
+	var unstructuredList *unstructured.UnstructuredList
+
+	// For cluster-scoped resources, ignore namespace parameter
+	unstructuredList, err = s.dynamicClient.Resource(gvr).List(ctx, metav1.ListOptions{})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to list objects for CRD %s: %w", crdName, err)
+	}
+
+	// Return full unstructured objects with all data
+	result := make([]*unstructured.Unstructured, 0, len(unstructuredList.Items))
+	for i := range unstructuredList.Items {
+		result = append(result, &unstructuredList.Items[i])
+	}
+
+	return result, nil
 }
 
-// Find the served version
-var version string
-for _, v := range crd.Spec.Versions {
-if v.Served {
-version = v.Name
-break
-}
-}
-if version == "" && len(crd.Spec.Versions) > 0 {
-version = crd.Spec.Versions[0].Name
-}
-
-// Create GroupVersionResource
-gvr := schema.GroupVersionResource{
-Group:    crd.Spec.Group,
-Version:  version,
-Resource: crd.Spec.Names.Plural,
-}
-
-// List objects using dynamic client
-var unstructuredList *unstructured.UnstructuredList
-
-// For cluster-scoped resources, ignore namespace parameter
-unstructuredList, err = s.dynamicClient.Resource(gvr).List(ctx, metav1.ListOptions{})
-
-if err != nil {
-return nil, fmt.Errorf("failed to list objects for CRD %s: %w", crdName, err)
-}
-
-// Return full unstructured objects with all data
-result := make([]*unstructured.Unstructured, 0, len(unstructuredList.Items))
-for i := range unstructuredList.Items {
-result = append(result, &unstructuredList.Items[i])
-}
-
-return result, nil
-}
 // GetCRDObjectDetail retrieves detailed information about a specific CRD object
 func (s *Service) GetCRDObjectDetail(ctx context.Context, crdName, namespace, objectName string) (*unstructured.Unstructured, error) {
 	// First, get the CRD to extract necessary information
@@ -2512,112 +2513,112 @@ func (s *Service) DeleteCRDObject(ctx context.Context, crdName, namespace, objec
 
 // CordonNode marks a node as unschedulable
 func (s *Service) CordonNode(ctx context.Context, nodeName string) error {
-node, err := s.client.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
-if err != nil {
-return fmt.Errorf("failed to get node: %w", err)
-}
+	node, err := s.client.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get node: %w", err)
+	}
 
-node.Spec.Unschedulable = true
+	node.Spec.Unschedulable = true
 
-_, err = s.client.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
-if err != nil {
-return fmt.Errorf("failed to update node: %w", err)
-}
+	_, err = s.client.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to update node: %w", err)
+	}
 
-return nil
+	return nil
 }
 
 // UncordonNode marks a node as schedulable
 func (s *Service) UncordonNode(ctx context.Context, nodeName string) error {
-node, err := s.client.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
-if err != nil {
-return fmt.Errorf("failed to get node: %w", err)
-}
+	node, err := s.client.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get node: %w", err)
+	}
 
-node.Spec.Unschedulable = false
+	node.Spec.Unschedulable = false
 
-_, err = s.client.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
-if err != nil {
-return fmt.Errorf("failed to update node: %w", err)
-}
+	_, err = s.client.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to update node: %w", err)
+	}
 
-return nil
+	return nil
 }
 
 // DrainNode safely evicts all pods from a node
 func (s *Service) DrainNode(ctx context.Context, nodeName string, options DrainNodeOptions) error {
-// First, cordon the node
-if err := s.CordonNode(ctx, nodeName); err != nil {
-return fmt.Errorf("failed to cordon node: %w", err)
-}
+	// First, cordon the node
+	if err := s.CordonNode(ctx, nodeName); err != nil {
+		return fmt.Errorf("failed to cordon node: %w", err)
+	}
 
-// List all pods on the node
-pods, err := s.client.CoreV1().Pods("").List(ctx, metav1.ListOptions{
-FieldSelector: fmt.Sprintf("spec.nodeName=%s", nodeName),
-})
-if err != nil {
-return fmt.Errorf("failed to list pods: %w", err)
-}
+	// List all pods on the node
+	pods, err := s.client.CoreV1().Pods("").List(ctx, metav1.ListOptions{
+		FieldSelector: fmt.Sprintf("spec.nodeName=%s", nodeName),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to list pods: %w", err)
+	}
 
-// Filter and evict pods
-for _, pod := range pods.Items {
-// Skip if pod is already terminating
-if pod.DeletionTimestamp != nil {
-continue
-}
+	// Filter and evict pods
+	for _, pod := range pods.Items {
+		// Skip if pod is already terminating
+		if pod.DeletionTimestamp != nil {
+			continue
+		}
 
-// Skip DaemonSet pods if option is set
-if options.IgnoreDaemonSets && s.isDaemonSetPod(&pod) {
-continue
-}
+		// Skip DaemonSet pods if option is set
+		if options.IgnoreDaemonSets && s.isDaemonSetPod(&pod) {
+			continue
+		}
 
-// Skip mirror pods (static pods)
-if _, ok := pod.Annotations["kubernetes.io/config.mirror"]; ok {
-continue
-}
+		// Skip mirror pods (static pods)
+		if _, ok := pod.Annotations["kubernetes.io/config.mirror"]; ok {
+			continue
+		}
 
-// Check for emptyDir volumes
-if !options.DeleteEmptyDirData && s.hasEmptyDirVolume(&pod) {
-return fmt.Errorf("pod %s/%s has emptyDir volumes, set deleteEmptyDirData=true to drain", pod.Namespace, pod.Name)
-}
+		// Check for emptyDir volumes
+		if !options.DeleteEmptyDirData && s.hasEmptyDirVolume(&pod) {
+			return fmt.Errorf("pod %s/%s has emptyDir volumes, set deleteEmptyDirData=true to drain", pod.Namespace, pod.Name)
+		}
 
-// Evict the pod
-gracePeriodSeconds := int64(options.GracePeriodSeconds)
-eviction := &policyv1.Eviction{
-ObjectMeta: metav1.ObjectMeta{
-Name:      pod.Name,
-Namespace: pod.Namespace,
-},
-DeleteOptions: &metav1.DeleteOptions{
-GracePeriodSeconds: &gracePeriodSeconds,
-},
-}
+		// Evict the pod
+		gracePeriodSeconds := int64(options.GracePeriodSeconds)
+		eviction := &policyv1.Eviction{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      pod.Name,
+				Namespace: pod.Namespace,
+			},
+			DeleteOptions: &metav1.DeleteOptions{
+				GracePeriodSeconds: &gracePeriodSeconds,
+			},
+		}
 
-err = s.client.CoreV1().Pods(pod.Namespace).EvictV1(ctx, eviction)
-if err != nil {
-return fmt.Errorf("failed to evict pod %s/%s: %w", pod.Namespace, pod.Name, err)
-}
-}
+		err = s.client.CoreV1().Pods(pod.Namespace).EvictV1(ctx, eviction)
+		if err != nil {
+			return fmt.Errorf("failed to evict pod %s/%s: %w", pod.Namespace, pod.Name, err)
+		}
+	}
 
-return nil
+	return nil
 }
 
 // isDaemonSetPod checks if a pod is managed by a DaemonSet
 func (s *Service) isDaemonSetPod(pod *corev1.Pod) bool {
-for _, owner := range pod.OwnerReferences {
-if owner.Kind == "DaemonSet" {
-return true
-}
-}
-return false
+	for _, owner := range pod.OwnerReferences {
+		if owner.Kind == "DaemonSet" {
+			return true
+		}
+	}
+	return false
 }
 
 // hasEmptyDirVolume checks if a pod uses emptyDir volumes
 func (s *Service) hasEmptyDirVolume(pod *corev1.Pod) bool {
-for _, volume := range pod.Spec.Volumes {
-if volume.EmptyDir != nil {
-return true
-}
-}
-return false
+	for _, volume := range pod.Spec.Volumes {
+		if volume.EmptyDir != nil {
+			return true
+		}
+	}
+	return false
 }

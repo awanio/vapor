@@ -65,14 +65,14 @@ func main() {
 
 	lines := strings.Split(string(authKeys), "\n")
 	fmt.Printf("\nAuthorized keys file has %d lines\n", len(lines))
-	
+
 	for i, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
 		fmt.Printf("Key %d (first 60 chars): %s...\n", i+1, line[:min(60, len(line))])
-		
+
 		if strings.TrimSpace(line) == strings.TrimSpace(publicKeyStr) {
 			fmt.Printf("  ✓ This matches our derived public key!\n")
 		}

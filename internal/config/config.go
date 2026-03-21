@@ -232,46 +232,46 @@ func (c *Config) GetJWTSecret() string {
 
 // IsTLSEnabled returns whether TLS is enabled
 func (c *Config) IsTLSEnabled() bool {
-if tlsEnv := os.Getenv("VAPOR_TLS_ENABLED"); tlsEnv != "" {
-return tlsEnv == "true" || tlsEnv == "1"
-}
-return c.TLSEnabled
+	if tlsEnv := os.Getenv("VAPOR_TLS_ENABLED"); tlsEnv != "" {
+		return tlsEnv == "true" || tlsEnv == "1"
+	}
+	return c.TLSEnabled
 }
 
 // GetTLSCertDir returns the directory where TLS certificates are stored
 func (c *Config) GetTLSCertDir() string {
-if certDir := os.Getenv("VAPOR_TLS_CERT_DIR"); certDir != "" {
-return certDir
-}
-if c.TLSCertDir != "" {
-return c.TLSCertDir
-}
-// Default to appdir/certs
-return filepath.Join(c.AppDir, "certs")
+	if certDir := os.Getenv("VAPOR_TLS_CERT_DIR"); certDir != "" {
+		return certDir
+	}
+	if c.TLSCertDir != "" {
+		return c.TLSCertDir
+	}
+	// Default to appdir/certs
+	return filepath.Join(c.AppDir, "certs")
 }
 
 // GetTLSCertFile returns the path to the TLS certificate file
 func (c *Config) GetTLSCertFile() string {
-if certFile := os.Getenv("VAPOR_TLS_CERT_FILE"); certFile != "" {
-return certFile
-}
-if c.TLSCertFile != "" {
-return c.TLSCertFile
-}
-// Default to certdir/server.crt
-return filepath.Join(c.GetTLSCertDir(), "server.crt")
+	if certFile := os.Getenv("VAPOR_TLS_CERT_FILE"); certFile != "" {
+		return certFile
+	}
+	if c.TLSCertFile != "" {
+		return c.TLSCertFile
+	}
+	// Default to certdir/server.crt
+	return filepath.Join(c.GetTLSCertDir(), "server.crt")
 }
 
 // GetTLSKeyFile returns the path to the TLS private key file
 func (c *Config) GetTLSKeyFile() string {
-if keyFile := os.Getenv("VAPOR_TLS_KEY_FILE"); keyFile != "" {
-return keyFile
-}
-if c.TLSKeyFile != "" {
-return c.TLSKeyFile
-}
-// Default to certdir/server.key
-return filepath.Join(c.GetTLSCertDir(), "server.key")
+	if keyFile := os.Getenv("VAPOR_TLS_KEY_FILE"); keyFile != "" {
+		return keyFile
+	}
+	if c.TLSKeyFile != "" {
+		return c.TLSKeyFile
+	}
+	// Default to certdir/server.key
+	return filepath.Join(c.GetTLSCertDir(), "server.key")
 }
 
 // GetOVMFCodePath returns the path to the OVMF code firmware

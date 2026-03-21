@@ -11,8 +11,8 @@ import (
 	"github.com/awanio/vapor/internal/common"
 	"github.com/gin-gonic/gin"
 	corev1 "k8s.io/api/core/v1"
-	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/yaml"
 )
@@ -562,93 +562,93 @@ func (h *Handler) GetCRDDetailGin(c *gin.Context) {
 
 // ApplyCRDGin handles POST requests to create or update a CRD
 func (h *Handler) ApplyCRDGin(c *gin.Context) {
-var crd apiextensionsv1.CustomResourceDefinition
+	var crd apiextensionsv1.CustomResourceDefinition
 
-contentType := c.ContentType()
+	contentType := c.ContentType()
 
-// Handle different content types
-if contentType == "application/yaml" || contentType == "text/yaml" {
-body, err := io.ReadAll(c.Request.Body)
-if err != nil {
-common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to read request body", err.Error())
-return
-}
+	// Handle different content types
+	if contentType == "application/yaml" || contentType == "text/yaml" {
+		body, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to read request body", err.Error())
+			return
+		}
 
-if err := yaml.Unmarshal(body, &crd); err != nil {
-common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to parse YAML", err.Error())
-return
-}
-} else {
-// Default to JSON
-if err := c.ShouldBindJSON(&crd); err != nil {
-common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to parse JSON", err.Error())
-return
-}
-}
+		if err := yaml.Unmarshal(body, &crd); err != nil {
+			common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to parse YAML", err.Error())
+			return
+		}
+	} else {
+		// Default to JSON
+		if err := c.ShouldBindJSON(&crd); err != nil {
+			common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to parse JSON", err.Error())
+			return
+		}
+	}
 
-// Validate required fields
-if crd.Name == "" {
-common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Validation error", "CRD name is required in metadata.name")
-return
-}
+	// Validate required fields
+	if crd.Name == "" {
+		common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Validation error", "CRD name is required in metadata.name")
+		return
+	}
 
-appliedCRD, err := h.service.ApplyCRD(c.Request.Context(), &crd)
-if err != nil {
-common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to apply CRD", err.Error())
-return
-}
+	appliedCRD, err := h.service.ApplyCRD(c.Request.Context(), &crd)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to apply CRD", err.Error())
+		return
+	}
 
-common.SendSuccess(c, gin.H{"crd": appliedCRD})
+	common.SendSuccess(c, gin.H{"crd": appliedCRD})
 }
 
 // UpdateCRDGin handles PUT/PATCH requests to update an existing CRD
 func (h *Handler) UpdateCRDGin(c *gin.Context) {
-name := c.Param("name")
+	name := c.Param("name")
 
-var crd apiextensionsv1.CustomResourceDefinition
+	var crd apiextensionsv1.CustomResourceDefinition
 
-contentType := c.ContentType()
+	contentType := c.ContentType()
 
-// Handle different content types
-if contentType == "application/yaml" || contentType == "text/yaml" {
-body, err := io.ReadAll(c.Request.Body)
-if err != nil {
-common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to read request body", err.Error())
-return
-}
+	// Handle different content types
+	if contentType == "application/yaml" || contentType == "text/yaml" {
+		body, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to read request body", err.Error())
+			return
+		}
 
-if err := yaml.Unmarshal(body, &crd); err != nil {
-common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to parse YAML", err.Error())
-return
-}
-} else {
-// Default to JSON
-if err := c.ShouldBindJSON(&crd); err != nil {
-common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to parse JSON", err.Error())
-return
-}
-}
+		if err := yaml.Unmarshal(body, &crd); err != nil {
+			common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to parse YAML", err.Error())
+			return
+		}
+	} else {
+		// Default to JSON
+		if err := c.ShouldBindJSON(&crd); err != nil {
+			common.SendError(c, http.StatusBadRequest, common.ErrCodeBadRequest, "Failed to parse JSON", err.Error())
+			return
+		}
+	}
 
-updatedCRD, err := h.service.UpdateCRD(c.Request.Context(), name, &crd)
-if err != nil {
-common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to update CRD", err.Error())
-return
-}
+	updatedCRD, err := h.service.UpdateCRD(c.Request.Context(), name, &crd)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to update CRD", err.Error())
+		return
+	}
 
-common.SendSuccess(c, gin.H{"crd": updatedCRD})
+	common.SendSuccess(c, gin.H{"crd": updatedCRD})
 }
 
 // DeleteCRDGin handles DELETE requests to remove a CRD
 func (h *Handler) DeleteCRDGin(c *gin.Context) {
-name := c.Param("name")
+	name := c.Param("name")
 
-err := h.service.DeleteCRD(c.Request.Context(), name)
-if err != nil {
-common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to delete CRD", err.Error())
-return
-}
+	err := h.service.DeleteCRD(c.Request.Context(), name)
+	if err != nil {
+		common.SendError(c, http.StatusInternalServerError, common.ErrCodeInternal, "Failed to delete CRD", err.Error())
+		return
+	}
 
-common.SendSuccess(c, gin.H{"message": "CRD deleted successfully"})
+	common.SendSuccess(c, gin.H{"message": "CRD deleted successfully"})
 }
 
 func (h *Handler) ListCRDObjectsGin(c *gin.Context) {
@@ -1461,65 +1461,65 @@ func respondYAMLError(c *gin.Context, statusCode int, code, message string, deta
 
 // CordonNodeGin marks a node as unschedulable
 func (h *Handler) CordonNodeGin(c *gin.Context) {
-nodeName := c.Param("name")
+	nodeName := c.Param("name")
 
-if err := h.service.CordonNode(c.Request.Context(), nodeName); err != nil {
-c.JSON(http.StatusInternalServerError, gin.H{
-"status":  "error",
-"message": fmt.Sprintf("Failed to cordon node: %v", err),
-})
-return
-}
+	if err := h.service.CordonNode(c.Request.Context(), nodeName); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"message": fmt.Sprintf("Failed to cordon node: %v", err),
+		})
+		return
+	}
 
-c.JSON(http.StatusOK, gin.H{
-"status":  "success",
-"message": fmt.Sprintf("Node %s cordoned successfully", nodeName),
-})
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "success",
+		"message": fmt.Sprintf("Node %s cordoned successfully", nodeName),
+	})
 }
 
 // UncordonNodeGin marks a node as schedulable
 func (h *Handler) UncordonNodeGin(c *gin.Context) {
-nodeName := c.Param("name")
+	nodeName := c.Param("name")
 
-if err := h.service.UncordonNode(c.Request.Context(), nodeName); err != nil {
-c.JSON(http.StatusInternalServerError, gin.H{
-"status":  "error",
-"message": fmt.Sprintf("Failed to uncordon node: %v", err),
-})
-return
-}
+	if err := h.service.UncordonNode(c.Request.Context(), nodeName); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"message": fmt.Sprintf("Failed to uncordon node: %v", err),
+		})
+		return
+	}
 
-c.JSON(http.StatusOK, gin.H{
-"status":  "success",
-"message": fmt.Sprintf("Node %s uncordoned successfully", nodeName),
-})
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "success",
+		"message": fmt.Sprintf("Node %s uncordoned successfully", nodeName),
+	})
 }
 
 // DrainNodeGin safely evicts all pods from a node
 func (h *Handler) DrainNodeGin(c *gin.Context) {
-nodeName := c.Param("name")
+	nodeName := c.Param("name")
 
-var options DrainNodeOptions
-if err := c.ShouldBindJSON(&options); err != nil {
-// Use default options if none provided
-options = DrainNodeOptions{
-GracePeriodSeconds: 30,
-Timeout:            300,
-IgnoreDaemonSets:   true,
-DeleteEmptyDirData: false,
-}
-}
+	var options DrainNodeOptions
+	if err := c.ShouldBindJSON(&options); err != nil {
+		// Use default options if none provided
+		options = DrainNodeOptions{
+			GracePeriodSeconds: 30,
+			Timeout:            300,
+			IgnoreDaemonSets:   true,
+			DeleteEmptyDirData: false,
+		}
+	}
 
-if err := h.service.DrainNode(c.Request.Context(), nodeName, options); err != nil {
-c.JSON(http.StatusInternalServerError, gin.H{
-"status":  "error",
-"message": fmt.Sprintf("Failed to drain node: %v", err),
-})
-return
-}
+	if err := h.service.DrainNode(c.Request.Context(), nodeName, options); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"message": fmt.Sprintf("Failed to drain node: %v", err),
+		})
+		return
+	}
 
-c.JSON(http.StatusOK, gin.H{
-"status":  "success",
-"message": fmt.Sprintf("Node %s drained successfully", nodeName),
-})
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "success",
+		"message": fmt.Sprintf("Node %s drained successfully", nodeName),
+	})
 }

@@ -64,13 +64,13 @@ func GetAllMigrations() []database.Migration {
 			Description: "Add default_user to VM templates",
 			SQL:         vmTemplateDefaultUserSchema,
 		},
-// Version 10: Create API tokens table
-{
-Version:     10,
-Description: "Create API tokens table",
-SQL:         apiTokenSchema,
-},
-}
+		// Version 10: Create API tokens table
+		{
+			Version:     10,
+			Description: "Create API tokens table",
+			SQL:         apiTokenSchema,
+		},
+	}
 }
 
 // Ansible execution schema
@@ -304,7 +304,6 @@ const vmTemplateDefaultUserSchema = `
 	ALTER TABLE vm_templates ADD COLUMN default_user TEXT;
 	CREATE INDEX IF NOT EXISTS idx_templates_default_user ON vm_templates(default_user);
 `
-
 
 // API tokens schema
 const apiTokenSchema = `

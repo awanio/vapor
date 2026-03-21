@@ -28,14 +28,14 @@ func (s *RAIDService) ListRAIDDevices() ([]RAIDDevice, error) {
 
 	devices := []RAIDDevice{}
 	lines := strings.Split(string(output), "\n")
-	
+
 	for _, line := range lines {
 		if strings.HasPrefix(line, "ARRAY") {
 			// Parse the array line to get device path
 			parts := strings.Fields(line)
 			if len(parts) >= 2 {
 				devicePath := parts[1]
-				
+
 				// Get detailed info for this device
 				if device, err := s.getRAIDDeviceDetails(devicePath); err == nil {
 					devices = append(devices, device)
@@ -62,7 +62,7 @@ func (s *RAIDService) getRAIDDeviceDetails(devicePath string) (RAIDDevice, error
 	lines := strings.Split(string(output), "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		
+
 		if strings.Contains(line, "Raid Level :") {
 			device.Level = strings.TrimSpace(strings.Split(line, ":")[1])
 		} else if strings.Contains(line, "Array Size :") {
@@ -116,21 +116,21 @@ func (s *RAIDService) CreateRAID(name string, level string, disks []string, chun
 	if name == "" {
 		return fmt.Errorf("RAID name is required")
 	}
-	
+
 	// Build the mdadm command
 	args := []string{"--create", "/dev/md/" + name, "--level=" + level, "--raid-devices=" + strconv.Itoa(len(disks))}
-	
+
 	// Add chunk size if specified
 	if chunkSize != "" {
 		args = append(args, "--chunk="+chunkSize)
 	}
-	
+
 	// Add the disks
 	args = append(args, disks...)
-	
+
 	// Add --run to avoid confirmation prompt
 	args = append(args, "--run")
-	
+
 	// Execute mdadm
 	output, err := s.executor.Execute("mdadm", args...)
 	if err != nil {
@@ -154,7 +154,7 @@ func (s *RAIDService) DestroyRAID(device string) error {
 
 	// Zero the superblocks on member devices to clean them up
 	// This would require getting the member devices first
-	
+
 	return nil
 }
 
@@ -168,18 +168,18 @@ func (s *RAIDService) GetAvailableDisks() ([]RAIDDisk, error) {
 
 	var lsblkOutput struct {
 		BlockDevices []struct {
-			Name       string `json:"name"`
-			Path       string `json:"path"`
-			Size       string `json:"size"`
-			Type       string `json:"type"`
+			Name       string  `json:"name"`
+			Path       string  `json:"path"`
+			Size       string  `json:"size"`
+			Type       string  `json:"type"`
 			FSType     *string `json:"fstype"`
 			MountPoint *string `json:"mountpoint"`
 			PartType   *string `json:"parttype"`
 			Children   []struct {
-				Name       string `json:"name"`
-				Path       string `json:"path"`
-				Size       string `json:"size"`
-				Type       string `json:"type"`
+				Name       string  `json:"name"`
+				Path       string  `json:"path"`
+				Size       string  `json:"size"`
+				Type       string  `json:"type"`
 				FSType     *string `json:"fstype"`
 				MountPoint *string `json:"mountpoint"`
 				PartType   *string `json:"parttype"`
@@ -229,19 +229,19 @@ func (s *RAIDService) isDiskSuitableForRAID(path string, fstype *string, mountpo
 	if fstype != nil && *fstype != "" {
 		return false
 	}
-	
+
 	// Skip if mounted
 	if mountpoint != nil && *mountpoint != "" {
 		return false
 	}
-	
+
 	// Check if already part of a RAID array
 	output, err := s.executor.Execute("mdadm", "--examine", path)
 	if err == nil && strings.Contains(string(output), "UUID") {
 		// Already has RAID metadata
 		return false
 	}
-	
+
 	return true
 }
 

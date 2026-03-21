@@ -23,53 +23,53 @@ type DB struct {
 
 // Config represents database configuration
 type Config struct {
-	AppDir         string
-	MaxOpenConns   int
-	MaxIdleConns   int
+	AppDir          string
+	MaxOpenConns    int
+	MaxIdleConns    int
 	ConnMaxLifetime int
 }
 
 // Initialize initializes the database connection (singleton pattern)
 func Initialize(cfg *Config) (*DB, error) {
 	var initErr error
-	
+
 	once.Do(func() {
 		dbPath := filepath.Join(cfg.AppDir, "vapor.db")
-		
+
 		// Open SQLite database with optimized settings
 		db, err := sql.Open("sqlite3", dbPath+"?_journal_mode=WAL&_busy_timeout=5000&_synchronous=NORMAL&_cache_size=10000&_foreign_keys=ON")
 		if err != nil {
 			initErr = fmt.Errorf("failed to open database: %w", err)
 			return
 		}
-		
+
 		// Configure connection pool
 		maxOpenConns := cfg.MaxOpenConns
 		if maxOpenConns <= 0 {
 			maxOpenConns = 1 // SQLite doesn't benefit from multiple connections
 		}
 		db.SetMaxOpenConns(maxOpenConns)
-		
+
 		maxIdleConns := cfg.MaxIdleConns
 		if maxIdleConns <= 0 {
 			maxIdleConns = 1
 		}
 		db.SetMaxIdleConns(maxIdleConns)
-		
+
 		db.SetConnMaxLifetime(0) // Connections don't expire
-		
+
 		// Test the connection
 		if err := db.Ping(); err != nil {
 			initErr = fmt.Errorf("failed to ping database: %w", err)
 			db.Close()
 			return
 		}
-		
+
 		instance = &DB{
 			DB:     db,
 			dbPath: dbPath,
 		}
-		
+
 		// Initialize base schema
 		if err := instance.initBaseSchema(); err != nil {
 			initErr = fmt.Errorf("failed to initialize base schema: %w", err)
@@ -77,18 +77,18 @@ func Initialize(cfg *Config) (*DB, error) {
 			instance = nil
 			return
 		}
-		
+
 		// Enable performance optimizations
 		if err := instance.enableOptimizations(); err != nil {
 			// Log warning but don't fail
 			fmt.Printf("Warning: Failed to enable some database optimizations: %v\n", err)
 		}
 	})
-	
+
 	if initErr != nil {
 		return nil, initErr
 	}
-	
+
 	return instance, nil
 }
 
@@ -137,7 +137,7 @@ func (db *DB) initBaseSchema() error {
 	CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_log(user);
 	CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_log(action);
 	`
-	
+
 	_, err := db.Exec(schema)
 	return err
 }
@@ -154,13 +154,13 @@ func (db *DB) enableOptimizations() error {
 		"PRAGMA wal_autocheckpoint = 1000",
 		"PRAGMA foreign_keys = ON",
 	}
-	
+
 	for _, pragma := range optimizations {
 		if _, err := db.Exec(pragma); err != nil {
 			return fmt.Errorf("failed to execute %s: %w", pragma, err)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -170,19 +170,19 @@ func (db *DB) Transaction(fn func(*sql.Tx) error) error {
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	
+
 	defer func() {
 		if p := recover(); p != nil {
 			tx.Rollback()
 			panic(p)
 		}
 	}()
-	
+
 	if err := fn(tx); err != nil {
 		tx.Rollback()
 		return err
 	}
-	
+
 	return tx.Commit()
 }
 
@@ -194,22 +194,22 @@ func (db *DB) Migrate(migrations []Migration) error {
 	if err != nil {
 		return fmt.Errorf("failed to get current schema version: %w", err)
 	}
-	
+
 	// Run pending migrations
 	for _, migration := range migrations {
 		if migration.Version <= currentVersion {
 			continue
 		}
-		
+
 		fmt.Printf("Running migration %d: %s\n", migration.Version, migration.Description)
-		
+
 		// Run migration in a transaction
 		err := db.Transaction(func(tx *sql.Tx) error {
 			// Execute migration SQL
 			if _, err := tx.Exec(migration.SQL); err != nil {
 				return fmt.Errorf("migration %d failed: %w", migration.Version, err)
 			}
-			
+
 			// Record migration
 			_, err := tx.Exec(
 				"INSERT INTO schema_migrations (version, description) VALUES (?, ?)",
@@ -217,12 +217,12 @@ func (db *DB) Migrate(migrations []Migration) error {
 			)
 			return err
 		})
-		
+
 		if err != nil {
 			return fmt.Errorf("failed to run migration %d: %w", migration.Version, err)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -234,17 +234,17 @@ func (db *DB) GetPath() string {
 // GetSize returns the database file size
 func (db *DB) GetSize() (int64, error) {
 	var pageCount, pageSize int64
-	
+
 	err := db.QueryRow("PRAGMA page_count").Scan(&pageCount)
 	if err != nil {
 		return 0, err
 	}
-	
+
 	err = db.QueryRow("PRAGMA page_size").Scan(&pageSize)
 	if err != nil {
 		return 0, err
 	}
-	
+
 	return pageCount * pageSize, nil
 }
 
@@ -269,31 +269,31 @@ func (db *DB) Checkpoint() error {
 // GetStats returns database statistics
 func (db *DB) GetStats() (*Stats, error) {
 	stats := &Stats{}
-	
+
 	// Get database size
 	size, err := db.GetSize()
 	if err != nil {
 		return nil, err
 	}
 	stats.Size = size
-	
+
 	// Get page count and size
 	err = db.QueryRow("PRAGMA page_count").Scan(&stats.PageCount)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	err = db.QueryRow("PRAGMA page_size").Scan(&stats.PageSize)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Get cache statistics
 	err = db.QueryRow("PRAGMA cache_size").Scan(&stats.CacheSize)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Get WAL size
 	err = db.QueryRow("PRAGMA wal_checkpoint(PASSIVE)").Scan(
 		&stats.WALPages, &stats.WALCheckpointed, &stats.WALTotal,
@@ -304,7 +304,7 @@ func (db *DB) GetStats() (*Stats, error) {
 		stats.WALCheckpointed = 0
 		stats.WALTotal = 0
 	}
-	
+
 	// Get table count
 	err = db.QueryRow(`
 		SELECT COUNT(*) FROM sqlite_master 
@@ -313,7 +313,7 @@ func (db *DB) GetStats() (*Stats, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Get index count
 	err = db.QueryRow(`
 		SELECT COUNT(*) FROM sqlite_master 
@@ -322,9 +322,9 @@ func (db *DB) GetStats() (*Stats, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	stats.Path = db.dbPath
-	
+
 	return stats, nil
 }
 

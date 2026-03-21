@@ -1,10 +1,10 @@
 package websocket
 
 import (
-	"github.com/awanio/vapor/internal/auth"
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/awanio/vapor/internal/auth"
 	"log"
 	"sync"
 	"time"

@@ -58,13 +58,13 @@ func SendError(c *gin.Context, statusCode int, code, message string, details ...
 
 // Common error codes
 const (
-	ErrCodeValidation    = "VALIDATION_ERROR"
-	ErrCodeUnauthorized  = "UNAUTHORIZED"
-	ErrCodeForbidden     = "FORBIDDEN"
-	ErrCodeNotFound      = "NOT_FOUND"
-	ErrCodeInternal      = "INTERNAL_ERROR"
-	ErrCodeBadRequest    = "BAD_REQUEST"
-	ErrCodeConflict      = "CONFLICT"
+	ErrCodeValidation     = "VALIDATION_ERROR"
+	ErrCodeUnauthorized   = "UNAUTHORIZED"
+	ErrCodeForbidden      = "FORBIDDEN"
+	ErrCodeNotFound       = "NOT_FOUND"
+	ErrCodeInternal       = "INTERNAL_ERROR"
+	ErrCodeBadRequest     = "BAD_REQUEST"
+	ErrCodeConflict       = "CONFLICT"
 	ErrCodeNotImplemented = "NOT_IMPLEMENTED"
 	ErrCodeInvalidInput   = "INVALID_INPUT"
 )

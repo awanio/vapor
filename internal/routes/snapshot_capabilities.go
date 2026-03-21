@@ -3,9 +3,9 @@ package routes
 import (
 	"net/http"
 
+	"github.com/awanio/vapor/internal/libvirt"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
-	"github.com/awanio/vapor/internal/libvirt"
 )
 
 // GetVMSnapshotCapabilities checks and returns snapshot capabilities for a VM
@@ -30,7 +30,7 @@ func GetVMSnapshotCapabilities(libvirtService *libvirt.Service) gin.HandlerFunc 
 				WithField("vm_id", vmID).
 				WithError(err).
 				Error("Failed to get snapshot capabilities")
-			
+
 			if err.Error() == "domain not found" {
 				c.JSON(http.StatusNotFound, gin.H{
 					"status": "error",
@@ -119,7 +119,7 @@ func CreateVMSnapshotEnhanced(libvirtService *libvirt.Service) gin.HandlerFunc {
 				WithField("snapshot_name", req.Name).
 				WithError(err).
 				Error("Failed to create snapshot")
-			
+
 			if err.Error() == "domain not found" {
 				c.JSON(http.StatusNotFound, gin.H{
 					"status": "error",

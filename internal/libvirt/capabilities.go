@@ -41,24 +41,23 @@ func defaultDomainArch() string {
 	}
 }
 func (s *Service) resolveDomainVirtType(arch string) string {
-resolvedArch := strings.TrimSpace(arch)
-if resolvedArch == "" {
-resolvedArch = defaultDomainArch()
-}
-if s == nil || s.conn == nil {
-return "kvm"
-}
+	resolvedArch := strings.TrimSpace(arch)
+	if resolvedArch == "" {
+		resolvedArch = defaultDomainArch()
+	}
+	if s == nil || s.conn == nil {
+		return "kvm"
+	}
 
-if _, err := s.conn.GetDomainCapabilities("", resolvedArch, "", "kvm", 0); err == nil {
-return "kvm"
-}
-if _, err := s.conn.GetDomainCapabilities("", resolvedArch, "", "qemu", 0); err == nil {
-return "qemu"
-}
+	if _, err := s.conn.GetDomainCapabilities("", resolvedArch, "", "kvm", 0); err == nil {
+		return "kvm"
+	}
+	if _, err := s.conn.GetDomainCapabilities("", resolvedArch, "", "qemu", 0); err == nil {
+		return "qemu"
+	}
 
-return "kvm"
+	return "kvm"
 }
-
 
 func appendUnique(list []string, value string) []string {
 	value = strings.TrimSpace(value)

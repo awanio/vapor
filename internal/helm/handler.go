@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/awanio/vapor/internal/common"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
-	"github.com/awanio/vapor/internal/common"
 )
 
 // Service wrapper for HTTP handlers
@@ -81,7 +81,7 @@ func (h *ServiceHandler) ListReleasesGin(c *gin.Context) {
 	if allParam := c.Query("all"); allParam != "" {
 		allNamespaces = allParam == "true"
 	}
-	
+
 	opts := ListReleasesOptions{
 		Namespace:     c.Query("namespace"),
 		AllNamespaces: allNamespaces,
@@ -118,8 +118,8 @@ func (h *ServiceHandler) UpdateRepositoryGin(c *gin.Context) {
 	if err != nil {
 		logrus.Errorf("failed to update helm repository %s: %v", name, err)
 		if err.Error() == fmt.Sprintf("no repository named '%s' found", name) {
-			common.SendError(c, http.StatusNotFound, "REPOSITORY_NOT_FOUND", 
-				fmt.Sprintf("No repository named '%s' found", name), 
+			common.SendError(c, http.StatusNotFound, "REPOSITORY_NOT_FOUND",
+				fmt.Sprintf("No repository named '%s' found", name),
 				"Run 'helm repo add' to add the repository first")
 			return
 		}
@@ -154,8 +154,8 @@ func (h *ServiceHandler) UpdateRepositoryGin(c *gin.Context) {
 // NoHelmHandler returns a handler that responds with Helm not available error
 func NoHelmHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		common.SendError(c, http.StatusServiceUnavailable, common.ErrCodeNotImplemented, 
-			"Helm is not available", 
+		common.SendError(c, http.StatusServiceUnavailable, common.ErrCodeNotImplemented,
+			"Helm is not available",
 			"Helm requires Kubernetes to be installed and configured. Please ensure Kubernetes is running and accessible.")
 	}
 }

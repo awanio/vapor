@@ -15,24 +15,24 @@ import (
 
 // Service represents the Helm service
 type Service struct {
-	cfg         *action.Configuration
-	settings    *cli.EnvSettings
-	kubeClient  *kubernetes.Service
-	restConfig  *rest.Config
+	cfg        *action.Configuration
+	settings   *cli.EnvSettings
+	kubeClient *kubernetes.Service
+	restConfig *rest.Config
 }
 
 // NewService creates a new Helm service
 func NewService(kubeClient *kubernetes.Service) (*Service, error) {
 	settings := cli.New()
-	
+
 	// Get the REST config from Kubernetes service
 	restConfig, err := kubeClient.GetRESTConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get kubernetes config: %w", err)
 	}
-	
+
 	actionConfig := new(action.Configuration)
-	
+
 	// Initialize the Helm configuration with the Kubernetes REST config
 	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), "", func(format string, v ...interface{}) {
 		// TODO: Use proper logger
@@ -53,7 +53,7 @@ func NewService(kubeClient *kubernetes.Service) (*Service, error) {
 type Release struct {
 	Name         string            `json:"name"`
 	Namespace    string            `json:"namespace"`
-	Version      int              `json:"version"`
+	Version      int               `json:"version"`
 	Status       string            `json:"status"`
 	Chart        string            `json:"chart"`
 	ChartVersion string            `json:"chart_version"`
@@ -142,22 +142,22 @@ func (s *Service) ListCharts(ctx context.Context, opts ListChartsOptions) ([]Cha
 	// 4. Apply filtering by repository name if specified
 	// 5. Include all versions if opts.AllVersions is true
 	// 6. Include development versions if opts.Devel is true
-	
+
 	var charts []Chart
-	
+
 	// Simulate returning charts based on configured repos
 	for _, r := range f.Repositories {
 		// Filter by repository if specified
 		if opts.Repository != "" && r.Name != opts.Repository {
 			continue
 		}
-		
+
 		// Add sample charts for each repository
 		sampleCharts := []Chart{
 			{Name: r.Name + "/nginx", Version: "13.2.23", Description: "NGINX Open Source plus a number of useful modules", Repository: r.Name, AppVersion: "1.25.3"},
 			{Name: r.Name + "/redis", Version: "18.4.0", Description: "Redis in-memory database", Repository: r.Name, AppVersion: "7.2.3"},
 		}
-		
+
 		// If all versions requested, add additional versions
 		if opts.AllVersions {
 			sampleCharts = append(sampleCharts, []Chart{
@@ -165,7 +165,7 @@ func (s *Service) ListCharts(ctx context.Context, opts ListChartsOptions) ([]Cha
 				{Name: r.Name + "/redis", Version: "18.3.4", Description: "Redis in-memory database", Repository: r.Name, AppVersion: "7.2.2"},
 			}...)
 		}
-		
+
 		// If devel versions requested, add development versions
 		if opts.Devel {
 			sampleCharts = append(sampleCharts, []Chart{
@@ -173,7 +173,7 @@ func (s *Service) ListCharts(ctx context.Context, opts ListChartsOptions) ([]Cha
 				{Name: r.Name + "/redis", Version: "18.5.0-alpha.1", Description: "Redis in-memory database (alpha)", Repository: r.Name, AppVersion: "7.3.0-alpha"},
 			}...)
 		}
-		
+
 		charts = append(charts, sampleCharts...)
 	}
 
@@ -219,7 +219,7 @@ func (s *Service) UpdateRepository(ctx context.Context, name string) (string, er
 // ListReleases lists all Helm releases
 func (s *Service) ListReleases(ctx context.Context, opts ListReleasesOptions) ([]Release, error) {
 	client := action.NewList(s.cfg)
-	
+
 	// Configure listing options
 	client.AllNamespaces = opts.AllNamespaces
 	if !opts.AllNamespaces {
@@ -242,7 +242,7 @@ func (s *Service) ListReleases(ctx context.Context, opts ListReleasesOptions) ([
 			Name:         r.Name,
 			Namespace:    r.Namespace,
 			Version:      r.Version,
-			Status:      r.Info.Status.String(),
+			Status:       r.Info.Status.String(),
 			Chart:        r.Chart.Metadata.Name,
 			ChartVersion: r.Chart.Metadata.Version,
 			AppVersion:   r.Chart.Metadata.AppVersion,

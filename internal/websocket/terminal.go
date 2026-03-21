@@ -38,15 +38,15 @@ func startTerminal(client *Client, username string) *PseudoTerminal {
 		client.sendError(fmt.Sprintf("User '%s' does not exist", username))
 		return nil
 	}
-	
+
 	// Use su to switch to the target user
 	// -l: login shell, -s: shell to use (avoids -c signal handling issues)
 	cmd := exec.Command("su", "-l", username, "-s", shell)
-	
+
 	// Log terminal session start for audit purposes
-	log.Printf("AUDIT: Starting terminal session for user '%s' (authenticated as '%s') from client %s", 
+	log.Printf("AUDIT: Starting terminal session for user '%s' (authenticated as '%s') from client %s",
 		username, client.username, client.id)
-	
+
 	// Set terminal environment
 	cmd.Env = append(os.Environ(), "TERM=xterm-256color")
 

@@ -23,11 +23,11 @@ func NewMemoryStore() *MemoryStore {
 func (s *MemoryStore) Create(upload *Upload) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	
+
 	if _, exists := s.uploads[upload.ID]; exists {
 		return fmt.Errorf("upload with ID %s already exists", upload.ID)
 	}
-	
+
 	s.uploads[upload.ID] = upload
 	return nil
 }
@@ -36,12 +36,12 @@ func (s *MemoryStore) Create(upload *Upload) error {
 func (s *MemoryStore) Get(id string) (*Upload, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
-	
+
 	upload, exists := s.uploads[id]
 	if !exists {
 		return nil, fmt.Errorf("upload with ID %s not found", id)
 	}
-	
+
 	// Return a copy to avoid race conditions
 	uploadCopy := *upload
 	return &uploadCopy, nil
@@ -51,11 +51,11 @@ func (s *MemoryStore) Get(id string) (*Upload, error) {
 func (s *MemoryStore) Update(upload *Upload) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	
+
 	if _, exists := s.uploads[upload.ID]; !exists {
 		return fmt.Errorf("upload with ID %s not found", upload.ID)
 	}
-	
+
 	upload.UpdatedAt = time.Now()
 	s.uploads[upload.ID] = upload
 	return nil
@@ -65,11 +65,11 @@ func (s *MemoryStore) Update(upload *Upload) error {
 func (s *MemoryStore) Delete(id string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	
+
 	if _, exists := s.uploads[id]; !exists {
 		return fmt.Errorf("upload with ID %s not found", id)
 	}
-	
+
 	delete(s.uploads, id)
 	return nil
 }
@@ -78,13 +78,13 @@ func (s *MemoryStore) Delete(id string) error {
 func (s *MemoryStore) List() ([]*Upload, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
-	
+
 	uploads := make([]*Upload, 0, len(s.uploads))
 	for _, upload := range s.uploads {
 		uploadCopy := *upload
 		uploads = append(uploads, &uploadCopy)
 	}
-	
+
 	return uploads, nil
 }
 
@@ -92,12 +92,12 @@ func (s *MemoryStore) List() ([]*Upload, error) {
 func (s *MemoryStore) Cleanup(olderThan time.Time) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	
+
 	for id, upload := range s.uploads {
 		if upload.CreatedAt.Before(olderThan) {
 			delete(s.uploads, id)
 		}
 	}
-	
+
 	return nil
 }

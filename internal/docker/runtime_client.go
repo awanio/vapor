@@ -245,7 +245,7 @@ func (d *RuntimeClient) GetContainerLogs(id string) (string, error) {
 			}
 			return "", fmt.Errorf("failed to read container logs: %w", err)
 		}
-		
+
 		// When TTY is false, Docker uses a multiplexed stream format
 		// Each frame has an 8-byte header: [stream_type, 0, 0, 0, size1, size2, size3, size4]
 		// For now, we'll just append the raw data, but in production you might want to parse the headers
@@ -402,7 +402,7 @@ func (d *RuntimeClient) ImportImage(filePath string) (*common.ImageImportResult,
 	}
 
 	responseText := string(respContent)
-	
+
 	// Parse the response to extract image information
 	// Docker load response typically contains "Loaded image: name:tag" or "Loaded image ID: sha256:..."
 	imageID := ""
@@ -422,7 +422,7 @@ func (d *RuntimeClient) ImportImage(filePath string) (*common.ImageImportResult,
 				newestImage = img
 			}
 		}
-		
+
 		if newestImage.ID != "" {
 			imageID = newestImage.ID
 			repoTags = newestImage.RepoTags
@@ -481,55 +481,55 @@ func getPidsLimit(limit *int64) int64 {
 
 // PullImage pulls an image from a registry
 func (d *RuntimeClient) PullImage(imageRef string) (*common.ImagePullResult, error) {
-ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-defer cancel()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
 
-// Pull the image using Docker SDK
-reader, err := d.client.ImagePull(ctx, imageRef, image.PullOptions{})
-if err != nil {
-return nil, fmt.Errorf("failed to pull image %s: %w", imageRef, err)
-}
-defer reader.Close()
+	// Pull the image using Docker SDK
+	reader, err := d.client.ImagePull(ctx, imageRef, image.PullOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to pull image %s: %w", imageRef, err)
+	}
+	defer reader.Close()
 
-// Consume the pull response to ensure the pull completes
-_, err = io.Copy(io.Discard, reader)
-if err != nil {
-return nil, fmt.Errorf("failed to complete image pull for %s: %w", imageRef, err)
-}
+	// Consume the pull response to ensure the pull completes
+	_, err = io.Copy(io.Discard, reader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to complete image pull for %s: %w", imageRef, err)
+	}
 
-// Get image details after pull
-var imageID string
-var size int64
-imageInspect, _, err := d.client.ImageInspectWithRaw(ctx, imageRef)
-if err == nil {
-imageID = imageInspect.ID
-size = imageInspect.Size
-}
+	// Get image details after pull
+	var imageID string
+	var size int64
+	imageInspect, _, err := d.client.ImageInspectWithRaw(ctx, imageRef)
+	if err == nil {
+		imageID = imageInspect.ID
+		size = imageInspect.Size
+	}
 
-return &common.ImagePullResult{
-ImageRef: imageRef,
-ImageID:  imageID,
-Size:     size,
-PulledAt: time.Now(),
-Runtime:  "docker",
-Status:   "success",
-Message:  "Image pulled successfully",
-}, nil
+	return &common.ImagePullResult{
+		ImageRef: imageRef,
+		ImageID:  imageID,
+		Size:     size,
+		PulledAt: time.Now(),
+		Runtime:  "docker",
+		Status:   "success",
+		Message:  "Image pulled successfully",
+	}, nil
 }
 
 // RemoveImage removes an image from the local storage
 func (d *RuntimeClient) RemoveImage(imageRef string) error {
-ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-defer cancel()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
-// Remove the image using Docker SDK
-_, err := d.client.ImageRemove(ctx, imageRef, image.RemoveOptions{
-Force:         false,
-PruneChildren: true,
-})
-if err != nil {
-return fmt.Errorf("failed to remove image %s: %w", imageRef, err)
-}
+	// Remove the image using Docker SDK
+	_, err := d.client.ImageRemove(ctx, imageRef, image.RemoveOptions{
+		Force:         false,
+		PruneChildren: true,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to remove image %s: %w", imageRef, err)
+	}
 
-return nil
+	return nil
 }

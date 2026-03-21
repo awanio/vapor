@@ -1,9 +1,9 @@
 package websocket
 
 import (
-	"github.com/awanio/vapor/internal/auth"
 	"context"
 	"fmt"
+	"github.com/awanio/vapor/internal/auth"
 	"io"
 	"net"
 	"net/http"

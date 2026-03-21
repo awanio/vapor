@@ -369,7 +369,7 @@ func (s *Service) CreateBackup(ctx context.Context, nameOrUUID string, req *VMBa
 	// Handle parent backup for incremental/differential backups
 	if req.Type == BackupTypeIncremental || req.Type == BackupTypeDifferential {
 		parentBackupID := req.ParentBackupID
-		
+
 		// Auto-find latest backup if not specified
 		if parentBackupID == "" {
 			s.mu.Unlock()
@@ -383,7 +383,7 @@ func (s *Service) CreateBackup(ctx context.Context, nameOrUUID string, req *VMBa
 			}
 			parentBackupID = latestBackup.ID
 		}
-		
+
 		// For differential, find the latest full backup
 		if req.Type == BackupTypeDifferential {
 			s.mu.Unlock()
@@ -397,7 +397,7 @@ func (s *Service) CreateBackup(ctx context.Context, nameOrUUID string, req *VMBa
 			}
 			parentBackupID = fullBackup.ID
 		}
-		
+
 		backup.ParentBackupID = parentBackupID
 	}
 
@@ -424,7 +424,6 @@ func (s *Service) CreateBackup(ctx context.Context, nameOrUUID string, req *VMBa
 
 	return backup, nil
 }
-
 
 // ListAllBackups lists backups across all VMs.
 func (s *Service) ListAllBackups(ctx context.Context) ([]VMBackup, error) {
@@ -742,7 +741,7 @@ func (s *Service) runBackupJob(nameOrUUID string, backup *VMBackup, req *VMBacku
 	for _, disk := range disksToBackup {
 		// Generate backup file path
 		backupFile := filepath.Join(backup.DestinationPath, fmt.Sprintf("%s-%s.qcow2", name, backup.ID))
-		
+
 		// For now, just backup the first disk (primary disk)
 		// In the future, we can support multi-disk backups by appending target device name
 		if len(disksToBackup) > 1 {
@@ -755,7 +754,7 @@ func (s *Service) runBackupJob(nameOrUUID string, backup *VMBackup, req *VMBacku
 			s.mu.Unlock()
 			parentBackup, err := s.GetBackupByID(context.Background(), backup.ParentBackupID)
 			s.mu.Lock()
-			
+
 			if err != nil {
 				backup.Status = BackupStatusFailed
 				backup.ErrorMessage = fmt.Sprintf("failed to find parent backup: %v", err)
@@ -795,10 +794,10 @@ func (s *Service) runBackupJob(nameOrUUID string, backup *VMBackup, req *VMBacku
 			if err != nil {
 				// Try alternative approach: copy changes using convert with backing file
 				log.Printf("Rebase failed, trying convert approach: %v", err)
-				
+
 				// Remove the empty file we created
 				os.Remove(backupFile)
-				
+
 				// Create backing chain by converting current disk with backing file reference
 				cmd = exec.Command("qemu-img", "convert", "-O", "qcow2", "-o", fmt.Sprintf("backing_file=%s,backing_fmt=qcow2", parentBackupFile), disk.SourcePath, backupFile)
 				output, err = cmd.CombinedOutput()

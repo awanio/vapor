@@ -28,13 +28,13 @@ func (s *LVMService) GetVolumeGroups() ([]VolumeGroup, error) {
 	var result struct {
 		Report []struct {
 			VG []struct {
-				VGName   string `json:"vg_name"`
-				VGUUID   string `json:"vg_uuid"`
-				VGSize   string `json:"vg_size"`
-				VGFree   string `json:"vg_free"`
-				PVCount  string `json:"pv_count"`
-				LVCount  string `json:"lv_count"`
-				VGTags   string `json:"vg_tags"`
+				VGName  string `json:"vg_name"`
+				VGUUID  string `json:"vg_uuid"`
+				VGSize  string `json:"vg_size"`
+				VGFree  string `json:"vg_free"`
+				PVCount string `json:"pv_count"`
+				LVCount string `json:"lv_count"`
+				VGTags  string `json:"vg_tags"`
 			} `json:"vg"`
 		} `json:"report"`
 	}
@@ -106,7 +106,7 @@ func (s *LVMService) GetLogicalVolumes(vgName string) ([]LogicalVolume, error) {
 	for _, report := range result.Report {
 		for _, lv := range report.LV {
 			size, _ := strconv.ParseUint(lv.LVSize, 10, 64)
-			
+
 			logicalVolume := LogicalVolume{
 				Name:       lv.LVName,
 				VGName:     lv.VGName,
@@ -191,7 +191,7 @@ func (s *LVMService) CreateVolumeGroup(name string, devices []string) error {
 // CreateLogicalVolume creates a new logical volume
 func (s *LVMService) CreateLogicalVolume(vgName, lvName, size string) error {
 	args := []string{"-n", lvName, "-L", size, vgName}
-	
+
 	if _, err := s.executor.Execute("lvcreate", args...); err != nil {
 		return fmt.Errorf("failed to create logical volume: %w", err)
 	}
@@ -203,7 +203,7 @@ func (s *LVMService) CreateLogicalVolume(vgName, lvName, size string) error {
 func (s *LVMService) ResizeLogicalVolume(vgName, lvName, size string) error {
 	lvPath := fmt.Sprintf("/dev/%s/%s", vgName, lvName)
 	args := []string{"-L", size, lvPath}
-	
+
 	// Check if we need to resize filesystem first (for shrinking)
 	if strings.HasPrefix(size, "-") {
 		// For shrinking, we need to resize filesystem first
@@ -233,7 +233,7 @@ func (s *LVMService) ResizeLogicalVolume(vgName, lvName, size string) error {
 // RemoveLogicalVolume removes a logical volume
 func (s *LVMService) RemoveLogicalVolume(vgName, lvName string) error {
 	lvPath := fmt.Sprintf("/dev/%s/%s", vgName, lvName)
-	
+
 	if _, err := s.executor.Execute("lvremove", "-f", lvPath); err != nil {
 		return fmt.Errorf("failed to remove logical volume: %w", err)
 	}

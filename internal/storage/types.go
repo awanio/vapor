@@ -2,14 +2,14 @@ package storage
 
 // VolumeGroup represents an LVM volume group
 type VolumeGroup struct {
-	Name       string          `json:"name"`
-	UUID       string          `json:"uuid"`
-	Size       uint64          `json:"size"`
-	Free       uint64          `json:"free"`
-	PVCount    int             `json:"pv_count"`
-	LVCount    int             `json:"lv_count"`
-	VGTags     string          `json:"vg_tags"`
-	Volumes    []LogicalVolume `json:"logical_volumes,omitempty"`
+	Name    string          `json:"name"`
+	UUID    string          `json:"uuid"`
+	Size    uint64          `json:"size"`
+	Free    uint64          `json:"free"`
+	PVCount int             `json:"pv_count"`
+	LVCount int             `json:"lv_count"`
+	VGTags  string          `json:"vg_tags"`
+	Volumes []LogicalVolume `json:"logical_volumes,omitempty"`
 }
 
 // LogicalVolume represents an LVM logical volume
@@ -26,12 +26,12 @@ type LogicalVolume struct {
 
 // PhysicalVolume represents an LVM physical volume
 type PhysicalVolume struct {
-	Name     string `json:"name"`
-	VGName   string `json:"vg_name"`
-	UUID     string `json:"uuid"`
-	Size     uint64 `json:"size"`
-	Free     uint64 `json:"free"`
-	DevPath  string `json:"dev_path"`
+	Name    string `json:"name"`
+	VGName  string `json:"vg_name"`
+	UUID    string `json:"uuid"`
+	Size    uint64 `json:"size"`
+	Free    uint64 `json:"free"`
+	DevPath string `json:"dev_path"`
 }
 
 // ISCSITarget represents an iSCSI target
@@ -53,14 +53,14 @@ type ISCSISession struct {
 
 // MultipathDevice represents a multipath device
 type MultipathDevice struct {
-	Name       string   `json:"name"`
-	WWID       string   `json:"wwid"`
-	Size       uint64   `json:"size"`
-	Vendor     string   `json:"vendor"`
-	Product    string   `json:"product"`
-	Paths      []Path   `json:"paths"`
-	PathCount  int      `json:"path_count"`
-	ActivePath int      `json:"active_path"`
+	Name       string `json:"name"`
+	WWID       string `json:"wwid"`
+	Size       uint64 `json:"size"`
+	Vendor     string `json:"vendor"`
+	Product    string `json:"product"`
+	Paths      []Path `json:"paths"`
+	PathCount  int    `json:"path_count"`
+	ActivePath int    `json:"active_path"`
 }
 
 // Path represents a single path in a multipath device
@@ -73,21 +73,21 @@ type Path struct {
 
 // BTRFSVolume represents a BTRFS volume
 type BTRFSVolume struct {
-	UUID       string          `json:"uuid"`
-	Label      string          `json:"label"`
-	TotalSize  uint64          `json:"total_size"`
-	Used       uint64          `json:"used"`
-	DeviceCount int            `json:"device_count"`
-	Devices    []string        `json:"devices"`
-	Subvolumes []BTRFSSubvolume `json:"subvolumes,omitempty"`
+	UUID        string           `json:"uuid"`
+	Label       string           `json:"label"`
+	TotalSize   uint64           `json:"total_size"`
+	Used        uint64           `json:"used"`
+	DeviceCount int              `json:"device_count"`
+	Devices     []string         `json:"devices"`
+	Subvolumes  []BTRFSSubvolume `json:"subvolumes,omitempty"`
 }
 
 // BTRFSSubvolume represents a BTRFS subvolume
 type BTRFSSubvolume struct {
-	ID         int    `json:"id"`
-	Path       string `json:"path"`
-	ParentID   int    `json:"parent_id"`
-	Generation int    `json:"generation"`
+	ID         int             `json:"id"`
+	Path       string          `json:"path"`
+	ParentID   int             `json:"parent_id"`
+	Generation int             `json:"generation"`
 	Snapshots  []BTRFSSnapshot `json:"snapshots,omitempty"`
 }
 
@@ -181,4 +181,3 @@ type RAIDDisk struct {
 	Partition bool   `json:"partition"`
 	Device    string `json:"device"`
 }
-

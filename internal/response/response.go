@@ -4,7 +4,7 @@ package response
 type Response struct {
 	Status string      `json:"status"`
 	Data   interface{} `json:"data,omitempty"`
-	Error  *Error     `json:"error,omitempty"`
+	Error  *Error      `json:"error,omitempty"`
 }
 
 // Error represents an API error
