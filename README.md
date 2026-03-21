@@ -60,7 +60,11 @@ curl -fsSL https://raw.githubusercontent.com/awanio/vapor/main/scripts/install.s
 chmod +x install.sh
 
 # Run the installer (requires sudo)
+# Latest default version (from the role):
 sudo ./install.sh
+
+# Or install a specific GitHub release tag, e.g. v0.1.1:
+sudo ./install.sh -v v0.1.1
 ```
 
 The installer will prompt you to select which components to install:
@@ -81,8 +85,15 @@ export INSTALL_DOCKER=y
 export INSTALL_K8S=y
 export K8S_VERSION=1.30
 
-# Run installer
+# Optionally pin a specific Vapor release tag (e.g. v0.1.1)
+# If omitted, the default vapor_version from the Ansible role is used.
+# Note: when piping via bash, pass CLI args with -s --
+
+# Run installer (latest default)
 curl -fsSL https://raw.githubusercontent.com/awanio/vapor/main/scripts/install.sh | sudo -E bash
+
+# Run installer for a specific version
+curl -fsSL https://raw.githubusercontent.com/awanio/vapor/main/scripts/install.sh | sudo -E bash -s -- -v v0.1.1
 ```
 
 ### Building from Source

@@ -3,7 +3,8 @@
 
 - name: Set download URL
   set_fact:
-    vapor_download_url: "{{ vapor_base_url }}/{{ vapor_version }}/vapor"
+    vapor_archive_name: "vapor-{{ vapor_version }}-linux-amd64.tar.gz"
+    vapor_download_url: "{{ vapor_base_url }}/{{ vapor_version }}/vapor-{{ vapor_version }}-linux-amd64.tar.gz"
 
 # =============================================================================
 # Directory Setup
@@ -227,13 +228,31 @@
     state: stopped
   failed_when: false
 
-- name: Download Vapor binary
+- name: Download Vapor archive
   get_url:
     url: "{{ vapor_download_url }}"
-    dest: "{{ vapor_install_dir }}/vapor"
-    mode: "0755"
+    dest: "{{ vapor_install_dir }}/{{ vapor_archive_name }}"
+    mode: "0644"
     force: yes
-  register: download_binary
+  register: download_archive
+
+- name: Extract Vapor binary
+  unarchive:
+    src: "{{ vapor_install_dir }}/{{ vapor_archive_name }}"
+    dest: "{{ vapor_install_dir }}"
+    remote_src: true
+  register: unarchive_vapor
+
+- name: Ensure Vapor binary is executable
+  file:
+    path: "{{ vapor_install_dir }}/vapor"
+    mode: "0755"
+    state: file
+
+- name: Remove Vapor archive
+  file:
+    path: "{{ vapor_install_dir }}/{{ vapor_archive_name }}"
+    state: absent
 
 - name: Verify binary is executable
   command: "{{ vapor_install_dir }}/vapor --version"

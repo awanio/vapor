@@ -10,6 +10,42 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# CLI arguments
+VAPOR_VERSION=""
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -v|--version)
+      if [ -n "${2:-}" ]; then
+        VAPOR_VERSION="$2"
+        shift 2
+      else
+        echo "Error: -v|--version requires a value (e.g. v0.1.1)"
+        exit 1
+      fi
+      ;;
+    -h|--help)
+      cat << 'EOF'
+Usage: ./install.sh [options]
+
+Options:
+  -v, --version  Vapor release tag to install (e.g. v0.1.1).
+                 Defaults to the role's vapor_version when omitted.
+  -h, --help     Show this help message and exit.
+EOF
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      # Unknown/extra argument; stop parsing so script body can handle it if needed
+      break
+      ;;
+  esac
+done
+
 # Helper for prompts
 prompt_confirmation() {
     local question="$1"
@@ -362,6 +398,10 @@ if prompt_confirmation "$INSTALL_PROMPT" "y"; then
     
     # Build Extra Vars
     EXTRA_VARS="install_libvirt=$INSTALL_LIBVIRT install_docker=$INSTALL_DOCKER install_containerd=$INSTALL_CONTAINERD install_k8s=$INSTALL_K8S install_helm=$INSTALL_HELM"
+
+    if [ -n "$VAPOR_VERSION" ]; then
+        EXTRA_VARS="$EXTRA_VARS vapor_version='$VAPOR_VERSION'"
+    fi
     
     if [ "$INSTALL_K8S" == "true" ]; then
         EXTRA_VARS="$EXTRA_VARS k8s_version='$K8S_VERSION' pod_network_cidr='$K8S_POD_CIDR' service_cidr='$K8S_SVC_CIDR' cni_plugin='$K8S_CNI' node_role='$K8S_NODE_ROLE'"

@@ -111,10 +111,10 @@ jobs:
 
       - name: Prepare release binary
         run: |
-          chmod +x dist/bin/${BINARY_NAME}
+          chmod +x dist/${BINARY_NAME}
           mkdir -p dist/release
           # Create a tar.gz archive of the binary as vapor-<tag>-linux-amd64.tar.gz
-          tar -C dist/bin -czf dist/release/${BINARY_NAME}-${GITHUB_REF_NAME}-linux-amd64.tar.gz ${BINARY_NAME}
+          tar -C dist -czf dist/release/${BINARY_NAME}-${GITHUB_REF_NAME}-linux-amd64.tar.gz ${BINARY_NAME}
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
