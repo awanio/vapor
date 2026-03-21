@@ -109,8 +109,12 @@ jobs:
           name: ${{ env.BINARY_NAME }}-linux-amd64
           path: dist
 
-      - name: Make binary executable
-        run: chmod +x dist/${BINARY_NAME}
+      - name: Prepare release binary
+        run: |
+          chmod +x dist/bin/${BINARY_NAME}
+          mkdir -p dist/release
+          # Create a tar.gz archive of the binary as vapor-<tag>-linux-amd64.tar.gz
+          tar -C dist/bin -czf dist/release/${BINARY_NAME}-${GITHUB_REF_NAME}-linux-amd64.tar.gz ${BINARY_NAME}
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -118,4 +122,4 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
           generate_release_notes: true
-          files: dist/${BINARY_NAME}
+          files: dist/release/${{ env.BINARY_NAME }}-${{ github.ref_name }}-linux-amd64.tar.gz
