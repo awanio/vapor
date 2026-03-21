@@ -1,6 +1,6 @@
-# Vapor
+# Vapor CE
 
-Vapor is a comprehensive Linux OS management system, inspired by Cockpit, designed to provide a modern web interface for server administration, container orchestration, virtualization management, and Kubernetes management.
+Vapor CE (Community Edition) is a comprehensive Linux OS management system, inspired by [Cockpit](https://github.com/cockpit-project/cockpit), designed to provide a modern web interface for server administration, container orchestration, virtualization management, and Kubernetes management.
 
 ## Features
 
@@ -144,8 +144,8 @@ Default credentials are your system's root or sudo user credentials (PAM authent
 
 ### Prerequisites
 
-- Go 1.21+
-- Node.js 18+
+- Go 1.24+
+- Node.js 22+
 - libvirt-dev (for virtualization support)
 
 ### Development Setup
