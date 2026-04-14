@@ -2,10 +2,10 @@ package auth
 
 import (
 	"bufio"
-	"fmt"
 	"os"
-	"os/exec"
 	"strings"
+
+	"github.com/msteinert/pam/v2"
 )
 
 // authenticateLinuxUser validates a user against the Linux system
@@ -15,9 +15,8 @@ func authenticateLinuxUser(username, password string) bool {
 		return false
 	}
 
-	// Use a simple approach that works without root access
-	// Try to authenticate using the 'su' command
-	return authenticateWithSu(username, password)
+	// Authenticate using PAM
+	return authenticateWithPAM(username, password)
 }
 
 // userExists checks if a user exists in the system
@@ -38,44 +37,28 @@ func userExists(username string) bool {
 	return false
 }
 
-// authenticateWithSu tries to authenticate using the su command
-func authenticateWithSu(username, password string) bool {
-	// Use 'su' with a simple command to test authentication
-	// The -c flag runs a command, and we just echo a success message
-	cmd := exec.Command("su", "-", username, "-c", "echo auth_success")
-
-	// Create pipes for stdin and stdout
-	stdin, err := cmd.StdinPipe()
+// authenticateWithPAM authenticates a user via the Linux PAM (Pluggable Authentication Modules) system.
+// This replaces the previous su-command based approach with a proper PAM conversation,
+// which is more secure, efficient, and doesn't require spawning external processes.
+func authenticateWithPAM(username, password string) bool {
+	tx, err := pam.StartFunc("login", username, func(s pam.Style, msg string) (string, error) {
+		switch s {
+		case pam.PromptEchoOff:
+			return password, nil
+		}
+		return "", nil
+	})
 	if err != nil {
 		return false
 	}
 
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
+	if err := tx.Authenticate(0); err != nil {
 		return false
 	}
 
-	// Start the command
-	if err := cmd.Start(); err != nil {
+	if err := tx.AcctMgmt(0); err != nil {
 		return false
 	}
 
-	// Write the password to stdin
-	fmt.Fprintf(stdin, "%s\n", password)
-	stdin.Close()
-
-	// Read the output
-	scanner := bufio.NewScanner(stdout)
-	var output string
-	if scanner.Scan() {
-		output = scanner.Text()
-	}
-
-	// Wait for the command to complete
-	err = cmd.Wait()
-
-	// Check if authentication was successful
-	// If authentication succeeds, su will execute the command and output "auth_success"
-	// If it fails, su will exit with an error
-	return err == nil && strings.TrimSpace(output) == "auth_success"
+	return true
 }
