@@ -1,125 +1,125 @@
 name: Tag Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+    push:
+        tags:
+            - "v*"
 
 env:
-  GO_VERSION: "1.25"
-  NODE_VERSION: "v24.6.0"
-  BINARY_NAME: vapor
-  GOLANGCI_LINT_VERSION: "v1.64.8"
+    GO_VERSION: "1.25"
+    NODE_VERSION: "v24.6.0"
+    BINARY_NAME: vapor
+    GOLANGCI_LINT_VERSION: "v1.64.8"
 
 jobs:
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    container: golang:1.25-alpine
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    lint:
+        name: Lint
+        runs-on: ubuntu-latest
+        container: golang:1.25-alpine
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: apk add --no-cache git gcc musl-dev pkgconf libvirt-dev wget
+            - name: Install dependencies
+              run: apk add --no-cache git gcc musl-dev pkgconf libvirt-dev wget
 
-      - name: Install golangci-lint
-        run: |
-          wget -O- -nv https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s $GOLANGCI_LINT_VERSION
-          mv ./bin/golangci-lint /usr/local/bin/golangci-lint
+            - name: Install golangci-lint
+              run: |
+                  wget -O- -nv https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s $GOLANGCI_LINT_VERSION
+                  mv ./bin/golangci-lint /usr/local/bin/golangci-lint
 
-      - name: Run golangci-lint
-        run: golangci-lint run --config .golangci-ci.yml --timeout 5m --color always
+            - name: Run golangci-lint
+              run: golangci-lint run --config .golangci-ci.yml --timeout 5m --color always
 
-  build:
-    name: Build
-    needs: lint
-    runs-on: ubuntu-latest
-    container: golang:1.25-rc-bullseye
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+    build:
+        name: Build
+        needs: lint
+        runs-on: ubuntu-latest
+        container: golang:1.25-rc-bullseye
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
 
-      - name: Verify glibc version and install system deps
-        run: |
-          ldd --version | head -n 1
-          ldd --version | head -n 1 | grep -Eq '2\.31'
-          apt-get update
-          apt-get install -y --no-install-recommends \
-            curl xz-utils git gcc g++ make pkg-config \
-            libsqlite3-dev libvirt-dev ca-certificates
-          rm -rf /var/lib/apt/lists/*
+            - name: Verify glibc version and install system deps
+              run: |
+                  ldd --version | head -n 1
+                  ldd --version | head -n 1 | grep -Eq '2\.31'
+                  apt-get update
+                  apt-get install -y --no-install-recommends \
+                    curl xz-utils git gcc g++ make pkg-config \
+                    libsqlite3-dev libvirt-dev ca-certificates libpam0g-dev
+                  rm -rf /var/lib/apt/lists/*
 
-      - name: Install Node.js
-        run: |
-          curl -fsSL https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-linux-x64.tar.xz -o /tmp/node-${NODE_VERSION}-linux-x64.tar.xz
-          tar -xJf /tmp/node-${NODE_VERSION}-linux-x64.tar.xz -C /usr/local --strip-components=1
-          node --version
-          test "$(node --version)" = "${NODE_VERSION}"
-          npm --version
+            - name: Install Node.js
+              run: |
+                  curl -fsSL https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-linux-x64.tar.xz -o /tmp/node-${NODE_VERSION}-linux-x64.tar.xz
+                  tar -xJf /tmp/node-${NODE_VERSION}-linux-x64.tar.xz -C /usr/local --strip-components=1
+                  node --version
+                  test "$(node --version)" = "${NODE_VERSION}"
+                  npm --version
 
-      - name: Cache Go modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+            - name: Cache Go modules
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cache/go-build
+                      ~/go/pkg/mod
+                  key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+                  restore-keys: |
+                      ${{ runner.os }}-go-
 
-      - name: Download Go modules
-        run: go mod download
+            - name: Download Go modules
+              run: go mod download
 
-      - name: Prepare web environment
-        run: |
-          test -f web/.env || cp web/.env.example web/.env
-          npm --prefix web ci
+            - name: Prepare web environment
+              run: |
+                  test -f web/.env || cp web/.env.example web/.env
+                  npm --prefix web ci
 
-      - name: Build binary
-        run: |
-          rm -rf internal/web/dist
-          make build
-          ls -lah bin/${BINARY_NAME}
+            - name: Build binary
+              run: |
+                  rm -rf internal/web/dist
+                  make build
+                  ls -lah bin/${BINARY_NAME}
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.BINARY_NAME }}-linux-amd64
-          path: bin/${{ env.BINARY_NAME }}
-          retention-days: 1
+            - name: Upload artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: ${{ env.BINARY_NAME }}-linux-amd64
+                  path: bin/${{ env.BINARY_NAME }}
+                  retention-days: 1
 
-  release:
-    name: Publish Release
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+    release:
+        name: Publish Release
+        needs: build
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
 
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ env.BINARY_NAME }}-linux-amd64
-          path: dist
+            - name: Download build artifact
+              uses: actions/download-artifact@v4
+              with:
+                  name: ${{ env.BINARY_NAME }}-linux-amd64
+                  path: dist
 
-      - name: Prepare release binary
-        run: |
-          chmod +x dist/${BINARY_NAME}
-          mkdir -p dist/release
-          # Create a tar.gz archive of the binary as vapor-<tag>-linux-amd64.tar.gz
-          tar -C dist -czf dist/release/${BINARY_NAME}-${GITHUB_REF_NAME}-linux-amd64.tar.gz ${BINARY_NAME}
+            - name: Prepare release binary
+              run: |
+                  chmod +x dist/${BINARY_NAME}
+                  mkdir -p dist/release
+                  # Create a tar.gz archive of the binary as vapor-<tag>-linux-amd64.tar.gz
+                  tar -C dist -czf dist/release/${BINARY_NAME}-${GITHUB_REF_NAME}-linux-amd64.tar.gz ${BINARY_NAME}
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
-          generate_release_notes: true
-          files: dist/release/${{ env.BINARY_NAME }}-${{ github.ref_name }}-linux-amd64.tar.gz
+            - name: Create Release
+              uses: softprops/action-gh-release@v2
+              with:
+                  tag_name: ${{ github.ref_name }}
+                  name: Release ${{ github.ref_name }}
+                  generate_release_notes: true
+                  files: dist/release/${{ env.BINARY_NAME }}-${{ github.ref_name }}-linux-amd64.tar.gz
