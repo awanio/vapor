@@ -5,6 +5,8 @@
 * Don't create any readme file to update the progress, just print it out
 * If you need to create a backup file, put it on /tmp folder not in this working directory
 * Use gofmt command to format every go code you've create or update
+* 'signed-off-by' tags should use the user that working on this project. Use git user email for this.
+* Use 'Assisted-by' tag for AI agent attribution.
 
 ## Landing the Plane (Session Completion)
 
