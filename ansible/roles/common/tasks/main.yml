@@ -9,12 +9,27 @@
   apt:
     name:
       - curl
-      - software-properties-common
       - apt-transport-https
       - ca-certificates
       - gnupg
     state: present
   when: ansible_os_family == "Debian"
+
+- name: Install software-properties-common (Debian 12 and earlier)
+  apt:
+    name: software-properties-common
+    state: present
+  when:
+    - ansible_os_family == "Debian"
+    - ansible_distribution_major_version | int <= 12
+
+- name: Remove software-properties-common (Debian 13+)
+  apt:
+    name: software-properties-common
+    state: absent
+  when:
+    - ansible_os_family == "Debian"
+    - ansible_distribution_major_version | int >= 13
 
 - name: Install common packages (RedHat)
   yum:
