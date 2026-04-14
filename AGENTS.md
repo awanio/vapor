@@ -5,7 +5,6 @@
 * Don't create any readme file to update the progress, just print it out
 * If you need to create a backup file, put it on /tmp folder not in this working directory
 * Use gofmt command to format every go code you've create or update
-* Use 'bd' for task tracking
 
 ## Landing the Plane (Session Completion)
 
@@ -19,7 +18,6 @@
 4. **PUSH TO REMOTE** - This is MANDATORY:
    ```bash
    git pull --rebase
-   bd sync
    git push
    git status  # MUST show "up to date with origin"
    ```

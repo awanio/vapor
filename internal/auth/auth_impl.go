@@ -3,15 +3,22 @@ package auth
 import (
 	"bufio"
 	"os"
+	"os/user"
 	"strings"
 
 	"github.com/msteinert/pam/v2"
 )
 
-// authenticateLinuxUser validates a user against the Linux system
+// authenticateLinuxUser validates a user against the Linux system.
+// Only users with sudo privileges are permitted to authenticate.
 func authenticateLinuxUser(username, password string) bool {
 	// First, check if the user exists
 	if !userExists(username) {
+		return false
+	}
+
+	// Only allow sudo users to login
+	if !isSudoUser(username) {
 		return false
 	}
 
@@ -34,6 +41,33 @@ func userExists(username string) bool {
 			return true
 		}
 	}
+	return false
+}
+
+// isSudoUser checks if a user has sudo privileges by verifying membership
+// in the "sudo" group (Debian/Ubuntu) or "wheel" group (RHEL/CentOS/Fedora).
+func isSudoUser(username string) bool {
+	u, err := user.Lookup(username)
+	if err != nil {
+		return false
+	}
+
+	// Check primary group and supplementary groups
+	groupIDs, err := u.GroupIds()
+	if err != nil {
+		return false
+	}
+
+	for _, gid := range groupIDs {
+		group, err := user.LookupGroupId(gid)
+		if err != nil {
+			continue
+		}
+		if group.Name == "sudo" || group.Name == "wheel" {
+			return true
+		}
+	}
+
 	return false
 }
 
