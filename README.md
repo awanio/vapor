@@ -36,6 +36,7 @@ Vapor requires **libvirt 8.0.0+** and **QEMU 6.2+** for full virtualization feat
 | **Ubuntu** | 24.04 LTS | 8.2.2 | 10.0.0 | ✅ Recommended |
 | | 22.04 LTS | 6.2.0 | 8.0.0 | ✅ Supported |
 | | 20.04 LTS | 4.2.1 | 6.0.0 | ❌ Not supported (QEMU too old) |
+| **Debian** | 13 (Trixie) | 10.0.8 | 12.0.0 | ✅ Supported |
 | **Debian** | 12 (Bookworm) | 7.2.0 | 9.0.0 | ✅ Supported |
 | | 11 (Bullseye) | 5.2.0 | 7.0.0 | ❌ Not supported (QEMU/libvirt too old) |
 | **RHEL/Rocky/Alma** | 9.x | 7.0+ | 9.0.0+ | ✅ Supported |
@@ -63,8 +64,8 @@ chmod +x install.sh
 # Latest default version (from the role):
 sudo ./install.sh
 
-# Or install a specific GitHub release tag, e.g. v0.1.1:
-sudo ./install.sh -v v0.1.1
+# Or install a specific GitHub release tag, e.g. v0.1.2:
+sudo ./install.sh -v v0.1.2
 ```
 
 The installer will prompt you to select which components to install:
