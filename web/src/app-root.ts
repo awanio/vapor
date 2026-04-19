@@ -54,147 +54,141 @@ export class AppRoot extends LitElement {
   
     /* Carbon masthead — dark navigation bar */
     .app-header {
-      background-color: #161616;
+      background-color: #262626; /* Dark mode default */
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 0 16px;
       height: 48px;
-      border-bottom: none;
-    }
-    
-    .header-title {
-      font-size: 14px;
-      font-weight: 600;
-      letter-spacing: 0.16px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      border-bottom: 1px solid #393939; /* Gray 80 */
       color: #f4f4f4;
     }
-    
+
+    :host-context(.light) .app-header {
+        background-color: #161616;
+    }
+
+    .header-title {
+        font-size: 14px;
+        font-weight: 600;
+    }
+
     .header-actions {
-      display: flex;
-      align-items: center;
-      gap: 0;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
     }
     
     .user-info {
-      color: #c6c6c6;
-      font-size: 14px;
-      letter-spacing: 0.16px;
-      padding: 0 16px;
-      height: 48px;
-      display: flex;
-      align-items: center;
-    }
-    
-    .logout-button {
-      padding: 0 16px;
-      height: 48px;
-      background: transparent;
-      border: none;
-      border-radius: 0;
-      color: #c6c6c6;
-      cursor: pointer;
-      transition: background-color 0.15s;
-      font-size: 14px;
-      letter-spacing: 0.16px;
-      font-family: var(--cds-font-sans);
-    }
-    
-    .logout-button:hover {
-      background: #353535;
-      color: #ffffff;
-    }
+            color: #c6c6c6; /* Gray 30 */
+            font-size: 14px;
+        }
 
-    .theme-toggle {
-      padding: 0;
-      background: transparent;
-      border: none;
-      border-radius: 0;
-      color: #c6c6c6;
-      cursor: pointer;
-      transition: background-color 0.15s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 48px;
-      height: 48px;
-    }
+        .logout-button {
+            padding: 0.5rem 1rem;
+            background: transparent;
+            border: 1px solid #393939;
+            border-radius: 0;
+            color: #f4f4f4;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
 
-    .theme-toggle:hover {
-      background: #353535;
-      color: #ffffff;
-    }
+        .logout-button:hover {
+            background: #353535;
+            border-color: var(--cds-focus, #0f62fe);
+        }
 
-    .theme-icon {
-      width: 20px;
-      height: 20px;
-    }
+        .theme-toggle {
+            padding: 0.5rem;
+            background: transparent;
+            border: 1px solid #393939;
+            border-radius: 0;
+            color: #f4f4f4;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+        }
 
-    .language-selector {
-      position: relative;
-    }
+        .theme-toggle:hover {
+            background: #353535;
+            border-color: var(--cds-focus, #0f62fe);
+        }
 
-    .language-button {
-      padding: 0 16px;
-      height: 48px;
-      background: transparent;
-      border: none;
-      border-radius: 0;
-      color: #c6c6c6;
-      cursor: pointer;
-      transition: background-color 0.15s;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-      letter-spacing: 0.16px;
-      font-family: var(--cds-font-sans);
-    }
+        .theme-icon {
+            width: 20px;
+            height: 20px;
+        }
 
-    .language-button:hover {
-      background: #353535;
-      color: #ffffff;
-    }
+        .language-selector {
+            position: relative;
+        }
 
-    .language-icon {
-      width: 16px;
-      height: 16px;
-    }
+        .language-button {
+            padding: 0.5rem 1rem;
+            background: transparent;
+            border: 1px solid #393939;
+            border-radius: 0;
+            color: #f4f4f4;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 14px;
+        }
 
-    .language-dropdown {
-      position: absolute;
-      top: 100%;
-      right: 0;
-      margin-top: 0;
-      background: var(--cds-layer-01);
-      border: 1px solid var(--cds-border-subtle);
-      border-radius: 0;
-      box-shadow: var(--cds-shadow-raised);
-      min-width: 160px;
-      z-index: 1000;
-    }
+        .language-button:hover {
+            background: #353535;
+            border-color: var(--cds-focus, #0f62fe);
+        }
 
-    .language-option {
-      padding: 0 16px;
-      height: 40px;
-      cursor: pointer;
-      transition: background-color 0.15s;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-      letter-spacing: 0.16px;
-      color: var(--cds-text-primary);
-    }
+        .language-icon {
+            width: 16px;
+            height: 16px;
+        }
 
-    .language-option:hover {
-      background: var(--cds-layer-02);
-    }
+        .language-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 0.25rem;
+            background: #262626;
+            border: 1px solid #393939;
+            border-radius: 0;
+            box-shadow: var(--cds-shadow-raised);
+            min-width: 120px;
+            z-index: 1000;
+        }
 
-    .language-option.active {
-      background: var(--vscode-sidebar-active);
-      color: var(--cds-interactive);
-    }
+        :host-context(.light) .language-dropdown {
+            background: #161616;
+        }
+
+        .language-option {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 14px;
+            color: #f4f4f4;
+        }
+
+        .language-option:hover {
+            background: #353535;
+        }
+
+        .language-option.active {
+            background: #525252;
+            color: var(--cds-focus, #0f62fe);
+        }
 
     .check-icon {
       width: 14px;

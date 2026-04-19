@@ -274,8 +274,6 @@ export class VirtualizationVMsEnhanced extends LitElement {
       gap: 1rem;
     }
 
-
-
     .stats-bar {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
