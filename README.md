@@ -65,7 +65,7 @@ chmod +x install.sh
 sudo ./install.sh
 
 # Or install a specific GitHub release tag, e.g. v0.1.2:
-sudo ./install.sh -v v0.1.3
+sudo ./install.sh -v v0.1.4
 ```
 
 The installer will prompt you to select which components to install:
