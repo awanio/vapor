@@ -86,6 +86,7 @@ export class ISOManagement extends LitElement {
     }
 
     .container {
+      padding: 16px;
       display: flex;
       flex-direction: column;
       height: 100%;
