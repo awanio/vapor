@@ -354,7 +354,12 @@ export class VirtualizationVMsEnhanced extends LitElement {
       justify-content: center;
       width: 20px;
       height: 20px;
-      font-size: 14px;
+    }
+
+    .stat-icon svg {
+      width: 16px;
+      height: 16px;
+      fill: currentColor;
     }
 
     .stat-icon.total {
@@ -1688,9 +1693,9 @@ export class VirtualizationVMsEnhanced extends LitElement {
 
   private getTemplateActions(_template: VMTemplate): ActionItem[] {
     return [
-      { label: 'Create VM', action: 'create-vm', icon: '🖥️' },
-      { label: 'Edit', action: 'edit', icon: '✏️' },
-      { label: 'Delete', action: 'delete', icon: '🗑️', danger: true },
+      { label: 'Create VM', action: 'create-vm' },
+      { label: 'Edit', action: 'edit' },
+      { label: 'Delete', action: 'delete', danger: true },
     ];
   }
 
@@ -2433,7 +2438,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
         <div class="stats-bar">
           <div class="stat-widget">
             <div class="stat-widget-header">
-              <span class="stat-icon total">🖥️</span>
+              <span class="stat-icon total"><svg viewBox="0 0 32 32"><path d="M28 2H4a2 2 0 0 0-2 2v18a2 2 0 0 0 2 2h10v4h-4v2h12v-2h-4v-4h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2ZM4 22V4h24v18Z"/></svg></span>
               <span class="stat-label">Total VMs</span>
             </div>
             <div class="stat-value">${stats.totalVMs}</div>
@@ -2442,7 +2447,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
           
           <div class="stat-widget">
             <div class="stat-widget-header">
-              <span class="stat-icon running">▶️</span>
+              <span class="stat-icon running"><svg viewBox="0 0 32 32"><path d="M7 4.5v23l21-11.5Z"/></svg></span>
               <span class="stat-label">Running</span>
             </div>
             <div class="stat-value running">${stats.runningVMs}</div>
@@ -2451,7 +2456,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
           
           <div class="stat-widget">
             <div class="stat-widget-header">
-              <span class="stat-icon stopped">⏹️</span>
+              <span class="stat-icon stopped"><svg viewBox="0 0 32 32"><path d="M4 4h24v24H4z"/></svg></span>
               <span class="stat-label">Stopped</span>
             </div>
             <div class="stat-value stopped">${stats.stoppedVMs}</div>
@@ -2460,7 +2465,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
           
           <div class="stat-widget">
             <div class="stat-widget-header">
-              <span class="stat-icon memory">🧠</span>
+              <span class="stat-icon memory"><svg viewBox="0 0 32 32"><path d="M28 10h-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v6H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6h2a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2ZM8 4h16v6H8Zm0 24v-6h16v6Zm20-8H4v-8h24Z"/><path d="M11 6h2v2h-2ZM15 6h2v2h-2ZM19 6h2v2h-2ZM11 24h2v2h-2ZM15 24h2v2h-2ZM19 24h2v2h-2ZM7 14h2v4H7ZM11 14h2v4h-2ZM15 14h2v4h-2ZM19 14h2v4h-2ZM23 14h2v4h-2Z"/></svg></span>
               <span class="stat-label">Total Memory</span>
             </div>
             <div class="stat-value">${formatMemory(stats.totalMemory)}</div>
@@ -2469,7 +2474,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
           
           <div class="stat-widget">
             <div class="stat-widget-header">
-              <span class="stat-icon cpu">⚡</span>
+              <span class="stat-icon cpu"><svg viewBox="0 0 32 32"><path d="M11 11h10v10H11z"/><path d="M30 13h-2v-2a1 1 0 0 0-1-1h-4V8h4a1 1 0 0 0 1-1V5h-2v1h-3V2h-2v4h-2V2h-2v4h-2V2h-2v4h-3V5H10v2a1 1 0 0 0 1 1h4v2H11a1 1 0 0 0-1 1v2H8v-4H6v3H2v2h4v2H2v2h4v2H2v2h4v3h2v-4h2v4a1 1 0 0 0 1 1h2v2h2v-2h2v2h2v-2h2v2h2v-2a1 1 0 0 0 1-1v-4h2v4h2v-3a1 1 0 0 0-1-1h-3v-2h4v-2h-4v-2h4v-2h-4v-2h3a1 1 0 0 0 1-1v-1h2Zm-4 14H6V12h6v-2h4v2h6Z" fill-rule="evenodd"/></svg></span>
               <span class="stat-label">Total vCPUs</span>
             </div>
             <div class="stat-value">${stats.totalVCPUs}</div>
@@ -2478,7 +2483,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
           
           <div class="stat-widget">
             <div class="stat-widget-header">
-              <span class="stat-icon storage">💾</span>
+              <span class="stat-icon storage"><svg viewBox="0 0 32 32"><path d="M28 6H4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h24a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2Zm0 6H4V8h24ZM28 18H4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h24a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2Zm0 6H4v-4h24ZM7 21h2v2H7ZM7 9h2v2H7Z"/></svg></span>
               <span class="stat-label">Total Storage</span>
             </div>
             <div class="stat-value">${this.formatDiskSize(stats.totalDiskSize)}</div>
@@ -2539,13 +2544,13 @@ export class VirtualizationVMsEnhanced extends LitElement {
             <loading-state message="Loading ${this.activeMainTab === 'templates' ? 'templates' : 'virtual machines'}..."></loading-state>
           ` : error ? html`
             <empty-state
-              icon="❌"
+              icon="⚠"
               title="Error loading ${this.activeMainTab === 'templates' ? 'templates' : 'virtual machines'}"
               description=${error.message}
             ></empty-state>
           ` : tableData.length === 0 ? html`
             <empty-state
-              icon="🖥️"
+              icon="☐"
               title="No ${this.activeMainTab === 'templates' ? 'templates' : 'virtual machines'} found"
               description=${searchQuery
           ? `No ${this.activeMainTab === 'templates' ? 'templates' : 'VMs'} match your search criteria`

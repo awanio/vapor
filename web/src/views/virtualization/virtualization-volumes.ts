@@ -155,7 +155,12 @@ export class VirtualizationVolumes extends LitElement {
       justify-content: center;
       width: 20px;
       height: 20px;
-      font-size: 14px;
+    }
+
+    .stat-icon svg {
+      width: 16px;
+      height: 16px;
+      fill: currentColor;
     }
 
     .stat-icon.total {
@@ -702,22 +707,18 @@ export class VirtualizationVolumes extends LitElement {
       {
         action: 'view',
         label: 'View Details',
-        icon: '👁️',
       },
       {
         action: 'resize',
         label: 'Resize',
-        icon: '📏',
       },
       {
         action: 'clone',
         label: 'Clone',
-        icon: '🧬',
       },
       {
         action: 'delete',
         label: 'Delete',
-        icon: '🗑️',
         danger: true,
       },
     ];
@@ -826,15 +827,9 @@ export class VirtualizationVolumes extends LitElement {
     }
   }
 
-  private getFormatIcon(format: string) {
-    switch (format?.toLowerCase()) {
-      case 'qcow2': return '📦';
-      case 'raw': return '💿';
-      case 'iso': return '📀';
-      case 'vmdk': return '🖥️';
-      case 'dir': return '📁';
-      default: return '📄';
-    }
+  private getFormatIcon(_format: string) {
+    // Format icons now handled via CSS badges; this is a no-op fallback.
+    return '';
   }
 
   private async handleRefresh() {
@@ -1119,7 +1114,7 @@ export class VirtualizationVolumes extends LitElement {
         <div class="stats-bar">
           <div class="stat-widget">
             <div class="stat-widget-header">
-              <span class="stat-icon total">📊</span>
+              <span class="stat-icon total"><svg viewBox="0 0 32 32"><path d="M28 2H4a2 2 0 0 0-2 2v18a2 2 0 0 0 2 2h24a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2ZM4 22V4h24v18ZM2 28h28v2H2ZM8 10h2v8H8ZM14 6h2v12h-2ZM20 14h2v4h-2Z"/></svg></span>
               <span class="stat-label">Total Volumes</span>
             </div>
             <div class="stat-value">${stats.totalVolumes}</div>
@@ -1128,7 +1123,7 @@ export class VirtualizationVolumes extends LitElement {
           
           <div class="stat-widget">
             <div class="stat-widget-header">
-              <span class="stat-icon capacity">💾</span>
+              <span class="stat-icon capacity"><svg viewBox="0 0 32 32"><path d="M28 6H4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h24a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2Zm0 6H4V8h24ZM28 18H4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h24a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2Zm0 6H4v-4h24ZM7 21h2v2H7ZM7 9h2v2H7Z"/></svg></span>
               <span class="stat-label">Capacity</span>
             </div>
             <div class="stat-value">${formatBytes(stats.totalCapacity)}</div>
@@ -1137,7 +1132,7 @@ export class VirtualizationVolumes extends LitElement {
           
           <div class="stat-widget">
             <div class="stat-widget-header">
-              <span class="stat-icon allocated">✅</span>
+              <span class="stat-icon allocated"><svg viewBox="0 0 32 32"><path d="M16 2a14 14 0 1 0 14 14A14 14 0 0 0 16 2Zm0 26a12 12 0 1 1 12-12 12 12 0 0 1-12 12Z"/><path d="m14 21.5-5-4.96 1.59-1.57L14 18.35 21.41 11 23 12.58Z"/></svg></span>
               <span class="stat-label">Allocated</span>
             </div>
             <div class="stat-value">${formatBytes(stats.totalAllocation)}</div>
@@ -1146,7 +1141,7 @@ export class VirtualizationVolumes extends LitElement {
           
           <div class="stat-widget">
             <div class="stat-widget-header">
-              <span class="stat-icon disk">💿</span>
+              <span class="stat-icon disk"><svg viewBox="0 0 32 32"><path d="M16 2a14 14 0 1 0 14 14A14 14 0 0 0 16 2Zm0 26a12 12 0 1 1 12-12 12 12 0 0 1-12 12Z"/><circle cx="16" cy="16" r="4"/></svg></span>
               <span class="stat-label">Disk Images</span>
             </div>
             <div class="stat-value">${stats.diskImages}</div>
@@ -1155,7 +1150,7 @@ export class VirtualizationVolumes extends LitElement {
           
           <div class="stat-widget">
             <div class="stat-widget-header">
-              <span class="stat-icon iso">📀</span>
+              <span class="stat-icon iso"><svg viewBox="0 0 32 32"><path d="M16 2a14 14 0 1 0 14 14A14 14 0 0 0 16 2Zm0 26a12 12 0 1 1 12-12 12 12 0 0 1-12 12Z"/><circle cx="16" cy="16" r="2"/><path d="M16 8a8 8 0 1 0 8 8 8 8 0 0 0-8-8Zm0 14a6 6 0 1 1 6-6 6 6 0 0 1-6 6Z"/></svg></span>
               <span class="stat-label">ISO Files</span>
             </div>
             <div class="stat-value">${stats.isoFiles}</div>
@@ -1164,7 +1159,7 @@ export class VirtualizationVolumes extends LitElement {
           
           <div class="stat-widget">
             <div class="stat-widget-header">
-              <span class="stat-icon dir">📁</span>
+              <span class="stat-icon dir"><svg viewBox="0 0 32 32"><path d="M28 8H16l-3.4-3.4A2 2 0 0 0 11.17 4H4a2 2 0 0 0-2 2v20a2 2 0 0 0 2 2h24a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2Zm0 18H4V6h7.17l3.42 3.4.58.6H28Z"/></svg></span>
               <span class="stat-label">Directories</span>
             </div>
             <div class="stat-value">${stats.directories}</div>
@@ -1196,7 +1191,7 @@ export class VirtualizationVolumes extends LitElement {
           </div>
           <div class="actions-section">
             <button class="btn btn-secondary" @click=${this.handleRefresh} title="Refresh">
-              🔄
+              <svg width="14" height="14" viewBox="0 0 32 32" fill="currentColor"><path d="M26 18A10 10 0 1 1 16 8h6.18l-3.58 3.59L20 13l6-6-6-6-1.4 1.41L22.17 6H16a12 12 0 1 0 12 12Z"/></svg>
             </button>
             <button class="btn btn-secondary" @click=${() => this.showUploadDrawer = true} title="Upload Volume">
               Upload
@@ -1217,13 +1212,13 @@ export class VirtualizationVolumes extends LitElement {
             <loading-state message="Loading storage volumes..."></loading-state>
           ` : state.error ? html`
             <empty-state
-              icon="❌"
+              icon="⚠"
               title="Error loading volumes"
               description=${state.error.message}
             ></empty-state>
           ` : displayVolumes.length === 0 ? html`
             <empty-state
-              icon="📂"
+              icon="☐"
               title="No volumes found"
               description=${searchQuery
           ? "No volumes match your search criteria"
