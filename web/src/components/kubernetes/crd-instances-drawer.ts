@@ -69,8 +69,8 @@ export class CRDInstancesDrawer extends LitElement {
       right: 0;
       bottom: 0;
       width: var(--drawer-width, 60%);
-      background: var(--vscode-editor-background);
-      border-left: 1px solid var(--vscode-border);
+      background: var(--cds-background);
+      border-left: 1px solid var(--cds-border-subtle);
       transform: translateX(100%);
       transition: transform 0.3s ease;
       z-index: 1000;
@@ -88,8 +88,8 @@ export class CRDInstancesDrawer extends LitElement {
       align-items: center;
       justify-content: space-between;
       padding: 1rem;
-      border-bottom: 1px solid var(--vscode-border);
-      background: var(--vscode-editor-background);
+      border-bottom: 1px solid var(--cds-border-subtle);
+      background: var(--cds-background);
     }
 
     .btn-create {
@@ -97,18 +97,18 @@ export class CRDInstancesDrawer extends LitElement {
       align-items: center;
       gap: 6px;
       padding: 8px 16px;
-      background: var(--vscode-button-background, #007acc);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, white);
       border: none;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .btn-create:hover {
-      background: var(--vscode-button-hoverBackground, #005a9e);
+      background: var(--cds-button-primary-hover);
     }
 
     .btn-create svg {
@@ -124,7 +124,7 @@ export class CRDInstancesDrawer extends LitElement {
       font-size: 1.2rem;
       font-weight: 600;
       margin: 0;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
     }
 
     .subtitle {
@@ -136,10 +136,10 @@ export class CRDInstancesDrawer extends LitElement {
     .kind-badge {
       display: inline-block;
       padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 11px;
+      border-radius: 0;
+      font-size: 12px;
       font-weight: 500;
-      background: var(--vscode-badge-background, #007acc);
+      background: var(--vscode-badge-background, var(--cds-button-primary, #0f62fe));
       color: var(--vscode-badge-foreground, white);
       margin-left: 0.5rem;
     }
@@ -156,7 +156,7 @@ export class CRDInstancesDrawer extends LitElement {
     }
 
     .close-button:hover {
-      color: var(--vscode-button-hoverBackground, #005a9e);
+      color: var(--cds-button-primary-hover);
     }
 
     .controls {
@@ -164,7 +164,7 @@ export class CRDInstancesDrawer extends LitElement {
       display: flex;
       gap: 1rem;
       align-items: center;
-      border-bottom: 1px solid var(--vscode-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
     }
 
     search-input {
@@ -195,8 +195,8 @@ export class CRDInstancesDrawer extends LitElement {
       gap: 2rem;
       padding: 1rem;
       background: var(--vscode-editorWidget-background);
-      border: 1px solid var(--vscode-border);
-      border-radius: 4px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       margin-bottom: 1rem;
     }
 
@@ -212,7 +212,7 @@ export class CRDInstancesDrawer extends LitElement {
     }
 
     .stat-value {
-      font-size: 1.5rem;
+      font-size: 24px;
       font-weight: 600;
       color: var(--vscode-foreground, #cccccc);
     }
@@ -220,8 +220,8 @@ export class CRDInstancesDrawer extends LitElement {
     .status-badge {
       display: inline-block;
       padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 11px;
+      border-radius: 0;
+      font-size: 12px;
       font-weight: 500;
     }
 
@@ -899,7 +899,7 @@ export class CRDInstancesDrawer extends LitElement {
 
       <div class="content">
         ${this.error ? html`
-          <div style="padding: 1rem; color: var(--vscode-errorForeground, #f48771); background: var(--vscode-inputValidation-errorBackground, #5a1d1d); border-radius: 4px; margin-bottom: 1rem;">
+          <div style="padding: 1rem; color: var(--cds-support-error); background: var(--vscode-inputValidation-errorBackground, #5a1d1d); border-radius: 0; margin-bottom: 1rem;">
             ${this.error}
           </div>
         ` : ''}

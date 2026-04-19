@@ -58,13 +58,13 @@ export class StoragePoolView extends LitElement {
       justify-content: space-between;
       align-items: center;
       padding-bottom: 16px;
-      border-bottom: 1px solid var(--vscode-editorWidget-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
     }
 
     .title {
       font-size: 18px;
       font-weight: 600;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
     }
 
     .header-actions {
@@ -84,8 +84,8 @@ export class StoragePoolView extends LitElement {
       background: var(--vscode-input-background);
       color: var(--vscode-input-foreground);
       border: 1px solid var(--vscode-input-border);
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 0;
+      font-size: 14px;
     }
 
     .search-icon {
@@ -93,7 +93,7 @@ export class StoragePoolView extends LitElement {
       left: 10px;
       top: 50%;
       transform: translateY(-50%);
-      color: var(--vscode-descriptionForeground);
+      color: var(--cds-text-secondary);
       font-size: 14px;
     }
 
@@ -102,43 +102,43 @@ export class StoragePoolView extends LitElement {
       gap: 4px;
       background: var(--vscode-dropdown-background);
       border: 1px solid var(--vscode-dropdown-border);
-      border-radius: 4px;
+      border-radius: 0;
       padding: 2px;
     }
 
     .toggle-btn {
       padding: 4px 8px;
       background: transparent;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
       border: none;
       border-radius: 2px;
       cursor: pointer;
       font-size: 12px;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .toggle-btn.active {
-      background: var(--vscode-button-background);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground);
     }
 
     .btn-primary {
       padding: 6px 12px;
-      background: var(--vscode-button-background);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground);
       border: none;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
-      transition: all 0.2s;
+      transition: all 0.15s;
       display: flex;
       align-items: center;
       gap: 6px;
     }
 
     .btn-primary:hover {
-      background: var(--vscode-button-hoverBackground);
+      background: var(--cds-button-primary-hover);
     }
 
     .content {
@@ -154,11 +154,11 @@ export class StoragePoolView extends LitElement {
     }
 
     .pool-card {
-      background: var(--vscode-editor-background);
-      border: 1px solid var(--vscode-editorWidget-border);
-      border-radius: 8px;
+      background: var(--cds-background);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       padding: 16px;
-      transition: all 0.2s;
+      transition: all 0.15s;
       cursor: pointer;
     }
 
@@ -186,7 +186,7 @@ export class StoragePoolView extends LitElement {
     .pool-name {
       font-size: 15px;
       font-weight: 600;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
       margin-bottom: 4px;
       display: flex;
       align-items: center;
@@ -195,7 +195,7 @@ export class StoragePoolView extends LitElement {
 
     .pool-type {
       font-size: 12px;
-      color: var(--vscode-descriptionForeground);
+      color: var(--cds-text-secondary);
       display: flex;
       align-items: center;
       gap: 6px;
@@ -211,8 +211,8 @@ export class StoragePoolView extends LitElement {
       align-items: center;
       gap: 6px;
       padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 11px;
+      border-radius: 0;
+      font-size: 12px;
       font-weight: 600;
       text-transform: uppercase;
     }
@@ -246,22 +246,22 @@ export class StoragePoolView extends LitElement {
     }
 
     .stat-label {
-      font-size: 11px;
-      color: var(--vscode-descriptionForeground);
+      font-size: 12px;
+      color: var(--cds-text-secondary);
       text-transform: uppercase;
     }
 
     .stat-value {
       font-size: 14px;
       font-weight: 600;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
     }
 
     .usage-bar {
       width: 100%;
       height: 8px;
-      background: var(--vscode-progressBar-background);
-      border-radius: 4px;
+      background: var(--cds-button-primary);
+      border-radius: 0;
       overflow: hidden;
       margin: 12px 0;
     }
@@ -282,7 +282,7 @@ export class StoragePoolView extends LitElement {
 
     .usage-text {
       font-size: 12px;
-      color: var(--vscode-descriptionForeground);
+      color: var(--cds-text-secondary);
       text-align: center;
       margin-top: 4px;
     }
@@ -292,7 +292,7 @@ export class StoragePoolView extends LitElement {
       gap: 8px;
       margin-top: 12px;
       padding-top: 12px;
-      border-top: 1px solid var(--vscode-editorWidget-border);
+      border-top: 1px solid var(--cds-border-subtle);
     }
 
     .btn-secondary {
@@ -300,11 +300,11 @@ export class StoragePoolView extends LitElement {
       padding: 6px 12px;
       background: var(--vscode-button-secondaryBackground);
       color: var(--vscode-button-secondaryForeground);
-      border: 1px solid var(--vscode-button-border);
-      border-radius: 4px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       cursor: pointer;
       font-size: 12px;
-      transition: all 0.2s;
+      transition: all 0.15s;
       text-align: center;
     }
 
@@ -320,10 +320,10 @@ export class StoragePoolView extends LitElement {
     }
 
     .pool-list-item {
-      background: var(--vscode-editor-background);
-      border: 1px solid var(--vscode-editorWidget-border);
-      border-radius: 4px;
-      transition: all 0.2s;
+      background: var(--cds-background);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
+      transition: all 0.15s;
     }
 
     .pool-list-item:hover {
@@ -339,7 +339,7 @@ export class StoragePoolView extends LitElement {
     }
 
     .expand-icon {
-      color: var(--vscode-descriptionForeground);
+      color: var(--cds-text-secondary);
       transition: transform 0.2s;
     }
 
@@ -357,7 +357,7 @@ export class StoragePoolView extends LitElement {
 
     .pool-list-details {
       padding: 0 16px 16px 48px;
-      border-top: 1px solid var(--vscode-editorWidget-border);
+      border-top: 1px solid var(--cds-border-subtle);
       margin-top: 12px;
     }
 
@@ -373,9 +373,9 @@ export class StoragePoolView extends LitElement {
     }
 
     .volumes-title {
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 600;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
     }
 
     .volumes-list {
@@ -386,9 +386,9 @@ export class StoragePoolView extends LitElement {
 
     .volume-item {
       padding: 8px 12px;
-      background: var(--vscode-editor-background);
-      border: 1px solid var(--vscode-editorWidget-border);
-      border-radius: 4px;
+      background: var(--cds-background);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -403,11 +403,11 @@ export class StoragePoolView extends LitElement {
 
     .volume-name {
       font-weight: 500;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
     }
 
     .volume-size {
-      color: var(--vscode-descriptionForeground);
+      color: var(--cds-text-secondary);
     }
 
     .volume-actions {
@@ -419,14 +419,14 @@ export class StoragePoolView extends LitElement {
       padding: 4px;
       background: transparent;
       border: none;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
       cursor: pointer;
       border-radius: 2px;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .btn-icon:hover {
-      background: var(--vscode-toolbar-hoverBackground);
+      background: var(--cds-layer-02);
     }
 
     .empty-state {
@@ -440,27 +440,27 @@ export class StoragePoolView extends LitElement {
 
     .empty-icon {
       font-size: 48px;
-      color: var(--vscode-descriptionForeground);
+      color: var(--cds-text-secondary);
       margin-bottom: 16px;
     }
 
     .empty-title {
       font-size: 16px;
       font-weight: 600;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
       margin-bottom: 8px;
     }
 
     .empty-description {
-      font-size: 13px;
-      color: var(--vscode-descriptionForeground);
+      font-size: 14px;
+      color: var(--cds-text-secondary);
       margin-bottom: 24px;
       max-width: 400px;
     }
 
     .path-info {
-      font-size: 11px;
-      color: var(--vscode-descriptionForeground);
+      font-size: 12px;
+      color: var(--cds-text-secondary);
       margin-top: 4px;
       font-family: var(--vscode-editor-font-family);
     }

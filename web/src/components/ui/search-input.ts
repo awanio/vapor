@@ -18,37 +18,38 @@ export class SearchInput extends LitElement {
 
     .search-icon {
       position: absolute;
-      left: 12px;
-      color: var(--vscode-input-placeholderForeground, #999);
+      left: 16px;
+      color: var(--cds-text-placeholder, #6f6f6f);
       pointer-events: none;
       width: 16px;
       height: 16px;
     }
 
     .search-input {
-      padding: var(--search-input-padding, 6px 12px 6px 32px);
-      border: 1px solid var(--vscode-widget-border, var(--vscode-input-border, var(--vscode-panel-border, #454545)));
-      border-radius: 4px;
-      background-color: var(--vscode-input-background);
-      color: var(--vscode-input-foreground);
-      font-size: 0.875rem;
-      transition: all 0.2s;
+      padding: 0 16px 0 40px;
+      height: 40px;
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle, #393939);
+      border-radius: 0;
+      background-color: var(--cds-field, #262626);
+      color: var(--cds-text-primary, #f4f4f4);
+      font-size: 14px;
+      font-family: var(--cds-font-sans);
+      letter-spacing: 0.16px;
+      transition: border-color 0.15s;
       outline: none;
-      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08);
     }
 
     .search-input:hover:not(:disabled) {
-      border-color: var(--vscode-inputOption-hoverBorder, var(--vscode-widget-border, #858585));
+      background-color: var(--cds-field-hover, #353535);
     }
 
     .search-input:focus {
-      border-color: var(--vscode-focusBorder, #007acc);
-      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1), 0 0 0 1px var(--vscode-focusBorder, #007acc);
+      border-bottom-color: var(--cds-focus, #0f62fe);
     }
 
     .search-input::placeholder {
-      color: var(--vscode-input-placeholderForeground, #999);
-      opacity: 0.7;
+      color: var(--cds-text-placeholder, #6f6f6f);
     }
 
     .search-input:disabled {

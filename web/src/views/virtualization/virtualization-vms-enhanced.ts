@@ -286,12 +286,12 @@ export class VirtualizationVMsEnhanced extends LitElement {
       display: flex;
       flex-direction: column;
       padding: 14px;
-      background: var(--vscode-editor-background);
-      border: 1px solid var(--vscode-border);
-      border-radius: 8px;
-      transition: all 0.2s ease;
+      background: var(--cds-background);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
+      transition: all 0.15s;
       position: relative;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+      /* box-shadow: none (Carbon flat) */
     }
 
     .stat-widget:hover {
@@ -308,7 +308,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
       left: 0;
       right: 0;
       height: 3px;
-      border-radius: 8px 8px 0 0;
+      border-radius: 0 8px 0 0;
       opacity: 0;
       transition: opacity 0.2s ease;
     }
@@ -318,27 +318,27 @@ export class VirtualizationVMsEnhanced extends LitElement {
     }
 
     .stat-widget:nth-child(1)::before {
-      background: var(--vscode-charts-blue);
+      background: var(--cds-button-primary);
     }
 
     .stat-widget:nth-child(2)::before {
-      background: var(--vscode-charts-green);
+      background: var(--cds-support-success);
     }
 
     .stat-widget:nth-child(3)::before {
-      background: var(--vscode-charts-red);
+      background: var(--cds-support-error);
     }
 
     .stat-widget:nth-child(4)::before {
-      background: var(--vscode-charts-purple);
+      background: #a56eff;
     }
 
     .stat-widget:nth-child(5)::before {
-      background: var(--vscode-charts-orange);
+      background: #ff832b;
     }
 
     .stat-widget:nth-child(6)::before {
-      background: var(--vscode-charts-yellow);
+      background: var(--cds-support-warning);
     }
 
     .stat-widget-header {
@@ -358,55 +358,55 @@ export class VirtualizationVMsEnhanced extends LitElement {
     }
 
     .stat-icon.total {
-      color: var(--vscode-charts-blue);
+      color: var(--cds-button-primary);
     }
 
     .stat-icon.running {
-      color: var(--vscode-charts-green);
+      color: var(--cds-support-success);
     }
 
     .stat-icon.stopped {
-      color: var(--vscode-charts-red);
+      color: var(--cds-support-error);
     }
 
     .stat-icon.memory {
-      color: var(--vscode-charts-purple);
+      color: #a56eff;
     }
 
     .stat-icon.cpu {
-      color: var(--vscode-charts-orange);
+      color: #ff832b;
     }
 
     .stat-icon.storage {
-      color: var(--vscode-charts-yellow);
+      color: var(--cds-support-warning);
     }
 
     .stat-label {
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 500;
       text-transform: uppercase;
-      color: var(--vscode-descriptionForeground);
+      color: var(--cds-text-secondary);
       opacity: 0.8;
     }
 
     .stat-value {
       font-size: 18px;
       font-weight: 600;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
       line-height: 1.2;
     }
 
     .stat-value.running {
-      color: var(--vscode-charts-green);
+      color: var(--cds-support-success);
     }
 
     .stat-value.stopped {
-      color: var(--vscode-charts-red);
+      color: var(--cds-support-error);
     }
 
     .stat-subtitle {
       font-size: 10px;
-      color: var(--vscode-descriptionForeground);
+      color: var(--cds-text-secondary);
       margin-top: 2px;
       opacity: 0.7;
     }
@@ -438,9 +438,9 @@ export class VirtualizationVMsEnhanced extends LitElement {
       gap: 6px;
       padding: 4px 10px;
       border-radius: 999px;
-      border: 1px solid var(--vscode-border);
-      font-size: 11px;
-      color: var(--vscode-descriptionForeground);
+      border: 1px solid var(--cds-border-subtle);
+      font-size: 12px;
+      color: var(--cds-text-secondary);
       user-select: none;
     }
 
@@ -479,18 +479,18 @@ export class VirtualizationVMsEnhanced extends LitElement {
       align-items: center;
       gap: 6px;
       padding: 8px 16px;
-      background: var(--vscode-button-background, #007acc);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, white);
       border: none;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .btn-create:hover {
-      background: var(--vscode-button-hoverBackground, #005a9e);
+      background: var(--cds-button-primary-hover);
     }
 
     .btn-refresh {
@@ -499,12 +499,12 @@ export class VirtualizationVMsEnhanced extends LitElement {
       justify-content: center;
       padding: 8px 12px;
       background: transparent;
-      color: var(--vscode-foreground);
-      border: 1px solid var(--vscode-button-border);
-      border-radius: 4px;
+      color: var(--cds-text-primary);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       cursor: pointer;
-      font-size: 13px;
-      transition: all 0.2s;
+      font-size: 14px;
+      transition: all 0.15s;
     }
 
     .btn-refresh:hover {
@@ -516,8 +516,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
       align-items: center;
       gap: 4px;
       padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 11px;
+      border-radius: 0;
+      font-size: 12px;
       font-weight: 600;
       text-transform: uppercase;
     }
@@ -545,7 +545,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
     .virtualization-disabled-banner {
       margin-top: 16px;
       padding: 16px 20px;
-      border-radius: 8px;
+      border-radius: 0;
       border: 1px solid var(--vscode-inputValidation-warningBorder, #e2c08d);
       background: var(--vscode-inputValidation-warningBackground, rgba(229, 200, 144, 0.15));
       color: var(--vscode-inputValidation-warningForeground, #e2c08d);
@@ -559,8 +559,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
 
     .virtualization-disabled-banner p {
       margin: 0 0 4px 0;
-      font-size: 13px;
-      color: var(--vscode-descriptionForeground);
+      font-size: 14px;
+      color: var(--cds-text-secondary);
     }
     /* Templates drawer + form */
     .drawer-overlay {
@@ -580,8 +580,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
       width: 520px;
       max-width: calc(100vw - 40px);
       height: 100vh;
-      background: var(--vscode-editor-background, var(--vscode-bg-light));
-      border-left: 1px solid var(--vscode-border);
+      background: var(--cds-layer-01);
+      border-left: 1px solid var(--cds-border-subtle);
       box-shadow: -2px 0 12px rgba(0, 0, 0, 0.25);
       z-index: 1000;
       display: flex;
@@ -591,7 +591,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
     .drawer-header {
       padding: 16px 20px;
       background: var(--vscode-bg-lighter, #2c2f3a);
-      border-bottom: 1px solid var(--vscode-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -602,21 +602,21 @@ export class VirtualizationVMsEnhanced extends LitElement {
       margin: 0;
       font-size: 16px;
       font-weight: 600;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
     }
 
     .drawer-close {
       background: none;
       border: none;
-      color: var(--vscode-descriptionForeground);
+      color: var(--cds-text-secondary);
       cursor: pointer;
       padding: 6px 8px;
-      border-radius: 4px;
+      border-radius: 0;
     }
 
     .drawer-close:hover {
       background: rgba(255, 255, 255, 0.06);
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
     }
 
     .drawer-content {
@@ -627,8 +627,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
 
     .drawer-footer {
       padding: 14px 20px;
-      border-top: 1px solid var(--vscode-border);
-      background: var(--vscode-bg);
+      border-top: 1px solid var(--cds-border-subtle);
+      background: var(--cds-background);
       display: flex;
       justify-content: flex-end;
       gap: 8px;
@@ -638,11 +638,11 @@ export class VirtualizationVMsEnhanced extends LitElement {
     /* Buttons (match create-vm-wizard-enhanced) */
     .btn {
       padding: 8px 16px;
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 0;
+      font-size: 14px;
       font-weight: 500;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s;
       border: 1px solid transparent;
       font-family: inherit;
     }
@@ -653,20 +653,20 @@ export class VirtualizationVMsEnhanced extends LitElement {
     }
 
     .btn-primary {
-      background: var(--vscode-button-background, #0e639c);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, #ffffff);
-      border: 1px solid var(--vscode-button-background, #0e639c);
+      border: 1px solid var(--cds-button-primary);
     }
 
     .btn-primary:hover:not(:disabled) {
-      background: var(--vscode-button-hoverBackground, #1177bb);
-      border-color: var(--vscode-button-hoverBackground, #1177bb);
+      background: var(--cds-button-primary-hover);
+      border-color: var(--cds-button-primary-hover);
     }
 
     .btn-secondary {
       background: var(--vscode-button-secondaryBackground, #3c3c3c);
       color: var(--vscode-button-secondaryForeground, #cccccc);
-      border: 1px solid var(--vscode-button-border, #5a5a5a);
+      border: 1px solid var(--cds-border-subtle);
     }
 
     .btn-secondary:hover:not(:disabled) {
@@ -696,7 +696,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
     .form-group label {
       display: block;
       margin-bottom: 8px;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
       color: var(--vscode-foreground, #cccccc);
     }
@@ -710,10 +710,10 @@ export class VirtualizationVMsEnhanced extends LitElement {
       background: var(--vscode-input-background, #3c3c3c);
       color: var(--vscode-input-foreground, #cccccc);
       border: 1px solid var(--vscode-input-border, #858585);
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 0;
+      font-size: 14px;
       font-family: inherit;
-      transition: all 0.2s;
+      transition: all 0.15s;
       box-sizing: border-box;
     }
 
@@ -726,8 +726,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
     select:focus,
     textarea:focus {
       outline: none;
-      border-color: var(--vscode-focusBorder, #007acc);
-      box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc);
+      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      box-shadow: 0 0 0 1px var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
     input:disabled,
@@ -752,8 +752,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
     }
 
     .help-text {
-      font-size: 11px;
-      color: var(--vscode-descriptionForeground);
+      font-size: 12px;
+      color: var(--cds-text-secondary);
       opacity: 0.8;
     }
 
@@ -774,8 +774,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
       align-items: center;
       gap: 8px;
       padding: 8px 10px;
-      border: 1px solid var(--vscode-border);
-      border-radius: 6px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       background: rgba(255, 255, 255, 0.02);
     }
 
@@ -796,8 +796,8 @@ export class VirtualizationVMsEnhanced extends LitElement {
       gap: 6px;
       padding: 2px 8px;
       border-radius: 999px;
-      font-size: 11px;
-      border: 1px solid var(--vscode-border);
+      font-size: 12px;
+      border: 1px solid var(--cds-border-subtle);
       background: rgba(255, 255, 255, 0.02);
     }
 
@@ -834,7 +834,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
 
     .metric-value {
       font-size: 0.85rem;
-      color: var(--vscode-text);
+      color: var(--cds-text-primary);
     }
 
     .metric-bar {
@@ -848,19 +848,19 @@ export class VirtualizationVMsEnhanced extends LitElement {
       height: 100%;
       border-radius: 999px;
       transition: width 0.3s ease;
-      background: var(--vscode-charts-blue);
+      background: var(--cds-button-primary);
     }
 
     .metric-bar-fill.low {
-      background: var(--vscode-charts-green);
+      background: var(--cds-support-success);
     }
 
     .metric-bar-fill.medium {
-      background: var(--vscode-charts-blue);
+      background: var(--cds-button-primary);
     }
 
     .metric-bar-fill.high {
-      background: var(--vscode-charts-red);
+      background: var(--cds-support-error);
     }
 `;
 

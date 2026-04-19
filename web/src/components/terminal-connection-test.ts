@@ -31,7 +31,7 @@ export class TerminalConnectionTest extends LitElement {
       font-family: 'Consolas', 'Monaco', monospace;
       background: var(--surface-color, #1e1e1e);
       color: var(--text-color, #e0e0e0);
-      border-radius: 8px;
+      border-radius: 0;
       max-width: 800px;
       margin: 0 auto;
     }
@@ -55,7 +55,7 @@ export class TerminalConnectionTest extends LitElement {
       background: var(--primary-color, #4CAF50);
       color: white;
       border: none;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
       font-size: 14px;
       transition: background 0.3s;
@@ -88,7 +88,7 @@ export class TerminalConnectionTest extends LitElement {
     .status-card {
       background: var(--card-bg, #2a2a2a);
       padding: 12px;
-      border-radius: 4px;
+      border-radius: 0;
       border: 1px solid var(--border-color, #3a3a3a);
     }
 
@@ -150,7 +150,7 @@ export class TerminalConnectionTest extends LitElement {
       background: #FFC107;
       color: #000;
       padding: 12px;
-      border-radius: 4px;
+      border-radius: 0;
       margin-bottom: 16px;
     }
 
@@ -166,7 +166,7 @@ export class TerminalConnectionTest extends LitElement {
     .leak-results {
       background: var(--card-bg, #2a2a2a);
       padding: 12px;
-      border-radius: 4px;
+      border-radius: 0;
       margin-bottom: 16px;
     }
 
@@ -184,7 +184,7 @@ export class TerminalConnectionTest extends LitElement {
       gap: 8px;
       padding: 4px 8px;
       background: var(--card-bg, #2a2a2a);
-      border-radius: 4px;
+      border-radius: 0;
       margin-left: 16px;
     }
 
@@ -207,13 +207,13 @@ export class TerminalConnectionTest extends LitElement {
       background: var(--input-bg, #2a2a2a);
       color: var(--text-color, #e0e0e0);
       border: 1px solid var(--border-color, #3a3a3a);
-      border-radius: 4px;
+      border-radius: 0;
     }
 
     .test-actions {
       background: var(--card-bg, #2a2a2a);
       padding: 12px;
-      border-radius: 4px;
+      border-radius: 0;
       margin-bottom: 16px;
     }
 

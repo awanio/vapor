@@ -186,13 +186,13 @@ export class CreateVMWizardEnhanced extends LitElement {
     .drawer {
       width: 100%;
       height: 100%;
-      background: var(--vscode-editor-background, #1e1e1e);
+      background: var(--cds-background);
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
       display: flex;
       flex-direction: column;
       transform: translateX(100%);
       transition: transform 0.3s ease-out;
-      border-left: 1px solid var(--vscode-border);
+      border-left: 1px solid var(--cds-border-subtle);
     }
 
     :host([show]) .drawer {
@@ -241,7 +241,7 @@ export class CreateVMWizardEnhanced extends LitElement {
     .drawer-header {
       padding: 20px;
       background: var(--vscode-bg-lighter, #2c2f3a);
-      border-bottom: 1px solid var(--vscode-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -251,7 +251,7 @@ export class CreateVMWizardEnhanced extends LitElement {
     .header-title {
       font-size: 18px;
       font-weight: 500;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
       display: flex;
       align-items: center;
       gap: 12px;
@@ -261,7 +261,7 @@ export class CreateVMWizardEnhanced extends LitElement {
       display: flex;
       gap: 16px;
       padding: 16px 20px;
-      border-bottom: 1px solid var(--vscode-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
       background: var(--vscode-bg-lighter, #2c2f3a);
       flex-shrink: 0;
       overflow-x: auto;
@@ -271,27 +271,27 @@ export class CreateVMWizardEnhanced extends LitElement {
       display: flex;
       align-items: center;
       gap: 8px;
-      color: var(--vscode-descriptionForeground);
-      font-size: 13px;
+      color: var(--cds-text-secondary);
+      font-size: 14px;
       cursor: pointer;
       padding: 4px 8px;
-      border-radius: 4px;
-      transition: all 0.2s;
+      border-radius: 0;
+      transition: all 0.15s;
       white-space: nowrap;
     }
 
     .step:hover {
-      background: var(--vscode-toolbar-hoverBackground);
+      background: var(--cds-layer-02);
     }
 
     .step.active {
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
       font-weight: 500;
       background: var(--vscode-list-activeSelectionBackground);
     }
 
     .step.completed {
-      color: var(--vscode-charts-green);
+      color: var(--cds-support-success);
     }
 
     .step-number {
@@ -302,21 +302,21 @@ export class CreateVMWizardEnhanced extends LitElement {
       align-items: center;
       justify-content: center;
       background: var(--vscode-button-secondaryBackground);
-      border: 2px solid var(--vscode-button-border);
+      border: 2px solid var(--cds-border-subtle);
       font-size: 12px;
       font-weight: 600;
     }
 
     .step.active .step-number {
-      background: var(--vscode-button-background);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground);
-      border-color: var(--vscode-button-background);
+      border-color: var(--cds-button-primary);
     }
 
     .step.completed .step-number {
-      background: var(--vscode-charts-green);
+      background: var(--cds-support-success);
       color: white;
-      border-color: var(--vscode-charts-green);
+      border-color: var(--cds-support-success);
     }
 
     .content {
@@ -330,12 +330,12 @@ export class CreateVMWizardEnhanced extends LitElement {
       flex: 1;
       padding: 24px;
       overflow-y: auto;
-      background: var(--vscode-editor-background);
+      background: var(--cds-background);
     }
 
     .controls {
       padding: 20px;
-      border-top: 1px solid var(--vscode-border);
+      border-top: 1px solid var(--cds-border-subtle);
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -347,19 +347,19 @@ export class CreateVMWizardEnhanced extends LitElement {
     /* Collapsible sections */
     .section {
       margin-bottom: 24px;
-      border: 1px solid var(--vscode-border);
-      border-radius: 6px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       overflow: visible;
     }
 
     .section-header {
       padding: 12px 16px;
-      background: var(--vscode-editor-inactiveSelectionBackground);
+      background: var(--cds-layer-02);
       display: flex;
       align-items: center;
       justify-content: space-between;
       user-select: none;
-      border-bottom: 1px solid var(--vscode-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
     }
 
     .section-title {
@@ -368,7 +368,7 @@ export class CreateVMWizardEnhanced extends LitElement {
       gap: 8px;
       font-size: 14px;
       font-weight: 500;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
     }
 
     .section-content {
@@ -386,13 +386,13 @@ export class CreateVMWizardEnhanced extends LitElement {
     .form-group label {
       display: block;
       margin-bottom: 8px;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
       color: var(--vscode-foreground, #cccccc);
     }
 
     .required {
-      color: var(--vscode-errorForeground, #f48771);
+      color: var(--cds-support-error);
     }
 
     input,
@@ -404,10 +404,10 @@ export class CreateVMWizardEnhanced extends LitElement {
       background: var(--vscode-input-background, #3c3c3c);
       color: var(--vscode-input-foreground, #cccccc);
       border: 1px solid var(--vscode-input-border, #858585);
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 0;
+      font-size: 14px;
       font-family: inherit;
-      transition: all 0.2s;
+      transition: all 0.15s;
       box-sizing: border-box;
     }
 
@@ -415,8 +415,8 @@ export class CreateVMWizardEnhanced extends LitElement {
     select:focus,
     textarea:focus {
       outline: none;
-      border-color: var(--vscode-focusBorder, #007acc);
-      box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc);
+      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      box-shadow: 0 0 0 1px var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
     .checkbox-group {
@@ -450,8 +450,8 @@ export class CreateVMWizardEnhanced extends LitElement {
     }
     /* Lists */
     .list-container {
-      border: 1px solid var(--vscode-border);
-      border-radius: 4px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       padding: 12px;
       margin-bottom: 16px;
       background: var(--vscode-bg-lighter, #2d2d30);
@@ -459,9 +459,9 @@ export class CreateVMWizardEnhanced extends LitElement {
 
     .list-item {
       padding: 12px;
-      background: var(--vscode-editor-background);
-      border: 1px solid var(--vscode-border);
-      border-radius: 4px;
+      background: var(--cds-background);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       margin-bottom: 8px;
       display: flex;
       justify-content: space-between;
@@ -478,8 +478,8 @@ export class CreateVMWizardEnhanced extends LitElement {
     }
 
     .storage-table-wrapper {
-      border: 1px solid var(--vscode-border);
-      border-radius: 4px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       margin-bottom: 16px;
       background: transparent;
       overflow-x: auto;
@@ -488,22 +488,22 @@ export class CreateVMWizardEnhanced extends LitElement {
     .storage-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 13px;
+      font-size: 14px;
     }
 
     .storage-table th {
       text-align: left;
       padding: 8px 12px;
       background: var(--vscode-bg-lighter, #2d2d30);
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
       font-weight: 600;
-      border-bottom: 1px solid var(--vscode-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
     }
 
     .storage-table td {
       padding: 8px 12px;
       color: var(--vscode-foreground, #cccccc);
-      border-bottom: 1px solid var(--vscode-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
       vertical-align: middle;
       white-space: nowrap;
     }
@@ -513,7 +513,7 @@ export class CreateVMWizardEnhanced extends LitElement {
     }
 
     .storage-path {
-      font-size: 11px;
+      font-size: 12px;
       word-break: break-all;
       white-space: normal;
     }
@@ -521,8 +521,8 @@ export class CreateVMWizardEnhanced extends LitElement {
     .storage-badge {
       display: inline-block;
       padding: 2px 8px;
-      border-radius: 3px;
-      font-size: 11px;
+      border-radius: 0;
+      font-size: 12px;
       font-weight: 500;
       background: var(--vscode-badge-background, #4d4d4d);
       color: var(--vscode-badge-foreground, #ffffff);
@@ -530,12 +530,12 @@ export class CreateVMWizardEnhanced extends LitElement {
 
     .storage-badge.success {
       background: var(--vscode-charts-green, #89d185);
-      color: var(--vscode-editor-background, #1e1e1e);
+      color: var(--cds-background);
     }
 
     .storage-badge.warning {
-      background: var(--vscode-charts-yellow, #cca700);
-      color: var(--vscode-editor-background, #1e1e1e);
+      background: var(--cds-support-warning);
+      color: var(--cds-background);
     }
 
     .btn-icon {
@@ -549,7 +549,7 @@ export class CreateVMWizardEnhanced extends LitElement {
       margin-right: 6px;
       background: transparent;
       color: var(--vscode-foreground, #cccccc);
-      border: 1px solid var(--vscode-widget-border, #454545);
+      border: 1px solid var(--cds-border-subtle);
     }
 
     .btn-icon-ghost:hover:not(:disabled) {
@@ -563,11 +563,11 @@ export class CreateVMWizardEnhanced extends LitElement {
     /* Buttons */
     button {
       padding: 8px 16px;
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 0;
+      font-size: 14px;
       font-weight: 500;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s;
       border: 1px solid transparent;
       font-family: inherit;
     }
@@ -578,25 +578,25 @@ export class CreateVMWizardEnhanced extends LitElement {
     }
 
     .btn-primary {
-      background: var(--vscode-button-background, #0e639c);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, #ffffff);
-      border: 1px solid var(--vscode-button-background, #0e639c);
+      border: 1px solid var(--cds-button-primary);
     }
 
     .btn-primary:hover:not(:disabled) {
-      background: var(--vscode-button-hoverBackground, #1177bb);
-      border-color: var(--vscode-button-hoverBackground, #1177bb);
+      background: var(--cds-button-primary-hover);
+      border-color: var(--cds-button-primary-hover);
     }
 
     .btn-secondary {
       background: var(--vscode-button-secondaryBackground, #3c3c3c);
       color: var(--vscode-button-secondaryForeground, #cccccc);
-      border: 1px solid var(--vscode-button-border, #5a5a5a);
+      border: 1px solid var(--cds-border-subtle);
     }
 
     .btn-ghost {
       background: transparent;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
     }
 
     .btn-add {
@@ -624,7 +624,7 @@ export class CreateVMWizardEnhanced extends LitElement {
       top: 100%;
       left: 0;
       margin-top: 4px;
-      background: var(--vscode-editor-background, #1e1e1e);
+      background: var(--cds-background);
       border: 1px solid var(--vscode-dropdown-border, #3c3c3c);
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
       z-index: 10;
@@ -660,8 +660,8 @@ export class CreateVMWizardEnhanced extends LitElement {
       color: var(--close-color, #999);
       cursor: pointer;
       padding: 8px;
-      border-radius: 4px;
-      transition: all 0.2s;
+      border-radius: 0;
+      transition: all 0.15s;
     }
 
     .close-button:hover {
@@ -672,14 +672,14 @@ export class CreateVMWizardEnhanced extends LitElement {
     .help-text {
       margin-top: 6px;
       font-size: 12px;
-      color: var(--vscode-descriptionForeground, #8b8b8b);
+      color: var(--cds-text-secondary);
       line-height: 1.4;
     }
 
     .error-message {
       margin-top: 6px;
       font-size: 12px;
-      color: var(--vscode-errorForeground, #f48771);
+      color: var(--cds-support-error);
       display: flex;
       align-items: center;
       gap: 4px;
@@ -691,9 +691,9 @@ export class CreateVMWizardEnhanced extends LitElement {
       font-size: 12px;
       line-height: 1.5;
       min-height: 200px;
-      background: var(--vscode-editor-background);
-      border: 1px solid var(--vscode-widget-border);
-      border-radius: 4px;
+      background: var(--cds-background);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       padding: 12px;
     }
 
@@ -702,7 +702,7 @@ export class CreateVMWizardEnhanced extends LitElement {
       display: flex;
       gap: 8px;
       margin-bottom: 16px;
-      border-bottom: 1px solid var(--vscode-widget-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
     }
 
     .tab {
@@ -710,13 +710,13 @@ export class CreateVMWizardEnhanced extends LitElement {
       background: transparent;
       border: none;
       border-bottom: 2px solid transparent;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .tab:hover {
-      background: var(--vscode-toolbar-hoverBackground);
+      background: var(--cds-layer-02);
     }
 
     .tab.active {
@@ -736,8 +736,8 @@ export class CreateVMWizardEnhanced extends LitElement {
     .badge {
       display: inline-block;
       padding: 2px 6px;
-      border-radius: 3px;
-      font-size: 11px;
+      border-radius: 0;
+      font-size: 12px;
       font-weight: 500;
       background: var(--vscode-badge-background);
       color: var(--vscode-badge-foreground);
@@ -757,9 +757,9 @@ export class CreateVMWizardEnhanced extends LitElement {
       padding: 8px 12px;
       background: var(--vscode-button-secondaryBackground);
       border: 1px solid var(--vscode-input-border);
-      border-radius: 4px;
-      font-size: 13px;
-      color: var(--vscode-descriptionForeground);
+      border-radius: 0;
+      font-size: 14px;
+      color: var(--cds-text-secondary);
       white-space: nowrap;
     }
   `;
@@ -2101,7 +2101,7 @@ export class CreateVMWizardEnhanced extends LitElement {
         </div>
 
         ${selectedDevice && selectedDevice.device_type === 'gpu' ? html`
-          <div class="help-text" style="margin-top: 12px; padding: 8px; background: var(--vscode-inputValidation-infoBackground); border-radius: 4px;">
+          <div class="help-text" style="margin-top: 12px; padding: 8px; background: var(--vscode-inputValidation-infoBackground); border-radius: 0;">
             <strong>GPU Passthrough Tips:</strong>
             <ul style="margin: 4px 0; padding-left: 20px;">
               <li>Ensure the GPU is not being used by the host (blacklist driver or use vfio-pci)</li>
@@ -2642,7 +2642,7 @@ export class CreateVMWizardEnhanced extends LitElement {
         <div class="section-content">
           ${t ? html`
             <div
-              style="margin-bottom: 12px; padding: 10px; border-radius: 6px; background: var(--vscode-inputValidation-infoBackground); border: 1px solid var(--vscode-inputValidation-infoBorder);"
+              style="margin-bottom: 12px; padding: 10px; border-radius: 0; background: var(--vscode-inputValidation-infoBackground); border: 1px solid var(--vscode-inputValidation-infoBorder);"
             >
               <div style="font-weight: 600; margin-bottom: 4px;">Creating VM from template: ${t.name}</div>
               <div class="help-text">Only name, memory/vCPU, disk size, network, graphics, and cloud-init can be changed here. Other fields are controlled by the template.</div>
@@ -3209,7 +3209,7 @@ export class CreateVMWizardEnhanced extends LitElement {
           <div class="section-content">
             <div
               class="help-text"
-              style="padding: 10px; border-radius: 6px; background: var(--vscode-inputValidation-infoBackground); border: 1px solid var(--vscode-inputValidation-infoBorder);"
+              style="padding: 10px; border-radius: 0; background: var(--vscode-inputValidation-infoBackground); border: 1px solid var(--vscode-inputValidation-infoBorder);"
             >
               Advanced options are controlled by the template and are not editable in template mode.
             </div>
@@ -3318,7 +3318,7 @@ export class CreateVMWizardEnhanced extends LitElement {
               ` : ''}
             `}
 
-            <div class="help-text" style="margin-top: 12px; padding: 12px; background: var(--vscode-inputValidation-warningBackground); border-radius: 4px;">
+            <div class="help-text" style="margin-top: 12px; padding: 12px; background: var(--vscode-inputValidation-warningBackground); border-radius: 0;">
               <strong>⚠️ Important:</strong> PCI passthrough requires:
               <ul style="margin: 4px 0; padding-left: 20px;">
                 <li>IOMMU support enabled in BIOS (Intel VT-d or AMD-Vi)</li>

@@ -31,14 +31,14 @@ export class NamespaceDropdown extends LitElement {
       color: var(--vscode-button-secondaryForeground, var(--vscode-foreground, #3b3b3b));
       border: 1px solid var(--vscode-button-border, var(--vscode-border, #cecece));
       padding: 8px 16px;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: 8px;
       min-width: 200px;
       font-size: 14px;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .dropdown-toggle:hover {
@@ -49,7 +49,7 @@ export class NamespaceDropdown extends LitElement {
     .dropdown-toggle.open {
       background: var(--vscode-button-secondaryBackground, var(--vscode-bg-lighter, #eff1f3));
       color: var(--vscode-button-secondaryForeground, var(--vscode-foreground, #3b3b3b));
-      border-color: var(--vscode-focusBorder, #007acc);
+      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
     .dropdown-label {
@@ -73,8 +73,8 @@ export class NamespaceDropdown extends LitElement {
       margin-top: 4px;
       margin-top: 4px;
       background: var(--vscode-dropdown-background, var(--vscode-editor-background, #ffffff));
-      border: 1px solid var(--vscode-border);
-      border-radius: 4px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
       z-index: 1000;
       max-height: 400px;
@@ -94,13 +94,13 @@ export class NamespaceDropdown extends LitElement {
       background: var(--vscode-input-background, #ffffff);
       color: var(--vscode-input-foreground, #3b3b3b);
       border: 1px solid var(--vscode-input-border, #cecece);
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 0;
+      font-size: 14px;
       outline: none;
     }
 
     .search-input:focus {
-      border-color: var(--input-focus-border, var(--vscode-focusBorder, #007acc));
+      border-color: var(--input-focus-border, var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe)));
     }
 
     .search-input::placeholder {
@@ -118,7 +118,7 @@ export class NamespaceDropdown extends LitElement {
       display: flex;
       align-items: center;
       gap: 8px;
-      transition: background-color 0.2s;
+      transition: background-color 0.15s;
       font-size: 14px;
     }
 
@@ -127,7 +127,7 @@ export class NamespaceDropdown extends LitElement {
     }
 
     .namespace-option.selected {
-      background: var(--vscode-list-activeSelectionBackground, #007acc);
+      background: var(--vscode-list-activeSelectionBackground, var(--cds-button-primary, #0f62fe));
       color: var(--vscode-list-activeSelectionForeground, #ffffff);
     }
 
@@ -143,7 +143,7 @@ export class NamespaceDropdown extends LitElement {
       opacity: 0.7;
       background: var(--count-bg, rgba(255, 255, 255, 0.1));
       padding: 2px 8px;
-      border-radius: 12px;
+      border-radius: 0;
     }
 
     .no-results {
@@ -170,7 +170,7 @@ export class NamespaceDropdown extends LitElement {
 
     .options-container::-webkit-scrollbar-thumb {
       background: var(--scrollbar-thumb, #4a4d5a);
-      border-radius: 4px;
+      border-radius: 0;
     }
 
     .options-container::-webkit-scrollbar-thumb:hover {

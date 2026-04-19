@@ -3,96 +3,154 @@
 @tailwind utilities;
 
 @layer base {
-  /* Custom scrollbar styles */
+  /* Scrollbar — Carbon minimal */
   ::-webkit-scrollbar {
-    width: 12px;
-    height: 12px;
+    width: 8px;
+    height: 8px;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-vscode-bg;
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-vscode-border rounded-md;
+    @apply bg-vscode-border;
+    border-radius: 0;
   }
 
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-vscode-text-dim;
   }
 
-  /* Firefox scrollbar */
   * {
     scrollbar-width: thin;
-    scrollbar-color: theme('colors.vscode.border') theme('colors.vscode.bg');
+    scrollbar-color: theme('colors.vscode.border') transparent;
   }
 
-  /* Selection colors */
   ::selection {
     @apply bg-vscode-accent text-white;
   }
 
-  /* Focus styles */
   *:focus {
     @apply outline-none;
   }
 
   *:focus-visible {
-    @apply ring-2 ring-vscode-accent ring-offset-2 ring-offset-vscode-bg;
+    outline: 2px solid var(--cds-focus, #0f62fe);
+    outline-offset: -2px;
   }
 }
 
 @layer components {
-  /* Custom button styles */
+  /* ---------- Carbon Buttons ---------- */
   .btn {
-    @apply px-4 py-2 rounded-md font-medium transition-colors duration-150;
+    @apply px-4 font-normal transition-colors duration-150;
+    min-height: 48px;
+    border-radius: 0;
+    font-size: 14px;
+    letter-spacing: 0.16px;
+    padding: 14px 16px;
   }
 
   .btn-primary {
-    @apply bg-vscode-accent text-white hover:bg-vscode-accent-hover;
+    @apply bg-vscode-accent text-white;
+    border: 1px solid transparent;
+  }
+
+  .btn-primary:hover {
+    background: var(--cds-button-primary-hover, #0353e9);
   }
 
   .btn-secondary {
-    @apply bg-vscode-bg-lighter text-vscode-text hover:bg-vscode-border;
+    background: var(--cds-button-secondary, #6f6f6f);
+    @apply text-white;
+    border: 1px solid transparent;
+    border-radius: 0;
+  }
+
+  .btn-secondary:hover {
+    background: var(--cds-button-secondary-hover, #606060);
   }
 
   .btn-danger {
-    @apply bg-vscode-error text-white hover:opacity-90;
+    background: var(--cds-button-danger, #da1e28);
+    @apply text-white;
+    border: 1px solid transparent;
+    border-radius: 0;
   }
 
-  /* Input styles */
+  .btn-danger:hover {
+    background: var(--cds-button-danger-hover, #b81921);
+  }
+
+  /* ---------- Carbon Inputs (bottom-border only) ---------- */
   .input {
-    @apply w-full px-3 py-2 bg-vscode-bg-light border border-vscode-border rounded-md 
-           text-vscode-text placeholder-vscode-text-dim
-           focus:border-vscode-accent focus:ring-1 focus:ring-vscode-accent;
+    @apply w-full text-vscode-text;
+    background: var(--cds-field, #262626);
+    border: none;
+    border-bottom: 2px solid var(--cds-border-subtle, #393939);
+    border-radius: 0;
+    padding: 0 16px;
+    height: 40px;
+    font-size: 14px;
+    letter-spacing: 0.16px;
   }
 
-  /* Card styles */
+  .input::placeholder {
+    color: var(--cds-text-placeholder, #6f6f6f);
+  }
+
+  .input:focus {
+    outline: none;
+    border-bottom-color: var(--cds-focus, #0f62fe);
+  }
+
+  /* ---------- Carbon Cards (flat, no shadow) ---------- */
   .card {
-    @apply bg-vscode-bg-light border border-vscode-border rounded-lg p-4;
+    @apply bg-vscode-bg-light p-4;
+    border: none;
+    border-radius: 0;
   }
 
-  /* Modal overlay */
+  /* ---------- Modal ---------- */
   .modal-overlay {
-    @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50;
+    @apply fixed inset-0 flex items-center justify-center z-50;
+    background: var(--cds-overlay, rgba(0, 0, 0, 0.65));
   }
 
-  /* Tree item styles */
+  /* ---------- Tree items ---------- */
   .tree-item {
-    @apply flex items-center px-2 py-1 hover:bg-vscode-sidebar-hover cursor-pointer;
+    @apply flex items-center px-2 cursor-pointer;
+    height: 48px;
+    transition: background-color 0.15s;
+  }
+
+  .tree-item:hover {
+    @apply bg-vscode-sidebar-hover;
   }
 
   .tree-item.active {
     @apply bg-vscode-sidebar-active;
   }
 
-  /* Tab styles */
+  /* ---------- Carbon Tabs ---------- */
   .tab {
-    @apply px-4 py-2 bg-vscode-tab text-vscode-text-dim hover:text-vscode-text
-           border-r border-vscode-border cursor-pointer;
+    @apply px-4 text-vscode-text-dim cursor-pointer;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    height: 48px;
+    font-size: 14px;
+    letter-spacing: 0.16px;
+    transition: all 0.15s;
+  }
+
+  .tab:hover {
+    @apply text-vscode-text;
   }
 
   .tab.active {
-    @apply bg-vscode-tab-active text-vscode-text;
+    @apply text-vscode-text;
+    border-bottom-color: var(--cds-interactive, #0f62fe);
   }
 }

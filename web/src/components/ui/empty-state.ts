@@ -17,48 +17,54 @@ export class EmptyState extends LitElement {
 
     .empty-state {
       text-align: center;
-      padding: 3rem;
-      color: var(--text-secondary);
+      padding: 48px 32px;
+      color: var(--cds-text-secondary);
     }
 
     .icon {
-      font-size: 3rem;
-      margin-bottom: 1rem;
+      font-size: 48px;
+      margin-bottom: 16px;
       opacity: 0.5;
     }
 
     .title {
-      font-size: 1rem;
+      font-size: 20px;
       font-weight: 600;
-      margin-bottom: 0.5rem;
-      color: var(--text-primary, var(--vscode-foreground));
+      margin-bottom: 8px;
+      color: var(--cds-text-primary);
+      letter-spacing: 0.16px;
     }
 
     .description {
-      font-size: 0.9rem;
-      margin-bottom: 1rem;
-      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: 16px;
+      color: var(--cds-text-secondary);
       white-space: pre-wrap;
+      letter-spacing: 0.16px;
+      line-height: 1.43;
     }
 
     .action {
-      margin-top: 1rem;
+      margin-top: 24px;
     }
 
     .action button {
-      padding: 8px 16px;
-      background: var(--vscode-button-background, #007acc);
-      color: var(--vscode-button-foreground, white);
+      padding: 14px 16px;
+      min-height: 48px;
+      background: var(--cds-button-primary, #0f62fe);
+      color: #ffffff;
       border: none;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
-      font-size: 13px;
-      font-weight: 500;
-      transition: all 0.2s;
+      font-size: 14px;
+      font-weight: 400;
+      letter-spacing: 0.16px;
+      transition: background-color 0.15s;
+      font-family: var(--cds-font-sans);
     }
 
     .action button:hover {
-      background: var(--vscode-button-hoverBackground, #005a9e);
+      background: var(--cds-button-primary-hover, #0353e9);
     }
   `;
 

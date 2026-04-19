@@ -31,8 +31,8 @@ export class NotificationContainer extends LitElement {
     :host {
       display: block;
       position: fixed;
-      top: 20px;
-      right: 20px;
+      top: 16px;
+      right: 16px;
       z-index: 9999;
       pointer-events: none;
     }
@@ -40,34 +40,34 @@ export class NotificationContainer extends LitElement {
     .container {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 8px;
       max-width: 400px;
     }
 
     .notification {
-      background: var(--vscode-notifications-background, var(--vscode-editorWidget-background, #2c2f3a));
-      color: var(--vscode-notifications-foreground, var(--vscode-foreground, #cccccc));
-      border: 1px solid var(--vscode-notifications-border, var(--vscode-widget-border, #3a3d4a));
-      border-radius: 8px;
+      background: var(--cds-layer-01, #262626);
+      color: var(--cds-text-primary, #f4f4f4);
+      border: 1px solid var(--cds-border-subtle, #393939);
+      border-radius: 0;
       padding: 16px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      box-shadow: var(--cds-shadow-raised, 0 2px 6px rgba(0, 0, 0, 0.3));
       display: flex;
       align-items: flex-start;
       gap: 12px;
       pointer-events: auto;
-      animation: slideIn 0.3s ease-out;
+      animation: slideIn 0.15s ease-out;
       position: relative;
     }
 
     .notification.light {
       background: #ffffff;
-      color: #24292f;
-      border-color: #d0d7de;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      color: #161616;
+      border-color: #e0e0e0;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
     }
 
     .notification.closing {
-      animation: slideOut 0.3s ease-out forwards;
+      animation: slideOut 0.15s ease-out forwards;
     }
 
     @keyframes slideIn {
@@ -99,35 +99,35 @@ export class NotificationContainer extends LitElement {
     }
 
     .notification.info {
-      border-left: 4px solid var(--vscode-notificationsInfoIcon-foreground, #2196f3);
+      border-left: 3px solid var(--cds-support-info, #78a9ff);
     }
 
     .notification.info .notification-icon {
-      color: var(--vscode-notificationsInfoIcon-foreground, #2196f3);
+      color: var(--cds-support-info, #78a9ff);
     }
 
     .notification.success {
-      border-left: 4px solid var(--vscode-notificationsInfoIcon-foreground, #4caf50); /* Fallback to success color if no precise var */
+      border-left: 3px solid var(--cds-support-success, #42be65);
     }
 
     .notification.success .notification-icon {
-      color: var(--vscode-testing-iconPassed, #4caf50);
+      color: var(--cds-support-success, #42be65);
     }
 
     .notification.warning {
-      border-left: 4px solid var(--vscode-notificationsWarningIcon-foreground, #ff9800);
+      border-left: 3px solid var(--cds-support-warning, #f1c21b);
     }
 
     .notification.warning .notification-icon {
-      color: var(--vscode-notificationsWarningIcon-foreground, #ff9800);
+      color: var(--cds-support-warning, #f1c21b);
     }
 
     .notification.error {
-      border-left: 4px solid var(--vscode-notificationsErrorIcon-foreground, #f44336);
+      border-left: 3px solid var(--cds-support-error, #ff8389);
     }
 
     .notification.error .notification-icon {
-      color: var(--vscode-notificationsErrorIcon-foreground, #f44336);
+      color: var(--cds-support-error, #ff8389);
     }
 
     .notification-content {
@@ -138,9 +138,10 @@ export class NotificationContainer extends LitElement {
     }
 
     .notification-message {
-      color: var(--vscode-notifications-foreground, var(--vscode-foreground, inherit));
+      color: inherit;
       font-size: 14px;
-      line-height: 1.5;
+      line-height: 1.43;
+      letter-spacing: 0.16px;
       word-break: break-word;
     }
 
@@ -151,18 +152,20 @@ export class NotificationContainer extends LitElement {
     }
 
     .notification-action {
-      background: var(--vscode-button-secondaryBackground, transparent);
-      border: 1px solid var(--vscode-button-border, transparent);
-      color: var(--vscode-button-secondaryForeground, var(--vscode-foreground, inherit));
-      padding: 4px 12px;
-      border-radius: 4px;
+      background: transparent;
+      border: 1px solid var(--cds-border-strong, #525252);
+      color: var(--cds-text-primary, #f4f4f4);
+      padding: 4px 16px;
+      border-radius: 0;
       font-size: 12px;
+      letter-spacing: 0.32px;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: background-color 0.15s;
+      font-family: var(--cds-font-sans);
     }
 
     .notification-action:hover {
-      background: var(--vscode-button-secondaryHoverBackground, rgba(0, 0, 0, 0.1));
+      background: var(--cds-layer-02, #393939);
     }
 
     .close-button {
@@ -171,27 +174,27 @@ export class NotificationContainer extends LitElement {
       right: 8px;
       background: none;
       border: none;
-      color: var(--vscode-icon-foreground, #999);
+      color: var(--cds-text-secondary, #c6c6c6);
       cursor: pointer;
       padding: 4px;
-      border-radius: 4px;
-      transition: all 0.2s;
+      border-radius: 0;
+      transition: all 0.15s;
       opacity: 0.7;
     }
 
     .close-button:hover {
-      background: var(--vscode-toolbar-hoverBackground, rgba(0, 0, 0, 0.1));
+      background: var(--cds-layer-02, #393939);
       opacity: 1;
-      color: var(--vscode-foreground, #333);
+      color: var(--cds-text-primary, #f4f4f4);
     }
 
     .progress-bar {
       position: absolute;
       bottom: 0;
       left: 0;
-      height: 3px;
+      height: 2px;
       background: currentColor;
-      border-radius: 0 0 8px 8px;
+      border-radius: 0;
       transition: width linear;
       opacity: 0.3;
     }

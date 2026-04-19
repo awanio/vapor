@@ -26,21 +26,21 @@ export class IconShowcase extends LitElement {
       flex-direction: column;
       align-items: center;
       padding: 0.5rem;
-      border: 1px solid var(--vscode-panel-border);
-      border-radius: 4px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
     }
 
     .icon-name {
       margin-top: 0.5rem;
-      font-size: 0.75rem;
+      font-size: 12px;
       text-align: center;
     }
 
     .usage-example {
       margin-top: 2rem;
       padding: 1rem;
-      background: var(--vscode-editor-background);
-      border-radius: 4px;
+      background: var(--cds-background);
+      border-radius: 0;
     }
 
     .code {
@@ -86,7 +86,7 @@ export class IconShowcase extends LitElement {
         ${sizes.map(size => html`
           <div style="text-align: center;">
             ${icon('kubernetes', { size })}
-            <div style="font-size: 0.75rem;">${size}</div>
+            <div style="font-size: 12px;">${size}</div>
           </div>
         `)}
       </div>

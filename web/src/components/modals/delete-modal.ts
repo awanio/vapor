@@ -49,9 +49,9 @@ export class DeleteModal extends LitElement {
     }
 
     .modal {
-      background: var(--vscode-editor-background, var(--vscode-bg-light));
+      background: var(--cds-layer-01);
       border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
-      border-radius: 8px;
+      border-radius: 0;
       padding: 24px;
       max-width: 500px;
       width: 90%;
@@ -88,19 +88,19 @@ export class DeleteModal extends LitElement {
     .modal-title {
       font-size: 18px;
       font-weight: 600;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
     }
 
     .modal-body {
       margin-bottom: 24px;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
       line-height: 1.5;
     }
 
     .modal-resource-info {
       background: var(--vscode-editor-inactiveSelectionBackground, rgba(255, 255, 255, 0.05));
       border: 1px solid var(--vscode-widget-border, rgba(255, 255, 255, 0.1));
-      border-radius: 4px;
+      border-radius: 0;
       padding: 12px;
       margin: 12px 0;
       font-family: var(--vscode-editor-font-family, monospace);
@@ -116,11 +116,11 @@ export class DeleteModal extends LitElement {
     .modal-button {
       padding: 8px 16px;
       border: 1px solid var(--vscode-button-border, transparent);
-      border-radius: 4px;
+      border-radius: 0;
       font-size: 14px;
       font-weight: 500;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .modal-button.cancel {
@@ -144,14 +144,14 @@ export class DeleteModal extends LitElement {
     }
 
     .modal-button.confirm {
-      background: var(--vscode-button-background, #007acc);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, white);
-      border-color: var(--vscode-button-background, #007acc);
+      border-color: var(--cds-button-primary);
     }
 
     .modal-button.confirm:hover {
-      background: var(--vscode-button-hoverBackground, #005a9e);
-      border-color: var(--vscode-button-hoverBackground, #005a9e);
+      background: var(--cds-button-primary-hover);
+      border-color: var(--cds-button-primary-hover);
     }
 
     .modal-button:disabled {
@@ -226,7 +226,7 @@ export class DeleteModal extends LitElement {
               ${this.item.namespace ? html`<div><strong>Namespace:</strong> ${this.item.namespace}</div>` : ''}
             </div>
             ${this.hasVolumes ? html`
-              <div style="margin:12px 0; padding:12px; border:1px solid var(--vscode-widget-border); border-radius:4px; background: rgba(255, 193, 7, 0.08);">
+              <div style="margin:12px 0; padding:12px; border:1px solid var(--cds-border-subtle); border-radius:4px; background: rgba(255, 193, 7, 0.08);">
                 <div style="color: var(--vscode-notificationsWarningIcon-foreground,#ff9800); font-weight:600; margin-bottom:6px;">
                   ⚠️ Warning: This resource contains ${this.volumeCount} volume(s).
                 </div>

@@ -37,8 +37,8 @@ export class ApiTokenDrawer extends LitElement {
       inset-inline-end: 0;
       width: 480px;
       max-width: 100%;
-      background: var(--vscode-editor-background, var(--vscode-bg-light));
-      border-left: 1px solid var(--vscode-border);
+      background: var(--cds-layer-01);
+      border-left: 1px solid var(--cds-border-subtle);
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.3);
       display: flex;
       flex-direction: column;
@@ -62,8 +62,8 @@ export class ApiTokenDrawer extends LitElement {
 
     .drawer-header {
       padding: 20px;
-      background: var(--vscode-bg-lighter, #252526);
-      border-bottom: 1px solid var(--vscode-border);
+      background: var(--cds-layer-02);
+      border-bottom: 1px solid var(--cds-border-subtle);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -83,9 +83,9 @@ export class ApiTokenDrawer extends LitElement {
       color: var(--vscode-foreground, #cccccc);
       cursor: pointer;
       padding: 4px 8px;
-      border-radius: 4px;
+      border-radius: 0;
       font-size: 20px;
-      transition: background 0.2s;
+      transition: background-color 0.15s;
     }
 
     .close-btn:hover {
@@ -100,8 +100,8 @@ export class ApiTokenDrawer extends LitElement {
 
     .drawer-footer {
       padding: 16px 20px;
-      background: var(--vscode-bg-lighter, #252526);
-      border-top: 1px solid var(--vscode-border);
+      background: var(--cds-layer-02);
+      border-top: 1px solid var(--cds-border-subtle);
       display: flex;
       justify-content: flex-end;
       gap: 12px;
@@ -118,16 +118,16 @@ export class ApiTokenDrawer extends LitElement {
     label {
       font-size: 12px;
       font-weight: 500;
-      color: var(--vscode-descriptionForeground, #9d9d9d);
+      color: var(--cds-text-secondary);
     }
 
     input, select {
       padding: 6px 8px;
-      border-radius: 3px;
+      border-radius: 0;
       border: 1px solid var(--vscode-input-border, #5a5a5a);
       background: var(--vscode-input-background, #3c3c3c);
       color: var(--vscode-input-foreground, #cccccc);
-      font-size: 13px;
+      font-size: 14px;
       font-family: inherit;
       outline: none;
       box-sizing: border-box;
@@ -135,34 +135,34 @@ export class ApiTokenDrawer extends LitElement {
     }
 
     input:focus, select:focus {
-      border-color: var(--vscode-focusBorder, #007acc);
+      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
     .btn {
       padding: 6px 12px;
-      border-radius: 4px;
+      border-radius: 0;
       border: 1px solid transparent;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
       cursor: pointer;
       font-family: inherit;
     }
 
     .btn-primary {
-      background: var(--vscode-button-background, #0e639c);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, #ffffff);
-      border-color: var(--vscode-button-background, #0e639c);
+      border-color: var(--cds-button-primary);
     }
 
     .btn-primary:hover:not(:disabled) {
-      background: var(--vscode-button-hoverBackground, #1177bb);
-      border-color: var(--vscode-button-hoverBackground, #1177bb);
+      background: var(--cds-button-primary-hover);
+      border-color: var(--cds-button-primary-hover);
     }
 
     .btn-secondary {
       background: var(--vscode-button-secondaryBackground, #3c3c3c);
       color: var(--vscode-button-secondaryForeground, #cccccc);
-      border-color: var(--vscode-button-border, #5a5a5a);
+      border-color: var(--cds-border-subtle);
     }
 
     .btn-secondary:hover:not(:disabled) {
@@ -172,14 +172,14 @@ export class ApiTokenDrawer extends LitElement {
     .error-msg {
       color: var(--vscode-inputValidation-errorForeground, #f48771);
       margin-bottom: 16px;
-      font-size: 13px;
+      font-size: 14px;
     }
 
     .token-display {
-      background: var(--vscode-bg-lighter);
+      background: var(--cds-layer-02);
       padding: 16px;
-      border-radius: 4px;
-      border: 1px solid var(--vscode-border);
+      border-radius: 0;
+      border: 1px solid var(--cds-border-subtle);
       margin-bottom: 16px;
     }
 
@@ -190,9 +190,9 @@ export class ApiTokenDrawer extends LitElement {
       font-size: 14px;
       margin: 8px 0;
       padding: 8px;
-      background: var(--vscode-editor-background);
-      border: 1px solid var(--vscode-border);
-      border-radius: 3px;
+      background: var(--cds-background);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
     }
 
     .warning-text {

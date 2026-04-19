@@ -8,16 +8,18 @@ export class LoadingState extends LitElement {
   static override styles = css`
     .loading-state {
       text-align: center;
-      padding: 20px;
-      color: var(--vscode-text);
-      font-style: italic;
+      padding: 32px;
+      color: var(--cds-text-secondary);
+      font-size: 14px;
+      letter-spacing: 0.16px;
+      font-family: var(--cds-font-sans);
     }
 
     .spinner {
       display: inline-block;
       width: 24px;
       height: 24px;
-      margin-bottom: 12px;
+      margin-bottom: 16px;
     }
 
     .spinner::after {
@@ -27,8 +29,8 @@ export class LoadingState extends LitElement {
       height: 20px;
       margin: 2px;
       border-radius: 50%;
-      border: 2px solid var(--vscode-focusBorder, #007acc);
-      border-color: var(--vscode-focusBorder, #007acc) transparent var(--vscode-focusBorder, #007acc) transparent;
+      border: 2px solid var(--cds-button-primary, #0f62fe);
+      border-color: var(--cds-button-primary, #0f62fe) transparent var(--cds-button-primary, #0f62fe) transparent;
       animation: spinner 1.2s linear infinite;
     }
 

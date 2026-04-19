@@ -14,12 +14,12 @@ export class ResourceDetailView extends LitElement {
     :host {
       display: block;
       font-family: var(--vscode-font-family, system-ui, -apple-system, sans-serif);
-      font-size: 13px;
-      color: var(--vscode-foreground);
+      font-size: 14px;
+      color: var(--cds-text-primary);
     }
 
     .pod-details-content {
-      font-size: 0.875rem;
+      font-size: 14px;
     }
 
     .detail-sections {
@@ -42,8 +42,8 @@ export class ResourceDetailView extends LitElement {
       padding: 0px 0px 6px;
       font-size: 16px;
       font-weight: 600;
-      color: var(--vscode-foreground);
-      border-bottom: 2px solid var(--vscode-focusBorder, var(--vscode-accent, #007acc));
+      color: var(--cds-text-primary);
+      border-bottom: 2px solid var(--vscode-focusBorder, var(--cds-button-primary));
     }
 
     .section-title {
@@ -51,8 +51,8 @@ export class ResourceDetailView extends LitElement {
       padding: 0px 0px 6px;
       font-size: 16px;
       font-weight: 600;
-      color: var(--vscode-foreground);
-      border-bottom: 2px solid var(--vscode-focusBorder, var(--vscode-accent, #007acc));
+      color: var(--cds-text-primary);
+      border-bottom: 2px solid var(--vscode-focusBorder, var(--cds-button-primary));
       text-transform: capitalize;
       display: flex;
       align-items: center;
@@ -76,10 +76,10 @@ export class ResourceDetailView extends LitElement {
     }
 
     .detail-item.nested {
-      border-left: 3px solid var(--vscode-focusBorder, var(--vscode-accent, #007acc));
+      border-left: 3px solid var(--vscode-focusBorder, var(--cds-button-primary));
       margin-left: 0px;
       background: var(--vscode-list-hoverBackground, rgba(0, 122, 204, 0.05));
-      border-radius: 4px;
+      border-radius: 0;
       padding: 12px;
       margin-bottom: 12px;
       flex-direction: column;
@@ -97,7 +97,7 @@ export class ResourceDetailView extends LitElement {
 
     .detail-value {
       flex: 1;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
       word-break: break-word;
       display: inline;
     }
@@ -134,7 +134,7 @@ export class ResourceDetailView extends LitElement {
     .array-item {
       background: var(--vscode-list-inactiveSelectionBackground, var(--vscode-editor-background, #f3f3f3));
       border: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.35));
-      border-radius: 4px;
+      border-radius: 0;
       padding: 12px;
       margin-bottom: 8px;
       position: relative;
@@ -148,17 +148,17 @@ export class ResourceDetailView extends LitElement {
       position: absolute;
       top: 4px;
       right: 8px;
-      font-size: 11px;
+      font-size: 12px;
       color: var(--vscode-badge-foreground, white);
-      background: var(--vscode-badge-background, #007acc);
+      background: var(--vscode-badge-background, var(--cds-button-primary, #0f62fe));
       padding: 2px 6px;
-      border-radius: 10px;
+      border-radius: 0;
     }
 
     /* Special value styles */
     .value-null,
     .detail-value.null {
-      color: var(--vscode-descriptionForeground);
+      color: var(--cds-text-secondary);
       font-style: italic;
       opacity: 0.7;
     }
@@ -186,11 +186,11 @@ export class ResourceDetailView extends LitElement {
 
     .label-item,
     .annotation-item {
-      background: var(--vscode-badge-background, #007acc);
+      background: var(--vscode-badge-background, var(--cds-button-primary, #0f62fe));
       color: var(--vscode-badge-foreground, white);
       padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 11px;
+      border-radius: 0;
+      font-size: 12px;
       display: inline-flex;
       align-items: center;
       gap: 4px;
@@ -198,7 +198,7 @@ export class ResourceDetailView extends LitElement {
 
     .annotation-item {
       background: var(--vscode-textBlockQuote-background, rgba(127, 127, 127, 0.1));
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
       border: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.2));
     }
 
@@ -211,8 +211,8 @@ export class ResourceDetailView extends LitElement {
     .status-badge {
       display: inline-block;
       padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 11px;
+      border-radius: 0;
+      font-size: 12px;
       font-weight: 500;
     }
 
@@ -238,7 +238,7 @@ export class ResourceDetailView extends LitElement {
 
     /* Timestamp */
     .timestamp {
-      color: var(--vscode-descriptionForeground);
+      color: var(--cds-text-secondary);
       font-size: 12px;
       opacity: 0.8;
     }
@@ -248,7 +248,7 @@ export class ResourceDetailView extends LitElement {
     .raw-data {
       background: var(--vscode-textCodeBlock-background, rgba(175, 175, 175, 0.12));
       border: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.35));
-      border-radius: 4px;
+      border-radius: 0;
       padding: 12px;
       margin-top: 8px;
       font-family: var(--vscode-editor-font-family, monospace);
@@ -269,13 +269,13 @@ export class ResourceDetailView extends LitElement {
     details summary {
       cursor: pointer;
       padding: 8px 12px;
-      background: var(--vscode-button-background, #007acc);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, white);
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 0;
+      font-size: 14px;
       font-weight: 500;
       user-select: none;
-      transition: all 0.2s;
+      transition: all 0.15s;
       display: block;
       outline: none;
       border: 1px solid transparent;
@@ -303,7 +303,7 @@ export class ResourceDetailView extends LitElement {
 
     details[open] summary {
       margin-bottom: 12px;
-      border-radius: 4px 4px 0 0;
+      border-radius: 0 4px 0 0;
     }
 
     /* Collapsible sections */
@@ -334,7 +334,7 @@ export class ResourceDetailView extends LitElement {
 
     /* Empty state */
     .empty-value {
-      color: var(--vscode-descriptionForeground);
+      color: var(--cds-text-secondary);
       font-style: italic;
       opacity: 0.7;
     }

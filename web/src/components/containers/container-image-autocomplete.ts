@@ -24,20 +24,20 @@ export class ContainerImageAutocomplete extends LitElement {
       width: 100%;
       padding: 8px 12px;
       border: 1px solid var(--vscode-input-border, #858585);
-      border-radius: 4px;
+      border-radius: 0;
       background: var(--vscode-input-background, #3c3c3c);
       color: var(--vscode-input-foreground, #cccccc);
-      font-size: 13px;
+      font-size: 14px;
       font-family: inherit;
-      transition: all 0.2s;
+      transition: all 0.15s;
       outline: none;
       box-sizing: border-box;
     }
 
     .input:focus {
       outline: none;
-      border-color: var(--vscode-focusBorder, #007acc);
-      box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc);
+      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      box-shadow: 0 0 0 1px var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
     .input:disabled {
@@ -54,9 +54,9 @@ export class ContainerImageAutocomplete extends LitElement {
       top: calc(100% + 4px);
       left: 0;
       right: 0;
-      background: var(--vscode-editorWidget-background, var(--vscode-editor-background, #1e1e1e));
+      background: var(--vscode-editorWidget-background, var(--cds-background));
       border: 1px solid var(--vscode-input-border, #858585);
-      border-radius: 4px;
+      border-radius: 0;
       max-height: 260px;
       overflow: auto;
       z-index: 1000;
@@ -77,7 +77,7 @@ export class ContainerImageAutocomplete extends LitElement {
     }
 
     .primary {
-      font-size: 13px;
+      font-size: 14px;
       color: var(--vscode-foreground, #e0e0e0);
       line-height: 1.2;
       word-break: break-all;

@@ -112,26 +112,26 @@ export class VirtualizationNetworks extends LitElement {
       align-items: center;
       gap: 6px;
       padding: 8px 16px;
-      background: var(--vscode-button-background, #007acc);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, white);
       border: none;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .btn-create:hover {
-      background: var(--vscode-button-hoverBackground, #005a9e);
+      background: var(--cds-button-primary-hover);
     }
 
 
     .network-type-badge {
       display: inline-block;
       padding: 2px 8px;
-      border-radius: 3px;
-      font-size: 11px;
+      border-radius: 0;
+      font-size: 12px;
       font-weight: 500;
       text-transform: uppercase;
     }
@@ -163,8 +163,8 @@ export class VirtualizationNetworks extends LitElement {
       right: 0;
       width: 50%;
       height: 100%;
-      background: var(--vscode-editor-background, var(--vscode-bg-light));
-      border-left: 1px solid var(--vscode-border);
+      background: var(--cds-layer-01);
+      border-left: 1px solid var(--cds-border-subtle);
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
       z-index: 1001;
       overflow-y: auto;
@@ -207,11 +207,11 @@ export class VirtualizationNetworks extends LitElement {
 
     .drawer-header {
       padding: 20px 24px;
-      border-bottom: 1px solid var(--vscode-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: var(--vscode-editor-background, var(--vscode-bg-light));
+      background: var(--cds-layer-01);
       position: sticky;
       top: 0;
       z-index: 10;
@@ -231,11 +231,11 @@ export class VirtualizationNetworks extends LitElement {
 
     .drawer-footer {
       padding: 16px 24px;
-      border-top: 1px solid var(--vscode-border);
+      border-top: 1px solid var(--cds-border-subtle);
       display: flex;
       justify-content: flex-end;
       gap: 12px;
-      background: var(--vscode-editor-background, var(--vscode-bg-light));
+      background: var(--cds-layer-01);
       position: sticky;
       bottom: 0;
       z-index: 10;
@@ -250,14 +250,14 @@ export class VirtualizationNetworks extends LitElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 4px;
+      border-radius: 0;
       font-size: 20px;
       line-height: 1;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .close-btn:hover {
-      background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
+      background: var(--cds-layer-02);
       color: var(--vscode-icon-foreground, #c5c5c5);
     }
 
@@ -277,24 +277,24 @@ export class VirtualizationNetworks extends LitElement {
       color: var(--vscode-foreground, #cccccc);
       margin: 0 0 12px 0;
       padding-bottom: 8px;
-      border-bottom: 1px solid var(--vscode-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
     }
 
     .detail-item {
       display: flex;
       align-items: flex-start;
       padding: 8px 0;
-      font-size: 13px;
+      font-size: 14px;
       line-height: 1.5;
     }
 
     .detail-item:not(:last-child) {
-      border-bottom: 1px solid var(--vscode-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
     }
 
     .detail-key {
       flex: 0 0 180px;
-      color: var(--vscode-descriptionForeground, #9d9d9d);
+      color: var(--cds-text-secondary);
       font-weight: 500;
     }
 
@@ -317,15 +317,15 @@ export class VirtualizationNetworks extends LitElement {
       margin-top: 8px;
       margin-left: 180px;
       padding-left: 12px;
-      border-left: 2px solid var(--vscode-border);
+      border-left: 2px solid var(--cds-border-subtle);
     }
 
     .badge-inline {
       display: inline-flex;
       align-items: center;
       padding: 2px 6px;
-      border-radius: 3px;
-      font-size: 11px;
+      border-radius: 0;
+      font-size: 12px;
       font-weight: 500;
       gap: 4px;
     }
@@ -366,7 +366,7 @@ export class VirtualizationNetworks extends LitElement {
       display: flex;
       gap: 20px;
       font-size: 12px;
-      border-bottom: 1px solid var(--vscode-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
     }
 
     .dhcp-host-item:last-child {
@@ -377,22 +377,22 @@ export class VirtualizationNetworks extends LitElement {
       display: flex;
       gap: 8px;
       margin-bottom: 16px;
-      border-bottom: 1px solid var(--vscode-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
     }
 
     .detail-tab {
       padding: 6px 12px;
       border: none;
       background: transparent;
-      color: var(--vscode-text-dim, #9d9d9d);
+      color: var(--cds-text-secondary);
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
       border-bottom: 2px solid transparent;
     }
 
     .detail-tab.active {
-      border-bottom-color: var(--vscode-accent, #007acc);
+      border-bottom-color: var(--cds-button-primary);
       color: var(--vscode-foreground, #cccccc);
     }
 
@@ -405,13 +405,13 @@ export class VirtualizationNetworks extends LitElement {
 
     .detail-table th,
     .detail-table td {
-      border: 1px solid var(--vscode-border);
+      border: 1px solid var(--cds-border-subtle);
       padding: 4px 6px;
       text-align: left;
     }
 
     .detail-table th {
-      background: var(--vscode-editor-background, var(--vscode-bg-light));
+      background: var(--cds-layer-01);
       font-weight: 500;
     }
 
@@ -421,15 +421,15 @@ export class VirtualizationNetworks extends LitElement {
     }
 
     .dhcp-host-item strong {
-      color: var(--vscode-descriptionForeground, #9d9d9d);
+      color: var(--cds-text-secondary);
       font-weight: 500;
       margin-right: 8px;
     }
 
     .raw-data {
-      background: var(--vscode-editor-background, var(--vscode-bg-light));
-      border: 1px solid var(--vscode-border);
-      border-radius: 4px;
+      background: var(--cds-layer-01);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       padding: 12px;
       font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
       font-size: 12px;
@@ -447,10 +447,10 @@ export class VirtualizationNetworks extends LitElement {
       padding: 8px 12px;
       background: var(--vscode-button-secondaryBackground, #3c3c3c);
       color: var(--vscode-button-secondaryForeground, #cccccc);
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 0;
+      font-size: 14px;
       font-weight: 500;
-      transition: background 0.2s;
+      transition: background-color 0.15s;
       user-select: none;
     }
 
@@ -459,42 +459,42 @@ export class VirtualizationNetworks extends LitElement {
     }
 
     details[open] summary {
-      border-radius: 4px 4px 0 0;
+      border-radius: 0 4px 0 0;
       margin-bottom: 0;
     }
 
 
     .btn {
       padding: 8px 16px;
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 0;
+      font-size: 14px;
       font-weight: 500;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s;
       border: 1px solid transparent;
       font-family: inherit;
     }
 
     .btn-primary {
-      background: var(--vscode-button-background, #0e639c);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, #ffffff);
-      border: 1px solid var(--vscode-button-background, #0e639c);
+      border: 1px solid var(--cds-button-primary);
     }
 
     .btn-primary:hover:not(:disabled) {
-      background: var(--vscode-button-hoverBackground, #1177bb);
-      border-color: var(--vscode-button-hoverBackground, #1177bb);
+      background: var(--cds-button-primary-hover);
+      border-color: var(--cds-button-primary-hover);
     }
 
     .btn-secondary {
       background: var(--vscode-button-secondaryBackground, #3c3c3c);
       color: var(--vscode-button-secondaryForeground, #cccccc);
-      border: 1px solid var(--vscode-button-border, #5a5a5a);
+      border: 1px solid var(--cds-border-subtle);
     }
 
     .btn-secondary:hover:not(:disabled) {
       background: var(--vscode-button-secondaryHoverBackground, #45494e);
-      border-color: var(--vscode-button-border, #5a5a5a);
+      border-color: var(--cds-border-subtle);
     }
 
     .btn-secondary:disabled {
@@ -505,7 +505,7 @@ export class VirtualizationNetworks extends LitElement {
     .virtualization-disabled-banner {
       margin-top: 16px;
       padding: 16px 20px;
-      border-radius: 8px;
+      border-radius: 0;
       border: 1px solid var(--vscode-inputValidation-warningBorder, #e2c08d);
       background: var(--vscode-inputValidation-warningBackground, rgba(229, 200, 144, 0.15));
       color: var(--vscode-inputValidation-warningForeground, #e2c08d);
@@ -519,8 +519,8 @@ export class VirtualizationNetworks extends LitElement {
 
     .virtualization-disabled-banner p {
       margin: 0 0 4px 0;
-      font-size: 13px;
-      color: var(--vscode-descriptionForeground);
+      font-size: 14px;
+      color: var(--cds-text-secondary);
     }
   `;
 

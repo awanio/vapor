@@ -15,16 +15,16 @@ export class CopyButton extends LitElement {
 
     button {
       background: transparent;
-      border: 1px solid var(--vscode-button-border, #5a5a5a);
+      border: 1px solid var(--cds-border-subtle);
       color: var(--vscode-button-secondaryForeground, #cccccc);
       cursor: pointer;
       padding: 4px 8px;
       font-size: 12px;
-      border-radius: 4px;
+      border-radius: 0;
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      transition: all 0.2s;
+      transition: all 0.15s;
       font-family: inherit;
     }
 

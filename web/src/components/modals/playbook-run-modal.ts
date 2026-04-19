@@ -84,9 +84,9 @@ export class PlaybookRunModal extends LitElement {
       width: 90%;
       max-width: 700px;
       max-height: 90vh;
-      background: var(--vscode-editor-background, #1e1e1e);
+      background: var(--cds-background);
       border: 1px solid var(--vscode-panel-border, #2d2d30);
-      border-radius: 8px;
+      border-radius: 0;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
       display: flex;
       flex-direction: column;
@@ -121,12 +121,12 @@ export class PlaybookRunModal extends LitElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 4px;
-      transition: background-color 0.2s;
+      border-radius: 0;
+      transition: background-color 0.15s;
     }
 
     .close-button:hover {
-      background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
+      background: var(--cds-layer-02);
     }
 
     .body {
@@ -157,12 +157,12 @@ export class PlaybookRunModal extends LitElement {
       display: block;
       margin-bottom: 6px;
       color: var(--vscode-foreground, #cccccc);
-      font-size: 13px;
+      font-size: 14px;
     }
 
     .form-hint {
-      color: var(--vscode-descriptionForeground, #8b8b8b);
-      font-size: 11px;
+      color: var(--cds-text-secondary);
+      font-size: 12px;
       margin-top: 4px;
     }
 
@@ -174,8 +174,8 @@ export class PlaybookRunModal extends LitElement {
       background: var(--vscode-input-background, #3c3c3c);
       color: var(--vscode-input-foreground, #cccccc);
       border: 1px solid var(--vscode-input-border, #3c3c3c);
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 0;
+      font-size: 14px;
       font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
     }
 
@@ -189,7 +189,7 @@ export class PlaybookRunModal extends LitElement {
     .form-select:focus,
     .form-textarea:focus {
       outline: none;
-      border-color: var(--vscode-focusBorder, #007acc);
+      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
     .form-checkbox {
@@ -214,10 +214,10 @@ export class PlaybookRunModal extends LitElement {
       padding: 8px 12px;
       background: var(--vscode-inputValidation-errorBackground, rgba(244, 135, 113, 0.1));
       border: 1px solid var(--vscode-inputValidation-errorBorder, #f48771);
-      color: var(--vscode-errorForeground, #f48771);
-      border-radius: 4px;
+      color: var(--cds-support-error);
+      border-radius: 0;
       margin-bottom: 16px;
-      font-size: 13px;
+      font-size: 14px;
     }
 
     .footer {
@@ -232,7 +232,7 @@ export class PlaybookRunModal extends LitElement {
       display: flex;
       align-items: center;
       gap: 8px;
-      color: var(--vscode-descriptionForeground, #8b8b8b);
+      color: var(--cds-text-secondary);
       font-size: 12px;
     }
 
@@ -243,17 +243,17 @@ export class PlaybookRunModal extends LitElement {
 
     .button {
       padding: 8px 16px;
-      background: var(--vscode-button-background, #007acc);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, white);
       border: none;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
-      font-size: 13px;
-      transition: background-color 0.2s;
+      font-size: 14px;
+      transition: background-color 0.15s;
     }
 
     .button:hover {
-      background: var(--vscode-button-hoverBackground, #005a9e);
+      background: var(--cds-button-primary-hover);
     }
 
     .button.secondary {

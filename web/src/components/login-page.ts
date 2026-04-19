@@ -11,60 +11,75 @@ export class LoginPage extends I18nLitElement {
       justify-content: center;
       align-items: center;
       min-height: 100vh;
-      background: var(--surface-0);
+      background: var(--cds-background);
+      font-family: var(--cds-font-sans);
     }
 
     .login-container {
-      background: var(--surface-1);
-      border-radius: 8px;
-      padding: 2rem;
+      background: var(--cds-layer-01);
+      border-radius: 0;
+      padding: 48px 32px 32px;
       width: 100%;
       max-width: 400px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
     h1 {
       text-align: center;
-      color: var(--text-primary);
-      margin-bottom: 2rem;
-      font-size: 1.5rem;
+      color: var(--cds-text-primary);
+      margin-bottom: 32px;
+      font-size: 32px;
+      font-weight: 400;
+      line-height: 1.25;
     }
 
     div#copy {
       text-align: center;
-      font-size: small;
+      font-size: 12px;
+      letter-spacing: 0.32px;
       width: 100%;
       justify-content: center;
-      margin-top: 1.5rem;
-      padding-top: 1rem;
+      margin-top: 32px;
+      padding-top: 16px;
+      color: var(--cds-text-secondary);
+      border-top: 1px solid var(--cds-border-subtle);
     }
 
     .form-group {
-      margin-bottom: 1.5rem;
+      margin-bottom: 24px;
     }
 
     label {
       display: block;
-      margin-bottom: 0.5rem;
-      color: var(--text-secondary);
-      font-size: 0.875rem;
+      margin-bottom: 8px;
+      color: var(--cds-text-secondary);
+      font-size: 12px;
+      font-weight: 400;
+      letter-spacing: 0.32px;
     }
 
     input {
       width: 100%;
-      padding: 0.75rem;
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
-      background: var(--surface-0);
-      color: var(--text-primary);
-      font-size: 1rem;
-      transition: border-color 0.2s;
+      padding: 0 16px;
+      height: 40px;
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
+      border-radius: 0;
+      background: var(--cds-field);
+      color: var(--cds-text-primary);
+      font-size: 14px;
+      font-family: var(--cds-font-sans);
+      letter-spacing: 0.16px;
+      transition: border-color 0.15s;
       box-sizing: border-box;
     }
 
     input:focus {
       outline: none;
-      border-color: var(--primary);
+      border-bottom-color: var(--cds-focus);
+    }
+
+    input::placeholder {
+      color: var(--cds-text-placeholder);
     }
 
     .password-input-wrapper {
@@ -74,32 +89,32 @@ export class LoginPage extends I18nLitElement {
     }
 
     .password-input-wrapper input {
-      padding-right: 2.5rem;
+      padding-right: 48px;
     }
 
     .password-toggle {
       position: absolute;
-      right: 0.75rem;
+      right: 0;
       background: none;
       border: none;
-      color: var(--text-secondary);
+      color: var(--cds-text-secondary);
       cursor: pointer;
-      padding: 0.25rem;
+      padding: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: color 0.2s;
-      width: 24px;
-      height: 24px;
+      transition: color 0.15s;
+      width: 48px;
+      height: 40px;
     }
 
     .password-toggle:hover {
-      color: var(--text-primary);
+      color: var(--cds-text-primary);
     }
 
     .password-toggle:focus {
       outline: none;
-      color: var(--primary);
+      color: var(--cds-interactive);
     }
 
     .password-toggle svg {
@@ -112,43 +127,48 @@ export class LoginPage extends I18nLitElement {
       stroke-linejoin: round;
     }
 
-    button {
+    button[type="submit"] {
       width: 100%;
-      padding: 0.75rem;
-      background: var(--primary);
-      color: white;
+      padding: 14px 16px;
+      min-height: 48px;
+      background: var(--cds-button-primary);
+      color: #ffffff;
       border: none;
-      border-radius: 4px;
-      font-size: 1rem;
+      border-radius: 0;
+      font-size: 14px;
+      font-weight: 400;
+      letter-spacing: 0.16px;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: background-color 0.15s;
+      font-family: var(--cds-font-sans);
     }
 
-    button:hover:not(:disabled) {
-      background: var(--primary-hover);
+    button[type="submit"]:hover:not(:disabled) {
+      background: var(--cds-button-primary-hover);
     }
 
-    button:disabled {
-      opacity: 0.6;
+    button[type="submit"]:disabled {
+      opacity: 0.5;
       cursor: not-allowed;
     }
 
     .error-message {
-      color: var(--error);
+      color: var(--cds-support-error);
       text-align: center;
-      margin-top: 1rem;
-      font-size: 0.875rem;
+      margin-top: 16px;
+      font-size: 14px;
+      letter-spacing: 0.16px;
     }
 
     .logo {
       text-align: center;
-      margin-bottom: 2rem;
+      margin-bottom: 24px;
     }
 
     .logo svg {
-      width: 64px;
-      height: 64px;
-      fill: var(--primary);
+      width: 48px;
+      height: 48px;
+      fill: var(--cds-button-primary);
     }
   `;
 

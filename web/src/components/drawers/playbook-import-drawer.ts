@@ -64,13 +64,13 @@ export class PlaybookImportDrawer extends LitElement {
     .drawer {
       width: 100%;
       height: 100%;
-      background: var(--vscode-editor-background, #1e1e1e);
+      background: var(--cds-background);
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
       display: flex;
       flex-direction: column;
       transform: translateX(100%);
       transition: transform 0.3s ease;
-      border-left: 1px solid var(--vscode-border);
+      border-left: 1px solid var(--cds-border-subtle);
     }
 
     :host([show]) .drawer {
@@ -80,7 +80,7 @@ export class PlaybookImportDrawer extends LitElement {
     .drawer-header {
       padding: 20px;
       background: var(--vscode-sideBarSectionHeader-background, #252526);
-      border-bottom: 1px solid var(--vscode-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -102,12 +102,12 @@ export class PlaybookImportDrawer extends LitElement {
       color: var(--vscode-foreground, #cccccc);
       cursor: pointer;
       padding: 8px;
-      border-radius: 4px;
-      transition: all 0.2s;
+      border-radius: 0;
+      transition: all 0.15s;
     }
 
     .close-button:hover {
-      background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
+      background: var(--cds-layer-02);
     }
 
     .drawer-content {
@@ -124,13 +124,13 @@ export class PlaybookImportDrawer extends LitElement {
       display: block;
       margin-bottom: 8px;
       color: var(--vscode-foreground, #cccccc);
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
     }
 
     .form-label.required::after {
       content: ' *';
-      color: var(--vscode-errorForeground, #f48771);
+      color: var(--cds-support-error);
     }
 
     .form-input,
@@ -141,8 +141,8 @@ export class PlaybookImportDrawer extends LitElement {
       background: var(--vscode-input-background, #3c3c3c);
       color: var(--vscode-input-foreground, #cccccc);
       border: 1px solid var(--vscode-input-border, #3c3c3c);
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 0;
+      font-size: 14px;
       font-family: inherit;
     }
 
@@ -150,7 +150,7 @@ export class PlaybookImportDrawer extends LitElement {
     .form-select:focus,
     .form-textarea:focus {
       outline: none;
-      border-color: var(--vscode-focusBorder, #007acc);
+      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
     .form-textarea {
@@ -187,10 +187,10 @@ export class PlaybookImportDrawer extends LitElement {
       background: var(--vscode-button-secondaryBackground, #3a3a3a);
       color: var(--vscode-button-secondaryForeground, #cccccc);
       border: 1px solid var(--vscode-button-border, transparent);
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
-      font-size: 13px;
-      transition: all 0.2s;
+      font-size: 14px;
+      transition: all 0.15s;
     }
 
     .file-input-button:hover {
@@ -210,20 +210,20 @@ export class PlaybookImportDrawer extends LitElement {
 
     .template-card {
       padding: 12px;
-      background: var(--vscode-editor-background, #1e1e1e);
-      border: 1px solid var(--vscode-border);
-      border-radius: 4px;
+      background: var(--cds-background);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .template-card:hover {
-      border-color: var(--vscode-focusBorder, #007acc);
+      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
       background: var(--vscode-list-hoverBackground, rgba(255, 255, 255, 0.08));
     }
 
     .template-card.selected {
-      border-color: var(--vscode-focusBorder, #007acc);
+      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
       background: var(--vscode-list-activeSelectionBackground, #094771);
     }
 
@@ -240,24 +240,24 @@ export class PlaybookImportDrawer extends LitElement {
     .template-variables {
       margin-top: 20px;
       padding: 16px;
-      background: var(--vscode-editor-background, #1e1e1e);
-      border: 1px solid var(--vscode-border);
-      border-radius: 4px;
+      background: var(--cds-background);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
     }
 
     .error-message {
       padding: 12px;
       background: var(--vscode-inputValidation-errorBackground, rgba(244, 67, 54, 0.1));
       border: 1px solid var(--vscode-inputValidation-errorBorder, #f44336);
-      border-radius: 4px;
-      color: var(--vscode-errorForeground, #f48771);
+      border-radius: 0;
+      color: var(--cds-support-error);
       margin-bottom: 20px;
     }
 
     .drawer-footer {
       padding: 20px;
       background: var(--vscode-sideBarSectionHeader-background, #252526);
-      border-top: 1px solid var(--vscode-border);
+      border-top: 1px solid var(--cds-border-subtle);
       display: flex;
       justify-content: flex-end;
       gap: 12px;
@@ -266,11 +266,11 @@ export class PlaybookImportDrawer extends LitElement {
 
     .btn {
       padding: 8px 16px;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
-      transition: all 0.2s;
+      transition: all 0.15s;
       border: 1px solid transparent;
     }
 
@@ -285,13 +285,13 @@ export class PlaybookImportDrawer extends LitElement {
     }
 
     .btn-primary {
-      background: var(--vscode-button-background, #007acc);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, white);
       border-color: var(--vscode-button-border, transparent);
     }
 
     .btn-primary:hover {
-      background: var(--vscode-button-hoverBackground, #005a9e);
+      background: var(--cds-button-primary-hover);
     }
 
     .btn:disabled {
@@ -303,7 +303,7 @@ export class PlaybookImportDrawer extends LitElement {
       padding: 8px 12px;
       background: var(--vscode-editorInfo-background, rgba(33, 150, 243, 0.1));
       border-left: 3px solid var(--vscode-editorInfo-foreground, #2196f3);
-      border-radius: 4px;
+      border-radius: 0;
       color: var(--vscode-foreground, #cccccc);
       font-size: 12px;
       margin-bottom: 16px;

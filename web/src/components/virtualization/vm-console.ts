@@ -92,9 +92,9 @@ export class VMConsole extends LitElement {
       height: 90%;
       max-width: 1200px;
       max-height: 800px;
-      background: var(--vscode-editor-background, #1e1e1e);
+      background: var(--cds-background);
       border: 1px solid var(--vscode-border, #454545);
-      border-radius: 8px;
+      border-radius: 0;
       display: flex;
       flex-direction: column;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
@@ -181,11 +181,11 @@ export class VMConsole extends LitElement {
       padding: 4px 8px;
       background: var(--vscode-button-secondaryBackground, #3c3c3c);
       color: var(--vscode-button-secondaryForeground, #cccccc);
-      border: 1px solid var(--vscode-button-border, #5a5a5a);
-      border-radius: 4px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       cursor: pointer;
       font-size: 12px;
-      transition: all 0.2s;
+      transition: all 0.15s;
       display: flex;
       align-items: center;
       gap: 4px;
@@ -209,8 +209,8 @@ export class VMConsole extends LitElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 4px;
-      transition: all 0.2s;
+      border-radius: 0;
+      transition: all 0.15s;
     }
 
     .close-btn:hover {
@@ -255,7 +255,7 @@ export class VMConsole extends LitElement {
       width: 32px;
       height: 32px;
       border: 3px solid var(--vscode-border, #454545);
-      border-top-color: var(--vscode-focusBorder, #007acc);
+      border-top-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
@@ -301,17 +301,17 @@ export class VMConsole extends LitElement {
 
     .retry-btn {
       padding: 8px 16px;
-      background: var(--vscode-button-background, #0e639c);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, #ffffff);
       border: none;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
-      font-size: 13px;
-      transition: all 0.2s;
+      font-size: 14px;
+      transition: all 0.15s;
     }
 
     .retry-btn:hover {
-      background: var(--vscode-button-hoverBackground, #1177bb);
+      background: var(--cds-button-primary-hover);
     }
 
     .console-footer {
@@ -322,7 +322,7 @@ export class VMConsole extends LitElement {
       align-items: center;
       justify-content: space-between;
       font-size: 12px;
-      color: var(--vscode-descriptionForeground, #8b8b8b);
+      color: var(--cds-text-secondary);
       flex-shrink: 0;
     }
 
@@ -340,10 +340,10 @@ export class VMConsole extends LitElement {
     .key {
       padding: 2px 6px;
       background: var(--vscode-button-secondaryBackground, #3c3c3c);
-      border: 1px solid var(--vscode-button-border, #5a5a5a);
-      border-radius: 3px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       font-family: monospace;
-      font-size: 11px;
+      font-size: 12px;
     }
 
     /* noVNC canvas will be injected into .vnc-canvas-wrapper */

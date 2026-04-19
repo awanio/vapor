@@ -43,11 +43,11 @@ export class SetImageModal extends LitElement {
 
     .modal {
       position: relative;
-      background-color: var(--vscode-editor-background, #1e1e1e);
+      background-color: var(--cds-background);
       color: var(--vscode-editor-foreground, #cccccc);
       margin: 50px auto;
       border: 1px solid var(--vscode-panel-border, #464647);
-      border-radius: 6px;
+      border-radius: 0;
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
       animation: slideIn 0.2s ease-out;
       width: 90%;
@@ -90,8 +90,8 @@ export class SetImageModal extends LitElement {
       border: none;
       background: none;
       color: var(--vscode-icon-foreground, #cccccc);
-      border-radius: 4px;
-      transition: all 0.2s;
+      border-radius: 0;
+      transition: all 0.15s;
     }
 
     .modal-close:hover {
@@ -111,13 +111,13 @@ export class SetImageModal extends LitElement {
     .form-label {
       display: block;
       margin-bottom: 8px;
-      font-size: 13px;
+      font-size: 14px;
       color: var(--vscode-editor-foreground, #cccccc);
       font-weight: 500;
     }
 
     .form-hint {
-      font-size: 11px;
+      font-size: 12px;
       color: var(--vscode-descriptionForeground, #969696);
       margin-top: 4px;
     }
@@ -128,15 +128,15 @@ export class SetImageModal extends LitElement {
       background: var(--vscode-input-background, #3c3c3c);
       color: var(--vscode-input-foreground, #cccccc);
       border: 1px solid var(--vscode-input-border, #3c3c3c);
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 0;
+      font-size: 14px;
       font-family: inherit;
       box-sizing: border-box;
     }
 
     .form-input:focus {
       outline: none;
-      border-color: var(--vscode-focusBorder, #007acc);
+      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
     .form-input:disabled {
@@ -146,9 +146,9 @@ export class SetImageModal extends LitElement {
 
     .container-item {
       padding: 12px;
-      background: var(--vscode-editor-background, #1e1e1e);
+      background: var(--cds-background);
       border: 1px solid var(--vscode-panel-border, #464647);
-      border-radius: 4px;
+      border-radius: 0;
       margin-bottom: 12px;
     }
 
@@ -161,7 +161,7 @@ export class SetImageModal extends LitElement {
     }
 
     .current-image {
-      font-size: 11px;
+      font-size: 12px;
       color: var(--vscode-descriptionForeground, #969696);
       margin-top: 4px;
       font-family: var(--vscode-editor-font-family, 'Monaco', 'Courier New', monospace);
@@ -173,16 +173,16 @@ export class SetImageModal extends LitElement {
       gap: 8px;
       padding: 16px 20px;
       border-top: 1px solid var(--vscode-panel-border, #464647);
-      background-color: var(--vscode-editor-background, #1e1e1e);
+      background-color: var(--cds-background);
     }
 
     .btn {
       padding: 8px 16px;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s;
       border: 1px solid transparent;
       font-family: inherit;
     }
@@ -198,13 +198,13 @@ export class SetImageModal extends LitElement {
     }
 
     .btn-primary {
-      background: var(--vscode-button-background, #007acc);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, white);
-      border-color: var(--vscode-button-background, #007acc);
+      border-color: var(--cds-button-primary);
     }
 
     .btn-primary:hover:not(:disabled) {
-      background: var(--vscode-button-hoverBackground, #005a9e);
+      background: var(--cds-button-primary-hover);
     }
 
     .btn:disabled {

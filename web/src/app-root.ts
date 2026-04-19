@@ -47,71 +47,82 @@ export class AppRoot extends LitElement {
     :host {
       display: block;
       height: 100vh;
-      background-color: var(--surface-0);
-      color: var(--text-primary);
-      font-family: var(--font-family);
+      background-color: var(--cds-background);
+      color: var(--cds-text-primary);
+      font-family: var(--cds-font-sans);
     }
   
+    /* Carbon masthead — dark navigation bar */
     .app-header {
-      background-color: var(--surface-1);
+      background-color: #161616;
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 0 16px;
-      height: 56px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      border-bottom: 1px solid var(--border-color);
+      height: 48px;
+      border-bottom: none;
     }
     
     .header-title {
-      font-size: 1.25rem;
-      font-weight: 500;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.16px;
+      color: #f4f4f4;
     }
     
     .header-actions {
       display: flex;
       align-items: center;
-      gap: 1rem;
+      gap: 0;
     }
     
     .user-info {
-      color: var(--text-secondary);
-      font-size: 0.875rem;
+      color: #c6c6c6;
+      font-size: 14px;
+      letter-spacing: 0.16px;
+      padding: 0 16px;
+      height: 48px;
+      display: flex;
+      align-items: center;
     }
     
     .logout-button {
-      padding: 0.5rem 1rem;
+      padding: 0 16px;
+      height: 48px;
       background: transparent;
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
-      color: var(--text-primary);
+      border: none;
+      border-radius: 0;
+      color: #c6c6c6;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: background-color 0.15s;
+      font-size: 14px;
+      letter-spacing: 0.16px;
+      font-family: var(--cds-font-sans);
     }
     
     .logout-button:hover {
-      background: var(--surface-2);
-      border-color: var(--primary);
+      background: #353535;
+      color: #ffffff;
     }
 
     .theme-toggle {
-      padding: 0.5rem;
+      padding: 0;
       background: transparent;
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
-      color: var(--text-primary);
+      border: none;
+      border-radius: 0;
+      color: #c6c6c6;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: background-color 0.15s;
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 40px;
-      height: 40px;
+      width: 48px;
+      height: 48px;
     }
 
     .theme-toggle:hover {
-      background: var(--surface-2);
-      border-color: var(--primary);
+      background: #353535;
+      color: #ffffff;
     }
 
     .theme-icon {
@@ -124,22 +135,25 @@ export class AppRoot extends LitElement {
     }
 
     .language-button {
-      padding: 0.5rem 1rem;
+      padding: 0 16px;
+      height: 48px;
       background: transparent;
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
-      color: var(--text-primary);
+      border: none;
+      border-radius: 0;
+      color: #c6c6c6;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: background-color 0.15s;
       display: flex;
       align-items: center;
-      gap: 0.5rem;
-      font-size: 0.875rem;
+      gap: 8px;
+      font-size: 14px;
+      letter-spacing: 0.16px;
+      font-family: var(--cds-font-sans);
     }
 
     .language-button:hover {
-      background: var(--surface-2);
-      border-color: var(--primary);
+      background: #353535;
+      color: #ffffff;
     }
 
     .language-icon {
@@ -151,32 +165,35 @@ export class AppRoot extends LitElement {
       position: absolute;
       top: 100%;
       right: 0;
-      margin-top: 0.25rem;
-      background: var(--surface-1);
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-      min-width: 120px;
+      margin-top: 0;
+      background: var(--cds-layer-01);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
+      box-shadow: var(--cds-shadow-raised);
+      min-width: 160px;
       z-index: 1000;
     }
 
     .language-option {
-      padding: 0.5rem 1rem;
+      padding: 0 16px;
+      height: 40px;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: background-color 0.15s;
       display: flex;
       align-items: center;
-      gap: 0.5rem;
-      font-size: 0.875rem;
+      gap: 8px;
+      font-size: 14px;
+      letter-spacing: 0.16px;
+      color: var(--cds-text-primary);
     }
 
     .language-option:hover {
-      background: var(--surface-2);
+      background: var(--cds-layer-02);
     }
 
     .language-option.active {
-      background: var(--surface-3);
-      color: var(--primary);
+      background: var(--vscode-sidebar-active);
+      color: var(--cds-interactive);
     }
 
     .check-icon {
@@ -187,14 +204,14 @@ export class AppRoot extends LitElement {
 
     .app-content {
       display: flex;
-      height: calc(100vh - 56px);
+      height: calc(100vh - 48px);
     }
 
     sidebar-tree {
       width: 200px;
-      background-color: var(--surface-1);
+      background-color: var(--cds-layer-01);
       transition: width 0.3s ease-in-out;
-      border-right: 1px solid var(--border-color);
+      border-right: 1px solid var(--cds-border-subtle);
     }
 
     sidebar-tree[collapsed] {
@@ -203,27 +220,28 @@ export class AppRoot extends LitElement {
     
     .sidebar-toggle {
       position: absolute;
-      top: 70px;
+      top: 62px;
       left: 200px;
       transform: translateX(-50%);
       z-index: 10;
-      padding: 0.25rem;
-      background: var(--surface-1);
-      border: 1px solid var(--border-color);
-      border-radius: 50%;
-      color: var(--text-secondary);
+      padding: 0;
+      background: var(--cds-layer-01);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
+      color: var(--cds-text-secondary);
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s;
       width: 24px;
       height: 24px;
       display: flex;
       align-items: center;
       justify-content: center;
+      font-size: 14px;
     }
     
     .sidebar-toggle:hover {
-      background: var(--surface-2);
-      color: var(--text-primary);
+      background: var(--cds-layer-02);
+      color: var(--cds-text-primary);
     }
     
     .sidebar-toggle.collapsed {
@@ -233,15 +251,14 @@ export class AppRoot extends LitElement {
     .main {
       flex: 1;
       overflow: auto;
-      background-color: var(--surface-0);
-      color: var(--text-primary);
-      padding: 2rem;
+      background-color: var(--cds-background);
+      color: var(--cds-text-primary);
+      padding: 0;
       display: flex;
       flex-direction: column;
     }
     
     .tab-content {
-      margin-top: 1rem;
       flex: 1;
       overflow: auto;
     }

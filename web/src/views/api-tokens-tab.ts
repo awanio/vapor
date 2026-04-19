@@ -44,32 +44,32 @@ export class ApiTokensTab extends LitElement {
       margin: 0;
       font-size: 24px;
       font-weight: 300;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
     }
 
     .table-container {
-      background: var(--vscode-editor-background);
-      border: 1px solid var(--vscode-border);
-      border-radius: 4px;
+      background: var(--cds-background);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 13px;
+      font-size: 14px;
     }
 
     th, td {
       padding: 12px 16px;
       text-align: left;
-      border-bottom: 1px solid var(--vscode-border);
-      color: var(--vscode-foreground);
+      border-bottom: 1px solid var(--cds-border-subtle);
+      color: var(--cds-text-primary);
     }
 
     th {
-      background: var(--vscode-bg-lighter, #252526);
+      background: var(--cds-layer-02);
       font-weight: 600;
-      color: var(--vscode-descriptionForeground);
+      color: var(--cds-text-secondary);
     }
 
     tr:last-child td {
@@ -87,28 +87,28 @@ export class ApiTokensTab extends LitElement {
 
     .btn {
       padding: 6px 12px;
-      border-radius: 4px;
+      border-radius: 0;
       border: 1px solid transparent;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
       cursor: pointer;
       font-family: inherit;
     }
 
     .btn-primary {
-      background: var(--vscode-button-background, #0e639c);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, #ffffff);
-      border-color: var(--vscode-button-background, #0e639c);
+      border-color: var(--cds-button-primary);
     }
 
     .btn-primary:hover {
-      background: var(--vscode-button-hoverBackground, #1177bb);
+      background: var(--cds-button-primary-hover);
     }
 
     .btn-danger-ghost {
       background: transparent;
-      color: var(--vscode-errorForeground, #f48771);
-      border: 1px solid var(--vscode-errorForeground, #f48771);
+      color: var(--cds-support-error);
+      border: 1px solid var(--cds-support-error);
       padding: 4px 8px;
       font-size: 12px;
     }
@@ -120,7 +120,7 @@ export class ApiTokensTab extends LitElement {
     .btn-secondary {
        background: var(--vscode-button-secondaryBackground, #3c3c3c);
        color: var(--vscode-button-secondaryForeground, #cccccc);
-       border: 1px solid var(--vscode-button-border, #5a5a5a);
+       border: 1px solid var(--cds-border-subtle);
     }
 
     .btn-danger {
@@ -131,7 +131,7 @@ export class ApiTokensTab extends LitElement {
     .empty-state {
       padding: 40px;
       text-align: center;
-      color: var(--vscode-descriptionForeground);
+      color: var(--cds-text-secondary);
     }
 
     .token-name {
@@ -140,11 +140,11 @@ export class ApiTokensTab extends LitElement {
 
     .error-banner {
       background: rgba(244, 135, 113, 0.1);
-      color: var(--vscode-errorForeground, #f48771);
-      border: 1px solid var(--vscode-errorForeground, #f48771);
+      color: var(--cds-support-error);
+      border: 1px solid var(--cds-support-error);
       padding: 12px;
       margin-bottom: 20px;
-      border-radius: 4px;
+      border-radius: 0;
     }
   `;
 

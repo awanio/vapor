@@ -49,23 +49,23 @@ export class TerminalTabV2 extends LitElement {
       display: flex;
       flex-direction: column;
       height: 100%;
-      background-color: var(--vscode-bg);
-      border: 1px solid var(--vscode-border);
+      background-color: var(--cds-background);
+      border: 1px solid var(--cds-border-subtle);
       box-sizing: border-box;
     }
 
     .terminal-header {
       display: flex;
       flex-direction: column;
-      background-color: var(--vscode-bg-lighter);
-      border-bottom: 1px solid var(--vscode-border);
+      background-color: var(--cds-layer-02);
+      border-bottom: 1px solid var(--cds-border-subtle);
     }
 
     .terminal-tabs {
       display: flex;
       align-items: center;
-      background-color: var(--vscode-bg);
-      border-bottom: 1px solid var(--vscode-border);
+      background-color: var(--cds-background);
+      border-bottom: 1px solid var(--cds-border-subtle);
       min-height: 35px;
       overflow-x: auto;
       overflow-y: hidden;
@@ -77,24 +77,24 @@ export class TerminalTabV2 extends LitElement {
       padding: 6px 12px;
       background-color: transparent;
       border: none;
-      border-right: 1px solid var(--vscode-border);
-      color: var(--vscode-text-dim);
+      border-right: 1px solid var(--cds-border-subtle);
+      color: var(--cds-text-secondary);
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
       min-width: 100px;
       max-width: 200px;
-      transition: all 0.2s;
+      transition: all 0.15s;
       position: relative;
     }
 
     .terminal-tab:hover {
-      background-color: var(--vscode-bg-light);
+      background-color: var(--cds-layer-01);
     }
 
     .terminal-tab.active {
-      background-color: var(--vscode-bg-lighter);
-      color: var(--vscode-text);
-      border-bottom: 2px solid var(--vscode-accent);
+      background-color: var(--cds-layer-02);
+      color: var(--cds-text-primary);
+      border-bottom: 2px solid var(--cds-button-primary);
     }
 
     .terminal-tab-name {
@@ -114,16 +114,16 @@ export class TerminalTabV2 extends LitElement {
     }
 
     .terminal-tab-status.connected {
-      background-color: var(--vscode-success);
+      background-color: var(--cds-support-success);
     }
 
     .terminal-tab-status.connecting {
-      background-color: var(--vscode-warning);
+      background-color: var(--cds-support-warning);
       animation: pulse 1.5s infinite;
     }
 
     .terminal-tab-status.disconnected {
-      background-color: var(--vscode-error);
+      background-color: var(--cds-support-error);
     }
 
     @keyframes pulse {
@@ -137,13 +137,13 @@ export class TerminalTabV2 extends LitElement {
       height: 16px;
       border: none;
       background: transparent;
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
       cursor: pointer;
       padding: 0;
       margin: 0;
       line-height: 1;
       font-size: 16px;
-      border-radius: 3px;
+      border-radius: 0;
     }
 
     .terminal-tab:hover .terminal-tab-close {
@@ -153,27 +153,27 @@ export class TerminalTabV2 extends LitElement {
     }
 
     .terminal-tab-close:hover {
-      background-color: var(--vscode-bg-light);
-      color: var(--vscode-text);
+      background-color: var(--cds-layer-01);
+      color: var(--cds-text-primary);
     }
 
     .add-terminal-btn {
       padding: 6px 12px;
       background: transparent;
       border: none;
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
       cursor: pointer;
       font-size: 18px;
       display: flex;
       align-items: center;
       justify-content: center;
       min-width: 35px;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .add-terminal-btn:hover {
-      background-color: var(--vscode-bg-light);
-      color: var(--vscode-text);
+      background-color: var(--cds-layer-01);
+      color: var(--cds-text-primary);
     }
 
     .terminal-controls {
@@ -193,12 +193,12 @@ export class TerminalTabV2 extends LitElement {
       margin: 0;
       font-size: 14px;
       font-weight: normal;
-      color: var(--vscode-text);
+      color: var(--cds-text-primary);
     }
 
     .terminal-stats {
       font-size: 12px;
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
     }
 
     .terminal-actions {
@@ -210,16 +210,16 @@ export class TerminalTabV2 extends LitElement {
       padding: 4px 8px;
       border: none;
       background-color: transparent;
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
       cursor: pointer;
       font-size: 12px;
-      border-radius: 4px;
-      transition: all 0.2s;
+      border-radius: 0;
+      transition: all 0.15s;
     }
 
     .terminal-action:hover {
-      background-color: var(--vscode-bg-light);
-      color: var(--vscode-text);
+      background-color: var(--cds-layer-01);
+      color: var(--cds-text-primary);
     }
 
     .terminal-action:disabled {
@@ -262,29 +262,29 @@ export class TerminalTabV2 extends LitElement {
       left: 50%;
       transform: translate(-50%, -50%);
       text-align: center;
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
       font-size: 14px;
     }
 
     .terminal-message h4 {
       margin: 0 0 8px 0;
       font-size: 16px;
-      color: var(--vscode-text);
+      color: var(--cds-text-primary);
     }
 
     .terminal-message button {
       margin-top: 12px;
       padding: 6px 12px;
-      background-color: var(--vscode-accent);
+      background-color: var(--cds-button-primary);
       color: white;
       border: none;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
     }
 
     .terminal-message button:hover {
-      background-color: var(--vscode-accent-hover);
+      background-color: var(--cds-button-primary-hover);
     }
 
     .status-bar {
@@ -292,8 +292,8 @@ export class TerminalTabV2 extends LitElement {
       align-items: center;
       justify-content: space-between;
       padding: 4px 16px;
-      background-color: var(--vscode-bg-lighter);
-      border-top: 1px solid var(--vscode-border);
+      background-color: var(--cds-layer-02);
+      border-top: 1px solid var(--cds-border-subtle);
       font-size: 12px;
     }
 
@@ -301,14 +301,14 @@ export class TerminalTabV2 extends LitElement {
       display: flex;
       align-items: center;
       gap: 12px;
-      color: var(--vscode-text);
+      color: var(--cds-text-primary);
     }
 
     .status-right {
       display: flex;
       align-items: center;
       gap: 12px;
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
     }
 
     .status-indicator {
@@ -324,16 +324,16 @@ export class TerminalTabV2 extends LitElement {
     }
 
     .status-dot.connected {
-      background-color: var(--vscode-success);
+      background-color: var(--cds-support-success);
     }
 
     .status-dot.connecting {
-      background-color: var(--vscode-warning);
+      background-color: var(--cds-support-warning);
       animation: pulse 1.5s infinite;
     }
 
     .status-dot.disconnected {
-      background-color: var(--vscode-error);
+      background-color: var(--cds-support-error);
     }
 
     /* Ensure xterm terminal fills the container */

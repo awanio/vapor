@@ -11,56 +11,56 @@ export class VolumeUploadDrawer extends LitElement {
     :host { display: block; }
     .drawer-content { padding: 16px; }
     .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
-    .field label { color: var(--vscode-foreground, #cccccc); font-size: 13px; font-weight: 500; }
-    .field input, .field select { width: 100%; padding: 8px 12px; border-radius: 4px; border: 1px solid var(--vscode-input-border, #3c3c3c); background: var(--vscode-input-background, #3c3c3c); color: var(--vscode-input-foreground, #cccccc); font-size: 13px; box-sizing: border-box; }
-    .field input:focus, .field select:focus { outline: none; border-color: var(--vscode-focusBorder, #007acc); box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc); }
+    .field label { color: var(--vscode-foreground, #cccccc); font-size: 14px; font-weight: 500; }
+    .field input, .field select { width: 100%; padding: 8px 12px; border-radius: 0; border: 1px solid var(--vscode-input-border, #3c3c3c); background: var(--vscode-input-background, #3c3c3c); color: var(--vscode-input-foreground, #cccccc); font-size: 14px; box-sizing: border-box; }
+    .field input:focus, .field select:focus { outline: none; border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe)); box-shadow: 0 0 0 1px var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe)); }
     
     .drop-zone {
       border: 2px dashed var(--vscode-input-border, #5a5a5a);
-      border-radius: 8px;
+      border-radius: 0;
       padding: 40px;
       text-align: center;
       transition: all 0.3s;
       cursor: pointer;
       margin-bottom: 16px;
-      background: var(--vscode-editor-inactiveSelectionBackground, rgba(37, 37, 38, 0.5));
+      background: var(--cds-layer-02);
     }
     .drop-zone:hover {
-      border-color: var(--vscode-focusBorder, #007acc);
+      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
       background: var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.1));
     }
     .drop-zone.drag-over {
-      border-color: var(--vscode-focusBorder, #007acc);
-      background: var(--vscode-editor-selectionBackground, rgba(51, 153, 255, 0.2));
+      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      background: rgba(15, 98, 254, 0.16);
       border-style: solid;
     }
     .drop-zone-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.8; }
     .drop-zone-text { font-size: 16px; color: var(--vscode-foreground, #cccccc); margin-bottom: 8px; font-weight: 500; }
-    .drop-zone-hint { font-size: 13px; color: var(--vscode-descriptionForeground, #8b8b8b); }
+    .drop-zone-hint { font-size: 14px; color: var(--cds-text-secondary); }
 
     .file-info {
       padding: 16px;
-      background: var(--vscode-editor-inactiveSelectionBackground);
-      border: 1px solid var(--vscode-editorWidget-border, #464647);
-      border-radius: 4px;
+      background: var(--cds-layer-02);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       margin-bottom: 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
     .file-details { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
-    .file-name { font-weight: 500; color: var(--vscode-foreground); }
-    .file-size { font-size: 12px; color: var(--vscode-descriptionForeground); }
+    .file-name { font-weight: 500; color: var(--cds-text-primary); }
+    .file-size { font-size: 12px; color: var(--cds-text-secondary); }
     
     .remove-btn {
-      background: none; border: none; color: var(--vscode-descriptionForeground); cursor: pointer; font-size: 18px; padding: 4px;
+      background: none; border: none; color: var(--cds-text-secondary); cursor: pointer; font-size: 18px; padding: 4px;
     }
     .remove-btn:hover { color: #f87171; }
 
     .progress-bar {
       height: 6px;
       background: var(--vscode-widget-border, #2d2d2d);
-      border-radius: 3px;
+      border-radius: 0;
       overflow: hidden;
       margin-top: 12px;
       position: relative;
@@ -89,12 +89,12 @@ export class VolumeUploadDrawer extends LitElement {
     }
     
     .drawer-footer { display: contents; }
-    .btn { height: 32px; padding: 0 16px; border-radius: 4px; border: 1px solid var(--vscode-border, #464647); background: var(--vscode-bg-lighter, #2d2d30); color: var(--vscode-text, #cccccc); cursor: pointer; font-size: 13px; font-weight: 500; }
+    .btn { height: 32px; padding: 0 16px; border-radius: 0; border: 1px solid var(--cds-border-subtle); background: var(--vscode-bg-lighter, #2d2d30); color: var(--vscode-text, #cccccc); cursor: pointer; font-size: 14px; font-weight: 500; }
     .btn:hover { background: var(--surface-3, #3e3e42); }
-    .btn-primary { background: var(--vscode-accent, #007acc); color: #ffffff; border-color: var(--vscode-accent, #007acc); }
+    .btn-primary { background: var(--cds-button-primary); color: #ffffff; border-color: var(--cds-button-primary); }
     .btn-primary:hover { background: var(--vscode-accent-hover, #1a86d9); }
     
-    .toast { margin-bottom: 10px; padding: 10px; border-radius: 8px; background: #1f0f0f; color: #fecdd3; border: 1px solid #7f1d1d; }
+    .toast { margin-bottom: 10px; padding: 10px; border-radius: 0; background: #1f0f0f; color: #fecdd3; border: 1px solid #7f1d1d; }
   `;
 
   @property({ type: Boolean }) open = false;
@@ -274,7 +274,7 @@ export class VolumeUploadDrawer extends LitElement {
                   <div class="progress-bar">
                     <div class="progress-fill" style="width: ${this.uploadProgress}%"></div>
                   </div>
-                  <div style="font-size: 11px; margin-top: 4px;">${Math.round(this.uploadProgress)}% uploaded</div>
+                  <div style="font-size: 12px; margin-top: 4px;">${Math.round(this.uploadProgress)}% uploaded</div>
                 ` : ''}
               </div>
               ${!this.isUploading ? html`

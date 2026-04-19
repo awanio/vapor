@@ -18,10 +18,10 @@ export class VMBackupsTab extends LitElement {
       display: block;
     }
     .section {
-      border: 1px solid var(--vscode-border);
-      border-radius: 12px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       padding: 16px;
-      background: var(--vscode-editor-background, #1e1e1e);
+      background: var(--cds-background);
     }
     .section-header {
       display: flex;
@@ -33,17 +33,17 @@ export class VMBackupsTab extends LitElement {
     .section-actions { display: flex; gap: 8px; }
     .btn {
       padding: 8px 12px;
-      border-radius: 4px;
-      border: 1px solid var(--vscode-button-border, #5a5a5a);
+      border-radius: 0;
+      border: 1px solid var(--cds-border-subtle);
       background: var(--vscode-button-secondaryBackground, #3c3c3c);
       color: var(--vscode-button-secondaryForeground, #cccccc);
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
     }
     .btn:hover { filter: brightness(1.05); }
     .btn.primary {
-      background: var(--vscode-button-background, #0e639c);
-      border-color: var(--vscode-button-border, #5a5a5a);
+      background: var(--cds-button-primary);
+      border-color: var(--cds-border-subtle);
       color: var(--vscode-button-foreground, #ffffff);
     }
     .btn.danger {
@@ -53,8 +53,8 @@ export class VMBackupsTab extends LitElement {
     }
     .btn[disabled] { opacity: 0.6; cursor: not-allowed; }
     .table { width: 100%; border-collapse: collapse; }
-    .table th, .table td { padding: 10px; border-bottom: 1px solid var(--vscode-border); text-align: left; font-size: 13px; }
-    .table th { color: var(--vscode-descriptionForeground, #9ca3af); font-weight: 600; }
+    .table th, .table td { padding: 10px; border-bottom: 1px solid var(--cds-border-subtle); text-align: left; font-size: 14px; }
+    .table th { color: var(--cds-text-secondary); font-weight: 600; }
     .badge { padding: 2px 8px; border-radius: 999px; font-size: 12px; background: #1f2937; color: #e5e7eb; }
     .badge.success { background: #14532d; }
     .badge.error { background: #7f1d1d; }
@@ -64,9 +64,9 @@ export class VMBackupsTab extends LitElement {
     .status-pending { background: #eab308; }
     .status-failed { background: #ef4444; }
     .status-completed { background: #10b981; }
-    .empty-state { text-align: center; padding: 24px 0; color: var(--vscode-descriptionForeground, #9ca3af); }
-    .error-box { border: 1px solid #7f1d1d; background: #1f0f0f; color: #fecdd3; padding: 12px; border-radius: 8px; margin-bottom: 12px; }
-    .toast { margin-bottom: 10px; padding: 10px; border-radius: 8px; }
+    .empty-state { text-align: center; padding: 24px 0; color: var(--cds-text-secondary); }
+    .error-box { border: 1px solid #7f1d1d; background: #1f0f0f; color: #fecdd3; padding: 12px; border-radius: 0; margin-bottom: 12px; }
+    .toast { margin-bottom: 10px; padding: 10px; border-radius: 0; }
     .toast.success { background: #0f172a; color: #bbf7d0; border: 1px solid #14532d; }
     .toast.error { background: #1f0f0f; color: #fecdd3; border: 1px solid #7f1d1d; }
 
@@ -74,11 +74,11 @@ export class VMBackupsTab extends LitElement {
     .form-group { margin-bottom: 14px; width: 100%; box-sizing: border-box; }
     .form-group.checkbox { display: flex; align-items: flex-start; gap: 12px; }
     .form-group.checkbox input[type="checkbox"] { width: auto; margin-top: 2px; }
-    .form-group label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: var(--vscode-foreground, #cccccc); }
-    .form-hint { margin-top: 6px; font-size: 12px; color: var(--vscode-descriptionForeground, #8b8b8b); }
-    .form-error { margin-top: 6px; color: var(--vscode-errorForeground, #f48771); font-size: 12px; }
-    input, select, textarea { width: 100%; padding: 8px 12px; background: var(--vscode-input-background, #3c3c3c); color: var(--vscode-input-foreground, #cccccc); border: 1px solid var(--vscode-input-border, #858585); border-radius: 4px; font-size: 13px; font-family: inherit; transition: all 0.2s; box-sizing: border-box; }
-    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--vscode-focusBorder, #007acc); box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc); }
+    .form-group label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; color: var(--vscode-foreground, #cccccc); }
+    .form-hint { margin-top: 6px; font-size: 12px; color: var(--cds-text-secondary); }
+    .form-error { margin-top: 6px; color: var(--cds-support-error); font-size: 12px; }
+    input, select, textarea { width: 100%; padding: 8px 12px; background: var(--vscode-input-background, #3c3c3c); color: var(--vscode-input-foreground, #cccccc); border: 1px solid var(--vscode-input-border, #858585); border-radius: 0; font-size: 14px; font-family: inherit; transition: all 0.15s; box-sizing: border-box; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe)); box-shadow: 0 0 0 1px var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe)); }
     .checkbox-group { display: flex; flex-direction: row; gap: 10px; align-items: center; margin-bottom: 10px; }
     .checkbox-group input[type="checkbox"] { width: auto; flex-shrink: 0; }
     .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; background: #1f2937; color: #e5e7eb; font-size: 12px; }
@@ -106,9 +106,9 @@ export class VMBackupsTab extends LitElement {
       to { opacity: 1; }
     }
     .modal {
-      background: var(--vscode-editor-background, #1e1e1e);
-      border: 1px solid var(--vscode-border);
-      border-radius: 8px;
+      background: var(--cds-background);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       min-width: 400px;
       max-width: 600px;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
@@ -118,7 +118,7 @@ export class VMBackupsTab extends LitElement {
       align-items: center;
       gap: 12px;
       padding: 20px;
-      border-bottom: 1px solid var(--vscode-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
     }
     .modal-icon { font-size: 24px; }
     .modal-title {
@@ -135,8 +135,8 @@ export class VMBackupsTab extends LitElement {
     }
     .vm-info-box {
       background: var(--vscode-input-background, #3c3c3c);
-      border: 1px solid var(--vscode-border);
-      border-radius: 6px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       padding: 12px;
       margin: 16px 0;
     }
@@ -146,12 +146,12 @@ export class VMBackupsTab extends LitElement {
       padding: 6px 0;
     }
     .vm-info-label {
-      color: var(--vscode-descriptionForeground, #9ca3af);
-      font-size: 13px;
+      color: var(--cds-text-secondary);
+      font-size: 14px;
     }
     .vm-info-value {
       color: var(--vscode-foreground, #cccccc);
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
     }
     .vm-info-value.monospace {
@@ -163,7 +163,7 @@ export class VMBackupsTab extends LitElement {
       gap: 12px;
       background: rgba(234, 179, 8, 0.1);
       border: 1px solid rgba(234, 179, 8, 0.3);
-      border-radius: 6px;
+      border-radius: 0;
       padding: 12px;
       margin-top: 16px;
     }
@@ -173,13 +173,13 @@ export class VMBackupsTab extends LitElement {
       justify-content: flex-end;
       gap: 8px;
       padding: 16px 20px;
-      border-top: 1px solid var(--vscode-border);
+      border-top: 1px solid var(--cds-border-subtle);
     }
     .modal-btn {
       padding: 8px 16px;
-      border-radius: 4px;
-      border: 1px solid var(--vscode-button-border, #5a5a5a);
-      font-size: 13px;
+      border-radius: 0;
+      border: 1px solid var(--cds-border-subtle);
+      font-size: 14px;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -712,22 +712,22 @@ export class VMBackupsTab extends LitElement {
           Are you sure you want to delete this backup? This action cannot be undone.
         </p>
 
-        <div style="background: var(--vscode-input-background, #3c3c3c); border: 1px solid var(--vscode-widget-border, #454545); border-radius: 6px; padding: 12px; margin: 16px 0;">
+        <div style="background: var(--vscode-input-background, #3c3c3c); border: 1px solid var(--cds-border-subtle); border-radius: 0; padding: 12px; margin: 16px 0;">
           <div style="display: flex; justify-content: space-between; padding: 6px 0;">
-            <span style="color: var(--vscode-descriptionForeground, #9ca3af); font-size: 13px;">VM:</span>
-            <span style="color: var(--vscode-foreground, #cccccc); font-size: 13px; font-weight: 500;">${this.deleteTarget.vm_name}</span>
+            <span style="color: var(--cds-text-secondary); font-size: 14px;">VM:</span>
+            <span style="color: var(--vscode-foreground, #cccccc); font-size: 14px; font-weight: 500;">${this.deleteTarget.vm_name}</span>
           </div>
           <div style="display: flex; justify-content: space-between; padding: 6px 0;">
-            <span style="color: var(--vscode-descriptionForeground, #9ca3af); font-size: 13px;">Backup ID:</span>
-            <span style="color: var(--vscode-foreground, #cccccc); font-size: 13px; font-weight: 500; font-family: monospace;">${this.deleteTarget.backup_id}</span>
+            <span style="color: var(--cds-text-secondary); font-size: 14px;">Backup ID:</span>
+            <span style="color: var(--vscode-foreground, #cccccc); font-size: 14px; font-weight: 500; font-family: monospace;">${this.deleteTarget.backup_id}</span>
           </div>
           <div style="display: flex; justify-content: space-between; padding: 6px 0;">
-            <span style="color: var(--vscode-descriptionForeground, #9ca3af); font-size: 13px;">Type:</span>
-            <span style="color: var(--vscode-foreground, #cccccc); font-size: 13px; font-weight: 500;">${this.deleteTarget.type}</span>
+            <span style="color: var(--cds-text-secondary); font-size: 14px;">Type:</span>
+            <span style="color: var(--vscode-foreground, #cccccc); font-size: 14px; font-weight: 500;">${this.deleteTarget.type}</span>
           </div>
         </div>
 
-        <div style="display: flex; gap: 12px; background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.3); border-radius: 6px; padding: 12px; margin-top: 16px;">
+        <div style="display: flex; gap: 12px; background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.3); border-radius: 0; padding: 12px; margin-top: 16px;">
           <span style="font-size: 20px; flex-shrink: 0;">⚠️</span>
           <div>
             <strong>Warning:</strong> Deleting a backup is permanent and cannot be undone.

@@ -37,13 +37,13 @@ export class CreateResourceDrawer extends LitElement {
 .drawer {
       width: 100%;
       height: 100%;
-      background: var(--vscode-editor-background, var(--vscode-bg-light));
+      background: var(--cds-layer-01);
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
       display: flex;
       flex-direction: column;
       transform: translateX(100%);
       transition: transform 0.3s ease;
-      border-left: 1px solid var(--vscode-border);
+      border-left: 1px solid var(--cds-border-subtle);
     }
 
     :host([show]) .drawer {
@@ -53,7 +53,7 @@ export class CreateResourceDrawer extends LitElement {
 .drawer-header {
       padding: 20px;
       background: var(--vscode-bg-lighter, #2c2f3a);
-      border-bottom: 1px solid var(--vscode-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -63,7 +63,7 @@ export class CreateResourceDrawer extends LitElement {
     .header-title {
       font-size: 18px;
       font-weight: 500;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
       display: flex;
       align-items: center;
       gap: 12px;
@@ -75,8 +75,8 @@ export class CreateResourceDrawer extends LitElement {
       color: var(--close-color, #999);
       cursor: pointer;
       padding: 8px;
-      border-radius: 4px;
-      transition: all 0.2s;
+      border-radius: 0;
+      transition: all 0.15s;
     }
 
     .close-button:hover {
@@ -87,7 +87,7 @@ export class CreateResourceDrawer extends LitElement {
 .format-toggle {
       padding: 12px 20px;
       background: var(--vscode-bg-lighter, #2c2f3a);
-      border-bottom: 1px solid var(--vscode-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
       display: flex;
       gap: 8px;
       align-items: center;
@@ -107,7 +107,7 @@ export class CreateResourceDrawer extends LitElement {
       gap: 6px;
       padding: 6px 12px;
       border: 1px solid transparent;
-      border-radius: 6px;
+      border-radius: 0;
       font-size: 12px;
       font-weight: 600;
     }
@@ -129,10 +129,10 @@ export class CreateResourceDrawer extends LitElement {
       background: var(--button-bg, var(--vscode-bg-lighter, #3a3d4a));
       color: var(--button-color, var(--vscode-foreground, #e0e0e0));
       border: 1px solid var(--button-border, var(--vscode-widget-border, #4a4d5a));
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
       font-size: 14px;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
 .format-button:hover {
@@ -141,7 +141,7 @@ export class CreateResourceDrawer extends LitElement {
     }
 
 .format-button.active {
-      background: var(--vscode-button-background, #0e639c);
+      background: var(--cds-button-primary);
       border-color: var(--vscode-button-border, transparent);
       color: var(--vscode-button-foreground, #ffffff);
     }
@@ -166,7 +166,7 @@ export class CreateResourceDrawer extends LitElement {
       background: var(--vscode-input-background, #3c3c3c);
       color: var(--vscode-input-foreground, #cccccc);
       border: 1px solid var(--vscode-input-border, #3c3c3c);
-      border-radius: 4px;
+      border-radius: 0;
       font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
       font-size: 14px;
       line-height: 1.6;
@@ -175,7 +175,7 @@ export class CreateResourceDrawer extends LitElement {
     }
 
 .editor:focus {
-      border-color: var(--vscode-focusBorder, #007acc);
+      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
     .editor::placeholder {
@@ -185,7 +185,7 @@ export class CreateResourceDrawer extends LitElement {
     .validation-message {
       margin-top: 12px;
       padding: 12px;
-      border-radius: 4px;
+      border-radius: 0;
       font-size: 14px;
       display: flex;
       align-items: flex-start;
@@ -231,10 +231,10 @@ export class CreateResourceDrawer extends LitElement {
       background: var(--template-bg, #3a3d4a);
       color: var(--template-color, #e0e0e0);
       border: 1px solid var(--template-border, #4a4d5a);
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
       font-size: 12px;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .template-button:hover {
@@ -245,7 +245,7 @@ export class CreateResourceDrawer extends LitElement {
 .controls {
       padding: 20px;
       background: var(--vscode-bg-lighter, #2c2f3a);
-      border-top: 1px solid var(--vscode-border);
+      border-top: 1px solid var(--cds-border-subtle);
       display: flex;
       justify-content: flex-end;
       gap: 12px;
@@ -254,10 +254,10 @@ export class CreateResourceDrawer extends LitElement {
 
     .control-button {
       padding: 10px 20px;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
       font-size: 14px;
-      transition: all 0.2s;
+      transition: all 0.15s;
       border: 1px solid transparent;
     }
 
@@ -273,13 +273,13 @@ export class CreateResourceDrawer extends LitElement {
     }
 
 .control-button.create {
-      background: var(--vscode-button-background, #0e639c);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, #ffffff);
       border-color: var(--vscode-button-border, transparent);
     }
 
 .control-button.create:hover {
-      background: var(--vscode-button-hoverBackground, #1177bb);
+      background: var(--cds-button-primary-hover);
       border-color: var(--vscode-button-border, transparent);
     }
 
@@ -294,12 +294,12 @@ export class CreateResourceDrawer extends LitElement {
     }
 
 .editor-container::-webkit-scrollbar-track {
-      background: var(--scrollbar-track, var(--vscode-editor-background, #1e1e1e));
+      background: var(--scrollbar-track, var(--cds-background));
     }
 
 .editor-container::-webkit-scrollbar-thumb {
       background: var(--scrollbar-thumb, var(--vscode-scrollbarSlider-background, #4a4d5a));
-      border-radius: 4px;
+      border-radius: 0;
     }
 
     .editor-container::-webkit-scrollbar-thumb:hover {

@@ -119,26 +119,26 @@ export class VirtualizationStoragePools extends LitElement {
       align-items: center;
       gap: 6px;
       padding: 8px 16px;
-      background: var(--vscode-button-background, #007acc);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, white);
       border: none;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .btn-create:hover {
-      background: var(--vscode-button-hoverBackground, #005a9e);
+      background: var(--cds-button-primary-hover);
     }
 
 
     .usage-bar {
       width: 100%;
       height: 6px;
-      background: var(--vscode-progressBar-background);
-      border-radius: 3px;
+      background: var(--cds-button-primary);
+      border-radius: 0;
       overflow: hidden;
       margin-top: 4px;
     }
@@ -160,7 +160,7 @@ export class VirtualizationStoragePools extends LitElement {
     .virtualization-disabled-banner {
       margin-top: 16px;
       padding: 16px 20px;
-      border-radius: 8px;
+      border-radius: 0;
       border: 1px solid var(--vscode-inputValidation-warningBorder, #e2c08d);
       background: var(--vscode-inputValidation-warningBackground, rgba(229, 200, 144, 0.15));
       color: var(--vscode-inputValidation-warningForeground, #e2c08d);
@@ -174,8 +174,8 @@ export class VirtualizationStoragePools extends LitElement {
 
     .virtualization-disabled-banner p {
       margin: 0 0 4px 0;
-      font-size: 13px;
-      color: var(--vscode-descriptionForeground);
+      font-size: 14px;
+      color: var(--cds-text-secondary);
     }
   `;
 
@@ -622,7 +622,7 @@ export class VirtualizationStoragePools extends LitElement {
                 <div style="max-height: 300px; overflow-y: auto;">
                   <table style="width: 100%; border-collapse: collapse;">
                     <thead>
-                      <tr style="border-bottom: 1px solid var(--vscode-widget-border);">
+                      <tr style="border-bottom: 1px solid var(--cds-border-subtle);">
                         <th style="text-align: left; padding: 8px;">Name</th>
                         <th style="text-align: left; padding: 8px;">Type</th>
                         <th style="text-align: left; padding: 8px;">Format</th>
@@ -631,7 +631,7 @@ export class VirtualizationStoragePools extends LitElement {
                     </thead>
                     <tbody>
                       ${selectedPool.volumes.map(vol => html`
-                        <tr style="border-bottom: 1px solid var(--vscode-widget-border);">
+                        <tr style="border-bottom: 1px solid var(--cds-border-subtle);">
                           <td style="padding: 8px;">${vol.name}</td>
                           <td style="padding: 8px;">${vol.type}</td>
                           <td style="padding: 8px;">${vol.format}</td>

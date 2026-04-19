@@ -37,19 +37,19 @@ export class ModalDialog extends I18nLitElement {
       left: 0;
       width: 100%;
       height: 100%;
-      background-color: rgba(0, 0, 0, 0.5);
-      animation: fadeIn 0.2s ease-out;
+      background-color: var(--cds-overlay, rgba(0, 0, 0, 0.65));
+      animation: fadeIn 0.15s ease-out;
     }
 
     .modal {
       position: relative;
-      background-color: var(--vscode-bg-light, #252526);
-      color: var(--vscode-text, #cccccc);
+      background-color: var(--cds-layer-01);
+      color: var(--cds-text-primary);
       margin: 40px auto;
-      border: 1px solid var(--vscode-border, #464647);
-      border-radius: 6px;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-      animation: slideIn 0.2s ease-out;
+      border: none;
+      border-radius: 0;
+      box-shadow: var(--cds-shadow-overlay);
+      animation: slideIn 0.15s ease-out;
       max-height: calc(100vh - 80px);
       display: flex;
       flex-direction: column;
@@ -74,87 +74,79 @@ export class ModalDialog extends I18nLitElement {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--vscode-border, #464647);
-      background-color: var(--vscode-bg-lighter, #2d2d30);
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--cds-border-subtle);
+      background-color: var(--cds-layer-01);
     }
 
     .modal-title {
       margin: 0;
-      font-size: 16px;
-      font-weight: 500;
+      font-size: 20px;
+      font-weight: 400;
+      line-height: 1.4;
+      color: var(--cds-text-primary);
     }
 
     .modal-close {
-      width: 30px;
-      height: 30px;
+      width: 48px;
+      height: 48px;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       border: none;
       background: none;
-      color: var(--vscode-text-dim, #9d9d9d);
-      border-radius: 4px;
-      transition: all 0.2s;
+      color: var(--cds-text-secondary);
+      border-radius: 0;
+      transition: background-color 0.15s;
     }
 
     .modal-close:hover {
-      background-color: var(--vscode-bg-light, #252526);
-      color: var(--vscode-text, #cccccc);
+      background-color: var(--cds-layer-02);
+      color: var(--cds-text-primary);
     }
 
     .modal-content {
       flex: 1;
-      padding: 20px;
+      padding: 24px;
       overflow-y: auto;
+      font-size: 14px;
+      line-height: 1.5;
+      letter-spacing: 0.16px;
     }
 
     .modal-footer {
       display: flex;
       justify-content: flex-end;
-      gap: 8px;
-      padding: 16px 20px;
-      border-top: 1px solid var(--vscode-border, #464647);
-      background-color: var(--vscode-bg, #1e1e1e);
+      gap: 0;
+      padding: 0;
+      border-top: 1px solid var(--cds-border-subtle);
+      background-color: var(--cds-layer-01);
     }
 
     @keyframes fadeIn {
-      from {
-        opacity: 0;
-      }
-      to {
-        opacity: 1;
-      }
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
 
     @keyframes slideIn {
-      from {
-        transform: translateY(-20px);
-        opacity: 0;
-      }
-      to {
-        transform: translateY(0);
-        opacity: 1;
-      }
+      from { transform: translateY(-16px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
     }
 
-    /* Responsive */
     @media (max-width: 768px) {
       .modal {
-        margin: 20px;
-        width: calc(100% - 40px);
+        margin: 0;
+        width: 100%;
         max-width: none;
+        min-height: 100vh;
+        border-radius: 0;
       }
     }
 
-    /* ============================================
-       Form styles for slotted content
-       ============================================ */
-    
-    /* Form groups */
+    /* Form styles for slotted content */
     ::slotted(.form-group) {
-      margin-bottom: 14px;
+      margin-bottom: 16px;
       width: 100%;
       box-sizing: border-box;
     }
@@ -165,18 +157,18 @@ export class ModalDialog extends I18nLitElement {
       gap: 12px;
     }
 
-    /* Form hint text */
     ::slotted(.form-hint) {
-      font-size: 11px;
-      color: var(--vscode-text-dim, #9d9d9d);
+      font-size: 12px;
+      letter-spacing: 0.32px;
+      color: var(--cds-text-placeholder);
       margin-top: 4px;
     }
 
-    /* Footer actions container */
     ::slotted([slot="footer"]) {
       display: flex;
       justify-content: flex-end;
-      gap: 8px;
+      gap: 0;
+      width: 100%;
     }
   `;
 

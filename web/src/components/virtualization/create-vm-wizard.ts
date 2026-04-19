@@ -129,17 +129,17 @@ export class CreateVMWizard extends LitElement {
       display: flex;
       align-items: center;
       gap: 8px;
-      color: var(--vscode-descriptionForeground);
-      font-size: 13px;
+      color: var(--cds-text-secondary);
+      font-size: 14px;
     }
 
     .step.active {
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
       font-weight: 500;
     }
 
     .step.completed {
-      color: var(--vscode-charts-green);
+      color: var(--cds-support-success);
     }
 
     .step-number {
@@ -150,21 +150,21 @@ export class CreateVMWizard extends LitElement {
       align-items: center;
       justify-content: center;
       background: var(--vscode-button-secondaryBackground);
-      border: 2px solid var(--vscode-button-border);
+      border: 2px solid var(--cds-border-subtle);
       font-size: 12px;
       font-weight: 600;
     }
 
     .step.active .step-number {
-      background: var(--vscode-button-background);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground);
-      border-color: var(--vscode-button-background);
+      border-color: var(--cds-button-primary);
     }
 
     .step.completed .step-number {
-      background: var(--vscode-charts-green);
+      background: var(--cds-support-success);
       color: white;
-      border-color: var(--vscode-charts-green);
+      border-color: var(--cds-support-success);
     }
 
     .content {
@@ -186,12 +186,12 @@ export class CreateVMWizard extends LitElement {
     }
 
     .wizard-body::-webkit-scrollbar-track {
-      background: var(--scrollbar-track, var(--vscode-editor-background, #1e1e1e));
+      background: var(--scrollbar-track, var(--cds-background));
     }
 
     .wizard-body::-webkit-scrollbar-thumb {
       background: var(--scrollbar-thumb, var(--vscode-scrollbarSlider-background, #4a4d5a));
-      border-radius: 4px;
+      border-radius: 0;
     }
 
     .wizard-body::-webkit-scrollbar-thumb:hover {
@@ -216,11 +216,11 @@ export class CreateVMWizard extends LitElement {
 
     button {
       padding: 8px 16px;
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 0;
+      font-size: 14px;
       font-weight: 500;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s;
       border: 1px solid transparent;
       font-family: inherit;
     }
@@ -231,40 +231,40 @@ export class CreateVMWizard extends LitElement {
     }
 
     button:focus-visible {
-      outline: 2px solid var(--vscode-focusBorder, #007acc);
+      outline: 2px solid var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
       outline-offset: 2px;
     }
 
     .btn-primary {
-      background: var(--vscode-button-background, #0e639c);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, #ffffff);
-      border: 1px solid var(--vscode-button-background, #0e639c);
+      border: 1px solid var(--cds-button-primary);
     }
 
     .btn-primary:hover:not(:disabled) {
-      background: var(--vscode-button-hoverBackground, #1177bb);
-      border-color: var(--vscode-button-hoverBackground, #1177bb);
+      background: var(--cds-button-primary-hover);
+      border-color: var(--cds-button-primary-hover);
     }
 
 
     .btn-secondary {
       background: var(--vscode-button-secondaryBackground, #3c3c3c);
       color: var(--vscode-button-secondaryForeground, #cccccc);
-      border: 1px solid var(--vscode-button-border, #5a5a5a);
+      border: 1px solid var(--cds-border-subtle);
     }
 
     .btn-secondary:hover:not(:disabled) {
       background: var(--vscode-button-secondaryHoverBackground, #484848);
-      border-color: var(--vscode-focusBorder, #007acc);
+      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
     .btn-ghost {
       background: transparent;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
     }
 
     .btn-ghost:hover {
-      background: var(--vscode-toolbar-hoverBackground);
+      background: var(--cds-layer-02);
     }
 
     .form-group {
@@ -276,18 +276,18 @@ export class CreateVMWizard extends LitElement {
     .form-group label {
       display: block;
       margin-bottom: 8px;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
       color: var(--vscode-foreground, #cccccc);
     }
 
     .form-group label.required::after {
       content: ' *';
-      color: var(--vscode-errorForeground, #f48771);
+      color: var(--cds-support-error);
     }
 
     .required {
-      color: var(--vscode-errorForeground, #f48771);
+      color: var(--cds-support-error);
     }
 
     input,
@@ -299,10 +299,10 @@ export class CreateVMWizard extends LitElement {
       background: var(--vscode-input-background, #3c3c3c);
       color: var(--vscode-input-foreground, #cccccc);
       border: 1px solid var(--vscode-input-border, #858585);
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 0;
+      font-size: 14px;
       font-family: inherit;
-      transition: all 0.2s;
+      transition: all 0.15s;
       box-sizing: border-box;
     }
 
@@ -310,14 +310,14 @@ export class CreateVMWizard extends LitElement {
     select:focus,
     textarea:focus {
       outline: none;
-      border-color: var(--vscode-focusBorder, #007acc);
-      box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc);
+      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      box-shadow: 0 0 0 1px var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
     input:hover,
     select:hover,
     textarea:hover {
-      border-color: var(--vscode-focusBorder, #007acc);
+      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
     input::placeholder {
@@ -354,7 +354,7 @@ export class CreateVMWizard extends LitElement {
     .error-message {
       margin-top: 6px;
       font-size: 12px;
-      color: var(--vscode-errorForeground, #f48771);
+      color: var(--cds-support-error);
       display: flex;
       align-items: center;
       gap: 4px;
@@ -368,7 +368,7 @@ export class CreateVMWizard extends LitElement {
     .help-text {
       margin-top: 6px;
       font-size: 12px;
-      color: var(--vscode-descriptionForeground, #8b8b8b);
+      color: var(--cds-text-secondary);
       line-height: 1.4;
     }
 
@@ -382,8 +382,8 @@ export class CreateVMWizard extends LitElement {
       padding: 8px 12px;
       background: var(--vscode-button-secondaryBackground);
       border: 1px solid var(--vscode-input-border);
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 0;
+      font-size: 14px;
       white-space: nowrap;
     }
 
@@ -401,9 +401,9 @@ export class CreateVMWizard extends LitElement {
       padding: 8px 12px;
       background: var(--vscode-button-secondaryBackground, #3c3c3c);
       border: 1px solid var(--vscode-input-border, #858585);
-      border-radius: 4px;
-      font-size: 13px;
-      color: var(--vscode-descriptionForeground, #8b8b8b);
+      border-radius: 0;
+      font-size: 14px;
+      color: var(--cds-text-secondary);
       white-space: nowrap;
     }
 
@@ -422,17 +422,17 @@ export class CreateVMWizard extends LitElement {
     .disk-item {
       padding: 12px;
       background: var(--vscode-editor-inactiveSelectionBackground, #2a2a2a);
-      border: 1px solid var(--vscode-editorWidget-border, #464647);
-      border-radius: 4px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .disk-item:hover {
       background: var(--vscode-list-hoverBackground, #2a2d2e);
-      border-color: var(--vscode-focusBorder, #007acc);
+      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
     .disk-info {
@@ -446,7 +446,7 @@ export class CreateVMWizard extends LitElement {
       background: var(--vscode-inputValidation-errorBackground);
       color: var(--vscode-inputValidation-errorForeground);
       border: none;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
       font-size: 12px;
     }
@@ -456,10 +456,10 @@ export class CreateVMWizard extends LitElement {
       background: transparent;
       color: var(--vscode-textLink-foreground, #3794ff);
       border: 1px dashed var(--vscode-textLink-foreground, #3794ff);
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
-      font-size: 13px;
-      transition: all 0.2s;
+      font-size: 14px;
+      transition: all 0.15s;
       display: inline-flex;
       align-items: center;
       gap: 6px;
@@ -485,22 +485,22 @@ export class CreateVMWizard extends LitElement {
       margin: 0 0 12px 0;
       font-size: 14px;
       font-weight: 500;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
     }
 
     .review-grid {
       display: grid;
       grid-template-columns: 150px 1fr;
       gap: 8px;
-      font-size: 13px;
+      font-size: 14px;
     }
 
     .review-label {
-      color: var(--vscode-descriptionForeground);
+      color: var(--cds-text-secondary);
     }
 
     .review-value {
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
       font-weight: 500;
     }
 
@@ -511,7 +511,7 @@ export class CreateVMWizard extends LitElement {
       cursor: pointer;
       user-select: none;
       color: var(--vscode-textLink-foreground);
-      font-size: 13px;
+      font-size: 14px;
       margin-bottom: 16px;
     }
 
@@ -521,9 +521,9 @@ export class CreateVMWizard extends LitElement {
 
     .advanced-options {
       padding: 16px;
-      background: var(--vscode-editor-inactiveSelectionBackground);
-      border: 1px solid var(--vscode-editorWidget-border);
-      border-radius: 4px;
+      background: var(--cds-layer-02);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       margin-top: 16px;
     }
 
@@ -533,8 +533,8 @@ export class CreateVMWizard extends LitElement {
       color: var(--close-color, #999);
       cursor: pointer;
       padding: 8px;
-      border-radius: 4px;
-      transition: all 0.2s;
+      border-radius: 0;
+      transition: all 0.15s;
     }
 
     .close-button:hover {

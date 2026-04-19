@@ -28,87 +28,87 @@ export class VirtualizationBackupsView extends LitElement {
     .filters select { 
       height: 36px; 
       padding: 8px 32px 8px 12px; 
-      border-radius: 4px; 
+      border-radius: 0; 
       border: 1px solid var(--vscode-input-border, #3c3c3c); 
       background: var(--vscode-input-background, #3c3c3c); 
       color: var(--vscode-input-foreground, #cccccc); 
-      font-size: 13px;
+      font-size: 14px;
       cursor: pointer;
       appearance: none;
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23cccccc' d='M2 4l4 4 4-4z'/%3E%3C/svg%3E");
       background-repeat: no-repeat;
       background-position: right 10px center;
     }
-    .filters select:focus { outline: none; border-color: var(--vscode-focusBorder, #007acc); box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc); }
+    .filters select:focus { outline: none; border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe)); box-shadow: 0 0 0 1px var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe)); }
     .actions { display: flex; gap: 8px; align-items: center; margin-left: auto; }
-    .btn { height: 36px; padding: 0 16px; border-radius: 4px; border: 1px solid transparent; cursor: pointer; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; font-family: inherit; }
+    .btn { height: 36px; padding: 0 16px; border-radius: 0; border: 1px solid transparent; cursor: pointer; font-size: 14px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s; font-family: inherit; }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .btn-primary { background: var(--vscode-button-background, #0e639c); color: var(--vscode-button-foreground, #ffffff); border: 1px solid var(--vscode-button-background, #0e639c); }
-    .btn-primary:hover:not(:disabled) { background: var(--vscode-button-hoverBackground, #1177bb); border-color: var(--vscode-button-hoverBackground, #1177bb); }
-    .btn-secondary { background: var(--vscode-button-secondaryBackground, #3c3c3c); color: var(--vscode-button-secondaryForeground, #cccccc); border: 1px solid var(--vscode-button-border, #5a5a5a); }
+    .btn-primary { background: var(--cds-button-primary); color: var(--vscode-button-foreground, #ffffff); border: 1px solid var(--cds-button-primary); }
+    .btn-primary:hover:not(:disabled) { background: var(--cds-button-primary-hover); border-color: var(--cds-button-primary-hover); }
+    .btn-secondary { background: var(--vscode-button-secondaryBackground, #3c3c3c); color: var(--vscode-button-secondaryForeground, #cccccc); border: 1px solid var(--cds-border-subtle); }
     .btn-secondary:hover:not(:disabled) { background: var(--vscode-button-secondaryHoverBackground, #484848); }
     .btn-danger { background: var(--vscode-inputValidation-errorBackground, #a4262c); border-color: var(--vscode-inputValidation-errorBorder, #a4262c); color: var(--vscode-inputValidation-errorForeground, #ffffff); }
     .btn-danger:hover:not([disabled]) { opacity: 0.9; }
     table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 12px 10px; border-bottom: 1px solid var(--vscode-border); text-align: left; font-size: 13px; }
-    th { color: var(--vscode-descriptionForeground, #9ca3af); font-weight: 600; }
+    th, td { padding: 12px 10px; border-bottom: 1px solid var(--cds-border-subtle); text-align: left; font-size: 14px; }
+    th { color: var(--cds-text-secondary); font-weight: 600; }
     tr:hover td { background: rgba(255,255,255,0.02); }
     .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; background: #1f2937; color: #e5e7eb; font-size: 12px; }
     .chip.warn { background: #92400e; }
     .chip.missing { background: #78350f; }
-    .empty { text-align: center; padding: 48px 0; color: var(--vscode-descriptionForeground, #9ca3af); }
+    .empty { text-align: center; padding: 48px 0; color: var(--cds-text-secondary); }
     dialog, detail-drawer { color: var(--vscode-foreground, #e5e7eb); }
     .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
     .field.checkbox { flex-direction: row; align-items: center; gap: 12px; }
     .field.checkbox input[type="checkbox"] { width: auto; margin: 0; }
-    .field label { color: var(--vscode-foreground, #cccccc); font-size: 13px; font-weight: 500; }
-    .field input, .field select, .field textarea { width: 100%; padding: 8px 12px; border-radius: 4px; border: 1px solid var(--vscode-input-border, #3c3c3c); background: var(--vscode-input-background, #3c3c3c); color: var(--vscode-input-foreground, #cccccc); font-size: 13px; font-family: inherit; box-sizing: border-box; transition: all 0.2s; }
-    .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--vscode-focusBorder, #007acc); box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc); }
+    .field label { color: var(--vscode-foreground, #cccccc); font-size: 14px; font-weight: 500; }
+    .field input, .field select, .field textarea { width: 100%; padding: 8px 12px; border-radius: 0; border: 1px solid var(--vscode-input-border, #3c3c3c); background: var(--vscode-input-background, #3c3c3c); color: var(--vscode-input-foreground, #cccccc); font-size: 14px; font-family: inherit; box-sizing: border-box; transition: all 0.15s; }
+    .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe)); box-shadow: 0 0 0 1px var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe)); }
     .field select { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23cccccc' d='M2 4l4 4 4-4z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; }
     .field textarea { resize: vertical; min-height: 60px; }
     .drawer-content { padding: 16px; }
-    .drawer-footer { display: flex; gap: 8px; justify-content: flex-end; padding: 12px 16px; border-top: 1px solid var(--vscode-border, #464647); }
+    .drawer-footer { display: flex; gap: 8px; justify-content: flex-end; padding: 12px 16px; border-top: 1px solid var(--cds-border-subtle); }
 
     .drop-zone {
       border: 2px dashed var(--vscode-input-border, #5a5a5a);
-      border-radius: 8px;
+      border-radius: 0;
       padding: 40px;
       text-align: center;
       transition: all 0.3s;
       cursor: pointer;
       margin-bottom: 16px;
-      background: var(--vscode-editor-inactiveSelectionBackground, rgba(37, 37, 38, 0.5));
+      background: var(--cds-layer-02);
     }
     .drop-zone:hover {
-      border-color: var(--vscode-focusBorder, #007acc);
+      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
       background: var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.1));
     }
     .drop-zone.drag-over {
-      border-color: var(--vscode-focusBorder, #007acc);
-      background: var(--vscode-editor-selectionBackground, rgba(51, 153, 255, 0.2));
+      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      background: rgba(15, 98, 254, 0.16);
       border-style: solid;
     }
     .drop-zone-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.8; }
     .drop-zone-text { font-size: 16px; color: var(--vscode-foreground, #cccccc); margin-bottom: 8px; font-weight: 500; }
-    .drop-zone-hint { font-size: 13px; color: var(--vscode-descriptionForeground, #8b8b8b); }
+    .drop-zone-hint { font-size: 14px; color: var(--cds-text-secondary); }
     .file-info {
       padding: 16px;
-      background: var(--vscode-editor-inactiveSelectionBackground);
-      border: 1px solid var(--vscode-editorWidget-border, #464647);
-      border-radius: 4px;
+      background: var(--cds-layer-02);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       margin-bottom: 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
     .file-details { display: flex; flex-direction: column; gap: 4px; }
-    .file-name { font-weight: 500; color: var(--vscode-foreground); }
-    .file-size { font-size: 12px; color: var(--vscode-descriptionForeground); }
+    .file-name { font-weight: 500; color: var(--cds-text-primary); }
+    .file-size { font-size: 12px; color: var(--cds-text-secondary); }
     .dropdown { position: relative; display: inline-block; }
     .dropdown { position: relative; display: inline-block; }
-    .dropdown-menu { display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; background: var(--vscode-dropdown-background, var(--vscode-menu-background, var(--vscode-bg-light, #252526))); border: 1px solid var(--vscode-dropdown-border, var(--vscode-menu-border, var(--border-color, #454545))); border-radius: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index: 100; min-width: 180px; padding: 4px 0; }
+    .dropdown-menu { display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; background: var(--vscode-dropdown-background, var(--vscode-menu-background, var(--vscode-bg-light, #252526))); border: 1px solid var(--vscode-dropdown-border, var(--vscode-menu-border, var(--border-color, #454545))); border-radius: 0; box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index: 100; min-width: 180px; padding: 4px 0; }
     .dropdown.open .dropdown-menu { display: block; }
-    .dropdown-item { display: block; width: 100%; text-align: left; padding: 8px 12px; background: none; border: none; color: var(--vscode-menu-foreground, var(--vscode-foreground, var(--vscode-text, #cccccc))); cursor: pointer; font-size: 13px; box-sizing: border-box; display: flex; align-items: center; gap: 8px; }
+    .dropdown-item { display: block; width: 100%; text-align: left; padding: 8px 12px; background: none; border: none; color: var(--vscode-menu-foreground, var(--vscode-foreground, var(--vscode-text, #cccccc))); cursor: pointer; font-size: 14px; box-sizing: border-box; display: flex; align-items: center; gap: 8px; }
     .dropdown-item:hover { background-color: var(--vscode-list-hoverBackground, var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.08))); color: var(--vscode-list-hoverForeground, var(--vscode-foreground)); }
   `;
 
@@ -866,7 +866,7 @@ export class VirtualizationBackupsView extends LitElement {
             <label>Description</label>
             <textarea .value=${this.importForm.description} @input=${(e: Event) => (this.importForm.description = (e.target as HTMLTextAreaElement).value)}></textarea>
           </div>
-          <div class="field" style="color: var(--vscode-descriptionForeground, #9ca3af); font-size: 12px;">This registers an existing backup file that is already on the server. The file will not be moved or copied.</div>
+          <div class="field" style="color: var(--cds-text-secondary); font-size: 12px;">This registers an existing backup file that is already on the server. The file will not be moved or copied.</div>
         </div>
         <button slot="footer" class="btn" @click=${() => (this.showImportDrawer = false)}>Cancel</button>
         <button slot="footer" class="btn btn-primary" @click=${() => this.handleImport()}>Register</button>
@@ -909,10 +909,10 @@ export class VirtualizationBackupsView extends LitElement {
               <option value="differential">Differential</option>
             </select>
             ${this.createForm.backup_type === 'incremental' ? html`
-              <div class="form-hint" style="margin-top: 4px; font-size: 12px; color: var(--vscode-descriptionForeground);">Backs up only changes since the selected parent backup.</div>
+              <div class="form-hint" style="margin-top: 4px; font-size: 12px; color: var(--cds-text-secondary);">Backs up only changes since the selected parent backup.</div>
             ` : ''}
             ${this.createForm.backup_type === 'differential' ? html`
-              <div class="form-hint" style="margin-top: 4px; font-size: 12px; color: var(--vscode-descriptionForeground);">Backs up only changes since the last full backup (auto-selected).</div>
+              <div class="form-hint" style="margin-top: 4px; font-size: 12px; color: var(--cds-text-secondary);">Backs up only changes since the last full backup (auto-selected).</div>
             ` : ''}
           </div>
           ${this.createForm.backup_type === 'incremental' ? html`
@@ -927,7 +927,7 @@ export class VirtualizationBackupsView extends LitElement {
           .filter(b => b.status === 'completed' && b.vm_id === this.createForm.vm_id)
           .map(b => html`<option value=${b.backup_id}>${b.type} - ${this.formatDate(b.started_at || b.created_at)} ${b.backup_id?.substring(0, 8)}...</option>`)}
               </select>
-              <div class="form-hint" style="margin-top: 4px; font-size: 12px; color: var(--vscode-descriptionForeground);">Leave empty to use the most recent backup.</div>
+              <div class="form-hint" style="margin-top: 4px; font-size: 12px; color: var(--cds-text-secondary);">Leave empty to use the most recent backup.</div>
             </div>
           ` : ''}
           <div class="field">
@@ -1100,8 +1100,8 @@ export class VirtualizationBackupsView extends LitElement {
                 <span>Upload progress</span>
                 <span>${uploadState.uploadProgress}%</span>
               </div>
-              <div style="height: 8px; background: var(--vscode-input-background); border-radius: 4px; overflow: hidden;">
-                <div style="height: 100%; width: ${uploadState.uploadProgress}%; background: var(--vscode-accent, #007acc); transition: width 0.3s;"></div>
+              <div style="height: 8px; background: var(--vscode-input-background); border-radius: 0; overflow: hidden;">
+                <div style="height: 100%; width: ${uploadState.uploadProgress}%; background: var(--cds-button-primary); transition: width 0.3s;"></div>
               </div>
               <div style="display: flex; gap: 8px; margin-top: 12px;">
                 ${uploadState.isUploading ? html`
@@ -1187,13 +1187,13 @@ export class VirtualizationBackupsView extends LitElement {
         <div style="padding: 8px 0;">
           <p style="margin-top: 0">Are you sure you want to delete this backup?</p>
           ${this.deleteTarget ? html`
-            <div style="font-family: monospace; background: var(--vscode-textCodeBlock-background, rgba(255,255,255,0.05)); padding: 8px; border-radius: 4px; margin: 12px 0;">
+            <div style="font-family: monospace; background: var(--vscode-textCodeBlock-background, rgba(255,255,255,0.05)); padding: 8px; border-radius: 0; margin: 12px 0;">
               ${this.deleteTarget.backup_id} 
               ${this.deleteTarget.vm_name ? html`<br><span style="opacity:0.7">VM: ${this.deleteTarget.vm_name}</span>` : ''}
               ${this.deleteTarget.started_at ? html`<br><span style="opacity:0.7">Created: ${this.formatDate(this.deleteTarget.started_at)}</span>` : ''}
             </div>
           ` : ''}
-          <p style="margin-bottom: 0; color: var(--vscode-errorForeground, #f48771);">This action cannot be undone.</p>
+          <p style="margin-bottom: 0; color: var(--cds-support-error);">This action cannot be undone.</p>
         </div>
         <div slot="footer" style="display: flex; gap: 8px; justify-content: flex-end;">
           <button class="btn" @click=${() => (this.showDeleteModal = false)} ?disabled=${!!this.deletingId}>Cancel</button>

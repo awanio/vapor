@@ -26,28 +26,30 @@ export class FilterDropdown extends LitElement {
     }
 
     .dropdown-toggle {
-      background: var(--vscode-button-secondaryBackground, var(--vscode-bg-lighter, #eff1f3));
-      color: var(--vscode-button-secondaryForeground, var(--vscode-foreground, #3b3b3b));
-      border: 1px solid var(--vscode-button-border, var(--vscode-border, #cecece));
-      padding: 6px 12px;
-      border-radius: 4px;
+      background: var(--cds-field, #262626);
+      color: var(--cds-text-primary);
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
+      padding: 0 16px;
+      height: 40px;
+      border-radius: 0;
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: 8px;
       min-width: 120px;
-      font-size: 13px;
-      transition: all 0.2s;
+      font-size: 14px;
+      letter-spacing: 0.16px;
+      transition: all 0.15s;
+      font-family: var(--cds-font-sans);
     }
 
     .dropdown-toggle:hover {
-      background: var(--vscode-button-secondaryHoverBackground, var(--vscode-bg, #e5e5e5));
+      background: var(--cds-field-hover, #353535);
     }
 
     .dropdown-toggle.open {
-      background: var(--vscode-button-secondaryBackground, var(--vscode-bg-lighter, #eff1f3));
-      color: var(--vscode-button-secondaryForeground, var(--vscode-foreground, #3b3b3b));
-      border-color: var(--vscode-focusBorder, #007acc);
+      border-bottom-color: var(--cds-focus, #0f62fe);
     }
 
     .dropdown-label {
@@ -55,7 +57,7 @@ export class FilterDropdown extends LitElement {
       text-align: left;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
     }
 
     .filter-icon {
@@ -65,7 +67,7 @@ export class FilterDropdown extends LitElement {
     }
 
     .dropdown-icon {
-      transition: transform 0.2s;
+      transition: transform 0.15s;
       width: 12px;
       height: 12px;
     }
@@ -78,11 +80,11 @@ export class FilterDropdown extends LitElement {
       position: absolute;
       top: 100%;
       left: 0;
-      margin-top: 4px;
-      background: var(--vscode-dropdown-background, var(--vscode-editor-background, #ffffff));
-      border: 1px solid var(--vscode-border);
-      border-radius: 4px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+      margin-top: 0;
+      background: var(--cds-layer-01);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
+      box-shadow: var(--cds-shadow-raised, 0 2px 6px rgba(0, 0, 0, 0.3));
       z-index: 1000;
       min-width: 150px;
       max-height: 300px;
@@ -90,24 +92,26 @@ export class FilterDropdown extends LitElement {
     }
 
     .filter-option {
-      padding: 8px 12px;
+      padding: 0 16px;
+      height: 40px;
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: 8px;
-      transition: background-color 0.2s;
-      font-size: 13px;
-      color: var(--vscode-foreground);
+      transition: background-color 0.15s;
+      font-size: 14px;
+      letter-spacing: 0.16px;
+      color: var(--cds-text-primary);
       white-space: nowrap;
     }
 
     .filter-option:hover {
-      background: var(--vscode-list-hoverBackground, rgba(0, 0, 0, 0.04));
+      background: var(--cds-layer-02);
     }
 
     .filter-option.selected {
-      background: var(--vscode-list-activeSelectionBackground, #007acc);
-      color: var(--vscode-list-activeSelectionForeground, #ffffff);
+      background: var(--vscode-sidebar-active);
+      color: var(--cds-interactive);
     }
 
     .option-icon {
@@ -118,12 +122,13 @@ export class FilterDropdown extends LitElement {
 
     .option-count {
       margin-left: auto;
-      font-size: 11px;
+      font-size: 12px;
+      letter-spacing: 0.32px;
       opacity: 0.7;
-      background: var(--vscode-badge-background, #4d4d4d);
-      color: var(--vscode-badge-foreground, #ffffff);
-      padding: 2px 6px;
-      border-radius: 10px;
+      background: var(--cds-layer-02);
+      color: var(--cds-text-secondary);
+      padding: 2px 8px;
+      border-radius: 24px;
     }
 
     /* Status-specific styling */
@@ -134,33 +139,16 @@ export class FilterDropdown extends LitElement {
       flex-shrink: 0;
     }
 
-    .status-indicator.all {
-      background: #888;
-    }
-
-    .status-indicator.running {
-      background: #1e88e5;
-    }
-
-    .status-indicator.successful {
-      background: #43a047;
-    }
-
-    .status-indicator.failed {
-      background: #e53935;
-    }
-
-    .status-indicator.canceled {
-      background: #757575;
-    }
-
-    .status-indicator.pending {
-      background: #ffa726;
-    }
+    .status-indicator.all { background: var(--cds-text-secondary); }
+    .status-indicator.running { background: var(--cds-support-info); }
+    .status-indicator.successful { background: var(--cds-support-success); }
+    .status-indicator.failed { background: var(--cds-support-error); }
+    .status-indicator.canceled { background: var(--cds-text-disabled); }
+    .status-indicator.pending { background: var(--cds-support-warning); }
 
     /* Scrollbar styling */
     .dropdown-menu::-webkit-scrollbar {
-      width: 6px;
+      width: 8px;
     }
 
     .dropdown-menu::-webkit-scrollbar-track {
@@ -168,12 +156,12 @@ export class FilterDropdown extends LitElement {
     }
 
     .dropdown-menu::-webkit-scrollbar-thumb {
-      background: var(--vscode-scrollbarSlider-background, #424242);
-      border-radius: 3px;
+      background: var(--cds-border-subtle);
+      border-radius: 0;
     }
 
     .dropdown-menu::-webkit-scrollbar-thumb:hover {
-      background: var(--vscode-scrollbarSlider-hoverBackground, #4e4e4e);
+      background: var(--cds-text-secondary);
     }
   `;
 

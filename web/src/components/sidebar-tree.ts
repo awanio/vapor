@@ -37,45 +37,46 @@ export class SidebarTree extends I18nLitElement {
     :host {
       display: flex;
       flex-direction: column;
-
       height: 100%;
-      background-color: var(--vscode-sidebar);
-      color: var(--vscode-text);
-      border-right: 1px solid var(--vscode-border);
+      background-color: var(--cds-layer-01);
+      color: var(--cds-text-primary);
+      border-right: 1px solid var(--cds-border-subtle);
       user-select: none;
+      font-family: var(--cds-font-sans);
     }
-
 
     .sidebar-content {
       flex: 1;
       overflow-y: auto;
-
       overflow-x: hidden;
     }
 
     .sidebar-footer {
       flex-shrink: 0;
-      padding: 12px;
-      border-top: 1px solid var(--vscode-border);
-      background-color: var(--vscode-sidebar);
-      font-size: 11px;
-      color: var(--vscode-text-dim);
+      padding: 16px;
+      border-top: 1px solid var(--cds-border-subtle);
+      background-color: var(--cds-layer-01);
+      font-size: 12px;
+      letter-spacing: 0.32px;
+      color: var(--cds-text-secondary);
       text-align: center;
-      line-height: 1.4;
+      line-height: 1.33;
     }
 
     .sidebar-footer-brand {
       font-weight: 600;
-      color: var(--vscode-text);
-      margin-bottom: 2px;
+      color: var(--cds-text-primary);
+      margin-bottom: 4px;
+      font-size: 12px;
+      letter-spacing: 0.32px;
     }
 
     .sidebar-footer-copyright {
       opacity: 0.7;
     }
 
-        .tree {
-      padding: 20px 0 0 0;
+    .tree {
+      padding: 8px 0 0 0;
       margin: 0;
       list-style: none;
     }
@@ -83,23 +84,24 @@ export class SidebarTree extends I18nLitElement {
     .tree-item {
       display: flex;
       align-items: center;
-      padding: 6px 12px;
+      padding: 0 16px;
+      height: 32px;
       cursor: pointer;
       position: relative;
-      font-size: 13px;
-      transition: all 0.15s ease;
+      font-size: 14px;
+      letter-spacing: 0.16px;
+      transition: background-color 0.15s;
       border-left: 3px solid transparent;
     }
 
     .tree-item:hover {
       background-color: var(--vscode-sidebar-hover);
-      border-left-color: var(--vscode-text-dim);
     }
 
     .tree-item.active {
       background-color: var(--vscode-sidebar-active);
-      border-left-color: var(--vscode-sidebar-active-border);
-      color: var(--vscode-accent);
+      border-left-color: var(--cds-button-primary);
+      color: var(--cds-interactive);
     }
 
     .tree-item.disabled {
@@ -109,13 +111,13 @@ export class SidebarTree extends I18nLitElement {
     }
 
     .tree-item.active .tree-item-icon {
-      color: var(--vscode-accent);
+      color: var(--cds-interactive);
     }
 
     .tree-item-icon {
       width: 16px;
       height: 16px;
-      margin-right: 6px;
+      margin-right: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -138,10 +140,10 @@ export class SidebarTree extends I18nLitElement {
 
     .tree-item-label {
       flex: 1;
-      overflow-y: auto;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      font-weight: 400;
     }
 
     .tree-item-arrow {
@@ -150,7 +152,7 @@ export class SidebarTree extends I18nLitElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: transform 0.2s;
+      transition: transform 0.15s;
     }
 
     .tree-item-arrow.expanded {
@@ -164,11 +166,13 @@ export class SidebarTree extends I18nLitElement {
     }
 
     .tree-children .tree-item {
-      padding-left: 28px;
+      padding-left: 32px;
+      height: 32px;
+      font-size: 14px;
     }
 
     .tree-children .tree-children .tree-item {
-      padding-left: 44px;
+      padding-left: 48px;
     }
 
     /* Icons */
@@ -213,7 +217,8 @@ export class SidebarTree extends I18nLitElement {
     }
 
     :host([collapsed]) .tree-item {
-      padding: 8px;
+      padding: 0;
+      height: 48px;
       justify-content: center;
     }
 
@@ -225,21 +230,12 @@ export class SidebarTree extends I18nLitElement {
       display: none;
     }
 
-    /* Focus styles for keyboard navigation */
     .tree-item:focus-visible {
-      outline: 2px solid var(--vscode-accent);
+      outline: 2px solid var(--cds-focus);
       outline-offset: -2px;
     }
 
-    /* Subtle animation on icon when hovering */
-    .tree-item:hover .tree-item-icon {
-      transform: translateX(2px);
-      transition: transform 0.15s ease;
-    }
-
-    /* Child items styling */
     .tree-children .tree-item {
-      font-size: 12px;
       opacity: 0.9;
     }
 
@@ -247,7 +243,6 @@ export class SidebarTree extends I18nLitElement {
       opacity: 1;
     }
 
-    /* Masked icon for monochrome SVGs to inherit color */
     .icon-mask {
       width: 16px;
       height: 16px;

@@ -29,39 +29,44 @@ export class ResourceTable extends LitElement {
   static override styles = css`
     .table {
       width: 100%;
-      border-collapse: separate;
+      border-collapse: collapse;
       border-spacing: 0;
-      background: var(--vscode-bg-light);
-      border-radius: 1px;
+      background: transparent;
+      border-radius: 0;
       overflow: visible;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      border: 1px solid var(--vscode-border);
+      border: 1px solid var(--cds-border-subtle);
+      font-family: var(--cds-font-sans);
     }
 
     .table thead {
-      background: var(--vscode-bg-lighter);
+      background: var(--cds-layer-01);
     }
 
     .table th {
-      background: var(--vscode-bg-dark);
-      color: var(--vscode-text);
+      background: var(--cds-layer-01);
+      color: var(--cds-text-primary);
       font-weight: 600;
       text-align: left;
-      padding: 12px 16px;
-      font-size: 0.875rem;
-      border-bottom: 1px solid var(--vscode-border);
+      padding: 0 16px;
+      height: 48px;
+      font-size: 14px;
+      letter-spacing: 0.16px;
+      border-bottom: 1px solid var(--cds-border-strong);
     }
 
     .table td {
-      padding: 12px 16px;
-      color: var(--vscode-text);
-      font-size: 0.875rem;
-      border-bottom: 1px solid var(--vscode-border);
+      padding: 0 16px;
+      height: 48px;
+      color: var(--cds-text-primary);
+      font-size: 14px;
+      letter-spacing: 0.16px;
+      border-bottom: 1px solid var(--cds-border-subtle);
       position: relative;
+      vertical-align: middle;
     }
 
     .table tr:hover td {
-      background: rgba(255, 255, 255, 0.02);
+      background: var(--vscode-sidebar-hover);
     }
 
     .table tr:last-child td {
@@ -73,17 +78,17 @@ export class ResourceTable extends LitElement {
     }
 
     .link {
-      color: var(--vscode-link-foreground, #0096ff);
+      color: var(--cds-link-primary);
       cursor: pointer;
       text-decoration: none;
       border-bottom: 1px solid transparent;
-      transition: all 0.2s ease;
+      transition: all 0.15s;
     }
 
     .link:hover {
-      color: var(--vscode-link-activeForeground, #0096ff);
+      color: var(--cds-link-primary-hover);
       text-decoration: none;
-      border-bottom-color: var(--vscode-link-foreground, #0096ff);
+      border-bottom-color: var(--cds-link-primary-hover);
     }
 
     .actions-cell {

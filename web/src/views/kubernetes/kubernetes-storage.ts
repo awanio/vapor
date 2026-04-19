@@ -85,18 +85,18 @@ export class KubernetesStorage extends LitElement {
       align-items: center;
       gap: 6px;
       padding: 8px 16px;
-      background: var(--vscode-button-background, #007acc);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, white);
       border: none;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .btn-create:hover {
-      background: var(--vscode-button-hoverBackground, #005a9e);
+      background: var(--cds-button-primary-hover);
     }
 
     .controls {
@@ -122,34 +122,34 @@ export class KubernetesStorage extends LitElement {
     .status-badge {
       display: inline-block;
       padding: 2px 8px;
-      border-radius: 4px;
+      border-radius: 0;
       font-size: 12px;
       font-weight: 500;
     }
 
     .status-badge.bound {
       background: var(--vscode-testing-iconPassed, #73c991);
-      color: var(--vscode-editor-background, #1e1e1e);
+      color: var(--cds-background);
     }
 
     .status-badge.available {
       background: var(--vscode-testing-iconPassed, #73c991);
-      color: var(--vscode-editor-background, #1e1e1e);
+      color: var(--cds-background);
     }
 
     .status-badge.released {
       background: var(--vscode-testing-iconQueued, #cca700);
-      color: var(--vscode-editor-background, #1e1e1e);
+      color: var(--cds-background);
     }
 
     .status-badge.pending {
       background: var(--vscode-testing-iconQueued, #cca700);
-      color: var(--vscode-editor-background, #1e1e1e);
+      color: var(--cds-background);
     }
 
     .status-badge.failed {
       background: var(--vscode-testing-iconFailed, #f14c4c);
-      color: var(--vscode-editor-background, #1e1e1e);
+      color: var(--cds-background);
     }
   `;
 

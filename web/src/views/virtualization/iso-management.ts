@@ -128,8 +128,8 @@ export class ISOManagement extends LitElement {
       right: 0;
       width: 50%;
       height: 100%;
-      background: var(--vscode-editor-background, #1e1e1e);
-      border-left: 1px solid var(--vscode-border);
+      background: var(--cds-background);
+      border-left: 1px solid var(--cds-border-subtle);
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
       z-index: 1001;
       overflow-y: auto;
@@ -172,11 +172,11 @@ export class ISOManagement extends LitElement {
 
     .drawer-header {
       padding: 20px 24px;
-      border-bottom: 1px solid var(--vscode-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: var(--vscode-bg-lighter, #252526);
+      background: var(--cds-layer-02);
       position: sticky;
       top: 0;
       z-index: 10;
@@ -196,11 +196,11 @@ export class ISOManagement extends LitElement {
 
     .drawer-footer {
       padding: 16px 24px;
-      border-top: 1px solid var(--vscode-border);
+      border-top: 1px solid var(--cds-border-subtle);
       display: flex;
       justify-content: flex-end;
       gap: 12px;
-      background: var(--vscode-bg-lighter, #252526);
+      background: var(--cds-layer-02);
       position: sticky;
       bottom: 0;
       z-index: 10;
@@ -215,37 +215,37 @@ export class ISOManagement extends LitElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 4px;
+      border-radius: 0;
       font-size: 20px;
       line-height: 1;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .close-btn:hover {
-      background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
+      background: var(--cds-layer-02);
       color: var(--vscode-icon-foreground, #c5c5c5);
     }
 
     /* Drag and Drop Area */
     .drop-zone {
       border: 2px dashed var(--vscode-input-border, #5a5a5a);
-      border-radius: 8px;
+      border-radius: 0;
       padding: 40px;
       text-align: center;
       transition: all 0.3s;
       cursor: pointer;
       margin-bottom: 20px;
-      background: var(--vscode-editor-inactiveSelectionBackground, rgba(37, 37, 38, 0.5));
+      background: var(--cds-layer-02);
     }
 
     .drop-zone:hover {
-      border-color: var(--vscode-focusBorder, #007acc);
+      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
       background: var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.1));
     }
 
     .drop-zone.drag-over {
-      border-color: var(--vscode-focusBorder, #007acc);
-      background: var(--vscode-editor-selectionBackground, rgba(51, 153, 255, 0.2));
+      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      background: rgba(15, 98, 254, 0.16);
       border-style: solid;
     }
 
@@ -263,15 +263,15 @@ export class ISOManagement extends LitElement {
     }
 
     .drop-zone-hint {
-      font-size: 13px;
-      color: var(--vscode-descriptionForeground, #8b8b8b);
+      font-size: 14px;
+      color: var(--cds-text-secondary);
     }
 
     .file-info {
       padding: 16px;
-      background: var(--vscode-editor-inactiveSelectionBackground);
-      border: 1px solid var(--vscode-editorWidget-border);
-      border-radius: 4px;
+      background: var(--cds-layer-02);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       margin-bottom: 20px;
       display: flex;
       justify-content: space-between;
@@ -286,20 +286,20 @@ export class ISOManagement extends LitElement {
 
     .file-name {
       font-weight: 500;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
     }
 
     .file-size {
       font-size: 12px;
-      color: var(--vscode-descriptionForeground);
+      color: var(--cds-text-secondary);
     }
 
     .btn-remove-file {
       padding: 4px 8px;
       background: var(--vscode-button-secondaryBackground);
       color: var(--vscode-button-secondaryForeground);
-      border: 1px solid var(--vscode-button-border);
-      border-radius: 4px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       cursor: pointer;
       font-size: 12px;
     }
@@ -312,7 +312,7 @@ export class ISOManagement extends LitElement {
     .form-group label {
       display: block;
       margin-bottom: 8px;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
       color: var(--vscode-foreground, #cccccc);
     }
@@ -325,18 +325,18 @@ export class ISOManagement extends LitElement {
       background: var(--vscode-input-background, #3c3c3c);
       color: var(--vscode-input-foreground, #cccccc);
       border: 1px solid var(--vscode-input-border, #5a5a5a);
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 0;
+      font-size: 14px;
       font-family: inherit;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .form-group input:focus,
     .form-group select:focus,
     .form-group textarea:focus {
       outline: none;
-      border-color: var(--vscode-focusBorder, #007acc);
-      box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc);
+      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      box-shadow: 0 0 0 1px var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
     .form-group textarea {
@@ -348,7 +348,7 @@ export class ISOManagement extends LitElement {
       display: block;
       margin-top: 4px;
       font-size: 12px;
-      color: var(--vscode-descriptionForeground, #8b8b8b);
+      color: var(--cds-text-secondary);
     }
 
     /* Upload Progress */
@@ -359,8 +359,8 @@ export class ISOManagement extends LitElement {
     .progress-bar-container {
       width: 100%;
       height: 8px;
-      background: var(--vscode-progressBar-background, #1e1e1e);
-      border-radius: 4px;
+      background: var(--cds-layer-02);
+      border-radius: 0;
       overflow: hidden;
       margin: 12px 0;
       border: 1px solid var(--vscode-input-border, #5a5a5a);
@@ -371,7 +371,7 @@ export class ISOManagement extends LitElement {
       background: var(--vscode-progressBar-foreground, #0e639c);
       background: linear-gradient(90deg, 
         var(--vscode-progressBar-foreground, #0e639c) 0%, 
-        var(--vscode-button-hoverBackground, #1177bb) 100%);
+        var(--cds-button-primary-hover) 100%);
       transition: width 0.3s ease;
       box-shadow: 0 0 10px rgba(14, 99, 156, 0.5);
     }
@@ -380,7 +380,7 @@ export class ISOManagement extends LitElement {
       display: flex;
       justify-content: space-between;
       font-size: 12px;
-      color: var(--vscode-descriptionForeground);
+      color: var(--cds-text-secondary);
     }
 
     .upload-actions {
@@ -392,35 +392,35 @@ export class ISOManagement extends LitElement {
     /* Buttons */
     button {
       padding: 8px 16px;
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 0;
+      font-size: 14px;
       font-weight: 500;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s;
       border: 1px solid transparent;
       font-family: inherit;
     }
 
     .btn {
       padding: 8px 16px;
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 0;
+      font-size: 14px;
       font-weight: 500;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s;
       border: 1px solid transparent;
       font-family: inherit;
     }
 
     .btn-primary {
-      background: var(--vscode-button-background, #0e639c);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, #ffffff);
-      border: 1px solid var(--vscode-button-background, #0e639c);
+      border: 1px solid var(--cds-button-primary);
     }
 
     .btn-primary:hover:not(:disabled) {
-      background: var(--vscode-button-hoverBackground, #1177bb);
-      border-color: var(--vscode-button-hoverBackground, #1177bb);
+      background: var(--cds-button-primary-hover);
+      border-color: var(--cds-button-primary-hover);
     }
 
     .btn-primary:disabled {
@@ -431,12 +431,12 @@ export class ISOManagement extends LitElement {
     .btn-secondary {
       background: var(--vscode-button-secondaryBackground, #3c3c3c);
       color: var(--vscode-button-secondaryForeground, #cccccc);
-      border: 1px solid var(--vscode-button-border, #5a5a5a);
+      border: 1px solid var(--cds-border-subtle);
     }
 
     .btn-secondary:hover:not(:disabled) {
       background: var(--vscode-button-secondaryHoverBackground, #45494e);
-      border-color: var(--vscode-button-border, #5a5a5a);
+      border-color: var(--cds-border-subtle);
     }
 
     .btn-secondary:disabled {
@@ -463,7 +463,7 @@ export class ISOManagement extends LitElement {
     .virtualization-disabled-banner {
       margin-top: 16px;
       padding: 16px 20px;
-      border-radius: 8px;
+      border-radius: 0;
       border: 1px solid var(--vscode-inputValidation-warningBorder, #e2c08d);
       background: var(--vscode-inputValidation-warningBackground, rgba(229, 200, 144, 0.15));
       color: var(--vscode-inputValidation-warningForeground, #e2c08d);
@@ -477,8 +477,8 @@ export class ISOManagement extends LitElement {
 
     .virtualization-disabled-banner p {
       margin: 0 0 4px 0;
-      font-size: 13px;
-      color: var(--vscode-descriptionForeground);
+      font-size: 14px;
+      color: var(--cds-text-secondary);
     }
 
     /* Stats Bar */
@@ -486,10 +486,10 @@ export class ISOManagement extends LitElement {
       display: flex;
       gap: 2rem;
       padding: 12px 16px;
-      background: var(--vscode-editor-background);
-      border: 1px solid var(--vscode-editorWidget-border);
-      border-radius: 4px;
-      font-size: 13px;
+      background: var(--cds-background);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
+      font-size: 14px;
       margin-bottom: 1rem;
     }
 
@@ -500,12 +500,12 @@ export class ISOManagement extends LitElement {
     }
 
     .stat-label {
-      color: var(--vscode-descriptionForeground);
+      color: var(--cds-text-secondary);
     }
 
     .stat-value {
       font-weight: 600;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
     }
 
     /* Detail Drawer Styles */
@@ -516,7 +516,7 @@ export class ISOManagement extends LitElement {
     .detail-section h3 {
       font-size: 14px;
       font-weight: 600;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
       margin: 0 0 12px 0;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -529,14 +529,14 @@ export class ISOManagement extends LitElement {
     }
 
     .detail-label {
-      font-size: 13px;
-      color: var(--vscode-descriptionForeground);
+      font-size: 14px;
+      color: var(--cds-text-secondary);
       font-weight: 500;
     }
 
     .detail-value {
-      font-size: 13px;
-      color: var(--vscode-foreground);
+      font-size: 14px;
+      color: var(--cds-text-primary);
       word-break: break-word;
     }
 

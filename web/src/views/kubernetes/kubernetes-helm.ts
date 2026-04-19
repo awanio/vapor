@@ -66,18 +66,18 @@ export class KubernetesHelm extends LitElement {
       align-items: center;
       gap: 6px;
       padding: 8px 16px;
-      background: var(--vscode-button-background, #007acc);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, white);
       border: none;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .btn-install:hover {
-      background: var(--vscode-button-hoverBackground, #005a9e);
+      background: var(--cds-button-primary-hover);
     }
 
     .controls {
@@ -93,7 +93,7 @@ export class KubernetesHelm extends LitElement {
     }
 
     .namespace-selector label {
-      font-size: 13px;
+      font-size: 14px;
       color: var(--vscode-foreground, #cccccc);
     }
 
@@ -101,9 +101,9 @@ export class KubernetesHelm extends LitElement {
       padding: 6px 10px;
       background: var(--vscode-dropdown-background, #3c3c3c);
       color: var(--vscode-dropdown-foreground, #cccccc);
-      border-bottom: 1px solid var(--vscode-border);
-      border-radius: 4px;
-      font-size: 13px;
+      border-bottom: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
+      font-size: 14px;
       cursor: pointer;
     }
 
@@ -128,7 +128,7 @@ export class KubernetesHelm extends LitElement {
 
     .detail-item {
       margin-bottom: 0.5rem;
-      font-size: 13px;
+      font-size: 14px;
     }
 
     .detail-key {
@@ -162,27 +162,27 @@ export class KubernetesHelm extends LitElement {
     .chart-badge {
       display: inline-block;
       padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 11px;
+      border-radius: 0;
+      font-size: 12px;
       font-weight: 500;
-      background: var(--vscode-badge-background, #007acc);
+      background: var(--vscode-badge-background, var(--cds-button-primary, #0f62fe));
       color: var(--vscode-badge-foreground, white);
     }
 
     .revision-badge {
       display: inline-block;
       padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 11px;
+      border-radius: 0;
+      font-size: 12px;
       font-weight: 500;
       background: var(--vscode-textPreformat-background, #ffffff1a);
       color: var(--vscode-textPreformat-foreground, #d7ba7d);
     }
 
     .values-content {
-      background: var(--vscode-editor-background, #1e1e1e);
-      border: 1px solid var(--vscode-border);
-      border-radius: 4px;
+      background: var(--cds-background);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       padding: 1rem;
       font-family: var(--vscode-editor-font-family, monospace);
       font-size: 12px;
@@ -194,10 +194,10 @@ export class KubernetesHelm extends LitElement {
 
     .notes-content {
       background: var(--vscode-textBlockQuote-background, #7f7f7f1a);
-      border-left: 4px solid var(--vscode-textBlockQuote-border, #007acc);
+      border-left: 4px solid var(--vscode-textBlockQuote-border, var(--cds-button-primary, #0f62fe));
       padding: 0.5rem 1rem;
       margin: 0.5rem 0;
-      font-size: 13px;
+      font-size: 14px;
       white-space: pre-wrap;
     }
   `;

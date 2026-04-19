@@ -87,12 +87,12 @@ export class VirtualizationVolumes extends LitElement {
       display: flex;
       flex-direction: column;
       padding: 14px;
-      background: var(--vscode-editor-background);
+      background: var(--cds-background);
       border: 1px solid var(--vscode-widget-border, var(--vscode-input-border, var(--vscode-panel-border, #454545)));
-      border-radius: 8px;
-      transition: all 0.2s ease;
+      border-radius: 0;
+      transition: all 0.15s;
       position: relative;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+      /* box-shadow: none (Carbon flat) */
     }
 
     .stat-widget:hover {
@@ -109,7 +109,7 @@ export class VirtualizationVolumes extends LitElement {
       left: 0;
       right: 0;
       height: 3px;
-      border-radius: 8px 8px 0 0;
+      border-radius: 0 8px 0 0;
       opacity: 0;
       transition: opacity 0.2s ease;
     }
@@ -119,27 +119,27 @@ export class VirtualizationVolumes extends LitElement {
     }
 
     .stat-widget:nth-child(1)::before {
-      background: var(--vscode-charts-blue);
+      background: var(--cds-button-primary);
     }
 
     .stat-widget:nth-child(2)::before {
-      background: var(--vscode-charts-purple);
+      background: #a56eff;
     }
 
     .stat-widget:nth-child(3)::before {
-      background: var(--vscode-charts-green);
+      background: var(--cds-support-success);
     }
 
     .stat-widget:nth-child(4)::before {
-      background: var(--vscode-charts-orange);
+      background: #ff832b;
     }
 
     .stat-widget:nth-child(5)::before {
-      background: var(--vscode-charts-yellow);
+      background: var(--cds-support-warning);
     }
 
     .stat-widget:nth-child(6)::before {
-      background: var(--vscode-charts-red);
+      background: var(--cds-support-error);
     }
 
     .stat-widget-header {
@@ -159,47 +159,47 @@ export class VirtualizationVolumes extends LitElement {
     }
 
     .stat-icon.total {
-      color: var(--vscode-charts-blue);
+      color: var(--cds-button-primary);
     }
 
     .stat-icon.capacity {
-      color: var(--vscode-charts-purple);
+      color: #a56eff;
     }
 
     .stat-icon.allocated {
-      color: var(--vscode-charts-green);
+      color: var(--cds-support-success);
     }
 
     .stat-icon.disk {
-      color: var(--vscode-charts-orange);
+      color: #ff832b;
     }
 
     .stat-icon.iso {
-      color: var(--vscode-charts-yellow);
+      color: var(--cds-support-warning);
     }
 
     .stat-icon.dir {
-      color: var(--vscode-charts-red);
+      color: var(--cds-support-error);
     }
 
     .stat-label {
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 500;
       text-transform: uppercase;
-      color: var(--vscode-descriptionForeground);
+      color: var(--cds-text-secondary);
       opacity: 0.8;
     }
 
     .stat-value {
       font-size: 18px;
       font-weight: 600;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
       line-height: 1.2;
     }
 
     .stat-subtitle {
       font-size: 10px;
-      color: var(--vscode-descriptionForeground);
+      color: var(--cds-text-secondary);
       margin-top: 2px;
       opacity: 0.7;
     }
@@ -228,33 +228,33 @@ export class VirtualizationVolumes extends LitElement {
     /* Buttons (aligned with ISO and Pool drawers) */
     .btn {
       padding: 8px 16px;
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 0;
+      font-size: 14px;
       font-weight: 500;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s;
       border: 1px solid transparent;
       font-family: inherit;
     }
 
     .btn-primary {
-      background: var(--vscode-button-background, #0e639c);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, #ffffff);
-      border: 1px solid var(--vscode-button-background, #0e639c);
+      border: 1px solid var(--cds-button-primary);
     }
     .btn-primary:hover:not(:disabled) {
-      background: var(--vscode-button-hoverBackground, #1177bb);
-      border-color: var(--vscode-button-hoverBackground, #1177bb);
+      background: var(--cds-button-primary-hover);
+      border-color: var(--cds-button-primary-hover);
     }
 
     .btn-secondary {
       background: var(--vscode-button-secondaryBackground, #3c3c3c);
       color: var(--vscode-button-secondaryForeground, #cccccc);
-      border: 1px solid var(--vscode-button-border, #5a5a5a);
+      border: 1px solid var(--cds-border-subtle);
     }
     .btn-secondary:hover:not(:disabled) {
       background: var(--vscode-button-secondaryHoverBackground, #45494e);
-      border-color: var(--vscode-button-border, #5a5a5a);
+      border-color: var(--cds-border-subtle);
     }
 
     search-input {
@@ -271,7 +271,7 @@ export class VirtualizationVolumes extends LitElement {
     .tabs {
       display: flex;
       gap: 0;
-      border-bottom: 1px solid var(--vscode-panel-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
       margin-bottom: 1rem;
     }
 
@@ -280,11 +280,11 @@ export class VirtualizationVolumes extends LitElement {
       background: transparent;
       border: none;
       border-bottom: 2px solid transparent;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
       opacity: 0.7;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .tab:hover {
@@ -299,9 +299,9 @@ export class VirtualizationVolumes extends LitElement {
 
     /* Table Styles */
     .volumes-table {
-      background: var(--vscode-editor-background);
-      border: 1px solid var(--vscode-editorWidget-border);
-      border-radius: 4px;
+      background: var(--cds-background);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       overflow: hidden;
     }
 
@@ -313,20 +313,20 @@ export class VirtualizationVolumes extends LitElement {
     th {
       text-align: left;
       padding: 8px 12px;
-      background: var(--vscode-editor-background);
-      border-bottom: 1px solid var(--vscode-editorWidget-border);
+      background: var(--cds-background);
+      border-bottom: 1px solid var(--cds-border-subtle);
       font-size: 12px;
       font-weight: 600;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
       text-transform: uppercase;
       opacity: 0.7;
     }
 
     td {
       padding: 10px 12px;
-      border-bottom: 1px solid var(--vscode-editorWidget-border);
-      font-size: 13px;
-      color: var(--vscode-foreground);
+      border-bottom: 1px solid var(--cds-border-subtle);
+      font-size: 14px;
+      color: var(--cds-text-primary);
     }
 
     tr:last-child td {
@@ -350,7 +350,7 @@ export class VirtualizationVolumes extends LitElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 4px;
+      border-radius: 0;
       font-size: 14px;
     }
 
@@ -377,12 +377,12 @@ export class VirtualizationVolumes extends LitElement {
 
     .volume-title {
       font-weight: 500;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
     }
 
     .volume-path {
-      font-size: 11px;
-      color: var(--vscode-descriptionForeground);
+      font-size: 12px;
+      color: var(--cds-text-secondary);
       font-family: monospace;
       opacity: 0.8;
     }
@@ -391,8 +391,8 @@ export class VirtualizationVolumes extends LitElement {
     .format-badge {
       display: inline-flex;
       padding: 2px 6px;
-      border-radius: 3px;
-      font-size: 11px;
+      border-radius: 0;
+      font-size: 12px;
       font-weight: 600;
       text-transform: uppercase;
     }
@@ -442,7 +442,7 @@ export class VirtualizationVolumes extends LitElement {
     .usage-bar {
       width: 80px;
       height: 4px;
-      background: var(--vscode-progressBar-background);
+      background: var(--cds-button-primary);
       border-radius: 2px;
       overflow: hidden;
       margin-top: 2px;
@@ -467,8 +467,8 @@ export class VirtualizationVolumes extends LitElement {
     }
 
     .usage-percent {
-      font-size: 11px;
-      color: var(--vscode-descriptionForeground);
+      font-size: 12px;
+      color: var(--cds-text-secondary);
       margin-top: 2px;
     }
 
@@ -478,8 +478,8 @@ export class VirtualizationVolumes extends LitElement {
       padding: 2px 6px;
       background: var(--vscode-badge-background);
       color: var(--vscode-badge-foreground);
-      border-radius: 3px;
-      font-size: 11px;
+      border-radius: 0;
+      font-size: 12px;
     }
 
     /* Actions */
@@ -492,16 +492,16 @@ export class VirtualizationVolumes extends LitElement {
       padding: 4px 8px;
       background: transparent;
       border: none;
-      border-radius: 3px;
-      color: var(--vscode-foreground);
+      border-radius: 0;
+      color: var(--cds-text-primary);
       cursor: pointer;
       font-size: 16px;
       opacity: 0.6;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .action-btn:hover {
-      background: var(--vscode-toolbar-hoverBackground);
+      background: var(--cds-layer-02);
       opacity: 1;
     }
 
@@ -554,12 +554,12 @@ export class VirtualizationVolumes extends LitElement {
       justify-content: center;
       padding: 8px 12px;
       background: transparent;
-      color: var(--vscode-foreground);
-      border: 1px solid var(--vscode-button-border);
-      border-radius: 4px;
+      color: var(--cds-text-primary);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       cursor: pointer;
-      font-size: 13px;
-      transition: all 0.2s;
+      font-size: 14px;
+      transition: all 0.15s;
     }
 
     .btn-refresh:hover {
@@ -569,7 +569,7 @@ export class VirtualizationVolumes extends LitElement {
     .virtualization-disabled-banner {
       margin-top: 16px;
       padding: 16px 20px;
-      border-radius: 8px;
+      border-radius: 0;
       border: 1px solid var(--vscode-inputValidation-warningBorder, #e2c08d);
       background: var(--vscode-inputValidation-warningBackground, rgba(229, 200, 144, 0.15));
       color: var(--vscode-inputValidation-warningForeground, #e2c08d);
@@ -583,8 +583,8 @@ export class VirtualizationVolumes extends LitElement {
 
     .virtualization-disabled-banner p {
       margin: 0 0 4px 0;
-      font-size: 13px;
-      color: var(--vscode-descriptionForeground);
+      font-size: 14px;
+      color: var(--cds-text-secondary);
     }
   `;
 
@@ -1254,11 +1254,11 @@ export class VirtualizationVolumes extends LitElement {
           ${this.selectedVolume ? html`
             <div style="display: flex; flex-direction: column; gap: 24px;">
               <!-- Header Section -->
-              <div style="display: flex; align-items: center; gap: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--vscode-widget-border, #454545);">
+              <div style="display: flex; align-items: center; gap: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--cds-border-subtle);">
                 <div style="font-size: 32px;">${this.getFormatIcon(this.selectedVolume.format)}</div>
                 <div>
-                  <div style="font-size: 18px; font-weight: 600; color: var(--vscode-foreground);">${this.selectedVolume.name}</div>
-                  <div style="font-size: 13px; color: var(--vscode-descriptionForeground); margin-top: 4px;">
+                  <div style="font-size: 18px; font-weight: 600; color: var(--cds-text-primary);">${this.selectedVolume.name}</div>
+                  <div style="font-size: 14px; color: var(--cds-text-secondary); margin-top: 4px;">
                     ${this.selectedVolume.path}
                   </div>
                 </div>
@@ -1266,63 +1266,63 @@ export class VirtualizationVolumes extends LitElement {
 
               <!-- General Info -->
               <div>
-                <h3 style="font-size: 11px; text-transform: uppercase; color: var(--vscode-descriptionForeground); margin: 0 0 12px 0;">
+                <h3 style="font-size: 12px; text-transform: uppercase; color: var(--cds-text-secondary); margin: 0 0 12px 0;">
                   Properties
                 </h3>
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; background: var(--vscode-editor-background); padding: 16px; border: 1px solid var(--vscode-widget-border, #454545); border-radius: 6px;">
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; background: var(--cds-background); padding: 16px; border: 1px solid var(--cds-border-subtle); border-radius: 0;">
                   <div>
-                    <div style="font-size: 11px; color: var(--vscode-descriptionForeground);">Format</div>
-                    <div style="font-size: 13px; margin-top: 4px;">${this.selectedVolume.format}</div>
+                    <div style="font-size: 12px; color: var(--cds-text-secondary);">Format</div>
+                    <div style="font-size: 14px; margin-top: 4px;">${this.selectedVolume.format}</div>
                   </div>
                   <div>
-                    <div style="font-size: 11px; color: var(--vscode-descriptionForeground);">Type</div>
-                    <div style="font-size: 13px; margin-top: 4px;">${this.selectedVolume.type}</div>
+                    <div style="font-size: 12px; color: var(--cds-text-secondary);">Type</div>
+                    <div style="font-size: 14px; margin-top: 4px;">${this.selectedVolume.type}</div>
                   </div>
                   <div>
-                    <div style="font-size: 11px; color: var(--vscode-descriptionForeground);">Created</div>
-                    <div style="font-size: 13px; margin-top: 4px;">${this.formatDate(this.selectedVolume.created_at)}</div>
+                    <div style="font-size: 12px; color: var(--cds-text-secondary);">Created</div>
+                    <div style="font-size: 14px; margin-top: 4px;">${this.formatDate(this.selectedVolume.created_at)}</div>
                   </div>
                   <div>
-                     <div style="font-size: 11px; color: var(--vscode-descriptionForeground);">Pool</div>
-                     <div style="font-size: 13px; margin-top: 4px;">${this.selectedVolume.pool_name}</div>
+                     <div style="font-size: 12px; color: var(--cds-text-secondary);">Pool</div>
+                     <div style="font-size: 14px; margin-top: 4px;">${this.selectedVolume.pool_name}</div>
                   </div>
                 </div>
               </div>
 
               <!-- Storage Usage -->
               <div>
-                <h3 style="font-size: 11px; text-transform: uppercase; color: var(--vscode-descriptionForeground); margin: 0 0 12px 0;">
+                <h3 style="font-size: 12px; text-transform: uppercase; color: var(--cds-text-secondary); margin: 0 0 12px 0;">
                   Storage Usage
                 </h3>
-                <div style="background: var(--vscode-editor-background); padding: 16px; border: 1px solid var(--vscode-widget-border, #454545); border-radius: 6px;">
+                <div style="background: var(--cds-background); padding: 16px; border: 1px solid var(--cds-border-subtle); border-radius: 0;">
                   <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                    <div style="font-size: 13px;">Used Space</div>
-                    <div style="font-size: 13px; font-weight: 500;">
+                    <div style="font-size: 14px;">Used Space</div>
+                    <div style="font-size: 14px; font-weight: 500;">
                       ${formatBytes(this.selectedVolume.allocation || 0)} / ${formatBytes(this.selectedVolume.capacity)}
                     </div>
                   </div>
                   
-                  <div style="height: 6px; background: #3c3c3c; border-radius: 3px; overflow: hidden;">
+                  <div style="height: 6px; background: #3c3c3c; border-radius: 0; overflow: hidden;">
                     <div style="height: 100%; ${({
-          'low': 'background: var(--vscode-charts-green, #388a34);',
-          'medium': 'background: var(--vscode-charts-yellow, #cca700);',
-          'high': 'background: var(--vscode-charts-red, #f14c4c);'
+          'low': 'background: var(--cds-support-success);',
+          'medium': 'background: var(--cds-support-warning);',
+          'high': 'background: var(--cds-support-error);'
         }[this.getUsageClass(this.selectedVolume.used_percent || 0)])} width: ${this.selectedVolume.used_percent || 0}%;"></div>
                   </div>
                   <div style="display: flex; justify-content: flex-end; margin-top: 4px;">
-                     <span style="font-size: 11px; color: var(--vscode-descriptionForeground);">${this.selectedVolume.used_percent || 0}% Allocated</span>
+                     <span style="font-size: 12px; color: var(--cds-text-secondary);">${this.selectedVolume.used_percent || 0}% Allocated</span>
                   </div>
                 </div>
               </div>
 
               <!-- Technical Details -->
               <div>
-                 <h3 style="font-size: 11px; text-transform: uppercase; color: var(--vscode-descriptionForeground); margin: 0 0 12px 0;">
+                 <h3 style="font-size: 12px; text-transform: uppercase; color: var(--cds-text-secondary); margin: 0 0 12px 0;">
                   Technical Details
                 </h3>
-                <div style="background: var(--vscode-textCodeBlock-background); padding: 12px; border-radius: 4px; font-family: 'Fira Code', monospace; font-size: 12px;">
-                  <div style="margin-bottom: 4px;"><span style="color: var(--vscode-symbolIcon-propertyForeground);">key:</span> <span style="color: var(--vscode-symbolIcon-stringForeground);">${(this.selectedVolume as any).key || 'N/A'}</span></div>
-                  <div style="margin-bottom: 4px;"><span style="color: var(--vscode-symbolIcon-propertyForeground);">path:</span> <span style="color: var(--vscode-symbolIcon-stringForeground);">${this.selectedVolume.path}</span></div>
+                <div style="background: var(--vscode-textCodeBlock-background); padding: 12px; border-radius: 0; font-family: 'Fira Code', monospace; font-size: 12px;">
+                  <div style="margin-bottom: 4px;"><span style="color: var(--cds-text-secondary);">key:</span> <span style="color: var(--cds-support-success);">${(this.selectedVolume as any).key || 'N/A'}</span></div>
+                  <div style="margin-bottom: 4px;"><span style="color: var(--cds-text-secondary);">path:</span> <span style="color: var(--cds-support-success);">${this.selectedVolume.path}</span></div>
                 </div>
               </div>
             </div>

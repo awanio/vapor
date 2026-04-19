@@ -71,13 +71,13 @@ export class StoragePoolFormDrawer extends LitElement {
     .drawer {
       width: 100%;
       height: 100%;
-      background: var(--vscode-editor-background, var(--vscode-bg-light));
+      background: var(--cds-layer-01);
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
       display: flex;
       flex-direction: column;
       transform: translateX(100%);
       transition: transform 0.3s ease;
-      border-left: 1px solid var(--vscode-border);
+      border-left: 1px solid var(--cds-border-subtle);
     }
 
     :host([show]) .drawer {
@@ -86,8 +86,8 @@ export class StoragePoolFormDrawer extends LitElement {
 
     .drawer-header {
       padding: 20px;
-      background: var(--vscode-bg-lighter, #252526);
-      border-bottom: 1px solid var(--vscode-border);
+      background: var(--cds-layer-02);
+      border-bottom: 1px solid var(--cds-border-subtle);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -106,9 +106,9 @@ export class StoragePoolFormDrawer extends LitElement {
       color: var(--vscode-foreground, #cccccc);
       cursor: pointer;
       padding: 4px 8px;
-      border-radius: 4px;
+      border-radius: 0;
       font-size: 20px;
-      transition: background 0.2s;
+      transition: background-color 0.15s;
     }
 
     .close-button:hover {
@@ -128,7 +128,7 @@ export class StoragePoolFormDrawer extends LitElement {
     .form-label {
       display: block;
       margin-bottom: 6px;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
       color: var(--vscode-foreground, #cccccc);
     }
@@ -139,9 +139,9 @@ export class StoragePoolFormDrawer extends LitElement {
       padding: 8px 12px;
       background: var(--vscode-input-background, #3c3c3c);
       border: 1px solid var(--vscode-input-border, #3c3c3c);
-      border-radius: 4px;
+      border-radius: 0;
       color: var(--vscode-input-foreground, #cccccc);
-      font-size: 13px;
+      font-size: 14px;
       font-family: inherit;
       outline: none;
       box-sizing: border-box;
@@ -149,7 +149,7 @@ export class StoragePoolFormDrawer extends LitElement {
 
     .form-input:focus,
     .form-select:focus {
-      border-color: var(--vscode-focusBorder, #007acc);
+      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
     .form-input:disabled,
@@ -192,16 +192,16 @@ export class StoragePoolFormDrawer extends LitElement {
       padding: 12px;
       margin-bottom: 16px;
       background: var(--vscode-inputValidation-infoBorder, rgba(0, 122, 204, 0.1));
-      border: 1px solid var(--vscode-inputValidation-infoBorder, #007acc);
-      border-radius: 4px;
+      border: 1px solid var(--vscode-inputValidation-infoBorder, var(--cds-button-primary, #0f62fe));
+      border-radius: 0;
       color: var(--vscode-foreground, #cccccc);
-      font-size: 13px;
+      font-size: 14px;
     }
 
     .drawer-footer {
       padding: 16px 20px;
-      background: var(--vscode-bg-lighter, #252526);
-      border-top: 1px solid var(--vscode-border);
+      background: var(--cds-layer-02);
+      border-top: 1px solid var(--cds-border-subtle);
       display: flex;
       justify-content: flex-end;
       gap: 12px;
@@ -210,12 +210,12 @@ export class StoragePoolFormDrawer extends LitElement {
 
     .btn {
       padding: 8px 16px;
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 0;
+      font-size: 14px;
       font-weight: 500;
       cursor: pointer;
       border: 1px solid transparent;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .btn-cancel {
@@ -228,12 +228,12 @@ export class StoragePoolFormDrawer extends LitElement {
     }
 
     .btn-primary {
-      background: var(--vscode-button-background, #0e639c);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, white);
     }
 
     .btn-primary:hover {
-      background: var(--vscode-button-hoverBackground, #1177bb);
+      background: var(--cds-button-primary-hover);
     }
 
     .btn:disabled {

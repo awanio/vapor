@@ -41,11 +41,11 @@ export class VMActions extends LitElement {
       padding: 6px 12px;
       background: var(--vscode-button-secondaryBackground);
       color: var(--vscode-button-secondaryForeground);
-      border: 1px solid var(--vscode-button-border);
-      border-radius: 4px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       cursor: pointer;
-      font-size: 13px;
-      transition: all 0.2s;
+      font-size: 14px;
+      transition: all 0.15s;
       white-space: nowrap;
     }
 
@@ -59,13 +59,13 @@ export class VMActions extends LitElement {
     }
 
     .action-button.primary {
-      background: var(--vscode-button-background);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground);
-      border-color: var(--vscode-button-background);
+      border-color: var(--cds-button-primary);
     }
 
     .action-button.primary:hover:not(:disabled) {
-      background: var(--vscode-button-hoverBackground);
+      background: var(--cds-button-primary-hover);
     }
 
     .action-button.danger {
@@ -119,7 +119,7 @@ export class VMActions extends LitElement {
     .divider {
       width: 1px;
       height: 20px;
-      background: var(--vscode-editorWidget-border);
+      background: var(--cds-border-subtle);
       margin: 0 4px;
     }
 
@@ -144,8 +144,8 @@ export class VMActions extends LitElement {
       padding: 4px 8px;
       background: var(--vscode-editorWidget-background);
       color: var(--vscode-editorWidget-foreground);
-      border: 1px solid var(--vscode-editorWidget-border);
-      border-radius: 4px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       font-size: 12px;
       white-space: nowrap;
       pointer-events: none;
@@ -164,9 +164,9 @@ export class VMActions extends LitElement {
       align-items: center;
       gap: 6px;
       padding: 4px 8px;
-      background: var(--vscode-editor-background);
-      border: 1px solid var(--vscode-editorWidget-border);
-      border-radius: 4px;
+      background: var(--cds-background);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       font-size: 12px;
     }
 
@@ -178,19 +178,19 @@ export class VMActions extends LitElement {
     }
 
     .status-dot.running {
-      background: var(--vscode-charts-green);
+      background: var(--cds-support-success);
     }
 
     .status-dot.stopped {
-      background: var(--vscode-charts-red);
+      background: var(--cds-support-error);
     }
 
     .status-dot.paused {
-      background: var(--vscode-charts-yellow);
+      background: var(--cds-support-warning);
     }
 
     .status-dot.suspended {
-      background: var(--vscode-charts-orange);
+      background: #ff832b;
     }
 
     @keyframes pulse {

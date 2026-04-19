@@ -26,9 +26,9 @@ export class DockerNetworksTab extends LitElement {
     .error-state {
       text-align: center;
       padding: 3rem;
-      color: var(--vscode-error);
-      background: var(--vscode-bg-light);
-      border-radius: 6px;
+      color: var(--cds-support-error);
+      background: var(--cds-layer-01);
+      border-radius: 0;
       margin: 2rem 0;
     }
 
@@ -42,31 +42,31 @@ export class DockerNetworksTab extends LitElement {
       width: 100%;
       border-collapse: separate;
       border-spacing: 0;
-      background: var(--vscode-bg-light);
+      background: var(--cds-layer-01);
       border-radius: 1px;
       overflow: hidden;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      /* box-shadow: none (Carbon flat) */
       border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
     }
 
     .table thead {
-      background: var(--vscode-bg-lighter);
+      background: var(--cds-layer-02);
     }
 
     .table th {
-      background: var(--vscode-bg-dark);
-      color: var(--vscode-text);
+      background: var(--cds-background);
+      color: var(--cds-text-primary);
       font-weight: 600;
       text-align: left;
       padding: 12px 16px;
-      font-size: 0.875rem;
+      font-size: 14px;
       border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
     }
 
     .table td {
       padding: 12px 16px;
-      color: var(--vscode-text);
-      font-size: 0.875rem;
+      color: var(--cds-text-primary);
+      font-size: 14px;
       border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
       position: relative;
     }
@@ -86,11 +86,11 @@ export class DockerNetworksTab extends LitElement {
     .btn {
       padding: 6px 12px;
       border: none;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
       font-size: 12px;
       margin-right: 4px;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .btn-danger {
@@ -118,8 +118,8 @@ export class DockerNetworksTab extends LitElement {
     .network-scope {
       display: inline-block;
       padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 0.75rem;
+      border-radius: 0;
+      font-size: 12px;
       font-weight: 500;
       background: var(--vscode-badge-background);
       color: var(--vscode-badge-foreground);
@@ -139,21 +139,21 @@ export class DockerNetworksTab extends LitElement {
     .search-box input {
       width: 100%;
       padding: 8px 36px 8px 36px;
-      border: 1px solid var(--vscode-border);
-      border-radius: 4px;
-      background: var(--vscode-bg-light);
-      color: var(--vscode-text);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
+      background: var(--cds-layer-01);
+      color: var(--cds-text-primary);
       font-size: 14px;
       transition: border-color 0.2s;
     }
 
     .search-box input:focus {
       outline: none;
-      border-color: var(--vscode-accent);
+      border-color: var(--cds-button-primary);
     }
 
     .search-box input::placeholder {
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
     }
 
     .search-icon {
@@ -161,7 +161,7 @@ export class DockerNetworksTab extends LitElement {
       left: 12px;
       top: 50%;
       transform: translateY(-50%);
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
       pointer-events: none;
       width: 16px;
       height: 16px;
@@ -177,15 +177,15 @@ export class DockerNetworksTab extends LitElement {
       border: none;
       cursor: pointer;
       padding: 4px 8px;
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
       font-size: 18px;
       line-height: 1;
-      transition: background-color 0.2s;
-      border-radius: 4px;
+      transition: background-color 0.15s;
+      border-radius: 0;
     }
 
     .action-dots:hover {
-      background-color: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.1));
+      background-color: var(--cds-layer-02);
     }
 
     .action-dropdown {
@@ -194,8 +194,8 @@ export class DockerNetworksTab extends LitElement {
       top: 100%;
       margin-top: 4px;
       background: var(--vscode-dropdown-background, var(--vscode-bg-light));
-      border: 1px solid var(--vscode-dropdown-border, var(--vscode-border));
-      border-radius: 4px;
+      border: 1px solid var(--vscode-dropdown-border, var(--cds-border-subtle));
+      border-radius: 0;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
       min-width: 160px;
       z-index: 1000;
@@ -213,10 +213,10 @@ export class DockerNetworksTab extends LitElement {
       padding: 8px 16px;
       border: none;
       background: none;
-      color: var(--vscode-text);
+      color: var(--cds-text-primary);
       cursor: pointer;
-      font-size: 13px;
-      transition: background-color 0.2s;
+      font-size: 14px;
+      transition: background-color 0.15s;
     }
 
     .action-dropdown button:hover {
@@ -224,7 +224,7 @@ export class DockerNetworksTab extends LitElement {
     }
 
     .action-dropdown button.danger {
-      color: var(--vscode-error);
+      color: var(--cds-support-error);
     }
 
     .action-dropdown button.danger:hover {

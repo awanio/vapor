@@ -67,7 +67,7 @@ export class AnsibleExecutions extends LitElement {
       align-items: center;
       gap: 1rem;
       padding-bottom: 1rem;
-      border-bottom: 1px solid var(--vscode-panel-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
     }
 
     h1 {
@@ -102,18 +102,18 @@ export class AnsibleExecutions extends LitElement {
       align-items: center;
       gap: 6px;
       padding: 8px 16px;
-      background: var(--vscode-button-background, #007acc);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, white);
       border: none;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .btn-run:hover {
-      background: var(--vscode-button-hoverBackground, #005a9e);
+      background: var(--cds-button-primary-hover);
     }
 
     search-input {
@@ -135,7 +135,7 @@ export class AnsibleExecutions extends LitElement {
       align-items: center;
       gap: 4px;
       padding: 2px 8px;
-      border-radius: 12px;
+      border-radius: 0;
       font-size: 12px;
       font-weight: 500;
     }
@@ -204,13 +204,13 @@ export class AnsibleExecutions extends LitElement {
       background: var(--vscode-button-secondaryBackground);
       color: var(--vscode-button-secondaryForeground);
       border: none;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .refresh-btn:hover {

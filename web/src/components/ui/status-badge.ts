@@ -12,70 +12,95 @@ export class StatusBadge extends LitElement {
 
   static override styles = css`
     .status {
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 0.75rem;
-      font-weight: 500;
+      padding: 4px 8px;
+      border-radius: 24px;
+      font-size: 12px;
+      font-weight: 400;
+      letter-spacing: 0.32px;
       text-transform: uppercase;
       display: inline-block;
+      font-family: var(--cds-font-sans);
     }
 
+    /* Success states — Green */
     .status.running,
     .status.active,
     .status.deployed,
     .status.bound,
     .status.available,
     .status.ready {
-      background-color: rgba(34, 197, 94, 0.1);
-      color: rgb(34, 197, 94);
+      background-color: #defbe6;
+      color: #198038;
     }
 
-    .status.pending {
-      background-color: rgba(251, 191, 36, 0.1);
-      color: rgb(251, 191, 36);
+    :host-context(.dark) .status.running,
+    :host-context(.dark) .status.active,
+    :host-context(.dark) .status.deployed,
+    :host-context(.dark) .status.bound,
+    :host-context(.dark) .status.available,
+    :host-context(.dark) .status.ready {
+      background-color: rgba(36, 161, 72, 0.2);
+      color: #42be65;
     }
 
-    .status.failed,
-    .status.error {
-      background-color: rgba(239, 68, 68, 0.1);
-      color: rgb(239, 68, 68);
-    }
-
-    .status.enforced {
-      background-color: rgba(59, 130, 246, 0.1);
-      color: rgb(59, 130, 246);
-    }
-
-    .status.suspended {
-      background-color: rgba(156, 163, 175, 0.1);
-      color: rgb(156, 163, 175);
-    }
-
-    .status.stopped,
-    .status.shutoff {
-      background-color: rgba(239, 68, 68, 0.1);
-      color: rgb(239, 68, 68);
-    }
-
+    /* Pending / Warning states — Yellow */
+    .status.pending,
     .status.paused {
-      background-color: rgba(251, 191, 36, 0.1);
-      color: rgb(251, 191, 36);
+      background-color: #fff8c5;
+      color: #9a6700;
     }
 
+    :host-context(.dark) .status.pending,
+    :host-context(.dark) .status.paused {
+      background-color: rgba(241, 194, 27, 0.2);
+      color: #f1c21b;
+    }
+
+    /* Error states — Red */
+    .status.failed,
+    .status.error,
+    .status.stopped,
+    .status.shutoff,
     .status.crashed {
-      background-color: rgba(220, 38, 38, 0.1);
-      color: rgb(220, 38, 38);
+      background-color: #fff1f1;
+      color: #da1e28;
     }
 
+    :host-context(.dark) .status.failed,
+    :host-context(.dark) .status.error,
+    :host-context(.dark) .status.stopped,
+    :host-context(.dark) .status.shutoff,
+    :host-context(.dark) .status.crashed {
+      background-color: rgba(218, 30, 40, 0.2);
+      color: #ff8389;
+    }
+
+    /* Info / Blue states */
+    .status.enforced,
     .status.starting,
     .status.stopping {
-      background-color: rgba(59, 130, 246, 0.1);
-      color: rgb(59, 130, 246);
+      background-color: #edf5ff;
+      color: #0f62fe;
     }
 
+    :host-context(.dark) .status.enforced,
+    :host-context(.dark) .status.starting,
+    :host-context(.dark) .status.stopping {
+      background-color: rgba(15, 98, 254, 0.2);
+      color: #78a9ff;
+    }
+
+    /* Neutral states */
+    .status.suspended,
     .status.unknown {
-      background-color: rgba(107, 114, 128, 0.1);
-      color: rgb(107, 114, 128);
+      background-color: #f4f4f4;
+      color: #525252;
+    }
+
+    :host-context(.dark) .status.suspended,
+    :host-context(.dark) .status.unknown {
+      background-color: rgba(141, 141, 141, 0.2);
+      color: #c6c6c6;
     }
   `;
 

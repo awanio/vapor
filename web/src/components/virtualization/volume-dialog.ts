@@ -66,13 +66,13 @@ export class VolumeDialog extends LitElement {
     .drawer {
       width: 100%;
       height: 100%;
-      background: var(--vscode-editor-background);
+      background: var(--cds-background);
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
       display: flex;
       flex-direction: column;
       transform: translateX(100%);
       transition: transform 0.3s ease;
-      border-left: 1px solid var(--vscode-border);
+      border-left: 1px solid var(--cds-border-subtle);
     }
 
     :host([show]) .drawer {
@@ -82,7 +82,7 @@ export class VolumeDialog extends LitElement {
     .drawer-header {
       padding: 20px;
       background: var(--vscode-bg-lighter, #2d2d30);
-      border-bottom: 1px solid var(--vscode-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -109,9 +109,9 @@ export class VolumeDialog extends LitElement {
       color: var(--vscode-foreground, #cccccc);
       cursor: pointer;
       padding: 4px 8px;
-      border-radius: 4px;
+      border-radius: 0;
       font-size: 20px;
-      transition: background 0.2s;
+      transition: background-color 0.15s;
     }
 
     .close-button:hover,
@@ -128,7 +128,7 @@ export class VolumeDialog extends LitElement {
     .drawer-footer {
       padding: 16px 20px;
       background: var(--vscode-bg-lighter, #2d2d30);
-      border-top: 1px solid var(--vscode-border);
+      border-top: 1px solid var(--cds-border-subtle);
       display: flex;
       justify-content: flex-end;
       gap: 12px;
@@ -152,7 +152,7 @@ export class VolumeDialog extends LitElement {
     .form-label {
       display: block;
       margin-bottom: 6px;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
       color: var(--vscode-foreground, #cccccc);
     }
@@ -168,19 +168,19 @@ export class VolumeDialog extends LitElement {
       padding: 8px 12px;
       background: var(--vscode-input-background, #3c3c3c);
       border: 1px solid var(--vscode-input-border, #5a5a5a);
-      border-radius: 4px;
+      border-radius: 0;
       color: var(--vscode-input-foreground, #cccccc);
-      font-size: 13px;
+      font-size: 14px;
       font-family: inherit;
       outline: none;
       box-sizing: border-box;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .form-input:focus,
     .form-select:focus {
-      border-color: var(--vscode-focusBorder, #007acc);
-      box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc);
+      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      box-shadow: 0 0 0 1px var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
     .form-input.error,
@@ -231,9 +231,9 @@ export class VolumeDialog extends LitElement {
 
     .pool-info {
       padding: 12px;
-      background: var(--vscode-editor-background);
-      border: 1px solid var(--vscode-border);
-      border-radius: 4px;
+      background: var(--cds-background);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 16px;
@@ -246,15 +246,15 @@ export class VolumeDialog extends LitElement {
     }
 
     .info-label {
-      font-size: 11px;
-      color: var(--vscode-descriptionForeground);
+      font-size: 12px;
+      color: var(--cds-text-secondary);
       text-transform: uppercase;
       font-weight: 600;
     }
 
     .info-value {
-      font-size: 13px;
-      color: var(--vscode-foreground);
+      font-size: 14px;
+      color: var(--cds-text-primary);
       font-weight: 500;
     }
 
@@ -266,21 +266,21 @@ export class VolumeDialog extends LitElement {
 
     .format-option {
       padding: 12px;
-      background: var(--vscode-editor-background);
-      border: 2px solid var(--vscode-border);
-      border-radius: 4px;
+      background: var(--cds-background);
+      border: 2px solid var(--cds-border-subtle);
+      border-radius: 0;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .format-option:hover {
-      border-color: var(--vscode-focusBorder, #007acc);
+      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
     .format-option.selected {
       border-color: var(--vscode-textLink-foreground, #3794ff);
       background: var(--vscode-list-activeSelectionBackground, #094771);
-      box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc);
+      box-shadow: 0 0 0 1px var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
     .format-option.disabled {
@@ -289,47 +289,47 @@ export class VolumeDialog extends LitElement {
     }
 
     .format-name {
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 600;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
       margin-bottom: 4px;
     }
 
     .format-description {
-      font-size: 11px;
-      color: var(--vscode-descriptionForeground);
+      font-size: 12px;
+      color: var(--cds-text-secondary);
     }
 
     .btn {
       padding: 8px 16px;
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 0;
+      font-size: 14px;
       font-weight: 500;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s;
       border: none;
     }
 
     .btn-primary {
-      background: var(--vscode-button-background, #0e639c);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, #ffffff);
-      border: 1px solid var(--vscode-button-background, #0e639c);
+      border: 1px solid var(--cds-button-primary);
     }
 
     .btn-primary:hover:not(:disabled) {
-      background: var(--vscode-button-hoverBackground, #1177bb);
-      border-color: var(--vscode-button-hoverBackground, #1177bb);
+      background: var(--cds-button-primary-hover);
+      border-color: var(--cds-button-primary-hover);
     }
 
     .btn-secondary {
       background: var(--vscode-button-secondaryBackground, #3c3c3c);
       color: var(--vscode-button-secondaryForeground, #cccccc);
-      border: 1px solid var(--vscode-button-border, #5a5a5a);
+      border: 1px solid var(--cds-border-subtle);
     }
 
     .btn-secondary:hover:not(:disabled) {
       background: var(--vscode-button-secondaryHoverBackground, #45494e);
-      border-color: var(--vscode-button-border, #5a5a5a);
+      border-color: var(--cds-border-subtle);
     }
 
     .btn:disabled {
@@ -340,13 +340,13 @@ export class VolumeDialog extends LitElement {
     .advanced-section {
       margin-top: 8px;
       padding-top: 16px;
-      border-top: 1px solid var(--vscode-border);
+      border-top: 1px solid var(--cds-border-subtle);
     }
 
     .section-title {
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 600;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
       margin-bottom: 12px;
     }
   `;

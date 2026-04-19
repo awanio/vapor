@@ -34,13 +34,13 @@ export class DetailDrawer extends LitElement {
     .drawer {
       width: 100%;
       height: 100%;
-      background: var(--vscode-editor-background, var(--vscode-bg-light));
-      border-left: 1px solid var(--vscode-border);
-      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+      background: var(--cds-layer-01);
+      border-left: 1px solid var(--cds-border-subtle);
+      box-shadow: var(--cds-shadow-overlay, 0 2px 6px rgba(0, 0, 0, 0.3));
       display: flex;
       flex-direction: column;
       transform: translateX(100%);
-      transition: transform 0.3s ease;
+      transition: transform 0.15s ease;
     }
 
     :host([show]) .drawer {
@@ -49,26 +49,32 @@ export class DetailDrawer extends LitElement {
 
     .close-button {
       position: absolute;
-      top: 16px;
+      top: 12px;
       right: 16px;
       background: none;
       border: none;
       cursor: pointer;
-      color: var(--vscode-text);
+      color: var(--cds-text-secondary);
       font-size: 18px;
-      padding: 4px;
-      border-radius: 4px;
-      transition: background-color 0.2s;
+      padding: 0;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0;
+      transition: background-color 0.15s;
       z-index: 10;
     }
 
     .close-button:hover {
-      background-color: var(--hover-bg);
+      background-color: var(--cds-layer-02);
+      color: var(--cds-text-primary);
     }
 
     .drawer-header {
-      padding: 20px;
-      border-bottom: 1px solid var(--vscode-border);
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--cds-border-subtle);
       flex-shrink: 0;
       position: relative;
     }
@@ -76,25 +82,28 @@ export class DetailDrawer extends LitElement {
     h2 {
       margin: 0;
       padding: 0;
-      font-size: 18px;
-      font-weight: 600;
-      color: var(--vscode-text);
+      font-size: 20px;
+      font-weight: 400;
+      color: var(--cds-text-primary);
+      letter-spacing: 0.16px;
     }
 
     .drawer-content {
-      font-size: 0.875rem;
+      font-size: 14px;
+      letter-spacing: 0.16px;
+      line-height: 1.43;
       flex: 1;
       overflow-y: auto;
-      padding: 20px;
+      padding: 24px;
     }
 
     .drawer-footer {
-      padding: 16px 20px;
-      background: var(--vscode-bg-lighter, #252526);
-      border-top: 1px solid var(--vscode-border);
+      padding: 0;
+      background: var(--cds-layer-01);
+      border-top: 1px solid var(--cds-border-subtle);
       display: flex;
       justify-content: flex-end;
-      gap: 12px;
+      gap: 0;
       flex-shrink: 0;
     }
   `;

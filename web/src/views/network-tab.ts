@@ -55,7 +55,7 @@ export class NetworkTab extends I18nLitElement {
 
     .tab-header {
       display: flex;
-      border-bottom: 2px solid var(--vscode-border);
+      border-bottom: 2px solid var(--cds-border-subtle);
       margin-bottom: 1rem;
     }
 
@@ -64,11 +64,11 @@ export class NetworkTab extends I18nLitElement {
       background: none;
       border: none;
       cursor: pointer;
-      font-size: 0.875rem;
+      font-size: 14px;
       color: var(--text-secondary);
       border-bottom: 2px solid transparent;
       margin-bottom: -2px;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .tab-button:hover {
@@ -88,9 +88,9 @@ export class NetworkTab extends I18nLitElement {
     .network-interface {
       background-color: var(--surface-1);
       padding: 16px;
-      border-radius: 6px;
+      border-radius: 0;
       margin-bottom: 12px;
-      border: 1px solid var(--vscode-border);
+      border: 1px solid var(--cds-border-subtle);
     }
 
     .interface-header {
@@ -107,8 +107,8 @@ export class NetworkTab extends I18nLitElement {
 
     .interface-state {
       padding: 0.25rem 0.75rem;
-      border-radius: 16px;
-      font-size: 0.75rem;
+      border-radius: 0;
+      font-size: 12px;
       font-weight: 500;
     }
 
@@ -135,13 +135,13 @@ export class NetworkTab extends I18nLitElement {
     }
 
     .detail-label {
-      font-size: 0.75rem;
+      font-size: 12px;
       color: var(--text-secondary);
       margin-bottom: 0.25rem;
     }
 
     .detail-value {
-      font-size: 0.875rem;
+      font-size: 14px;
       color: var(--text-primary);
     }
 
@@ -154,11 +154,11 @@ export class NetworkTab extends I18nLitElement {
       padding: 0.5rem 1rem;
       background-color: var(--surface-2);
       color: var(--text-primary);
-      border: 1px solid var(--vscode-border);
-      border-radius: 4px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       cursor: pointer;
-      font-size: 0.875rem;
-      transition: all 0.2s;
+      font-size: 14px;
+      transition: all 0.15s;
     }
 
     .action-button:hover {
@@ -185,8 +185,8 @@ export class NetworkTab extends I18nLitElement {
     .create-form {
       background-color: var(--surface-1);
       padding: 1.5rem;
-      border-radius: 6px;
-      border: 1px solid var(--vscode-border);
+      border-radius: 0;
+      border: 1px solid var(--cds-border-subtle);
       margin-bottom: 1rem;
     }
 
@@ -198,8 +198,8 @@ export class NetworkTab extends I18nLitElement {
     }
 
     .section {
-      border-radius: 4px;
-      border: 1px solid var(--vscode-border);
+      border-radius: 0;
+      border: 1px solid var(--cds-border-subtle);
       padding: 12px 12px 8px;
       background: var(--vscode-editorWidget-background, rgba(0, 0, 0, 0.03));
     }
@@ -209,10 +209,10 @@ export class NetworkTab extends I18nLitElement {
     }
 
     .section-title {
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 600;
       margin: 0 0 8px 0;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
     }
 
     .field {
@@ -232,7 +232,7 @@ export class NetworkTab extends I18nLitElement {
     label {
       font-size: 12px;
       font-weight: 500;
-      color: var(--vscode-descriptionForeground);
+      color: var(--cds-text-secondary);
       margin-bottom: 0; /* Reset margin as .field handles gap */
     }
 
@@ -247,11 +247,11 @@ export class NetworkTab extends I18nLitElement {
     select {
       width: 100%;
       padding: 6px 8px;
-      border-radius: 3px;
+      border-radius: 0;
       border: 1px solid var(--vscode-input-border);
       background: var(--vscode-input-background);
       color: var(--vscode-input-foreground);
-      font-size: 13px;
+      font-size: 14px;
       font-family: inherit;
       outline: none;
       box-sizing: border-box;
@@ -277,12 +277,12 @@ export class NetworkTab extends I18nLitElement {
 
     .error-text {
       color: var(--vscode-inputValidation-errorForeground);
-      font-size: 11px;
+      font-size: 12px;
     }
 
     .hint {
-      font-size: 11px;
-      color: var(--vscode-descriptionForeground);
+      font-size: 12px;
+      color: var(--cds-text-secondary);
     }
 
     .checkbox-row {
@@ -317,7 +317,7 @@ export class NetworkTab extends I18nLitElement {
     }
 
     h2 {
-      font-size: 1.5rem;
+      font-size: 24px;
       margin-bottom: 1rem;
       color: var(--text-primary);
     }
@@ -332,33 +332,33 @@ export class NetworkTab extends I18nLitElement {
       width: 100%;
       border-collapse: separate;
       border-spacing: 0;
-      background-color: var(--vscode-bg-light);
-      border: 1px solid var(--vscode-border);
+      background-color: var(--cds-layer-01);
+      border: 1px solid var(--cds-border-subtle);
       border-radius: 1px;
       overflow: visible;
       margin-bottom: 1rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      /* box-shadow: none (Carbon flat) */
     }
 
     .network-table thead {
-      background-color: var(--vscode-bg-lighter);
+      background-color: var(--cds-layer-02);
     }
 
     .network-table th {
-      background: var(--vscode-bg-dark);
-      color: var(--vscode-text);
+      background: var(--cds-background);
+      color: var(--cds-text-primary);
       font-weight: 600;
       text-align: left;
       padding: 12px 16px;
-      font-size: 0.875rem;
-      border-bottom: 1px solid var(--vscode-border);
+      font-size: 14px;
+      border-bottom: 1px solid var(--cds-border-subtle);
     }
 
     .network-table td {
       padding: 12px 16px;
-      font-size: 0.875rem;
-      color: var(--vscode-text);
-      border-bottom: 1px solid var(--vscode-border);
+      font-size: 14px;
+      color: var(--cds-text-primary);
+      border-bottom: 1px solid var(--cds-border-subtle);
     }
 
     .network-table tbody tr:last-child td {
@@ -419,7 +419,7 @@ export class NetworkTab extends I18nLitElement {
       background-color: var(--surface-1);
       color: var(--text-primary);
       border: 1px solid var(--border-color);
-      border-radius: 4px;
+      border-radius: 0;
       font-size: 14px;
       white-space: nowrap;
       z-index: 1000;
@@ -439,8 +439,8 @@ export class NetworkTab extends I18nLitElement {
       color: var(--text-secondary);
       font-size: 18px;
       line-height: 1;
-      transition: background-color 0.2s;
-      border-radius: 4px;
+      transition: background-color 0.15s;
+      border-radius: 0;
     }
 
     .action-dots:hover {
@@ -454,7 +454,7 @@ export class NetworkTab extends I18nLitElement {
       margin-top: 4px;
       background-color: var(--surface-1);
       border: 1px solid var(--border-color);
-      border-radius: 4px;
+      border-radius: 0;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
       z-index: 1000;
       min-width: 150px;
@@ -474,8 +474,8 @@ export class NetworkTab extends I18nLitElement {
       background: none;
       color: var(--text-primary);
       cursor: pointer;
-      font-size: 13px;
-      transition: background-color 0.2s;
+      font-size: 14px;
+      transition: background-color 0.15s;
     }
 
     .action-dropdown button:hover {
@@ -498,7 +498,7 @@ export class NetworkTab extends I18nLitElement {
       margin-top: 4px;
       background-color: var(--surface-1);
       border: 1px solid var(--border-color);
-      border-radius: 4px;
+      border-radius: 0;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
       max-height: 200px;
       overflow-y: auto;
@@ -508,9 +508,9 @@ export class NetworkTab extends I18nLitElement {
     .autocomplete-suggestion {
       padding: 8px 12px;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
       color: var(--text-primary);
-      transition: background-color 0.2s;
+      transition: background-color 0.15s;
     }
 
     .autocomplete-suggestion:hover,
@@ -533,8 +533,8 @@ export class NetworkTab extends I18nLitElement {
       width: 500px;
       max-width: 100%;
       height: 100vh;
-      background: var(--vscode-editor-background);
-      border-left: 1px solid var(--vscode-border);
+      background: var(--cds-background);
+      border-left: 1px solid var(--cds-border-subtle);
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.2);
       z-index: 1000;
       display: flex;
@@ -544,8 +544,8 @@ export class NetworkTab extends I18nLitElement {
 
     .drawer-header {
       padding: 20px;
-      background: var(--vscode-bg-lighter, #252526);
-      border-bottom: 1px solid var(--vscode-border);
+      background: var(--cds-layer-02);
+      border-bottom: 1px solid var(--cds-border-subtle);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -556,18 +556,18 @@ export class NetworkTab extends I18nLitElement {
       margin: 0;
       font-size: 18px;
       font-weight: 500;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
     }
 
     .close-btn {
       background: none;
       border: none;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
       cursor: pointer;
       padding: 4px 8px;
-      border-radius: 4px;
+      border-radius: 0;
       font-size: 20px;
-      transition: background 0.2s;
+      transition: background-color 0.15s;
     }
 
     .close-btn:hover {
@@ -582,8 +582,8 @@ export class NetworkTab extends I18nLitElement {
 
     .drawer-footer {
       padding: 16px 20px;
-      background: var(--vscode-bg-lighter, #252526);
-      border-top: 1px solid var(--vscode-border);
+      background: var(--cds-layer-02);
+      border-top: 1px solid var(--cds-border-subtle);
       display: flex;
       justify-content: flex-end;
       gap: 12px;
@@ -610,14 +610,14 @@ export class NetworkTab extends I18nLitElement {
       top: 16px;
       right: 16px;
       padding: 8px 16px;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
-      background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.1));
+      background: var(--cds-layer-02);
       color: var(--vscode-foreground, var(--vscode-editor-foreground));
       border: 1px solid var(--vscode-widget-border, rgba(0, 0, 0, 0.1));
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .drawer button.close-btn:hover {
@@ -686,7 +686,7 @@ export class NetworkTab extends I18nLitElement {
       background: var(--surface-1);
       padding: 12px 16px;
       border: 1px solid var(--border-color);
-      border-radius: 4px;
+      border-radius: 0;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
       z-index: 100;
       min-width: 200px;
@@ -710,9 +710,9 @@ export class NetworkTab extends I18nLitElement {
     .type-filter-select {
       background-color: var(--surface-0);
       border: 1px solid var(--border-color);
-      border-radius: 4px;
+      border-radius: 0;
       color: var(--text-primary);
-      font-size: 0.875rem;
+      font-size: 14px;
       cursor: pointer;
       appearance: none;
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
@@ -751,7 +751,7 @@ export class NetworkTab extends I18nLitElement {
       border-collapse: collapse;
       background-color: var(--surface-0);
       border: 1px solid var(--border-color);
-      border-radius: 4px;
+      border-radius: 0;
       overflow: hidden;
       margin-top: 1rem;
     }
@@ -788,7 +788,7 @@ export class NetworkTab extends I18nLitElement {
       padding: 0.25rem 0.5rem;
       background-color: var(--surface-0);
       border: 1px solid var(--primary);
-      border-radius: 3px;
+      border-radius: 0;
       color: var(--text-primary);
       font-size: 0.85rem;
       width: 100%;
@@ -803,10 +803,10 @@ export class NetworkTab extends I18nLitElement {
       padding: 4px 8px;
       background: none;
       border: 1px solid transparent;
-      border-radius: 3px;
+      border-radius: 0;
       cursor: pointer;
       font-size: 12px;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .ip-action-btn:hover {
@@ -837,7 +837,7 @@ export class NetworkTab extends I18nLitElement {
       padding: 1rem;
       background-color: var(--surface-0);
       border: 1px solid var(--border-color);
-      border-radius: 4px;
+      border-radius: 0;
     }
 
     .add-ip-form .form-row {
@@ -865,11 +865,11 @@ export class NetworkTab extends I18nLitElement {
       padding: 0.75rem;
       background-color: var(--surface-0);
       border: 1px solid var(--border-color);
-      border-radius: 4px;
+      border-radius: 0;
     }
 
     .info-label {
-      font-size: 0.75rem;
+      font-size: 12px;
       color: var(--text-secondary);
       margin-bottom: 0.25rem;
     }
@@ -898,10 +898,10 @@ export class NetworkTab extends I18nLitElement {
       background-color: var(--primary);
       color: white;
       border: none;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
       font-size: 0.85rem;
-      transition: background-color 0.2s;
+      transition: background-color 0.15s;
     }
 
     .add-btn:hover {
@@ -2422,11 +2422,11 @@ ${this.interfaces.length > 0 ? html`
                 <div class="section">
                   <div class="field" style="margin-bottom: 16px;">
                     <label>Interface Name</label>
-                    <div style="font-size: 13px;">${this.configureNetworkInterface.name}</div>
+                    <div style="font-size: 14px;">${this.configureNetworkInterface.name}</div>
                   </div>
                   <div class="field" style="margin-bottom: 16px;">
                     <label>Current State</label>
-                    <div style="font-size: 13px;">${this.configureNetworkInterface.state}</div>
+                    <div style="font-size: 14px;">${this.configureNetworkInterface.state}</div>
                   </div>
                   
                   <div class="field">
@@ -2976,8 +2976,8 @@ ${this.interfaces.length > 0 ? html`
             </div>
           </div>
 
-          <div class="field" style="background-color: var(--surface-0); padding: 0.75rem; border-radius: 4px; border: 1px solid var(--border-color);">
-            <div class="info-label" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Original IP Address</div>
+          <div class="field" style="background-color: var(--surface-0); padding: 0.75rem; border-radius: 0; border: 1px solid var(--border-color);">
+            <div class="info-label" style="font-size: 12px; color: var(--text-secondary); margin-bottom: 0.25rem;">Original IP Address</div>
             <div class="info-value" style="font-size: 0.9rem; color: var(--text-primary);">${this.originalIpAddress}</div>
           </div>
           

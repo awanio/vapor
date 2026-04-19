@@ -42,7 +42,7 @@ export class GitImportModal extends LitElement {
       display: block;
       margin-bottom: 6px;
       color: var(--vscode-foreground, #cccccc);
-      font-size: 13px;
+      font-size: 14px;
     }
 
     .form-input {
@@ -51,13 +51,13 @@ export class GitImportModal extends LitElement {
       background: var(--vscode-input-background, #3c3c3c);
       color: var(--vscode-input-foreground, #cccccc);
       border: 1px solid var(--vscode-input-border, #3c3c3c);
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 0;
+      font-size: 14px;
     }
 
     .form-input:focus {
       outline: none;
-      border-color: var(--vscode-focusBorder, #007acc);
+      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
     .form-checkbox {
@@ -68,7 +68,7 @@ export class GitImportModal extends LitElement {
     }
 
     .error-message {
-      color: var(--vscode-errorForeground, #f48771);
+      color: var(--cds-support-error);
       margin-top: 8px;
     }
   `;

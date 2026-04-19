@@ -33,7 +33,7 @@ export class TerminalModal extends LitElement {
       height: 90%;
       display: flex;
       flex-direction: column;
-      border-radius: 4px;
+      border-radius: 0;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
       border: 1px solid #333;
     }

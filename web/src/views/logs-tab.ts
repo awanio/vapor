@@ -88,28 +88,28 @@ export class LogsTab extends I18nLitElement {
 
     .filter-input {
       padding: 8px;
-      border: 1px solid var(--vscode-border);
-      background: var(--vscode-bg);
-      color: var(--vscode-text);
-      border-radius: 4px;
-      font-size: 13px;
+      border: 1px solid var(--cds-border-subtle);
+      background: var(--cds-background);
+      color: var(--cds-text-primary);
+      border-radius: 0;
+      font-size: 14px;
       min-width: 200px;
     }
 
     .priority-select {
       padding: 8px;
-      border: 1px solid var(--vscode-border);
-      background: var(--vscode-bg);
-      color: var(--vscode-text);
-      border-radius: 4px;
-      font-size: 13px;
+      border: 1px solid var(--cds-border-subtle);
+      background: var(--cds-background);
+      color: var(--cds-text-primary);
+      border-radius: 0;
+      font-size: 14px;
     }
 
     .toggle-follow {
       display: flex;
       align-items: center;
       gap: 8px;
-      font-size: 13px;
+      font-size: 14px;
     }
 
     .toggle-follow input[type="checkbox"] {
@@ -120,30 +120,30 @@ export class LogsTab extends I18nLitElement {
       display: flex;
       align-items: center;
       gap: 8px;
-      font-size: 13px;
-      color: var(--vscode-text-dim);
+      font-size: 14px;
+      color: var(--cds-text-secondary);
     }
 
     .status-dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: var(--vscode-error);
+      background: var(--cds-support-error);
     }
 
     .status-dot.connected {
-      background: var(--vscode-success);
+      background: var(--cds-support-success);
     }
 
     .logs-container {
       flex: 1;
       overflow-y: auto;
       overflow-x: hidden;
-      background: var(--vscode-bg);
-      border: 1px solid var(--vscode-border);
-      border-radius: 4px;
+      background: var(--cds-background);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       padding: 8px;
-      font-family: var(--vscode-font-family-mono);
+      font-family: var(--cds-font-mono);
       font-size: 12px;
       min-height: 0; /* Important for flexbox overflow */
       position: relative;
@@ -160,16 +160,16 @@ export class LogsTab extends I18nLitElement {
     }
 
     .log-entry:hover {
-      background: var(--vscode-bg-light);
+      background: var(--cds-layer-01);
     }
 
     .log-timestamp {
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
       white-space: nowrap;
     }
 
     .log-service {
-      color: var(--vscode-accent);
+      color: var(--cds-button-primary);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -183,19 +183,19 @@ export class LogsTab extends I18nLitElement {
     .priority-emerg,
     .priority-emergency,
     .priority-0 {
-      color: var(--vscode-error);
+      color: var(--cds-support-error);
       background: rgba(255, 0, 0, 0.1);
     }
 
     .priority-alert,
     .priority-1 {
-      color: var(--vscode-error);
+      color: var(--cds-support-error);
     }
 
     .priority-crit,
     .priority-critical,
     .priority-2 {
-      color: var(--vscode-error);
+      color: var(--cds-support-error);
     }
 
     .priority-err,
@@ -211,17 +211,17 @@ export class LogsTab extends I18nLitElement {
 
     .priority-notice,
     .priority-5 {
-      color: var(--vscode-text);
+      color: var(--cds-text-primary);
     }
 
     .priority-info,
     .priority-6 {
-      color: var(--vscode-text);
+      color: var(--cds-text-primary);
     }
 
     .priority-debug,
     .priority-7 {
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
     }
 
     .log-message {
@@ -234,22 +234,22 @@ export class LogsTab extends I18nLitElement {
       align-items: center;
       justify-content: center;
       height: 200px;
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
     }
 
     button {
       padding: 6px 12px;
       border: none;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
       font-size: 12px;
-      transition: all 0.2s;
-      background: var(--vscode-accent);
+      transition: all 0.15s;
+      background: var(--cds-button-primary);
       color: white;
     }
 
     button:hover {
-      background: var(--vscode-accent-hover);
+      background: var(--cds-button-primary-hover);
     }
 
     button:disabled {

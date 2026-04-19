@@ -38,8 +38,8 @@ export class AnsibleExecutionDrawer extends LitElement {
       right: -600px;
       width: 600px;
       height: 100vh;
-      background: var(--vscode-editor-background, #1e1e1e);
-      border-left: 1px solid var(--vscode-border);
+      background: var(--cds-background);
+      border-left: 1px solid var(--cds-border-subtle);
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.2);
       transition: right 0.3s ease-in-out;
       z-index: 1000;
@@ -56,7 +56,7 @@ export class AnsibleExecutionDrawer extends LitElement {
       align-items: center;
       justify-content: space-between;
       padding: 16px;
-      border-bottom: 1px solid var(--vscode-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
       background: var(--vscode-titleBar-activeBackground, #3c3c3c);
       flex-shrink: 0;
     }
@@ -79,17 +79,17 @@ export class AnsibleExecutionDrawer extends LitElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 4px;
-      transition: background-color 0.2s;
+      border-radius: 0;
+      transition: background-color 0.15s;
     }
 
     .close-button:hover {
-      background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
+      background: var(--cds-layer-02);
     }
 
     .metadata {
       padding: 16px;
-      border-bottom: 1px solid var(--vscode-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
       flex-shrink: 0;
     }
 
@@ -98,11 +98,11 @@ export class AnsibleExecutionDrawer extends LitElement {
       align-items: center;
       gap: 8px;
       margin-bottom: 8px;
-      font-size: 13px;
+      font-size: 14px;
     }
 
     .metadata-label {
-      color: var(--vscode-descriptionForeground, #8b8b8b);
+      color: var(--cds-text-secondary);
       min-width: 100px;
     }
 
@@ -116,7 +116,7 @@ export class AnsibleExecutionDrawer extends LitElement {
       align-items: center;
       gap: 4px;
       padding: 2px 8px;
-      border-radius: 12px;
+      border-radius: 0;
       font-size: 12px;
       font-weight: 500;
     }
@@ -147,7 +147,7 @@ export class AnsibleExecutionDrawer extends LitElement {
       padding: 16px;
       background: var(--vscode-terminal-background, #1e1e1e);
       font-family: var(--vscode-editor-font-family, 'Courier New', monospace);
-      font-size: 13px;
+      font-size: 14px;
       line-height: 1.6;
       color: var(--vscode-terminal-foreground, #cccccc);
     }
@@ -169,7 +169,7 @@ export class AnsibleExecutionDrawer extends LitElement {
       color: var(--vscode-terminal-ansiBrightMagenta, #ff6eff);
       font-weight: bold;
       margin-top: 12px;
-      border-top: 1px solid var(--vscode-border);
+      border-top: 1px solid var(--cds-border-subtle);
       padding-top: 8px;
     }
 
@@ -201,7 +201,7 @@ export class AnsibleExecutionDrawer extends LitElement {
       padding: 4px 8px;
       background: rgba(30, 136, 229, 0.2);
       color: #1e88e5;
-      border-radius: 4px;
+      border-radius: 0;
       font-size: 12px;
     }
 
@@ -224,7 +224,7 @@ export class AnsibleExecutionDrawer extends LitElement {
 
     .actions {
       padding: 16px;
-      border-top: 1px solid var(--vscode-border);
+      border-top: 1px solid var(--cds-border-subtle);
       display: flex;
       gap: 8px;
       flex-shrink: 0;
@@ -232,17 +232,17 @@ export class AnsibleExecutionDrawer extends LitElement {
 
     .action-button {
       padding: 8px 16px;
-      background: var(--vscode-button-background, #007acc);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, white);
       border: none;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
-      font-size: 13px;
-      transition: background-color 0.2s;
+      font-size: 14px;
+      transition: background-color 0.15s;
     }
 
     .action-button:hover {
-      background: var(--vscode-button-hoverBackground, #005a9e);
+      background: var(--cds-button-primary-hover);
     }
 
     .action-button.secondary {
@@ -264,15 +264,15 @@ export class AnsibleExecutionDrawer extends LitElement {
       align-items: center;
       justify-content: center;
       height: 100%;
-      color: var(--vscode-descriptionForeground, #8b8b8b);
+      color: var(--cds-text-secondary);
     }
 
     .error-state {
       padding: 16px;
-      color: var(--vscode-errorForeground, #f48771);
+      color: var(--cds-support-error);
       background: var(--vscode-inputValidation-errorBackground, rgba(244, 135, 113, 0.1));
       border: 1px solid var(--vscode-inputValidation-errorBorder, #f48771);
-      border-radius: 4px;
+      border-radius: 0;
       margin: 16px;
     }
 

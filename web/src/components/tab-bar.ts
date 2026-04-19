@@ -16,15 +16,15 @@ export class TabBar extends I18nLitElement {
   static override styles = css`
     :host {
       display: block;
-      background-color: var(--vscode-bg-lighter);
-      border-bottom: 1px solid var(--vscode-border);
+      background-color: transparent;
+      border-bottom: 1px solid var(--cds-border-subtle);
       overflow-x: auto;
-      scrollbar-width: thin;
+      scrollbar-width: none;
     }
 
     .tab-bar {
       display: flex;
-      height: 35px;
+      height: 48px;
       align-items: stretch;
     }
 
@@ -37,25 +37,31 @@ export class TabBar extends I18nLitElement {
     .tab {
       display: flex;
       align-items: center;
-      padding: 0 12px;
-      background-color: var(--vscode-tab);
-      color: var(--vscode-text-dim);
-      border-right: 1px solid var(--vscode-border);
+      padding: 0 16px;
+      background-color: transparent;
+      color: var(--cds-text-secondary);
+      border-right: none;
+      border-bottom: 2px solid transparent;
       cursor: pointer;
       user-select: none;
       position: relative;
       min-width: 120px;
       max-width: 200px;
-      font-size: 13px;
+      font-size: 14px;
+      letter-spacing: 0.16px;
+      font-family: var(--cds-font-sans);
+      transition: all 0.15s;
     }
 
     .tab:hover {
-      color: var(--vscode-text);
+      color: var(--cds-text-primary);
+      background-color: var(--vscode-sidebar-hover);
     }
 
     .tab.active {
-      background-color: var(--vscode-tab-active);
-      color: var(--vscode-text);
+      background-color: transparent;
+      color: var(--cds-text-primary);
+      font-weight: 600;
     }
 
     .tab.active::after {
@@ -65,11 +71,11 @@ export class TabBar extends I18nLitElement {
       left: 0;
       right: 0;
       height: 2px;
-      background-color: var(--vscode-accent);
+      background-color: var(--cds-interactive);
     }
 
     .tab-icon {
-      margin-right: 6px;
+      margin-right: 8px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -89,9 +95,9 @@ export class TabBar extends I18nLitElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 3px;
+      border-radius: 0;
       opacity: 0;
-      transition: opacity 0.2s;
+      transition: opacity 0.15s;
     }
 
     .tab:hover .tab-close,
@@ -101,7 +107,7 @@ export class TabBar extends I18nLitElement {
 
     .tab-close:hover {
       opacity: 1;
-      background-color: var(--vscode-bg-light);
+      background-color: var(--cds-layer-02);
     }
 
     .tab-close svg {
@@ -113,32 +119,20 @@ export class TabBar extends I18nLitElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 30px;
+      width: 48px;
       cursor: pointer;
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
+      transition: background-color 0.15s;
     }
 
     .tab-add:hover {
-      background-color: var(--vscode-bg-light);
-      color: var(--vscode-text);
+      background-color: var(--vscode-sidebar-hover);
+      color: var(--cds-text-primary);
     }
 
     /* Scrollbar styling */
     :host::-webkit-scrollbar {
-      height: 3px;
-    }
-
-    :host::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    :host::-webkit-scrollbar-thumb {
-      background: var(--vscode-border);
-      border-radius: 3px;
-    }
-
-    :host::-webkit-scrollbar-thumb:hover {
-      background: var(--vscode-text-dim);
+      height: 0;
     }
   `;
 

@@ -101,18 +101,18 @@ export class AnsiblePlaybooks extends LitElement {
       align-items: center;
       gap: 6px;
       padding: 8px 16px;
-      background: var(--vscode-button-background, #007acc);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, white);
       border: none;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .btn-create:hover {
-      background: var(--vscode-button-hoverBackground, #005a9e);
+      background: var(--cds-button-primary-hover);
     }
 
     .controls {
@@ -132,11 +132,11 @@ export class AnsiblePlaybooks extends LitElement {
       background: none;
       border: none;
       cursor: pointer;
-      font-size: 0.875rem;
+      font-size: 14px;
       color: var(--text-secondary);
       border-bottom: 2px solid transparent;
       margin-bottom: -2px;
-      transition: all 0.2s;
+      transition: all 0.15s;
       text-decoration: none;
       display: inline-block;
     }
@@ -160,9 +160,9 @@ export class AnsiblePlaybooks extends LitElement {
       right: 0;
       top: 100%;
       margin-top: 4px;
-      background: var(--vscode-dropdown-background, var(--vscode-editor-background, #1e1e1e));
-      border: 1px solid var(--vscode-dropdown-border, var(--vscode-widget-border, #454545));
-      border-radius: 4px;
+      background: var(--vscode-dropdown-background, var(--cds-background));
+      border: 1px solid var(--vscode-dropdown-border, var(--cds-border-subtle));
+      border-radius: 0;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
       min-width: 180px;
       z-index: 1000;
@@ -182,10 +182,10 @@ export class AnsiblePlaybooks extends LitElement {
       padding: 8px 16px;
       border: none;
       background: none;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
       cursor: pointer;
-      font-size: 13px;
-      transition: background-color 0.2s;
+      font-size: 14px;
+      transition: background-color 0.15s;
     }
 
     .action-dropdown button:hover {

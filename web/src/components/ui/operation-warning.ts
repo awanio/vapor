@@ -26,7 +26,7 @@ export class OperationWarning extends LitElement {
       background: var(--warning-bg, rgba(255, 152, 0, 0.1));
       border: 1px solid var(--warning-border, rgba(255, 152, 0, 0.3));
       border-left: 4px solid var(--warning-color, #ff9800);
-      border-radius: 4px;
+      border-radius: 0;
       padding: 12px 16px;
       display: flex;
       gap: 12px;
@@ -72,7 +72,7 @@ export class OperationWarning extends LitElement {
     .warning-content {
       flex: 1;
       color: var(--text-primary, var(--vscode-foreground, #cccccc));
-      font-size: 0.875rem;
+      font-size: 14px;
       line-height: 1.5;
     }
 
@@ -121,8 +121,8 @@ export class OperationWarning extends LitElement {
       padding: 0;
       width: 20px;
       height: 20px;
-      border-radius: 4px;
-      transition: all 0.2s;
+      border-radius: 0;
+      transition: all 0.15s;
       line-height: 1;
     }
 

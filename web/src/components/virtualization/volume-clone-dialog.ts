@@ -43,7 +43,7 @@ export class VolumeCloneDialog extends LitElement {
     .form-label {
       display: block;
       margin-bottom: 6px;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
       color: var(--vscode-foreground, #cccccc);
     }
@@ -59,19 +59,19 @@ export class VolumeCloneDialog extends LitElement {
       padding: 8px 12px;
       background: var(--vscode-input-background, #3c3c3c);
       border: 1px solid var(--vscode-input-border, #5a5a5a);
-      border-radius: 4px;
+      border-radius: 0;
       color: var(--vscode-input-foreground, #cccccc);
-      font-size: 13px;
+      font-size: 14px;
       font-family: inherit;
       outline: none;
       box-sizing: border-box;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .form-input:focus,
     .form-select:focus {
-      border-color: var(--vscode-focusBorder, #007acc);
-      box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc);
+      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      box-shadow: 0 0 0 1px var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
     .form-input.error,
@@ -101,10 +101,10 @@ export class VolumeCloneDialog extends LitElement {
 
     .info-box {
       padding: 12px;
-      background: var(--vscode-editor-background, #1e1e1e);
+      background: var(--cds-background);
       border: 1px solid var(--vscode-editorWidget-border, #454545);
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 0;
+      font-size: 14px;
       color: var(--vscode-foreground, #cccccc);
     }
 
@@ -124,34 +124,34 @@ export class VolumeCloneDialog extends LitElement {
 
     .btn {
       padding: 8px 16px;
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 0;
+      font-size: 14px;
       font-weight: 500;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s;
       border: none;
     }
 
     .btn-primary {
-      background: var(--vscode-button-background, #0e639c);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, #ffffff);
-      border: 1px solid var(--vscode-button-background, #0e639c);
+      border: 1px solid var(--cds-button-primary);
     }
 
     .btn-primary:hover:not(:disabled) {
-      background: var(--vscode-button-hoverBackground, #1177bb);
-      border-color: var(--vscode-button-hoverBackground, #1177bb);
+      background: var(--cds-button-primary-hover);
+      border-color: var(--cds-button-primary-hover);
     }
 
     .btn-secondary {
       background: var(--vscode-button-secondaryBackground, #3c3c3c);
       color: var(--vscode-button-secondaryForeground, #cccccc);
-      border: 1px solid var(--vscode-button-border, #5a5a5a);
+      border: 1px solid var(--cds-border-subtle);
     }
 
     .btn-secondary:hover:not(:disabled) {
       background: var(--vscode-button-secondaryHoverBackground, #45494e);
-      border-color: var(--vscode-button-border, #5a5a5a);
+      border-color: var(--cds-border-subtle);
     }
 
     .btn:disabled {

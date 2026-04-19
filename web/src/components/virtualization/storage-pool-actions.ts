@@ -33,11 +33,11 @@ export class StoragePoolActions extends LitElement {
       padding: 12px 8px;
       background: var(--vscode-button-secondaryBackground);
       color: var(--vscode-button-secondaryForeground);
-      border: 1px solid var(--vscode-button-border);
-      border-radius: 4px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       cursor: pointer;
       font-size: 12px;
-      transition: all 0.2s;
+      transition: all 0.15s;
       text-align: center;
     }
 
@@ -72,9 +72,9 @@ export class StoragePoolActions extends LitElement {
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 16px;
       padding: 16px;
-      background: var(--vscode-editor-background);
-      border: 1px solid var(--vscode-editorWidget-border);
-      border-radius: 4px;
+      background: var(--cds-background);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       margin-bottom: 16px;
     }
 
@@ -85,21 +85,21 @@ export class StoragePoolActions extends LitElement {
     }
 
     .info-label {
-      font-size: 11px;
-      color: var(--vscode-descriptionForeground);
+      font-size: 12px;
+      color: var(--cds-text-secondary);
       text-transform: uppercase;
       font-weight: 600;
     }
 
     .info-value {
       font-size: 14px;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
       font-weight: 500;
     }
 
     .info-value.monospace {
       font-family: var(--vscode-editor-font-family);
-      font-size: 13px;
+      font-size: 14px;
     }
 
     .status-indicator {
@@ -107,8 +107,8 @@ export class StoragePoolActions extends LitElement {
       align-items: center;
       gap: 6px;
       padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 11px;
+      border-radius: 0;
+      font-size: 12px;
       font-weight: 600;
       text-transform: uppercase;
     }

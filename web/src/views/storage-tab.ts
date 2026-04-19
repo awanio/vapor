@@ -52,9 +52,9 @@ export class StorageTab extends I18nLitElement {
 
 
     .card {
-      background: var(--vscode-bg-light);
-      border: 1px solid var(--vscode-border);
-      border-radius: 8px;
+      background: var(--cds-layer-01);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       padding: 16px;
       margin-bottom: 16px;
     }
@@ -75,7 +75,7 @@ export class StorageTab extends I18nLitElement {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 12px;
-      font-size: 13px;
+      font-size: 14px;
     }
 
     .info-item {
@@ -85,13 +85,13 @@ export class StorageTab extends I18nLitElement {
     }
 
     .info-label {
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
       font-size: 12px;
     }
 
     .info-value {
-      color: var(--vscode-text);
-      font-family: var(--vscode-font-family-mono);
+      color: var(--cds-text-primary);
+      font-family: var(--cds-font-mono);
     }
 
     .actions {
@@ -103,45 +103,45 @@ export class StorageTab extends I18nLitElement {
     .progress-bar {
       width: 100%;
       height: 8px;
-      background: var(--vscode-bg);
-      border-radius: 4px;
+      background: var(--cds-background);
+      border-radius: 0;
       overflow: hidden;
       margin-top: 4px;
     }
 
     .progress-fill {
       height: 100%;
-      background: var(--vscode-accent);
+      background: var(--cds-button-primary);
       transition: width 0.3s ease;
     }
 
     .table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 13px;
+      font-size: 14px;
     }
 
     .table th,
     .table td {
       padding: 8px;
       text-align: left;
-      border-bottom: 1px solid var(--vscode-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
     }
 
     .table th {
       font-weight: 500;
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
     }
 
     .status-badge {
       padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 11px;
+      border-radius: 0;
+      font-size: 12px;
       font-weight: 500;
     }
 
     .status-badge.active {
-      background: var(--vscode-success);
+      background: var(--cds-support-success);
       color: white;
     }
 
@@ -151,40 +151,40 @@ export class StorageTab extends I18nLitElement {
     }
 
     .status-badge.error {
-      background: var(--vscode-error);
+      background: var(--cds-support-error);
       color: white;
     }
 
     button {
       padding: 6px 12px;
       border: none;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
       font-size: 12px;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .btn-primary {
-      background: var(--vscode-accent);
+      background: var(--cds-button-primary);
       color: white;
     }
 
     .btn-primary:hover {
-      background: var(--vscode-accent-hover);
+      background: var(--cds-button-primary-hover);
     }
 
     .btn-secondary {
-      background: var(--vscode-bg);
-      color: var(--vscode-text);
-      border: 1px solid var(--vscode-border);
+      background: var(--cds-background);
+      color: var(--cds-text-primary);
+      border: 1px solid var(--cds-border-subtle);
     }
 
     .btn-secondary:hover {
-      background: var(--vscode-bg-light);
+      background: var(--cds-layer-01);
     }
 
     .btn-danger {
-      background: var(--vscode-error);
+      background: var(--cds-support-error);
       color: white;
     }
 
@@ -195,20 +195,20 @@ export class StorageTab extends I18nLitElement {
     .empty-state {
       text-align: center;
       padding: 40px;
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
     }
 
     .loading {
       text-align: center;
       padding: 40px;
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
     }
 
     .error {
-      color: var(--vscode-error);
+      color: var(--cds-support-error);
       padding: 16px;
-      background: var(--vscode-bg-light);
-      border-radius: 8px;
+      background: var(--cds-layer-01);
+      border-radius: 0;
       margin-bottom: 16px;
     }
 
@@ -219,23 +219,23 @@ export class StorageTab extends I18nLitElement {
     .form-label {
       display: block;
       margin-bottom: 4px;
-      font-size: 13px;
-      color: var(--vscode-text-dim);
+      font-size: 14px;
+      color: var(--cds-text-secondary);
     }
 
     .form-input {
       width: 100%;
       padding: 6px 8px;
-      border: 1px solid var(--vscode-border);
-      border-radius: 4px;
-      background: var(--vscode-bg);
-      color: var(--vscode-text);
-      font-size: 13px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
+      background: var(--cds-background);
+      color: var(--cds-text-primary);
+      font-size: 14px;
     }
 
     .form-input:focus {
       outline: none;
-      border-color: var(--vscode-accent);
+      border-color: var(--cds-button-primary);
     }
 
     .modal {
@@ -252,8 +252,8 @@ export class StorageTab extends I18nLitElement {
     }
 
     .modal-content {
-      background: var(--vscode-bg-light);
-      border-radius: 8px;
+      background: var(--cds-layer-01);
+      border-radius: 0;
       padding: 24px;
       max-width: 500px;
       width: 90%;
@@ -278,12 +278,12 @@ export class StorageTab extends I18nLitElement {
       border: none;
       font-size: 20px;
       cursor: pointer;
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
     }
 
     .disk-row-flat {
-      background: var(--vscode-sidebar);
-      border-left: 3px solid var(--vscode-accent);
+      background: var(--cds-layer-01);
+      border-left: 3px solid var(--cds-button-primary);
     }
 
     .disk-row-flat td:first-child {
@@ -296,7 +296,7 @@ export class StorageTab extends I18nLitElement {
 
     .partition-row-flat {
       background: var(--vscode-editor);
-      border-left: 3px solid var(--vscode-border);
+      border-left: 3px solid var(--cds-border-subtle);
     }
 
     .partition-row-flat:hover {

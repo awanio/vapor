@@ -30,17 +30,18 @@ export class ActionDropdown extends LitElement {
       border: none;
       cursor: pointer;
       padding: 4px 8px;
-      color: var(--vscode-foreground, #cccccc);
+      color: var(--cds-text-secondary, #c6c6c6);
       font-size: 18px;
       line-height: 1;
-      transition: background-color 0.2s;
-      border-radius: 4px;
+      transition: background-color 0.15s;
+      border-radius: 0;
       position: relative;
       z-index: 1;
     }
 
     .action-dots:hover {
-      background-color: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.1)));
+      background-color: var(--vscode-sidebar-hover, rgba(255, 255, 255, 0.08));
+      color: var(--cds-text-primary, #f4f4f4);
     }
   `;
 
@@ -89,10 +90,10 @@ export class ActionDropdown extends LitElement {
       position: fixed;
       top: ${this.dropdownPosition.top}px;
       left: ${this.dropdownPosition.left}px;
-      background: var(--vscode-menu-background, var(--vscode-editorWidget-background, var(--vscode-bg-light)));
-      border: 1px solid var(--vscode-menu-border, #464647);
-      border-radius: 4px;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+      background: var(--cds-layer-01, #262626);
+      border: 1px solid var(--cds-border-subtle, #393939);
+      border-radius: 0;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
       min-width: 160px;
       z-index: 99999;
       display: block;
@@ -109,13 +110,17 @@ export class ActionDropdown extends LitElement {
           display: block;
           width: 100%;
           text-align: left;
-          padding: 8px 16px;
+          padding: 0 16px;
+          height: 40px;
           border: none;
           background: none;
-          color: ${action.danger ? 'var(--vscode-inputValidation-errorForeground, #f14c4c)' : 'var(--vscode-foreground, #cccccc)'};
+          color: ${action.danger ? 'var(--cds-support-error, #ff8389)' : 'var(--cds-text-primary, #f4f4f4)'};
           cursor: ${action.disabled ? 'not-allowed' : 'pointer'};
-          font-size: 13px;
+          font-size: 14px;
+          letter-spacing: 0.16px;
           opacity: ${action.disabled ? '0.5' : '1'};
+          font-family: var(--cds-font-sans);
+          line-height: 40px;
         "
       >
         ${action.icon ? `<span style="margin-right: 8px;">${action.icon}</span>` : ''}
@@ -134,7 +139,7 @@ export class ActionDropdown extends LitElement {
       });
       button.addEventListener('mouseenter', () => {
         if (!button.hasAttribute('disabled')) {
-          button.style.backgroundColor = 'var(--vscode-list-hoverBackground, rgba(0, 0, 0, 0.08))';
+          button.style.backgroundColor = 'var(--cds-layer-02, #393939)';
         }
       });
       button.addEventListener('mouseleave', () => {

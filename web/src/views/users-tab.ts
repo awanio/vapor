@@ -60,21 +60,21 @@ export class UsersTab extends LitElement {
     .search-box input {
       width: 100%;
       padding: 8px 36px 8px 36px;
-      border: 1px solid var(--vscode-border);
-      border-radius: 4px;
-      background: var(--vscode-bg-light);
-      color: var(--vscode-text);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
+      background: var(--cds-layer-01);
+      color: var(--cds-text-primary);
       font-size: 14px;
       transition: border-color 0.2s;
     }
 
     .search-box input:focus {
       outline: none;
-      border-color: var(--vscode-accent);
+      border-color: var(--cds-button-primary);
     }
 
     .search-box input::placeholder {
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
     }
 
     .search-icon {
@@ -82,7 +82,7 @@ export class UsersTab extends LitElement {
       left: 12px;
       top: 50%;
       transform: translateY(-50%);
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
       pointer-events: none;
       width: 16px;
       height: 16px;
@@ -95,18 +95,18 @@ export class UsersTab extends LitElement {
       transform: translateY(-50%);
       background: none;
       border: none;
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
       cursor: pointer;
       padding: 4px;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 3px;
-      transition: background-color 0.2s;
+      border-radius: 0;
+      transition: background-color 0.15s;
     }
 
     .clear-search:hover {
-      background-color: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.1));
+      background-color: var(--cds-layer-02);
     }
 
     h1 {
@@ -118,27 +118,27 @@ export class UsersTab extends LitElement {
     .users-table {
       width: 100%;
       border-collapse: collapse;
-      background: var(--vscode-bg-light);
+      background: var(--cds-layer-01);
       border-radius: 1px;
-      border: 1px solid var(--vscode-border);
+      border: 1px solid var(--cds-border-subtle);
     }
 
     .users-table thead {
-      background: var(--vscode-bg-lighter);
+      background: var(--cds-layer-02);
     }
 
     .users-table th {
       padding: 12px;
       text-align: left;
       font-weight: 500;
-      font-size: 13px;
-      border-bottom: 1px solid var(--vscode-border);
+      font-size: 14px;
+      border-bottom: 1px solid var(--cds-border-subtle);
     }
 
     .users-table td {
       padding: 12px;
       font-size: 14px;
-      border-bottom: 1px solid var(--vscode-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
     }
 
     .users-table tbody tr:last-child td {
@@ -146,7 +146,7 @@ export class UsersTab extends LitElement {
     }
 
     .users-table tbody tr:hover {
-      background: var(--vscode-bg-lighter);
+      background: var(--cds-layer-02);
     }
 
     .users-table td:last-child {
@@ -163,15 +163,15 @@ export class UsersTab extends LitElement {
       border: none;
       cursor: pointer;
       padding: 4px 8px;
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
       font-size: 18px;
       line-height: 1;
-      transition: background-color 0.2s;
-      border-radius: 4px;
+      transition: background-color 0.15s;
+      border-radius: 0;
     }
 
     .action-dots:hover {
-      background-color: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.1));
+      background-color: var(--cds-layer-02);
     }
 
     .action-dropdown {
@@ -180,8 +180,8 @@ export class UsersTab extends LitElement {
       top: 100%;
       margin-top: 4px;
       background: var(--vscode-dropdown-background, var(--vscode-bg-light));
-      border: 1px solid var(--vscode-dropdown-border, var(--vscode-border));
-      border-radius: 4px;
+      border: 1px solid var(--vscode-dropdown-border, var(--cds-border-subtle));
+      border-radius: 0;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
       min-width: 160px;
       z-index: 1000;
@@ -199,10 +199,10 @@ export class UsersTab extends LitElement {
       padding: 8px 16px;
       border: none;
       background: none;
-      color: var(--vscode-text);
+      color: var(--cds-text-primary);
       cursor: pointer;
-      font-size: 13px;
-      transition: background-color 0.2s;
+      font-size: 14px;
+      transition: background-color 0.15s;
     }
 
     .action-dropdown button:hover {
@@ -210,7 +210,7 @@ export class UsersTab extends LitElement {
     }
 
     .action-dropdown button.danger {
-      color: var(--vscode-error);
+      color: var(--cds-support-error);
     }
 
     .action-dropdown button.danger:hover {
@@ -220,23 +220,23 @@ export class UsersTab extends LitElement {
     button {
       padding: 6px 12px;
       border: none;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
       font-size: 12px;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .btn-primary {
-      background: var(--vscode-accent);
+      background: var(--cds-button-primary);
       color: white;
     }
 
     .btn-primary:hover {
-      background: var(--vscode-accent-hover);
+      background: var(--cds-button-primary-hover);
     }
 
     .btn-danger {
-      background: var(--vscode-error);
+      background: var(--cds-support-error);
       color: white;
     }
 
@@ -245,19 +245,19 @@ export class UsersTab extends LitElement {
     }
 
     .btn-secondary {
-      background: var(--vscode-bg-lighter);
-      color: var(--vscode-text);
-      border: 1px solid var(--vscode-border);
+      background: var(--cds-layer-02);
+      color: var(--cds-text-primary);
+      border: 1px solid var(--cds-border-subtle);
     }
 
     .btn-secondary:hover {
-      background: var(--vscode-border);
+      background: var(--cds-border-subtle);
     }
 
     .create-form {
-      background: var(--vscode-bg-light);
+      background: var(--cds-layer-01);
       padding: 20px;
-      border-radius: 6px;
+      border-radius: 0;
       margin-bottom: 20px;
     }
 
@@ -269,22 +269,22 @@ export class UsersTab extends LitElement {
       display: block;
       margin-bottom: 4px;
       font-weight: 500;
-      font-size: 13px;
+      font-size: 14px;
     }
 
     input {
       width: 100%;
       padding: 8px;
-      border: 1px solid var(--vscode-border);
-      background: var(--vscode-bg);
-      color: var(--vscode-text);
-      border-radius: 4px;
+      border: 1px solid var(--cds-border-subtle);
+      background: var(--cds-background);
+      color: var(--cds-text-primary);
+      border-radius: 0;
       font-size: 14px;
     }
 
     input:focus {
       outline: none;
-      border-color: var(--vscode-accent);
+      border-color: var(--cds-button-primary);
     }
 
     .form-actions {
@@ -307,8 +307,8 @@ export class UsersTab extends LitElement {
       right: 0;
       width: 400px;
       height: 100%;
-      background: var(--vscode-bg-light);
-      border-left: 1px solid var(--vscode-border);
+      background: var(--cds-layer-01);
+      border-left: 1px solid var(--cds-border-subtle);
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
       z-index: 1001;
       display: flex;
@@ -333,8 +333,8 @@ export class UsersTab extends LitElement {
 
     .drawer-header {
       padding: 16px 20px;
-      background: var(--vscode-bg-lighter);
-      border-bottom: 1px solid var(--vscode-border);
+      background: var(--cds-layer-02);
+      border-bottom: 1px solid var(--cds-border-subtle);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -345,24 +345,24 @@ export class UsersTab extends LitElement {
       margin: 0;
       font-size: 18px;
       font-weight: 500;
-      color: var(--vscode-foreground);
+      color: var(--cds-text-primary);
     }
 
     .close-btn {
       background: none;
       border: none;
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
       cursor: pointer;
       padding: 8px;
-      border-radius: 4px;
+      border-radius: 0;
       font-size: 20px;
       line-height: 1;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .close-btn:hover {
-      background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.1));
-      color: var(--vscode-text);
+      background: var(--cds-layer-02);
+      color: var(--cds-text-primary);
     }
 
     .drawer-content {
@@ -373,8 +373,8 @@ export class UsersTab extends LitElement {
 
     .drawer-footer {
       padding: 16px 20px;
-      background: var(--vscode-bg-lighter);
-      border-top: 1px solid var(--vscode-border);
+      background: var(--cds-layer-02);
+      border-top: 1px solid var(--cds-border-subtle);
       display: flex;
       justify-content: flex-end;
       gap: 12px;

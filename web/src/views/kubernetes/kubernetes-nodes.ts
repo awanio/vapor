@@ -60,7 +60,7 @@ export class KubernetesNodes extends LitElement {
     }
 
     .resource-count {
-      font-size: 13px;
+      font-size: 14px;
       color: var(--vscode-descriptionForeground, #cccccc80);
       margin-left: auto;
     }
@@ -68,8 +68,8 @@ export class KubernetesNodes extends LitElement {
     /* Raw Data Section */
     .raw-data {
       background: var(--vscode-textCodeBlock-background, rgba(175, 175, 175, 0.12));
-      border: 1px solid var(--vscode-border);
-      border-radius: 4px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       padding: 1rem;
       font-family: var(--vscode-editor-font-family, 'Courier New', monospace);
       font-size: 12px;
@@ -113,7 +113,7 @@ export class KubernetesNodes extends LitElement {
 
     .detail-item {
       margin-bottom: 0.5rem;
-      font-size: 13px;
+      font-size: 14px;
     }
 
     .detail-key {
@@ -129,9 +129,9 @@ export class KubernetesNodes extends LitElement {
     }
 
     .condition-item {
-      background: var(--vscode-editor-background, #1e1e1e);
-      border: 1px solid var(--vscode-border);
-      border-radius: 4px;
+      background: var(--cds-background);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       padding: 0.75rem;
       margin-bottom: 0.5rem;
     }
@@ -156,19 +156,19 @@ export class KubernetesNodes extends LitElement {
     .taint-item {
       display: inline-block;
       background: var(--vscode-textBlockQuote-background, #7f7f7f1a);
-      border-radius: 4px;
+      border-radius: 0;
       padding: 4px 8px;
       margin: 2px;
-      font-size: 11px;
+      font-size: 12px;
     }
 
     .role-badge {
       display: inline-block;
       padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 11px;
+      border-radius: 0;
+      font-size: 12px;
       font-weight: 500;
-      background: var(--vscode-badge-background, #007acc);
+      background: var(--vscode-badge-background, var(--cds-button-primary, #0f62fe));
       color: var(--vscode-badge-foreground, white);
       margin-right: 4px;
     }
@@ -180,9 +180,9 @@ export class KubernetesNodes extends LitElement {
 
     .address-item {
       padding: 0.5rem;
-      background: var(--vscode-editor-background, #1e1e1e);
-      border: 1px solid var(--vscode-border);
-      border-radius: 4px;
+      background: var(--cds-background);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
     }
 
   `;

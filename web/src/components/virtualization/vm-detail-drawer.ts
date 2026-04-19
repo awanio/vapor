@@ -186,13 +186,13 @@ export class VMDetailDrawer extends LitElement {
     .drawer {
       width: 100%;
       height: 100%;
-      background: var(--vscode-editor-background, #1e1e1e);
+      background: var(--cds-background);
       box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
       display: flex;
       flex-direction: column;
       transform: translateX(100%);
       transition: transform 0.3s ease-out;
-      border-left: 1px solid var(--vscode-border);
+      border-left: 1px solid var(--cds-border-subtle);
     }
 
     :host([show]) .drawer {
@@ -240,8 +240,8 @@ export class VMDetailDrawer extends LitElement {
 
     .drawer-header {
       padding: 20px;
-      background: var(--vscode-bg-lighter, #252526);
-      border-bottom: 1px solid var(--vscode-border);
+      background: var(--cds-layer-02);
+      border-bottom: 1px solid var(--cds-border-subtle);
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -262,7 +262,7 @@ export class VMDetailDrawer extends LitElement {
       align-items: center;
       justify-content: center;
       background: var(--vscode-button-secondaryBackground, #3c3c3c);
-      border-radius: 8px;
+      border-radius: 0;
       font-size: 20px;
     }
 
@@ -281,7 +281,7 @@ export class VMDetailDrawer extends LitElement {
       display: flex;
       gap: 16px;
       font-size: 12px;
-      color: var(--vscode-descriptionForeground, #8b8b8b);
+      color: var(--cds-text-secondary);
     }
 
     .close-btn {
@@ -293,12 +293,12 @@ export class VMDetailDrawer extends LitElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 4px;
-      transition: all 0.2s;
+      border-radius: 0;
+      transition: all 0.15s;
     }
 
     .close-btn:hover {
-      background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
+      background: var(--cds-layer-02);
       color: var(--vscode-icon-foreground, #c5c5c5);
     }
 
@@ -308,29 +308,29 @@ export class VMDetailDrawer extends LitElement {
       align-items: center;
       gap: 6px;
       padding: 4px 8px;
-      border-radius: 4px;
+      border-radius: 0;
       font-size: 12px;
       font-weight: 500;
     }
 
     .power-state.running {
       background: var(--vscode-charts-green, #89d185);
-      color: var(--vscode-editor-background, #1e1e1e);
+      color: var(--cds-background);
     }
 
     .power-state.stopped {
       background: var(--vscode-charts-red, #f48771);
-      color: var(--vscode-editor-background, #1e1e1e);
+      color: var(--cds-background);
     }
 
     .power-state.paused {
-      background: var(--vscode-charts-yellow, #cca700);
-      color: var(--vscode-editor-background, #1e1e1e);
+      background: var(--cds-support-warning);
+      color: var(--cds-background);
     }
 
     .power-state.suspended {
       background: var(--vscode-charts-orange, #ce9178);
-      color: var(--vscode-editor-background, #1e1e1e);
+      color: var(--cds-background);
     }
 
     .power-state-indicator {
@@ -359,8 +359,8 @@ export class VMDetailDrawer extends LitElement {
       display: flex;
       gap: 0;
       padding: 0 20px;
-      background: var(--vscode-editor-background, #1e1e1e);
-      border-bottom: 1px solid var(--vscode-border);
+      background: var(--cds-background);
+      border-bottom: 1px solid var(--cds-border-subtle);
       flex-shrink: 0;
     }
 
@@ -371,19 +371,19 @@ export class VMDetailDrawer extends LitElement {
       border-bottom: 2px solid transparent;
       color: var(--vscode-foreground, #cccccc);
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
-      transition: all 0.2s;
+      transition: all 0.15s;
       position: relative;
     }
 
     .tab:hover {
-      background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.1));
+      background: var(--cds-layer-02);
     }
 
     .tab.active {
       color: var(--vscode-textLink-foreground, #3794ff);
-      border-bottom-color: var(--vscode-focusBorder, #007acc);
+      border-bottom-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
     /* Content Area */
@@ -396,8 +396,8 @@ export class VMDetailDrawer extends LitElement {
     /* Quick Actions Bar */
     .quick-actions {
       padding: 16px 20px;
-      background: var(--vscode-bg-lighter, #252526);
-      border-bottom: 1px solid var(--vscode-border);
+      background: var(--cds-layer-02);
+      border-bottom: 1px solid var(--cds-border-subtle);
       display: flex;
       gap: 12px;
       flex-shrink: 0;
@@ -407,12 +407,12 @@ export class VMDetailDrawer extends LitElement {
       padding: 8px 16px;
       background: var(--vscode-button-secondaryBackground, #3c3c3c);
       color: var(--vscode-button-secondaryForeground, #cccccc);
-      border: 1px solid var(--vscode-button-border, #5a5a5a);
-      border-radius: 4px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
-      transition: all 0.2s;
+      transition: all 0.15s;
       display: flex;
       align-items: center;
       gap: 6px;
@@ -428,14 +428,14 @@ export class VMDetailDrawer extends LitElement {
     }
 
     .action-btn.primary {
-      background: var(--vscode-button-background, #0e639c);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, #ffffff);
-      border-color: var(--vscode-button-background, #0e639c);
+      border-color: var(--cds-button-primary);
     }
 
     .action-btn.primary:hover:not(:disabled) {
-      background: var(--vscode-button-hoverBackground, #1177bb);
-      border-color: var(--vscode-button-hoverBackground, #1177bb);
+      background: var(--cds-button-primary-hover);
+      border-color: var(--cds-button-primary-hover);
     }
 
     .action-btn.danger {
@@ -458,12 +458,12 @@ export class VMDetailDrawer extends LitElement {
       padding: 8px 12px;
       background: var(--vscode-button-secondaryBackground, #3c3c3c);
       color: var(--vscode-button-secondaryForeground, #cccccc);
-      border: 1px solid var(--vscode-button-border, #5a5a5a);
-      border-radius: 4px 0 0 4px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0 0 0 4px;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
-      transition: all 0.2s;
+      transition: all 0.15s;
       display: flex;
       align-items: center;
       gap: 6px;
@@ -483,11 +483,11 @@ export class VMDetailDrawer extends LitElement {
       padding: 8px 6px;
       background: var(--vscode-button-secondaryBackground, #3c3c3c);
       color: var(--vscode-button-secondaryForeground, #cccccc);
-      border: 1px solid var(--vscode-button-border, #5a5a5a);
+      border: 1px solid var(--cds-border-subtle);
       border-radius: 0 4px 4px 0;
       cursor: pointer;
       font-size: 10px;
-      transition: all 0.2s;
+      transition: all 0.15s;
       display: flex;
       align-items: center;
     }
@@ -508,7 +508,7 @@ export class VMDetailDrawer extends LitElement {
       margin-top: 4px;
       background: var(--vscode-menu-background, var(--vscode-editorWidget-background, #252526));
       border: 1px solid var(--vscode-menu-border, #464647);
-      border-radius: 4px;
+      border-radius: 0;
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
       min-width: 140px;
       z-index: 1000;
@@ -524,7 +524,7 @@ export class VMDetailDrawer extends LitElement {
       background: none;
       color: var(--vscode-foreground, #cccccc);
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
       transition: background 0.15s;
     }
 
@@ -557,7 +557,7 @@ export class VMDetailDrawer extends LitElement {
       color: var(--vscode-foreground, #cccccc);
       margin-bottom: 16px;
       padding-bottom: 8px;
-      border-bottom: 1px solid var(--vscode-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
     }
 
     /* Info Grid */
@@ -575,7 +575,7 @@ export class VMDetailDrawer extends LitElement {
 
     .info-label {
       font-size: 12px;
-      color: var(--vscode-descriptionForeground, #8b8b8b);
+      color: var(--cds-text-secondary);
       font-weight: 500;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -589,7 +589,7 @@ export class VMDetailDrawer extends LitElement {
 
     .info-value.monospace {
       font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-      font-size: 13px;
+      font-size: 14px;
     }
 
     /* Metrics Cards */
@@ -602,8 +602,8 @@ export class VMDetailDrawer extends LitElement {
 
     .metric-card {
       background: var(--vscode-bg-lighter, #2d2d30);
-      border: 1px solid var(--vscode-border);
-      border-radius: 6px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       padding: 16px;
       display: flex;
       flex-direction: column;
@@ -618,7 +618,7 @@ export class VMDetailDrawer extends LitElement {
 
     .metric-title {
       font-size: 12px;
-      color: var(--vscode-descriptionForeground, #8b8b8b);
+      color: var(--cds-text-secondary);
       font-weight: 500;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -638,7 +638,7 @@ export class VMDetailDrawer extends LitElement {
     .metric-unit {
       font-size: 14px;
       font-weight: 400;
-      color: var(--vscode-descriptionForeground, #8b8b8b);
+      color: var(--cds-text-secondary);
       margin-left: 4px;
     }
 
@@ -661,8 +661,8 @@ export class VMDetailDrawer extends LitElement {
     .progress-bar {
       width: 100%;
       height: 8px;
-      background: var(--vscode-progressBar-background, #1e1e1e);
-      border-radius: 4px;
+      background: var(--cds-layer-02);
+      border-radius: 0;
       overflow: hidden;
       margin-top: 8px;
     }
@@ -671,7 +671,7 @@ export class VMDetailDrawer extends LitElement {
       height: 100%;
       background: var(--vscode-progressBar-foreground, #0e639c);
       transition: width 0.3s ease;
-      border-radius: 4px;
+      border-radius: 0;
     }
 
     .progress-fill.high {
@@ -679,7 +679,7 @@ export class VMDetailDrawer extends LitElement {
     }
 
     .progress-fill.medium {
-      background: var(--vscode-charts-yellow, #cca700);
+      background: var(--cds-support-warning);
     }
 
     .progress-fill.low {
@@ -690,7 +690,7 @@ export class VMDetailDrawer extends LitElement {
     .data-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 13px;
+      font-size: 14px;
     }
 
     .data-table th {
@@ -699,13 +699,13 @@ export class VMDetailDrawer extends LitElement {
       background: var(--vscode-bg-lighter, #2d2d30);
       color: var(--vscode-foreground, #cccccc);
       font-weight: 600;
-      border-bottom: 1px solid var(--vscode-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
     }
 
     .data-table td {
       padding: 10px 12px;
       color: var(--vscode-foreground, #cccccc);
-      border-bottom: 1px solid var(--vscode-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
     }
 
     .data-table tr:hover {
@@ -716,8 +716,8 @@ export class VMDetailDrawer extends LitElement {
     .badge {
       display: inline-block;
       padding: 2px 8px;
-      border-radius: 3px;
-      font-size: 11px;
+      border-radius: 0;
+      font-size: 12px;
       font-weight: 500;
       background: var(--vscode-badge-background, #4d4d4d);
       color: var(--vscode-badge-foreground, #ffffff);
@@ -725,17 +725,17 @@ export class VMDetailDrawer extends LitElement {
 
     .badge.success {
       background: var(--vscode-charts-green, #89d185);
-      color: var(--vscode-editor-background, #1e1e1e);
+      color: var(--cds-background);
     }
 
     .badge.warning {
-      background: var(--vscode-charts-yellow, #cca700);
-      color: var(--vscode-editor-background, #1e1e1e);
+      background: var(--cds-support-warning);
+      color: var(--cds-background);
     }
 
     .badge.error {
       background: var(--vscode-charts-red, #f48771);
-      color: var(--vscode-editor-background, #1e1e1e);
+      color: var(--cds-background);
     }
 
     /* Loading State */
@@ -744,14 +744,14 @@ export class VMDetailDrawer extends LitElement {
       align-items: center;
       justify-content: center;
       padding: 40px;
-      color: var(--vscode-descriptionForeground, #8b8b8b);
+      color: var(--cds-text-secondary);
     }
 
     .spinner {
       width: 24px;
       height: 24px;
-      border: 2px solid var(--vscode-widget-border, #454545);
-      border-top-color: var(--vscode-focusBorder, #007acc);
+      border: 2px solid var(--cds-border-subtle);
+      border-top-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
       margin-right: 12px;
@@ -768,7 +768,7 @@ export class VMDetailDrawer extends LitElement {
       display: inline-block;
       width: 12px;
       height: 12px;
-      border: 2px solid var(--vscode-widget-border, #454545);
+      border: 2px solid var(--cds-border-subtle);
       border-top-color: var(--vscode-foreground, #cccccc);
       border-radius: 50%;
       animation: spin 0.6s linear infinite;
@@ -778,7 +778,7 @@ export class VMDetailDrawer extends LitElement {
     .empty-state {
       padding: 60px 20px;
       text-align: center;
-      color: var(--vscode-descriptionForeground, #8b8b8b);
+      color: var(--cds-text-secondary);
     }
 
     .empty-state-icon {
@@ -794,8 +794,8 @@ export class VMDetailDrawer extends LitElement {
     /* Console Preview */
     .console-preview {
       background: #000;
-      border: 1px solid var(--vscode-border);
-      border-radius: 4px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       padding: 16px;
       min-height: 200px;
       font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
@@ -809,16 +809,16 @@ export class VMDetailDrawer extends LitElement {
       top: 8px;
       right: 8px;
       padding: 4px 12px;
-      background: var(--vscode-button-background, #0e639c);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, #ffffff);
       border: none;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
       font-size: 12px;
     }
 
     .console-connect-btn:hover {
-      background: var(--vscode-button-hoverBackground, #1177bb);
+      background: var(--cds-button-primary-hover);
     }
     
     /* Delete Confirmation Modal */
@@ -851,9 +851,9 @@ export class VMDetailDrawer extends LitElement {
     }
     
     .modal {
-      background: var(--vscode-editor-background, #1e1e1e);
-      border: 1px solid var(--vscode-border);
-      border-radius: 8px;
+      background: var(--cds-background);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       padding: 24px;
       width: 90%;
       max-width: 500px;
@@ -903,10 +903,10 @@ export class VMDetailDrawer extends LitElement {
     .warning-box {
       background: var(--vscode-inputValidation-warningBackground, #5a5012);
       border: 1px solid var(--vscode-inputValidation-warningBorder, #b89500);
-      border-radius: 4px;
+      border-radius: 0;
       padding: 12px;
       color: var(--vscode-inputValidation-warningForeground, #cca700);
-      font-size: 13px;
+      font-size: 14px;
       display: flex;
       align-items: start;
       gap: 8px;
@@ -919,8 +919,8 @@ export class VMDetailDrawer extends LitElement {
     
     .vm-info-box {
       background: var(--vscode-bg-lighter, #2d2d30);
-      border: 1px solid var(--vscode-border);
-      border-radius: 4px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       padding: 12px;
       margin: 16px 0;
     }
@@ -929,11 +929,11 @@ export class VMDetailDrawer extends LitElement {
       display: flex;
       justify-content: space-between;
       padding: 4px 0;
-      font-size: 13px;
+      font-size: 14px;
     }
     
     .vm-info-label {
-      color: var(--vscode-descriptionForeground, #8b8b8b);
+      color: var(--cds-text-secondary);
     }
     
     .vm-info-value {
@@ -949,12 +949,12 @@ export class VMDetailDrawer extends LitElement {
     
     .modal-btn {
       padding: 8px 16px;
-      border-radius: 4px;
+      border-radius: 0;
       border: 1px solid;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s;
       display: inline-flex;
       align-items: center;
       gap: 6px;
@@ -968,7 +968,7 @@ export class VMDetailDrawer extends LitElement {
     .modal-btn.cancel {
       background: var(--vscode-button-secondaryBackground, #3c3c3c);
       color: var(--vscode-button-secondaryForeground, #cccccc);
-      border-color: var(--vscode-button-border, #5a5a5a);
+      border-color: var(--cds-border-subtle);
     }
     
     .modal-btn.cancel:hover:not(:disabled) {
@@ -986,14 +986,14 @@ export class VMDetailDrawer extends LitElement {
     }
 
     .modal-btn.primary {
-      background: var(--vscode-button-background, #0e639c);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, #ffffff);
-      border-color: var(--vscode-button-background, #0e639c);
+      border-color: var(--cds-button-primary);
     }
 
     .modal-btn.primary:hover:not(:disabled) {
-      background: var(--vscode-button-hoverBackground, #1177bb);
-      border-color: var(--vscode-button-hoverBackground, #1177bb);
+      background: var(--cds-button-primary-hover);
+      border-color: var(--cds-button-primary-hover);
     }
 
     /* Snapshot styles */
@@ -1032,9 +1032,9 @@ export class VMDetailDrawer extends LitElement {
       justify-content: space-between;
       align-items: center;
       padding: 12px 16px;
-      background: var(--vscode-editor-background, #1e1e1e);
-      border: 1px solid var(--vscode-border);
-      border-radius: 6px;
+      background: var(--cds-background);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
     }
 
     .snapshot-item:hover {
@@ -1089,10 +1089,10 @@ export class VMDetailDrawer extends LitElement {
     .warning-box {
       background: var(--vscode-inputValidation-warningBackground, rgba(255, 204, 0, 0.1));
       border: 1px solid var(--vscode-inputValidation-warningBorder, #cca700);
-      border-radius: 4px;
+      border-radius: 0;
       padding: 12px;
       margin-top: 12px;
-      font-size: 13px;
+      font-size: 14px;
     }
 
     .warning-box ul {
@@ -1115,12 +1115,12 @@ export class VMDetailDrawer extends LitElement {
       padding: 8px 16px;
       background: var(--vscode-button-secondaryBackground, #3c3c3c);
       color: var(--vscode-button-secondaryForeground, #cccccc);
-      border: 1px solid var(--vscode-button-border, #5a5a5a);
-      border-radius: 4px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
-      transition: all 0.2s;
+      transition: all 0.15s;
       display: inline-flex;
       align-items: center;
       gap: 6px;
@@ -1137,20 +1137,20 @@ export class VMDetailDrawer extends LitElement {
     }
 
     .btn-primary {
-      background: var(--vscode-button-background, #0e639c);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, #ffffff);
-      border-color: var(--vscode-button-background, #0e639c);
+      border-color: var(--cds-button-primary);
     }
 
     .btn-primary:hover:not(:disabled) {
-      background: var(--vscode-button-hoverBackground, #1177bb);
-      border-color: var(--vscode-button-hoverBackground, #1177bb);
+      background: var(--cds-button-primary-hover);
+      border-color: var(--cds-button-primary-hover);
     }
 
     .btn-secondary {
       background: var(--vscode-button-secondaryBackground, #3c3c3c);
       color: var(--vscode-button-secondaryForeground, #cccccc);
-      border-color: var(--vscode-button-border, #5a5a5a);
+      border-color: var(--cds-border-subtle);
     }
 
     /* Form controls (snapshot modals) */
@@ -1163,13 +1163,13 @@ export class VMDetailDrawer extends LitElement {
     .form-group label {
       display: block;
       margin-bottom: 8px;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
       color: var(--vscode-foreground, #cccccc);
     }
 
     .required {
-      color: var(--vscode-errorForeground, #f48771);
+      color: var(--cds-support-error);
     }
 
     input,
@@ -1181,10 +1181,10 @@ export class VMDetailDrawer extends LitElement {
       background: var(--vscode-input-background, #3c3c3c);
       color: var(--vscode-input-foreground, #cccccc);
       border: 1px solid var(--vscode-input-border, #858585);
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 0;
+      font-size: 14px;
       font-family: inherit;
-      transition: all 0.2s;
+      transition: all 0.15s;
       box-sizing: border-box;
     }
 
@@ -1192,14 +1192,14 @@ export class VMDetailDrawer extends LitElement {
     select:focus,
     textarea:focus {
       outline: none;
-      border-color: var(--vscode-focusBorder, #007acc);
-      box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc);
+      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      box-shadow: 0 0 0 1px var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
     .form-hint {
       margin-top: 6px;
       font-size: 12px;
-      color: var(--vscode-descriptionForeground, #8b8b8b);
+      color: var(--cds-text-secondary);
     }
 
     .form-error {
@@ -1222,11 +1222,11 @@ export class VMDetailDrawer extends LitElement {
 
     .info-box {
       background: var(--vscode-editor-inactiveSelectionBackground, rgba(37, 37, 38, 0.9));
-      border: 1px solid var(--vscode-widget-border, #454545);
-      border-radius: 4px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       padding: 12px;
       margin-top: 12px;
-      font-size: 13px;
+      font-size: 14px;
       color: var(--vscode-foreground, #cccccc);
     }
 
@@ -2352,7 +2352,7 @@ export class VMDetailDrawer extends LitElement {
             <div class="progress-fill ${this.getProgressClass(memoryUsagePercent)}" 
                  style="width: ${Math.min(memoryUsagePercent, 100)}%"></div>
           </div>
-          <div style="font-size: 11px; color: var(--vscode-descriptionForeground, #8b8b8b); margin-top: 4px;">
+          <div style="font-size: 12px; color: var(--cds-text-secondary); margin-top: 4px;">
             ${this.formatBytes(memoryUsedBytes)} of ${formatMemory(vmMemoryMB)} used
           </div>
         </div>
@@ -2365,7 +2365,7 @@ export class VMDetailDrawer extends LitElement {
           <div>
             <span class="metric-value">${this.formatBytes(this.metrics.disk_read)}</span>
           </div>
-          <div style="font-size: 11px; color: var(--vscode-descriptionForeground, #8b8b8b); margin-top: 4px;">
+          <div style="font-size: 12px; color: var(--cds-text-secondary); margin-top: 4px;">
             Total bytes read
           </div>
         </div>
@@ -2378,7 +2378,7 @@ export class VMDetailDrawer extends LitElement {
           <div>
             <span class="metric-value">${this.formatBytes(this.metrics.disk_write)}</span>
           </div>
-          <div style="font-size: 11px; color: var(--vscode-descriptionForeground, #8b8b8b); margin-top: 4px;">
+          <div style="font-size: 12px; color: var(--cds-text-secondary); margin-top: 4px;">
             Total bytes written
           </div>
         </div>
@@ -2391,7 +2391,7 @@ export class VMDetailDrawer extends LitElement {
           <div>
             <span class="metric-value">${this.formatBytes(this.metrics.network_rx)}</span>
           </div>
-          <div style="font-size: 11px; color: var(--vscode-descriptionForeground, #8b8b8b); margin-top: 4px;">
+          <div style="font-size: 12px; color: var(--cds-text-secondary); margin-top: 4px;">
             Total received
           </div>
         </div>
@@ -2404,7 +2404,7 @@ export class VMDetailDrawer extends LitElement {
           <div>
             <span class="metric-value">${this.formatBytes(this.metrics.network_tx)}</span>
           </div>
-          <div style="font-size: 11px; color: var(--vscode-descriptionForeground, #8b8b8b); margin-top: 4px;">
+          <div style="font-size: 12px; color: var(--cds-text-secondary); margin-top: 4px;">
             Total transmitted
           </div>
         </div>
@@ -2418,7 +2418,7 @@ export class VMDetailDrawer extends LitElement {
             <span class="metric-value">${(this.metrics.cpu_time / 1000000000).toFixed(1)}</span>
             <span class="metric-unit">s</span>
           </div>
-          <div style="font-size: 11px; color: var(--vscode-descriptionForeground, #8b8b8b); margin-top: 4px;">
+          <div style="font-size: 12px; color: var(--cds-text-secondary); margin-top: 4px;">
             Total CPU time used
           </div>
         </div>
@@ -2464,7 +2464,7 @@ export class VMDetailDrawer extends LitElement {
                     </span>
                   </td>
                   <td>
-                    <span class="monospace" style="font-size: 11px; word-break: break-all;">
+                    <span class="monospace" style="font-size: 12px; word-break: break-all;">
                       ${disk.path}
                     </span>
                   </td>

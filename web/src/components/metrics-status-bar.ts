@@ -25,11 +25,11 @@ export class MetricsStatusBar extends StoreMixin(LitElement) {
   static override styles = css`
     :host {
       display: block;
-      background: var(--vscode-bg-light);
-      border-top: 1px solid var(--vscode-border);
+      background: var(--cds-layer-01);
+      border-top: 1px solid var(--cds-border-subtle);
       padding: 8px 16px;
       font-size: 12px;
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
     }
 
     .status-bar {
@@ -49,9 +49,9 @@ export class MetricsStatusBar extends StoreMixin(LitElement) {
       align-items: center;
       gap: 8px;
       padding: 4px 12px;
-      border-radius: 12px;
-      background: var(--vscode-bg);
-      border: 1px solid var(--vscode-border);
+      border-radius: 0;
+      background: var(--cds-background);
+      border: 1px solid var(--cds-border-subtle);
     }
 
     .connection-status.connected {
@@ -65,15 +65,15 @@ export class MetricsStatusBar extends StoreMixin(LitElement) {
     }
 
     .status-label {
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      font-size: 11px;
+      font-size: 12px;
     }
 
     .status-value {
-      color: var(--vscode-text);
-      font-family: var(--vscode-font-family-mono);
+      color: var(--cds-text-primary);
+      font-family: var(--cds-font-mono);
       font-weight: 500;
     }
 
@@ -110,7 +110,7 @@ export class MetricsStatusBar extends StoreMixin(LitElement) {
     .divider {
       width: 1px;
       height: 16px;
-      background: var(--vscode-border);
+      background: var(--cds-border-subtle);
     }
 
     .alert-indicator {
@@ -118,7 +118,7 @@ export class MetricsStatusBar extends StoreMixin(LitElement) {
       align-items: center;
       gap: 4px;
       padding: 2px 8px;
-      border-radius: 12px;
+      border-radius: 0;
       background: rgba(255, 193, 7, 0.1);
       color: #ffc107;
     }

@@ -24,11 +24,11 @@ export class TabGroup extends LitElement {
       background: none;
       border: none;
       cursor: pointer;
-      font-size: 0.875rem;
+      font-size: 14px;
       color: var(--text-secondary);
       border-bottom: 2px solid transparent;
       margin-bottom: -2px;
-      transition: all 0.2s;
+      transition: all 0.15s;
       display: flex;
       align-items: center;
       gap: 0.5rem;
@@ -44,7 +44,7 @@ export class TabGroup extends LitElement {
     }
 
     .tab-icon {
-      font-size: 1rem;
+      font-size: 16px;
     }
   `;
 

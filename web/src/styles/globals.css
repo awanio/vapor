@@ -1,198 +1,316 @@
-/* Global CSS Variables for theming */
+/* ============================================
+   Carbon Design System Tokens (Vapor UI)
+   Based on DESIGN.md — IBM Carbon-inspired
+   ============================================ */
+
+/* ---------- Dark theme (Gray 100 / default) ---------- */
 :root {
-  /* Surface colors */
-  --surface-0: #1e1e1e;
-  --surface-1: #252526;
-  --surface-2: #2d2d30;
-  --surface-3: #3e3e42;
+  /* ---------- Fonts ---------- */
+  --cds-font-sans: "Helvetica Neue", Arial, "Segoe UI", Helvetica, sans-serif;
+  --cds-font-mono: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --cds-font-serif: Georgia, Cambria, "Times New Roman", Times, serif;
 
-  /* Text colors */
-  --text-primary: #cccccc;
-  --text-secondary: #9d9d9d;
-  --text-disabled: #5a5a5a;
+  /* ---------- Background / Surfaces ---------- */
+  --cds-background: #161616;         /* Gray 100 – page bg */
+  --cds-layer-01: #262626;           /* Gray 90  – cards, containers */
+  --cds-layer-02: #393939;           /* Gray 80  – elevated surfaces */
+  --cds-layer-03: #525252;           /* Gray 70  – tertiary */
 
-  /* Border colors */
-  --border-color: #464647;
+  /* ---------- Text ---------- */
+  --cds-text-primary: #f4f4f4;       /* Gray 10 */
+  --cds-text-secondary: #c6c6c6;     /* Gray 30 */
+  --cds-text-placeholder: #6f6f6f;   /* Gray 60 */
+  --cds-text-disabled: #8d8d8d;      /* Gray 50 */
 
-  /* Primary colors */
-  --primary: #007acc;
-  --primary-hover: #1a86d9;
+  /* ---------- Borders ---------- */
+  --cds-border-subtle: #393939;      /* Gray 80 */
+  --cds-border-strong: #525252;      /* Gray 70 */
 
-  /* Error/Success/Warning colors */
-  --error: #f14c4c;
-  --success: #73c991;
-  --warning: #cca700;
+  /* ---------- Interactive (Blue shifted lighter for dark bg) ---------- */
+  --cds-interactive: #78a9ff;        /* Blue 40 */
+  --cds-interactive-hover: #a6c8ff;  /* Blue 30 */
+  --cds-interactive-active: #4589ff; /* Blue 50 */
+  --cds-link-primary: #78a9ff;       /* Blue 40 */
+  --cds-link-primary-hover: #a6c8ff; /* Blue 30 */
+  --cds-focus: #0f62fe;              /* Blue 60 – focus ring */
+  --cds-focus-inset: #ffffff;
 
-  /* Font */
-  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  /* ---------- Buttons ---------- */
+  --cds-button-primary: #0f62fe;         /* Blue 60 */
+  --cds-button-primary-hover: #0353e9;   /* Blue 60 Hover */
+  --cds-button-primary-active: #002d9c;  /* Blue 80 */
+  --cds-button-secondary: #6f6f6f;       /* Gray 60 */
+  --cds-button-secondary-hover: #606060; /* Gray 60 Hover */
+  --cds-button-secondary-active: #393939;/* Gray 80 */
+  --cds-button-tertiary: #ffffff;        /* White */
+  --cds-button-danger: #da1e28;          /* Red 60 */
+  --cds-button-danger-hover: #b81921;    /* Red 70 */
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  /* ---------- Field / Input ---------- */
+  --cds-field: #262626;                  /* Gray 90 */
+  --cds-field-hover: #353535;
 
-  /* VSCode compatibility mappings */
-  --vscode-bg: var(--surface-0);
-  --vscode-bg-light: var(--surface-1);
-  --vscode-bg-lighter: var(--surface-2);
-  --vscode-sidebar: var(--surface-1);
-  --vscode-sidebar-hover: rgba(255, 255, 255, 0.04);
-  --vscode-sidebar-active: rgba(255, 255, 255, 0.08);
-  --vscode-sidebar-active-border: var(--primary);
-  --vscode-titlebar: var(--surface-1);
-  --vscode-text: var(--text-primary);
-  --vscode-text-dim: var(--text-secondary);
-  --vscode-border: var(--border-color);
-  --vscode-accent: var(--primary);
-  --vscode-accent-hover: var(--primary-hover);
-  --vscode-error: var(--error);
-  --vscode-font: var(--font-family);
-  --vscode-editor-background: #1e1e1e;
-  --vscode-editor-foreground: #cccccc;
-  --vscode-tab: #2d2d30;
-  --vscode-tab-active: #1e1e1e;
+  /* ---------- Support / Status ---------- */
+  --cds-support-error: #ff8389;          /* Red 40 (lighter on dark) */
+  --cds-support-success: #42be65;        /* Green 40 */
+  --cds-support-warning: #f1c21b;        /* Yellow 30 */
+  --cds-support-info: #78a9ff;           /* Blue 40 */
+
+  /* ---------- Elevation / Shadows ---------- */
+  --cds-shadow-raised: 0 2px 6px rgba(0, 0, 0, 0.3);
+  --cds-shadow-overlay: 0 2px 6px rgba(0, 0, 0, 0.3);
+
+  /* ---------- Miscellaneous ---------- */
+  --cds-overlay: rgba(0, 0, 0, 0.65);
+  --cds-skeleton-bg: #353535;
+  --cds-highlight: #002d9c;
+
+  /* ===== Backward-compat aliases (--vscode-* → --cds-*) ===== */
+  --surface-0: var(--cds-background);
+  --surface-1: var(--cds-layer-01);
+  --surface-2: var(--cds-layer-02);
+  --surface-3: var(--cds-layer-03);
+  --text-primary: var(--cds-text-primary);
+  --text-secondary: var(--cds-text-secondary);
+  --text-disabled: var(--cds-text-disabled);
+  --border-color: var(--cds-border-subtle);
+  --primary: var(--cds-button-primary);
+  --primary-hover: var(--cds-button-primary-hover);
+  --error: var(--cds-support-error);
+  --success: var(--cds-support-success);
+  --warning: var(--cds-support-warning);
+  --font-family: var(--cds-font-sans);
+
+  --vscode-bg: var(--cds-background);
+  --vscode-bg-light: var(--cds-layer-01);
+  --vscode-bg-lighter: var(--cds-layer-02);
+  --vscode-sidebar: var(--cds-layer-01);
+  --vscode-sidebar-hover: rgba(255, 255, 255, 0.08);
+  --vscode-sidebar-active: rgba(15, 98, 254, 0.16);
+  --vscode-sidebar-active-border: var(--cds-button-primary);
+  --vscode-titlebar: var(--cds-background);
+  --vscode-text: var(--cds-text-primary);
+  --vscode-text-dim: var(--cds-text-secondary);
   --vscode-text-bright: #ffffff;
-  --vscode-success: #4ec9b0;
-  --vscode-warning: #dcdcaa;
-  --vscode-info: #3794ff;
-  --vscode-statusbar: #007acc;
+  --vscode-border: var(--cds-border-subtle);
+  --vscode-accent: var(--cds-button-primary);
+  --vscode-accent-hover: var(--cds-button-primary-hover);
+  --vscode-error: var(--cds-support-error);
+  --vscode-success: var(--cds-support-success);
+  --vscode-warning: var(--cds-support-warning);
+  --vscode-info: var(--cds-support-info);
+  --vscode-font: var(--cds-font-sans);
+  --vscode-editor-background: var(--cds-background);
+  --vscode-editor-foreground: var(--cds-text-primary);
+  --vscode-tab: var(--cds-layer-01);
+  --vscode-tab-active: var(--cds-background);
+  --vscode-statusbar: var(--cds-button-primary);
 
-  /* Notification variables (Dark) */
-  --vscode-notifications-background: #252526;
-  --vscode-notifications-foreground: #cccccc;
-  --vscode-notifications-border: #464647;
-  --vscode-notificationsInfoIcon-foreground: #3794ff;
-  --vscode-notificationsWarningIcon-foreground: #cca700;
-  --vscode-notificationsErrorIcon-foreground: #f14c4c;
-  --vscode-testing-iconPassed: #73c991;
+  /* Notification compat */
+  --vscode-notifications-background: var(--cds-layer-01);
+  --vscode-notifications-foreground: var(--cds-text-primary);
+  --vscode-notifications-border: var(--cds-border-subtle);
+  --vscode-notificationsInfoIcon-foreground: var(--cds-support-info);
+  --vscode-notificationsWarningIcon-foreground: var(--cds-support-warning);
+  --vscode-notificationsErrorIcon-foreground: var(--cds-support-error);
+  --vscode-testing-iconPassed: var(--cds-support-success);
 
-  /* Success/Error background colors for dark theme */
-  --success-bg: rgba(115, 201, 145, 0.15);
-  --error-bg: rgba(241, 76, 76, 0.15);
+  /* Success/Error backgrounds */
+  --success-bg: rgba(66, 190, 101, 0.15);
+  --error-bg: rgba(255, 131, 137, 0.15);
 
-  /* Button variables (Dark) */
-  --vscode-button-secondaryBackground: #3c3c3c;
-  --vscode-button-secondaryForeground: #cccccc;
-  --vscode-button-secondaryHoverBackground: #45494e;
-  --vscode-button-border: #5a5a5a;
+  /* Button compat */
+  --vscode-button-secondaryBackground: var(--cds-layer-02);
+  --vscode-button-secondaryForeground: var(--cds-text-primary);
+  --vscode-button-secondaryHoverBackground: var(--cds-layer-03);
+  --vscode-button-border: var(--cds-border-subtle);
 
-  /* Menu variables (Dark) */
-  --vscode-menu-background: #252526;
-  --vscode-menu-border: #464647;
-  --vscode-menu-foreground: #cccccc;
-  --vscode-list-hoverBackground: #2a2d2e;
-  --vscode-list-activeSelectionBackground: #04395e;
+  /* Menu compat */
+  --vscode-menu-background: var(--cds-layer-01);
+  --vscode-menu-border: var(--cds-border-subtle);
+  --vscode-menu-foreground: var(--cds-text-primary);
+  --vscode-list-hoverBackground: rgba(255, 255, 255, 0.08);
+  --vscode-list-activeSelectionBackground: rgba(15, 98, 254, 0.24);
 
-  /* Validation variables (Dark) */
-  --vscode-inputValidation-errorBackground: #5a1d1d;
-  --vscode-inputValidation-errorForeground: #f48771;
-  --vscode-inputValidation-errorBorder: #be1100;
+  /* Input compat */
+  --vscode-input-background: var(--cds-field);
+  --vscode-input-foreground: var(--cds-text-primary);
+  --vscode-input-border: transparent;
+  --vscode-focusBorder: var(--cds-focus);
+  --vscode-foreground: var(--cds-text-primary);
 
-  --vscode-inputValidation-warningBackground: #5a5012;
-  --vscode-inputValidation-warningForeground: #cca700;
-  --vscode-inputValidation-warningBorder: #b89500;
+  /* Validation compat */
+  --vscode-inputValidation-errorBackground: rgba(218, 30, 40, 0.2);
+  --vscode-inputValidation-errorForeground: var(--cds-support-error);
+  --vscode-inputValidation-errorBorder: var(--cds-support-error);
+  --vscode-inputValidation-warningBackground: rgba(241, 194, 27, 0.2);
+  --vscode-inputValidation-warningForeground: var(--cds-support-warning);
+  --vscode-inputValidation-warningBorder: var(--cds-support-warning);
+
+  /* Additional compat aliases */
+  --vscode-editor-background: var(--cds-background);
+  --vscode-editor-foreground: var(--cds-text-primary);
+  --vscode-editor: var(--cds-background);
+  --vscode-editor-font-family: var(--cds-font-mono);
+  --vscode-editorWidget-background: var(--cds-layer-01);
+  --vscode-editorWidget-foreground: var(--cds-text-primary);
+  --vscode-dropdown-background: var(--cds-field);
+  --vscode-dropdown-border: var(--cds-border-subtle);
+  --vscode-badge-background: var(--cds-layer-02);
+  --vscode-badge-foreground: var(--cds-text-primary);
+  --vscode-button-foreground: #ffffff;
+  --vscode-progressBar-foreground: var(--cds-button-primary);
+  --vscode-terminal-ansiCyan: #3ddbd9;
+  --vscode-testing-iconFailed: var(--cds-support-error);
+  --vscode-testing-iconQueued: var(--cds-support-warning);
+  --vscode-debugTokenExpression-boolean: #78a9ff;
+  --vscode-debugTokenExpression-number: #78a9ff;
+  --vscode-debugTokenExpression-string: #42be65;
+  --vscode-inputValidation-infoBackground: rgba(15, 98, 254, 0.2);
+  --vscode-inputValidation-infoBorder: var(--cds-support-info);
 }
 
-/* Light theme */
+/* ---------- Light theme (White / Gray 10) ---------- */
 :root.light {
-  /* Surface colors - Softened for professional look */
-  --surface-0: #ffffff;
-  --surface-1: #f8f9fa;
-  /* Lighter sidebar relative to main content */
-  --surface-2: #f3f4f6;
-  --surface-3: #e5e7eb;
+  /* Background / Surfaces */
+  --cds-background: #ffffff;
+  --cds-layer-01: #f4f4f4;          /* Gray 10 */
+  --cds-layer-02: #e0e0e0;          /* Gray 20 */
+  --cds-layer-03: #c6c6c6;          /* Gray 30 */
 
-  /* Text colors */
-  --text-primary: #24292f;
-  /* GitHub-like dark gray, not pure black */
-  --text-secondary: #57606a;
-  --text-disabled: #8c959f;
+  /* Text */
+  --cds-text-primary: #161616;       /* Gray 100 */
+  --cds-text-secondary: #525252;     /* Gray 70 */
+  --cds-text-placeholder: #6f6f6f;   /* Gray 60 */
+  --cds-text-disabled: #8d8d8d;      /* Gray 50 */
 
-  /* Border colors */
-  --border-color: #d0d7de;
-  /* GitHub-like border */
+  /* Borders */
+  --cds-border-subtle: #e0e0e0;      /* Gray 20 */
+  --cds-border-strong: #c6c6c6;      /* Gray 30 */
 
-  /* Primary colors */
-  --primary: #0969da;
-  --primary-hover: #0a53be;
+  /* Interactive */
+  --cds-interactive: #0f62fe;        /* Blue 60 */
+  --cds-interactive-hover: #0043ce;  /* Blue 70 */
+  --cds-interactive-active: #002d9c; /* Blue 80 */
+  --cds-link-primary: #0f62fe;
+  --cds-link-primary-hover: #0043ce;
 
-  /* Error/Success/Warning colors */
-  --error: #cf222e;
-  --success: #1a7f37;
-  --warning: #9a6700;
+  /* Buttons */
+  --cds-button-primary: #0f62fe;
+  --cds-button-primary-hover: #0353e9;
+  --cds-button-primary-active: #002d9c;
+  --cds-button-secondary: #393939;       /* Gray 80 */
+  --cds-button-secondary-hover: #4c4c4c; /* Gray 70 */
+  --cds-button-secondary-active: #6f6f6f;
 
-  /* VSCode compatibility mappings */
-  --vscode-bg: var(--surface-0);
-  --vscode-bg-light: var(--surface-1);
-  --vscode-bg-lighter: var(--surface-2);
-  --vscode-sidebar: var(--surface-1);
+  /* Field / Input */
+  --cds-field: #f4f4f4;                 /* Gray 10 */
+  --cds-field-hover: #e8e8e8;           /* Gray 10 Hover */
+
+  /* Support */
+  --cds-support-error: #da1e28;          /* Red 60 */
+  --cds-support-success: #24a148;        /* Green 50 */
+  --cds-support-warning: #f1c21b;        /* Yellow 30 */
+  --cds-support-info: #0f62fe;           /* Blue 60 */
+
+  /* Overlay */
+  --cds-overlay: rgba(0, 0, 0, 0.5);
+  --cds-skeleton-bg: #e0e0e0;
+  --cds-highlight: #edf5ff;
+
+  /* ===== Backward-compat aliases ===== */
+  --vscode-bg: var(--cds-background);
+  --vscode-bg-light: var(--cds-layer-01);
+  --vscode-bg-lighter: var(--cds-layer-02);
+  --vscode-sidebar: var(--cds-layer-01);
   --vscode-sidebar-hover: rgba(0, 0, 0, 0.04);
-  --vscode-sidebar-active: #eef2fa;
-  /* Light blue tint for active items */
-  --vscode-sidebar-active-border: var(--primary);
-  --vscode-titlebar: var(--surface-1);
-  --vscode-text: var(--text-primary);
-  --vscode-text-dim: var(--text-secondary);
+  --vscode-sidebar-active: #edf5ff;
+  --vscode-sidebar-active-border: var(--cds-button-primary);
+  --vscode-titlebar: #ffffff;
+  --vscode-text: var(--cds-text-primary);
+  --vscode-text-dim: var(--cds-text-secondary);
   --vscode-text-bright: #000000;
-  --vscode-border: var(--border-color);
-  --vscode-accent: var(--primary);
-  --vscode-accent-hover: var(--primary-hover);
-  --vscode-error: var(--error);
-  --vscode-success: var(--success);
-  --vscode-warning: var(--warning);
-  --vscode-info: #0969da;
-  --vscode-font: var(--font-family);
+  --vscode-border: var(--cds-border-subtle);
+  --vscode-accent: var(--cds-button-primary);
+  --vscode-accent-hover: var(--cds-button-primary-hover);
+  --vscode-error: var(--cds-support-error);
+  --vscode-success: var(--cds-support-success);
+  --vscode-warning: var(--cds-support-warning);
+  --vscode-info: var(--cds-support-info);
+  --vscode-font: var(--cds-font-sans);
   --vscode-editor-background: #ffffff;
-  --vscode-editor-foreground: #24292f;
-  --vscode-tab: #f3f4f6;
+  --vscode-editor-foreground: var(--cds-text-primary);
+  --vscode-tab: var(--cds-layer-01);
   --vscode-tab-active: #ffffff;
-  --vscode-statusbar: #0969da;
+  --vscode-statusbar: var(--cds-button-primary);
 
-  /* Notification variables (Light) */
+  /* Notification */
   --vscode-notifications-background: #ffffff;
-  --vscode-notifications-foreground: #24292f;
-  --vscode-notifications-border: #d0d7de;
-  --vscode-notificationsInfoIcon-foreground: #0969da;
+  --vscode-notifications-foreground: var(--cds-text-primary);
+  --vscode-notifications-border: var(--cds-border-subtle);
+  --vscode-notificationsInfoIcon-foreground: var(--cds-support-info);
   --vscode-notificationsWarningIcon-foreground: #9a6700;
-  --vscode-notificationsErrorIcon-foreground: #cf222e;
-  --vscode-testing-iconPassed: #1a7f37;
+  --vscode-notificationsErrorIcon-foreground: var(--cds-support-error);
+  --vscode-testing-iconPassed: var(--cds-support-success);
 
-  /* Success/Error background colors for light theme */
-  --success-bg: #dafbe1;
-  --error-bg: #ffebe9;
+  /* Success/Error backgrounds */
+  --success-bg: rgba(36, 161, 72, 0.1);
+  --error-bg: rgba(218, 30, 40, 0.1);
 
-  /* Form elements override */
-  --vscode-input-background: #ffffff;
-  --vscode-input-foreground: #24292f;
-  --vscode-input-border: #d0d7de;
-  --vscode-focusBorder: #0969da;
-  --vscode-foreground: #24292f;
+  /* Input */
+  --vscode-input-background: var(--cds-field);
+  --vscode-input-foreground: var(--cds-text-primary);
+  --vscode-input-border: transparent;
+  --vscode-focusBorder: var(--cds-focus);
+  --vscode-foreground: var(--cds-text-primary);
 
-  /* Button variables (Light) */
+  /* Button */
   --vscode-button-secondaryBackground: #ffffff;
-  --vscode-button-secondaryForeground: #24292f;
-  --vscode-button-secondaryHoverBackground: #f3f4f6;
-  --vscode-button-border: #d0d7de;
+  --vscode-button-secondaryForeground: var(--cds-text-primary);
+  --vscode-button-secondaryHoverBackground: var(--cds-layer-01);
+  --vscode-button-border: var(--cds-border-subtle);
 
-  /* Menu variables (Light) */
+  /* Menu */
   --vscode-menu-background: #ffffff;
-  --vscode-menu-border: #d0d7de;
-  --vscode-menu-foreground: #24292f;
-  --vscode-list-hoverBackground: #f3f4f6;
-  --vscode-list-activeSelectionBackground: #e8f0fe;
+  --vscode-menu-border: var(--cds-border-subtle);
+  --vscode-menu-foreground: var(--cds-text-primary);
+  --vscode-list-hoverBackground: var(--cds-layer-01);
+  --vscode-list-activeSelectionBackground: #edf5ff;
 
-  /* Validation variables (Light) */
+  /* Validation */
   --vscode-inputValidation-errorBackground: #fff5f5;
-  --vscode-inputValidation-errorForeground: #cf222e;
-  --vscode-inputValidation-errorBorder: #cf222e;
-
+  --vscode-inputValidation-errorForeground: var(--cds-support-error);
+  --vscode-inputValidation-errorBorder: var(--cds-support-error);
   --vscode-inputValidation-warningBackground: #fff8c5;
   --vscode-inputValidation-warningForeground: #9a6700;
   --vscode-inputValidation-warningBorder: #d4a72c;
+
+  /* Additional compat aliases */
+  --vscode-editor-background: #ffffff;
+  --vscode-editor-foreground: var(--cds-text-primary);
+  --vscode-editor: #ffffff;
+  --vscode-editor-font-family: var(--cds-font-mono);
+  --vscode-editorWidget-background: #ffffff;
+  --vscode-editorWidget-foreground: var(--cds-text-primary);
+  --vscode-dropdown-background: var(--cds-field);
+  --vscode-dropdown-border: var(--cds-border-subtle);
+  --vscode-badge-background: var(--cds-layer-02);
+  --vscode-badge-foreground: var(--cds-text-primary);
+  --vscode-button-foreground: #ffffff;
+  --vscode-progressBar-foreground: var(--cds-button-primary);
+  --vscode-terminal-ansiCyan: #00539a;
+  --vscode-testing-iconFailed: var(--cds-support-error);
+  --vscode-testing-iconQueued: var(--cds-support-warning);
+  --vscode-debugTokenExpression-boolean: #0f62fe;
+  --vscode-debugTokenExpression-number: #0f62fe;
+  --vscode-debugTokenExpression-string: #198038;
+  --vscode-inputValidation-infoBackground: #edf5ff;
+  --vscode-inputValidation-infoBorder: var(--cds-support-info);
 }
 
-/* Reset and base styles */
+/* ============================================
+   Reset & Base
+   ============================================ */
 * {
   box-sizing: border-box;
 }
@@ -200,76 +318,67 @@
 body {
   margin: 0;
   padding: 0;
-  font-family: var(--font-family);
-  background-color: var(--surface-0);
-  color: var(--text-primary);
+  font-family: var(--cds-font-sans);
+  font-size: 14px;
+  line-height: 1.29;
+  letter-spacing: 0.16px;
+  background-color: var(--cds-background);
+  color: var(--cds-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom scrollbar */
+/* ============================================
+   Scrollbar — minimal Carbon style
+   ============================================ */
 ::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--surface-0);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 6px;
+  background: var(--cds-border-subtle);
+  border-radius: 0;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
+  background: var(--cds-text-secondary);
 }
 
-/* Firefox scrollbar */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--border-color) var(--surface-0);
+  scrollbar-color: var(--cds-border-subtle) transparent;
 }
 
-/* Selection */
+/* ============================================
+   Selection
+   ============================================ */
 ::selection {
-  background: var(--primary);
-  color: white;
+  background: var(--cds-button-primary);
+  color: #ffffff;
 }
 
-/* Focus styles */
+/* ============================================
+   Focus — Carbon 2px solid inset
+   ============================================ */
 *:focus {
   outline: none;
 }
 
 *:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
 }
 
 /* ============================================
-   Form element styles (for modal content)
+   Global form styles for modal-dialog content
    ============================================ */
-
-/* Additional VSCode-like variables for form elements */
-:root {
-  --vscode-input-background: #3c3c3c;
-  --vscode-input-foreground: #cccccc;
-  --vscode-input-border: #3c3c3c;
-  --vscode-focusBorder: #007acc;
-  --vscode-foreground: #cccccc;
-}
-
-:root.light {
-  --vscode-input-background: #ffffff;
-  --vscode-input-foreground: #1e1e1e;
-  --vscode-input-border: #cecece;
-  --vscode-focusBorder: #0066cc;
-  --vscode-foreground: #1e1e1e;
-}
-
-/* Global form styles for modals moved to body */
 modal-dialog .form-group {
-  margin-bottom: 14px;
+  margin-bottom: 16px;
   width: 100%;
   box-sizing: border-box;
 }
@@ -287,15 +396,17 @@ modal-dialog .form-group.checkbox input[type="checkbox"] {
 
 modal-dialog .form-group label {
   display: block;
-  margin-bottom: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--vscode-foreground, #cccccc);
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.32px;
+  color: var(--cds-text-secondary);
 }
 
 modal-dialog .form-hint {
-  font-size: 11px;
-  color: var(--vscode-text-dim, #9d9d9d);
+  font-size: 12px;
+  letter-spacing: 0.32px;
+  color: var(--cds-text-placeholder);
   margin-top: 4px;
 }
 
@@ -303,14 +414,17 @@ modal-dialog input,
 modal-dialog select,
 modal-dialog textarea {
   width: 100%;
-  padding: 8px 12px;
-  background: var(--vscode-input-background, #3c3c3c);
-  color: var(--vscode-input-foreground, #cccccc);
-  border: 1px solid var(--vscode-input-border, #3c3c3c);
-  border-radius: 4px;
-  font-size: 13px;
-  font-family: inherit;
-  transition: all 0.2s;
+  padding: 0 16px;
+  height: 40px;
+  background: var(--cds-field);
+  color: var(--cds-text-primary);
+  border: none;
+  border-bottom: 2px solid var(--cds-border-subtle);
+  border-radius: 0;
+  font-size: 14px;
+  font-family: var(--cds-font-sans);
+  letter-spacing: 0.16px;
+  transition: border-color 0.15s;
   box-sizing: border-box;
 }
 
@@ -318,38 +432,50 @@ modal-dialog input:focus,
 modal-dialog select:focus,
 modal-dialog textarea:focus {
   outline: none;
-  border-color: var(--vscode-focusBorder, #007acc);
-  box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc);
+  border-bottom-color: var(--cds-focus);
+}
+
+modal-dialog input::placeholder,
+modal-dialog textarea::placeholder {
+  color: var(--cds-text-placeholder);
 }
 
 modal-dialog input[type="checkbox"] {
   width: auto;
+  height: auto;
   padding: 0;
+  border: 1px solid var(--cds-border-strong);
+  border-bottom: 1px solid var(--cds-border-strong);
 }
 
 modal-dialog textarea {
+  height: auto;
+  min-height: 80px;
+  padding: 11px 16px;
   resize: vertical;
-  min-height: 60px;
 }
 
 modal-dialog select {
   cursor: pointer;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23cccccc' d='M2 4l4 4 4-4z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23c6c6c6' d='M2 4l4 4 4-4z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 12px center;
-  padding-right: 36px;
+  background-position: right 16px center;
+  padding-right: 40px;
 }
 
-/* Button styles for modal footers */
+/* Carbon-style buttons for modal footers */
 modal-dialog .btn {
-  padding: 8px 16px;
-  border-radius: 4px;
-  font-size: 13px;
-  font-weight: 500;
+  padding: 14px 16px;
+  border-radius: 0;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0.16px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.15s;
   border: 1px solid transparent;
+  min-height: 48px;
+  font-family: var(--cds-font-sans);
 }
 
 modal-dialog .btn:disabled {
@@ -359,23 +485,22 @@ modal-dialog .btn:disabled {
 
 modal-dialog .btn.primary,
 modal-dialog .btn-primary {
-  background: var(--vscode-accent, #007acc);
-  color: white;
-  border-color: var(--vscode-accent, #007acc);
+  background: var(--cds-button-primary);
+  color: #ffffff;
+  border-color: transparent;
 }
 
 modal-dialog .btn.primary:hover:not(:disabled),
 modal-dialog .btn-primary:hover:not(:disabled) {
-  background: var(--vscode-accent-hover, #1a86d9);
-  border-color: var(--vscode-accent-hover, #1a86d9);
+  background: var(--cds-button-primary-hover);
 }
 
 modal-dialog .btn:not(.primary):not(.btn-primary) {
-  background: var(--vscode-bg-lighter, #2d2d30);
-  color: var(--vscode-text, #cccccc);
-  border-color: var(--vscode-border, #464647);
+  background: var(--cds-layer-02);
+  color: var(--cds-text-primary);
+  border-color: transparent;
 }
 
 modal-dialog .btn:not(.primary):not(.btn-primary):hover:not(:disabled) {
-  background: var(--surface-3, #3e3e42);
+  background: var(--cds-layer-03);
 }

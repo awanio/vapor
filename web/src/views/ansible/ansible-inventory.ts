@@ -70,7 +70,7 @@ export class AnsibleInventoryView extends LitElement {
       align-items: center;
       gap: 1rem;
       padding-bottom: 1rem;
-      border-bottom: 1px solid var(--vscode-panel-border);
+      border-bottom: 1px solid var(--cds-border-subtle);
     }
 
     h1 {
@@ -105,18 +105,18 @@ export class AnsibleInventoryView extends LitElement {
       align-items: center;
       gap: 6px;
       padding: 8px 16px;
-      background: var(--vscode-button-background, #007acc);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, white);
       border: none;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .btn-primary:hover {
-      background: var(--vscode-button-hoverBackground, #005a9e);
+      background: var(--cds-button-primary-hover);
     }
 
     .btn-secondary {
@@ -126,11 +126,11 @@ export class AnsibleInventoryView extends LitElement {
       padding: 8px 16px;
       background: var(--vscode-button-secondaryBackground);
       color: var(--vscode-button-secondaryForeground);
-      border: 1px solid var(--vscode-button-border);
-      border-radius: 4px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       cursor: pointer;
-      font-size: 13px;
-      transition: all 0.2s;
+      font-size: 14px;
+      transition: all 0.15s;
     }
 
     .btn-secondary:hover {
@@ -156,11 +156,11 @@ export class AnsibleInventoryView extends LitElement {
       padding: 6px 12px;
       background: var(--vscode-button-secondaryBackground);
       color: var(--vscode-button-secondaryForeground);
-      border: 1px solid var(--vscode-button-border);
-      border-radius: 4px;
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       cursor: pointer;
-      font-size: 13px;
-      transition: all 0.2s;
+      font-size: 14px;
+      transition: all 0.15s;
     }
 
     .filter-btn:hover {
@@ -168,7 +168,7 @@ export class AnsibleInventoryView extends LitElement {
     }
 
     .filter-btn.active {
-      background: var(--vscode-button-background);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground);
       border-color: var(--vscode-focusBorder);
     }
@@ -178,7 +178,7 @@ export class AnsibleInventoryView extends LitElement {
       align-items: center;
       gap: 4px;
       padding: 2px 8px;
-      border-radius: 12px;
+      border-radius: 0;
       font-size: 12px;
       font-weight: 500;
     }
@@ -200,8 +200,8 @@ export class AnsibleInventoryView extends LitElement {
       padding: 2px 6px;
       background: var(--vscode-badge-background);
       color: var(--vscode-badge-foreground);
-      border-radius: 10px;
-      font-size: 11px;
+      border-radius: 0;
+      font-size: 12px;
     }
 
     .groups-list {
@@ -215,8 +215,8 @@ export class AnsibleInventoryView extends LitElement {
       padding: 2px 6px;
       background: var(--vscode-textBlockQuote-background);
       border: 1px solid var(--vscode-textBlockQuote-border);
-      border-radius: 3px;
-      font-size: 11px;
+      border-radius: 0;
+      font-size: 12px;
       color: var(--vscode-textBlockQuote-foreground);
     }
 
@@ -225,8 +225,8 @@ export class AnsibleInventoryView extends LitElement {
       align-items: center;
       gap: 4px;
       padding: 2px 6px;
-      border-radius: 3px;
-      font-size: 11px;
+      border-radius: 0;
+      font-size: 12px;
       font-weight: 500;
     }
 

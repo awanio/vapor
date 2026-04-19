@@ -85,18 +85,18 @@ export class KubernetesConfigurations extends LitElement {
       align-items: center;
       gap: 6px;
       padding: 8px 16px;
-      background: var(--vscode-button-background, #007acc);
+      background: var(--cds-button-primary);
       color: var(--vscode-button-foreground, white);
       border: none;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .btn-create:hover {
-      background: var(--vscode-button-hoverBackground, #005a9e);
+      background: var(--cds-button-primary-hover);
     }
 
     .controls {
@@ -122,10 +122,10 @@ export class KubernetesConfigurations extends LitElement {
     .type-badge {
       display: inline-block;
       padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 11px;
+      border-radius: 0;
+      font-size: 12px;
       font-weight: 500;
-      background: var(--vscode-badge-background, #007acc);
+      background: var(--vscode-badge-background, var(--cds-button-primary, #0f62fe));
       color: var(--vscode-badge-foreground, white);
     }
 
@@ -135,7 +135,7 @@ export class KubernetesConfigurations extends LitElement {
 
     .type-badge.tls {
       background: var(--vscode-testing-iconPassed, #73c991);
-      color: var(--vscode-editor-background, #1e1e1e);
+      color: var(--cds-background);
     }
 
     .type-badge.dockercfg {
@@ -159,7 +159,7 @@ export class KubernetesConfigurations extends LitElement {
 
     .detail-item {
       margin-bottom: 0.5rem;
-      font-size: 13px;
+      font-size: 14px;
     }
 
     .detail-key {
@@ -187,9 +187,9 @@ export class KubernetesConfigurations extends LitElement {
 
     .data-item {
       padding: 0.5rem;
-      background: var(--vscode-editor-background, #1e1e1e);
-      border: 1px solid var(--vscode-border);
-      border-radius: 4px;
+      background: var(--cds-background);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
     }
   `;
 

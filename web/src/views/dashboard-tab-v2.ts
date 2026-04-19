@@ -81,12 +81,12 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
 
     .alert {
       padding: 12px 16px;
-      border-radius: 8px;
+      border-radius: 0;
       margin-bottom: 8px;
       display: flex;
       align-items: center;
       gap: 12px;
-      font-size: 13px;
+      font-size: 14px;
     }
 
     .alert.warning {
@@ -111,10 +111,10 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
       align-items: center;
       gap: 8px;
       padding: 6px 12px;
-      border-radius: 20px;
+      border-radius: 0;
       font-size: 12px;
-      background: var(--vscode-bg-light);
-      border: 1px solid var(--vscode-border);
+      background: var(--cds-layer-01);
+      border: 1px solid var(--cds-border-subtle);
     }
 
     .connection-status.connected {
@@ -157,8 +157,8 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
       gap: 4px;
       font-size: 12px;
       padding: 2px 8px;
-      border-radius: 12px;
-      background: var(--vscode-bg);
+      border-radius: 0;
+      background: var(--cds-background);
     }
 
     .trend-indicator.increasing {
@@ -170,7 +170,7 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
     }
 
     .trend-indicator.stable {
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
     }
 
     .trend-arrow {
@@ -183,9 +183,9 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
       gap: 16px;
       margin-top: 12px;
       padding-top: 12px;
-      border-top: 1px solid var(--vscode-border);
+      border-top: 1px solid var(--cds-border-subtle);
       font-size: 12px;
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
     }
 
     .stat-item {
@@ -195,15 +195,15 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
     }
 
     .stat-label {
-      font-size: 11px;
+      font-size: 12px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
 
     .stat-value {
-      color: var(--vscode-text);
-      font-family: var(--vscode-font-family-mono);
-      font-size: 13px;
+      color: var(--cds-text-primary);
+      font-family: var(--cds-font-mono);
+      font-size: 14px;
     }
 
     /* Rest of the styles from original dashboard */
@@ -215,9 +215,9 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
     }
 
     .info-card {
-      background: var(--vscode-bg-light);
-      border: 1px solid var(--vscode-border);
-      border-radius: 8px;
+      background: var(--cds-layer-01);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       padding: 16px;
     }
 
@@ -225,7 +225,7 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
       margin: 0 0 12px 0;
       font-size: 14px;
       font-weight: 500;
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
@@ -234,16 +234,16 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
       display: grid;
       grid-template-columns: max-content 1fr;
       gap: 8px 16px;
-      font-size: 13px;
+      font-size: 14px;
     }
 
     .info-label {
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
     }
 
     .info-value {
-      color: var(--vscode-text);
-      font-family: var(--vscode-font-family-mono);
+      color: var(--cds-text-primary);
+      font-family: var(--cds-font-mono);
     }
 
     .metrics-section {
@@ -257,9 +257,9 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
     }
 
     .metric-card {
-      background: var(--vscode-bg-light);
-      border: 1px solid var(--vscode-border);
-      border-radius: 8px;
+      background: var(--cds-layer-01);
+      border: 1px solid var(--cds-border-subtle);
+      border-radius: 0;
       padding: 20px;
     }
 
@@ -281,13 +281,13 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
     .metric-value {
       font-size: 24px;
       font-weight: 300;
-      color: var(--vscode-accent);
-      font-family: var(--vscode-font-family-mono);
+      color: var(--cds-button-primary);
+      font-family: var(--cds-font-mono);
     }
 
     .metric-subtitle {
       font-size: 12px;
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
       margin-top: 4px;
     }
 
@@ -306,14 +306,14 @@ export class DashboardTabV2 extends StoreMixin(I18nLitElement) {
       align-items: center;
       justify-content: center;
       height: 200px;
-      color: var(--vscode-text-dim);
+      color: var(--cds-text-secondary);
     }
 
     .error {
-      color: var(--vscode-error);
+      color: var(--cds-support-error);
       padding: 16px;
-      background: var(--vscode-bg-light);
-      border-radius: 8px;
+      background: var(--cds-layer-01);
+      border-radius: 0;
       margin-bottom: 16px;
     }
   `;

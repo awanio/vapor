@@ -13,38 +13,41 @@ export class StatusBar extends I18nLitElement {
   static override styles = css`
     :host {
       display: block;
-      background-color: var(--vscode-statusbar);
-      color: white;
+      background-color: var(--cds-button-primary);
+      color: #ffffff;
       font-size: 12px;
+      letter-spacing: 0.32px;
       user-select: none;
+      font-family: var(--cds-font-sans);
     }
 
     .status-bar-container {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      height: 22px;
-      padding: 0 10px;
+      height: 24px;
+      padding: 0 16px;
     }
 
     .status-left,
     .status-right {
       display: flex;
       align-items: center;
-      gap: 15px;
+      gap: 16px;
     }
 
     .status-item {
       display: flex;
       align-items: center;
-      gap: 5px;
-      padding: 0 5px;
+      gap: 8px;
+      padding: 0 8px;
       height: 100%;
       cursor: default;
+      transition: background-color 0.15s;
     }
 
     .status-item:hover {
-      background-color: rgba(255, 255, 255, 0.1);
+      background-color: rgba(255, 255, 255, 0.12);
     }
 
     .status-item.clickable {
@@ -67,11 +70,11 @@ export class StatusBar extends I18nLitElement {
     }
 
     .status-indicator.connected {
-      background-color: #4ec9b0;
+      background-color: var(--cds-support-success);
     }
 
     .status-indicator.disconnected {
-      background-color: #f48771;
+      background-color: #ff8389;
     }
 
     .status-separator {
@@ -83,15 +86,17 @@ export class StatusBar extends I18nLitElement {
     select {
       background: transparent;
       border: none;
-      color: white;
+      color: #ffffff;
       font-size: 12px;
+      letter-spacing: 0.32px;
       cursor: pointer;
       outline: none;
+      font-family: var(--cds-font-sans);
     }
 
     select option {
-      background-color: var(--vscode-bg-lighter);
-      color: var(--vscode-text);
+      background-color: var(--cds-layer-02);
+      color: var(--cds-text-primary);
     }
   `;
 
