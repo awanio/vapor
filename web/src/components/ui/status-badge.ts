@@ -13,7 +13,7 @@ export class StatusBadge extends LitElement {
   static override styles = css`
     .status {
       padding: 4px 8px;
-      border-radius: 24px;
+      border-radius: 0;
       font-size: 12px;
       font-weight: 400;
       letter-spacing: 0.32px;
