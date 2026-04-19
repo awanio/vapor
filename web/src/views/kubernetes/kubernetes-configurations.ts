@@ -108,13 +108,13 @@ export class KubernetesConfigurations extends LitElement {
 
     namespace-dropdown {
       --dropdown-bg: var(--vscode-dropdown-background, #3c3c3c);
-      --dropdown-color: var(--vscode-dropdown-foreground, #cccccc);
+      --dropdown-color: var(--cds-text-primary);
       --dropdown-border: var(--vscode-dropdown-border, #3c3c3c);
       --dropdown-hover-bg: var(--vscode-dropdown-hoverBackground, #2a2a2a);
       --menu-bg: var(--vscode-dropdown-background, #3c3c3c);
       --menu-border: var(--vscode-dropdown-border, #3c3c3c);
       --input-bg: var(--vscode-input-background, #3c3c3c);
-      --input-color: var(--vscode-input-foreground, #cccccc);
+      --input-color: var(--cds-text-primary);
       --input-border: var(--vscode-input-border, #3c3c3c);
       --option-hover-bg: var(--vscode-list-hoverBackground, #2a2a2a);
       --option-selected-bg: var(--vscode-list-activeSelectionBackground, #094771);

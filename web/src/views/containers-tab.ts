@@ -301,7 +301,8 @@ export class ContainersTab extends LitElement {
       gap: 6px;
       padding: 4px 10px;
       border-radius: 999px;
-      border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
       font-size: 12px;
       color: var(--cds-text-secondary);
       user-select: none;
@@ -403,10 +404,13 @@ export class ContainersTab extends LitElement {
 
     .search-input {
       padding: 6px 12px 6px 32px;
-      border: 1px solid var(--vscode-widget-border, var(--vscode-input-border, var(--vscode-panel-border, #454545)));
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
       border-radius: 0;
-      background-color: var(--vscode-input-background);
-      color: var(--vscode-input-foreground);
+      background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px;
+      color: var(--cds-text-primary);
       font-size: 14px;
       width: 250px;
       transition: all 0.15s;
@@ -419,7 +423,7 @@ export class ContainersTab extends LitElement {
     }
 
     .search-input:focus {
-      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      border-bottom-color: var(--cds-focus);
       box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1), 0 0 0 1px var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
@@ -598,7 +602,9 @@ export class ContainersTab extends LitElement {
       right: 0;
       top: 100%;
       margin-top: 4px;
-      background: var(--vscode-dropdown-background, var(--vscode-menu-background, var(--vscode-bg-light, #252526)));
+      background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px;
       border: 1px solid var(--vscode-dropdown-border, var(--vscode-menu-border, var(--border-color, #454545)));
       border-radius: 0;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
@@ -810,7 +816,8 @@ export class ContainersTab extends LitElement {
 
     .drawer pre {
       background: var(--cds-background);
-      border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
       border-radius: 0;
       padding: 16px;
       overflow-x: auto;
@@ -829,7 +836,8 @@ export class ContainersTab extends LitElement {
       font-weight: 500;
       background: var(--cds-layer-02);
       color: var(--vscode-foreground, var(--vscode-editor-foreground));
-      border: 1px solid var(--vscode-widget-border, rgba(0, 0, 0, 0.1));
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
       transition: all 0.15s;
     }
 
@@ -877,7 +885,7 @@ export class ContainersTab extends LitElement {
     .field label {
       font-size: 14px;
       font-weight: 500;
-      color: var(--vscode-input-foreground);
+      color: var(--cds-text-primary);
       display: block;
     }
 
@@ -891,9 +899,12 @@ export class ContainersTab extends LitElement {
     textarea {
       padding: 6px 8px;
       border-radius: 0;
-      border: 1px solid var(--vscode-input-border);
-      background: var(--vscode-input-background);
-      color: var(--vscode-input-foreground);
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
+      background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px;
+      color: var(--cds-text-primary);
       font-size: 14px;
       font-family: inherit;
       outline: none;
@@ -904,7 +915,7 @@ export class ContainersTab extends LitElement {
     input:focus,
     select:focus,
     textarea:focus {
-      border-color: var(--vscode-focusBorder);
+      border-bottom-color: var(--cds-focus);
       outline: 1px solid var(--vscode-focusBorder);
     }
 
@@ -938,7 +949,8 @@ export class ContainersTab extends LitElement {
       align-items: center;
       gap: 8px;
       padding: 8px 10px;
-      border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
       border-radius: 0;
       background: rgba(255, 255, 255, 0.02);
     }
@@ -1165,12 +1177,12 @@ export class ContainersTab extends LitElement {
     }
 
     .upload-zone:hover {
-      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      border-bottom-color: var(--cds-focus);
       background: rgba(0, 122, 204, 0.05);
     }
 
     .upload-zone.dragover {
-      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      border-bottom-color: var(--cds-focus);
       background: rgba(0, 122, 204, 0.1);
     }
 

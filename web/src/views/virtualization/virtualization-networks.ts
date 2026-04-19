@@ -339,7 +339,7 @@ export class VirtualizationNetworks extends LitElement {
 
     .badge-inactive {
       background: var(--vscode-inputValidation-errorBackground, rgba(161, 38, 13, 0.2));
-      color: var(--vscode-inputValidation-errorForeground, #ff8c66);
+      color: var(--cds-support-error);
       border: 1px solid var(--vscode-inputValidation-errorBorder, rgba(161, 38, 13, 0.3));
     }
 

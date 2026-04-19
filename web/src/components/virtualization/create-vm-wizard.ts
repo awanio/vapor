@@ -255,7 +255,7 @@ export class CreateVMWizard extends LitElement {
 
     .btn-secondary:hover:not(:disabled) {
       background: var(--vscode-button-secondaryHoverBackground, #484848);
-      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      border-bottom-color: var(--cds-focus);
     }
 
     .btn-ghost {
@@ -296,9 +296,12 @@ export class CreateVMWizard extends LitElement {
       width: 100%;
       max-width: 100%;
       padding: 8px 12px;
-      background: var(--vscode-input-background, #3c3c3c);
-      color: var(--vscode-input-foreground, #cccccc);
-      border: 1px solid var(--vscode-input-border, #858585);
+      background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px;
+      color: var(--cds-text-primary);
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
       border-radius: 0;
       font-size: 14px;
       font-family: inherit;
@@ -310,14 +313,14 @@ export class CreateVMWizard extends LitElement {
     select:focus,
     textarea:focus {
       outline: none;
-      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      border-bottom-color: var(--cds-focus);
       box-shadow: 0 0 0 1px var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
     input:hover,
     select:hover,
     textarea:hover {
-      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      border-bottom-color: var(--cds-focus);
     }
 
     input::placeholder {
@@ -335,8 +338,10 @@ export class CreateVMWizard extends LitElement {
     }
 
     select option {
-      background: var(--vscode-dropdown-background, #3c3c3c);
-      color: var(--vscode-dropdown-foreground, #cccccc);
+      background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px;
+      color: var(--cds-text-primary);
     }
 
     input[type="number"]::-webkit-inner-spin-button,
@@ -348,7 +353,7 @@ export class CreateVMWizard extends LitElement {
     .error input,
     .error select,
     .error textarea {
-      border-color: var(--vscode-inputValidation-errorBorder);
+      border-bottom-color: var(--cds-support-error);
     }
 
     .error-message {
@@ -381,7 +386,8 @@ export class CreateVMWizard extends LitElement {
     .input-addon {
       padding: 8px 12px;
       background: var(--vscode-button-secondaryBackground);
-      border: 1px solid var(--vscode-input-border);
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
       border-radius: 0;
       font-size: 14px;
       white-space: nowrap;
@@ -400,7 +406,8 @@ export class CreateVMWizard extends LitElement {
     .memory-unit {
       padding: 8px 12px;
       background: var(--vscode-button-secondaryBackground, #3c3c3c);
-      border: 1px solid var(--vscode-input-border, #858585);
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
       border-radius: 0;
       font-size: 14px;
       color: var(--cds-text-secondary);
@@ -432,7 +439,7 @@ export class CreateVMWizard extends LitElement {
 
     .disk-item:hover {
       background: var(--vscode-list-hoverBackground, #2a2d2e);
-      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      border-bottom-color: var(--cds-focus);
     }
 
     .disk-info {
@@ -444,7 +451,7 @@ export class CreateVMWizard extends LitElement {
     .btn-remove {
       padding: 4px 8px;
       background: var(--vscode-inputValidation-errorBackground);
-      color: var(--vscode-inputValidation-errorForeground);
+      color: var(--cds-support-error);
       border: none;
       border-radius: 0;
       cursor: pointer;

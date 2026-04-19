@@ -179,7 +179,9 @@ export class UsersTab extends LitElement {
       right: 0;
       top: 100%;
       margin-top: 4px;
-      background: var(--vscode-dropdown-background, var(--vscode-bg-light));
+      background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px;
       border: 1px solid var(--vscode-dropdown-border, var(--cds-border-subtle));
       border-radius: 0;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);

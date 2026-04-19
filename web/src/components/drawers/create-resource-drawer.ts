@@ -163,9 +163,12 @@ export class CreateResourceDrawer extends LitElement {
       width: 100%;
       min-height: 400px;
       padding: 16px;
-      background: var(--vscode-input-background, #3c3c3c);
-      color: var(--vscode-input-foreground, #cccccc);
-      border: 1px solid var(--vscode-input-border, #3c3c3c);
+      background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px;
+      color: var(--cds-text-primary);
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
       border-radius: 0;
       font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
       font-size: 14px;
@@ -175,7 +178,7 @@ export class CreateResourceDrawer extends LitElement {
     }
 
 .editor:focus {
-      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      border-bottom-color: var(--cds-focus);
     }
 
     .editor::placeholder {

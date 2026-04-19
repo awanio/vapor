@@ -133,7 +133,8 @@ export class ResourceDetailView extends LitElement {
 
     .array-item {
       background: var(--vscode-list-inactiveSelectionBackground, var(--vscode-editor-background, #f3f3f3));
-      border: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.35));
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
       border-radius: 0;
       padding: 12px;
       margin-bottom: 8px;
@@ -199,7 +200,8 @@ export class ResourceDetailView extends LitElement {
     .annotation-item {
       background: var(--vscode-textBlockQuote-background, rgba(127, 127, 127, 0.1));
       color: var(--cds-text-primary);
-      border: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.2));
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
     }
 
     .label-key,
@@ -247,7 +249,8 @@ export class ResourceDetailView extends LitElement {
     .code-block,
     .raw-data {
       background: var(--vscode-textCodeBlock-background, rgba(175, 175, 175, 0.12));
-      border: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.35));
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
       border-radius: 0;
       padding: 12px;
       margin-top: 8px;

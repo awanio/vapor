@@ -170,7 +170,7 @@ export class AnsibleInventoryView extends LitElement {
     .filter-btn.active {
       background: var(--cds-button-primary);
       color: var(--vscode-button-foreground);
-      border-color: var(--vscode-focusBorder);
+      border-bottom-color: var(--cds-focus);
     }
 
     .type-badge {

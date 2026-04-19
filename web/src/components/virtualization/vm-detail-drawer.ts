@@ -440,8 +440,8 @@ export class VMDetailDrawer extends LitElement {
 
     .action-btn.danger {
       background: var(--vscode-inputValidation-errorBackground, #5a1d1d);
-      color: var(--vscode-inputValidation-errorForeground, #f48771);
-      border-color: var(--vscode-inputValidation-errorBorder, #be1100);
+      color: var(--cds-support-error);
+      border-bottom-color: var(--cds-support-error);
     }
 
     .action-btn.danger:hover:not(:disabled) {
@@ -533,7 +533,7 @@ export class VMDetailDrawer extends LitElement {
     }
 
     .split-button-dropdown button.danger {
-      color: var(--vscode-inputValidation-errorForeground, #f48771);
+      color: var(--cds-support-error);
     }
 
     .split-button-dropdown button.danger:hover:not(:disabled) {
@@ -977,8 +977,8 @@ export class VMDetailDrawer extends LitElement {
     
     .modal-btn.delete {
       background: var(--vscode-inputValidation-errorBackground, #5a1d1d);
-      color: var(--vscode-inputValidation-errorForeground, #f48771);
-      border-color: var(--vscode-inputValidation-errorBorder, #be1100);
+      color: var(--cds-support-error);
+      border-bottom-color: var(--cds-support-error);
     }
     
     .modal-btn.delete:hover:not(:disabled) {
@@ -1011,8 +1011,8 @@ export class VMDetailDrawer extends LitElement {
 
     .btn-danger {
       background: var(--vscode-inputValidation-errorBackground, rgba(190, 17, 0, 0.2));
-      border-color: var(--vscode-inputValidation-errorBorder, #be1100);
-      color: var(--vscode-inputValidation-errorForeground, #ff6b6b);
+      border-bottom-color: var(--cds-support-error);
+      color: var(--cds-support-error);
     }
 
     .btn-danger:hover:not(:disabled) {
@@ -1038,7 +1038,7 @@ export class VMDetailDrawer extends LitElement {
     }
 
     .snapshot-item:hover {
-      border-color: var(--vscode-focusBorder, #007fd4);
+      border-bottom-color: var(--cds-focus);
     }
 
     .snapshot-info {
@@ -1178,9 +1178,12 @@ export class VMDetailDrawer extends LitElement {
       width: 100%;
       max-width: 100%;
       padding: 8px 12px;
-      background: var(--vscode-input-background, #3c3c3c);
-      color: var(--vscode-input-foreground, #cccccc);
-      border: 1px solid var(--vscode-input-border, #858585);
+      background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px;
+      color: var(--cds-text-primary);
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
       border-radius: 0;
       font-size: 14px;
       font-family: inherit;
@@ -1192,7 +1195,7 @@ export class VMDetailDrawer extends LitElement {
     select:focus,
     textarea:focus {
       outline: none;
-      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      border-bottom-color: var(--cds-focus);
       box-shadow: 0 0 0 1px var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
@@ -1205,7 +1208,7 @@ export class VMDetailDrawer extends LitElement {
     .form-error {
       margin-top: 6px;
       font-size: 12px;
-      color: var(--vscode-inputValidation-errorForeground, #f48771);
+      color: var(--cds-support-error);
     }
 
     .checkbox-group {

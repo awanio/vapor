@@ -124,9 +124,12 @@ export class ApiTokenDrawer extends LitElement {
     input, select {
       padding: 6px 8px;
       border-radius: 0;
-      border: 1px solid var(--vscode-input-border, #5a5a5a);
-      background: var(--vscode-input-background, #3c3c3c);
-      color: var(--vscode-input-foreground, #cccccc);
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
+      background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px;
+      color: var(--cds-text-primary);
       font-size: 14px;
       font-family: inherit;
       outline: none;
@@ -135,7 +138,7 @@ export class ApiTokenDrawer extends LitElement {
     }
 
     input:focus, select:focus {
-      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      border-bottom-color: var(--cds-focus);
     }
 
     .btn {
@@ -170,7 +173,7 @@ export class ApiTokenDrawer extends LitElement {
     }
     
     .error-msg {
-      color: var(--vscode-inputValidation-errorForeground, #f48771);
+      color: var(--cds-support-error);
       margin-bottom: 16px;
       font-size: 14px;
     }

@@ -61,7 +61,8 @@ export class DockerProcessesTab extends LitElement {
       border-radius: 1px;
       overflow: hidden;
       /* box-shadow: none (Carbon flat) */
-      border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
     }
 
     .table thead {
@@ -237,7 +238,9 @@ export class DockerProcessesTab extends LitElement {
       right: 0;
       top: 100%;
       margin-top: 4px;
-      background: var(--vscode-dropdown-background, var(--vscode-bg-light));
+      background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px;
       border: 1px solid var(--vscode-dropdown-border, var(--cds-border-subtle));
       border-radius: 0;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);

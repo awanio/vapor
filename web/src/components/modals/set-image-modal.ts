@@ -46,7 +46,8 @@ export class SetImageModal extends LitElement {
       background-color: var(--cds-background);
       color: var(--vscode-editor-foreground, #cccccc);
       margin: 50px auto;
-      border: 1px solid var(--vscode-panel-border, #464647);
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
       border-radius: 0;
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
       animation: slideIn 0.2s ease-out;
@@ -125,9 +126,12 @@ export class SetImageModal extends LitElement {
     .form-input {
       width: 100%;
       padding: 8px 12px;
-      background: var(--vscode-input-background, #3c3c3c);
-      color: var(--vscode-input-foreground, #cccccc);
-      border: 1px solid var(--vscode-input-border, #3c3c3c);
+      background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px;
+      color: var(--cds-text-primary);
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
       border-radius: 0;
       font-size: 14px;
       font-family: inherit;
@@ -136,7 +140,7 @@ export class SetImageModal extends LitElement {
 
     .form-input:focus {
       outline: none;
-      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      border-bottom-color: var(--cds-focus);
     }
 
     .form-input:disabled {
@@ -147,7 +151,8 @@ export class SetImageModal extends LitElement {
     .container-item {
       padding: 12px;
       background: var(--cds-background);
-      border: 1px solid var(--vscode-panel-border, #464647);
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
       border-radius: 0;
       margin-bottom: 12px;
     }

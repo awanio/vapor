@@ -238,7 +238,7 @@ export class NetworkTab extends I18nLitElement {
 
     .required::after {
       content: ' *';
-      color: var(--vscode-inputValidation-errorForeground);
+      color: var(--cds-support-error);
     }
 
     .form-input,
@@ -248,9 +248,12 @@ export class NetworkTab extends I18nLitElement {
       width: 100%;
       padding: 6px 8px;
       border-radius: 0;
-      border: 1px solid var(--vscode-input-border);
-      background: var(--vscode-input-background);
-      color: var(--vscode-input-foreground);
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
+      background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px;
+      color: var(--cds-text-primary);
       font-size: 14px;
       font-family: inherit;
       outline: none;
@@ -261,7 +264,7 @@ export class NetworkTab extends I18nLitElement {
     .form-select:focus,
     input:focus,
     select:focus {
-      border-color: var(--vscode-focusBorder);
+      border-bottom-color: var(--cds-focus);
     }
 
     input:disabled,
@@ -272,11 +275,11 @@ export class NetworkTab extends I18nLitElement {
 
     input.error,
     select.error {
-      border-color: var(--vscode-inputValidation-errorBorder);
+      border-bottom-color: var(--cds-support-error);
     }
 
     .error-text {
-      color: var(--vscode-inputValidation-errorForeground);
+      color: var(--cds-support-error);
       font-size: 12px;
     }
 
@@ -616,7 +619,8 @@ export class NetworkTab extends I18nLitElement {
       font-weight: 500;
       background: var(--cds-layer-02);
       color: var(--vscode-foreground, var(--vscode-editor-foreground));
-      border: 1px solid var(--vscode-widget-border, rgba(0, 0, 0, 0.1));
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
       transition: all 0.15s;
     }
 

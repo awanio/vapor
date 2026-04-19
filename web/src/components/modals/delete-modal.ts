@@ -50,7 +50,8 @@ export class DeleteModal extends LitElement {
 
     .modal {
       background: var(--cds-layer-01);
-      border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, #454545));
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
       border-radius: 0;
       padding: 24px;
       max-width: 500px;
@@ -99,7 +100,8 @@ export class DeleteModal extends LitElement {
 
     .modal-resource-info {
       background: var(--vscode-editor-inactiveSelectionBackground, rgba(255, 255, 255, 0.05));
-      border: 1px solid var(--vscode-widget-border, rgba(255, 255, 255, 0.1));
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
       border-radius: 0;
       padding: 12px;
       margin: 12px 0;

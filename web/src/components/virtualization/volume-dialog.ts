@@ -159,17 +159,20 @@ export class VolumeDialog extends LitElement {
 
     .form-label.required::after {
       content: ' *';
-      color: var(--vscode-inputValidation-errorForeground, #f48771);
+      color: var(--cds-support-error);
     }
 
     .form-input,
     .form-select {
       width: 100%;
       padding: 8px 12px;
-      background: var(--vscode-input-background, #3c3c3c);
-      border: 1px solid var(--vscode-input-border, #5a5a5a);
+      background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px;
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
       border-radius: 0;
-      color: var(--vscode-input-foreground, #cccccc);
+      color: var(--cds-text-primary);
       font-size: 14px;
       font-family: inherit;
       outline: none;
@@ -179,13 +182,13 @@ export class VolumeDialog extends LitElement {
 
     .form-input:focus,
     .form-select:focus {
-      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      border-bottom-color: var(--cds-focus);
       box-shadow: 0 0 0 1px var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
     .form-input.error,
     .form-select.error {
-      border-color: var(--vscode-inputValidation-errorBorder, #f48771);
+      border-bottom-color: var(--cds-support-error);
     }
 
     .form-input:disabled,
@@ -219,14 +222,14 @@ export class VolumeDialog extends LitElement {
       display: block;
       margin-top: 4px;
       font-size: 12px;
-      color: var(--vscode-inputValidation-errorForeground, #f48771);
+      color: var(--cds-support-error);
     }
 
     .form-error {
       display: block;
       margin-top: 4px;
       font-size: 12px;
-      color: var(--vscode-inputValidation-errorForeground, #f48771);
+      color: var(--cds-support-error);
     }
 
     .pool-info {
@@ -274,7 +277,7 @@ export class VolumeDialog extends LitElement {
     }
 
     .format-option:hover {
-      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      border-bottom-color: var(--cds-focus);
     }
 
     .format-option.selected {

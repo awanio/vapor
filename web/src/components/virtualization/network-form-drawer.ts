@@ -189,16 +189,19 @@ export class NetworkFormDrawer extends LitElement {
 
     .required::after {
       content: ' *';
-      color: var(--vscode-inputValidation-errorForeground, #f48771);
+      color: var(--cds-support-error);
     }
 
     input,
     select {
       padding: 6px 8px;
       border-radius: 0;
-      border: 1px solid var(--vscode-input-border, #5a5a5a);
-      background: var(--vscode-input-background, #3c3c3c);
-      color: var(--vscode-input-foreground, #cccccc);
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
+      background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px;
+      color: var(--cds-text-primary);
       font-size: 14px;
       font-family: inherit;
       outline: none;
@@ -207,7 +210,7 @@ export class NetworkFormDrawer extends LitElement {
 
     input:focus,
     select:focus {
-      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      border-bottom-color: var(--cds-focus);
     }
 
     input:disabled,
@@ -218,11 +221,11 @@ export class NetworkFormDrawer extends LitElement {
 
     input.error,
     select.error {
-      border-color: var(--vscode-inputValidation-errorBorder, #be1100);
+      border-bottom-color: var(--cds-support-error);
     }
 
     .error-text {
-      color: var(--vscode-inputValidation-errorForeground, #f48771);
+      color: var(--cds-support-error);
       font-size: 12px;
     }
 

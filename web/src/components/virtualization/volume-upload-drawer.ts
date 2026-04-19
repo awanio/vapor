@@ -12,8 +12,11 @@ export class VolumeUploadDrawer extends LitElement {
     .drawer-content { padding: 16px; }
     .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
     .field label { color: var(--vscode-foreground, #cccccc); font-size: 14px; font-weight: 500; }
-    .field input, .field select { width: 100%; padding: 8px 12px; border-radius: 0; border: 1px solid var(--vscode-input-border, #3c3c3c); background: var(--vscode-input-background, #3c3c3c); color: var(--vscode-input-foreground, #cccccc); font-size: 14px; box-sizing: border-box; }
-    .field input:focus, .field select:focus { outline: none; border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe)); box-shadow: 0 0 0 1px var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe)); }
+    .field input, .field select { width: 100%; padding: 8px 12px; border-radius: 0; border: none;
+      border-bottom: 2px solid var(--cds-border-subtle); background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px; color: var(--cds-text-primary); font-size: 14px; box-sizing: border-box; }
+    .field input:focus, .field select:focus { outline: none; border-bottom-color: var(--cds-focus); box-shadow: 0 0 0 1px var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe)); }
     
     .drop-zone {
       border: 2px dashed var(--vscode-input-border, #5a5a5a);
@@ -26,11 +29,11 @@ export class VolumeUploadDrawer extends LitElement {
       background: var(--cds-layer-02);
     }
     .drop-zone:hover {
-      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      border-bottom-color: var(--cds-focus);
       background: var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.1));
     }
     .drop-zone.drag-over {
-      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      border-bottom-color: var(--cds-focus);
       background: rgba(15, 98, 254, 0.16);
       border-style: solid;
     }

@@ -34,10 +34,13 @@ export class OSVariantAutocomplete extends LitElement {
     .input {
       width: 100%;
       padding: 8px 12px;
-      border: 1px solid var(--vscode-input-border, #858585);
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
       border-radius: 0;
-      background: var(--vscode-input-background, #3c3c3c);
-      color: var(--vscode-input-foreground, #cccccc);
+      background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px;
+      color: var(--cds-text-primary);
       font-size: 14px;
       font-family: inherit;
       transition: all 0.15s;
@@ -47,7 +50,7 @@ export class OSVariantAutocomplete extends LitElement {
 
     .input:focus {
       outline: none;
-      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      border-bottom-color: var(--cds-focus);
       box-shadow: 0 0 0 1px var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
@@ -66,7 +69,8 @@ export class OSVariantAutocomplete extends LitElement {
       left: 0;
       right: 0;
       background: var(--vscode-editorWidget-background, var(--cds-background));
-      border: 1px solid var(--vscode-input-border, #858585);
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
       border-radius: 0;
       max-height: 260px;
       overflow: auto;

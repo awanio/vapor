@@ -77,8 +77,11 @@ export class VMBackupsTab extends LitElement {
     .form-group label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; color: var(--vscode-foreground, #cccccc); }
     .form-hint { margin-top: 6px; font-size: 12px; color: var(--cds-text-secondary); }
     .form-error { margin-top: 6px; color: var(--cds-support-error); font-size: 12px; }
-    input, select, textarea { width: 100%; padding: 8px 12px; background: var(--vscode-input-background, #3c3c3c); color: var(--vscode-input-foreground, #cccccc); border: 1px solid var(--vscode-input-border, #858585); border-radius: 0; font-size: 14px; font-family: inherit; transition: all 0.15s; box-sizing: border-box; }
-    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe)); box-shadow: 0 0 0 1px var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe)); }
+    input, select, textarea { width: 100%; padding: 8px 12px; background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px; color: var(--cds-text-primary); border: none;
+      border-bottom: 2px solid var(--cds-border-subtle); border-radius: 0; font-size: 14px; font-family: inherit; transition: all 0.15s; box-sizing: border-box; }
+    input:focus, select:focus, textarea:focus { outline: none; border-bottom-color: var(--cds-focus); box-shadow: 0 0 0 1px var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe)); }
     .checkbox-group { display: flex; flex-direction: row; gap: 10px; align-items: center; margin-bottom: 10px; }
     .checkbox-group input[type="checkbox"] { width: auto; flex-shrink: 0; }
     .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; background: #1f2937; color: #e5e7eb; font-size: 12px; }
@@ -134,7 +137,9 @@ export class VMBackupsTab extends LitElement {
       line-height: 1.5;
     }
     .vm-info-box {
-      background: var(--vscode-input-background, #3c3c3c);
+      background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px;
       border: 1px solid var(--cds-border-subtle);
       border-radius: 0;
       padding: 12px;
@@ -712,7 +717,9 @@ export class VMBackupsTab extends LitElement {
           Are you sure you want to delete this backup? This action cannot be undone.
         </p>
 
-        <div style="background: var(--vscode-input-background, #3c3c3c); border: 1px solid var(--cds-border-subtle); border-radius: 0; padding: 12px; margin: 16px 0;">
+        <div style="background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px; border: 1px solid var(--cds-border-subtle); border-radius: 0; padding: 12px; margin: 16px 0;">
           <div style="display: flex; justify-content: space-between; padding: 6px 0;">
             <span style="color: var(--cds-text-secondary); font-size: 14px;">VM:</span>
             <span style="color: var(--vscode-foreground, #cccccc); font-size: 14px; font-weight: 500;">${this.deleteTarget.vm_name}</span>

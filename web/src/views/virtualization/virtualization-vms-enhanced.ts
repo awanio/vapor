@@ -296,7 +296,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
     }
 
     .stat-widget:hover {
-      border-color: var(--vscode-focusBorder);
+      border-bottom-color: var(--cds-focus);
       transform: translateY(-2px);
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       background: rgba(255, 255, 255, 0.02);
@@ -535,7 +535,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
 
     .state-badge.stopped {
       background: var(--vscode-inputValidation-errorBackground);
-      color: var(--vscode-inputValidation-errorForeground);
+      color: var(--cds-support-error);
     }
 
     .state-badge.paused {
@@ -713,9 +713,12 @@ export class VirtualizationVMsEnhanced extends LitElement {
       width: 100%;
       max-width: 100%;
       padding: 8px 12px;
-      background: var(--vscode-input-background, #3c3c3c);
-      color: var(--vscode-input-foreground, #cccccc);
-      border: 1px solid var(--vscode-input-border, #858585);
+      background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px;
+      color: var(--cds-text-primary);
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
       border-radius: 0;
       font-size: 14px;
       font-family: inherit;
@@ -732,7 +735,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
     select:focus,
     textarea:focus {
       outline: none;
-      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      border-bottom-color: var(--cds-focus);
       box-shadow: 0 0 0 1px var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
@@ -764,7 +767,7 @@ export class VirtualizationVMsEnhanced extends LitElement {
     }
 
     .error-text {
-      color: var(--vscode-inputValidation-errorForeground, #f48771);
+      color: var(--cds-support-error);
       font-size: 12px;
     }
 

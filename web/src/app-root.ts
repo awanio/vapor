@@ -444,7 +444,7 @@ export class AppRoot extends LitElement {
     return html`
       <!-- App Header -->
       <header class="app-header">
-        <div class="header-title">Vapor</div>
+        <div class="header-title">Vapor CE</div>
         <div class="header-actions">
           <button class="theme-toggle" @click="${this.toggleTheme}" title="${t('app.theme')}">
             ${this.currentTheme === 'dark' ? html`

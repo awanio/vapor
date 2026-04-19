@@ -29,9 +29,12 @@ export class VirtualizationBackupsView extends LitElement {
       height: 36px; 
       padding: 8px 32px 8px 12px; 
       border-radius: 0; 
-      border: 1px solid var(--vscode-input-border, #3c3c3c); 
-      background: var(--vscode-input-background, #3c3c3c); 
-      color: var(--vscode-input-foreground, #cccccc); 
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle); 
+      background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px; 
+      color: var(--cds-text-primary); 
       font-size: 14px;
       cursor: pointer;
       appearance: none;
@@ -39,7 +42,7 @@ export class VirtualizationBackupsView extends LitElement {
       background-repeat: no-repeat;
       background-position: right 10px center;
     }
-    .filters select:focus { outline: none; border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe)); box-shadow: 0 0 0 1px var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe)); }
+    .filters select:focus { outline: none; border-bottom-color: var(--cds-focus); box-shadow: 0 0 0 1px var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe)); }
     .actions { display: flex; gap: 8px; align-items: center; margin-left: auto; }
     .btn { height: 36px; padding: 0 16px; border-radius: 0; border: 1px solid transparent; cursor: pointer; font-size: 14px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s; font-family: inherit; }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -47,7 +50,7 @@ export class VirtualizationBackupsView extends LitElement {
     .btn-primary:hover:not(:disabled) { background: var(--cds-button-primary-hover); border-color: var(--cds-button-primary-hover); }
     .btn-secondary { background: var(--vscode-button-secondaryBackground, #3c3c3c); color: var(--vscode-button-secondaryForeground, #cccccc); border: 1px solid var(--cds-border-subtle); }
     .btn-secondary:hover:not(:disabled) { background: var(--vscode-button-secondaryHoverBackground, #484848); }
-    .btn-danger { background: var(--vscode-inputValidation-errorBackground, #a4262c); border-color: var(--vscode-inputValidation-errorBorder, #a4262c); color: var(--vscode-inputValidation-errorForeground, #ffffff); }
+    .btn-danger { background: var(--vscode-inputValidation-errorBackground, #a4262c); border-bottom-color: var(--cds-support-error); color: var(--cds-support-error); }
     .btn-danger:hover:not([disabled]) { opacity: 0.9; }
     table { width: 100%; border-collapse: collapse; }
     th, td { padding: 12px 10px; border-bottom: 1px solid var(--cds-border-subtle); text-align: left; font-size: 14px; }
@@ -62,8 +65,11 @@ export class VirtualizationBackupsView extends LitElement {
     .field.checkbox { flex-direction: row; align-items: center; gap: 12px; }
     .field.checkbox input[type="checkbox"] { width: auto; margin: 0; }
     .field label { color: var(--vscode-foreground, #cccccc); font-size: 14px; font-weight: 500; }
-    .field input, .field select, .field textarea { width: 100%; padding: 8px 12px; border-radius: 0; border: 1px solid var(--vscode-input-border, #3c3c3c); background: var(--vscode-input-background, #3c3c3c); color: var(--vscode-input-foreground, #cccccc); font-size: 14px; font-family: inherit; box-sizing: border-box; transition: all 0.15s; }
-    .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe)); box-shadow: 0 0 0 1px var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe)); }
+    .field input, .field select, .field textarea { width: 100%; padding: 8px 12px; border-radius: 0; border: none;
+      border-bottom: 2px solid var(--cds-border-subtle); background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px; color: var(--cds-text-primary); font-size: 14px; font-family: inherit; box-sizing: border-box; transition: all 0.15s; }
+    .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-bottom-color: var(--cds-focus); box-shadow: 0 0 0 1px var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe)); }
     .field select { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23cccccc' d='M2 4l4 4 4-4z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; }
     .field textarea { resize: vertical; min-height: 60px; }
     .drawer-content { padding: 16px; }
@@ -80,11 +86,11 @@ export class VirtualizationBackupsView extends LitElement {
       background: var(--cds-layer-02);
     }
     .drop-zone:hover {
-      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      border-bottom-color: var(--cds-focus);
       background: var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.1));
     }
     .drop-zone.drag-over {
-      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      border-bottom-color: var(--cds-focus);
       background: rgba(15, 98, 254, 0.16);
       border-style: solid;
     }
@@ -106,7 +112,9 @@ export class VirtualizationBackupsView extends LitElement {
     .file-size { font-size: 12px; color: var(--cds-text-secondary); }
     .dropdown { position: relative; display: inline-block; }
     .dropdown { position: relative; display: inline-block; }
-    .dropdown-menu { display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; background: var(--vscode-dropdown-background, var(--vscode-menu-background, var(--vscode-bg-light, #252526))); border: 1px solid var(--vscode-dropdown-border, var(--vscode-menu-border, var(--border-color, #454545))); border-radius: 0; box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index: 100; min-width: 180px; padding: 4px 0; }
+    .dropdown-menu { display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px; border: 1px solid var(--vscode-dropdown-border, var(--vscode-menu-border, var(--border-color, #454545))); border-radius: 0; box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index: 100; min-width: 180px; padding: 4px 0; }
     .dropdown.open .dropdown-menu { display: block; }
     .dropdown-item { display: block; width: 100%; text-align: left; padding: 8px 12px; background: none; border: none; color: var(--vscode-menu-foreground, var(--vscode-foreground, var(--vscode-text, #cccccc))); cursor: pointer; font-size: 14px; box-sizing: border-box; display: flex; align-items: center; gap: 8px; }
     .dropdown-item:hover { background-color: var(--vscode-list-hoverBackground, var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.08))); color: var(--vscode-list-hoverForeground, var(--vscode-foreground)); }
@@ -1100,7 +1108,9 @@ export class VirtualizationBackupsView extends LitElement {
                 <span>Upload progress</span>
                 <span>${uploadState.uploadProgress}%</span>
               </div>
-              <div style="height: 8px; background: var(--vscode-input-background); border-radius: 0; overflow: hidden;">
+              <div style="height: 8px; background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px; border-radius: 0; overflow: hidden;">
                 <div style="height: 100%; width: ${uploadState.uploadProgress}%; background: var(--cds-button-primary); transition: width 0.3s;"></div>
               </div>
               <div style="display: flex; gap: 8px; margin-top: 12px;">

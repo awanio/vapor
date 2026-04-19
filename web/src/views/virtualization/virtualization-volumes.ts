@@ -89,7 +89,8 @@ export class VirtualizationVolumes extends LitElement {
       flex-direction: column;
       padding: 14px;
       background: var(--cds-background);
-      border: 1px solid var(--vscode-widget-border, var(--vscode-input-border, var(--vscode-panel-border, #454545)));
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
       border-radius: 0;
       transition: all 0.15s;
       position: relative;
@@ -97,7 +98,7 @@ export class VirtualizationVolumes extends LitElement {
     }
 
     .stat-widget:hover {
-      border-color: var(--vscode-focusBorder);
+      border-bottom-color: var(--cds-focus);
       transform: translateY(-2px);
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       background: rgba(255, 255, 255, 0.02);
@@ -512,7 +513,7 @@ export class VirtualizationVolumes extends LitElement {
     }
 
     .action-btn.danger:hover {
-      color: var(--vscode-inputValidation-errorForeground);
+      color: var(--cds-support-error);
       background: var(--vscode-inputValidation-errorBackground);
     }
 

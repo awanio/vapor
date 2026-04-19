@@ -240,12 +240,12 @@ export class ISOManagement extends LitElement {
     }
 
     .drop-zone:hover {
-      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      border-bottom-color: var(--cds-focus);
       background: var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.1));
     }
 
     .drop-zone.drag-over {
-      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      border-bottom-color: var(--cds-focus);
       background: rgba(15, 98, 254, 0.16);
       border-style: solid;
     }
@@ -323,9 +323,12 @@ export class ISOManagement extends LitElement {
     .form-group textarea {
       width: 100%;
       padding: 8px 12px;
-      background: var(--vscode-input-background, #3c3c3c);
-      color: var(--vscode-input-foreground, #cccccc);
-      border: 1px solid var(--vscode-input-border, #5a5a5a);
+      background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px;
+      color: var(--cds-text-primary);
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
       border-radius: 0;
       font-size: 14px;
       font-family: inherit;
@@ -336,7 +339,7 @@ export class ISOManagement extends LitElement {
     .form-group select:focus,
     .form-group textarea:focus {
       outline: none;
-      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      border-bottom-color: var(--cds-focus);
       box-shadow: 0 0 0 1px var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
     }
 
@@ -364,7 +367,8 @@ export class ISOManagement extends LitElement {
       border-radius: 0;
       overflow: hidden;
       margin: 12px 0;
-      border: 1px solid var(--vscode-input-border, #5a5a5a);
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
     }
 
     .progress-bar {
@@ -447,7 +451,7 @@ export class ISOManagement extends LitElement {
 
     .btn-danger {
       background: var(--vscode-inputValidation-errorBackground, #5a1d1d);
-      color: var(--vscode-inputValidation-errorForeground, #f48771);
+      color: var(--cds-support-error);
       border: 1px solid var(--vscode-inputValidation-errorBorder, #be1100);
     }
 

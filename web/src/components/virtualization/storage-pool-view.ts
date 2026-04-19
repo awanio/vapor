@@ -81,9 +81,12 @@ export class StoragePoolView extends LitElement {
     .search-input {
       width: 100%;
       padding: 6px 12px 6px 32px;
-      background: var(--vscode-input-background);
-      color: var(--vscode-input-foreground);
-      border: 1px solid var(--vscode-input-border);
+      background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px;
+      color: var(--cds-text-primary);
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
       border-radius: 0;
       font-size: 14px;
     }
@@ -100,7 +103,9 @@ export class StoragePoolView extends LitElement {
     .view-toggle {
       display: flex;
       gap: 4px;
-      background: var(--vscode-dropdown-background);
+      background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px;
       border: 1px solid var(--vscode-dropdown-border);
       border-radius: 0;
       padding: 2px;
@@ -163,7 +168,7 @@ export class StoragePoolView extends LitElement {
     }
 
     .pool-card:hover {
-      border-color: var(--vscode-focusBorder);
+      border-bottom-color: var(--cds-focus);
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
@@ -224,7 +229,7 @@ export class StoragePoolView extends LitElement {
 
     .pool-state.inactive {
       background: var(--vscode-inputValidation-errorBackground);
-      color: var(--vscode-inputValidation-errorForeground);
+      color: var(--cds-support-error);
     }
 
     .pool-state.building {
@@ -327,7 +332,7 @@ export class StoragePoolView extends LitElement {
     }
 
     .pool-list-item:hover {
-      border-color: var(--vscode-focusBorder);
+      border-bottom-color: var(--cds-focus);
     }
 
     .pool-list-header {

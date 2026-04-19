@@ -70,8 +70,8 @@ export class VMActions extends LitElement {
 
     .action-button.danger {
       background: var(--vscode-inputValidation-errorBackground);
-      color: var(--vscode-inputValidation-errorForeground);
-      border-color: var(--vscode-inputValidation-errorBorder);
+      color: var(--cds-support-error);
+      border-bottom-color: var(--cds-support-error);
     }
 
     .action-button.danger:hover:not(:disabled) {

@@ -49,7 +49,7 @@ export class NamespaceDropdown extends LitElement {
     .dropdown-toggle.open {
       background: var(--vscode-button-secondaryBackground, var(--vscode-bg-lighter, #eff1f3));
       color: var(--vscode-button-secondaryForeground, var(--vscode-foreground, #3b3b3b));
-      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      border-bottom-color: var(--cds-focus);
     }
 
     .dropdown-label {
@@ -72,7 +72,9 @@ export class NamespaceDropdown extends LitElement {
       right: 0;
       margin-top: 4px;
       margin-top: 4px;
-      background: var(--vscode-dropdown-background, var(--vscode-editor-background, #ffffff));
+      background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px;
       border: 1px solid var(--cds-border-subtle);
       border-radius: 0;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
@@ -91,9 +93,12 @@ export class NamespaceDropdown extends LitElement {
     .search-input {
       width: 100%;
       padding: 6px 8px;
-      background: var(--vscode-input-background, #ffffff);
-      color: var(--vscode-input-foreground, #3b3b3b);
-      border: 1px solid var(--vscode-input-border, #cecece);
+      background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px;
+      color: var(--cds-text-primary);
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
       border-radius: 0;
       font-size: 14px;
       outline: none;

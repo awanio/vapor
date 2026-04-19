@@ -100,8 +100,10 @@ export class KubernetesHelm extends LitElement {
 
     .namespace-selector select {
       padding: 6px 10px;
-      background: var(--vscode-dropdown-background, #3c3c3c);
-      color: var(--vscode-dropdown-foreground, #cccccc);
+      background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px;
+      color: var(--cds-text-primary);
       border-bottom: 1px solid var(--cds-border-subtle);
       border-radius: 0;
       font-size: 14px;

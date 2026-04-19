@@ -52,7 +52,7 @@ export class StoragePoolActions extends LitElement {
     }
 
     .action-btn.danger {
-      color: var(--vscode-inputValidation-errorForeground);
+      color: var(--cds-support-error);
     }
 
     .action-btn.danger:hover:not(:disabled) {
@@ -120,7 +120,7 @@ export class StoragePoolActions extends LitElement {
 
     .status-indicator.inactive {
       background: var(--vscode-inputValidation-errorBackground);
-      color: var(--vscode-inputValidation-errorForeground);
+      color: var(--cds-support-error);
     }
 
     .status-indicator.building {

@@ -85,7 +85,8 @@ export class PlaybookRunModal extends LitElement {
       max-width: 700px;
       max-height: 90vh;
       background: var(--cds-background);
-      border: 1px solid var(--vscode-panel-border, #2d2d30);
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
       border-radius: 0;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
       display: flex;
@@ -171,9 +172,12 @@ export class PlaybookRunModal extends LitElement {
     .form-textarea {
       width: 100%;
       padding: 8px 12px;
-      background: var(--vscode-input-background, #3c3c3c);
-      color: var(--vscode-input-foreground, #cccccc);
-      border: 1px solid var(--vscode-input-border, #3c3c3c);
+      background: var(--cds-field);
+      padding: 0 12px;
+      min-height: 40px;
+      color: var(--cds-text-primary);
+      border: none;
+      border-bottom: 2px solid var(--cds-border-subtle);
       border-radius: 0;
       font-size: 14px;
       font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
@@ -189,7 +193,7 @@ export class PlaybookRunModal extends LitElement {
     .form-select:focus,
     .form-textarea:focus {
       outline: none;
-      border-color: var(--vscode-focusBorder, var(--cds-button-primary, #0f62fe));
+      border-bottom-color: var(--cds-focus);
     }
 
     .form-checkbox {
